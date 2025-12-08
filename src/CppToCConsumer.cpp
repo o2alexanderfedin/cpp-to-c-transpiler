@@ -1,23 +1,23 @@
 #include "CppToCConsumer.h"
 #include "clang/Basic/SourceManager.h"
 #include "llvm/Support/raw_ostream.h"
+#include <algorithm>
 
 void CppToCConsumer::HandleTranslationUnit(clang::ASTContext &Context) {
+  // Get source manager and main file information
   auto &SM = Context.getSourceManager();
   auto MainFileID = SM.getMainFileID();
 
-  // Get filename and print confirmation
-  auto FileEntry = SM.getFileEntryRefForID(MainFileID);
-  if (FileEntry) {
+  // Print parsed file name for verification
+  if (auto FileEntry = SM.getFileEntryRefForID(MainFileID)) {
     llvm::outs() << "Parsed file: " << FileEntry->getName() << "\n";
   }
 
-  // Count and print top-level declarations
-  auto TU = Context.getTranslationUnitDecl();
-  unsigned DeclCount = 0;
-  for (auto *D : TU->decls()) {
-    DeclCount++;
-  }
+  // Count top-level declarations in translation unit
+  // Using std::distance for more idiomatic C++ (DRY principle)
+  auto *TU = Context.getTranslationUnitDecl();
+  auto DeclRange = TU->decls();
+  auto DeclCount = std::distance(DeclRange.begin(), DeclRange.end());
 
   llvm::outs() << "Translation unit has " << DeclCount
                << " top-level declarations\n";
