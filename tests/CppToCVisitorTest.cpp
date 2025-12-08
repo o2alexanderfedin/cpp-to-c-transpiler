@@ -125,6 +125,88 @@ void test_ForwardDeclaration(ASTContext &Ctx) {
     TEST_PASS("ForwardDeclaration");
 }
 
+// ============================================================================
+// Story #16: Method-to-Function Conversion Tests
+// ============================================================================
+
+void test_SimpleMethod(ASTContext &Ctx) {
+    TEST_START("SimpleMethod: int getX() -> int Point_getX(struct Point *this)");
+
+    const char *cpp = R"(
+        class Point {
+            int x;
+        public:
+            int getX() { return x; }
+        };
+    )";
+    std::unique_ptr<ASTUnit> AST = buildAST(cpp);
+    ASSERT(AST, "Failed to parse C++ code");
+
+    CNodeBuilder builder(AST->getASTContext());
+    CppToCVisitor visitor(AST->getASTContext(), builder);
+
+    visitor.TraverseDecl(AST->getASTContext().getTranslationUnitDecl());
+
+    // Verify C function generated with correct signature
+    FunctionDecl *CFunc = visitor.getCFunc("Point_getX");
+    ASSERT(CFunc != nullptr, "C function not generated");
+    ASSERT(CFunc->getNumParams() == 1, "Expected 1 parameter (this)");
+    ASSERT(CFunc->getParamDecl(0)->getName() == "this", "First param should be 'this'");
+
+    TEST_PASS("SimpleMethod");
+}
+
+void test_MethodWithParams(ASTContext &Ctx) {
+    TEST_START("MethodWithParams: void setX(int x) -> void Point_setX(struct Point *this, int x)");
+
+    const char *cpp = R"(
+        class Point {
+            int x;
+        public:
+            void setX(int val) { x = val; }
+        };
+    )";
+    std::unique_ptr<ASTUnit> AST = buildAST(cpp);
+    ASSERT(AST, "Failed to parse C++ code");
+
+    CNodeBuilder builder(AST->getASTContext());
+    CppToCVisitor visitor(AST->getASTContext(), builder);
+
+    visitor.TraverseDecl(AST->getASTContext().getTranslationUnitDecl());
+
+    FunctionDecl *CFunc = visitor.getCFunc("Point_setX");
+    ASSERT(CFunc != nullptr, "C function not generated");
+    ASSERT(CFunc->getNumParams() == 2, "Expected 2 parameters (this + val)");
+    ASSERT(CFunc->getParamDecl(0)->getName() == "this", "First param should be 'this'");
+    ASSERT(CFunc->getParamDecl(1)->getName() == "val", "Second param should be 'val'");
+
+    TEST_PASS("MethodWithParams");
+}
+
+void test_SkipVirtual(ASTContext &Ctx) {
+    TEST_START("SkipVirtual: virtual void foo() -> skip (no function generated)");
+
+    const char *cpp = R"(
+        class Base {
+        public:
+            virtual void foo() {}
+        };
+    )";
+    std::unique_ptr<ASTUnit> AST = buildAST(cpp);
+    ASSERT(AST, "Failed to parse C++ code");
+
+    CNodeBuilder builder(AST->getASTContext());
+    CppToCVisitor visitor(AST->getASTContext(), builder);
+
+    visitor.TraverseDecl(AST->getASTContext().getTranslationUnitDecl());
+
+    // Virtual methods should be skipped in Phase 1
+    FunctionDecl *CFunc = visitor.getCFunc("Base_foo");
+    ASSERT(CFunc == nullptr, "Virtual method should be skipped");
+
+    TEST_PASS("SkipVirtual");
+}
+
 int main(int argc, const char **argv) {
     // Create a simple test AST for context
     std::unique_ptr<ASTUnit> AST = buildAST("int main() { return 0; }");
@@ -136,11 +218,15 @@ int main(int argc, const char **argv) {
     ASTContext &Ctx = AST->getASTContext();
 
     std::cout << "=== Story #15: Class-to-Struct Conversion Tests ===" << std::endl;
-
     test_EmptyClass(Ctx);
     test_ClassWithFields(Ctx);
     test_MixedAccessSpecifiers(Ctx);
     test_ForwardDeclaration(Ctx);
+
+    std::cout << "\n=== Story #16: Method-to-Function Conversion Tests ===" << std::endl;
+    test_SimpleMethod(Ctx);
+    test_MethodWithParams(Ctx);
+    test_SkipVirtual(Ctx);
 
     std::cout << "\n========================================" << std::endl;
     std::cout << "Tests passed: " << tests_passed << std::endl;

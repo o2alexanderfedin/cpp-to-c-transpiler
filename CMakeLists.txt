@@ -47,6 +47,7 @@ target_link_libraries(cpptoc PRIVATE
 add_executable(CppToCVisitorTest
     tests/CppToCVisitorTest.cpp
     src/CppToCVisitor.cpp
+    src/NameMangler.cpp
 )
 
 target_compile_definitions(CppToCVisitorTest PRIVATE ${LLVM_DEFINITIONS})
