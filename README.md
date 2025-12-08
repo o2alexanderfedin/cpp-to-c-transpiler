@@ -157,27 +157,31 @@ Frama-C Verification
 
 ## Research Documentation
 
+**📖 [Documentation Index](docs/INDEX.md)** - Master navigation for all documentation
+
 ### Primary Documents
 
-1. **[SUMMARY.md](.prompts/001-clang-cpp-to-c-converter-research/SUMMARY.md)** - Executive summary (316 lines)
-2. **[CHANGELOG.md](.prompts/001-clang-cpp-to-c-converter-research/CHANGELOG.md)** - Version history and breakthroughs
-3. **[feasibility-and-roadmap.md](.prompts/001-clang-cpp-to-c-converter-research/feasibility-and-roadmap.md)** - Detailed implementation plan (1,023 lines)
-4. **[clang-cpp-to-c-converter-research.md](.prompts/001-clang-cpp-to-c-converter-research/clang-cpp-to-c-converter-research.md)** - Complete technical analysis (2,333 lines)
+1. **[SUMMARY.md](docs/SUMMARY.md)** - Executive summary (316 lines)
+2. **[CHANGELOG.md](docs/CHANGELOG.md)** - Version history and breakthroughs
+3. **[feasibility-and-roadmap.md](docs/feasibility-and-roadmap.md)** - Detailed implementation plan (1,023 lines)
+4. **[technical-analysis.md](docs/technical-analysis.md)** - Complete technical analysis (2,333 lines)
 
-### Feature-Specific Research
+### Feature-Specific Guides
 
-5. **[EXCEPTION-HANDLING-SOLUTION.md](.prompts/001-clang-cpp-to-c-converter-research/EXCEPTION-HANDLING-SOLUTION.md)** - PNaCl SJLJ implementation (599 lines)
-6. **[RTTI-IMPLEMENTATION-GUIDE.md](.prompts/003-advanced-features-research/RTTI-IMPLEMENTATION-GUIDE.md)** - Itanium ABI patterns (938 lines)
-7. **[VIRTUAL-INHERITANCE-GUIDE.md](.prompts/003-advanced-features-research/VIRTUAL-INHERITANCE-GUIDE.md)** - VTT generation (997 lines)
-8. **[COROUTINES-GUIDE.md](.prompts/003-advanced-features-research/COROUTINES-GUIDE.md)** - State machine transformation (1,321 lines)
+5. **[exceptions.md](docs/features/exceptions.md)** - PNaCl SJLJ implementation (599 lines)
+6. **[rtti.md](docs/features/rtti.md)** - Itanium ABI patterns (938 lines)
+7. **[virtual-inheritance.md](docs/features/virtual-inheritance.md)** - VTT generation (997 lines)
+8. **[coroutines.md](docs/features/coroutines.md)** - State machine transformation (1,321 lines)
 
-### Architecture Research
+### Architecture Documentation
 
-9. **[ARCHITECTURE-DECISION.md](.prompts/004-ast-transformation-architecture/ARCHITECTURE-DECISION.md)** - Architecture decision rationale (v1.5 + v1.5.1 addendum, 949 lines)
-10. **[PROTOTYPE-COMPARISON.md](.prompts/004-ast-transformation-architecture/PROTOTYPE-COMPARISON.md)** - Quantitative analysis (863 lines)
-11. **[RUNTIME-LIBRARY-DESIGN.md](.prompts/004-ast-transformation-architecture/RUNTIME-LIBRARY-DESIGN.md)** - Runtime library specification (713 lines)
+9. **[architecture-decision.md](docs/architecture/architecture-decision.md)** - Architecture rationale (v1.5 + v1.5.1, 949 lines)
+10. **[prototype-comparison.md](docs/architecture/prototype-comparison.md)** - Quantitative analysis (863 lines)
+11. **[runtime-library-design.md](docs/architecture/runtime-library-design.md)** - Runtime library specification (713 lines)
 
 **Total Research:** 13,545+ lines of comprehensive documentation
+
+**📁 [Research Archive](research-archive/INDEX.md)** - Complete research process (4 phases, 23,629+ lines)
 
 ## Technical Highlights
 
@@ -282,10 +286,27 @@ frama-c -wp output.c cpptoc_runtime.c
 
 ```
 hupyy-cpp-to-c/
-├── .prompts/                    # Research documentation
-│   ├── 001-clang-cpp-to-c-converter-research/
-│   ├── 003-advanced-features-research/
-│   └── 004-ast-transformation-architecture/
+├── docs/                        # Primary documentation
+│   ├── INDEX.md                # Master navigation
+│   ├── SUMMARY.md              # Executive summary
+│   ├── CHANGELOG.md            # Version history
+│   ├── feasibility-and-roadmap.md
+│   ├── technical-analysis.md
+│   ├── features/               # Feature implementation guides
+│   │   ├── exceptions.md
+│   │   ├── rtti.md
+│   │   ├── virtual-inheritance.md
+│   │   └── coroutines.md
+│   └── architecture/           # Architecture documentation
+│       ├── architecture-decision.md
+│       ├── prototype-comparison.md
+│       └── runtime-library-design.md
+├── research-archive/            # Research process documentation
+│   ├── INDEX.md                # Research archive navigation
+│   ├── phase-01-feasibility/
+│   ├── phase-02-exception-handling/
+│   ├── phase-03-advanced-features/
+│   └── phase-04-architecture/
 ├── src/                         # Source code (future)
 │   ├── CNodeBuilder.cpp        # AST node creation helpers
 │   ├── CppToCTranslator.cpp    # C++ → C AST translation
