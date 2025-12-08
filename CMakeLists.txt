@@ -18,6 +18,7 @@ add_executable(cpptoc
     src/CppToCConsumer.cpp
     src/CppToCVisitor.cpp
     src/NameMangler.cpp
+    src/CodeGenerator.cpp
 )
 
 # Apply LLVM/Clang compile definitions to target
@@ -103,6 +104,31 @@ target_include_directories(TranslationIntegrationTest PRIVATE
 )
 
 target_link_libraries(TranslationIntegrationTest PRIVATE
+    clangTooling
+    clangFrontend
+    clangAST
+    clangBasic
+)
+
+# ============================================================================
+# Epic #4: CodeGenerator Tests (Story #21)
+# ============================================================================
+
+# Story #21: CodeGenerator tests
+add_executable(CodeGeneratorTest
+    tests/CodeGeneratorTest.cpp
+    src/CodeGenerator.cpp
+)
+
+target_compile_definitions(CodeGeneratorTest PRIVATE ${LLVM_DEFINITIONS})
+
+target_include_directories(CodeGeneratorTest PRIVATE
+    ${CMAKE_SOURCE_DIR}/include
+    ${LLVM_INCLUDE_DIRS}
+    ${CLANG_INCLUDE_DIRS}
+)
+
+target_link_libraries(CodeGeneratorTest PRIVATE
     clangTooling
     clangFrontend
     clangAST
