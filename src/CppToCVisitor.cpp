@@ -128,17 +128,128 @@ bool CppToCVisitor::VisitCXXMethodDecl(CXXMethodDecl *MD) {
   return true;
 }
 
-// Story #17: Constructor Translation (stub for now)
+// Story #17: Constructor Translation
 bool CppToCVisitor::VisitCXXConstructorDecl(CXXConstructorDecl *CD) {
-  // Edge case: Skip implicit constructors
+  // Edge case: Skip implicit constructors (compiler-generated)
   if (CD->isImplicit()) {
     return true;
   }
 
-  llvm::outs() << "Found constructor: " << CD->getParent()->getName()
-               << "::" << CD->getName() << "\n";
+  llvm::outs() << "Translating constructor: " << CD->getParent()->getName()
+               << "::" << CD->getParent()->getName() << "\n";
 
-  // TODO: Implement constructor translation in Story #17
+  CXXRecordDecl *Parent = CD->getParent();
+  RecordDecl *CStruct = nullptr;
+
+  // Find C struct for parent class
+  if (cppToCMap.find(Parent) != cppToCMap.end()) {
+    CStruct = cppToCMap[Parent];
+  } else {
+    llvm::outs() << "  Warning: Parent struct not found, skipping\n";
+    return true;
+  }
+
+  // Build parameter list: this + original params
+  std::vector<ParmVarDecl*> params;
+
+  // Add 'this' parameter - use the existing C struct type
+  QualType thisType = Builder.ptrType(Context.getRecordType(CStruct));
+  ParmVarDecl *thisParam = Builder.param(thisType, "this");
+  params.push_back(thisParam);
+
+  // Add original parameters
+  for (ParmVarDecl *Param : CD->parameters()) {
+    ParmVarDecl *CParam = Builder.param(Param->getType(), Param->getName());
+    params.push_back(CParam);
+  }
+
+  // Generate constructor name using name mangling
+  std::string funcName = Mangler.mangleConstructor(CD);
+
+  // Create C init function (body will be added below)
+  FunctionDecl *CFunc = Builder.funcDecl(
+    funcName,
+    Builder.voidType(),
+    params,
+    nullptr
+  );
+
+  // Build function body
+  std::vector<Stmt*> stmts;
+
+  // Set translation context for expression translation
+  currentThisParam = thisParam;
+  currentMethod = CD;
+
+  // Translate member initializers: this->x = x;
+  for (CXXCtorInitializer *Init : CD->inits()) {
+    if (Init->isAnyMemberInitializer()) {
+      FieldDecl *Field = Init->getAnyMember();
+      Expr *InitExpr = Init->getInit();
+
+      if (!Field || !InitExpr) {
+        llvm::outs() << "  Warning: Null field or init expr, skipping\n";
+        continue;
+      }
+
+      llvm::outs() << "  Translating member initializer: " << Field->getName() << "\n";
+
+      // Translate the init expression first
+      Expr *TranslatedExpr = translateExpr(InitExpr);
+      if (!TranslatedExpr) {
+        llvm::outs() << "  Warning: Failed to translate init expr\n";
+        continue;
+      }
+
+      // Create the arrow member expression for this->field
+      MemberExpr *ThisMember = Builder.arrowMember(
+        Builder.ref(thisParam),
+        Field->getName()
+      );
+
+      if (!ThisMember) {
+        llvm::outs() << "  Warning: Failed to create arrow member\n";
+        continue;
+      }
+
+      // Create assignment: this->field = initExpr;
+      BinaryOperator *Assignment = Builder.assign(ThisMember, TranslatedExpr);
+      if (!Assignment) {
+        llvm::outs() << "  Warning: Failed to create assignment\n";
+        continue;
+      }
+
+      stmts.push_back(Assignment);
+    }
+  }
+
+  // Translate constructor body statements
+  if (CD->hasBody()) {
+    CompoundStmt *Body = dyn_cast<CompoundStmt>(CD->getBody());
+    if (Body) {
+      for (Stmt *S : Body->body()) {
+        Stmt *TranslatedStmt = translateStmt(S);
+        if (TranslatedStmt) {
+          stmts.push_back(TranslatedStmt);
+        }
+      }
+    }
+  }
+
+  // Clear translation context
+  currentThisParam = nullptr;
+  currentMethod = nullptr;
+
+  // Set function body
+  CFunc->setBody(Builder.block(stmts));
+
+  // Store mapping
+  ctorMap[CD] = CFunc;
+
+  llvm::outs() << "  -> " << funcName << " with "
+               << params.size() << " parameters, "
+               << stmts.size() << " statements\n";
+
   return true;
 }
 
@@ -162,6 +273,17 @@ RecordDecl* CppToCVisitor::getCStruct(llvm::StringRef className) const {
 FunctionDecl* CppToCVisitor::getCFunc(llvm::StringRef funcName) const {
   // Search through mapping to find function by name
   for (const auto &entry : methodToCFunc) {
+    if (entry.second && entry.second->getName() == funcName) {
+      return entry.second;
+    }
+  }
+  return nullptr;
+}
+
+// Retrieve generated C constructor function by name (for testing)
+FunctionDecl* CppToCVisitor::getCtor(llvm::StringRef funcName) const {
+  // Search through mapping to find constructor by name
+  for (const auto &entry : ctorMap) {
     if (entry.second && entry.second->getName() == funcName) {
       return entry.second;
     }

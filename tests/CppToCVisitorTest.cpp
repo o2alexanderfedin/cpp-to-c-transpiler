@@ -326,6 +326,98 @@ void test_MultipleFieldAccess(ASTContext &Ctx) {
     TEST_PASS("MultipleFieldAccess");
 }
 
+// ============================================================================
+// Story #17: Constructor Translation Tests
+// ============================================================================
+
+void test_DefaultConstructor(ASTContext &Ctx) {
+    TEST_START("DefaultConstructor: Point() {} -> void Point__ctor(struct Point *this) {}");
+
+    const char *cpp = R"(
+        class Point {
+            int x, y;
+        public:
+            Point() {}
+        };
+    )";
+    std::unique_ptr<ASTUnit> AST = buildAST(cpp);
+    ASSERT(AST, "Failed to parse C++ code");
+
+    CNodeBuilder builder(AST->getASTContext());
+    CppToCVisitor visitor(AST->getASTContext(), builder);
+
+    visitor.TraverseDecl(AST->getASTContext().getTranslationUnitDecl());
+
+    // Verify constructor function was generated
+    FunctionDecl *CFunc = visitor.getCtor("Point__ctor");
+    ASSERT(CFunc != nullptr, "Constructor function not generated");
+    ASSERT(CFunc->getNumParams() == 1, "Expected 1 parameter (this)");
+    ASSERT(CFunc->getReturnType()->isVoidType(), "Constructor should return void");
+
+    TEST_PASS("DefaultConstructor");
+}
+
+void test_MemberInitializers(ASTContext &Ctx) {
+    TEST_START("MemberInitializers: Point(int x, int y) : x(x), y(y) {}");
+
+    const char *cpp = R"(
+        class Point {
+            int x, y;
+        public:
+            Point(int x, int y) : x(x), y(y) {}
+        };
+    )";
+    std::unique_ptr<ASTUnit> AST = buildAST(cpp);
+    ASSERT(AST, "Failed to parse C++ code");
+
+    CNodeBuilder builder(AST->getASTContext());
+    CppToCVisitor visitor(AST->getASTContext(), builder);
+
+    visitor.TraverseDecl(AST->getASTContext().getTranslationUnitDecl());
+
+    // Verify constructor function was generated
+    FunctionDecl *CFunc = visitor.getCtor("Point__ctor");
+    ASSERT(CFunc != nullptr, "Constructor function not generated");
+    ASSERT(CFunc->getNumParams() == 3, "Expected 3 parameters (this + 2 params)");
+
+    // Verify function has body with member initializers translated to assignments
+    Stmt *Body = CFunc->getBody();
+    ASSERT(Body != nullptr, "Constructor body not translated");
+
+    TEST_PASS("MemberInitializers");
+}
+
+void test_ConstructorWithBody(ASTContext &Ctx) {
+    TEST_START("ConstructorWithBody: Constructor with statements in body");
+
+    const char *cpp = R"(
+        class Rectangle {
+            int width, height, area;
+        public:
+            Rectangle(int w, int h) : width(w), height(h) {
+                area = width * height;
+            }
+        };
+    )";
+    std::unique_ptr<ASTUnit> AST = buildAST(cpp);
+    ASSERT(AST, "Failed to parse C++ code");
+
+    CNodeBuilder builder(AST->getASTContext());
+    CppToCVisitor visitor(AST->getASTContext(), builder);
+
+    visitor.TraverseDecl(AST->getASTContext().getTranslationUnitDecl());
+
+    // Verify constructor was generated
+    FunctionDecl *CFunc = visitor.getCtor("Rectangle__ctor");
+    ASSERT(CFunc != nullptr, "Constructor function not generated");
+
+    // Verify body has both initializers and body statements
+    Stmt *Body = CFunc->getBody();
+    ASSERT(Body != nullptr, "Constructor body not translated");
+
+    TEST_PASS("ConstructorWithBody");
+}
+
 int main(int argc, const char **argv) {
     // Create a simple test AST for context
     std::unique_ptr<ASTUnit> AST = buildAST("int main() { return 0; }");
@@ -352,6 +444,11 @@ int main(int argc, const char **argv) {
     test_ImplicitThisWrite(Ctx);
     test_ExplicitMemberAccess(Ctx);
     test_MultipleFieldAccess(Ctx);
+
+    std::cout << "\n=== Story #17: Constructor Translation Tests ===" << std::endl;
+    test_DefaultConstructor(Ctx);
+    test_MemberInitializers(Ctx);
+    test_ConstructorWithBody(Ctx);
 
     std::cout << "\n========================================" << std::endl;
     std::cout << "Tests passed: " << tests_passed << std::endl;

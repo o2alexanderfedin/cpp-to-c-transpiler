@@ -60,4 +60,7 @@ public:
 
   // Retrieve generated C function by name (for testing)
   clang::FunctionDecl* getCFunc(llvm::StringRef funcName) const;
+
+  // Retrieve generated C constructor function by name (for testing)
+  clang::FunctionDecl* getCtor(llvm::StringRef funcName) const;
 };
