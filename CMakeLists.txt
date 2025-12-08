@@ -63,3 +63,24 @@ target_link_libraries(CppToCVisitorTest PRIVATE
     clangAST
     clangBasic
 )
+
+# Story #18: NameMangler tests
+add_executable(NameManglerTest
+    tests/NameManglerTest.cpp
+    src/NameMangler.cpp
+)
+
+target_compile_definitions(NameManglerTest PRIVATE ${LLVM_DEFINITIONS})
+
+target_include_directories(NameManglerTest PRIVATE
+    ${CMAKE_SOURCE_DIR}/include
+    ${LLVM_INCLUDE_DIRS}
+    ${CLANG_INCLUDE_DIRS}
+)
+
+target_link_libraries(NameManglerTest PRIVATE
+    clangTooling
+    clangFrontend
+    clangAST
+    clangBasic
+)
