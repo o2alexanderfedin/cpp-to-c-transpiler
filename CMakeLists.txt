@@ -10,20 +10,25 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 find_package(LLVM REQUIRED CONFIG)
 find_package(Clang REQUIRED CONFIG)
 
-# Add LLVM definitions and include directories
-add_definitions(${LLVM_DEFINITIONS})
-include_directories(${LLVM_INCLUDE_DIRS})
-include_directories(${CLANG_INCLUDE_DIRS})
-
 # Create executable target
 # Single responsibility: build the cpptoc tool
 add_executable(cpptoc
     src/main.cpp
 )
 
+# Apply LLVM/Clang compile definitions to target
+target_compile_definitions(cpptoc PRIVATE ${LLVM_DEFINITIONS})
+
+# Add LLVM/Clang include directories to target (modern CMake practice)
+target_include_directories(cpptoc PRIVATE
+    ${LLVM_INCLUDE_DIRS}
+    ${CLANG_INCLUDE_DIRS}
+)
+
 # Link against Clang/LLVM libraries
 # Minimal set needed for LibTooling
-target_link_libraries(cpptoc
+# Note: Order matters - most dependent first
+target_link_libraries(cpptoc PRIVATE
     clangTooling
     clangFrontend
     clangAST
