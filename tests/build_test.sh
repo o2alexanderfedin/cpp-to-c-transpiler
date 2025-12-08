@@ -7,6 +7,11 @@ set -e
 PROJECT_ROOT="/Users/alexanderfedin/Projects/hapyy/hupyy-cpp-to-c"
 BUILD_DIR="$PROJECT_ROOT/build"
 
+# Set LLVM path for macOS (Homebrew installation)
+if [ -d "/opt/homebrew/opt/llvm" ]; then
+    export CMAKE_PREFIX_PATH="/opt/homebrew/opt/llvm"
+fi
+
 echo "=== Build System Integration Test ==="
 echo
 
