@@ -253,23 +253,87 @@ Just like TypeScript → JavaScript or Sass → CSS. Enables writing ANY C++ cod
 - CMake 3.20+
 - (Optional) Frama-C for verification
 
-### Building (Future)
+### Building
+
+**macOS:**
 
 ```bash
+# Install dependencies
+brew install llvm cmake
+
+# Set LLVM path for CMake
+export CMAKE_PREFIX_PATH="/opt/homebrew/opt/llvm"
+
 # Clone repository
-git clone https://github.com/yourusername/hupyy-cpp-to-c.git
-cd hupyy-cpp-to-c
+git clone https://github.com/o2alexanderfedin/cpp-to-c-transpiler.git
+cd cpp-to-c-transpiler
 
-# Build
-mkdir build && cd build
-cmake ..
-make
+# Configure and build
+cmake -B build -DCMAKE_BUILD_TYPE=Debug
+cmake --build build
 
-# Run
-./cpptoc input.cpp
+# Verify build
+./build/cpptoc --help
 ```
 
-### Usage (Future)
+**Linux (Ubuntu/Debian):**
+
+```bash
+# Install dependencies
+sudo apt update
+sudo apt install clang-15 llvm-15-dev libclang-15-dev cmake build-essential
+
+# Clone repository
+git clone https://github.com/o2alexanderfedin/cpp-to-c-transpiler.git
+cd cpp-to-c-transpiler
+
+# Configure and build (CMake will find system LLVM)
+cmake -B build -DCMAKE_BUILD_TYPE=Debug
+cmake --build build
+
+# Verify build
+./build/cpptoc --help
+```
+
+**Troubleshooting:**
+
+If CMake cannot find LLVM:
+- **macOS:** Set `CMAKE_PREFIX_PATH=/opt/homebrew/opt/llvm` (Homebrew) or `/usr/local/opt/llvm` (older Homebrew)
+- **Linux:** Install `llvm-dev` and `libclang-dev` packages for your LLVM version
+- Use `llvm-config --prefix` to find LLVM installation directory
+
+### Usage
+
+**Current Status (Epic #1 - Infrastructure):**
+
+The tool currently parses C++ files and reports AST structure:
+
+```bash
+# Parse a C++ file
+./build/cpptoc input.cpp --
+
+# Example output:
+# Parsed file: input.cpp
+# Translation unit has 1 top-level declarations
+# Found class: MyClass
+# Found variable: x
+# Found method: MyClass::foo
+```
+
+**Testing:**
+
+```bash
+# Run all tests
+./tests/build_test.sh
+./tests/libtooling_test.sh
+./tests/visitor_test.sh
+
+# Test with example files
+./build/cpptoc tests/fixtures/simple.cpp --
+./build/cpptoc tests/fixtures/visitor_test.cpp --
+```
+
+**Future Usage (After Phase 1 POC):**
 
 ```bash
 # Basic conversion
@@ -285,11 +349,12 @@ frama-c -wp output.c cpptoc_runtime.c
 ## Project Structure
 
 ```
-hupyy-cpp-to-c/
+cpp-to-c-transpiler/
 ├── docs/                        # Primary documentation
 │   ├── INDEX.md                # Master navigation
 │   ├── SUMMARY.md              # Executive summary
 │   ├── CHANGELOG.md            # Version history
+│   ├── ARCHITECTURE.md         # Technical architecture
 │   ├── feasibility-and-roadmap.md
 │   ├── technical-analysis.md
 │   ├── features/               # Feature implementation guides
@@ -307,22 +372,70 @@ hupyy-cpp-to-c/
 │   ├── phase-02-exception-handling/
 │   ├── phase-03-advanced-features/
 │   └── phase-04-architecture/
-├── src/                         # Source code (future)
-│   ├── CNodeBuilder.cpp        # AST node creation helpers
-│   ├── CppToCTranslator.cpp    # C++ → C AST translation
-│   ├── CPrinter.cpp            # Clang printer wrapper
-│   └── main.cpp                # CLI entry point
+├── include/                     # Header files
+│   ├── CppToCFrontendAction.h  # Clang FrontendAction
+│   ├── CppToCConsumer.h        # AST consumer
+│   └── CppToCVisitor.h         # AST visitor
+├── src/                         # Source code
+│   ├── main.cpp                # CLI entry point
+│   ├── CppToCFrontendAction.cpp
+│   ├── CppToCConsumer.cpp
+│   └── CppToCVisitor.cpp
+├── tests/                       # Test suite
+│   ├── build_test.sh           # CMake build integration test
+│   ├── libtooling_test.sh      # LibTooling integration test
+│   ├── visitor_test.sh         # AST visitor test
+│   └── fixtures/               # Test input files
+│       ├── simple.cpp
+│       └── visitor_test.cpp
+├── build/                       # Build directory (generated)
+│   └── cpptoc                  # Executable
 ├── runtime/                     # Runtime library (future)
 │   ├── exception_runtime.c     # PNaCl SJLJ implementation
 │   ├── rtti_runtime.c          # type_info + dynamic_cast
 │   └── cpptoc_runtime.h        # Public API
-├── tests/                       # Test suite (future)
+├── CMakeLists.txt               # CMake build configuration
+├── EPICS.md                     # GitHub Project Epics
+├── USER-STORIES.md              # Epic #1 User Stories
+├── TO-DOS.md                    # Development todos
 └── README.md                    # This file
 ```
 
+## Implementation Status
+
+### Epic #1: Infrastructure Setup & Clang Integration (COMPLETE)
+
+✅ **Story #5:** CMake Build System Configuration
+- CMakeLists.txt with Clang/LLVM 21+ integration
+- C++17 standard configuration
+- Modern CMake target-based approach
+- Cross-platform build (macOS and Linux)
+
+✅ **Story #6:** Clang LibTooling Integration
+- CppToCFrontendAction for AST processing
+- CppToCConsumer for translation unit handling
+- ClangTool with command-line parsing
+- Parse C++ files and access AST
+
+✅ **Story #7:** RecursiveASTVisitor Skeleton
+- CppToCVisitor with AST traversal
+- VisitCXXRecordDecl (class declarations)
+- VisitCXXMethodDecl (method declarations)
+- VisitVarDecl (variable declarations)
+
+✅ **Story #8:** Build Documentation (This README)
+
+### Next: Epic #2 - CNodeBuilder Helper Library
+
 ## Contributing
 
-This is currently a research project. Phase 1 POC implementation will begin after research documentation is complete.
+This project follows Test-Driven Development (TDD) with SOLID principles. All changes must:
+- Have tests written first (RED phase)
+- Implement minimal code to pass (GREEN phase)
+- Refactor for quality (REFACTOR phase)
+- Follow conventional commits
+
+See [CLAUDE.md](CLAUDE.md) for development guidelines.
 
 ## License
 
@@ -350,7 +463,7 @@ MIT License - See LICENSE file for details
 ---
 
 **Research Status:** ✅ Complete (v1.5.1)
-**Implementation Status:** 🔜 Phase 1 POC Ready
+**Implementation Status:** 🚀 Epic #1 Complete - Infrastructure Ready
 **Confidence Level:** 97%+ (VERY HIGH)
 
 *Generated with [Claude Code](https://claude.com/claude-code) | December 2025*
