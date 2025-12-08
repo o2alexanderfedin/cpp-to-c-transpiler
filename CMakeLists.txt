@@ -274,3 +274,27 @@ target_link_libraries(FileOutputManagerTest PRIVATE
     clangAST
     clangBasic
 )
+
+# Story #142: Integration Testing
+add_executable(IntegrationTest
+    tests/IntegrationTest.cpp
+    src/HeaderSeparator.cpp
+    src/IncludeGuardGenerator.cpp
+    src/DependencyAnalyzer.cpp
+    src/FileOutputManager.cpp
+)
+
+target_compile_definitions(IntegrationTest PRIVATE ${LLVM_DEFINITIONS})
+
+target_include_directories(IntegrationTest PRIVATE
+    ${CMAKE_SOURCE_DIR}/include
+    ${LLVM_INCLUDE_DIRS}
+    ${CLANG_INCLUDE_DIRS}
+)
+
+target_link_libraries(IntegrationTest PRIVATE
+    clangTooling
+    clangFrontend
+    clangAST
+    clangBasic
+)
