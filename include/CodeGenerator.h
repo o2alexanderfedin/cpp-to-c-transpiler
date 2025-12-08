@@ -34,6 +34,10 @@ public:
     // Skips implicit declarations (compiler-generated)
     void printTranslationUnit(clang::TranslationUnitDecl *TU);
 
-    // Access printing policy (for Story #22 configuration)
+    // Access printing policy (for testing)
     clang::PrintingPolicy& getPrintingPolicy() { return Policy; }
+
+private:
+    // Story #22: Create C99-compliant PrintingPolicy
+    static clang::PrintingPolicy createC99Policy(clang::ASTContext &Ctx);
 };

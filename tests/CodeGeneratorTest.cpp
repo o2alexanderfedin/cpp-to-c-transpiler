@@ -178,15 +178,147 @@ void testOutputToFile() {
     }
 }
 
+// ============================================================================
+// Story #22: PrintingPolicy C99 Configuration Tests
+// ============================================================================
+
+// Test 5: C99 bool type configuration (_Bool not bool)
+void testBoolTypeC99() {
+    std::cout << "TEST: BoolTypeC99 - ";
+
+    auto AST = createTestASTUnit();
+    ASTContext &Context = AST->getASTContext();
+
+    std::string Output;
+    raw_string_ostream OS(Output);
+    CodeGenerator Gen(OS, Context);
+
+    PrintingPolicy &Policy = Gen.getPrintingPolicy();
+
+    // Verify Bool policy is set for C99 (_Bool)
+    bool boolConfigured = Policy.Bool;
+
+    if (boolConfigured) {
+        std::cout << "PASS" << std::endl;
+    } else {
+        std::cout << "FAIL - Bool policy not configured for C99" << std::endl;
+        exit(1);
+    }
+}
+
+// Test 6: Indentation configured
+void testIndentationConfigured() {
+    std::cout << "TEST: IndentationConfigured - ";
+
+    auto AST = createTestASTUnit();
+    ASTContext &Context = AST->getASTContext();
+
+    std::string Output;
+    raw_string_ostream OS(Output);
+    CodeGenerator Gen(OS, Context);
+
+    PrintingPolicy &Policy = Gen.getPrintingPolicy();
+
+    // Verify indentation is configured
+    bool indentOk = Policy.Indentation == 4;
+
+    if (indentOk) {
+        std::cout << "PASS" << std::endl;
+    } else {
+        std::cout << "FAIL - Indentation not configured correctly (expected 4, got "
+                  << Policy.Indentation << ")" << std::endl;
+        exit(1);
+    }
+}
+
+// Test 7: Struct keyword preserved
+void testStructKeyword() {
+    std::cout << "TEST: StructKeyword - ";
+
+    auto AST = createTestASTUnit();
+    ASTContext &Context = AST->getASTContext();
+    CNodeBuilder Builder(Context);
+
+    RecordDecl *RD = Builder.structDecl("TestStruct", {
+        Builder.fieldDecl(Context.IntTy, "value")
+    });
+
+    std::string Output;
+    raw_string_ostream OS(Output);
+    CodeGenerator Gen(OS, Context);
+    Gen.printDecl(RD);
+    OS.flush();
+
+    // Verify 'struct' keyword is present
+    bool hasStructKeyword = Output.find("struct") != std::string::npos;
+
+    if (hasStructKeyword) {
+        std::cout << "PASS" << std::endl;
+    } else {
+        std::cout << "FAIL - 'struct' keyword missing" << std::endl;
+        std::cout << "Output: " << Output << std::endl;
+        exit(1);
+    }
+}
+
+// Test 8: Compile with gcc -std=c99
+void testCompileWithGcc() {
+    std::cout << "TEST: CompileWithGcc - ";
+
+    auto AST = createTestASTUnit();
+    ASTContext &Context = AST->getASTContext();
+    CNodeBuilder Builder(Context);
+
+    // Create simple C code
+    RecordDecl *RD = Builder.structDecl("Point", {
+        Builder.fieldDecl(Context.IntTy, "x"),
+        Builder.fieldDecl(Context.IntTy, "y")
+    });
+
+    // Generate to file
+    std::error_code EC;
+    raw_fd_ostream OutFile("/tmp/test_c99.c", EC);
+
+    if (EC) {
+        std::cout << "FAIL - Could not create file: " << EC.message() << std::endl;
+        exit(1);
+    }
+
+    CodeGenerator Gen(OutFile, Context);
+    Gen.printDecl(RD);
+    OutFile.flush();
+    OutFile.close();
+
+    // Try to compile with gcc -std=c99
+    int result = system("gcc -std=c99 -c /tmp/test_c99.c -o /tmp/test_c99.o 2>/tmp/test_c99_errors.txt");
+
+    if (result == 0) {
+        std::cout << "PASS" << std::endl;
+    } else {
+        std::cout << "FAIL - Compilation failed" << std::endl;
+        std::cout << "Compiler errors:" << std::endl;
+        system("cat /tmp/test_c99_errors.txt");
+        exit(1);
+    }
+}
+
 int main() {
     std::cout << "=== Story #21: CodeGenerator Tests ===" << std::endl;
 
-    // TDD: These tests define the behavior we want
+    // Story #21 tests
     testPrintStructDecl();
     testPrintFunctionDecl();
     testPrintTranslationUnit();
     testOutputToFile();
 
-    std::cout << "\n✓ All tests PASSED - Story #21 complete!" << std::endl;
+    std::cout << "\n=== Story #22: PrintingPolicy C99 Tests ===" << std::endl;
+
+    // Story #22 tests
+    testBoolTypeC99();
+    testIndentationConfigured();
+    testStructKeyword();
+    testCompileWithGcc();
+
+    std::cout << "\n✓ All tests PASSED - Stories #21 and #22 complete!" << std::endl;
     return 0;
 }
