@@ -14,6 +14,8 @@ find_package(Clang REQUIRED CONFIG)
 # Single responsibility: build the cpptoc tool
 add_executable(cpptoc
     src/main.cpp
+    src/CppToCFrontendAction.cpp
+    src/CppToCConsumer.cpp
 )
 
 # Apply LLVM/Clang compile definitions to target
@@ -21,6 +23,7 @@ target_compile_definitions(cpptoc PRIVATE ${LLVM_DEFINITIONS})
 
 # Add LLVM/Clang include directories to target (modern CMake practice)
 target_include_directories(cpptoc PRIVATE
+    ${CMAKE_SOURCE_DIR}/include
     ${LLVM_INCLUDE_DIRS}
     ${CLANG_INCLUDE_DIRS}
 )
