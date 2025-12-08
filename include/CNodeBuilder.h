@@ -873,8 +873,9 @@ public:
 
         RD->startDefinition();
 
-        // Add fields
+        // Add fields and set their parent context
         for (FieldDecl *FD : fields) {
+            FD->setDeclContext(RD);  // Set parent before adding
             RD->addDecl(FD);
         }
 

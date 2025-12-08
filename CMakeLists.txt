@@ -38,3 +38,28 @@ target_link_libraries(cpptoc PRIVATE
     clangAST
     clangBasic
 )
+
+# ============================================================================
+# Test Executables (Epic #2 and Epic #3)
+# ============================================================================
+
+# Story #15: CppToCVisitor tests
+add_executable(CppToCVisitorTest
+    tests/CppToCVisitorTest.cpp
+    src/CppToCVisitor.cpp
+)
+
+target_compile_definitions(CppToCVisitorTest PRIVATE ${LLVM_DEFINITIONS})
+
+target_include_directories(CppToCVisitorTest PRIVATE
+    ${CMAKE_SOURCE_DIR}/include
+    ${LLVM_INCLUDE_DIRS}
+    ${CLANG_INCLUDE_DIRS}
+)
+
+target_link_libraries(CppToCVisitorTest PRIVATE
+    clangTooling
+    clangFrontend
+    clangAST
+    clangBasic
+)

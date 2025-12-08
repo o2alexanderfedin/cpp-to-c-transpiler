@@ -1,5 +1,6 @@
 #include "CppToCConsumer.h"
 #include "CppToCVisitor.h"
+#include "CNodeBuilder.h"
 #include "clang/Basic/SourceManager.h"
 #include "llvm/Support/raw_ostream.h"
 #include <algorithm>
@@ -23,7 +24,10 @@ void CppToCConsumer::HandleTranslationUnit(clang::ASTContext &Context) {
   llvm::outs() << "Translation unit has " << DeclCount
                << " top-level declarations\n";
 
+  // Create CNodeBuilder for C AST construction (Epic #3)
+  clang::CNodeBuilder Builder(Context);
+
   // Create and run visitor to traverse AST
-  CppToCVisitor Visitor(Context);
+  CppToCVisitor Visitor(Context, Builder);
   Visitor.TraverseDecl(TU);
 }
