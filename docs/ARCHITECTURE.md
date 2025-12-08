@@ -1225,32 +1225,40 @@ int Point_getX(struct Point *this) { return this->x; }
 - ✓ Default constructors
 - ✓ Copy constructors
 
-**Weeks 11-12: Name Mangling + Templates**
+**Weeks 10.5-11.5: Move Semantics & Rvalue References**
+- ✓ Move constructor detection and translation
+- ✓ Move assignment operator translation
+- ✓ std::move() cast translation to transfer functions
+- ✓ Rvalue reference parameter handling (T&&)
+- ✓ Ownership transfer semantics (source nullification)
+- ✓ Integration with copy constructor codepath
+
+**Weeks 12-13: Name Mangling + Templates**
 - ✓ Namespace-aware mangling
 - ✓ Overload resolution via parameter types
 - ✓ Template instantiation extraction from AST
 - ✓ Monomorphization (generate C per instantiation)
 
-**Deliverable**: Convert real-world embedded C++ classes with STL containers.
+**Deliverable**: Convert real-world embedded C++ classes with move semantics, RAII, and STL containers.
 
 ### Phase 3: Advanced Features (8-12 weeks)
 
 **Goal**: Virtual dispatch, exceptions, RTTI for polymorphic code.
 
-**Weeks 13-16: Virtual Functions + Vtables**
+**Weeks 14-17: Virtual Functions + Vtables**
 - ✓ Vtable struct generation
 - ✓ Vptr field injection
 - ✓ Virtual dispatch (obj->vptr->func(obj))
 - ✓ Override resolution
 
-**Weeks 17-20: Exception Handling (PNaCl SJLJ)**
+**Weeks 18-21: Exception Handling (PNaCl SJLJ)**
 - ✓ Exception frame generation
 - ✓ Action table creation (CFG-based)
 - ✓ setjmp/longjmp injection
 - ✓ Catch handler type matching
 - ✓ Thread-local exception stack
 
-**Weeks 21-24: RTTI (Itanium ABI)**
+**Weeks 22-25: RTTI (Itanium ABI)**
 - ✓ type_info structure generation (3 classes)
 - ✓ dynamic_cast implementation
 - ✓ Hierarchy traversal algorithm
@@ -1262,19 +1270,19 @@ int Point_getX(struct Point *this) { return this->x; }
 
 **Goal**: Virtual inheritance, multiple inheritance, coroutines.
 
-**Weeks 25-29: Virtual Inheritance + VTT**
+**Weeks 26-30: Virtual Inheritance + VTT**
 - ✓ Virtual base offset tables
 - ✓ VTT generation
 - ✓ Constructor splitting (C1/C2 pattern)
 - ✓ Most-derived class detection
 
-**Weeks 30-33: Multiple Inheritance**
+**Weeks 31-34: Multiple Inheritance**
 - ✓ Multiple vtable pointers
 - ✓ Pointer adjustment thunks
 - ✓ Non-virtual base layout
 - ✓ Cast operations
 
-**Weeks 34-38: C++20 Coroutines**
+**Weeks 35-39: C++20 Coroutines**
 - ✓ State machine transformation
 - ✓ Coroutine frame allocation
 - ✓ Promise object translation
@@ -1287,20 +1295,20 @@ int Point_getX(struct Point *this) { return this->x; }
 
 **Goal**: Frama-C compatibility, optimization, comprehensive testing.
 
-**Weeks 39-42: Frama-C Compatibility**
+**Weeks 40-43: Frama-C Compatibility**
 - ✓ ACSL annotation generation
 - ✓ Runtime library verification
 - ✓ Verify exception_runtime.c
 - ✓ Verify rtti_runtime.c
 - ✓ Export verification certificates
 
-**Weeks 43-44: Runtime Optimization**
+**Weeks 44-45: Runtime Optimization**
 - ✓ Library mode vs. inline mode
 - ✓ Modular runtime (enable/disable features)
 - ✓ Size optimization
 - ✓ Performance profiling
 
-**Weeks 45-46: Testing + Documentation**
+**Weeks 46-47: Testing + Documentation**
 - ✓ Comprehensive test suite
 - ✓ Real-world codebase testing
 - ✓ User documentation
