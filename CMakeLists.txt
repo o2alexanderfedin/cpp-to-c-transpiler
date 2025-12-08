@@ -21,6 +21,7 @@ add_executable(cpptoc
     src/CodeGenerator.cpp
     src/HeaderSeparator.cpp
     src/IncludeGuardGenerator.cpp
+    src/DependencyAnalyzer.cpp
 )
 
 # Apply LLVM/Clang compile definitions to target
@@ -225,6 +226,27 @@ target_include_directories(ForwardDeclTest PRIVATE
 )
 
 target_link_libraries(ForwardDeclTest PRIVATE
+    clangTooling
+    clangFrontend
+    clangAST
+    clangBasic
+)
+
+# Story #140: Dependency Tracking tests
+add_executable(DependencyAnalyzerTest
+    tests/DependencyAnalyzerTest.cpp
+    src/DependencyAnalyzer.cpp
+)
+
+target_compile_definitions(DependencyAnalyzerTest PRIVATE ${LLVM_DEFINITIONS})
+
+target_include_directories(DependencyAnalyzerTest PRIVATE
+    ${CMAKE_SOURCE_DIR}/include
+    ${LLVM_INCLUDE_DIRS}
+    ${CLANG_INCLUDE_DIRS}
+)
+
+target_link_libraries(DependencyAnalyzerTest PRIVATE
     clangTooling
     clangFrontend
     clangAST
