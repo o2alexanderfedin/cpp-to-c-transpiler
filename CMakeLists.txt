@@ -20,6 +20,7 @@ add_executable(cpptoc
     src/NameMangler.cpp
     src/CodeGenerator.cpp
     src/HeaderSeparator.cpp
+    src/IncludeGuardGenerator.cpp
 )
 
 # Apply LLVM/Clang compile definitions to target
@@ -182,6 +183,27 @@ target_include_directories(HeaderSeparatorTest PRIVATE
 )
 
 target_link_libraries(HeaderSeparatorTest PRIVATE
+    clangTooling
+    clangFrontend
+    clangAST
+    clangBasic
+)
+
+# Story #138: Include Guard Generation tests
+add_executable(IncludeGuardGeneratorTest
+    tests/IncludeGuardGeneratorTest.cpp
+    src/IncludeGuardGenerator.cpp
+)
+
+target_compile_definitions(IncludeGuardGeneratorTest PRIVATE ${LLVM_DEFINITIONS})
+
+target_include_directories(IncludeGuardGeneratorTest PRIVATE
+    ${CMAKE_SOURCE_DIR}/include
+    ${LLVM_INCLUDE_DIRS}
+    ${CLANG_INCLUDE_DIRS}
+)
+
+target_link_libraries(IncludeGuardGeneratorTest PRIVATE
     clangTooling
     clangFrontend
     clangAST
