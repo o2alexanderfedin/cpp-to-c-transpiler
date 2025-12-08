@@ -4,6 +4,8 @@
 #include "clang/AST/Decl.h"
 #include "clang/AST/RecursiveASTVisitor.h"
 #include <vector>
+#include <set>
+#include <string>
 
 /// @brief Separates declarations into header and implementation lists
 ///
@@ -29,6 +31,10 @@ public:
     /// @return Vector of declarations for implementation
     const std::vector<clang::Decl*>& getImplDecls() const { return implDecls; }
 
+    /// @brief Get forward declarations needed
+    /// @return Set of struct names that need forward declarations
+    const std::set<std::string>& getForwardDecls() const { return forwardDecls; }
+
     /// @brief Visitor method for struct/class declarations
     /// @param D RecordDecl to analyze
     /// @return true to continue traversal
@@ -42,6 +48,11 @@ public:
 private:
     std::vector<clang::Decl*> headerDecls;  ///< Declarations for .h file
     std::vector<clang::Decl*> implDecls;    ///< Declarations for .c file
+    std::set<std::string> forwardDecls;     ///< Struct names needing forward declarations
+
+    /// @brief Analyze struct fields for forward declaration needs
+    /// @param D RecordDecl to analyze
+    void analyzeForwardDecls(clang::RecordDecl *D);
 };
 
 #endif // HEADER_SEPARATOR_H

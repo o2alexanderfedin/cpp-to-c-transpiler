@@ -209,3 +209,24 @@ target_link_libraries(IncludeGuardGeneratorTest PRIVATE
     clangAST
     clangBasic
 )
+
+# Story #139: Forward Declaration Support tests
+add_executable(ForwardDeclTest
+    tests/ForwardDeclTest.cpp
+    src/HeaderSeparator.cpp
+)
+
+target_compile_definitions(ForwardDeclTest PRIVATE ${LLVM_DEFINITIONS})
+
+target_include_directories(ForwardDeclTest PRIVATE
+    ${CMAKE_SOURCE_DIR}/include
+    ${LLVM_INCLUDE_DIRS}
+    ${CLANG_INCLUDE_DIRS}
+)
+
+target_link_libraries(ForwardDeclTest PRIVATE
+    clangTooling
+    clangFrontend
+    clangAST
+    clangBasic
+)
