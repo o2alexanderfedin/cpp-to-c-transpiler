@@ -86,3 +86,25 @@ target_link_libraries(NameManglerTest PRIVATE
     clangAST
     clangBasic
 )
+
+# Story #20: Translation Integration Tests
+add_executable(TranslationIntegrationTest
+    tests/TranslationIntegrationTest.cpp
+    src/CppToCVisitor.cpp
+    src/NameMangler.cpp
+)
+
+target_compile_definitions(TranslationIntegrationTest PRIVATE ${LLVM_DEFINITIONS})
+
+target_include_directories(TranslationIntegrationTest PRIVATE
+    ${CMAKE_SOURCE_DIR}/include
+    ${LLVM_INCLUDE_DIRS}
+    ${CLANG_INCLUDE_DIRS}
+)
+
+target_link_libraries(TranslationIntegrationTest PRIVATE
+    clangTooling
+    clangFrontend
+    clangAST
+    clangBasic
+)
