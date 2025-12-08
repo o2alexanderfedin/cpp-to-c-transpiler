@@ -1,5 +1,7 @@
 #include "CppToCVisitor.h"
 #include "llvm/Support/raw_ostream.h"
+#include "clang/AST/Expr.h"
+#include "clang/AST/ExprCXX.h"
 #include <vector>
 
 using namespace clang;
@@ -91,13 +93,31 @@ bool CppToCVisitor::VisitCXXMethodDecl(CXXMethodDecl *MD) {
   // Generate function name using name mangling
   std::string funcName = Mangler.mangleName(MD);
 
-  // Create C function
+  // Create C function (body will be added below)
   FunctionDecl *CFunc = Builder.funcDecl(
     funcName,
     MD->getReturnType(),
     params,
-    nullptr  // Body translation deferred to Story #19
+    nullptr
   );
+
+  // Set translation context for body translation (Story #19)
+  currentThisParam = thisParam;
+  currentMethod = MD;
+
+  // Translate method body if it exists
+  if (MD->hasBody()) {
+    Stmt *Body = MD->getBody();
+    Stmt *TranslatedBody = translateStmt(Body);
+    CFunc->setBody(TranslatedBody);
+    llvm::outs() << "  -> " << funcName << " with body translated\n";
+  } else {
+    llvm::outs() << "  -> " << funcName << " (no body)\n";
+  }
+
+  // Clear translation context
+  currentThisParam = nullptr;
+  currentMethod = nullptr;
 
   // Store mapping
   methodToCFunc[MD] = CFunc;
@@ -105,6 +125,20 @@ bool CppToCVisitor::VisitCXXMethodDecl(CXXMethodDecl *MD) {
   llvm::outs() << "  -> " << funcName << " with "
                << params.size() << " parameters\n";
 
+  return true;
+}
+
+// Story #17: Constructor Translation (stub for now)
+bool CppToCVisitor::VisitCXXConstructorDecl(CXXConstructorDecl *CD) {
+  // Edge case: Skip implicit constructors
+  if (CD->isImplicit()) {
+    return true;
+  }
+
+  llvm::outs() << "Found constructor: " << CD->getParent()->getName()
+               << "::" << CD->getName() << "\n";
+
+  // TODO: Implement constructor translation in Story #17
   return true;
 }
 
@@ -133,4 +167,163 @@ FunctionDecl* CppToCVisitor::getCFunc(llvm::StringRef funcName) const {
     }
   }
   return nullptr;
+}
+
+// ============================================================================
+// Story #19: Member Access Transformation - Expression Translation
+// ============================================================================
+
+// Main expression translation dispatcher
+Expr* CppToCVisitor::translateExpr(Expr *E) {
+  if (!E) return nullptr;
+
+  // Dispatch to specific translators based on expression type
+  if (MemberExpr *ME = dyn_cast<MemberExpr>(E)) {
+    return translateMemberExpr(ME);
+  }
+
+  if (DeclRefExpr *DRE = dyn_cast<DeclRefExpr>(E)) {
+    return translateDeclRefExpr(DRE);
+  }
+
+  if (CallExpr *CE = dyn_cast<CallExpr>(E)) {
+    return translateCallExpr(CE);
+  }
+
+  if (BinaryOperator *BO = dyn_cast<BinaryOperator>(E)) {
+    return translateBinaryOperator(BO);
+  }
+
+  // Default: return expression as-is (literals, etc.)
+  return E;
+}
+
+// Translate DeclRefExpr - handles implicit 'this'
+Expr* CppToCVisitor::translateDeclRefExpr(DeclRefExpr *DRE) {
+  ValueDecl *D = DRE->getDecl();
+
+  // Check if this is an implicit member access (field without explicit this)
+  if (FieldDecl *FD = dyn_cast<FieldDecl>(D)) {
+    // We're inside a method body, convert 'x' to 'this->x'
+    if (currentThisParam) {
+      llvm::outs() << "  Translating implicit member access: " << FD->getName()
+                   << " -> this->" << FD->getName() << "\n";
+
+      return Builder.arrowMember(
+        Builder.ref(currentThisParam),
+        FD->getName()
+      );
+    }
+  }
+
+  // Regular variable reference - return as-is
+  return DRE;
+}
+
+// Translate MemberExpr - handles explicit member access
+Expr* CppToCVisitor::translateMemberExpr(MemberExpr *ME) {
+  Expr *Base = ME->getBase();
+  ValueDecl *Member = ME->getMemberDecl();
+
+  llvm::outs() << "  Translating member access: " << Member->getName() << "\n";
+
+  // Translate base recursively
+  Expr *TranslatedBase = translateExpr(Base);
+
+  // Determine if we need -> or . based on base type
+  if (Base->getType()->isPointerType()) {
+    return Builder.arrowMember(TranslatedBase, Member->getName());
+  } else {
+    return Builder.member(TranslatedBase, Member->getName());
+  }
+}
+
+// Translate CallExpr - handles function calls
+Expr* CppToCVisitor::translateCallExpr(CallExpr *CE) {
+  // Translate callee and arguments
+  Expr *Callee = translateExpr(CE->getCallee());
+
+  std::vector<Expr*> args;
+  for (Expr *Arg : CE->arguments()) {
+    args.push_back(translateExpr(Arg));
+  }
+
+  // Reconstruct call expression with translated parts
+  return CallExpr::Create(
+    Context,
+    Callee,
+    args,
+    CE->getType(),
+    CE->getValueKind(),
+    SourceLocation(),
+    FPOptionsOverride()
+  );
+}
+
+// Translate BinaryOperator - handles assignments, arithmetic, etc.
+Expr* CppToCVisitor::translateBinaryOperator(BinaryOperator *BO) {
+  Expr *LHS = translateExpr(BO->getLHS());
+  Expr *RHS = translateExpr(BO->getRHS());
+
+  return BinaryOperator::Create(
+    Context,
+    LHS,
+    RHS,
+    BO->getOpcode(),
+    BO->getType(),
+    BO->getValueKind(),
+    BO->getObjectKind(),
+    SourceLocation(),
+    FPOptionsOverride()
+  );
+}
+
+// ============================================================================
+// Story #19: Statement Translation
+// ============================================================================
+
+// Main statement translation dispatcher
+Stmt* CppToCVisitor::translateStmt(Stmt *S) {
+  if (!S) return nullptr;
+
+  // Dispatch to specific translators
+  if (ReturnStmt *RS = dyn_cast<ReturnStmt>(S)) {
+    return translateReturnStmt(RS);
+  }
+
+  if (CompoundStmt *CS = dyn_cast<CompoundStmt>(S)) {
+    return translateCompoundStmt(CS);
+  }
+
+  // If it's an expression, translate it
+  if (Expr *E = dyn_cast<Expr>(S)) {
+    return translateExpr(E);
+  }
+
+  // Default: return as-is
+  return S;
+}
+
+// Translate return statements
+Stmt* CppToCVisitor::translateReturnStmt(ReturnStmt *RS) {
+  Expr *RetValue = RS->getRetValue();
+  if (RetValue) {
+    Expr *TranslatedValue = translateExpr(RetValue);
+    return Builder.returnStmt(TranslatedValue);
+  }
+  return Builder.returnStmt();
+}
+
+// Translate compound statements (blocks)
+Stmt* CppToCVisitor::translateCompoundStmt(CompoundStmt *CS) {
+  std::vector<Stmt*> translatedStmts;
+
+  for (Stmt *S : CS->body()) {
+    Stmt *TranslatedStmt = translateStmt(S);
+    if (TranslatedStmt) {
+      translatedStmts.push_back(TranslatedStmt);
+    }
+  }
+
+  return Builder.block(translatedStmts);
 }

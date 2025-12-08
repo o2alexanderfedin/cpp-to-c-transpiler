@@ -207,6 +207,125 @@ void test_SkipVirtual(ASTContext &Ctx) {
     TEST_PASS("SkipVirtual");
 }
 
+// ============================================================================
+// Story #19: Member Access Transformation Tests
+// ============================================================================
+
+void test_ImplicitThisRead(ASTContext &Ctx) {
+    TEST_START("ImplicitThisRead: return x; -> return this->x;");
+
+    const char *cpp = R"(
+        class Point {
+            int x;
+        public:
+            int getX() { return x; }
+        };
+    )";
+    std::unique_ptr<ASTUnit> AST = buildAST(cpp);
+    ASSERT(AST, "Failed to parse C++ code");
+
+    CNodeBuilder builder(AST->getASTContext());
+    CppToCVisitor visitor(AST->getASTContext(), builder);
+
+    visitor.TraverseDecl(AST->getASTContext().getTranslationUnitDecl());
+
+    // Verify function was generated
+    FunctionDecl *CFunc = visitor.getCFunc("Point_getX");
+    ASSERT(CFunc != nullptr, "C function not generated");
+
+    // Verify function has body
+    Stmt *Body = CFunc->getBody();
+    ASSERT(Body != nullptr, "Function body not translated");
+
+    TEST_PASS("ImplicitThisRead");
+}
+
+void test_ImplicitThisWrite(ASTContext &Ctx) {
+    TEST_START("ImplicitThisWrite: x = val; -> this->x = val;");
+
+    const char *cpp = R"(
+        class Point {
+            int x;
+        public:
+            void setX(int val) { x = val; }
+        };
+    )";
+    std::unique_ptr<ASTUnit> AST = buildAST(cpp);
+    ASSERT(AST, "Failed to parse C++ code");
+
+    CNodeBuilder builder(AST->getASTContext());
+    CppToCVisitor visitor(AST->getASTContext(), builder);
+
+    visitor.TraverseDecl(AST->getASTContext().getTranslationUnitDecl());
+
+    // Verify function was generated
+    FunctionDecl *CFunc = visitor.getCFunc("Point_setX");
+    ASSERT(CFunc != nullptr, "C function not generated");
+
+    // Verify function has body with translated assignment
+    Stmt *Body = CFunc->getBody();
+    ASSERT(Body != nullptr, "Function body not translated");
+
+    TEST_PASS("ImplicitThisWrite");
+}
+
+void test_ExplicitMemberAccess(ASTContext &Ctx) {
+    TEST_START("ExplicitMemberAccess: obj.x preserved in translation");
+
+    const char *cpp = R"(
+        class Point {
+            int x;
+        public:
+            int distance(Point other) { return x - other.x; }
+        };
+    )";
+    std::unique_ptr<ASTUnit> AST = buildAST(cpp);
+    ASSERT(AST, "Failed to parse C++ code");
+
+    CNodeBuilder builder(AST->getASTContext());
+    CppToCVisitor visitor(AST->getASTContext(), builder);
+
+    visitor.TraverseDecl(AST->getASTContext().getTranslationUnitDecl());
+
+    // Verify function was generated with translated body
+    FunctionDecl *CFunc = visitor.getCFunc("Point_distance");
+    ASSERT(CFunc != nullptr, "C function not generated");
+
+    Stmt *Body = CFunc->getBody();
+    ASSERT(Body != nullptr, "Function body not translated");
+
+    TEST_PASS("ExplicitMemberAccess");
+}
+
+void test_MultipleFieldAccess(ASTContext &Ctx) {
+    TEST_START("MultipleFieldAccess: return width * height;");
+
+    const char *cpp = R"(
+        class Rectangle {
+            int width, height;
+        public:
+            int area() { return width * height; }
+        };
+    )";
+    std::unique_ptr<ASTUnit> AST = buildAST(cpp);
+    ASSERT(AST, "Failed to parse C++ code");
+
+    CNodeBuilder builder(AST->getASTContext());
+    CppToCVisitor visitor(AST->getASTContext(), builder);
+
+    visitor.TraverseDecl(AST->getASTContext().getTranslationUnitDecl());
+
+    // Verify function was generated
+    FunctionDecl *CFunc = visitor.getCFunc("Rectangle_area");
+    ASSERT(CFunc != nullptr, "C function not generated");
+
+    // Verify both implicit member accesses are translated
+    Stmt *Body = CFunc->getBody();
+    ASSERT(Body != nullptr, "Function body not translated");
+
+    TEST_PASS("MultipleFieldAccess");
+}
+
 int main(int argc, const char **argv) {
     // Create a simple test AST for context
     std::unique_ptr<ASTUnit> AST = buildAST("int main() { return 0; }");
@@ -227,6 +346,12 @@ int main(int argc, const char **argv) {
     test_SimpleMethod(Ctx);
     test_MethodWithParams(Ctx);
     test_SkipVirtual(Ctx);
+
+    std::cout << "\n=== Story #19: Member Access Transformation Tests ===" << std::endl;
+    test_ImplicitThisRead(Ctx);
+    test_ImplicitThisWrite(Ctx);
+    test_ExplicitMemberAccess(Ctx);
+    test_MultipleFieldAccess(Ctx);
 
     std::cout << "\n========================================" << std::endl;
     std::cout << "Tests passed: " << tests_passed << std::endl;
