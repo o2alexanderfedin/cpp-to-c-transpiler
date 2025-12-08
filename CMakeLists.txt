@@ -16,6 +16,7 @@ add_executable(cpptoc
     src/main.cpp
     src/CppToCFrontendAction.cpp
     src/CppToCConsumer.cpp
+    src/CppToCVisitor.cpp
 )
 
 # Apply LLVM/Clang compile definitions to target

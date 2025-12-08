@@ -1,4 +1,5 @@
 #include "CppToCConsumer.h"
+#include "CppToCVisitor.h"
 #include "clang/Basic/SourceManager.h"
 #include "llvm/Support/raw_ostream.h"
 #include <algorithm>
@@ -21,4 +22,8 @@ void CppToCConsumer::HandleTranslationUnit(clang::ASTContext &Context) {
 
   llvm::outs() << "Translation unit has " << DeclCount
                << " top-level declarations\n";
+
+  // Create and run visitor to traverse AST
+  CppToCVisitor Visitor(Context);
+  Visitor.TraverseDecl(TU);
 }
