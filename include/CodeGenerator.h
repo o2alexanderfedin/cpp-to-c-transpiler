@@ -26,6 +26,9 @@ public:
     // Uses Decl::print() internally
     void printDecl(clang::Decl *D);
 
+    // Story #23: Print declaration with #line directive for source mapping
+    void printDeclWithLineDirective(clang::Decl *D);
+
     // Print a single statement (if, while, return, etc.)
     // Uses Stmt::printPretty() internally
     void printStmt(clang::Stmt *S, unsigned Indent = 0);
@@ -33,6 +36,9 @@ public:
     // Print an entire translation unit (all declarations)
     // Skips implicit declarations (compiler-generated)
     void printTranslationUnit(clang::TranslationUnitDecl *TU);
+
+    // Story #23: Print translation unit with #line directives
+    void printTranslationUnitWithLineDirectives(clang::TranslationUnitDecl *TU);
 
     // Access printing policy (for testing)
     clang::PrintingPolicy& getPrintingPolicy() { return Policy; }

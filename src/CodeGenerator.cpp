@@ -6,6 +6,7 @@
 #include "clang/AST/Decl.h"
 #include "clang/AST/Stmt.h"
 #include "clang/AST/ASTContext.h"
+#include "clang/Basic/SourceManager.h"  // Story #23: For #line directives
 
 using namespace clang;
 using namespace llvm;
@@ -90,6 +91,32 @@ void CodeGenerator::printStmt(Stmt *S, unsigned Indent) {
     OS << "\n";
 }
 
+// Story #23: Print declaration with #line directive for source mapping
+// Maps generated C code back to original C++ source for debugging
+void CodeGenerator::printDeclWithLineDirective(Decl *D) {
+    if (!D) return;
+
+    // Get source location
+    SourceLocation Loc = D->getLocation();
+
+    // Only inject #line if location is valid
+    if (Loc.isValid()) {
+        SourceManager &SM = Context.getSourceManager();
+        PresumedLoc PLoc = SM.getPresumedLoc(Loc);
+
+        // Check if PresumedLoc is valid (handles macro expansions, etc.)
+        if (PLoc.isValid()) {
+            // Inject #line directive
+            // Format: #line <line_number> "<filename>"
+            OS << "#line " << PLoc.getLine()
+               << " \"" << PLoc.getFilename() << "\"\n";
+        }
+    }
+
+    // Print the declaration (with or without #line)
+    printDecl(D);
+}
+
 // Print entire translation unit
 // Skips implicit declarations (compiler-generated cruft)
 void CodeGenerator::printTranslationUnit(TranslationUnitDecl *TU) {
@@ -101,6 +128,17 @@ void CodeGenerator::printTranslationUnit(TranslationUnitDecl *TU) {
         // YAGNI: Only print what we actually need
         if (!D->isImplicit()) {
             printDecl(D);
+        }
+    }
+}
+
+// Story #23: Print translation unit with #line directives
+void CodeGenerator::printTranslationUnitWithLineDirectives(TranslationUnitDecl *TU) {
+    if (!TU) return;
+
+    for (Decl *D : TU->decls()) {
+        if (!D->isImplicit()) {
+            printDeclWithLineDirective(D);
         }
     }
 }
