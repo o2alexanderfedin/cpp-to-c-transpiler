@@ -19,6 +19,7 @@ add_executable(cpptoc
     src/CppToCVisitor.cpp
     src/NameMangler.cpp
     src/CodeGenerator.cpp
+    src/HeaderSeparator.cpp
 )
 
 # Apply LLVM/Clang compile definitions to target
@@ -156,6 +157,31 @@ target_include_directories(ValidationTest PRIVATE
 )
 
 target_link_libraries(ValidationTest PRIVATE
+    clangTooling
+    clangFrontend
+    clangAST
+    clangBasic
+)
+
+# ============================================================================
+# Epic #19: Header File Generation Tests (Story #137)
+# ============================================================================
+
+# Story #137: Header/Implementation Separation tests
+add_executable(HeaderSeparatorTest
+    tests/HeaderSeparatorTest.cpp
+    src/HeaderSeparator.cpp
+)
+
+target_compile_definitions(HeaderSeparatorTest PRIVATE ${LLVM_DEFINITIONS})
+
+target_include_directories(HeaderSeparatorTest PRIVATE
+    ${CMAKE_SOURCE_DIR}/include
+    ${LLVM_INCLUDE_DIRS}
+    ${CLANG_INCLUDE_DIRS}
+)
+
+target_link_libraries(HeaderSeparatorTest PRIVATE
     clangTooling
     clangFrontend
     clangAST
