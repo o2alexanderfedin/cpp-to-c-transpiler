@@ -22,6 +22,7 @@ add_executable(cpptoc
     src/HeaderSeparator.cpp
     src/IncludeGuardGenerator.cpp
     src/DependencyAnalyzer.cpp
+    src/FileOutputManager.cpp
 )
 
 # Apply LLVM/Clang compile definitions to target
@@ -247,6 +248,27 @@ target_include_directories(DependencyAnalyzerTest PRIVATE
 )
 
 target_link_libraries(DependencyAnalyzerTest PRIVATE
+    clangTooling
+    clangFrontend
+    clangAST
+    clangBasic
+)
+
+# Story #141: File Output System tests
+add_executable(FileOutputManagerTest
+    tests/FileOutputManagerTest.cpp
+    src/FileOutputManager.cpp
+)
+
+target_compile_definitions(FileOutputManagerTest PRIVATE ${LLVM_DEFINITIONS})
+
+target_include_directories(FileOutputManagerTest PRIVATE
+    ${CMAKE_SOURCE_DIR}/include
+    ${LLVM_INCLUDE_DIRS}
+    ${CLANG_INCLUDE_DIRS}
+)
+
+target_link_libraries(FileOutputManagerTest PRIVATE
     clangTooling
     clangFrontend
     clangAST
