@@ -134,3 +134,30 @@ target_link_libraries(CodeGeneratorTest PRIVATE
     clangAST
     clangBasic
 )
+
+# ============================================================================
+# Epic #4: Comprehensive Validation Tests (Stories #24, #25, #26)
+# ============================================================================
+
+# Stories #24-26: Compilation, Behavioral, and Memory Safety validation
+add_executable(ValidationTest
+    tests/ValidationTest.cpp
+    src/CodeGenerator.cpp
+    src/CppToCVisitor.cpp
+    src/NameMangler.cpp
+)
+
+target_compile_definitions(ValidationTest PRIVATE ${LLVM_DEFINITIONS})
+
+target_include_directories(ValidationTest PRIVATE
+    ${CMAKE_SOURCE_DIR}/include
+    ${LLVM_INCLUDE_DIRS}
+    ${CLANG_INCLUDE_DIRS}
+)
+
+target_link_libraries(ValidationTest PRIVATE
+    clangTooling
+    clangFrontend
+    clangAST
+    clangBasic
+)

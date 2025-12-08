@@ -71,10 +71,15 @@ void CodeGenerator::printDecl(Decl *D) {
     // KISS: Don't reinvent the wheel - Clang's printer is battle-tested
     D->print(OS, Policy);
 
-    // C requires semicolon after struct/typedef declarations
-    // Check if this is a tag declaration (struct/union/enum)
+    // C requires semicolon after certain declarations
+    // Check if this is a tag declaration (struct/union/enum) or function declaration without body
     if (isa<RecordDecl>(D) || isa<EnumDecl>(D)) {
         OS << ";";
+    } else if (auto *FD = dyn_cast<FunctionDecl>(D)) {
+        // Function declarations without bodies need semicolon
+        if (!FD->hasBody()) {
+            OS << ";";
+        }
     }
 
     OS << "\n";
