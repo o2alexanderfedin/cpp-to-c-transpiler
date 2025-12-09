@@ -679,3 +679,25 @@ target_link_libraries(OverrideResolverTest PRIVATE
     clangAST
     clangBasic
 )
+
+# Story #171: Vtable Initialization in Constructors tests
+add_executable(VtableInitializerTest
+    tests/VtableInitializerTest.cpp
+    src/VtableInitializer.cpp
+    src/VirtualMethodAnalyzer.cpp
+)
+
+target_compile_definitions(VtableInitializerTest PRIVATE ${LLVM_DEFINITIONS})
+
+target_include_directories(VtableInitializerTest PRIVATE
+    ${CMAKE_SOURCE_DIR}/include
+    ${LLVM_INCLUDE_DIRS}
+    ${CLANG_INCLUDE_DIRS}
+)
+
+target_link_libraries(VtableInitializerTest PRIVATE
+    clangTooling
+    clangFrontend
+    clangAST
+    clangBasic
+)
