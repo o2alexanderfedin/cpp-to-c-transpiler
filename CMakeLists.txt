@@ -575,3 +575,28 @@ target_link_libraries(InheritanceTest PRIVATE
     clangAST
     clangBasic
 )
+
+# ============================================================================
+# Epic #41: Virtual Functions + Vtables (Story #167)
+# ============================================================================
+
+# Story #167: Virtual Method Detection and AST Analysis tests
+add_executable(VirtualMethodAnalyzerTest
+    tests/VirtualMethodAnalyzerTest.cpp
+    src/VirtualMethodAnalyzer.cpp
+)
+
+target_compile_definitions(VirtualMethodAnalyzerTest PRIVATE ${LLVM_DEFINITIONS})
+
+target_include_directories(VirtualMethodAnalyzerTest PRIVATE
+    ${CMAKE_SOURCE_DIR}/include
+    ${LLVM_INCLUDE_DIRS}
+    ${CLANG_INCLUDE_DIRS}
+)
+
+target_link_libraries(VirtualMethodAnalyzerTest PRIVATE
+    clangTooling
+    clangFrontend
+    clangAST
+    clangBasic
+)
