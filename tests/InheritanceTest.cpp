@@ -742,6 +742,151 @@ void test_MemberAccessInDerivedMethods() {
 }
 
 // ============================================================================
+// Story #54: Upcasting Tests
+// ============================================================================
+
+/**
+ * Test Case 12: Basic Upcasting (Derived* to Base*)
+ *
+ * Verify that Derived* can be safely cast to Base* due to base fields
+ * being embedded at offset 0 in the derived struct (from Story #50).
+ *
+ * In C, upcasting is implicit: (Base*)&derived works because Base fields
+ * are at the beginning of the Derived struct.
+ */
+void test_BasicUpcasting() {
+    TEST_START("BasicUpcasting: Derived* → Base* memory layout");
+
+    const char *cpp = R"(
+        class Base {
+        public:
+            int x;
+            Base(int val) : x(val) {}
+        };
+        class Derived : public Base {
+        public:
+            int y;
+            Derived(int a, int b) : Base(a), y(b) {}
+        };
+    )";
+
+    std::unique_ptr<ASTUnit> AST = buildAST(cpp);
+    ASSERT(AST, "Failed to parse C++ code");
+
+    CNodeBuilder builder(AST->getASTContext());
+    CppToCVisitor visitor(AST->getASTContext(), builder);
+    visitor.TraverseDecl(AST->getASTContext().getTranslationUnitDecl());
+
+    // Verify Base struct exists
+    RecordDecl *BaseStruct = visitor.getCStruct("Base");
+    ASSERT(BaseStruct != nullptr, "Base struct not generated");
+
+    // Verify Derived struct exists
+    RecordDecl *DerivedStruct = visitor.getCStruct("Derived");
+    ASSERT(DerivedStruct != nullptr, "Derived struct not generated");
+
+    // CRITICAL: Verify field layout - base fields MUST be first for safe upcasting
+    auto fields = DerivedStruct->fields();
+    auto it = fields.begin();
+    ASSERT(it != fields.end(), "Derived should have fields");
+
+    // First field must be from Base class
+    FieldDecl *firstField = *it;
+    ASSERT(firstField->getNameAsString() == "x",
+           "First field must be 'x' from Base (offset 0 = safe upcasting)");
+
+    // Second field should be from Derived class
+    ++it;
+    ASSERT(it != fields.end(), "Derived should have second field");
+    FieldDecl *secondField = *it;
+    ASSERT(secondField->getNameAsString() == "y",
+           "Second field must be 'y' from Derived");
+
+    // With this layout, (Base*)&derived is safe because:
+    // - Base fields are at offset 0
+    // - Casting Derived* to Base* gives same address
+    // - Base methods can access Base fields correctly
+
+    TEST_PASS("BasicUpcasting");
+}
+
+/**
+ * Test Case 13: Upcasting with Multi-Level Inheritance
+ *
+ * Verify that upcasting works correctly in multi-level inheritance hierarchies.
+ * GrandDerived -> Derived -> Base, where Base fields are at offset 0.
+ */
+void test_MultiLevelUpcasting() {
+    TEST_START("MultiLevelUpcasting: Three-level inheritance upcasting");
+
+    const char *cpp = R"(
+        class Base {
+        public:
+            int x;
+            Base(int val) : x(val) {}
+        };
+        class Derived : public Base {
+        public:
+            int y;
+            Derived(int a, int b) : Base(a), y(b) {}
+        };
+        class GrandDerived : public Derived {
+        public:
+            int z;
+            GrandDerived(int a, int b, int c) : Derived(a, b), z(c) {}
+        };
+    )";
+
+    std::unique_ptr<ASTUnit> AST = buildAST(cpp);
+    ASSERT(AST, "Failed to parse C++ code");
+
+    CNodeBuilder builder(AST->getASTContext());
+    CppToCVisitor visitor(AST->getASTContext(), builder);
+    visitor.TraverseDecl(AST->getASTContext().getTranslationUnitDecl());
+
+    // Verify all structs exist
+    RecordDecl *BaseStruct = visitor.getCStruct("Base");
+    ASSERT(BaseStruct != nullptr, "Base struct not generated");
+
+    RecordDecl *DerivedStruct = visitor.getCStruct("Derived");
+    ASSERT(DerivedStruct != nullptr, "Derived struct not generated");
+
+    RecordDecl *GrandDerivedStruct = visitor.getCStruct("GrandDerived");
+    ASSERT(GrandDerivedStruct != nullptr, "GrandDerived struct not generated");
+
+    // CRITICAL: Verify GrandDerived has Base fields at offset 0 (for safe upcasting)
+    auto fields = GrandDerivedStruct->fields();
+    auto it = fields.begin();
+    ASSERT(it != fields.end(), "GrandDerived should have fields");
+
+    // First field must be 'x' from Base (offset 0)
+    FieldDecl *firstField = *it;
+    ASSERT(firstField->getNameAsString() == "x",
+           "First field must be 'x' from Base (offset 0 for upcasting)");
+
+    // Second field must be 'y' from Derived
+    ++it;
+    ASSERT(it != fields.end(), "GrandDerived should have second field");
+    FieldDecl *secondField = *it;
+    ASSERT(secondField->getNameAsString() == "y",
+           "Second field must be 'y' from Derived");
+
+    // Third field must be 'z' from GrandDerived
+    ++it;
+    ASSERT(it != fields.end(), "GrandDerived should have third field");
+    FieldDecl *thirdField = *it;
+    ASSERT(thirdField->getNameAsString() == "z",
+           "Third field must be 'z' from GrandDerived");
+
+    // With this layout, both upcasts work:
+    // - (Derived*)&grandDerived works (offset 0)
+    // - (Base*)&grandDerived works (offset 0)
+    // - (Base*)&derived works (offset 0)
+
+    TEST_PASS("MultiLevelUpcasting");
+}
+
+// ============================================================================
 // Test Runner
 // ============================================================================
 
@@ -788,6 +933,16 @@ int main() {
 
     // Run Story #53 tests
     test_MemberAccessInDerivedMethods();
+
+    std::cout << "\n";
+    std::cout << "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n";
+    std::cout << " Story #54: Upcasting Tests\n";
+    std::cout << "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n";
+    std::cout << "\n";
+
+    // Run Story #54 tests
+    test_BasicUpcasting();
+    test_MultiLevelUpcasting();
 
     // Summary
     std::cout << "\n";
