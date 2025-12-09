@@ -745,3 +745,25 @@ target_link_libraries(PureVirtualHandlerTest PRIVATE
     clangAST
     clangBasic
 )
+
+# Story #174: Virtual Destructor Handling tests
+add_executable(VirtualDestructorHandlerTest
+    tests/VirtualDestructorHandlerTest.cpp
+    src/VirtualDestructorHandler.cpp
+    src/VirtualMethodAnalyzer.cpp
+)
+
+target_compile_definitions(VirtualDestructorHandlerTest PRIVATE ${LLVM_DEFINITIONS})
+
+target_include_directories(VirtualDestructorHandlerTest PRIVATE
+    ${CMAKE_SOURCE_DIR}/include
+    ${LLVM_INCLUDE_DIRS}
+    ${CLANG_INCLUDE_DIRS}
+)
+
+target_link_libraries(VirtualDestructorHandlerTest PRIVATE
+    clangTooling
+    clangFrontend
+    clangAST
+    clangBasic
+)
