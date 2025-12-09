@@ -355,3 +355,108 @@ target_link_libraries(FunctionExitDestructorTest PRIVATE
     clangAST
     clangBasic
 )
+
+# Story #153: Destructor Injection at Early Returns tests
+add_executable(EarlyReturnDestructorTest
+    tests/EarlyReturnDestructorTest.cpp
+    src/CFGAnalyzer.cpp
+)
+
+target_compile_definitions(EarlyReturnDestructorTest PRIVATE ${LLVM_DEFINITIONS})
+
+target_include_directories(EarlyReturnDestructorTest PRIVATE
+    ${CMAKE_SOURCE_DIR}/include
+    ${LLVM_INCLUDE_DIRS}
+    ${CLANG_INCLUDE_DIRS}
+)
+
+target_link_libraries(EarlyReturnDestructorTest PRIVATE
+    clangTooling
+    clangFrontend
+    clangAST
+    clangBasic
+)
+
+# Story #154: Nested Scope Destruction tests
+add_executable(NestedScopeDestructorTest
+    tests/NestedScopeDestructorTest.cpp
+    src/CFGAnalyzer.cpp
+)
+
+target_compile_definitions(NestedScopeDestructorTest PRIVATE ${LLVM_DEFINITIONS})
+
+target_include_directories(NestedScopeDestructorTest PRIVATE
+    ${CMAKE_SOURCE_DIR}/include
+    ${LLVM_INCLUDE_DIRS}
+    ${CLANG_INCLUDE_DIRS}
+)
+
+target_link_libraries(NestedScopeDestructorTest PRIVATE
+    clangTooling
+    clangFrontend
+    clangAST
+    clangBasic
+)
+
+# Story #155: Goto Statement Handling tests
+add_executable(GotoDestructorTest
+    tests/GotoDestructorTest.cpp
+    src/CFGAnalyzer.cpp
+)
+
+target_compile_definitions(GotoDestructorTest PRIVATE ${LLVM_DEFINITIONS})
+
+target_include_directories(GotoDestructorTest PRIVATE
+    ${CMAKE_SOURCE_DIR}/include
+    ${LLVM_INCLUDE_DIRS}
+    ${CLANG_INCLUDE_DIRS}
+)
+
+target_link_libraries(GotoDestructorTest PRIVATE
+    clangTooling
+    clangFrontend
+    clangAST
+    clangBasic
+)
+
+# Story #156: Loop Break/Continue Handling tests
+add_executable(LoopDestructorTest
+    tests/LoopDestructorTest.cpp
+    src/CFGAnalyzer.cpp
+)
+
+target_compile_definitions(LoopDestructorTest PRIVATE ${LLVM_DEFINITIONS})
+
+target_include_directories(LoopDestructorTest PRIVATE
+    ${CMAKE_SOURCE_DIR}/include
+    ${LLVM_INCLUDE_DIRS}
+    ${CLANG_INCLUDE_DIRS}
+)
+
+target_link_libraries(LoopDestructorTest PRIVATE
+    clangTooling
+    clangFrontend
+    clangAST
+    clangBasic
+)
+
+# Story #157: Integration Testing & Validation
+add_executable(RAIIIntegrationTest
+    tests/RAIIIntegrationTest.cpp
+    src/CFGAnalyzer.cpp
+)
+
+target_compile_definitions(RAIIIntegrationTest PRIVATE ${LLVM_DEFINITIONS})
+
+target_include_directories(RAIIIntegrationTest PRIVATE
+    ${CMAKE_SOURCE_DIR}/include
+    ${LLVM_INCLUDE_DIRS}
+    ${CLANG_INCLUDE_DIRS}
+)
+
+target_link_libraries(RAIIIntegrationTest PRIVATE
+    clangTooling
+    clangFrontend
+    clangAST
+    clangBasic
+)
