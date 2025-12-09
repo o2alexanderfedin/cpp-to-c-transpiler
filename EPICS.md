@@ -328,9 +328,11 @@ Implements RAII support by analyzing control flow and automatically injecting de
 
 ---
 
-### Epic #6: Single Inheritance Support
+### Epic #6: Single Inheritance Support ✅ COMPLETED
 
 **GitHub Issue:** [#38](https://github.com/o2alexanderfedin/cpp-to-c-transpiler/issues/38)
+**Status:** ✅ Completed (v0.4.0)
+**Story Points:** 10 SP (100% delivered)
 **Weeks:** Weeks 7-8 (2 weeks)
 **Priority:** High
 **Type:** Core Feature
@@ -340,19 +342,34 @@ Implements RAII support by analyzing control flow and automatically injecting de
 - [ARCHITECTURE.md - Phase 2, Weeks 7-8](docs/ARCHITECTURE.md#weeks-7-8-single-inheritance)
 
 **Deliverables:**
-- Base class embedding in struct layout
-- Base constructor calls
-- Member access through base
-- Derived-to-base conversions
+- ✅ Base class embedding in struct layout
+- ✅ Base constructor calls (before derived constructor)
+- ✅ Base destructor calls (after derived destructor)
+- ✅ Member access through inheritance chain
+- ✅ Derived-to-base pointer conversions (upcasting)
+- ✅ Member function overriding (non-virtual)
+- ✅ Multi-level inheritance support
 
-**Success Criteria:**
-- Base class fields embedded at struct beginning
-- Constructor chaining works correctly
-- Member lookup through inheritance chain
-- Upcast (Derived* → Base*) works
+**Success Criteria - ALL MET:**
+- ✅ Base class fields embedded at struct beginning (offset 0)
+- ✅ Constructor chaining works correctly (base before derived)
+- ✅ Destructor chaining works correctly (derived before base)
+- ✅ Member lookup through inheritance chain
+- ✅ Upcast (Derived* → Base*) works
+- ✅ sizeof(Derived) = sizeof(Base) + sizeof(derived fields)
+- ✅ Memory layout matches C++ ABI
+- ✅ All tests pass (17/17)
+- ✅ Zero regressions
+
+**Delivery Summary:**
+- **Release:** v0.4.0
+- **Commits:** 7f5ceab, 145a405, 752f3b9
+- **Tests:** 17 test cases across 7 feature areas
+- **Pass Rate:** 100% (17/17)
+- **GitHub Release:** Ready for release tagging
 
 **Technical Foundation:**
-Enables single inheritance by embedding base class data and properly chaining constructors.
+Enables single inheritance by embedding base class data and properly chaining constructors. Provides foundation for Epic #7 (Advanced Constructors) and Epic #9 (Virtual Functions).
 
 ---
 
