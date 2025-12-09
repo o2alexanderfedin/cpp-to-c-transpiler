@@ -30,7 +30,13 @@ bool CppToCVisitor::VisitCXXRecordDecl(CXXRecordDecl *D) {
   // Story #50: Embed base class fields at offset 0 (SRP: delegate to helper)
   collectBaseClassFields(D, fields);
 
-  // Add derived class's own fields after base class fields
+  // Story #169: Inject vptr field if this is a polymorphic class without bases
+  // If class has bases, base class would have already injected vptr
+  if (D->getNumBases() == 0) {
+    VptrInjectorInstance.injectVptrField(D, fields);
+  }
+
+  // Add derived class's own fields after base class fields and vptr
   for (FieldDecl *Field : D->fields()) {
     // Create C field with same type and name
     FieldDecl *CField = Builder.fieldDecl(

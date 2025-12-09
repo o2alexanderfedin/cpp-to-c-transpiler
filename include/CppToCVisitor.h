@@ -4,6 +4,8 @@
 #include "clang/AST/ASTContext.h"
 #include "CNodeBuilder.h"
 #include "NameMangler.h"
+#include "VirtualMethodAnalyzer.h"
+#include "VptrInjector.h"
 #include <map>
 #include <string>
 
@@ -13,6 +15,10 @@ class CppToCVisitor : public clang::RecursiveASTVisitor<CppToCVisitor> {
   clang::ASTContext &Context;
   clang::CNodeBuilder &Builder;
   NameMangler Mangler;
+
+  // Story #169: Virtual function support
+  VirtualMethodAnalyzer VirtualAnalyzer;
+  VptrInjector VptrInjectorInstance;
 
   // Mapping: C++ class -> C struct (Story #15)
   std::map<clang::CXXRecordDecl*, clang::RecordDecl*> cppToCMap;
@@ -32,7 +38,8 @@ class CppToCVisitor : public clang::RecursiveASTVisitor<CppToCVisitor> {
 
 public:
   explicit CppToCVisitor(clang::ASTContext &Context, clang::CNodeBuilder &Builder)
-    : Context(Context), Builder(Builder), Mangler(Context) {}
+    : Context(Context), Builder(Builder), Mangler(Context),
+      VirtualAnalyzer(Context), VptrInjectorInstance(Context, VirtualAnalyzer) {}
 
   // Visit C++ class/struct declarations
   bool VisitCXXRecordDecl(clang::CXXRecordDecl *D);

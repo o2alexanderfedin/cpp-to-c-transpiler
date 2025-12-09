@@ -25,6 +25,8 @@ add_executable(cpptoc
     src/DependencyAnalyzer.cpp
     src/FileOutputManager.cpp
     src/CFGAnalyzer.cpp
+    src/VirtualMethodAnalyzer.cpp
+    src/VptrInjector.cpp
 )
 
 # Apply LLVM/Clang compile definitions to target
@@ -58,6 +60,8 @@ add_executable(CppToCVisitorTest
     src/CFGAnalyzer.cpp
     src/NameMangler.cpp
     src/CFGAnalyzer.cpp
+    src/VirtualMethodAnalyzer.cpp
+    src/VptrInjector.cpp
 )
 
 target_compile_definitions(CppToCVisitorTest PRIVATE ${LLVM_DEFINITIONS})
@@ -190,6 +194,8 @@ add_executable(TranslationIntegrationTest
     src/CppToCVisitor.cpp
     src/CFGAnalyzer.cpp
     src/NameMangler.cpp
+    src/VirtualMethodAnalyzer.cpp
+    src/VptrInjector.cpp
 )
 
 target_compile_definitions(TranslationIntegrationTest PRIVATE ${LLVM_DEFINITIONS})
@@ -243,6 +249,8 @@ add_executable(ValidationTest
     src/CppToCVisitor.cpp
     src/CFGAnalyzer.cpp
     src/NameMangler.cpp
+    src/VirtualMethodAnalyzer.cpp
+    src/VptrInjector.cpp
 )
 
 target_compile_definitions(ValidationTest PRIVATE ${LLVM_DEFINITIONS})
@@ -426,6 +434,8 @@ add_executable(FunctionExitDestructorTest
     src/CFGAnalyzer.cpp
     src/NameMangler.cpp
     src/CFGAnalyzer.cpp
+    src/VirtualMethodAnalyzer.cpp
+    src/VptrInjector.cpp
 )
 
 target_compile_definitions(FunctionExitDestructorTest PRIVATE ${LLVM_DEFINITIONS})
@@ -559,6 +569,8 @@ add_executable(InheritanceTest
     src/CppToCVisitor.cpp
     src/CFGAnalyzer.cpp
     src/NameMangler.cpp
+    src/VirtualMethodAnalyzer.cpp
+    src/VptrInjector.cpp
 )
 
 target_compile_definitions(InheritanceTest PRIVATE ${LLVM_DEFINITIONS})
@@ -617,6 +629,28 @@ target_include_directories(VtableGeneratorTest PRIVATE
 )
 
 target_link_libraries(VtableGeneratorTest PRIVATE
+    clangTooling
+    clangFrontend
+    clangAST
+    clangBasic
+)
+
+# Story #169: Vptr Field Injection in Class Layout tests
+add_executable(VptrInjectorTest
+    tests/VptrInjectorTest.cpp
+    src/VptrInjector.cpp
+    src/VirtualMethodAnalyzer.cpp
+)
+
+target_compile_definitions(VptrInjectorTest PRIVATE ${LLVM_DEFINITIONS})
+
+target_include_directories(VptrInjectorTest PRIVATE
+    ${CMAKE_SOURCE_DIR}/include
+    ${LLVM_INCLUDE_DIRS}
+    ${CLANG_INCLUDE_DIRS}
+)
+
+target_link_libraries(VptrInjectorTest PRIVATE
     clangTooling
     clangFrontend
     clangAST
