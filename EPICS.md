@@ -373,32 +373,39 @@ Enables single inheritance by embedding base class data and properly chaining co
 
 ---
 
-### Epic #7: Advanced Constructor/Destructor Features
+### Epic #7: Advanced Constructor/Destructor Features ✅ COMPLETED
 
 **GitHub Issue:** [#39](https://github.com/o2alexanderfedin/cpp-to-c-transpiler/issues/39)
 **Weeks:** Weeks 9-10 (2 weeks)
 **Priority:** High
 **Type:** Core Feature
 **Dependencies:** Epic #6
+**Status:** ✅ Completed on 2025-12-08
 
 **Architecture References:**
 - [ARCHITECTURE.md - Phase 2, Weeks 9-10](docs/ARCHITECTURE.md#weeks-9-10-constructorsdestructors)
 
 **Deliverables:**
-- Constructor chaining (base → derived)
-- Member initialization lists
-- Default constructors
-- Copy constructors
-- Destructor chaining
+- ✅ Constructor chaining (base → members → derived)
+- ✅ Member initialization lists
+- ✅ Default constructors
+- ✅ Copy constructors
+- ✅ Destructor chaining (derived → members → base)
 
 **Success Criteria:**
-- Base constructors called before derived
-- Member init lists translated correctly
-- Default and copy constructors work
-- Destructor chaining in reverse order
+- ✅ Base constructors called before derived
+- ✅ Member init lists translated correctly
+- ✅ Members initialized in declaration order
+- ✅ Default and copy constructors work
+- ✅ Destructor chaining in reverse order
+
+**Completed Stories:**
+- Story #61: Member Initialization Lists with Declaration Order (2 SP)
+- Story #62: Default and Copy Constructor Generation (3 SP)
+- Story #63: Complete Constructor/Destructor Chaining (3 SP)
 
 **Technical Foundation:**
-Completes constructor/destructor support with full semantics including initialization lists and chaining.
+Completes constructor/destructor support with full C++ semantics including initialization lists, proper chaining order, and automatic generation of implicit constructors.
 
 ---
 
