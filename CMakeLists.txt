@@ -25,6 +25,8 @@ add_executable(cpptoc
     src/DependencyAnalyzer.cpp
     src/FileOutputManager.cpp
     src/CFGAnalyzer.cpp
+    src/VirtualMethodAnalyzer.cpp
+    src/VptrInjector.cpp
 )
 
 # Apply LLVM/Clang compile definitions to target
@@ -58,6 +60,8 @@ add_executable(CppToCVisitorTest
     src/CFGAnalyzer.cpp
     src/NameMangler.cpp
     src/CFGAnalyzer.cpp
+    src/VirtualMethodAnalyzer.cpp
+    src/VptrInjector.cpp
 )
 
 target_compile_definitions(CppToCVisitorTest PRIVATE ${LLVM_DEFINITIONS})
@@ -190,6 +194,8 @@ add_executable(TranslationIntegrationTest
     src/CppToCVisitor.cpp
     src/CFGAnalyzer.cpp
     src/NameMangler.cpp
+    src/VirtualMethodAnalyzer.cpp
+    src/VptrInjector.cpp
 )
 
 target_compile_definitions(TranslationIntegrationTest PRIVATE ${LLVM_DEFINITIONS})
@@ -243,6 +249,8 @@ add_executable(ValidationTest
     src/CppToCVisitor.cpp
     src/CFGAnalyzer.cpp
     src/NameMangler.cpp
+    src/VirtualMethodAnalyzer.cpp
+    src/VptrInjector.cpp
 )
 
 target_compile_definitions(ValidationTest PRIVATE ${LLVM_DEFINITIONS})
@@ -426,6 +434,8 @@ add_executable(FunctionExitDestructorTest
     src/CFGAnalyzer.cpp
     src/NameMangler.cpp
     src/CFGAnalyzer.cpp
+    src/VirtualMethodAnalyzer.cpp
+    src/VptrInjector.cpp
 )
 
 target_compile_definitions(FunctionExitDestructorTest PRIVATE ${LLVM_DEFINITIONS})
@@ -559,6 +569,8 @@ add_executable(InheritanceTest
     src/CppToCVisitor.cpp
     src/CFGAnalyzer.cpp
     src/NameMangler.cpp
+    src/VirtualMethodAnalyzer.cpp
+    src/VptrInjector.cpp
 )
 
 target_compile_definitions(InheritanceTest PRIVATE ${LLVM_DEFINITIONS})
@@ -570,6 +582,214 @@ target_include_directories(InheritanceTest PRIVATE
 )
 
 target_link_libraries(InheritanceTest PRIVATE
+    clangTooling
+    clangFrontend
+    clangAST
+    clangBasic
+)
+
+# ============================================================================
+# Epic #41: Virtual Functions + Vtables (Story #167)
+# ============================================================================
+
+# Story #167: Virtual Method Detection and AST Analysis tests
+add_executable(VirtualMethodAnalyzerTest
+    tests/VirtualMethodAnalyzerTest.cpp
+    src/VirtualMethodAnalyzer.cpp
+)
+
+target_compile_definitions(VirtualMethodAnalyzerTest PRIVATE ${LLVM_DEFINITIONS})
+
+target_include_directories(VirtualMethodAnalyzerTest PRIVATE
+    ${CMAKE_SOURCE_DIR}/include
+    ${LLVM_INCLUDE_DIRS}
+    ${CLANG_INCLUDE_DIRS}
+)
+
+target_link_libraries(VirtualMethodAnalyzerTest PRIVATE
+    clangTooling
+    clangFrontend
+    clangAST
+    clangBasic
+)
+
+# Story #168: Vtable Struct Generation tests
+add_executable(VtableGeneratorTest
+    tests/VtableGeneratorTest.cpp
+    src/VtableGenerator.cpp
+    src/VirtualMethodAnalyzer.cpp
+    src/OverrideResolver.cpp
+)
+
+target_compile_definitions(VtableGeneratorTest PRIVATE ${LLVM_DEFINITIONS})
+
+target_include_directories(VtableGeneratorTest PRIVATE
+    ${CMAKE_SOURCE_DIR}/include
+    ${LLVM_INCLUDE_DIRS}
+    ${CLANG_INCLUDE_DIRS}
+)
+
+target_link_libraries(VtableGeneratorTest PRIVATE
+    clangTooling
+    clangFrontend
+    clangAST
+    clangBasic
+)
+
+# Story #169: Vptr Field Injection in Class Layout tests
+add_executable(VptrInjectorTest
+    tests/VptrInjectorTest.cpp
+    src/VptrInjector.cpp
+    src/VirtualMethodAnalyzer.cpp
+)
+
+target_compile_definitions(VptrInjectorTest PRIVATE ${LLVM_DEFINITIONS})
+
+target_include_directories(VptrInjectorTest PRIVATE
+    ${CMAKE_SOURCE_DIR}/include
+    ${LLVM_INCLUDE_DIRS}
+    ${CLANG_INCLUDE_DIRS}
+)
+
+target_link_libraries(VptrInjectorTest PRIVATE
+    clangTooling
+    clangFrontend
+    clangAST
+    clangBasic
+)
+
+# Story #170: Virtual Function Override Resolution tests
+add_executable(OverrideResolverTest
+    tests/OverrideResolverTest.cpp
+    src/OverrideResolver.cpp
+    src/VirtualMethodAnalyzer.cpp
+)
+
+target_compile_definitions(OverrideResolverTest PRIVATE ${LLVM_DEFINITIONS})
+
+target_include_directories(OverrideResolverTest PRIVATE
+    ${CMAKE_SOURCE_DIR}/include
+    ${LLVM_INCLUDE_DIRS}
+    ${CLANG_INCLUDE_DIRS}
+)
+
+target_link_libraries(OverrideResolverTest PRIVATE
+    clangTooling
+    clangFrontend
+    clangAST
+    clangBasic
+)
+
+# Story #171: Vtable Initialization in Constructors tests
+add_executable(VtableInitializerTest
+    tests/VtableInitializerTest.cpp
+    src/VtableInitializer.cpp
+    src/VirtualMethodAnalyzer.cpp
+)
+
+target_compile_definitions(VtableInitializerTest PRIVATE ${LLVM_DEFINITIONS})
+
+target_include_directories(VtableInitializerTest PRIVATE
+    ${CMAKE_SOURCE_DIR}/include
+    ${LLVM_INCLUDE_DIRS}
+    ${CLANG_INCLUDE_DIRS}
+)
+
+target_link_libraries(VtableInitializerTest PRIVATE
+    clangTooling
+    clangFrontend
+    clangAST
+    clangBasic
+)
+
+# Story #172: Virtual Call Translation to Vtable Dispatch tests
+add_executable(VirtualCallTranslatorTest
+    tests/VirtualCallTranslatorTest.cpp
+    src/VirtualCallTranslator.cpp
+    src/VirtualMethodAnalyzer.cpp
+)
+
+target_compile_definitions(VirtualCallTranslatorTest PRIVATE ${LLVM_DEFINITIONS})
+
+target_include_directories(VirtualCallTranslatorTest PRIVATE
+    ${CMAKE_SOURCE_DIR}/include
+    ${LLVM_INCLUDE_DIRS}
+    ${CLANG_INCLUDE_DIRS}
+)
+
+target_link_libraries(VirtualCallTranslatorTest PRIVATE
+    clangTooling
+    clangFrontend
+    clangAST
+    clangBasic
+)
+
+# Story #173: Pure Virtual Function Support tests
+add_executable(PureVirtualHandlerTest
+    tests/PureVirtualHandlerTest.cpp
+    src/PureVirtualHandler.cpp
+    src/VirtualMethodAnalyzer.cpp
+)
+
+target_compile_definitions(PureVirtualHandlerTest PRIVATE ${LLVM_DEFINITIONS})
+
+target_include_directories(PureVirtualHandlerTest PRIVATE
+    ${CMAKE_SOURCE_DIR}/include
+    ${LLVM_INCLUDE_DIRS}
+    ${CLANG_INCLUDE_DIRS}
+)
+
+target_link_libraries(PureVirtualHandlerTest PRIVATE
+    clangTooling
+    clangFrontend
+    clangAST
+    clangBasic
+)
+
+# Story #174: Virtual Destructor Handling tests
+add_executable(VirtualDestructorHandlerTest
+    tests/VirtualDestructorHandlerTest.cpp
+    src/VirtualDestructorHandler.cpp
+    src/VirtualMethodAnalyzer.cpp
+)
+
+target_compile_definitions(VirtualDestructorHandlerTest PRIVATE ${LLVM_DEFINITIONS})
+
+target_include_directories(VirtualDestructorHandlerTest PRIVATE
+    ${CMAKE_SOURCE_DIR}/include
+    ${LLVM_INCLUDE_DIRS}
+    ${CLANG_INCLUDE_DIRS}
+)
+
+target_link_libraries(VirtualDestructorHandlerTest PRIVATE
+    clangTooling
+    clangFrontend
+    clangAST
+    clangBasic
+)
+
+# Story #175: Comprehensive Virtual Function Integration Tests
+add_executable(VirtualFunctionIntegrationTest
+    tests/VirtualFunctionIntegrationTest.cpp
+    src/VirtualMethodAnalyzer.cpp
+    src/VtableGenerator.cpp
+    src/VptrInjector.cpp
+    src/OverrideResolver.cpp
+    src/VtableInitializer.cpp
+    src/VirtualCallTranslator.cpp
+    src/PureVirtualHandler.cpp
+    src/VirtualDestructorHandler.cpp
+)
+
+target_compile_definitions(VirtualFunctionIntegrationTest PRIVATE ${LLVM_DEFINITIONS})
+
+target_include_directories(VirtualFunctionIntegrationTest PRIVATE
+    ${CMAKE_SOURCE_DIR}/include
+    ${LLVM_INCLUDE_DIRS}
+    ${CLANG_INCLUDE_DIRS}
+)
+
+target_link_libraries(VirtualFunctionIntegrationTest PRIVATE
     clangTooling
     clangFrontend
     clangAST
