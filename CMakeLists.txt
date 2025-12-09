@@ -161,6 +161,29 @@ target_link_libraries(MonomorphizationTest PRIVATE
     clangBasic
 )
 
+# Story #69: STL Container Support and Integration Testing
+add_executable(STLIntegrationTest
+    tests/STLIntegrationTest.cpp
+    src/TemplateMonomorphizer.cpp
+    src/TemplateExtractor.cpp
+    src/NameMangler.cpp
+)
+
+target_compile_definitions(STLIntegrationTest PRIVATE ${LLVM_DEFINITIONS})
+
+target_include_directories(STLIntegrationTest PRIVATE
+    ${CMAKE_SOURCE_DIR}/include
+    ${LLVM_INCLUDE_DIRS}
+    ${CLANG_INCLUDE_DIRS}
+)
+
+target_link_libraries(STLIntegrationTest PRIVATE
+    clangTooling
+    clangFrontend
+    clangAST
+    clangBasic
+)
+
 # Story #20: Translation Integration Tests
 add_executable(TranslationIntegrationTest
     tests/TranslationIntegrationTest.cpp
