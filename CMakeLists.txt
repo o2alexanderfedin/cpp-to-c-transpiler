@@ -600,3 +600,25 @@ target_link_libraries(VirtualMethodAnalyzerTest PRIVATE
     clangAST
     clangBasic
 )
+
+# Story #168: Vtable Struct Generation tests
+add_executable(VtableGeneratorTest
+    tests/VtableGeneratorTest.cpp
+    src/VtableGenerator.cpp
+    src/VirtualMethodAnalyzer.cpp
+)
+
+target_compile_definitions(VtableGeneratorTest PRIVATE ${LLVM_DEFINITIONS})
+
+target_include_directories(VtableGeneratorTest PRIVATE
+    ${CMAKE_SOURCE_DIR}/include
+    ${LLVM_INCLUDE_DIRS}
+    ${CLANG_INCLUDE_DIRS}
+)
+
+target_link_libraries(VtableGeneratorTest PRIVATE
+    clangTooling
+    clangFrontend
+    clangAST
+    clangBasic
+)
