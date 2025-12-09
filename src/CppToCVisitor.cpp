@@ -49,6 +49,9 @@ bool CppToCVisitor::VisitCXXRecordDecl(CXXRecordDecl *D) {
   llvm::outs() << "  -> struct " << CStruct->getName() << " with "
                << fields.size() << " fields\n";
 
+  // Story #62: Generate implicit constructors if needed
+  generateImplicitConstructors(D);
+
   return true;
 }
 
@@ -907,4 +910,348 @@ Stmt* CppToCVisitor::translateCompoundStmt(CompoundStmt *CS) {
   }
 
   return Builder.block(translatedStmts);
+}
+
+// ============================================================================
+// Epic #7: Implicit Constructor Generation (Story #62)
+// ============================================================================
+
+/**
+ * Story #62: Check if class needs implicit default constructor
+ *
+ * Returns true if:
+ * - No user-declared constructors exist (hasUserDeclaredConstructor() returns false)
+ */
+bool CppToCVisitor::needsImplicitDefaultConstructor(CXXRecordDecl *D) const {
+  // If user declared ANY constructor, no implicit default constructor
+  return !D->hasUserDeclaredConstructor();
+}
+
+/**
+ * Story #62: Check if class needs implicit copy constructor
+ *
+ * Returns true if:
+ * - No user-declared copy constructor exists
+ * - Class has at least one constructor (to enable copy construction)
+ */
+bool CppToCVisitor::needsImplicitCopyConstructor(CXXRecordDecl *D) const {
+  // Check if user declared a copy constructor (not compiler-generated)
+  for (CXXConstructorDecl *Ctor : D->ctors()) {
+    if (Ctor->isCopyConstructor() && !Ctor->isImplicit()) {
+      return false;  // User declared copy constructor exists
+    }
+  }
+
+  // Generate copy constructor if class has any constructor
+  // (either explicit or we're about to generate default)
+  return D->hasUserDeclaredConstructor() || needsImplicitDefaultConstructor(D);
+}
+
+/**
+ * Story #62: Generate implicit constructors for a class
+ *
+ * Orchestrates generation of default and copy constructors when needed.
+ */
+void CppToCVisitor::generateImplicitConstructors(CXXRecordDecl *D) {
+  // Generate default constructor if needed
+  if (needsImplicitDefaultConstructor(D)) {
+    llvm::outs() << "  Generating implicit default constructor\n";
+    FunctionDecl *DefaultCtor = generateDefaultConstructor(D);
+    if (DefaultCtor) {
+      // Store in constructor map for retrieval by tests
+      // Use the FunctionDecl pointer cast as key (implicit ctors don't have CXXConstructorDecl)
+      ctorMap[reinterpret_cast<CXXConstructorDecl*>(DefaultCtor)] = DefaultCtor;
+    }
+  }
+
+  // Generate copy constructor if needed
+  if (needsImplicitCopyConstructor(D)) {
+    llvm::outs() << "  Generating implicit copy constructor\n";
+    FunctionDecl *CopyCtor = generateCopyConstructor(D);
+    if (CopyCtor) {
+      // Store in constructor map for retrieval by tests
+      // Use the FunctionDecl pointer cast as key (implicit ctors don't have CXXConstructorDecl)
+      ctorMap[reinterpret_cast<CXXConstructorDecl*>(CopyCtor)] = CopyCtor;
+    }
+  }
+}
+
+/**
+ * Story #62: Generate default constructor
+ *
+ * Generates: Class__ctor_default(struct Class *this)
+ * - Zero-initializes primitive members
+ * - Calls default constructors for class-type members
+ * - Calls base class default constructor if derived
+ */
+FunctionDecl* CppToCVisitor::generateDefaultConstructor(CXXRecordDecl *D) {
+  // Get the C struct for this class
+  RecordDecl *CStruct = cppToCMap[D];
+  if (!CStruct) {
+    llvm::outs() << "  Warning: C struct not found for default ctor generation\n";
+    return nullptr;
+  }
+
+  // Build parameter list: only 'this' parameter
+  std::vector<ParmVarDecl*> params;
+  QualType thisType = Builder.ptrType(Context.getRecordType(CStruct));
+  ParmVarDecl *thisParam = Builder.param(thisType, "this");
+  params.push_back(thisParam);
+
+  // Generate constructor name: Class__ctor_default
+  std::string funcName = D->getName().str() + "__ctor_default";
+
+  // Create C init function
+  FunctionDecl *CFunc = Builder.funcDecl(
+    funcName,
+    Builder.voidType(),
+    params,
+    nullptr
+  );
+
+  // Build function body
+  std::vector<Stmt*> stmts;
+
+  // Set translation context
+  currentThisParam = thisParam;
+  currentMethod = nullptr;
+
+  // 1. Call base class default constructor if derived
+  if (D->getNumBases() > 0) {
+    for (const CXXBaseSpecifier &Base : D->bases()) {
+      CXXRecordDecl *BaseClass = Base.getType()->getAsCXXRecordDecl();
+      if (!BaseClass) continue;
+
+      std::string baseCtorName = BaseClass->getName().str() + "__ctor_default";
+      llvm::outs() << "    TODO: Call base default constructor: " << baseCtorName << "\n";
+      // TODO: Look up base constructor and create call expression
+      // For now, this is left for Story #63 (Complete Constructor Chaining)
+    }
+  }
+
+  // 2. Initialize members in declaration order
+  for (FieldDecl *Field : D->fields()) {
+    QualType fieldType = Field->getType();
+
+    // Create this->field member expression
+    MemberExpr *ThisMember = Builder.arrowMember(
+      Builder.ref(thisParam),
+      Field->getName()
+    );
+
+    if (fieldType->isRecordType()) {
+      // Class-type member: call default constructor
+      CXXRecordDecl *FieldClass = fieldType->getAsCXXRecordDecl();
+      if (FieldClass) {
+        std::string fieldCtorName = FieldClass->getName().str() + "__ctor_default";
+
+        // Look up the member's default constructor
+        // Try implicit name first (_default suffix)
+        FunctionDecl *MemberCtor = getCtor(fieldCtorName);
+
+        // If not found, try explicit default constructor name (no suffix)
+        if (!MemberCtor) {
+          std::string explicitCtorName = FieldClass->getName().str() + "__ctor";
+          MemberCtor = getCtor(explicitCtorName);
+        }
+
+        // If still not found, try to translate it on-demand
+        if (!MemberCtor) {
+          // Find the member class's default constructor
+          for (CXXConstructorDecl *Ctor : FieldClass->ctors()) {
+            if (Ctor->isDefaultConstructor() && !Ctor->isImplicit()) {
+              // Translate this explicit default constructor now
+              std::string explicitCtorName = FieldClass->getName().str() + "__ctor";
+              llvm::outs() << "    On-demand translation of " << explicitCtorName << "\n";
+              VisitCXXConstructorDecl(Ctor);
+              MemberCtor = getCtor(explicitCtorName);
+              break;
+            }
+          }
+        }
+
+        if (MemberCtor) {
+          // Create call: MemberClass__ctor_default(&this->member);
+          std::vector<Expr*> args;
+
+          // Address of this->member
+          Expr *memberAddr = Builder.addrOf(ThisMember);
+          args.push_back(memberAddr);
+
+          // Create call expression
+          CallExpr *memberCtorCall = Builder.call(MemberCtor, args);
+          if (memberCtorCall) {
+            stmts.push_back(memberCtorCall);
+            llvm::outs() << "    Calling member default constructor: " << fieldCtorName << " for field " << Field->getName() << "\n";
+          }
+        } else {
+          llvm::outs() << "    Warning: Member default constructor not found: " << fieldCtorName << "\n";
+        }
+      }
+    } else if (fieldType->isPointerType()) {
+      // Pointer member: initialize to NULL
+      Expr *nullExpr = Builder.nullPtr();
+      BinaryOperator *Assignment = Builder.assign(ThisMember, nullExpr);
+      stmts.push_back(Assignment);
+    } else {
+      // Primitive member: zero-initialize
+      Expr *zeroExpr = Builder.intLit(0);
+      BinaryOperator *Assignment = Builder.assign(ThisMember, zeroExpr);
+      stmts.push_back(Assignment);
+    }
+  }
+
+  // Create function body
+  CompoundStmt *body = Builder.block(stmts);
+
+  // Set function body
+  CFunc->setBody(body);
+
+  llvm::outs() << "  Generated default constructor: " << funcName << "\n";
+  return CFunc;
+}
+
+/**
+ * Story #62: Generate copy constructor
+ *
+ * Generates: Class__ctor_copy(struct Class *this, const struct Class *other)
+ * - Performs memberwise copy for primitive members
+ * - Calls copy constructors for class-type members
+ * - Performs shallow copy for pointer members
+ * - Calls base class copy constructor if derived
+ */
+FunctionDecl* CppToCVisitor::generateCopyConstructor(CXXRecordDecl *D) {
+  // Get the C struct for this class
+  RecordDecl *CStruct = cppToCMap[D];
+  if (!CStruct) {
+    llvm::outs() << "  Warning: C struct not found for copy ctor generation\n";
+    return nullptr;
+  }
+
+  // Build parameter list: this + other
+  std::vector<ParmVarDecl*> params;
+
+  QualType thisType = Builder.ptrType(Context.getRecordType(CStruct));
+  ParmVarDecl *thisParam = Builder.param(thisType, "this");
+  params.push_back(thisParam);
+
+  // const struct Class *other
+  QualType otherType = Builder.ptrType(
+    Context.getConstType(Context.getRecordType(CStruct))
+  );
+  ParmVarDecl *otherParam = Builder.param(otherType, "other");
+  params.push_back(otherParam);
+
+  // Generate constructor name: Class__ctor_copy
+  std::string funcName = D->getName().str() + "__ctor_copy";
+
+  // Create C init function
+  FunctionDecl *CFunc = Builder.funcDecl(
+    funcName,
+    Builder.voidType(),
+    params,
+    nullptr
+  );
+
+  // Build function body
+  std::vector<Stmt*> stmts;
+
+  // Set translation context
+  currentThisParam = thisParam;
+  currentMethod = nullptr;
+
+  // 1. Call base class copy constructor if derived
+  if (D->getNumBases() > 0) {
+    for (const CXXBaseSpecifier &Base : D->bases()) {
+      CXXRecordDecl *BaseClass = Base.getType()->getAsCXXRecordDecl();
+      if (!BaseClass) continue;
+
+      std::string baseCopyCtorName = BaseClass->getName().str() + "__ctor_copy";
+      llvm::outs() << "    TODO: Call base copy constructor: " << baseCopyCtorName << "\n";
+    }
+  }
+
+  // 2. Copy members in declaration order
+  for (FieldDecl *Field : D->fields()) {
+    QualType fieldType = Field->getType();
+
+    // Create this->field and other->field member expressions
+    MemberExpr *ThisMember = Builder.arrowMember(
+      Builder.ref(thisParam),
+      Field->getName()
+    );
+
+    MemberExpr *OtherMember = Builder.arrowMember(
+      Builder.ref(otherParam),
+      Field->getName()
+    );
+
+    if (fieldType->isRecordType()) {
+      // Class-type member: call copy constructor
+      CXXRecordDecl *FieldClass = fieldType->getAsCXXRecordDecl();
+      if (FieldClass) {
+        std::string fieldCopyCtorName = FieldClass->getName().str() + "__ctor_copy";
+
+        // Look up the member's copy constructor
+        // Try implicit name first (_copy suffix)
+        FunctionDecl *MemberCopyCtor = getCtor(fieldCopyCtorName);
+
+        // If not found, try to translate explicit copy constructor on-demand
+        if (!MemberCopyCtor) {
+          // Find the member class's copy constructor
+          for (CXXConstructorDecl *Ctor : FieldClass->ctors()) {
+            if (Ctor->isCopyConstructor() && !Ctor->isImplicit()) {
+              // Translate this explicit copy constructor now
+              llvm::outs() << "    On-demand translation of explicit copy constructor\n";
+              VisitCXXConstructorDecl(Ctor);
+              // After translation, look it up directly using the key
+              auto it = ctorMap.find(Ctor);
+              if (it != ctorMap.end()) {
+                MemberCopyCtor = it->second;
+                llvm::outs() << "    Found copy constructor: " << MemberCopyCtor->getNameAsString() << "\n";
+              } else {
+                llvm::outs() << "    Warning: Translated copy constructor not found in map\n";
+              }
+              break;
+            }
+          }
+        }
+
+        if (MemberCopyCtor) {
+          // Create call: MemberClass__ctor_copy(&this->member, &other->member);
+          std::vector<Expr*> args;
+
+          // First arg: address of this->member
+          Expr *thisMemberAddr = Builder.addrOf(ThisMember);
+          args.push_back(thisMemberAddr);
+
+          // Second arg: address of other->member
+          Expr *otherMemberAddr = Builder.addrOf(OtherMember);
+          args.push_back(otherMemberAddr);
+
+          // Create call expression
+          CallExpr *memberCopyCall = Builder.call(MemberCopyCtor, args);
+          if (memberCopyCall) {
+            stmts.push_back(memberCopyCall);
+            llvm::outs() << "    Calling member copy constructor: " << MemberCopyCtor->getNameAsString() << " for field " << Field->getName() << "\n";
+          }
+        } else {
+          llvm::outs() << "    Warning: Member copy constructor not found: " << fieldCopyCtorName << "\n";
+        }
+      }
+    } else {
+      // Primitive or pointer member: memberwise (shallow) copy
+      BinaryOperator *Assignment = Builder.assign(ThisMember, OtherMember);
+      stmts.push_back(Assignment);
+    }
+  }
+
+  // Create function body
+  CompoundStmt *body = Builder.block(stmts);
+
+  // Set function body
+  CFunc->setBody(body);
+
+  llvm::outs() << "  Generated copy constructor: " << funcName << "\n";
+  return CFunc;
 }

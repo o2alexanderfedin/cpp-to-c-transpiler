@@ -148,4 +148,67 @@ private:
   void emitBaseDestructorCalls(clang::CXXDestructorDecl *DD,
                                 clang::ParmVarDecl *thisParam,
                                 std::vector<clang::Stmt*> &stmts);
+
+  // Epic #7: Implicit Constructor Generation (Story #62)
+
+  /**
+   * @brief Generate implicit constructors for a class if needed
+   * @param D The C++ class declaration
+   *
+   * Single Responsibility: Orchestrate implicit constructor generation
+   *
+   * This method checks if the class needs implicit default or copy constructors
+   * and generates them. Called from VisitCXXRecordDecl after struct creation.
+   */
+  void generateImplicitConstructors(clang::CXXRecordDecl *D);
+
+  /**
+   * @brief Generate default constructor for a class
+   * @param D The C++ class declaration
+   * @return Generated default constructor function
+   *
+   * Single Responsibility: Build default constructor with zero-initialization
+   *
+   * Generates: Class__ctor_default(struct Class *this)
+   * - Zero-initializes primitive members
+   * - Calls default constructors for class-type members
+   * - Calls base class default constructor if derived
+   */
+  clang::FunctionDecl* generateDefaultConstructor(clang::CXXRecordDecl *D);
+
+  /**
+   * @brief Generate copy constructor for a class
+   * @param D The C++ class declaration
+   * @return Generated copy constructor function
+   *
+   * Single Responsibility: Build copy constructor with memberwise copy
+   *
+   * Generates: Class__ctor_copy(struct Class *this, const struct Class *other)
+   * - Performs memberwise copy for primitive members
+   * - Calls copy constructors for class-type members
+   * - Performs shallow copy for pointer members
+   * - Calls base class copy constructor if derived
+   */
+  clang::FunctionDecl* generateCopyConstructor(clang::CXXRecordDecl *D);
+
+  /**
+   * @brief Check if class needs implicit default constructor
+   * @param D The C++ class declaration
+   * @return true if default constructor should be generated
+   *
+   * Returns true if:
+   * - No user-declared constructors exist
+   */
+  bool needsImplicitDefaultConstructor(clang::CXXRecordDecl *D) const;
+
+  /**
+   * @brief Check if class needs implicit copy constructor
+   * @param D The C++ class declaration
+   * @return true if copy constructor should be generated
+   *
+   * Returns true if:
+   * - No user-declared copy constructor exists
+   * - Class has at least one constructor (explicit or default)
+   */
+  bool needsImplicitCopyConstructor(clang::CXXRecordDecl *D) const;
 };

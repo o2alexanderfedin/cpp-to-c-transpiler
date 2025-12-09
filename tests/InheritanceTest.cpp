@@ -1395,6 +1395,347 @@ void test_EmptyMemberInitList() {
 }
 
 // ============================================================================
+// Story #62: Default and Copy Constructor Generation Tests
+// ============================================================================
+
+/**
+ * Test Case 20: Implicit Default Constructor with Primitive Members
+ *
+ * Tests that a default constructor is generated when no constructors are defined.
+ * The generated constructor should zero-initialize primitive members.
+ */
+void test_ImplicitDefaultConstructorPrimitives() {
+    TEST_START("ImplicitDefaultConstructorPrimitives");
+
+    const char *code = R"(
+        class Point {
+            int x, y;
+            // No constructor defined - implicit default constructor needed
+        };
+    )";
+
+    std::unique_ptr<ASTUnit> AST = buildAST(code);
+    ASSERT(AST, "Failed to parse C++ code");
+
+    CNodeBuilder builder(AST->getASTContext());
+    CppToCVisitor visitor(AST->getASTContext(), builder);
+
+    visitor.TraverseDecl(AST->getASTContext().getTranslationUnitDecl());
+
+    // Should generate default constructor: Point__ctor_default
+    FunctionDecl *ctor = visitor.getCtor("Point__ctor_default");
+    ASSERT(ctor != nullptr, "Point__ctor_default should be generated");
+
+    // Verify constructor has 'this' parameter
+    ASSERT(ctor->parameters().size() == 1, "Default ctor should have only 'this' parameter");
+
+    // Get constructor body
+    CompoundStmt *body = dyn_cast_or_null<CompoundStmt>(ctor->getBody());
+    ASSERT(body != nullptr, "Constructor body should exist");
+
+    // Should have 2 assignments: this->x = 0; this->y = 0;
+    std::vector<BinaryOperator*> assignments;
+    for (Stmt *S : body->body()) {
+        if (BinaryOperator *assign = dyn_cast<BinaryOperator>(S)) {
+            if (assign->getOpcode() == BO_Assign) {
+                assignments.push_back(assign);
+            }
+        }
+    }
+
+    ASSERT(assignments.size() == 2, "Should have 2 member zero-initializations");
+
+    TEST_PASS("ImplicitDefaultConstructorPrimitives");
+}
+
+/**
+ * Test Case 21: Implicit Default Constructor with Class-Type Members
+ *
+ * Tests that default constructor calls default constructors of class-type members.
+ */
+void test_ImplicitDefaultConstructorWithClassMembers() {
+    TEST_START("ImplicitDefaultConstructorWithClassMembers");
+
+    const char *code = R"(
+        class Inner {
+            int value;
+        public:
+            Inner() : value(0) {}
+        };
+
+        class Outer {
+            int id;
+            Inner inner;  // Class-type member
+            // No constructor - implicit default needed
+        };
+    )";
+
+    std::unique_ptr<ASTUnit> AST = buildAST(code);
+    ASSERT(AST, "Failed to parse C++ code");
+
+    CNodeBuilder builder(AST->getASTContext());
+    CppToCVisitor visitor(AST->getASTContext(), builder);
+
+    visitor.TraverseDecl(AST->getASTContext().getTranslationUnitDecl());
+
+    // Should generate Outer__ctor_default
+    FunctionDecl *ctor = visitor.getCtor("Outer__ctor_default");
+    ASSERT(ctor != nullptr, "Outer__ctor_default should be generated");
+
+    CompoundStmt *body = dyn_cast_or_null<CompoundStmt>(ctor->getBody());
+    ASSERT(body != nullptr, "Constructor body should exist");
+
+    // Should have:
+    // 1. this->id = 0; (primitive zero-init)
+    // 2. Inner__ctor(&this->inner); (class member default ctor call)
+    bool hasIdInit = false;
+    bool hasInnerCtorCall = false;
+
+    for (Stmt *S : body->body()) {
+        // Check for primitive assignment
+        if (BinaryOperator *assign = dyn_cast<BinaryOperator>(S)) {
+            if (MemberExpr *member = dyn_cast<MemberExpr>(assign->getLHS()->IgnoreImpCasts())) {
+                if (FieldDecl *field = dyn_cast<FieldDecl>(member->getMemberDecl())) {
+                    if (field->getNameAsString() == "id") {
+                        hasIdInit = true;
+                    }
+                }
+            }
+        }
+
+        // Check for Inner constructor call
+        if (CallExpr *call = dyn_cast<CallExpr>(S)) {
+            if (FunctionDecl *callee = call->getDirectCallee()) {
+                std::string calleeName = callee->getNameAsString();
+                if (calleeName.find("Inner__ctor") != std::string::npos) {
+                    hasInnerCtorCall = true;
+                }
+            }
+        }
+    }
+
+    ASSERT(hasIdInit, "Should initialize primitive member 'id'");
+    ASSERT(hasInnerCtorCall, "Should call Inner default constructor for 'inner' member");
+
+    TEST_PASS("ImplicitDefaultConstructorWithClassMembers");
+}
+
+/**
+ * Test Case 22: No Implicit Default Constructor with Explicit Parameterized Constructor
+ *
+ * Tests that default constructor is NOT generated when user defines
+ * a parameterized constructor.
+ */
+void test_NoImplicitDefaultWithExplicitCtor() {
+    TEST_START("NoImplicitDefaultWithExplicitCtor");
+
+    const char *code = R"(
+        class Point {
+            int x, y;
+        public:
+            Point(int a, int b) : x(a), y(b) {}  // User-defined parameterized ctor
+            // No implicit default ctor should be generated
+        };
+    )";
+
+    std::unique_ptr<ASTUnit> AST = buildAST(code);
+    ASSERT(AST, "Failed to parse C++ code");
+
+    CNodeBuilder builder(AST->getASTContext());
+    CppToCVisitor visitor(AST->getASTContext(), builder);
+
+    visitor.TraverseDecl(AST->getASTContext().getTranslationUnitDecl());
+
+    // Should NOT generate default constructor
+    FunctionDecl *defaultCtor = visitor.getCtor("Point__ctor_default");
+    ASSERT(defaultCtor == nullptr, "Should NOT generate default ctor when user defines parameterized ctor");
+
+    // But should generate the user-defined parameterized constructor
+    FunctionDecl *paramCtor = visitor.getCtor("Point__ctor");
+    ASSERT(paramCtor != nullptr, "Should generate user-defined parameterized ctor");
+
+    TEST_PASS("NoImplicitDefaultWithExplicitCtor");
+}
+
+/**
+ * Test Case 23: Implicit Copy Constructor with Primitive Members
+ *
+ * Tests that copy constructor is generated and performs memberwise copy
+ * for primitive members.
+ */
+void test_ImplicitCopyConstructorPrimitives() {
+    TEST_START("ImplicitCopyConstructorPrimitives");
+
+    const char *code = R"(
+        class Vector {
+            double x, y, z;
+        public:
+            Vector(double a, double b, double c) : x(a), y(b), z(c) {}
+            // No copy constructor defined - implicit copy ctor needed
+        };
+    )";
+
+    std::unique_ptr<ASTUnit> AST = buildAST(code);
+    ASSERT(AST, "Failed to parse C++ code");
+
+    CNodeBuilder builder(AST->getASTContext());
+    CppToCVisitor visitor(AST->getASTContext(), builder);
+
+    visitor.TraverseDecl(AST->getASTContext().getTranslationUnitDecl());
+
+    // Should generate copy constructor: Vector__ctor_copy
+    FunctionDecl *copyCtor = visitor.getCtor("Vector__ctor_copy");
+    ASSERT(copyCtor != nullptr, "Vector__ctor_copy should be generated");
+
+    // Verify parameters: (this, const Vector* other)
+    ASSERT(copyCtor->parameters().size() == 2, "Copy ctor should have 2 parameters");
+
+    CompoundStmt *body = dyn_cast_or_null<CompoundStmt>(copyCtor->getBody());
+    ASSERT(body != nullptr, "Copy constructor body should exist");
+
+    // Should have 3 assignments: this->x = other->x; this->y = other->y; this->z = other->z;
+    std::vector<BinaryOperator*> assignments;
+    for (Stmt *S : body->body()) {
+        if (BinaryOperator *assign = dyn_cast<BinaryOperator>(S)) {
+            if (assign->getOpcode() == BO_Assign) {
+                assignments.push_back(assign);
+            }
+        }
+    }
+
+    ASSERT(assignments.size() == 3, "Should have 3 memberwise copy assignments");
+
+    TEST_PASS("ImplicitCopyConstructorPrimitives");
+}
+
+/**
+ * Test Case 24: Implicit Copy Constructor with Class-Type Members
+ *
+ * Tests that copy constructor calls copy constructors of class-type members.
+ */
+void test_ImplicitCopyConstructorWithClassMembers() {
+    TEST_START("ImplicitCopyConstructorWithClassMembers");
+
+    const char *code = R"(
+        class Inner {
+            int value;
+        public:
+            Inner(int v) : value(v) {}
+            Inner(const Inner& other) : value(other.value) {}
+        };
+
+        class Outer {
+            int id;
+            Inner inner;
+        public:
+            Outer(int i, int v) : id(i), inner(v) {}
+            // No copy constructor - implicit copy ctor needed
+        };
+    )";
+
+    std::unique_ptr<ASTUnit> AST = buildAST(code);
+    ASSERT(AST, "Failed to parse C++ code");
+
+    CNodeBuilder builder(AST->getASTContext());
+    CppToCVisitor visitor(AST->getASTContext(), builder);
+
+    visitor.TraverseDecl(AST->getASTContext().getTranslationUnitDecl());
+
+    // Should generate Outer__ctor_copy
+    FunctionDecl *copyCtor = visitor.getCtor("Outer__ctor_copy");
+    ASSERT(copyCtor != nullptr, "Outer__ctor_copy should be generated");
+
+    CompoundStmt *body = dyn_cast_or_null<CompoundStmt>(copyCtor->getBody());
+    ASSERT(body != nullptr, "Copy constructor body should exist");
+
+    // Should have:
+    // 1. this->id = other->id; (primitive memberwise copy)
+    // 2. Inner__ctor_copy(&this->inner, &other->inner); (class member copy ctor call)
+    bool hasIdCopy = false;
+    bool hasInnerCopyCall = false;
+
+    for (Stmt *S : body->body()) {
+        // Check for primitive copy assignment
+        if (BinaryOperator *assign = dyn_cast<BinaryOperator>(S)) {
+            if (MemberExpr *member = dyn_cast<MemberExpr>(assign->getLHS()->IgnoreImpCasts())) {
+                if (FieldDecl *field = dyn_cast<FieldDecl>(member->getMemberDecl())) {
+                    if (field->getNameAsString() == "id") {
+                        hasIdCopy = true;
+                    }
+                }
+            }
+        }
+
+        // Check for Inner copy constructor call
+        // Could be Inner__ctor_copy (implicit) or Inner__ctor_X (explicit)
+        if (CallExpr *call = dyn_cast<CallExpr>(S)) {
+            if (FunctionDecl *callee = call->getDirectCallee()) {
+                std::string calleeName = callee->getNameAsString();
+                // Check for any Inner constructor with 2 params (this + other = copy ctor)
+                if (calleeName.find("Inner__ctor") != std::string::npos &&
+                    callee->param_size() == 2) {
+                    hasInnerCopyCall = true;
+                }
+            }
+        }
+    }
+
+    ASSERT(hasIdCopy, "Should copy primitive member 'id'");
+    ASSERT(hasInnerCopyCall, "Should call Inner copy constructor for 'inner' member");
+
+    TEST_PASS("ImplicitCopyConstructorWithClassMembers");
+}
+
+/**
+ * Test Case 25: Implicit Copy Constructor with Pointer Members (Shallow Copy)
+ *
+ * Tests that copy constructor performs shallow copy for pointer members.
+ */
+void test_ImplicitCopyConstructorWithPointers() {
+    TEST_START("ImplicitCopyConstructorWithPointers");
+
+    const char *code = R"(
+        class Buffer {
+            int* data;
+            int size;
+        public:
+            Buffer(int s) : data(new int[s]), size(s) {}
+            // No copy constructor - implicit shallow copy needed
+        };
+    )";
+
+    std::unique_ptr<ASTUnit> AST = buildAST(code);
+    ASSERT(AST, "Failed to parse C++ code");
+
+    CNodeBuilder builder(AST->getASTContext());
+    CppToCVisitor visitor(AST->getASTContext(), builder);
+
+    visitor.TraverseDecl(AST->getASTContext().getTranslationUnitDecl());
+
+    // Should generate Buffer__ctor_copy
+    FunctionDecl *copyCtor = visitor.getCtor("Buffer__ctor_copy");
+    ASSERT(copyCtor != nullptr, "Buffer__ctor_copy should be generated");
+
+    CompoundStmt *body = dyn_cast_or_null<CompoundStmt>(copyCtor->getBody());
+    ASSERT(body != nullptr, "Copy constructor body should exist");
+
+    // Should have 2 assignments: this->data = other->data; this->size = other->size;
+    // (shallow copy - just copy the pointer, not the data)
+    std::vector<BinaryOperator*> assignments;
+    for (Stmt *S : body->body()) {
+        if (BinaryOperator *assign = dyn_cast<BinaryOperator>(S)) {
+            if (assign->getOpcode() == BO_Assign) {
+                assignments.push_back(assign);
+            }
+        }
+    }
+
+    ASSERT(assignments.size() == 2, "Should have 2 memberwise (shallow) copy assignments");
+
+    TEST_PASS("ImplicitCopyConstructorWithPointers");
+}
+
+// ============================================================================
 // Test Runner
 // ============================================================================
 
@@ -1481,6 +1822,20 @@ int main() {
     // Run Story #61 tests
     test_MemberInitListDeclarationOrder();
     test_EmptyMemberInitList();
+
+    std::cout << "\n";
+    std::cout << "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n";
+    std::cout << " Story #62: Default and Copy Constructor Generation Tests\n";
+    std::cout << "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n";
+    std::cout << "\n";
+
+    // Run Story #62 tests
+    test_ImplicitDefaultConstructorPrimitives();
+    test_ImplicitDefaultConstructorWithClassMembers();
+    test_NoImplicitDefaultWithExplicitCtor();
+    test_ImplicitCopyConstructorPrimitives();
+    test_ImplicitCopyConstructorWithClassMembers();
+    test_ImplicitCopyConstructorWithPointers();
 
     // Summary
     std::cout << "\n";
