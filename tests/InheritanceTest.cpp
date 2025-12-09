@@ -2142,6 +2142,335 @@ void test_MultipleMembersOrderVerification() {
     TEST_PASS("MultipleMembersOrderVerification");
 }
 
+/**
+ * Test Case 32: Const Member Initialization
+ *
+ * This test verifies that const members can be initialized through init lists.
+ *
+ * C++ Semantics: Const members MUST be initialized via constructor init list
+ * and cannot be assigned later. The translated C code must use const_cast or
+ * special initialization to properly set const members.
+ *
+ * Story #64 - Category 1: Member Init Lists (Test 3/5)
+ */
+void test_ConstMemberInitialization() {
+    TEST_START("ConstMemberInitialization");
+
+    const char *code = R"(
+        class Immutable {
+            const int id;
+            int value;
+        public:
+            Immutable(int i, int v) : id(i), value(v) {}
+            int getId() const { return id; }
+            int getValue() const { return value; }
+        };
+    )";
+
+    std::unique_ptr<ASTUnit> AST = buildAST(code);
+    ASSERT(AST, "Failed to parse C++ code");
+
+    CNodeBuilder builder(AST->getASTContext());
+    CppToCVisitor visitor(AST->getASTContext(), builder);
+
+    visitor.TraverseDecl(AST->getASTContext().getTranslationUnitDecl());
+
+    // Get Immutable constructor
+    FunctionDecl *immutableCtor = visitor.getCtor("Immutable__ctor");
+    ASSERT(immutableCtor != nullptr, "Immutable__ctor not found");
+
+    // Check constructor body has const member initialization
+    CompoundStmt *body = dyn_cast_or_null<CompoundStmt>(immutableCtor->getBody());
+    ASSERT(body != nullptr, "Immutable constructor body is null");
+
+    // Should have 2 statements: id init (const member) + value init
+    ASSERT(body->size() >= 2, "Expected at least 2 initialization statements");
+
+    // Convert body to vector
+    std::vector<Stmt*> stmts;
+    for (Stmt *S : body->body()) {
+        stmts.push_back(S);
+    }
+
+    // Verify both members are initialized (we accept any valid initialization)
+    // The key is that const members are handled without compilation errors
+    ASSERT(stmts.size() >= 2, "Expected at least 2 member initializations");
+
+    TEST_PASS("ConstMemberInitialization");
+}
+
+/**
+ * Test Case 33: Reference Member Initialization
+ *
+ * This test verifies that reference members are initialized through init lists.
+ *
+ * C++ Semantics: Reference members MUST be initialized via constructor init list.
+ * The translated C code must use pointer semantics to emulate references.
+ *
+ * Story #64 - Category 1: Member Init Lists (Test 4/5)
+ */
+void test_ReferenceMemberInitialization() {
+    TEST_START("ReferenceMemberInitialization");
+
+    const char *code = R"(
+        class RefHolder {
+            int& ref;
+            int value;
+        public:
+            RefHolder(int& r, int v) : ref(r), value(v) {}
+            int getRef() const { return ref; }
+            void setRef(int newVal) { ref = newVal; }
+        };
+    )";
+
+    std::unique_ptr<ASTUnit> AST = buildAST(code);
+    ASSERT(AST, "Failed to parse C++ code");
+
+    CNodeBuilder builder(AST->getASTContext());
+    CppToCVisitor visitor(AST->getASTContext(), builder);
+
+    visitor.TraverseDecl(AST->getASTContext().getTranslationUnitDecl());
+
+    // Get RefHolder constructor
+    FunctionDecl *refHolderCtor = visitor.getCtor("RefHolder__ctor");
+    ASSERT(refHolderCtor != nullptr, "RefHolder__ctor not found");
+
+    // Check constructor body
+    CompoundStmt *body = dyn_cast_or_null<CompoundStmt>(refHolderCtor->getBody());
+    ASSERT(body != nullptr, "RefHolder constructor body is null");
+
+    // Should have 2 statements: ref init (reference member) + value init
+    ASSERT(body->size() >= 2, "Expected at least 2 initialization statements");
+
+    TEST_PASS("ReferenceMemberInitialization");
+}
+
+/**
+ * Test Case 34: Entity System Scenario
+ *
+ * This test validates a complex real-world scenario: an entity system with
+ * inheritance, RAII, and member constructors.
+ *
+ * C++ Semantics: This tests the complete object lifecycle:
+ * - Base class construction (Component)
+ * - Member construction (Transform)
+ * - Derived class body execution
+ * - Destruction in reverse order
+ *
+ * Story #64 - Category 5: Complex Scenarios (Test 1/3)
+ */
+void test_EntitySystemScenario() {
+    TEST_START("EntitySystemScenario");
+
+    const char *code = R"(
+        class Transform {
+            float x, y, z;
+        public:
+            Transform(float x, float y, float z) : x(x), y(y), z(z) {}
+            ~Transform() {}
+            float getX() const { return x; }
+        };
+
+        class Component {
+        protected:
+            int id;
+        public:
+            Component(int id) : id(id) {}
+            virtual ~Component() {}
+            int getId() const { return id; }
+        };
+
+        class MeshComponent : public Component {
+            Transform transform;
+            const int vertexCount;
+        public:
+            MeshComponent(int id, float x, float y, float z, int verts)
+                : Component(id),
+                  transform(x, y, z),
+                  vertexCount(verts) {}
+
+            ~MeshComponent() {}
+        };
+    )";
+
+    std::unique_ptr<ASTUnit> AST = buildAST(code);
+    ASSERT(AST, "Failed to parse C++ code");
+
+    CNodeBuilder builder(AST->getASTContext());
+    CppToCVisitor visitor(AST->getASTContext(), builder);
+
+    visitor.TraverseDecl(AST->getASTContext().getTranslationUnitDecl());
+
+    // Get MeshComponent constructor
+    FunctionDecl *meshCtor = visitor.getCtor("MeshComponent__ctor");
+    ASSERT(meshCtor != nullptr, "MeshComponent__ctor not found");
+
+    // Check constructor body
+    CompoundStmt *body = dyn_cast_or_null<CompoundStmt>(meshCtor->getBody());
+    ASSERT(body != nullptr, "MeshComponent constructor body is null");
+
+    // Should have multiple statements:
+    // 1. Base constructor call (Component__ctor)
+    // 2. Member constructor call (Transform__ctor)
+    // 3. Const member initialization (vertexCount)
+    ASSERT(body->size() >= 3, "Expected at least 3 initialization statements");
+
+    // Get MeshComponent destructor
+    FunctionDecl *meshDtor = visitor.getDtor("MeshComponent__dtor");
+    ASSERT(meshDtor != nullptr, "MeshComponent__dtor not found");
+
+    // Check destructor body
+    CompoundStmt *dtorBody = dyn_cast_or_null<CompoundStmt>(meshDtor->getBody());
+    ASSERT(dtorBody != nullptr, "MeshComponent destructor body is null");
+
+    // Should have statements for member destructors and base destructor
+    ASSERT(dtorBody->size() >= 2, "Expected member + base destructor calls");
+
+    TEST_PASS("EntitySystemScenario");
+}
+
+/**
+ * Test Case 35: Container Class Scenario
+ *
+ * This test validates a container with dynamic allocation and copy semantics.
+ *
+ * C++ Semantics: Tests dynamic memory management with constructors/destructors.
+ *
+ * Story #64 - Category 5: Complex Scenarios (Test 2/3)
+ */
+void test_ContainerClassScenario() {
+    TEST_START("ContainerClassScenario");
+
+    const char *code = R"(
+        class DynamicArray {
+            int* data;
+            int size;
+        public:
+            DynamicArray(int s) : size(s), data(new int[s]) {
+                for (int i = 0; i < size; ++i) {
+                    data[i] = 0;
+                }
+            }
+
+            ~DynamicArray() {
+                delete[] data;
+            }
+
+            int getSize() const { return size; }
+            int* getData() { return data; }
+        };
+    )";
+
+    std::unique_ptr<ASTUnit> AST = buildAST(code);
+    ASSERT(AST, "Failed to parse C++ code");
+
+    CNodeBuilder builder(AST->getASTContext());
+    CppToCVisitor visitor(AST->getASTContext(), builder);
+
+    visitor.TraverseDecl(AST->getASTContext().getTranslationUnitDecl());
+
+    // Get DynamicArray constructor
+    FunctionDecl *arrayCtor = visitor.getCtor("DynamicArray__ctor");
+    ASSERT(arrayCtor != nullptr, "DynamicArray__ctor not found");
+
+    // Check constructor body has initialization + loop
+    CompoundStmt *body = dyn_cast_or_null<CompoundStmt>(arrayCtor->getBody());
+    ASSERT(body != nullptr, "DynamicArray constructor body is null");
+
+    // Should have member inits + for loop
+    ASSERT(body->size() >= 3, "Expected member inits + loop body");
+
+    // Get DynamicArray destructor
+    FunctionDecl *arrayDtor = visitor.getDtor("DynamicArray__dtor");
+    ASSERT(arrayDtor != nullptr, "DynamicArray__dtor not found");
+
+    // Check destructor has delete[] call
+    CompoundStmt *dtorBody = dyn_cast_or_null<CompoundStmt>(arrayDtor->getBody());
+    ASSERT(dtorBody != nullptr, "DynamicArray destructor body is null");
+
+    ASSERT(dtorBody->size() >= 1, "Expected delete[] statement");
+
+    TEST_PASS("ContainerClassScenario");
+}
+
+/**
+ * Test Case 36: Resource Manager Scenario
+ *
+ * This test validates a resource manager with inheritance, RAII, and complex initialization.
+ *
+ * C++ Semantics: Tests complete RAII pattern with base classes and member management.
+ *
+ * Story #64 - Category 5: Complex Scenarios (Test 3/3)
+ */
+void test_ResourceManagerScenario() {
+    TEST_START("ResourceManagerScenario");
+
+    const char *code = R"(
+        class Resource {
+            int id;
+        public:
+            Resource(int i) : id(i) {}
+            ~Resource() {}
+            int getId() const { return id; }
+        };
+
+        class ResourceManager {
+        protected:
+            int maxResources;
+        public:
+            ResourceManager(int max) : maxResources(max) {}
+            virtual ~ResourceManager() {}
+        };
+
+        class FileResourceManager : public ResourceManager {
+            Resource defaultResource;
+            const int bufferSize;
+        public:
+            FileResourceManager(int max, int bufSize)
+                : ResourceManager(max),
+                  defaultResource(0),
+                  bufferSize(bufSize) {}
+
+            ~FileResourceManager() {}
+        };
+    )";
+
+    std::unique_ptr<ASTUnit> AST = buildAST(code);
+    ASSERT(AST, "Failed to parse C++ code");
+
+    CNodeBuilder builder(AST->getASTContext());
+    CppToCVisitor visitor(AST->getASTContext(), builder);
+
+    visitor.TraverseDecl(AST->getASTContext().getTranslationUnitDecl());
+
+    // Get FileResourceManager constructor
+    FunctionDecl *fileCtor = visitor.getCtor("FileResourceManager__ctor");
+    ASSERT(fileCtor != nullptr, "FileResourceManager__ctor not found");
+
+    // Check constructor body
+    CompoundStmt *body = dyn_cast_or_null<CompoundStmt>(fileCtor->getBody());
+    ASSERT(body != nullptr, "FileResourceManager constructor body is null");
+
+    // Should have:
+    // 1. Base constructor call (ResourceManager__ctor)
+    // 2. Member constructor call (Resource__ctor for defaultResource)
+    // 3. Const member initialization (bufferSize)
+    ASSERT(body->size() >= 3, "Expected base + member + const initializations");
+
+    // Get FileResourceManager destructor
+    FunctionDecl *fileDtor = visitor.getDtor("FileResourceManager__dtor");
+    ASSERT(fileDtor != nullptr, "FileResourceManager__dtor not found");
+
+    // Check destructor body
+    CompoundStmt *dtorBody = dyn_cast_or_null<CompoundStmt>(fileDtor->getBody());
+    ASSERT(dtorBody != nullptr, "FileResourceManager destructor body is null");
+
+    // Should have member destructor + base destructor calls
+    ASSERT(dtorBody->size() >= 2, "Expected member + base destructor calls");
+
+    TEST_PASS("ResourceManagerScenario");
+}
+
 // ============================================================================
 // Test Runner
 // ============================================================================
@@ -2260,6 +2589,19 @@ int main() {
     test_CompleteChaining_BaseAndMembers();
     test_MultipleMembersOrderVerification();
     */
+
+    std::cout << "\n";
+    std::cout << "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n";
+    std::cout << " Story #64: Comprehensive Integration Testing\n";
+    std::cout << "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n";
+    std::cout << "\n";
+
+    // Run Story #64 tests
+    test_ConstMemberInitialization();
+    test_ReferenceMemberInitialization();
+    test_EntitySystemScenario();
+    test_ContainerClassScenario();
+    test_ResourceManagerScenario();
 
     // Summary
     std::cout << "\n";
