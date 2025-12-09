@@ -15,6 +15,9 @@
 #include <string>
 #include <vector>
 
+// Forward declaration
+class OverrideResolver;
+
 /**
  * @class VtableGenerator
  * @brief Generates C vtable struct definitions for polymorphic C++ classes
@@ -34,11 +37,13 @@
 class VtableGenerator {
 public:
     /**
-     * @brief Construct generator with AST context and virtual method analyzer
+     * @brief Construct generator with AST context, virtual method analyzer, and override resolver
      * @param Context Clang AST context
      * @param Analyzer Virtual method analyzer for detecting polymorphic classes
+     * @param Resolver Override resolver for resolving method implementations (optional, can be null for legacy behavior)
      */
-    VtableGenerator(clang::ASTContext& Context, VirtualMethodAnalyzer& Analyzer);
+    VtableGenerator(clang::ASTContext& Context, VirtualMethodAnalyzer& Analyzer,
+                    OverrideResolver* Resolver = nullptr);
 
     /**
      * @brief Generate vtable struct definition for a polymorphic class
@@ -72,6 +77,7 @@ private:
 
     clang::ASTContext& Context;
     VirtualMethodAnalyzer& Analyzer;
+    OverrideResolver* Resolver;  // Story #170: Override resolution
 };
 
 #endif // VTABLE_GENERATOR_H

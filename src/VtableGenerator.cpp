@@ -4,6 +4,7 @@
  */
 
 #include "../include/VtableGenerator.h"
+#include "../include/OverrideResolver.h"
 #include "clang/AST/DeclCXX.h"
 #include <sstream>
 #include <map>
@@ -11,8 +12,9 @@
 
 using namespace clang;
 
-VtableGenerator::VtableGenerator(ASTContext& Context, VirtualMethodAnalyzer& Analyzer)
-    : Context(Context), Analyzer(Analyzer) {}
+VtableGenerator::VtableGenerator(ASTContext& Context, VirtualMethodAnalyzer& Analyzer,
+                                  OverrideResolver* Resolver)
+    : Context(Context), Analyzer(Analyzer), Resolver(Resolver) {}
 
 std::string VtableGenerator::generateVtableStruct(const CXXRecordDecl* Record) {
     if (!Record || !Analyzer.isPolymorphic(Record)) {
@@ -39,11 +41,17 @@ std::string VtableGenerator::generateVtableStruct(const CXXRecordDecl* Record) {
 }
 
 std::vector<CXXMethodDecl*> VtableGenerator::getVtableMethodOrder(const CXXRecordDecl* Record) {
-    std::vector<CXXMethodDecl*> methods;
-
     if (!Record) {
-        return methods;
+        return {};
     }
+
+    // Story #170: Use OverrideResolver if available for proper override resolution
+    if (Resolver) {
+        return Resolver->resolveVtableLayout(Record);
+    }
+
+    // Legacy fallback: basic implementation (kept for backwards compatibility)
+    std::vector<CXXMethodDecl*> methods;
 
     // Collect all virtual methods including inherited ones
     // Use a map to track methods by name (for overrides)

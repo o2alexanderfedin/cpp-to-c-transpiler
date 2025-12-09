@@ -618,6 +618,7 @@ add_executable(VtableGeneratorTest
     tests/VtableGeneratorTest.cpp
     src/VtableGenerator.cpp
     src/VirtualMethodAnalyzer.cpp
+    src/OverrideResolver.cpp
 )
 
 target_compile_definitions(VtableGeneratorTest PRIVATE ${LLVM_DEFINITIONS})
@@ -651,6 +652,28 @@ target_include_directories(VptrInjectorTest PRIVATE
 )
 
 target_link_libraries(VptrInjectorTest PRIVATE
+    clangTooling
+    clangFrontend
+    clangAST
+    clangBasic
+)
+
+# Story #170: Virtual Function Override Resolution tests
+add_executable(OverrideResolverTest
+    tests/OverrideResolverTest.cpp
+    src/OverrideResolver.cpp
+    src/VirtualMethodAnalyzer.cpp
+)
+
+target_compile_definitions(OverrideResolverTest PRIVATE ${LLVM_DEFINITIONS})
+
+target_include_directories(OverrideResolverTest PRIVATE
+    ${CMAKE_SOURCE_DIR}/include
+    ${LLVM_INCLUDE_DIRS}
+    ${CLANG_INCLUDE_DIRS}
+)
+
+target_link_libraries(OverrideResolverTest PRIVATE
     clangTooling
     clangFrontend
     clangAST
