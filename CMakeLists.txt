@@ -117,6 +117,27 @@ target_link_libraries(OverloadResolutionTest PRIVATE
     clangBasic
 )
 
+# Story #67: Template Instantiation Extraction tests
+add_executable(TemplateExtractorTest
+    tests/TemplateExtractorTest.cpp
+    src/TemplateExtractor.cpp
+)
+
+target_compile_definitions(TemplateExtractorTest PRIVATE ${LLVM_DEFINITIONS})
+
+target_include_directories(TemplateExtractorTest PRIVATE
+    ${CMAKE_SOURCE_DIR}/include
+    ${LLVM_INCLUDE_DIRS}
+    ${CLANG_INCLUDE_DIRS}
+)
+
+target_link_libraries(TemplateExtractorTest PRIVATE
+    clangTooling
+    clangFrontend
+    clangAST
+    clangBasic
+)
+
 # Story #20: Translation Integration Tests
 add_executable(TranslationIntegrationTest
     tests/TranslationIntegrationTest.cpp
