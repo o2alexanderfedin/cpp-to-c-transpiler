@@ -194,56 +194,9 @@ bool CppToCVisitor::VisitCXXConstructorDecl(CXXConstructorDecl *CD) {
   // Story #51: Emit base constructor calls FIRST (before member initializers)
   emitBaseConstructorCalls(CD, thisParam, stmts);
 
-  // Story #61: Translate member initializers: this->x = x;
-  // IMPORTANT: Clang's AST API returns CXXCtorInitializer nodes in DECLARATION order,
-  // not source order. This matches C++ semantics where members are initialized in
-  // the order they are declared, regardless of initializer list order.
-  //
-  // Example: class Point { int x, y, z; public: Point() : z(0), x(0), y(0) {} };
-  // Clang returns initializers as: [x, y, z] (declaration order)
-  // NOT as: [z, x, y] (source order)
-  //
-  // This ensures correct C++ initialization semantics automatically.
-  for (CXXCtorInitializer *Init : CD->inits()) {
-    if (Init->isAnyMemberInitializer()) {
-      FieldDecl *Field = Init->getAnyMember();
-      Expr *InitExpr = Init->getInit();
-
-      if (!Field || !InitExpr) {
-        llvm::outs() << "  Warning: Null field or init expr, skipping\n";
-        continue;
-      }
-
-      llvm::outs() << "  Translating member initializer: " << Field->getName() << "\n";
-
-      // Translate the init expression first
-      Expr *TranslatedExpr = translateExpr(InitExpr);
-      if (!TranslatedExpr) {
-        llvm::outs() << "  Warning: Failed to translate init expr\n";
-        continue;
-      }
-
-      // Create the arrow member expression for this->field
-      MemberExpr *ThisMember = Builder.arrowMember(
-        Builder.ref(thisParam),
-        Field->getName()
-      );
-
-      if (!ThisMember) {
-        llvm::outs() << "  Warning: Failed to create arrow member\n";
-        continue;
-      }
-
-      // Create assignment: this->field = initExpr;
-      BinaryOperator *Assignment = Builder.assign(ThisMember, TranslatedExpr);
-      if (!Assignment) {
-        llvm::outs() << "  Warning: Failed to create assignment\n";
-        continue;
-      }
-
-      stmts.push_back(Assignment);
-    }
-  }
+  // Story #63: Emit member constructor calls in DECLARATION order
+  // Handles both class-type members (constructor calls) and primitives (assignment)
+  emitMemberConstructorCalls(CD, thisParam, stmts);
 
   // Translate constructor body statements
   if (CD->hasBody()) {
@@ -386,7 +339,12 @@ bool CppToCVisitor::VisitCXXDestructorDecl(CXXDestructorDecl *DD) {
     }
   }
 
-  // Story #52: Emit base destructor calls AFTER derived destructor body
+  // Story #63: Emit member destructor calls in REVERSE declaration order
+  // Called AFTER derived body, BEFORE base destructors
+  CXXRecordDecl *ClassDecl = DD->getParent();
+  emitMemberDestructorCalls(ClassDecl, thisParam, stmts);
+
+  // Story #52: Emit base destructor calls AFTER member destructors
   emitBaseDestructorCalls(DD, thisParam, stmts);
 
   // Set complete body
@@ -653,6 +611,164 @@ void CppToCVisitor::emitBaseDestructorCalls(CXXDestructorDecl *DD,
       llvm::outs() << "  -> Added base destructor call to "
                    << BaseDFunc->getNameAsString() << "\n";
     }
+  }
+}
+
+// ============================================================================
+// Story #63: Complete Constructor/Destructor Chaining Helper Methods
+// ============================================================================
+
+// Helper: Find initializer for a specific field in constructor init list
+CXXCtorInitializer* CppToCVisitor::findInitializerForField(
+    CXXConstructorDecl *CD,
+    FieldDecl *Field) {
+  for (CXXCtorInitializer *Init : CD->inits()) {
+    if (Init->isAnyMemberInitializer() && Init->getAnyMember() == Field) {
+      return Init;
+    }
+  }
+  return nullptr;
+}
+
+// Emit member constructor calls in declaration order
+void CppToCVisitor::emitMemberConstructorCalls(CXXConstructorDecl *CD,
+                                                ParmVarDecl *thisParam,
+                                                std::vector<Stmt*> &stmts) {
+  CXXRecordDecl *ClassDecl = CD->getParent();
+
+  // Iterate fields in DECLARATION order (not init list order)
+  for (FieldDecl *Field : ClassDecl->fields()) {
+    QualType fieldType = Field->getType();
+
+    // Check if field has initializer in init list
+    CXXCtorInitializer *Init = findInitializerForField(CD, Field);
+
+    if (fieldType->isRecordType()) {
+      // Class-type member: needs constructor call
+      const RecordType *RT = fieldType->getAs<RecordType>();
+      CXXRecordDecl *FieldClass = dyn_cast<CXXRecordDecl>(RT->getDecl());
+
+      if (!FieldClass || !FieldClass->hasDefinition()) {
+        continue;
+      }
+
+      if (Init) {
+        // Has explicit initializer: inner(val) or inner = other
+        Expr *InitExpr = Init->getInit();
+
+        if (CXXConstructExpr *CE = dyn_cast<CXXConstructExpr>(InitExpr)) {
+          // Constructor call: inner(val)
+          CXXConstructorDecl *MemberCtor = CE->getConstructor();
+
+          // Lookup the C constructor function
+          auto it = ctorMap.find(MemberCtor);
+          if (it == ctorMap.end()) {
+            llvm::outs() << "  Warning: Member constructor function not found\n";
+            continue;
+          }
+
+          FunctionDecl *MemberCFunc = it->second;
+
+          // Build argument list: &this->field, arg1, arg2, ...
+          MemberExpr *ThisMember = Builder.arrowMember(Builder.ref(thisParam), Field->getName());
+          Expr *memberAddr = Builder.addrOf(ThisMember);
+
+          std::vector<Expr*> args;
+          args.push_back(memberAddr);
+
+          for (const Expr *Arg : CE->arguments()) {
+            args.push_back(translateExpr(const_cast<Expr*>(Arg)));
+          }
+
+          CallExpr *ctorCall = Builder.call(MemberCFunc, args);
+          stmts.push_back(ctorCall);
+
+        } else {
+          // Copy/assignment: inner = other or inner(other) for copy
+          // Treat as assignment for now
+          MemberExpr *ThisMember = Builder.arrowMember(Builder.ref(thisParam), Field->getName());
+          Expr *TranslatedExpr = translateExpr(InitExpr);
+          BinaryOperator *Assignment = Builder.assign(ThisMember, TranslatedExpr);
+          stmts.push_back(Assignment);
+        }
+      } else {
+        // No initializer: call default constructor
+        // Find default constructor
+        CXXConstructorDecl *DefaultCtor = nullptr;
+        for (CXXConstructorDecl *Ctor : FieldClass->ctors()) {
+          if (Ctor->isDefaultConstructor()) {
+            DefaultCtor = Ctor;
+            break;
+          }
+        }
+
+        if (DefaultCtor) {
+          // Lookup the C constructor function
+          auto it = ctorMap.find(DefaultCtor);
+          if (it != ctorMap.end()) {
+            FunctionDecl *MemberCFunc = it->second;
+
+            MemberExpr *ThisMember = Builder.arrowMember(Builder.ref(thisParam), Field->getName());
+            Expr *memberAddr = Builder.addrOf(ThisMember);
+
+            CallExpr *ctorCall = Builder.call(MemberCFunc, {memberAddr});
+            stmts.push_back(ctorCall);
+          }
+        }
+      }
+    } else {
+      // Primitive member: use assignment if has initializer
+      if (Init) {
+        MemberExpr *ThisMember = Builder.arrowMember(Builder.ref(thisParam), Field->getName());
+        Expr *TranslatedExpr = translateExpr(Init->getInit());
+        BinaryOperator *Assignment = Builder.assign(ThisMember, TranslatedExpr);
+        stmts.push_back(Assignment);
+      }
+    }
+  }
+}
+
+// Emit member destructor calls in reverse declaration order
+void CppToCVisitor::emitMemberDestructorCalls(CXXRecordDecl *ClassDecl,
+                                               ParmVarDecl *thisParam,
+                                               std::vector<Stmt*> &stmts) {
+  // Collect fields with non-trivial destructors
+  std::vector<FieldDecl*> fieldsToDestroy;
+
+  for (FieldDecl *Field : ClassDecl->fields()) {
+    if (hasNonTrivialDestructor(Field->getType())) {
+      fieldsToDestroy.push_back(Field);
+    }
+  }
+
+  // Destroy in REVERSE declaration order
+  for (auto it = fieldsToDestroy.rbegin(); it != fieldsToDestroy.rend(); ++it) {
+    FieldDecl *Field = *it;
+    QualType fieldType = Field->getType();
+
+    // Get destructor for member type
+    const RecordType *RT = fieldType->getAs<RecordType>();
+    if (!RT) continue;
+
+    CXXRecordDecl *FieldClass = dyn_cast<CXXRecordDecl>(RT->getDecl());
+    if (!FieldClass || !FieldClass->hasDefinition()) continue;
+
+    CXXDestructorDecl *FieldDtor = FieldClass->getDestructor();
+    if (!FieldDtor) continue;
+
+    // Lookup the C destructor function
+    auto it2 = dtorMap.find(FieldDtor);
+    if (it2 == dtorMap.end()) {
+      continue;
+    }
+
+    FunctionDecl *FieldDFunc = it2->second;
+
+    // Build: FieldDtor(&this->field)
+    MemberExpr *ThisMember = Builder.arrowMember(Builder.ref(thisParam), Field->getName());
+    Expr *memberAddr = Builder.addrOf(ThisMember);
+    CallExpr *dtorCall = Builder.call(FieldDFunc, {memberAddr});
+    stmts.push_back(dtorCall);
   }
 }
 

@@ -149,6 +149,52 @@ private:
                                 clang::ParmVarDecl *thisParam,
                                 std::vector<clang::Stmt*> &stmts);
 
+  // Story #63: Complete Constructor/Destructor Chaining
+
+  /**
+   * @brief Create member constructor call statements for constructor
+   * @param CD The C++ constructor declaration
+   * @param thisParam The 'this' parameter of the constructor
+   * @param stmts Output vector to append member constructor calls to
+   *
+   * Single Responsibility: Handle member constructor calls (Story #63)
+   * Open/Closed: Can extend for const/reference members without modifying
+   *
+   * Processes member fields in declaration order and generates constructor
+   * calls for class-type members, either from explicit init list or default.
+   */
+  void emitMemberConstructorCalls(clang::CXXConstructorDecl *CD,
+                                   clang::ParmVarDecl *thisParam,
+                                   std::vector<clang::Stmt*> &stmts);
+
+  /**
+   * @brief Create member destructor call statements for destructor
+   * @param ClassDecl The C++ class declaration
+   * @param thisParam The 'this' parameter of the destructor
+   * @param stmts Output vector to append member destructor calls to
+   *
+   * Single Responsibility: Handle member destructor calls (Story #63)
+   * Open/Closed: Can extend for virtual destructors without modifying
+   *
+   * Processes member fields in REVERSE declaration order and generates
+   * destructor calls for class-type members with non-trivial destructors.
+   */
+  void emitMemberDestructorCalls(clang::CXXRecordDecl *ClassDecl,
+                                  clang::ParmVarDecl *thisParam,
+                                  std::vector<clang::Stmt*> &stmts);
+
+  /**
+   * @brief Find initializer for a specific field in constructor init list
+   * @param CD The C++ constructor declaration
+   * @param Field The field to find initializer for
+   * @return Initializer for the field, or nullptr if not found
+   *
+   * Single Responsibility: Lookup helper for member initializers
+   */
+  clang::CXXCtorInitializer* findInitializerForField(
+      clang::CXXConstructorDecl *CD,
+      clang::FieldDecl *Field);
+
   // Epic #7: Implicit Constructor Generation (Story #62)
 
   /**
