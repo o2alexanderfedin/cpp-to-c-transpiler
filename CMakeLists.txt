@@ -96,6 +96,27 @@ target_link_libraries(NameManglerTest PRIVATE
     clangBasic
 )
 
+# Story #66: Overload Resolution via Parameter Type Encoding tests
+add_executable(OverloadResolutionTest
+    tests/OverloadResolutionTest.cpp
+    src/NameMangler.cpp
+)
+
+target_compile_definitions(OverloadResolutionTest PRIVATE ${LLVM_DEFINITIONS})
+
+target_include_directories(OverloadResolutionTest PRIVATE
+    ${CMAKE_SOURCE_DIR}/include
+    ${LLVM_INCLUDE_DIRS}
+    ${CLANG_INCLUDE_DIRS}
+)
+
+target_link_libraries(OverloadResolutionTest PRIVATE
+    clangTooling
+    clangFrontend
+    clangAST
+    clangBasic
+)
+
 # Story #20: Translation Integration Tests
 add_executable(TranslationIntegrationTest
     tests/TranslationIntegrationTest.cpp

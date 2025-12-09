@@ -58,33 +58,62 @@ std::string NameMangler::mangleDestructor(CXXDestructorDecl *DD) {
 }
 
 std::string NameMangler::getSimpleTypeName(QualType T) {
-    // Remove qualifiers (const, volatile)
+    // Story #66: Encode const qualification and reference types explicitly
+    std::string result;
+
+    // Check for const qualification before removing it
+    bool isConst = T.isConstQualified();
+    if (isConst) {
+        result += "const_";
+    }
+
+    // Check for reference types
+    bool isReference = false;
+    bool isRValueRef = false;
+    if (T->isLValueReferenceType()) {
+        isReference = true;
+        T = T.getNonReferenceType();
+    } else if (T->isRValueReferenceType()) {
+        isRValueRef = true;
+        T = T.getNonReferenceType();
+    }
+
+    // Remove remaining qualifiers
     T = T.getUnqualifiedType();
 
     // Handle integer types
     if (T->isIntegerType()) {
-        return "int";
+        result += "int";
     }
-
     // Handle floating point types
-    if (T->isFloatingType()) {
-        return "float";
+    else if (T->isFloatingType()) {
+        result += "float";
     }
-
     // Handle pointer types
-    if (T->isPointerType()) {
-        return "ptr";
+    else if (T->isPointerType()) {
+        result += "ptr";
     }
-
     // Handle record types (struct/class)
-    if (T->isRecordType()) {
+    else if (T->isRecordType()) {
         if (auto *RD = T->getAsRecordDecl()) {
-            return RD->getName().str();
+            result += RD->getName().str();
+        } else {
+            result += "record";
         }
     }
-
     // Fallback: use full type string
-    return T.getAsString();
+    else {
+        result += T.getAsString();
+    }
+
+    // Append reference suffix
+    if (isReference) {
+        result += "_ref";
+    } else if (isRValueRef) {
+        result += "_rref";
+    }
+
+    return result;
 }
 
 // ============================================================================
