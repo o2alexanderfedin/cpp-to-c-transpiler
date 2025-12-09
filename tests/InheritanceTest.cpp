@@ -268,21 +268,245 @@ void test_SizeofVerification() {
 }
 
 // ============================================================================
+// Story #51: Constructor Chaining Tests (RED - Failing Tests)
+// ============================================================================
+
+/**
+ * Test Case 5: Simple Constructor Chaining
+ *
+ * C++ Input:
+ *   class Base {
+ *   public:
+ *       int x;
+ *       Base(int x) : x(x) {}
+ *   };
+ *   class Derived : public Base {
+ *   public:
+ *       int y;
+ *       Derived(int x, int y) : Base(x), y(y) {}
+ *   };
+ *
+ * Expected C Output:
+ *   void Derived__ctor(struct Derived *this, int x, int y) {
+ *       Base__ctor((struct Base*)this, x);  // Base ctor called first
+ *       this->y = y;
+ *   }
+ *
+ * Acceptance Criteria:
+ * - Base constructor call appears in derived constructor
+ * - Base constructor call is BEFORE derived member initialization
+ * - Base constructor receives correct arguments from member init list
+ */
+void test_SimpleConstructorChaining() {
+    TEST_START("SimpleConstructorChaining: Base ctor called before derived");
+
+    const char *cpp = R"(
+        class Base {
+        public:
+            int x;
+            Base(int x) : x(x) {}
+        };
+        class Derived : public Base {
+        public:
+            int y;
+            Derived(int x, int y) : Base(x), y(y) {}
+        };
+    )";
+
+    std::unique_ptr<ASTUnit> AST = buildAST(cpp);
+    ASSERT(AST, "Failed to parse C++ code");
+
+    CNodeBuilder builder(AST->getASTContext());
+    CppToCVisitor visitor(AST->getASTContext(), builder);
+    visitor.TraverseDecl(AST->getASTContext().getTranslationUnitDecl());
+
+    // Get generated C constructor for Derived
+    FunctionDecl *DerivedCtor = visitor.getCtor("Derived__ctor");
+    ASSERT(DerivedCtor != nullptr, "Derived constructor not generated");
+
+    // Constructor should have a body
+    ASSERT(DerivedCtor->hasBody(), "Derived constructor has no body");
+
+    CompoundStmt *Body = dyn_cast<CompoundStmt>(DerivedCtor->getBody());
+    ASSERT(Body != nullptr, "Derived constructor body is not a CompoundStmt");
+
+    // Body should have at least 2 statements:
+    // 1. Base constructor call
+    // 2. Derived member initialization
+    ASSERT(Body->size() >= 2, "Derived constructor should have >= 2 statements");
+
+    // First statement should be a call to Base__ctor
+    Stmt *FirstStmt = *Body->body_begin();
+    CallExpr *BaseCtorCall = dyn_cast<CallExpr>(FirstStmt);
+    ASSERT(BaseCtorCall != nullptr, "First statement should be a CallExpr (Base ctor call)");
+
+    // Verify the call is to Base__ctor
+    if (FunctionDecl *Callee = BaseCtorCall->getDirectCallee()) {
+        std::string calleeName = Callee->getNameAsString();
+        ASSERT(calleeName == "Base__ctor", "First call should be to Base__ctor");
+    }
+
+    TEST_PASS("SimpleConstructorChaining");
+}
+
+/**
+ * Test Case 6: Constructor Chaining with Member Init List
+ *
+ * C++ Input:
+ *   class Base {
+ *   public:
+ *       Base(int x, int y) {}
+ *   };
+ *   class Derived : public Base {
+ *   public:
+ *       int z;
+ *       Derived(int a, int b, int c) : Base(a, b), z(c) {}
+ *   };
+ *
+ * Expected C Output:
+ *   void Derived__ctor(struct Derived *this, int a, int b, int c) {
+ *       Base__ctor((struct Base*)this, a, b);  // Pass correct args
+ *       this->z = c;
+ *   }
+ *
+ * Acceptance Criteria:
+ * - Base constructor receives arguments from member init list
+ * - Correct number of arguments passed
+ * - Arguments in correct order
+ */
+void test_ConstructorChainingWithArgs() {
+    TEST_START("ConstructorChainingWithArgs: Base ctor gets correct args");
+
+    const char *cpp = R"(
+        class Base {
+        public:
+            Base(int x, int y) {}
+        };
+        class Derived : public Base {
+        public:
+            int z;
+            Derived(int a, int b, int c) : Base(a, b), z(c) {}
+        };
+    )";
+
+    std::unique_ptr<ASTUnit> AST = buildAST(cpp);
+    ASSERT(AST, "Failed to parse C++ code");
+
+    CNodeBuilder builder(AST->getASTContext());
+    CppToCVisitor visitor(AST->getASTContext(), builder);
+    visitor.TraverseDecl(AST->getASTContext().getTranslationUnitDecl());
+
+    FunctionDecl *DerivedCtor = visitor.getCtor("Derived__ctor");
+    ASSERT(DerivedCtor != nullptr, "Derived constructor not generated");
+
+    CompoundStmt *Body = dyn_cast<CompoundStmt>(DerivedCtor->getBody());
+    ASSERT(Body != nullptr, "Derived constructor has no body");
+
+    // First statement should be Base__ctor call
+    Stmt *FirstStmt = *Body->body_begin();
+    CallExpr *BaseCtorCall = dyn_cast<CallExpr>(FirstStmt);
+    ASSERT(BaseCtorCall != nullptr, "First statement should be Base ctor call");
+
+    // Base__ctor should receive 3 arguments: this, a, b
+    unsigned numArgs = BaseCtorCall->getNumArgs();
+    ASSERT(numArgs == 3, "Base__ctor should receive 3 arguments (this, a, b)");
+
+    TEST_PASS("ConstructorChainingWithArgs");
+}
+
+/**
+ * Test Case 7: Multi-Level Constructor Chaining
+ *
+ * C++ Input:
+ *   class Base { Base() {} };
+ *   class Derived1 : public Base { Derived1() : Base() {} };
+ *   class Derived2 : public Derived1 { Derived2() : Derived1() {} };
+ *
+ * Expected C Output:
+ *   void Derived1__ctor(struct Derived1 *this) {
+ *       Base__ctor((struct Base*)this);
+ *   }
+ *   void Derived2__ctor(struct Derived2 *this) {
+ *       Derived1__ctor((struct Derived1*)this);
+ *   }
+ *
+ * Acceptance Criteria:
+ * - Derived2 calls Derived1 constructor (not Base directly)
+ * - Constructor chain flows: Derived2 → Derived1 → Base
+ */
+void test_MultiLevelConstructorChaining() {
+    TEST_START("MultiLevelConstructorChaining: 3-level inheritance chain");
+
+    const char *cpp = R"(
+        class Base {
+        public:
+            Base() {}
+        };
+        class Derived1 : public Base {
+        public:
+            Derived1() : Base() {}
+        };
+        class Derived2 : public Derived1 {
+        public:
+            Derived2() : Derived1() {}
+        };
+    )";
+
+    std::unique_ptr<ASTUnit> AST = buildAST(cpp);
+    ASSERT(AST, "Failed to parse C++ code");
+
+    CNodeBuilder builder(AST->getASTContext());
+    CppToCVisitor visitor(AST->getASTContext(), builder);
+    visitor.TraverseDecl(AST->getASTContext().getTranslationUnitDecl());
+
+    // Check Derived2 constructor calls Derived1 constructor (not Base)
+    FunctionDecl *Derived2Ctor = visitor.getCtor("Derived2__ctor");
+    ASSERT(Derived2Ctor != nullptr, "Derived2 constructor not generated");
+
+    CompoundStmt *Body = dyn_cast<CompoundStmt>(Derived2Ctor->getBody());
+    ASSERT(Body != nullptr && Body->size() >= 1, "Derived2 constructor should have body");
+
+    Stmt *FirstStmt = *Body->body_begin();
+    CallExpr *ParentCtorCall = dyn_cast<CallExpr>(FirstStmt);
+    ASSERT(ParentCtorCall != nullptr, "First statement should be parent ctor call");
+
+    // Verify it calls Derived1__ctor (not Base__ctor)
+    if (FunctionDecl *Callee = ParentCtorCall->getDirectCallee()) {
+        std::string calleeName = Callee->getNameAsString();
+        ASSERT(calleeName == "Derived1__ctor",
+               "Derived2 should call Derived1__ctor (not Base__ctor)");
+    }
+
+    TEST_PASS("MultiLevelConstructorChaining");
+}
+
+// ============================================================================
 // Test Runner
 // ============================================================================
 
 int main() {
     std::cout << "\n";
     std::cout << "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n";
-    std::cout << " Story #50: Base Class Embedding Tests (RED Phase)\n";
+    std::cout << " Story #50: Base Class Embedding Tests\n";
     std::cout << "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n";
     std::cout << "\n";
 
-    // Run all tests
+    // Run Story #50 tests
     test_EmptyBaseClass();
     test_SingleBaseWithFields();
     test_MultiLevelInheritance();
     test_SizeofVerification();
+
+    std::cout << "\n";
+    std::cout << "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n";
+    std::cout << " Story #51: Constructor Chaining Tests (RED Phase)\n";
+    std::cout << "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n";
+    std::cout << "\n";
+
+    // Run Story #51 tests
+    test_SimpleConstructorChaining();
+    test_ConstructorChainingWithArgs();
+    test_MultiLevelConstructorChaining();
 
     // Summary
     std::cout << "\n";

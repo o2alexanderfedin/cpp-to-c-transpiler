@@ -188,6 +188,9 @@ bool CppToCVisitor::VisitCXXConstructorDecl(CXXConstructorDecl *CD) {
   currentThisParam = thisParam;
   currentMethod = CD;
 
+  // Story #51: Emit base constructor calls FIRST (before member initializers)
+  emitBaseConstructorCalls(CD, thisParam, stmts);
+
   // Translate member initializers: this->x = x;
   for (CXXCtorInitializer *Init : CD->inits()) {
     if (Init->isAnyMemberInitializer()) {
@@ -471,6 +474,96 @@ void CppToCVisitor::collectBaseClassFields(CXXRecordDecl *D,
         BaseField->getName()
       );
       fields.push_back(CField);
+    }
+  }
+}
+
+/**
+ * Story #51: Base Constructor Chaining (Epic #6)
+ *
+ * Single Responsibility: Extract base constructor call logic from VisitCXXConstructorDecl
+ * Open/Closed: Open for extension (virtual inheritance), closed for modification
+ *
+ * Implementation Strategy:
+ * 1. Iterate through constructor's member initializer list
+ * 2. For each base class initializer:
+ *    a. Extract the base class type
+ *    b. Get the C constructor function from ctorMap
+ *    c. Build argument list (this + initializer args)
+ *    d. Create call expression to base constructor
+ * 3. Add base constructor calls to statement list in order
+ *
+ * C++ Semantics:
+ * - Base constructors are called BEFORE derived constructor body
+ * - Base constructors are called in the order they appear in member init list
+ * - For multi-level inheritance, each level calls its immediate parent only
+ */
+void CppToCVisitor::emitBaseConstructorCalls(CXXConstructorDecl *CD,
+                                              ParmVarDecl *thisParam,
+                                              std::vector<Stmt*> &stmts) {
+  // Process base class initializers in order
+  for (CXXCtorInitializer *Init : CD->inits()) {
+    // Skip non-base initializers (member, delegating, etc.)
+    if (!Init->isBaseInitializer()) {
+      continue;
+    }
+
+    // Get the base class type from initializer
+    QualType BaseType = Init->getBaseClass()->getCanonicalTypeInternal();
+    CXXRecordDecl *BaseClass = BaseType->getAsCXXRecordDecl();
+
+    // Edge case: Invalid base class
+    if (!BaseClass) {
+      llvm::outs() << "  Warning: Could not get base class, skipping\n";
+      continue;
+    }
+
+    llvm::outs() << "  Translating base class initializer: " << BaseClass->getName() << "\n";
+
+    // Get the init expression (should be CXXConstructExpr)
+    Expr *BaseInit = Init->getInit();
+    CXXConstructExpr *CtorExpr = dyn_cast_or_null<CXXConstructExpr>(BaseInit);
+
+    // Edge case: Not a constructor expression
+    if (!CtorExpr) {
+      llvm::outs() << "  Warning: Base initializer is not a CXXConstructExpr\n";
+      continue;
+    }
+
+    // Get the base class constructor declaration
+    CXXConstructorDecl *BaseCtorDecl = CtorExpr->getConstructor();
+
+    // Lookup the C function for this base constructor
+    auto it = ctorMap.find(BaseCtorDecl);
+    if (it == ctorMap.end()) {
+      llvm::outs() << "  Warning: Base constructor function not found\n";
+      continue;
+    }
+
+    FunctionDecl *BaseCFunc = it->second;
+
+    // Build argument list for base constructor call
+    std::vector<Expr*> baseArgs;
+
+    // First argument: this pointer
+    // No explicit cast needed - base class fields are at offset 0 (Story #50)
+    baseArgs.push_back(Builder.ref(thisParam));
+
+    // Remaining arguments: from base initializer expression
+    for (unsigned i = 0; i < CtorExpr->getNumArgs(); i++) {
+      Expr *Arg = CtorExpr->getArg(i);
+      Expr *TranslatedArg = translateExpr(Arg);
+      if (TranslatedArg) {
+        baseArgs.push_back(TranslatedArg);
+      }
+    }
+
+    // Create the base constructor call expression
+    CallExpr *BaseCall = Builder.call(BaseCFunc, baseArgs);
+    if (BaseCall) {
+      stmts.push_back(BaseCall);
+      llvm::outs() << "  -> Added base constructor call to "
+                   << BaseCFunc->getNameAsString() << "\n";
     }
   }
 }

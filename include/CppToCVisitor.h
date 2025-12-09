@@ -113,4 +113,22 @@ private:
    */
   void collectBaseClassFields(clang::CXXRecordDecl *D,
                                std::vector<clang::FieldDecl*> &fields);
+
+  /**
+   * @brief Create base constructor call statements for derived constructor
+   * @param CD The C++ constructor declaration
+   * @param thisParam The 'this' parameter of the derived constructor
+   * @param stmts Output vector to append base constructor calls to
+   *
+   * Single Responsibility: Handle base constructor chaining logic (Story #51)
+   * Open/Closed: Can extend for virtual inheritance without modifying
+   *
+   * This method processes base class initializers from the constructor's
+   * member initialization list and generates calls to base class constructors.
+   * Base constructor calls are added in the order they appear in the C++
+   * source, ensuring proper initialization semantics.
+   */
+  void emitBaseConstructorCalls(clang::CXXConstructorDecl *CD,
+                                 clang::ParmVarDecl *thisParam,
+                                 std::vector<clang::Stmt*> &stmts);
 };
