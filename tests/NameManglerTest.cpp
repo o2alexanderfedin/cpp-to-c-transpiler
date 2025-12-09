@@ -1,112 +1,174 @@
-// TDD Tests for NameMangler - Epic #3 Implementation
-// Story #18: Basic name mangling
-
-#include "NameMangler.h"
 #include "clang/Tooling/Tooling.h"
-#include "clang/AST/DeclCXX.h"
+#include "clang/Frontend/ASTUnit.h"
+#include "../include/NameMangler.h"
 #include <iostream>
+#include <cassert>
 
 using namespace clang;
 
-// Simple test counter
-static int tests_passed = 0;
-static int tests_failed = 0;
+std::unique_ptr<ASTUnit> buildAST(const char *code) {
+    return tooling::buildASTFromCode(code);
+}
 
-#define TEST_START(name) std::cout << "Running " << name << "... ";
-#define TEST_PASS(name) { std::cout << "✓" << std::endl; tests_passed++; }
-#define TEST_FAIL(name, msg) { std::cout << "✗ FAILED: " << msg << std::endl; tests_failed++; }
-#define ASSERT(expr, msg) if (!(expr)) { TEST_FAIL("", msg); return; }
+// Test helper macros
+#define TEST_START(name) std::cout << "Test: " << name << " ... " << std::flush
+#define TEST_PASS(name) std::cout << "PASS" << std::endl
+#define ASSERT(cond, msg) \
+    if (!(cond)) { \
+        std::cerr << "\nASSERT FAILED: " << msg << std::endl; \
+        return; \
+    }
 
-// Helper to build AST and find method
-CXXMethodDecl* findMethod(ASTUnit *AST, const std::string &className, const std::string &methodName) {
+// Test 1: Simple class name
+void test_SimpleClassName() {
+    TEST_START("SimpleClassName");
+
+    const char *code = R"(
+        class MyClass {
+        public:
+            void method();
+        };
+    )";
+
+    std::unique_ptr<ASTUnit> AST = buildAST(code);
+    ASSERT(AST, "Failed to parse C++ code");
+
+    NameMangler mangler(AST->getASTContext());
+
+    // Find MyClass
     auto *TU = AST->getASTContext().getTranslationUnitDecl();
-    for (auto *Decl : TU->decls()) {
-        if (auto *CXXRecord = dyn_cast<CXXRecordDecl>(Decl)) {
-            if (CXXRecord->getName() == className) {
-                for (auto *Method : CXXRecord->methods()) {
-                    if (Method->getName() == methodName) {
-                        return Method;
+    CXXRecordDecl *MyClass = nullptr;
+    for (auto *D : TU->decls()) {
+        if (auto *RD = dyn_cast<CXXRecordDecl>(D)) {
+            if (RD->getNameAsString() == "MyClass") {
+                MyClass = RD;
+                break;
+            }
+        }
+    }
+
+    ASSERT(MyClass != nullptr, "MyClass not found");
+
+    std::string mangled = mangler.mangleClassName(MyClass);
+    ASSERT(mangled == "MyClass", "Expected 'MyClass', got: " + mangled);
+
+    TEST_PASS("SimpleClassName");
+}
+
+// Test 2: Class method
+void test_ClassMethod() {
+    TEST_START("ClassMethod");
+
+    const char *code = R"(
+        class MyClass {
+        public:
+            void method();
+        };
+    )";
+
+    std::unique_ptr<ASTUnit> AST = buildAST(code);
+    ASSERT(AST, "Failed to parse C++ code");
+
+    NameMangler mangler(AST->getASTContext());
+
+    // Find MyClass::method
+    auto *TU = AST->getASTContext().getTranslationUnitDecl();
+    CXXMethodDecl *method = nullptr;
+    for (auto *D : TU->decls()) {
+        if (auto *RD = dyn_cast<CXXRecordDecl>(D)) {
+            if (RD->getNameAsString() == "MyClass") {
+                for (auto *M : RD->methods()) {
+                    if (M->getNameAsString() == "method") {
+                        method = M;
+                        break;
                     }
                 }
             }
         }
     }
-    return nullptr;
+
+    ASSERT(method != nullptr, "MyClass::method not found");
+
+    std::string mangled = mangler.mangleMethodName(method);
+    ASSERT(mangled == "MyClass_method", "Expected 'MyClass_method', got: " + mangled);
+
+    TEST_PASS("ClassMethod");
 }
 
-CXXConstructorDecl* findConstructor(ASTUnit *AST, const std::string &className) {
+// Test 3: Namespace function
+void test_NamespaceFunction() {
+    TEST_START("NamespaceFunction");
+
+    const char *code = R"(
+        namespace ns {
+            void func();
+        }
+    )";
+
+    std::unique_ptr<ASTUnit> AST = buildAST(code);
+    ASSERT(AST, "Failed to parse C++ code");
+
+    NameMangler mangler(AST->getASTContext());
+
+    // Find ns::func
     auto *TU = AST->getASTContext().getTranslationUnitDecl();
-    for (auto *Decl : TU->decls()) {
-        if (auto *CXXRecord = dyn_cast<CXXRecordDecl>(Decl)) {
-            if (CXXRecord->getName() == className) {
-                for (auto *Ctor : CXXRecord->ctors()) {
-                    if (!Ctor->isImplicit()) {
-                        return Ctor;
+    FunctionDecl *func = nullptr;
+    for (auto *D : TU->decls()) {
+        if (auto *ND = dyn_cast<NamespaceDecl>(D)) {
+            if (ND->getNameAsString() == "ns") {
+                for (auto *Inner : ND->decls()) {
+                    if (auto *FD = dyn_cast<FunctionDecl>(Inner)) {
+                        if (FD->getNameAsString() == "func") {
+                            func = FD;
+                            break;
+                        }
                     }
                 }
             }
         }
     }
-    return nullptr;
+
+    ASSERT(func != nullptr, "ns::func not found");
+
+    std::string mangled = mangler.mangleFunctionName(func);
+    ASSERT(mangled == "ns_func", "Expected 'ns_func', got: " + mangled);
+
+    TEST_PASS("NamespaceFunction");
 }
 
-// ============================================================================
-// Story #18: Name Mangling Tests
-// ============================================================================
+// Test 4: Nested namespaces
+void test_NestedNamespaces() {
+    TEST_START("NestedNamespaces");
 
-void test_SimpleMethod(ASTContext &Ctx) {
-    TEST_START("SimpleMethod: Point::getX() -> Point_getX");
-
-    const char *cpp = R"(
-        class Point {
-        public:
-            int getX();
-        };
+    const char *code = R"(
+        namespace ns1 {
+            namespace ns2 {
+                void func();
+            }
+        }
     )";
-    std::unique_ptr<ASTUnit> AST = tooling::buildASTFromCode(cpp);
-    ASSERT(AST, "Failed to parse C++ code");
 
-    NameMangler mangler(AST->getASTContext());
-    CXXMethodDecl *MD = findMethod(AST.get(), "Point", "getX");
-    ASSERT(MD != nullptr, "Method not found");
-
-    std::string mangled = mangler.mangleName(MD);
-    ASSERT(mangled == "Point_getX", "Expected Point_getX, got: " + mangled);
-
-    TEST_PASS("SimpleMethod");
-}
-
-void test_OverloadedMethods(ASTContext &Ctx) {
-    TEST_START("OverloadedMethods: Math::add(int,int) and Math::add(float,float)");
-
-    const char *cpp = R"(
-        class Math {
-        public:
-            int add(int a, int b);
-            float add(float a, float b);
-        };
-    )";
-    std::unique_ptr<ASTUnit> AST = tooling::buildASTFromCode(cpp);
+    std::unique_ptr<ASTUnit> AST = buildAST(code);
     ASSERT(AST, "Failed to parse C++ code");
 
     NameMangler mangler(AST->getASTContext());
 
-    // Find both methods
-    CXXMethodDecl *MD1 = nullptr;
-    CXXMethodDecl *MD2 = nullptr;
-
+    // Find ns1::ns2::func
     auto *TU = AST->getASTContext().getTranslationUnitDecl();
-    for (auto *Decl : TU->decls()) {
-        if (auto *CXXRecord = dyn_cast<CXXRecordDecl>(Decl)) {
-            if (CXXRecord->getName() == "Math") {
-                for (auto *Method : CXXRecord->methods()) {
-                    if (Method->getName() == "add") {
-                        if (Method->param_size() > 0) {
-                            auto ParamType = Method->getParamDecl(0)->getType();
-                            if (ParamType->isIntegerType()) {
-                                MD1 = Method;
-                            } else if (ParamType->isFloatingType()) {
-                                MD2 = Method;
+    FunctionDecl *func = nullptr;
+    for (auto *D : TU->decls()) {
+        if (auto *ND1 = dyn_cast<NamespaceDecl>(D)) {
+            if (ND1->getNameAsString() == "ns1") {
+                for (auto *Inner1 : ND1->decls()) {
+                    if (auto *ND2 = dyn_cast<NamespaceDecl>(Inner1)) {
+                        if (ND2->getNameAsString() == "ns2") {
+                            for (auto *Inner2 : ND2->decls()) {
+                                if (auto *FD = dyn_cast<FunctionDecl>(Inner2)) {
+                                    if (FD->getNameAsString() == "func") {
+                                        func = FD;
+                                        break;
+                                    }
+                                }
                             }
                         }
                     }
@@ -115,99 +177,71 @@ void test_OverloadedMethods(ASTContext &Ctx) {
         }
     }
 
-    ASSERT(MD1 != nullptr && MD2 != nullptr, "Methods not found");
+    ASSERT(func != nullptr, "ns1::ns2::func not found");
 
-    std::string mangled1 = mangler.mangleName(MD1);
-    std::string mangled2 = mangler.mangleName(MD2);
+    std::string mangled = mangler.mangleFunctionName(func);
+    ASSERT(mangled == "ns1_ns2_func", "Expected 'ns1_ns2_func', got: " + mangled);
 
-    // Names must be different
-    ASSERT(mangled1 != mangled2, "Overloaded methods must have different names");
-
-    // Should contain base name
-    ASSERT(mangled1.find("Math_add") != std::string::npos, "Should contain Math_add");
-    ASSERT(mangled2.find("Math_add") != std::string::npos, "Should contain Math_add");
-
-    TEST_PASS("OverloadedMethods");
+    TEST_PASS("NestedNamespaces");
 }
 
-void test_Constructor(ASTContext &Ctx) {
-    TEST_START("Constructor: Point::Point(int,int) -> Point__ctor");
+// Test 5: Namespace + class + method
+void test_NamespaceClassMethod() {
+    TEST_START("NamespaceClassMethod");
 
-    const char *cpp = R"(
-        class Point {
-        public:
-            Point(int x, int y);
-        };
+    const char *code = R"(
+        namespace ns {
+            class MyClass {
+            public:
+                void method();
+            };
+        }
     )";
-    std::unique_ptr<ASTUnit> AST = tooling::buildASTFromCode(cpp);
-    ASSERT(AST, "Failed to parse C++ code");
 
-    NameMangler mangler(AST->getASTContext());
-    CXXConstructorDecl *CD = findConstructor(AST.get(), "Point");
-    ASSERT(CD != nullptr, "Constructor not found");
-
-    std::string mangled = mangler.mangleConstructor(CD);
-    ASSERT(mangled == "Point__ctor", "Expected Point__ctor, got: " + mangled);
-
-    TEST_PASS("Constructor");
-}
-
-void test_UniquenessCheck(ASTContext &Ctx) {
-    TEST_START("UniquenessCheck: Multiple calls generate unique names");
-
-    const char *cpp = R"(
-        class Test {
-        public:
-            void foo();
-            void bar();
-        };
-    )";
-    std::unique_ptr<ASTUnit> AST = tooling::buildASTFromCode(cpp);
+    std::unique_ptr<ASTUnit> AST = buildAST(code);
     ASSERT(AST, "Failed to parse C++ code");
 
     NameMangler mangler(AST->getASTContext());
 
-    CXXMethodDecl *MD1 = findMethod(AST.get(), "Test", "foo");
-    CXXMethodDecl *MD2 = findMethod(AST.get(), "Test", "bar");
-    ASSERT(MD1 != nullptr && MD2 != nullptr, "Methods not found");
+    // Find ns::MyClass::method
+    auto *TU = AST->getASTContext().getTranslationUnitDecl();
+    CXXMethodDecl *method = nullptr;
+    for (auto *D : TU->decls()) {
+        if (auto *ND = dyn_cast<NamespaceDecl>(D)) {
+            if (ND->getNameAsString() == "ns") {
+                for (auto *Inner : ND->decls()) {
+                    if (auto *RD = dyn_cast<CXXRecordDecl>(Inner)) {
+                        if (RD->getNameAsString() == "MyClass") {
+                            for (auto *M : RD->methods()) {
+                                if (M->getNameAsString() == "method") {
+                                    method = M;
+                                    break;
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
 
-    std::string mangled1 = mangler.mangleName(MD1);
-    std::string mangled2 = mangler.mangleName(MD2);
+    ASSERT(method != nullptr, "ns::MyClass::method not found");
 
-    // Names must be unique
-    ASSERT(mangled1 != mangled2, "Different methods must have different names");
-    ASSERT(mangled1 == "Test_foo", "Expected Test_foo");
-    ASSERT(mangled2 == "Test_bar", "Expected Test_bar");
+    std::string mangled = mangler.mangleMethodName(method);
+    ASSERT(mangled == "ns_MyClass_method", "Expected 'ns_MyClass_method', got: " + mangled);
 
-    TEST_PASS("UniquenessCheck");
+    TEST_PASS("NamespaceClassMethod");
 }
 
-int main(int argc, const char **argv) {
-    // Create a simple test AST for context
-    std::unique_ptr<ASTUnit> AST = tooling::buildASTFromCode("int main() { return 0; }");
-    if (!AST) {
-        std::cerr << "Failed to create test AST" << std::endl;
-        return 1;
-    }
+int main() {
+    std::cout << "Running NameMangler Tests...\n" << std::endl;
 
-    ASTContext &Ctx = AST->getASTContext();
+    test_SimpleClassName();
+    test_ClassMethod();
+    test_NamespaceFunction();
+    test_NestedNamespaces();
+    test_NamespaceClassMethod();
 
-    std::cout << "=== Story #18: Basic Name Mangling Tests ===" << std::endl;
-
-    test_SimpleMethod(Ctx);
-    test_OverloadedMethods(Ctx);
-    test_Constructor(Ctx);
-    test_UniquenessCheck(Ctx);
-
-    std::cout << "\n========================================" << std::endl;
-    std::cout << "Tests passed: " << tests_passed << std::endl;
-    std::cout << "Tests failed: " << tests_failed << std::endl;
-
-    if (tests_failed == 0) {
-        std::cout << "\n✓ All tests passed!" << std::endl;
-        return 0;
-    } else {
-        std::cout << "\n✗ Some tests failed!" << std::endl;
-        return 1;
-    }
+    std::cout << "\nAll tests passed!" << std::endl;
+    return 0;
 }

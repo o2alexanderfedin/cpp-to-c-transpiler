@@ -17,12 +17,14 @@ add_executable(cpptoc
     src/CppToCFrontendAction.cpp
     src/CppToCConsumer.cpp
     src/CppToCVisitor.cpp
+    src/CFGAnalyzer.cpp
     src/NameMangler.cpp
     src/CodeGenerator.cpp
     src/HeaderSeparator.cpp
     src/IncludeGuardGenerator.cpp
     src/DependencyAnalyzer.cpp
     src/FileOutputManager.cpp
+    src/CFGAnalyzer.cpp
 )
 
 # Apply LLVM/Clang compile definitions to target
@@ -53,7 +55,9 @@ target_link_libraries(cpptoc PRIVATE
 add_executable(CppToCVisitorTest
     tests/CppToCVisitorTest.cpp
     src/CppToCVisitor.cpp
+    src/CFGAnalyzer.cpp
     src/NameMangler.cpp
+    src/CFGAnalyzer.cpp
 )
 
 target_compile_definitions(CppToCVisitorTest PRIVATE ${LLVM_DEFINITIONS})
@@ -92,10 +96,99 @@ target_link_libraries(NameManglerTest PRIVATE
     clangBasic
 )
 
+# Story #66: Overload Resolution via Parameter Type Encoding tests
+add_executable(OverloadResolutionTest
+    tests/OverloadResolutionTest.cpp
+    src/NameMangler.cpp
+)
+
+target_compile_definitions(OverloadResolutionTest PRIVATE ${LLVM_DEFINITIONS})
+
+target_include_directories(OverloadResolutionTest PRIVATE
+    ${CMAKE_SOURCE_DIR}/include
+    ${LLVM_INCLUDE_DIRS}
+    ${CLANG_INCLUDE_DIRS}
+)
+
+target_link_libraries(OverloadResolutionTest PRIVATE
+    clangTooling
+    clangFrontend
+    clangAST
+    clangBasic
+)
+
+# Story #67: Template Instantiation Extraction tests
+add_executable(TemplateExtractorTest
+    tests/TemplateExtractorTest.cpp
+    src/TemplateExtractor.cpp
+)
+
+target_compile_definitions(TemplateExtractorTest PRIVATE ${LLVM_DEFINITIONS})
+
+target_include_directories(TemplateExtractorTest PRIVATE
+    ${CMAKE_SOURCE_DIR}/include
+    ${LLVM_INCLUDE_DIRS}
+    ${CLANG_INCLUDE_DIRS}
+)
+
+target_link_libraries(TemplateExtractorTest PRIVATE
+    clangTooling
+    clangFrontend
+    clangAST
+    clangBasic
+)
+
+# Story #68: Template Monomorphization and Code Generation tests
+add_executable(MonomorphizationTest
+    tests/MonomorphizationTest.cpp
+    src/TemplateMonomorphizer.cpp
+    src/TemplateExtractor.cpp
+    src/NameMangler.cpp
+)
+
+target_compile_definitions(MonomorphizationTest PRIVATE ${LLVM_DEFINITIONS})
+
+target_include_directories(MonomorphizationTest PRIVATE
+    ${CMAKE_SOURCE_DIR}/include
+    ${LLVM_INCLUDE_DIRS}
+    ${CLANG_INCLUDE_DIRS}
+)
+
+target_link_libraries(MonomorphizationTest PRIVATE
+    clangTooling
+    clangFrontend
+    clangAST
+    clangBasic
+)
+
+# Story #69: STL Container Support and Integration Testing
+add_executable(STLIntegrationTest
+    tests/STLIntegrationTest.cpp
+    src/TemplateMonomorphizer.cpp
+    src/TemplateExtractor.cpp
+    src/NameMangler.cpp
+)
+
+target_compile_definitions(STLIntegrationTest PRIVATE ${LLVM_DEFINITIONS})
+
+target_include_directories(STLIntegrationTest PRIVATE
+    ${CMAKE_SOURCE_DIR}/include
+    ${LLVM_INCLUDE_DIRS}
+    ${CLANG_INCLUDE_DIRS}
+)
+
+target_link_libraries(STLIntegrationTest PRIVATE
+    clangTooling
+    clangFrontend
+    clangAST
+    clangBasic
+)
+
 # Story #20: Translation Integration Tests
 add_executable(TranslationIntegrationTest
     tests/TranslationIntegrationTest.cpp
     src/CppToCVisitor.cpp
+    src/CFGAnalyzer.cpp
     src/NameMangler.cpp
 )
 
@@ -148,6 +241,7 @@ add_executable(ValidationTest
     tests/ValidationTest.cpp
     src/CodeGenerator.cpp
     src/CppToCVisitor.cpp
+    src/CFGAnalyzer.cpp
     src/NameMangler.cpp
 )
 
@@ -293,6 +387,189 @@ target_include_directories(IntegrationTest PRIVATE
 )
 
 target_link_libraries(IntegrationTest PRIVATE
+    clangTooling
+    clangFrontend
+    clangAST
+    clangBasic
+)
+
+# ============================================================================
+# Epic #5: RAII + Automatic Destructor Injection (Story #151)
+# ============================================================================
+
+# Story #151: CFG Analysis Infrastructure tests
+add_executable(CFGAnalysisTest
+    tests/CFGAnalysisTest.cpp
+    src/CFGAnalyzer.cpp
+)
+
+target_compile_definitions(CFGAnalysisTest PRIVATE ${LLVM_DEFINITIONS})
+
+target_include_directories(CFGAnalysisTest PRIVATE
+    ${CMAKE_SOURCE_DIR}/include
+    ${LLVM_INCLUDE_DIRS}
+    ${CLANG_INCLUDE_DIRS}
+)
+
+target_link_libraries(CFGAnalysisTest PRIVATE
+    clangTooling
+    clangFrontend
+    clangAnalysis
+    clangAST
+    clangBasic
+)
+
+# Story #152: Destructor Injection at Function Exit tests
+add_executable(FunctionExitDestructorTest
+    tests/FunctionExitDestructorTest.cpp
+    src/CppToCVisitor.cpp
+    src/CFGAnalyzer.cpp
+    src/NameMangler.cpp
+    src/CFGAnalyzer.cpp
+)
+
+target_compile_definitions(FunctionExitDestructorTest PRIVATE ${LLVM_DEFINITIONS})
+
+target_include_directories(FunctionExitDestructorTest PRIVATE
+    ${CMAKE_SOURCE_DIR}/include
+    ${LLVM_INCLUDE_DIRS}
+    ${CLANG_INCLUDE_DIRS}
+)
+
+target_link_libraries(FunctionExitDestructorTest PRIVATE
+    clangTooling
+    clangFrontend
+    clangAnalysis
+    clangAST
+    clangBasic
+)
+
+# Story #153: Destructor Injection at Early Returns tests
+add_executable(EarlyReturnDestructorTest
+    tests/EarlyReturnDestructorTest.cpp
+    src/CFGAnalyzer.cpp
+)
+
+target_compile_definitions(EarlyReturnDestructorTest PRIVATE ${LLVM_DEFINITIONS})
+
+target_include_directories(EarlyReturnDestructorTest PRIVATE
+    ${CMAKE_SOURCE_DIR}/include
+    ${LLVM_INCLUDE_DIRS}
+    ${CLANG_INCLUDE_DIRS}
+)
+
+target_link_libraries(EarlyReturnDestructorTest PRIVATE
+    clangTooling
+    clangFrontend
+    clangAST
+    clangBasic
+)
+
+# Story #154: Nested Scope Destruction tests
+add_executable(NestedScopeDestructorTest
+    tests/NestedScopeDestructorTest.cpp
+    src/CFGAnalyzer.cpp
+)
+
+target_compile_definitions(NestedScopeDestructorTest PRIVATE ${LLVM_DEFINITIONS})
+
+target_include_directories(NestedScopeDestructorTest PRIVATE
+    ${CMAKE_SOURCE_DIR}/include
+    ${LLVM_INCLUDE_DIRS}
+    ${CLANG_INCLUDE_DIRS}
+)
+
+target_link_libraries(NestedScopeDestructorTest PRIVATE
+    clangTooling
+    clangFrontend
+    clangAST
+    clangBasic
+)
+
+# Story #155: Goto Statement Handling tests
+add_executable(GotoDestructorTest
+    tests/GotoDestructorTest.cpp
+    src/CFGAnalyzer.cpp
+)
+
+target_compile_definitions(GotoDestructorTest PRIVATE ${LLVM_DEFINITIONS})
+
+target_include_directories(GotoDestructorTest PRIVATE
+    ${CMAKE_SOURCE_DIR}/include
+    ${LLVM_INCLUDE_DIRS}
+    ${CLANG_INCLUDE_DIRS}
+)
+
+target_link_libraries(GotoDestructorTest PRIVATE
+    clangTooling
+    clangFrontend
+    clangAST
+    clangBasic
+)
+
+# Story #156: Loop Break/Continue Handling tests
+add_executable(LoopDestructorTest
+    tests/LoopDestructorTest.cpp
+    src/CFGAnalyzer.cpp
+)
+
+target_compile_definitions(LoopDestructorTest PRIVATE ${LLVM_DEFINITIONS})
+
+target_include_directories(LoopDestructorTest PRIVATE
+    ${CMAKE_SOURCE_DIR}/include
+    ${LLVM_INCLUDE_DIRS}
+    ${CLANG_INCLUDE_DIRS}
+)
+
+target_link_libraries(LoopDestructorTest PRIVATE
+    clangTooling
+    clangFrontend
+    clangAST
+    clangBasic
+)
+
+# Story #157: Integration Testing & Validation
+add_executable(RAIIIntegrationTest
+    tests/RAIIIntegrationTest.cpp
+    src/CFGAnalyzer.cpp
+)
+
+target_compile_definitions(RAIIIntegrationTest PRIVATE ${LLVM_DEFINITIONS})
+
+target_include_directories(RAIIIntegrationTest PRIVATE
+    ${CMAKE_SOURCE_DIR}/include
+    ${LLVM_INCLUDE_DIRS}
+    ${CLANG_INCLUDE_DIRS}
+)
+
+target_link_libraries(RAIIIntegrationTest PRIVATE
+    clangTooling
+    clangFrontend
+    clangAST
+    clangBasic
+)
+
+# ============================================================================
+# Epic #6: Single Inheritance Support (Story #50)
+# ============================================================================
+
+# Story #50: Base Class Embedding in Struct Layout tests
+add_executable(InheritanceTest
+    tests/InheritanceTest.cpp
+    src/CppToCVisitor.cpp
+    src/CFGAnalyzer.cpp
+    src/NameMangler.cpp
+)
+
+target_compile_definitions(InheritanceTest PRIVATE ${LLVM_DEFINITIONS})
+
+target_include_directories(InheritanceTest PRIVATE
+    ${CMAKE_SOURCE_DIR}/include
+    ${LLVM_INCLUDE_DIRS}
+    ${CLANG_INCLUDE_DIRS}
+)
+
+target_link_libraries(InheritanceTest PRIVATE
     clangTooling
     clangFrontend
     clangAST
