@@ -24,6 +24,7 @@
 #include "clang/AST/DeclCXX.h"
 #include <string>
 #include <set>
+#include <vector>
 
 /**
  * @class NameMangler
@@ -87,7 +88,49 @@ public:
      */
     std::string mangleDestructor(clang::CXXDestructorDecl *DD);
 
+    /**
+     * @brief Mangle a C++ class name to C struct name (with namespace support)
+     * @param RD Class/record declaration
+     * @return Mangled name (e.g., "MyClass" or "ns_MyClass")
+     *
+     * Story #65: Implements namespace-aware class name mangling
+     * Algorithm:
+     * 1. Extract namespace hierarchy
+     * 2. Build qualified name: ns1_ns2_ClassName
+     * 3. Return mangled name
+     */
+    std::string mangleClassName(clang::CXXRecordDecl *RD);
+
+    /**
+     * @brief Mangle a C++ method name with namespace and class support
+     * @param MD Method declaration
+     * @return Mangled name (e.g., "ns_MyClass_method")
+     *
+     * Story #65: Full qualified mangling with namespace support
+     * Handles: namespace::Class::method -> ns_Class_method
+     */
+    std::string mangleMethodName(clang::CXXMethodDecl *MD);
+
+    /**
+     * @brief Mangle a C++ function name with namespace support
+     * @param FD Function declaration
+     * @return Mangled name (e.g., "ns_func" or "ns1_ns2_func")
+     *
+     * Story #65: Namespace-aware function mangling
+     * Handles nested namespaces: ns1::ns2::func -> ns1_ns2_func
+     */
+    std::string mangleFunctionName(clang::FunctionDecl *FD);
+
 private:
+    /**
+     * @brief Build qualified name from namespace hierarchy
+     * @param D Declaration to extract namespaces from
+     * @return Vector of namespace names (outermost first)
+     *
+     * Story #65: Extracts namespace hierarchy for mangling
+     * Example: ns1::ns2::Class returns {"ns1", "ns2"}
+     */
+    std::vector<std::string> extractNamespaceHierarchy(clang::Decl *D);
     /**
      * @brief Get simple type name for mangling
      * @param T QualType to convert
