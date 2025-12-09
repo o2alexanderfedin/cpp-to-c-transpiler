@@ -46,6 +46,15 @@ std::string NameMangler::mangleConstructor(CXXConstructorDecl *CD) {
     return mangledName;
 }
 
+std::string NameMangler::mangleDestructor(CXXDestructorDecl *DD) {
+    // Destructor name: ClassName__dtor
+    // Note: Destructors cannot be overloaded, so no suffix needed
+    std::string mangledName = DD->getParent()->getName().str() + "__dtor";
+
+    usedNames.insert(mangledName);
+    return mangledName;
+}
+
 std::string NameMangler::getSimpleTypeName(QualType T) {
     // Remove qualifiers (const, volatile)
     T = T.getUnqualifiedType();

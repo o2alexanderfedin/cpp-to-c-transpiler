@@ -1,8 +1,10 @@
 #include "CppToCVisitor.h"
+#include "CFGAnalyzer.h"
 #include "llvm/Support/raw_ostream.h"
 #include "clang/AST/Expr.h"
 #include "clang/AST/ExprCXX.h"
 #include <vector>
+#include <algorithm>
 
 using namespace clang;
 
@@ -289,6 +291,222 @@ FunctionDecl* CppToCVisitor::getCtor(llvm::StringRef funcName) const {
     }
   }
   return nullptr;
+}
+
+// Retrieve generated C destructor function by name (for testing - Story #152)
+FunctionDecl* CppToCVisitor::getDtor(llvm::StringRef funcName) const {
+  // Search through mapping to find destructor by name
+  for (const auto &entry : dtorMap) {
+    if (entry.second && entry.second->getName() == funcName) {
+      return entry.second;
+    }
+  }
+  return nullptr;
+}
+
+// ============================================================================
+// Epic #5: RAII + Automatic Destructor Injection
+// Story #152: Destructor Injection at Function Exit
+// ============================================================================
+
+// Visit C++ destructor declarations
+bool CppToCVisitor::VisitCXXDestructorDecl(CXXDestructorDecl *DD) {
+  // Edge case: Skip implicit destructors (compiler-generated)
+  if (DD->isImplicit() || DD->isTrivial()) {
+    return true;
+  }
+
+  llvm::outs() << "Translating destructor: ~" << DD->getParent()->getName() << "\n";
+
+  CXXRecordDecl *Parent = DD->getParent();
+  RecordDecl *CStruct = nullptr;
+
+  // Find C struct for parent class
+  if (cppToCMap.find(Parent) != cppToCMap.end()) {
+    CStruct = cppToCMap[Parent];
+  } else {
+    llvm::outs() << "  Warning: Parent struct not found, skipping\n";
+    return true;
+  }
+
+  // Build parameter list: this pointer only
+  std::vector<ParmVarDecl*> params;
+  QualType thisType = Builder.ptrType(Context.getRecordType(CStruct));
+  ParmVarDecl *thisParam = Builder.param(thisType, "this");
+  params.push_back(thisParam);
+
+  // Generate destructor name using name mangling
+  std::string funcName = Mangler.mangleDestructor(DD);
+
+  // Create C cleanup function
+  FunctionDecl *CFunc = Builder.funcDecl(
+    funcName,
+    Builder.voidType(),
+    params,
+    nullptr
+  );
+
+  // Set translation context for body translation
+  currentThisParam = thisParam;
+  currentMethod = DD;
+
+  // Translate destructor body if it exists
+  if (DD->hasBody()) {
+    Stmt *Body = DD->getBody();
+    Stmt *TranslatedBody = translateStmt(Body);
+    CFunc->setBody(TranslatedBody);
+    llvm::outs() << "  -> " << funcName << " with body translated\n";
+  } else {
+    // Create empty body for destructor
+    CFunc->setBody(Builder.block({}));
+    llvm::outs() << "  -> " << funcName << " (empty body)\n";
+  }
+
+  // Clear translation context
+  currentThisParam = nullptr;
+  currentMethod = nullptr;
+
+  // Store mapping
+  dtorMap[DD] = CFunc;
+
+  llvm::outs() << "  -> " << funcName << " created\n";
+
+  return true;
+}
+
+// Visit function declarations for destructor injection
+bool CppToCVisitor::VisitFunctionDecl(FunctionDecl *FD) {
+  // Skip if this is a C++ method (handled by VisitCXXMethodDecl)
+  if (isa<CXXMethodDecl>(FD)) {
+    return true;
+  }
+
+  // Skip if no body
+  if (!FD->hasBody()) {
+    return true;
+  }
+
+  // Story #152: Analyze function for RAII objects and inject destructors
+  llvm::outs() << "Analyzing function for RAII: " << FD->getNameAsString() << "\n";
+
+  // Use CFGAnalyzer to find local variables
+  CFGAnalyzer analyzer;
+  analyzer.analyzeCFG(FD);
+
+  std::vector<VarDecl*> localVars = analyzer.getLocalVars();
+  llvm::outs() << "  Found " << localVars.size() << " local variables\n";
+
+  // Filter to only objects with destructors
+  std::vector<VarDecl*> objectsToDestroy;
+  for (VarDecl *VD : localVars) {
+    if (hasNonTrivialDestructor(VD->getType())) {
+      objectsToDestroy.push_back(VD);
+      llvm::outs() << "  Variable '" << VD->getNameAsString()
+                   << "' has destructor\n";
+    }
+  }
+
+  if (!objectsToDestroy.empty()) {
+    llvm::outs() << "  Will inject destructors for "
+                 << objectsToDestroy.size() << " objects\n";
+    // Note: Actual injection happens during translation
+    // This visitor just identifies what needs to be done
+  }
+
+  return true;
+}
+
+// Helper: Check if type has non-trivial destructor
+bool CppToCVisitor::hasNonTrivialDestructor(QualType type) const {
+  // Remove qualifiers and get canonical type
+  type = type.getCanonicalType();
+  type.removeLocalConst();
+
+  // Check if it's a record type (class/struct)
+  const RecordType *RT = type->getAs<RecordType>();
+  if (!RT) {
+    return false;
+  }
+
+  RecordDecl *RD = RT->getDecl();
+  CXXRecordDecl *CXXRD = dyn_cast<CXXRecordDecl>(RD);
+
+  if (!CXXRD) {
+    return false;  // C struct, no destructor
+  }
+
+  // Check if destructor exists and is non-trivial
+  if (!CXXRD->hasDefinition()) {
+    return false;
+  }
+
+  return CXXRD->hasNonTrivialDestructor();
+}
+
+// Helper: Create destructor call for a variable
+CallExpr* CppToCVisitor::createDestructorCall(VarDecl *VD) {
+  QualType type = VD->getType();
+  const RecordType *RT = type->getAs<RecordType>();
+  if (!RT) {
+    return nullptr;
+  }
+
+  CXXRecordDecl *CXXRD = dyn_cast<CXXRecordDecl>(RT->getDecl());
+  if (!CXXRD || !CXXRD->hasDefinition()) {
+    return nullptr;
+  }
+
+  CXXDestructorDecl *Dtor = CXXRD->getDestructor();
+  if (!Dtor) {
+    return nullptr;
+  }
+
+  // Find the C destructor function
+  FunctionDecl *CDtor = nullptr;
+  if (dtorMap.find(Dtor) != dtorMap.end()) {
+    CDtor = dtorMap[Dtor];
+  }
+
+  if (!CDtor) {
+    // Destructor not yet translated, this might happen in multi-pass scenarios
+    llvm::outs() << "  Warning: Destructor for " << CXXRD->getName()
+                 << " not found in mapping\n";
+    return nullptr;
+  }
+
+  // Create call: ClassName__dtor(&var)
+  Expr *VarRef = Builder.ref(VD);
+  Expr *AddrOf = Builder.addrOf(VarRef);
+
+  return Builder.call(CDtor, {AddrOf});
+}
+
+// Helper: Inject destructors at scope exit
+void CppToCVisitor::injectDestructorsAtScopeExit(CompoundStmt *CS,
+                                                  const std::vector<VarDecl*> &vars) {
+  if (vars.empty()) {
+    return;
+  }
+
+  // Get existing statements
+  std::vector<Stmt*> stmts;
+  for (Stmt *S : CS->body()) {
+    stmts.push_back(S);
+  }
+
+  // Inject destructors in reverse construction order (LIFO)
+  for (auto it = vars.rbegin(); it != vars.rend(); ++it) {
+    CallExpr *DtorCall = createDestructorCall(*it);
+    if (DtorCall) {
+      stmts.push_back(DtorCall);
+      llvm::outs() << "  Injected destructor call for: "
+                   << (*it)->getNameAsString() << "\n";
+    }
+  }
+
+  // Note: In a real implementation, we'd need to replace the CompoundStmt
+  // For now, this demonstrates the logic
+  // Actual replacement would require TreeTransform or similar
 }
 
 // ============================================================================

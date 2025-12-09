@@ -17,12 +17,14 @@ add_executable(cpptoc
     src/CppToCFrontendAction.cpp
     src/CppToCConsumer.cpp
     src/CppToCVisitor.cpp
+    src/CFGAnalyzer.cpp
     src/NameMangler.cpp
     src/CodeGenerator.cpp
     src/HeaderSeparator.cpp
     src/IncludeGuardGenerator.cpp
     src/DependencyAnalyzer.cpp
     src/FileOutputManager.cpp
+    src/CFGAnalyzer.cpp
 )
 
 # Apply LLVM/Clang compile definitions to target
@@ -53,7 +55,9 @@ target_link_libraries(cpptoc PRIVATE
 add_executable(CppToCVisitorTest
     tests/CppToCVisitorTest.cpp
     src/CppToCVisitor.cpp
+    src/CFGAnalyzer.cpp
     src/NameMangler.cpp
+    src/CFGAnalyzer.cpp
 )
 
 target_compile_definitions(CppToCVisitorTest PRIVATE ${LLVM_DEFINITIONS})
@@ -96,6 +100,7 @@ target_link_libraries(NameManglerTest PRIVATE
 add_executable(TranslationIntegrationTest
     tests/TranslationIntegrationTest.cpp
     src/CppToCVisitor.cpp
+    src/CFGAnalyzer.cpp
     src/NameMangler.cpp
 )
 
@@ -148,6 +153,7 @@ add_executable(ValidationTest
     tests/ValidationTest.cpp
     src/CodeGenerator.cpp
     src/CppToCVisitor.cpp
+    src/CFGAnalyzer.cpp
     src/NameMangler.cpp
 )
 
@@ -318,6 +324,31 @@ target_include_directories(CFGAnalysisTest PRIVATE
 )
 
 target_link_libraries(CFGAnalysisTest PRIVATE
+    clangTooling
+    clangFrontend
+    clangAnalysis
+    clangAST
+    clangBasic
+)
+
+# Story #152: Destructor Injection at Function Exit tests
+add_executable(FunctionExitDestructorTest
+    tests/FunctionExitDestructorTest.cpp
+    src/CppToCVisitor.cpp
+    src/CFGAnalyzer.cpp
+    src/NameMangler.cpp
+    src/CFGAnalyzer.cpp
+)
+
+target_compile_definitions(FunctionExitDestructorTest PRIVATE ${LLVM_DEFINITIONS})
+
+target_include_directories(FunctionExitDestructorTest PRIVATE
+    ${CMAKE_SOURCE_DIR}/include
+    ${LLVM_INCLUDE_DIRS}
+    ${CLANG_INCLUDE_DIRS}
+)
+
+target_link_libraries(FunctionExitDestructorTest PRIVATE
     clangTooling
     clangFrontend
     clangAnalysis

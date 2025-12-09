@@ -23,6 +23,9 @@ class CppToCVisitor : public clang::RecursiveASTVisitor<CppToCVisitor> {
   // Mapping: C++ constructor -> C function (Story #17)
   std::map<clang::CXXConstructorDecl*, clang::FunctionDecl*> ctorMap;
 
+  // Mapping: C++ destructor -> C function (Story #152 - Epic #5)
+  std::map<clang::CXXDestructorDecl*, clang::FunctionDecl*> dtorMap;
+
   // Current translation context (Story #19)
   clang::ParmVarDecl *currentThisParam = nullptr;
   clang::CXXMethodDecl *currentMethod = nullptr;
@@ -39,6 +42,12 @@ public:
 
   // Visit C++ constructor declarations (Story #17)
   bool VisitCXXConstructorDecl(clang::CXXConstructorDecl *CD);
+
+  // Visit C++ destructor declarations (Story #152 - Epic #5)
+  bool VisitCXXDestructorDecl(clang::CXXDestructorDecl *DD);
+
+  // Visit function declarations (Story #152 - for destructor injection)
+  bool VisitFunctionDecl(clang::FunctionDecl *FD);
 
   // Visit variable declarations (including member variables)
   bool VisitVarDecl(clang::VarDecl *VD);
@@ -63,4 +72,32 @@ public:
 
   // Retrieve generated C constructor function by name (for testing)
   clang::FunctionDecl* getCtor(llvm::StringRef funcName) const;
+
+  // Retrieve generated C destructor function by name (for testing - Story #152)
+  clang::FunctionDecl* getDtor(llvm::StringRef funcName) const;
+
+private:
+  // Epic #5: RAII helper methods
+
+  /**
+   * @brief Check if a type has a destructor that needs to be called
+   * @param type The QualType to check
+   * @return true if type has a non-trivial destructor
+   */
+  bool hasNonTrivialDestructor(clang::QualType type) const;
+
+  /**
+   * @brief Create destructor call expression for a variable
+   * @param VD Variable declaration to destroy
+   * @return CallExpr for the destructor call
+   */
+  clang::CallExpr* createDestructorCall(clang::VarDecl *VD);
+
+  /**
+   * @brief Inject destructor calls at end of compound statement
+   * @param CS Compound statement to inject into
+   * @param vars Variables to destroy (in reverse construction order)
+   */
+  void injectDestructorsAtScopeExit(clang::CompoundStmt *CS,
+                                    const std::vector<clang::VarDecl*> &vars);
 };

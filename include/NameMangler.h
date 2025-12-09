@@ -78,6 +78,15 @@ public:
      */
     std::string mangleConstructor(clang::CXXConstructorDecl *CD);
 
+    /**
+     * @brief Mangle a C++ destructor to a C cleanup function name
+     * @param DD Destructor declaration
+     * @return Mangled name (e.g., "Point__dtor")
+     *
+     * Destructors use __dtor suffix. Epic #5: RAII + Automatic Destructor Injection
+     */
+    std::string mangleDestructor(clang::CXXDestructorDecl *DD);
+
 private:
     /**
      * @brief Get simple type name for mangling
