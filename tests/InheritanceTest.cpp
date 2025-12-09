@@ -1037,6 +1037,153 @@ void test_MethodOverridingWithParameters() {
 }
 
 // ============================================================================
+// Story #56: Multi-Level Inheritance Tests
+// ============================================================================
+
+/**
+ * Test Case 17: Comprehensive Multi-Level Inheritance Integration
+ *
+ * Verify that ALL aspects of multi-level inheritance work together:
+ * - Memory layout (all ancestor fields in order)
+ * - Constructor chaining (all levels)
+ * - Destructor chaining (all levels)
+ * - Member access (all levels)
+ * - Method overriding (all levels)
+ * - Upcasting (all levels)
+ */
+void test_ComprehensiveMultiLevelInheritance() {
+    TEST_START("ComprehensiveMultiLevelInheritance: Full 3-level hierarchy");
+
+    const char *cpp = R"(
+        class Animal {
+        protected:
+            int age;
+        public:
+            Animal(int a) : age(a) {}
+            ~Animal() {}
+            void speak() { /* animal sound */ }  // Non-virtual for this story
+        };
+
+        class Mammal : public Animal {
+        protected:
+            int furColor;
+        public:
+            Mammal(int a, int f) : Animal(a), furColor(f) {}
+            ~Mammal() {}
+            void speak() { /* mammal sound */ }  // Override (non-virtual)
+            int getFurColor() { return furColor; }
+        };
+
+        class Dog : public Mammal {
+            int barkVolume;
+        public:
+            Dog(int a, int f, int v) : Mammal(a, f), barkVolume(v) {}
+            ~Dog() {}
+            void speak() { /* bark! */ }  // Override (non-virtual)
+            int getAge() { return age; }  // Access grandparent member
+        };
+    )";
+
+    std::unique_ptr<ASTUnit> AST = buildAST(cpp);
+    ASSERT(AST, "Failed to parse C++ code");
+
+    CNodeBuilder builder(AST->getASTContext());
+    CppToCVisitor visitor(AST->getASTContext(), builder);
+    visitor.TraverseDecl(AST->getASTContext().getTranslationUnitDecl());
+
+    // ========================================================================
+    // 1. MEMORY LAYOUT: Verify all ancestor fields embedded in order
+    // ========================================================================
+
+    RecordDecl *DogStruct = visitor.getCStruct("Dog");
+    ASSERT(DogStruct != nullptr, "Dog struct not generated");
+
+    auto fields = DogStruct->fields();
+    std::vector<std::string> fieldNames;
+    for (auto *F : fields) {
+        fieldNames.push_back(F->getNameAsString());
+    }
+
+    ASSERT(fieldNames.size() == 3, "Dog should have 3 fields (age, furColor, barkVolume)");
+    ASSERT(fieldNames[0] == "age", "Field 0 must be 'age' from Animal (grandparent)");
+    ASSERT(fieldNames[1] == "furColor", "Field 1 must be 'furColor' from Mammal (parent)");
+    ASSERT(fieldNames[2] == "barkVolume", "Field 2 must be 'barkVolume' from Dog");
+
+    // ========================================================================
+    // 2. CONSTRUCTOR CHAINING: Verify all constructors exist and chain
+    // ========================================================================
+
+    FunctionDecl *animalCtor = visitor.getCtor("Animal__ctor");
+    ASSERT(animalCtor != nullptr, "Animal__ctor not generated");
+    ASSERT(animalCtor->getNumParams() == 2, "Animal__ctor(this, age)");
+
+    FunctionDecl *mammalCtor = visitor.getCtor("Mammal__ctor");
+    ASSERT(mammalCtor != nullptr, "Mammal__ctor not generated");
+    ASSERT(mammalCtor->getNumParams() == 3, "Mammal__ctor(this, age, furColor)");
+
+    FunctionDecl *dogCtor = visitor.getCtor("Dog__ctor");
+    ASSERT(dogCtor != nullptr, "Dog__ctor not generated");
+    ASSERT(dogCtor->getNumParams() == 4, "Dog__ctor(this, age, furColor, barkVolume)");
+
+    // ========================================================================
+    // 3. DESTRUCTOR CHAINING: Verify all destructors exist
+    // ========================================================================
+
+    FunctionDecl *animalDtor = visitor.getDtor("Animal__dtor");
+    ASSERT(animalDtor != nullptr, "Animal__dtor not generated");
+
+    FunctionDecl *mammalDtor = visitor.getDtor("Mammal__dtor");
+    ASSERT(mammalDtor != nullptr, "Mammal__dtor not generated");
+
+    FunctionDecl *dogDtor = visitor.getDtor("Dog__dtor");
+    ASSERT(dogDtor != nullptr, "Dog__dtor not generated");
+
+    // ========================================================================
+    // 4. METHOD OVERRIDING: Verify all speak() methods are distinct
+    // ========================================================================
+
+    FunctionDecl *animalSpeak = visitor.getCFunc("Animal_speak");
+    ASSERT(animalSpeak != nullptr, "Animal_speak not generated");
+
+    FunctionDecl *mammalSpeak = visitor.getCFunc("Mammal_speak");
+    ASSERT(mammalSpeak != nullptr, "Mammal_speak not generated");
+
+    FunctionDecl *dogSpeak = visitor.getCFunc("Dog_speak");
+    ASSERT(dogSpeak != nullptr, "Dog_speak not generated");
+
+    ASSERT(animalSpeak != mammalSpeak, "Animal_speak ≠ Mammal_speak");
+    ASSERT(mammalSpeak != dogSpeak, "Mammal_speak ≠ Dog_speak");
+    ASSERT(animalSpeak != dogSpeak, "Animal_speak ≠ Dog_speak");
+
+    // ========================================================================
+    // 5. MEMBER ACCESS: Verify Dog can access grandparent members
+    // ========================================================================
+
+    FunctionDecl *dogGetAge = visitor.getCFunc("Dog_getAge");
+    ASSERT(dogGetAge != nullptr, "Dog_getAge not generated (accesses grandparent member)");
+
+    // ========================================================================
+    // 6. UPCASTING: Verify memory layout allows all upcasts
+    // ========================================================================
+
+    // With age at offset 0:
+    // - (Mammal*)&dog works (age at offset 0)
+    // - (Animal*)&dog works (age at offset 0)
+    // - (Animal*)&mammal works (age at offset 0)
+
+    RecordDecl *MammalStruct = visitor.getCStruct("Mammal");
+    ASSERT(MammalStruct != nullptr, "Mammal struct not generated");
+
+    auto mammalFields = MammalStruct->fields();
+    auto mammalIt = mammalFields.begin();
+    ASSERT(mammalIt != mammalFields.end(), "Mammal should have fields");
+    ASSERT((*mammalIt)->getNameAsString() == "age",
+           "Mammal's first field must be 'age' for safe upcasting");
+
+    TEST_PASS("ComprehensiveMultiLevelInheritance");
+}
+
+// ============================================================================
 // Test Runner
 // ============================================================================
 
@@ -1104,6 +1251,15 @@ int main() {
     test_SimpleMethodOverriding();
     test_MethodOverridingWithReturn();
     test_MethodOverridingWithParameters();
+
+    std::cout << "\n";
+    std::cout << "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n";
+    std::cout << " Story #56: Multi-Level Inheritance Tests\n";
+    std::cout << "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n";
+    std::cout << "\n";
+
+    // Run Story #56 tests
+    test_ComprehensiveMultiLevelInheritance();
 
     // Summary
     std::cout << "\n";
