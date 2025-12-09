@@ -723,3 +723,25 @@ target_link_libraries(VirtualCallTranslatorTest PRIVATE
     clangAST
     clangBasic
 )
+
+# Story #173: Pure Virtual Function Support tests
+add_executable(PureVirtualHandlerTest
+    tests/PureVirtualHandlerTest.cpp
+    src/PureVirtualHandler.cpp
+    src/VirtualMethodAnalyzer.cpp
+)
+
+target_compile_definitions(PureVirtualHandlerTest PRIVATE ${LLVM_DEFINITIONS})
+
+target_include_directories(PureVirtualHandlerTest PRIVATE
+    ${CMAKE_SOURCE_DIR}/include
+    ${LLVM_INCLUDE_DIRS}
+    ${CLANG_INCLUDE_DIRS}
+)
+
+target_link_libraries(PureVirtualHandlerTest PRIVATE
+    clangTooling
+    clangFrontend
+    clangAST
+    clangBasic
+)
