@@ -767,3 +767,31 @@ target_link_libraries(VirtualDestructorHandlerTest PRIVATE
     clangAST
     clangBasic
 )
+
+# Story #175: Comprehensive Virtual Function Integration Tests
+add_executable(VirtualFunctionIntegrationTest
+    tests/VirtualFunctionIntegrationTest.cpp
+    src/VirtualMethodAnalyzer.cpp
+    src/VtableGenerator.cpp
+    src/VptrInjector.cpp
+    src/OverrideResolver.cpp
+    src/VtableInitializer.cpp
+    src/VirtualCallTranslator.cpp
+    src/PureVirtualHandler.cpp
+    src/VirtualDestructorHandler.cpp
+)
+
+target_compile_definitions(VirtualFunctionIntegrationTest PRIVATE ${LLVM_DEFINITIONS})
+
+target_include_directories(VirtualFunctionIntegrationTest PRIVATE
+    ${CMAKE_SOURCE_DIR}/include
+    ${LLVM_INCLUDE_DIRS}
+    ${CLANG_INCLUDE_DIRS}
+)
+
+target_link_libraries(VirtualFunctionIntegrationTest PRIVATE
+    clangTooling
+    clangFrontend
+    clangAST
+    clangBasic
+)
