@@ -100,4 +100,17 @@ private:
    */
   void injectDestructorsAtScopeExit(clang::CompoundStmt *CS,
                                     const std::vector<clang::VarDecl*> &vars);
+
+  // Epic #6: Single Inheritance helper methods
+
+  /**
+   * @brief Collect all base class fields in inheritance order
+   * @param D The C++ class declaration
+   * @param fields Output vector to append fields to
+   *
+   * Single Responsibility: Extract base field collection logic
+   * Open/Closed: Can extend for multiple inheritance without modifying
+   */
+  void collectBaseClassFields(clang::CXXRecordDecl *D,
+                               std::vector<clang::FieldDecl*> &fields);
 };

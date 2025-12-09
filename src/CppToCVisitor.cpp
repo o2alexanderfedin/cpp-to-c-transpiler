@@ -8,7 +8,7 @@
 
 using namespace clang;
 
-// Story #15: Class-to-Struct Conversion
+// Story #15 + Story #50: Class-to-Struct Conversion with Base Class Embedding
 bool CppToCVisitor::VisitCXXRecordDecl(CXXRecordDecl *D) {
   // Edge case 1: Forward declarations - skip
   if (!D->isCompleteDefinition())
@@ -26,6 +26,11 @@ bool CppToCVisitor::VisitCXXRecordDecl(CXXRecordDecl *D) {
 
   // Build field list for C struct
   std::vector<FieldDecl*> fields;
+
+  // Story #50: Embed base class fields at offset 0 (SRP: delegate to helper)
+  collectBaseClassFields(D, fields);
+
+  // Add derived class's own fields after base class fields
   for (FieldDecl *Field : D->fields()) {
     // Create C field with same type and name
     FieldDecl *CField = Builder.fieldDecl(
@@ -415,6 +420,64 @@ bool CppToCVisitor::VisitFunctionDecl(FunctionDecl *FD) {
 
   return true;
 }
+
+// ============================================================================
+// Epic #6: Single Inheritance Helper Methods
+// ============================================================================
+
+/**
+ * Story #50: Collect all base class fields in inheritance order
+ *
+ * SOLID Principles Applied:
+ * - Single Responsibility: Only collects base fields, doesn't modify anything
+ * - Open/Closed: Can be extended for multiple inheritance without modification
+ * - Dependency Inversion: Depends on FieldDecl abstraction, not concrete types
+ *
+ * Algorithm:
+ * 1. Iterate through each base class
+ * 2. Lookup the already-translated C struct for that base
+ * 3. Copy all fields from base C struct (which already includes its bases)
+ * 4. This naturally handles multi-level inheritance (A -> B -> C)
+ */
+void CppToCVisitor::collectBaseClassFields(CXXRecordDecl *D,
+                                            std::vector<FieldDecl*> &fields) {
+  // For each direct base class
+  for (const CXXBaseSpecifier &Base : D->bases()) {
+    CXXRecordDecl *BaseClass = Base.getType()->getAsCXXRecordDecl();
+
+    // Edge case: Invalid or incomplete base class definition
+    if (!BaseClass || !BaseClass->isCompleteDefinition()) {
+      continue;
+    }
+
+    // Lookup the C struct for this base class
+    // Note: Base classes are visited before derived classes by AST traversal
+    auto it = cppToCMap.find(BaseClass);
+    if (it == cppToCMap.end()) {
+      // Base class not yet translated - should not happen with proper traversal
+      llvm::errs() << "Warning: Base class " << BaseClass->getNameAsString()
+                   << " not yet translated\n";
+      continue;
+    }
+
+    RecordDecl *BaseCStruct = it->second;
+
+    // Copy all fields from base C struct (DRY: reuse existing field decls)
+    // The base C struct already contains its own base fields (multi-level)
+    for (FieldDecl *BaseField : BaseCStruct->fields()) {
+      // Create new field with same type and name for derived struct
+      FieldDecl *CField = Builder.fieldDecl(
+        BaseField->getType(),
+        BaseField->getName()
+      );
+      fields.push_back(CField);
+    }
+  }
+}
+
+// ============================================================================
+// Epic #5: RAII Helper Methods
+// ============================================================================
 
 // Helper: Check if type has non-trivial destructor
 bool CppToCVisitor::hasNonTrivialDestructor(QualType type) const {

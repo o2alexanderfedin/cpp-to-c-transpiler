@@ -460,3 +460,30 @@ target_link_libraries(RAIIIntegrationTest PRIVATE
     clangAST
     clangBasic
 )
+
+# ============================================================================
+# Epic #6: Single Inheritance Support (Story #50)
+# ============================================================================
+
+# Story #50: Base Class Embedding in Struct Layout tests
+add_executable(InheritanceTest
+    tests/InheritanceTest.cpp
+    src/CppToCVisitor.cpp
+    src/CFGAnalyzer.cpp
+    src/NameMangler.cpp
+)
+
+target_compile_definitions(InheritanceTest PRIVATE ${LLVM_DEFINITIONS})
+
+target_include_directories(InheritanceTest PRIVATE
+    ${CMAKE_SOURCE_DIR}/include
+    ${LLVM_INCLUDE_DIRS}
+    ${CLANG_INCLUDE_DIRS}
+)
+
+target_link_libraries(InheritanceTest PRIVATE
+    clangTooling
+    clangFrontend
+    clangAST
+    clangBasic
+)
