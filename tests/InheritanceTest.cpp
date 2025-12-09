@@ -887,6 +887,156 @@ void test_MultiLevelUpcasting() {
 }
 
 // ============================================================================
+// Story #55: Non-Virtual Method Overriding Tests
+// ============================================================================
+
+/**
+ * Test Case 14: Simple Method Overriding
+ *
+ * Verify that a derived class can override a base class method
+ * and that name mangling creates distinct C functions.
+ */
+void test_SimpleMethodOverriding() {
+    TEST_START("SimpleMethodOverriding: Derived overrides base method");
+
+    const char *cpp = R"(
+        class Base {
+        public:
+            void print() { /* base implementation */ }
+        };
+        class Derived : public Base {
+        public:
+            void print() { /* derived implementation - overrides Base::print */ }
+        };
+    )";
+
+    std::unique_ptr<ASTUnit> AST = buildAST(cpp);
+    ASSERT(AST, "Failed to parse C++ code");
+
+    CNodeBuilder builder(AST->getASTContext());
+    CppToCVisitor visitor(AST->getASTContext(), builder);
+    visitor.TraverseDecl(AST->getASTContext().getTranslationUnitDecl());
+
+    // Verify Base::print exists as Base_print
+    FunctionDecl *basePrint = visitor.getCFunc("Base_print");
+    ASSERT(basePrint != nullptr, "Base_print function not generated");
+    ASSERT(basePrint->getNumParams() == 1, "Base_print should have 'this' parameter");
+
+    // Verify Derived::print exists as Derived_print (separate function)
+    FunctionDecl *derivedPrint = visitor.getCFunc("Derived_print");
+    ASSERT(derivedPrint != nullptr, "Derived_print function not generated");
+    ASSERT(derivedPrint->getNumParams() == 1, "Derived_print should have 'this' parameter");
+
+    // Verify they are different functions (name mangling distinguishes them)
+    ASSERT(basePrint != derivedPrint,
+           "Base_print and Derived_print must be distinct functions");
+
+    // Verify parameter types are correct
+    ParmVarDecl *baseParam = basePrint->getParamDecl(0);
+    QualType baseParamType = baseParam->getType();
+    ASSERT(baseParamType->isPointerType(), "Base_print parameter should be pointer");
+
+    ParmVarDecl *derivedParam = derivedPrint->getParamDecl(0);
+    QualType derivedParamType = derivedParam->getType();
+    ASSERT(derivedParamType->isPointerType(), "Derived_print parameter should be pointer");
+
+    TEST_PASS("SimpleMethodOverriding");
+}
+
+/**
+ * Test Case 15: Method Overriding with Return Value
+ *
+ * Verify that overridden methods with return values work correctly.
+ */
+void test_MethodOverridingWithReturn() {
+    TEST_START("MethodOverridingWithReturn: Override method returns different value");
+
+    const char *cpp = R"(
+        class Animal {
+        public:
+            int getLegs() { return 4; }  // Default: 4 legs
+        };
+        class Bird : public Animal {
+        public:
+            int getLegs() { return 2; }  // Override: birds have 2 legs
+        };
+    )";
+
+    std::unique_ptr<ASTUnit> AST = buildAST(cpp);
+    ASSERT(AST, "Failed to parse C++ code");
+
+    CNodeBuilder builder(AST->getASTContext());
+    CppToCVisitor visitor(AST->getASTContext(), builder);
+    visitor.TraverseDecl(AST->getASTContext().getTranslationUnitDecl());
+
+    // Verify Animal::getLegs exists
+    FunctionDecl *animalGetLegs = visitor.getCFunc("Animal_getLegs");
+    ASSERT(animalGetLegs != nullptr, "Animal_getLegs function not generated");
+
+    // Verify Bird::getLegs exists (separate function)
+    FunctionDecl *birdGetLegs = visitor.getCFunc("Bird_getLegs");
+    ASSERT(birdGetLegs != nullptr, "Bird_getLegs function not generated");
+
+    // Verify they are distinct functions
+    ASSERT(animalGetLegs != birdGetLegs,
+           "Animal_getLegs and Bird_getLegs must be distinct");
+
+    // Verify both return int
+    QualType animalRetType = animalGetLegs->getReturnType();
+    ASSERT(animalRetType->isIntegerType(), "Animal_getLegs should return int");
+
+    QualType birdRetType = birdGetLegs->getReturnType();
+    ASSERT(birdRetType->isIntegerType(), "Bird_getLegs should return int");
+
+    TEST_PASS("MethodOverridingWithReturn");
+}
+
+/**
+ * Test Case 16: Method Overriding with Parameters
+ *
+ * Verify that overridden methods with parameters work correctly.
+ */
+void test_MethodOverridingWithParameters() {
+    TEST_START("MethodOverridingWithParameters: Override method with params");
+
+    const char *cpp = R"(
+        class Shape {
+        public:
+            void setSize(int s) { /* base implementation */ }
+        };
+        class Circle : public Shape {
+        public:
+            void setSize(int s) { /* derived implementation - validates s > 0 */ }
+        };
+    )";
+
+    std::unique_ptr<ASTUnit> AST = buildAST(cpp);
+    ASSERT(AST, "Failed to parse C++ code");
+
+    CNodeBuilder builder(AST->getASTContext());
+    CppToCVisitor visitor(AST->getASTContext(), builder);
+    visitor.TraverseDecl(AST->getASTContext().getTranslationUnitDecl());
+
+    // Verify Shape::setSize exists
+    FunctionDecl *shapeSetSize = visitor.getCFunc("Shape_setSize");
+    ASSERT(shapeSetSize != nullptr, "Shape_setSize function not generated");
+    ASSERT(shapeSetSize->getNumParams() == 2,
+           "Shape_setSize should have 2 parameters (this + s)");
+
+    // Verify Circle::setSize exists
+    FunctionDecl *circleSetSize = visitor.getCFunc("Circle_setSize");
+    ASSERT(circleSetSize != nullptr, "Circle_setSize function not generated");
+    ASSERT(circleSetSize->getNumParams() == 2,
+           "Circle_setSize should have 2 parameters (this + s)");
+
+    // Verify they are distinct
+    ASSERT(shapeSetSize != circleSetSize,
+           "Shape_setSize and Circle_setSize must be distinct");
+
+    TEST_PASS("MethodOverridingWithParameters");
+}
+
+// ============================================================================
 // Test Runner
 // ============================================================================
 
@@ -943,6 +1093,17 @@ int main() {
     // Run Story #54 tests
     test_BasicUpcasting();
     test_MultiLevelUpcasting();
+
+    std::cout << "\n";
+    std::cout << "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n";
+    std::cout << " Story #55: Non-Virtual Method Overriding Tests\n";
+    std::cout << "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n";
+    std::cout << "\n";
+
+    // Run Story #55 tests
+    test_SimpleMethodOverriding();
+    test_MethodOverridingWithReturn();
+    test_MethodOverridingWithParameters();
 
     // Summary
     std::cout << "\n";
