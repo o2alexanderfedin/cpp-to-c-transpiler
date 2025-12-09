@@ -191,7 +191,16 @@ bool CppToCVisitor::VisitCXXConstructorDecl(CXXConstructorDecl *CD) {
   // Story #51: Emit base constructor calls FIRST (before member initializers)
   emitBaseConstructorCalls(CD, thisParam, stmts);
 
-  // Translate member initializers: this->x = x;
+  // Story #61: Translate member initializers: this->x = x;
+  // IMPORTANT: Clang's AST API returns CXXCtorInitializer nodes in DECLARATION order,
+  // not source order. This matches C++ semantics where members are initialized in
+  // the order they are declared, regardless of initializer list order.
+  //
+  // Example: class Point { int x, y, z; public: Point() : z(0), x(0), y(0) {} };
+  // Clang returns initializers as: [x, y, z] (declaration order)
+  // NOT as: [z, x, y] (source order)
+  //
+  // This ensures correct C++ initialization semantics automatically.
   for (CXXCtorInitializer *Init : CD->inits()) {
     if (Init->isAnyMemberInitializer()) {
       FieldDecl *Field = Init->getAnyMember();

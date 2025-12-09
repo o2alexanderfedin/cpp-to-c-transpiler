@@ -1270,6 +1270,131 @@ void test_ComprehensiveMultiLevelInheritance() {
  */
 
 // ============================================================================
+// Story #61: Member Initialization Lists with Declaration Order
+// ============================================================================
+
+/**
+ * Test Case 18: Member Init List Declaration Order
+ *
+ * This test verifies that member initialization lists are translated to C
+ * assignments in DECLARATION order, not initializer list order.
+ *
+ * C++ Semantics: Members are initialized in the order they are DECLARED,
+ * regardless of the order they appear in the member initializer list.
+ *
+ * Bug: Current implementation follows initializer list order (WRONG).
+ * Fix: Should follow declaration order (CORRECT).
+ */
+void test_MemberInitListDeclarationOrder() {
+    TEST_START("MemberInitListDeclarationOrder");
+
+    const char *code = R"(
+        class Point {
+            int x, y, z;  // Declaration order: x, y, z
+        public:
+            // Initializer list order: z, x, y (DIFFERENT from declaration!)
+            Point(int a, int b, int c) : z(c), x(a), y(b) {}
+        };
+    )";
+
+    // Parse and translate
+    std::unique_ptr<ASTUnit> AST = buildAST(code);
+    ASSERT(AST, "Failed to parse C++ code");
+
+    CNodeBuilder builder(AST->getASTContext());
+    CppToCVisitor visitor(AST->getASTContext(), builder);
+
+    visitor.TraverseDecl(AST->getASTContext().getTranslationUnitDecl());
+
+    // Get the generated C constructor
+    FunctionDecl *ctor = visitor.getCtor("Point__ctor");
+    ASSERT(ctor != nullptr, "Point__ctor not generated");
+
+    // Get constructor body
+    CompoundStmt *body = dyn_cast_or_null<CompoundStmt>(ctor->getBody());
+    ASSERT(body != nullptr, "Constructor body is null");
+
+    // The body should have 3 assignment statements (one per member)
+    std::vector<Stmt*> stmts;
+    for (Stmt *S : body->body()) {
+        stmts.push_back(S);
+    }
+
+    ASSERT(stmts.size() >= 3,
+           "Constructor should have at least 3 member assignments");
+
+    // Extract field names from assignments to verify initialization order
+    std::vector<std::string> initOrder;
+
+    for (size_t i = 0; i < 3 && i < stmts.size(); ++i) {
+        BinaryOperator *assign = dyn_cast<BinaryOperator>(stmts[i]);
+        if (!assign || assign->getOpcode() != BO_Assign) {
+            continue;
+        }
+
+        // Get LHS (this->field)
+        MemberExpr *member = dyn_cast<MemberExpr>(assign->getLHS()->IgnoreImpCasts());
+        if (member) {
+            FieldDecl *field = dyn_cast<FieldDecl>(member->getMemberDecl());
+            if (field) {
+                initOrder.push_back(field->getNameAsString());
+            }
+        }
+    }
+
+    // Verify initialization order matches DECLARATION order (x, y, z)
+    // NOT initializer list order (z, x, y)
+    ASSERT(initOrder.size() == 3, "Should have 3 member initializations");
+
+    // Critical assertion: members initialized in declaration order
+    ASSERT(initOrder[0] == "x",
+           "First initialization must be 'x' (declared first), got: " + initOrder[0]);
+    ASSERT(initOrder[1] == "y",
+           "Second initialization must be 'y' (declared second), got: " + initOrder[1]);
+    ASSERT(initOrder[2] == "z",
+           "Third initialization must be 'z' (declared third), got: " + initOrder[2]);
+
+    // This test currently FAILS because the implementation follows
+    // initializer list order (z, x, y) instead of declaration order (x, y, z)
+
+    TEST_PASS("MemberInitListDeclarationOrder");
+}
+
+/**
+ * Test Case 19: Empty Member Init List
+ *
+ * Verifies that constructors with empty member init lists still work.
+ */
+void test_EmptyMemberInitList() {
+    TEST_START("EmptyMemberInitList");
+
+    const char *code = R"(
+        class Simple {
+            int value;
+        public:
+            Simple() {}  // Empty init list - default initialization
+        };
+    )";
+
+    std::unique_ptr<ASTUnit> AST = buildAST(code);
+    ASSERT(AST, "Failed to parse C++ code");
+
+    CNodeBuilder builder(AST->getASTContext());
+    CppToCVisitor visitor(AST->getASTContext(), builder);
+
+    visitor.TraverseDecl(AST->getASTContext().getTranslationUnitDecl());
+
+    FunctionDecl *ctor = visitor.getCtor("Simple__ctor");
+    ASSERT(ctor != nullptr, "Simple__ctor should be generated");
+
+    // Empty init list should generate constructor with no member assignments
+    CompoundStmt *body = dyn_cast_or_null<CompoundStmt>(ctor->getBody());
+    ASSERT(body != nullptr, "Constructor body should exist (even if empty)");
+
+    TEST_PASS("EmptyMemberInitList");
+}
+
+// ============================================================================
 // Test Runner
 // ============================================================================
 
@@ -1346,6 +1471,16 @@ int main() {
 
     // Run Story #56 tests
     test_ComprehensiveMultiLevelInheritance();
+
+    std::cout << "\n";
+    std::cout << "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n";
+    std::cout << " Story #61: Member Init List Declaration Order Tests\n";
+    std::cout << "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n";
+    std::cout << "\n";
+
+    // Run Story #61 tests
+    test_MemberInitListDeclarationOrder();
+    test_EmptyMemberInitList();
 
     // Summary
     std::cout << "\n";
