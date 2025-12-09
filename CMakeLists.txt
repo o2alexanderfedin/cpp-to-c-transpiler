@@ -298,3 +298,29 @@ target_link_libraries(IntegrationTest PRIVATE
     clangAST
     clangBasic
 )
+
+# ============================================================================
+# Epic #5: RAII + Automatic Destructor Injection (Story #151)
+# ============================================================================
+
+# Story #151: CFG Analysis Infrastructure tests
+add_executable(CFGAnalysisTest
+    tests/CFGAnalysisTest.cpp
+    src/CFGAnalyzer.cpp
+)
+
+target_compile_definitions(CFGAnalysisTest PRIVATE ${LLVM_DEFINITIONS})
+
+target_include_directories(CFGAnalysisTest PRIVATE
+    ${CMAKE_SOURCE_DIR}/include
+    ${LLVM_INCLUDE_DIRS}
+    ${CLANG_INCLUDE_DIRS}
+)
+
+target_link_libraries(CFGAnalysisTest PRIVATE
+    clangTooling
+    clangFrontend
+    clangAnalysis
+    clangAST
+    clangBasic
+)
