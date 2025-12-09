@@ -131,4 +131,21 @@ private:
   void emitBaseConstructorCalls(clang::CXXConstructorDecl *CD,
                                  clang::ParmVarDecl *thisParam,
                                  std::vector<clang::Stmt*> &stmts);
+
+  /**
+   * @brief Create base destructor call statements for derived destructor
+   * @param DD The C++ destructor declaration
+   * @param thisParam The 'this' parameter of the derived destructor
+   * @param stmts Output vector to append base destructor calls to
+   *
+   * Single Responsibility: Handle base destructor chaining logic (Story #52)
+   * Open/Closed: Can extend for virtual inheritance without modifying
+   *
+   * This method identifies the base classes and generates calls to their
+   * destructors. Base destructor calls are added AFTER the derived destructor
+   * body, ensuring destruction order is reverse of construction (C++ semantics).
+   */
+  void emitBaseDestructorCalls(clang::CXXDestructorDecl *DD,
+                                clang::ParmVarDecl *thisParam,
+                                std::vector<clang::Stmt*> &stmts);
 };

@@ -481,6 +481,220 @@ void test_MultiLevelConstructorChaining() {
 }
 
 // ============================================================================
+// Story #52: Destructor Chaining Tests (RED - Failing Tests)
+// ============================================================================
+
+/**
+ * Test Case 8: Simple Destructor Chaining
+ *
+ * C++ Input:
+ *   class Base {
+ *   public:
+ *       ~Base() {}
+ *   };
+ *   class Derived : public Base {
+ *   public:
+ *       ~Derived() {}
+ *   };
+ *
+ * Expected C Output:
+ *   void Derived__dtor(struct Derived *this) {
+ *       // Derived destructor body (if any)
+ *       Base__dtor((struct Base*)this);  // Base dtor called AFTER derived
+ *   }
+ *
+ * Acceptance Criteria:
+ * - Base destructor call appears in derived destructor
+ * - Base destructor call is AFTER derived destructor body
+ * - Destruction order is reverse of construction
+ */
+void test_SimpleDestructorChaining() {
+    TEST_START("SimpleDestructorChaining: Base dtor called after derived");
+
+    const char *cpp = R"(
+        class Base {
+        public:
+            ~Base() {}
+        };
+        class Derived : public Base {
+        public:
+            ~Derived() {}
+        };
+    )";
+
+    std::unique_ptr<ASTUnit> AST = buildAST(cpp);
+    ASSERT(AST, "Failed to parse C++ code");
+
+    CNodeBuilder builder(AST->getASTContext());
+    CppToCVisitor visitor(AST->getASTContext(), builder);
+    visitor.TraverseDecl(AST->getASTContext().getTranslationUnitDecl());
+
+    // Get generated C destructor for Derived
+    FunctionDecl *DerivedDtor = visitor.getDtor("Derived__dtor");
+    ASSERT(DerivedDtor != nullptr, "Derived destructor not generated");
+
+    // Destructor should have a body
+    ASSERT(DerivedDtor->hasBody(), "Derived destructor has no body");
+
+    CompoundStmt *Body = dyn_cast<CompoundStmt>(DerivedDtor->getBody());
+    ASSERT(Body != nullptr, "Derived destructor body is not a CompoundStmt");
+
+    // Body should have at least 1 statement: Base destructor call
+    ASSERT(Body->size() >= 1, "Derived destructor should have >= 1 statement");
+
+    // Last statement should be a call to Base__dtor
+    Stmt *LastStmt = *(Body->body_end() - 1);
+    CallExpr *BaseDtorCall = dyn_cast<CallExpr>(LastStmt);
+    ASSERT(BaseDtorCall != nullptr, "Last statement should be a CallExpr (Base dtor call)");
+
+    // Verify the call is to Base__dtor
+    if (FunctionDecl *Callee = BaseDtorCall->getDirectCallee()) {
+        std::string calleeName = Callee->getNameAsString();
+        ASSERT(calleeName == "Base__dtor", "Last call should be to Base__dtor");
+    }
+
+    TEST_PASS("SimpleDestructorChaining");
+}
+
+/**
+ * Test Case 9: Destructor Chaining with Body
+ *
+ * C++ Input:
+ *   class Base {
+ *   public:
+ *       int x;
+ *       ~Base() { x = 0; }
+ *   };
+ *   class Derived : public Base {
+ *   public:
+ *       int y;
+ *       ~Derived() { y = 0; }
+ *   };
+ *
+ * Expected C Output:
+ *   void Derived__dtor(struct Derived *this) {
+ *       this->y = 0;                     // Derived dtor body FIRST
+ *       Base__dtor((struct Base*)this);  // Base dtor AFTER
+ *   }
+ *
+ * Acceptance Criteria:
+ * - Derived destructor body executes first
+ * - Base destructor called after derived body
+ * - Order: Derived cleanup → Base cleanup
+ */
+void test_DestructorChainingWithBody() {
+    TEST_START("DestructorChainingWithBody: Derived body then base dtor");
+
+    const char *cpp = R"(
+        class Base {
+        public:
+            int x;
+            ~Base() { x = 0; }
+        };
+        class Derived : public Base {
+        public:
+            int y;
+            ~Derived() { y = 0; }
+        };
+    )";
+
+    std::unique_ptr<ASTUnit> AST = buildAST(cpp);
+    ASSERT(AST, "Failed to parse C++ code");
+
+    CNodeBuilder builder(AST->getASTContext());
+    CppToCVisitor visitor(AST->getASTContext(), builder);
+    visitor.TraverseDecl(AST->getASTContext().getTranslationUnitDecl());
+
+    FunctionDecl *DerivedDtor = visitor.getDtor("Derived__dtor");
+    ASSERT(DerivedDtor != nullptr, "Derived destructor not generated");
+
+    CompoundStmt *Body = dyn_cast<CompoundStmt>(DerivedDtor->getBody());
+    ASSERT(Body != nullptr && Body->size() >= 2, "Derived destructor should have >= 2 statements");
+
+    // Last statement should be Base__dtor call
+    Stmt *LastStmt = *(Body->body_end() - 1);
+    CallExpr *BaseDtorCall = dyn_cast<CallExpr>(LastStmt);
+    ASSERT(BaseDtorCall != nullptr, "Last statement should be Base dtor call");
+
+    if (FunctionDecl *Callee = BaseDtorCall->getDirectCallee()) {
+        std::string calleeName = Callee->getNameAsString();
+        ASSERT(calleeName == "Base__dtor", "Last call should be to Base__dtor");
+    }
+
+    TEST_PASS("DestructorChainingWithBody");
+}
+
+/**
+ * Test Case 10: Multi-Level Destructor Chaining
+ *
+ * C++ Input:
+ *   class Base { ~Base() {} };
+ *   class Derived1 : public Base { ~Derived1() {} };
+ *   class Derived2 : public Derived1 { ~Derived2() {} };
+ *
+ * Expected C Output:
+ *   void Derived2__dtor(struct Derived2 *this) {
+ *       // Derived2 body (if any)
+ *       Derived1__dtor((struct Derived1*)this);  // NOT Base__dtor
+ *   }
+ *   void Derived1__dtor(struct Derived1 *this) {
+ *       // Derived1 body (if any)
+ *       Base__dtor((struct Base*)this);
+ *   }
+ *
+ * Acceptance Criteria:
+ * - Derived2 calls Derived1 destructor (not Base directly)
+ * - Destruction chain flows: Derived2 → Derived1 → Base
+ * - Mirror of construction order (reverse)
+ */
+void test_MultiLevelDestructorChaining() {
+    TEST_START("MultiLevelDestructorChaining: 3-level inheritance chain");
+
+    const char *cpp = R"(
+        class Base {
+        public:
+            ~Base() {}
+        };
+        class Derived1 : public Base {
+        public:
+            ~Derived1() {}
+        };
+        class Derived2 : public Derived1 {
+        public:
+            ~Derived2() {}
+        };
+    )";
+
+    std::unique_ptr<ASTUnit> AST = buildAST(cpp);
+    ASSERT(AST, "Failed to parse C++ code");
+
+    CNodeBuilder builder(AST->getASTContext());
+    CppToCVisitor visitor(AST->getASTContext(), builder);
+    visitor.TraverseDecl(AST->getASTContext().getTranslationUnitDecl());
+
+    // Check Derived2 destructor calls Derived1 destructor (not Base)
+    FunctionDecl *Derived2Dtor = visitor.getDtor("Derived2__dtor");
+    ASSERT(Derived2Dtor != nullptr, "Derived2 destructor not generated");
+
+    CompoundStmt *Body = dyn_cast<CompoundStmt>(Derived2Dtor->getBody());
+    ASSERT(Body != nullptr && Body->size() >= 1, "Derived2 destructor should have body");
+
+    // Last statement should be parent dtor call
+    Stmt *LastStmt = *(Body->body_end() - 1);
+    CallExpr *ParentDtorCall = dyn_cast<CallExpr>(LastStmt);
+    ASSERT(ParentDtorCall != nullptr, "Last statement should be parent dtor call");
+
+    // Verify it calls Derived1__dtor (not Base__dtor)
+    if (FunctionDecl *Callee = ParentDtorCall->getDirectCallee()) {
+        std::string calleeName = Callee->getNameAsString();
+        ASSERT(calleeName == "Derived1__dtor",
+               "Derived2 should call Derived1__dtor (not Base__dtor)");
+    }
+
+    TEST_PASS("MultiLevelDestructorChaining");
+}
+
+// ============================================================================
 // Test Runner
 // ============================================================================
 
@@ -499,7 +713,7 @@ int main() {
 
     std::cout << "\n";
     std::cout << "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n";
-    std::cout << " Story #51: Constructor Chaining Tests (RED Phase)\n";
+    std::cout << " Story #51: Constructor Chaining Tests\n";
     std::cout << "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n";
     std::cout << "\n";
 
@@ -507,6 +721,17 @@ int main() {
     test_SimpleConstructorChaining();
     test_ConstructorChainingWithArgs();
     test_MultiLevelConstructorChaining();
+
+    std::cout << "\n";
+    std::cout << "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n";
+    std::cout << " Story #52: Destructor Chaining Tests (RED Phase)\n";
+    std::cout << "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n";
+    std::cout << "\n";
+
+    // Run Story #52 tests
+    test_SimpleDestructorChaining();
+    test_DestructorChainingWithBody();
+    test_MultiLevelDestructorChaining();
 
     // Summary
     std::cout << "\n";

@@ -358,17 +358,28 @@ bool CppToCVisitor::VisitCXXDestructorDecl(CXXDestructorDecl *DD) {
   currentThisParam = thisParam;
   currentMethod = DD;
 
-  // Translate destructor body if it exists
+  // Build destructor body with base destructor chaining
+  std::vector<Stmt*> stmts;
+
+  // Translate derived destructor body FIRST
   if (DD->hasBody()) {
-    Stmt *Body = DD->getBody();
-    Stmt *TranslatedBody = translateStmt(Body);
-    CFunc->setBody(TranslatedBody);
-    llvm::outs() << "  -> " << funcName << " with body translated\n";
-  } else {
-    // Create empty body for destructor
-    CFunc->setBody(Builder.block({}));
-    llvm::outs() << "  -> " << funcName << " (empty body)\n";
+    CompoundStmt *Body = dyn_cast<CompoundStmt>(DD->getBody());
+    if (Body) {
+      for (Stmt *S : Body->body()) {
+        Stmt *TranslatedStmt = translateStmt(S);
+        if (TranslatedStmt) {
+          stmts.push_back(TranslatedStmt);
+        }
+      }
+    }
   }
+
+  // Story #52: Emit base destructor calls AFTER derived destructor body
+  emitBaseDestructorCalls(DD, thisParam, stmts);
+
+  // Set complete body
+  CFunc->setBody(Builder.block(stmts));
+  llvm::outs() << "  -> " << funcName << " with " << stmts.size() << " statements\n";
 
   // Clear translation context
   currentThisParam = nullptr;
@@ -564,6 +575,71 @@ void CppToCVisitor::emitBaseConstructorCalls(CXXConstructorDecl *CD,
       stmts.push_back(BaseCall);
       llvm::outs() << "  -> Added base constructor call to "
                    << BaseCFunc->getNameAsString() << "\n";
+    }
+  }
+}
+
+/**
+ * Story #52: Base Destructor Chaining (Epic #6)
+ *
+ * Single Responsibility: Extract base destructor call logic from VisitCXXDestructorDecl
+ * Open/Closed: Open for extension (virtual inheritance), closed for modification
+ *
+ * Implementation Strategy:
+ * 1. Get the derived class's base classes
+ * 2. For each base class:
+ *    a. Find the base destructor in dtorMap
+ *    b. Create call to base destructor with 'this' pointer
+ *    c. Append to statement list
+ * 3. Base destructors called in order (for single inheritance, only one base)
+ *
+ * C++ Semantics:
+ * - Base destructors are called AFTER derived destructor body
+ * - Destruction order is REVERSE of construction order
+ * - For multi-level inheritance, each level calls its immediate parent only
+ */
+void CppToCVisitor::emitBaseDestructorCalls(CXXDestructorDecl *DD,
+                                             ParmVarDecl *thisParam,
+                                             std::vector<Stmt*> &stmts) {
+  CXXRecordDecl *DerivedClass = DD->getParent();
+
+  // Process each direct base class
+  for (const CXXBaseSpecifier &Base : DerivedClass->bases()) {
+    CXXRecordDecl *BaseClass = Base.getType()->getAsCXXRecordDecl();
+
+    // Edge case: Invalid base class
+    if (!BaseClass || !BaseClass->isCompleteDefinition()) {
+      continue;
+    }
+
+    llvm::outs() << "  Emitting base destructor call for: " << BaseClass->getName() << "\n";
+
+    // Get the base class destructor
+    CXXDestructorDecl *BaseDtor = BaseClass->getDestructor();
+    if (!BaseDtor) {
+      llvm::outs() << "  Warning: Base class has no destructor\n";
+      continue;
+    }
+
+    // Lookup the C function for this base destructor
+    auto it = dtorMap.find(BaseDtor);
+    if (it == dtorMap.end()) {
+      llvm::outs() << "  Warning: Base destructor function not found\n";
+      continue;
+    }
+
+    FunctionDecl *BaseDFunc = it->second;
+
+    // Build argument list: just 'this' pointer
+    std::vector<Expr*> baseArgs;
+    baseArgs.push_back(Builder.ref(thisParam));
+
+    // Create the base destructor call expression
+    CallExpr *BaseCall = Builder.call(BaseDFunc, baseArgs);
+    if (BaseCall) {
+      stmts.push_back(BaseCall);
+      llvm::outs() << "  -> Added base destructor call to "
+                   << BaseDFunc->getNameAsString() << "\n";
     }
   }
 }
