@@ -138,6 +138,29 @@ target_link_libraries(TemplateExtractorTest PRIVATE
     clangBasic
 )
 
+# Story #68: Template Monomorphization and Code Generation tests
+add_executable(MonomorphizationTest
+    tests/MonomorphizationTest.cpp
+    src/TemplateMonomorphizer.cpp
+    src/TemplateExtractor.cpp
+    src/NameMangler.cpp
+)
+
+target_compile_definitions(MonomorphizationTest PRIVATE ${LLVM_DEFINITIONS})
+
+target_include_directories(MonomorphizationTest PRIVATE
+    ${CMAKE_SOURCE_DIR}/include
+    ${LLVM_INCLUDE_DIRS}
+    ${CLANG_INCLUDE_DIRS}
+)
+
+target_link_libraries(MonomorphizationTest PRIVATE
+    clangTooling
+    clangFrontend
+    clangAST
+    clangBasic
+)
+
 # Story #20: Translation Integration Tests
 add_executable(TranslationIntegrationTest
     tests/TranslationIntegrationTest.cpp
