@@ -695,6 +695,53 @@ void test_MultiLevelDestructorChaining() {
 }
 
 // ============================================================================
+// Story #53: Member Access Through Inheritance Tests
+// ============================================================================
+
+/**
+ * Test Case 11: Member Access in Derived Methods
+ *
+ * Verify that derived class methods can access base class members
+ * through the embedded base fields (from Story #50).
+ */
+void test_MemberAccessInDerivedMethods() {
+    TEST_START("MemberAccessInDerivedMethods: Derived accesses base fields");
+
+    const char *cpp = R"(
+        class Base {
+        public:
+            int x;
+            Base(int val) : x(val) {}
+        };
+        class Derived : public Base {
+        public:
+            int y;
+            Derived(int a, int b) : Base(a), y(b) {}
+            int sum() { return x + y; }  // Access base member x
+        };
+    )";
+
+    std::unique_ptr<ASTUnit> AST = buildAST(cpp);
+    ASSERT(AST, "Failed to parse C++ code");
+
+    CNodeBuilder builder(AST->getASTContext());
+    CppToCVisitor visitor(AST->getASTContext(), builder);
+    visitor.TraverseDecl(AST->getASTContext().getTranslationUnitDecl());
+
+    // Verify Derived struct has both x and y fields
+    RecordDecl *DerivedStruct = visitor.getCStruct("Derived");
+    ASSERT(DerivedStruct != nullptr, "Derived struct not generated");
+
+    unsigned fieldCount = 0;
+    for (auto *F : DerivedStruct->fields()) {
+        fieldCount++;
+    }
+    ASSERT(fieldCount == 2, "Derived should have 2 fields (x from Base, y from Derived)");
+
+    TEST_PASS("MemberAccessInDerivedMethods");
+}
+
+// ============================================================================
 // Test Runner
 // ============================================================================
 
@@ -732,6 +779,15 @@ int main() {
     test_SimpleDestructorChaining();
     test_DestructorChainingWithBody();
     test_MultiLevelDestructorChaining();
+
+    std::cout << "\n";
+    std::cout << "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n";
+    std::cout << " Story #53: Member Access Tests\n";
+    std::cout << "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n";
+    std::cout << "\n";
+
+    // Run Story #53 tests
+    test_MemberAccessInDerivedMethods();
 
     // Summary
     std::cout << "\n";
