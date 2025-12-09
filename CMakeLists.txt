@@ -701,3 +701,25 @@ target_link_libraries(VtableInitializerTest PRIVATE
     clangAST
     clangBasic
 )
+
+# Story #172: Virtual Call Translation to Vtable Dispatch tests
+add_executable(VirtualCallTranslatorTest
+    tests/VirtualCallTranslatorTest.cpp
+    src/VirtualCallTranslator.cpp
+    src/VirtualMethodAnalyzer.cpp
+)
+
+target_compile_definitions(VirtualCallTranslatorTest PRIVATE ${LLVM_DEFINITIONS})
+
+target_include_directories(VirtualCallTranslatorTest PRIVATE
+    ${CMAKE_SOURCE_DIR}/include
+    ${LLVM_INCLUDE_DIRS}
+    ${CLANG_INCLUDE_DIRS}
+)
+
+target_link_libraries(VirtualCallTranslatorTest PRIVATE
+    clangTooling
+    clangFrontend
+    clangAST
+    clangBasic
+)
