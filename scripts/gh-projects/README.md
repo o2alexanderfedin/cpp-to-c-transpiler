@@ -52,30 +52,35 @@ Configuration is saved to: `~/.config/gh-projects/config.json`
 ```bash
 # Repository issues created atomically (draft→convert in single operation)
 
-# 1. Create epic
+# 1. Create epic (GitHub assigns issue number, e.g., #41)
 gh-project-create \
-  --title "Epic #42: Virtual Functions + Vtables" \
+  --title "Epic: Virtual Functions + Vtables" \
   --type epic \
   --priority High
+# Output: Issue: #41
 
-# 2. Create stories
+# 2. Create stories (GitHub assigns numbers, e.g., #167, #168)
 gh-project-create \
   --title "Story: Virtual Method Detection" \
   --type story \
   --status Todo
+# Output: Issue: #167
 
 gh-project-create \
   --title "Story: Vtable Struct Generation" \
   --type story \
   --status Todo
+# Output: Issue: #168
 
 # 3. Link stories to epic using native GitHub sub-issue API
+#    (use the issue numbers that were output above)
 gh-project-link --parent 41 --children 167,168
 
 # Behind the scenes, each gh-project-create:
 #   1. Creates draft (fast)
 #   2. Sets custom fields
 #   3. Converts to repository issue (atomic)
+#   4. GitHub assigns the issue number
 ```
 
 ### Working with Drafts
