@@ -1,0 +1,194 @@
+{
+  "template_name": "project-14",
+  "template_version": "1.0",
+  "export_timestamp": "2025-12-10T07:26:21Z",
+  "source_project": {
+    "owner": "o2alexanderfedin",
+    "number": 14,
+    "id": "PVT_kwHOBJ7Qkc4BKHLI",
+    "title": "C++ to C Transpiler",
+    "readme": "",
+    "short_description": ""
+  },
+  "fields": [
+    {
+      "name": "Status",
+      "data_type": "ProjectV2SingleSelectField",
+      "options": [
+        {
+          "name": "Todo",
+          "description": "",
+          "color": ""
+        },
+        {
+          "name": "In Progress",
+          "description": "",
+          "color": ""
+        },
+        {
+          "name": "Done",
+          "description": "",
+          "color": ""
+        }
+      ]
+    },
+    {
+      "name": "Parent issue",
+      "data_type": "ProjectV2Field",
+      "options": null
+    },
+    {
+      "name": "Sub-issues progress",
+      "data_type": "ProjectV2Field",
+      "options": null
+    },
+    {
+      "name": "Type",
+      "data_type": "ProjectV2SingleSelectField",
+      "options": [
+        {
+          "name": "Epic",
+          "description": "",
+          "color": ""
+        },
+        {
+          "name": "User Story",
+          "description": "",
+          "color": ""
+        },
+        {
+          "name": "Task",
+          "description": "",
+          "color": ""
+        },
+        {
+          "name": "Bug",
+          "description": "",
+          "color": ""
+        },
+        {
+          "name": "Spike",
+          "description": "",
+          "color": ""
+        }
+      ]
+    },
+    {
+      "name": "Priority",
+      "data_type": "ProjectV2SingleSelectField",
+      "options": [
+        {
+          "name": "Critical",
+          "description": "",
+          "color": ""
+        },
+        {
+          "name": "High",
+          "description": "",
+          "color": ""
+        },
+        {
+          "name": "Medium",
+          "description": "",
+          "color": ""
+        },
+        {
+          "name": "Low",
+          "description": "",
+          "color": ""
+        }
+      ]
+    },
+    {
+      "name": "Effort",
+      "data_type": "ProjectV2SingleSelectField",
+      "options": [
+        {
+          "name": "XS",
+          "description": "",
+          "color": ""
+        },
+        {
+          "name": "S",
+          "description": "",
+          "color": ""
+        },
+        {
+          "name": "M",
+          "description": "",
+          "color": ""
+        },
+        {
+          "name": "L",
+          "description": "",
+          "color": ""
+        },
+        {
+          "name": "XL",
+          "description": "",
+          "color": ""
+        },
+        {
+          "name": "XXL",
+          "description": "",
+          "color": ""
+        }
+      ]
+    },
+    {
+      "name": "Sprint",
+      "data_type": "ProjectV2Field",
+      "options": null
+    },
+    {
+      "name": "Story Points",
+      "data_type": "ProjectV2Field",
+      "options": null
+    },
+    {
+      "name": "Target Date",
+      "data_type": "ProjectV2Field",
+      "options": null
+    }
+  ],
+  "views": [
+    {
+      "name": "All",
+      "layout": "TABLE_LAYOUT",
+      "filter": "",
+      "group_by_fields": [
+        "Parent issue"
+      ],
+      "sort_by_fields": [],
+      "note": "Views cannot be created programmatically. Use copyProjectV2 mutation to clone with views, or create manually in UI."
+    },
+    {
+      "name": "All Todo",
+      "layout": "TABLE_LAYOUT",
+      "filter": "status:Todo",
+      "group_by_fields": [
+        "Parent issue"
+      ],
+      "sort_by_fields": [],
+      "note": "Views cannot be created programmatically. Use copyProjectV2 mutation to clone with views, or create manually in UI."
+    },
+    {
+      "name": "Kanban",
+      "layout": "BOARD_LAYOUT",
+      "filter": "",
+      "group_by_fields": [],
+      "sort_by_fields": [],
+      "note": "Views cannot be created programmatically. Use copyProjectV2 mutation to clone with views, or create manually in UI."
+    }
+  ],
+  "settings": {
+    "public": true,
+    "closed": false,
+    "created_at": "2025-12-08T11:58:51Z",
+    "updated_at": "2025-12-10T04:56:42Z"
+  },
+  "usage": {
+    "clone_complete_project": "Use gh-project-setup-clone with copyProjectV2 mutation (includes views)",
+    "apply_fields_only": "Use gh-project-setup-apply to create fields on existing project (views must be created manually)"
+  }
+}

@@ -99,15 +99,20 @@ fi
 #------------------------------------------------------------------------------
 
 if [[ -n "$TEMPLATE_NAME" ]]; then
-  # Load from template
-  TEMPLATES_DIR="$CACHE_DIR/templates"
-  TEMPLATE_PATH="$TEMPLATES_DIR/$TEMPLATE_NAME.json"
+  # Load from template - check repo templates first, then user config
+  REPO_TEMPLATES_DIR="$SCRIPT_DIR/templates"
+  USER_TEMPLATES_DIR="$CACHE_DIR/templates"
 
-  if [[ ! -f "$TEMPLATE_PATH" ]]; then
-    die "Template not found: $TEMPLATE_PATH"
+  if [[ -f "$REPO_TEMPLATES_DIR/$TEMPLATE_NAME.json" ]]; then
+    TEMPLATE_PATH="$REPO_TEMPLATES_DIR/$TEMPLATE_NAME.json"
+    log_info "Loading template from repository: $TEMPLATE_NAME"
+  elif [[ -f "$USER_TEMPLATES_DIR/$TEMPLATE_NAME.json" ]]; then
+    TEMPLATE_PATH="$USER_TEMPLATES_DIR/$TEMPLATE_NAME.json"
+    log_info "Loading template from user config: $TEMPLATE_NAME"
+  else
+    die "Template not found: $TEMPLATE_NAME (searched in $REPO_TEMPLATES_DIR and $USER_TEMPLATES_DIR)"
   fi
 
-  log_info "Loading template: $TEMPLATE_NAME"
   SOURCE_PROJECT=$(jq -r '.source_project.number' < "$TEMPLATE_PATH")
   SOURCE_OWNER=$(jq -r '.source_project.owner' < "$TEMPLATE_PATH")
   SOURCE_TITLE=$(jq -r '.source_project.title' < "$TEMPLATE_PATH")

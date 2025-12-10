@@ -142,19 +142,32 @@ gh-project-delete --issue 167 --archive --yes
 
 Create standardized project structures, clone complete projects, or apply field configurations to existing projects.
 
+#### Available Templates
+
+**Repository Templates** (version-controlled, available to all users):
+- `cpp-transpiler` - C++ to C Transpiler project structure (9 fields, 3 views)
+
+**User Templates** (local customizations):
+- Stored in `~/.config/gh-projects/templates/`
+- Created via `gh-project-setup-init`
+
+Templates are searched in order: repository templates first, then user templates.
+
+#### Quick Start
+
 ```bash
-# 1. Export project structure as template
-gh-project-setup-init --project 14 --owner o2alexanderfedin
-
-# 2. Clone complete project with all fields and views
+# Clone complete project from built-in template
 gh-project-setup-clone \
-  --template project-14 \
-  --title "New Team Project"
+  --template cpp-transpiler \
+  --title "My New Transpiler Project"
 
-# 3. Apply fields only to existing project (views created manually)
+# Apply fields only to existing project
 gh-project-setup-apply \
-  --template project-14 \
+  --template cpp-transpiler \
   --project 15
+
+# Export your own template
+gh-project-setup-init --project 14 --owner o2alexanderfedin
 ```
 
 **When to use each approach:**
@@ -341,7 +354,11 @@ gh-project-setup-init [--project NUM] [--owner OWNER] [OPTIONS]
 - View configurations (metadata only - views cannot be created via API)
 - Field mappings for data types
 
-**Template Location:** `~/.config/gh-projects/templates/`
+**Template Locations:**
+- Repository templates: `scripts/gh-projects/templates/` (version-controlled)
+- User templates: `~/.config/gh-projects/templates/` (local customizations)
+
+Templates are searched in order: repository templates first, then user templates.
 
 ### gh-project-setup-clone
 
@@ -418,9 +435,14 @@ scripts/gh-projects/
 
 ~/.config/gh-projects/
 ├── config.json                      # Configuration + cache
-└── templates/                       # Project templates
-    └── project-14.json              # Exported project structure
+└── templates/                       # User templates (local customizations)
+    └── project-14.json              # Example: exported project structure
 ```
+
+**Built-in Templates:**
+- `cpp-transpiler` - Version-controlled template in `scripts/gh-projects/templates/`
+- Ready to use without exporting from project #14
+- Available to all users of the repository
 
 ### Configuration File
 
