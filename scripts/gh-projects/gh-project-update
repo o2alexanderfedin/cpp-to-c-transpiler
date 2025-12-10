@@ -1,0 +1,126 @@
+#!/bin/bash
+# gh-project-update - Update draft/repo issue custom fields
+
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+source "$SCRIPT_DIR/lib/gh-project-common.sh"
+
+usage() {
+  cat << EOF
+Usage: gh-project-update [OPTIONS]
+
+Update draft or repository issue custom fields.
+
+Options:
+  --item ID            Project item ID
+  --issue NUM          Repository issue number (auto-find in project)
+  --status STATUS      Update status
+  --priority PRIORITY  Update priority
+  --type TYPE          Update type
+  --dry-run            Preview changes
+  -h, --help           Show help
+
+Examples:
+  # Update story status
+  gh-project-update --issue 167 --status "Done"
+
+  # Update epic priority
+  gh-project-update --issue 42 --priority High
+
+  # Multiple fields
+  gh-project-update --issue 167 --status "In Progress" --priority Critical
+EOF
+  exit 0
+}
+
+# Parse arguments
+ITEM_ID=""
+ISSUE_NUM=""
+STATUS=""
+PRIORITY=""
+TYPE=""
+DRY_RUN=false
+
+while [[ $# -gt 0 ]]; do
+  case $1 in
+    --item) ITEM_ID="$2"; shift 2 ;;
+    --issue) ISSUE_NUM="$2"; shift 2 ;;
+    --status) STATUS="$2"; shift 2 ;;
+    --priority) PRIORITY="$2"; shift 2 ;;
+    --type) TYPE="$2"; shift 2 ;;
+    --dry-run) DRY_RUN=true; shift ;;
+    -h|--help) usage ;;
+    *) die "Unknown option: $1" ;;
+  esac
+done
+
+# Validate
+load_config
+validate_prerequisites
+
+if [[ -z "$ITEM_ID" ]] && [[ -z "$ISSUE_NUM" ]]; then
+  die "Either --item or --issue required"
+fi
+
+if [[ -z "$STATUS" ]] && [[ -z "$PRIORITY" ]] && [[ -z "$TYPE" ]]; then
+  die "At least one field to update required (--status, --priority, --type)"
+fi
+
+# Find item ID from issue number if needed
+if [[ -n "$ISSUE_NUM" ]] && [[ -z "$ITEM_ID" ]]; then
+  log_info "Finding item ID for issue #$ISSUE_NUM..."
+  ITEMS=$(gh project item-list "$PROJECT_NUMBER" \
+    --owner "$PROJECT_OWNER" \
+    --format json \
+    --limit 200)
+
+  ITEM_ID=$(echo "$ITEMS" | jq -r --argjson num "$ISSUE_NUM" \
+    '.items[] | select(.content.number == $num) | .id' | head -1)
+
+  if [[ -z "$ITEM_ID" ]]; then
+    die "Issue #$ISSUE_NUM not found in project"
+  fi
+
+  log_success "Found item: $ITEM_ID"
+fi
+
+# Normalize type if provided
+if [[ -n "$TYPE" ]]; then
+  case "${TYPE,,}" in
+    epic) TYPE="Epic" ;;
+    story) TYPE="User Story" ;;
+    task) TYPE="Task" ;;
+    bug) TYPE="Bug" ;;
+    spike) TYPE="Spike" ;;
+    *) die "Invalid type: $TYPE. Valid: epic, story, task, bug, spike" ;;
+  esac
+fi
+
+# Dry-run preview
+if [[ "$DRY_RUN" == "true" ]]; then
+  log_warn "[DRY-RUN] Would update item $ITEM_ID:"
+  [[ -n "$STATUS" ]] && echo "  Status: $STATUS"
+  [[ -n "$PRIORITY" ]] && echo "  Priority: $PRIORITY"
+  [[ -n "$TYPE" ]] && echo "  Type: $TYPE"
+  exit 0
+fi
+
+# Update fields
+log_info "Updating fields..."
+
+if [[ -n "$STATUS" ]]; then
+  set_single_select_field "$ITEM_ID" "Status" "$STATUS"
+  log_success "Status updated to: $STATUS"
+fi
+
+if [[ -n "$PRIORITY" ]]; then
+  set_single_select_field "$ITEM_ID" "Priority" "$PRIORITY"
+  log_success "Priority updated to: $PRIORITY"
+fi
+
+if [[ -n "$TYPE" ]]; then
+  set_single_select_field "$ITEM_ID" "Type" "$TYPE"
+  log_success "Type updated to: $TYPE"
+fi
+
+echo ""
+log_success "Item updated successfully!"

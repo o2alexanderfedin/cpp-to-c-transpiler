@@ -1,0 +1,192 @@
+#!/bin/bash
+# gh-project-create - Create draft or repository issue in project
+
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+source "$SCRIPT_DIR/lib/gh-project-common.sh"
+
+usage() {
+  cat << EOF
+Usage: gh-project-create [OPTIONS]
+
+Create repository issue in GitHub Project with custom fields.
+
+ATOMIC OPERATION:
+  1. Creates draft issue (fast, simple)
+  2. Sets custom fields
+  3. Converts to repository issue (unless --draft flag)
+
+This atomic workflow matches GitHub UI behavior and ensures consistency.
+
+Options:
+  --title TEXT         Issue title (required)
+  --body TEXT          Issue body (optional)
+  --type TYPE          Issue type: epic, story, task, bug, spike (default: story)
+  --status STATUS      Status: Todo, "In Progress", Done (default: Todo)
+  --priority PRIORITY  Priority: Critical, High, Medium, Low (optional)
+  --draft              Keep as draft (skip conversion to repository issue)
+  --dry-run            Show what would be created
+  -h, --help           Show help
+
+Examples:
+  # Create epic (draft→converted to repo issue atomically)
+  gh-project-create --title "Epic #42: Advanced Features" --type epic
+
+  # Create story with priority
+  gh-project-create \\
+    --title "Story: Implement RTTI" \\
+    --type story \\
+    --priority High \\
+    --status "In Progress"
+
+  # Keep as draft for brainstorming (skip conversion)
+  gh-project-create --title "Draft: Research options" --type spike --draft
+
+  # Dry-run
+  gh-project-create --title "Test" --dry-run
+EOF
+  exit 0
+}
+
+# Parse arguments
+TITLE=""
+BODY=""
+TYPE="story"
+STATUS="Todo"
+PRIORITY=""
+CREATE_DRAFT=false  # Default: create repository issues (matches GitHub UI)
+DRY_RUN=false
+
+while [[ $# -gt 0 ]]; do
+  case $1 in
+    --title) TITLE="$2"; shift 2 ;;
+    --body) BODY="$2"; shift 2 ;;
+    --type) TYPE="$2"; shift 2 ;;
+    --status) STATUS="$2"; shift 2 ;;
+    --priority) PRIORITY="$2"; shift 2 ;;
+    --draft) CREATE_DRAFT=true; shift ;;
+    --dry-run) DRY_RUN=true; shift ;;
+    -h|--help) usage ;;
+    *) die "Unknown option: $1" ;;
+  esac
+done
+
+# Validate title
+if [[ -z "$TITLE" ]]; then
+  die "Title required. Use: --title TEXT"
+fi
+
+# Normalize type to match field options (portable lowercase conversion)
+TYPE_LOWER=$(echo "$TYPE" | tr '[:upper:]' '[:lower:]')
+case "$TYPE_LOWER" in
+  epic) TYPE="Epic" ;;
+  story) TYPE="User Story" ;;
+  task) TYPE="Task" ;;
+  bug) TYPE="Bug" ;;
+  spike) TYPE="Spike" ;;
+  *) die "Invalid type: $TYPE. Valid: epic, story, task, bug, spike" ;;
+esac
+
+# Dry-run preview (before config/validation for quick testing)
+if [[ "$DRY_RUN" == "true" ]]; then
+  log_warn "[DRY-RUN] Would create:"
+  echo "  Title: $TITLE"
+  echo "  Body: ${BODY:-<empty>}"
+  echo "  Type: $TYPE"
+  echo "  Status: $STATUS"
+  echo "  Priority: ${PRIORITY:-<not set>}"
+  echo "  Final type: $([ "$CREATE_DRAFT" == "true" ] && echo "Draft" || echo "Repository Issue (draft→converted)")"
+  exit 0
+fi
+
+# Load config and validate (after dry-run check)
+load_config
+validate_prerequisites
+
+#------------------------------------------------------------------------------
+# ATOMIC OPERATION: Create draft, set fields, optionally convert
+#------------------------------------------------------------------------------
+
+# Step 1: Always create draft first (simple, fast)
+log_info "Creating draft issue..."
+RESULT=$(gh project item-create "$PROJECT_NUMBER" \
+  --owner "$PROJECT_OWNER" \
+  --title "$TITLE" \
+  --body "$BODY" \
+  --format json)
+
+ITEM_ID=$(echo "$RESULT" | jq -r '.id')
+log_success "Draft created: $ITEM_ID"
+
+# Step 2: Set custom fields on draft
+log_info "Setting custom fields..."
+set_single_select_field "$ITEM_ID" "Type" "$TYPE"
+set_single_select_field "$ITEM_ID" "Status" "$STATUS"
+
+if [[ -n "$PRIORITY" ]]; then
+  set_single_select_field "$ITEM_ID" "Priority" "$PRIORITY"
+fi
+
+# Step 3: Convert to repository issue (unless --draft flag)
+ISSUE_NUMBER=""
+ISSUE_URL=""
+
+if [[ "$CREATE_DRAFT" == "false" ]]; then
+  log_info "Converting draft to repository issue..."
+
+  # Get draft content ID
+  DRAFT_CONTENT_ID=$(get_draft_content_id "$ITEM_ID")
+
+  if [[ -z "$DRAFT_CONTENT_ID" ]]; then
+    die "Failed to get draft content ID for conversion"
+  fi
+
+  # Get repository ID
+  REPO_ID=$(get_repo_id "$PROJECT_OWNER" "$PROJECT_REPO")
+
+  # Convert draft → repository issue
+  CONVERT_RESULT=$(execute_graphql '
+    mutation($draftId: ID!, $repoId: ID!) {
+      convertProjectV2DraftIssueItemToIssue(input: {
+        itemId: $draftId
+        repositoryId: $repoId
+      }) {
+        item {
+          id
+          content {
+            ... on Issue {
+              number
+              url
+            }
+          }
+        }
+      }
+    }
+  ' \
+    -f draftId="$DRAFT_CONTENT_ID" \
+    -f repoId="$REPO_ID")
+
+  ISSUE_NUMBER=$(echo "$CONVERT_RESULT" | jq -r '.data.convertProjectV2DraftIssueItemToIssue.item.content.number')
+  ISSUE_URL=$(echo "$CONVERT_RESULT" | jq -r '.data.convertProjectV2DraftIssueItemToIssue.item.content.url')
+
+  log_success "Converted to repository issue #$ISSUE_NUMBER"
+fi
+
+# Display final result
+echo ""
+if [[ "$CREATE_DRAFT" == "true" ]]; then
+  log_success "Draft issue created!"
+  echo ""
+  echo "  Item ID: $ITEM_ID"
+  echo "  Title: $TITLE"
+  echo "  Type: $TYPE"
+  echo "  Status: $STATUS"
+  echo "  Note: Use 'gh-project-convert --item $ITEM_ID' to convert to repository issue"
+else
+  log_success "Repository issue created!"
+  echo ""
+  echo "  Issue: #$ISSUE_NUMBER"
+  echo "  URL: $ISSUE_URL"
+  echo "  Title: $TITLE"
+  echo "  Type: $TYPE"
+  echo "  Status: $STATUS"
+fi

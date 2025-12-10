@@ -1,0 +1,155 @@
+#!/bin/bash
+# gh-project-convert - Convert draft issue to repository issue
+
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+source "$SCRIPT_DIR/lib/gh-project-common.sh"
+
+usage() {
+  cat << EOF
+Usage: gh-project-convert [OPTIONS]
+
+Convert draft issue to repository issue (IRREVERSIBLE operation).
+
+Options:
+  --item ID            Project item ID (PVTI_...)
+  --title TEXT         Filter by title match
+  --yes, -y            Skip confirmation
+  --dry-run            Show what would be converted
+  -h, --help           Show help
+
+Examples:
+  # Convert specific draft
+  gh-project-convert --item PVTI_lADOQku...
+
+  # Convert by title (interactive selection)
+  gh-project-convert --title "Epic #42"
+
+  # Batch convert (skip confirmation)
+  gh-project-convert --item PVTI_... --yes
+
+WARNING: This operation is IRREVERSIBLE. Drafts will become repository issues.
+EOF
+  exit 0
+}
+
+# Parse arguments
+ITEM_ID=""
+TITLE_FILTER=""
+SKIP_CONFIRM=false
+DRY_RUN=false
+
+while [[ $# -gt 0 ]]; do
+  case $1 in
+    --item) ITEM_ID="$2"; shift 2 ;;
+    --title) TITLE_FILTER="$2"; shift 2 ;;
+    --yes|-y) SKIP_CONFIRM=true; shift ;;
+    --dry-run) DRY_RUN=true; shift ;;
+    -h|--help) usage ;;
+    *) die "Unknown option: $1" ;;
+  esac
+done
+
+# Validate
+load_config
+validate_prerequisites
+
+if [[ -z "$ITEM_ID" ]] && [[ -z "$TITLE_FILTER" ]]; then
+  die "Either --item or --title required"
+fi
+
+# If title filter, find the item
+if [[ -n "$TITLE_FILTER" ]]; then
+  log_info "Searching for draft with title containing: $TITLE_FILTER"
+  ITEMS=$(gh project item-list "$PROJECT_NUMBER" \
+    --owner "$PROJECT_OWNER" \
+    --format json --limit 200)
+
+  ITEM_ID=$(echo "$ITEMS" | jq -r --arg title "$TITLE_FILTER" \
+    '.items[] | select(.content.type == "DraftIssue" and (.title | contains($title))) | .id' | head -1)
+
+  if [[ -z "$ITEM_ID" ]]; then
+    die "No draft found with title containing: $TITLE_FILTER"
+  fi
+
+  log_success "Found draft: $ITEM_ID"
+fi
+
+# Get draft content ID
+log_info "Getting draft content ID..."
+DRAFT_CONTENT_ID=$(get_draft_content_id "$ITEM_ID")
+
+if [[ -z "$DRAFT_CONTENT_ID" ]]; then
+  die "Item is not a draft or not found: $ITEM_ID"
+fi
+
+# Get draft details
+ITEM_DETAILS=$(gh project item-list "$PROJECT_NUMBER" \
+  --owner "$PROJECT_OWNER" \
+  --format json --limit 200 | \
+  jq -r --arg id "$ITEM_ID" '.items[] | select(.id == $id)')
+
+TITLE=$(echo "$ITEM_DETAILS" | jq -r '.title')
+BODY=$(echo "$ITEM_DETAILS" | jq -r '.body // ""')
+
+# Dry-run preview
+if [[ "$DRY_RUN" == "true" ]]; then
+  log_warn "[DRY-RUN] Would convert:"
+  echo "  Item ID: $ITEM_ID"
+  echo "  Draft Content ID: $DRAFT_CONTENT_ID"
+  echo "  Title: $TITLE"
+  echo "  Body: ${BODY:-<empty>}"
+  echo ""
+  log_warn "This operation is IRREVERSIBLE!"
+  exit 0
+fi
+
+# Confirm conversion
+if [[ "$SKIP_CONFIRM" != "true" ]]; then
+  echo ""
+  log_warn "⚠  WARNING: This operation is IRREVERSIBLE"
+  echo ""
+  echo "  Draft: $TITLE"
+  echo "  Will become: Repository Issue"
+  echo ""
+  read -p "Continue? (yes/no): " response
+
+  if [[ "$response" != "yes" ]]; then
+    log_warn "Conversion cancelled"
+    exit 0
+  fi
+fi
+
+# Get repository ID
+REPO_ID=$(get_repo_id "$PROJECT_OWNER" "$PROJECT_REPO")
+
+# Convert draft to repository issue
+log_info "Converting draft to repository issue..."
+RESULT=$(execute_graphql '
+  mutation($draftId: ID!, $repoId: ID!) {
+    convertProjectV2DraftIssueItemToIssue(input: {
+      itemId: $draftId
+      repositoryId: $repoId
+    }) {
+      item {
+        id
+        content {
+          ... on Issue {
+            number
+            url
+          }
+        }
+      }
+    }
+  }
+' \
+  -f draftId="$DRAFT_CONTENT_ID" \
+  -f repoId="$REPO_ID")
+
+ISSUE_NUMBER=$(echo "$RESULT" | jq -r '.data.convertProjectV2DraftIssueItemToIssue.item.content.number')
+ISSUE_URL=$(echo "$RESULT" | jq -r '.data.convertProjectV2DraftIssueItemToIssue.item.content.url')
+
+echo ""
+log_success "Converted draft → Issue #$ISSUE_NUMBER"
+echo ""
+echo "  URL: $ISSUE_URL"
+echo "  Title: $TITLE"

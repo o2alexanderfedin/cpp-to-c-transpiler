@@ -1,0 +1,320 @@
+#!/bin/bash
+# gh-project-setup-apply - Apply field structure from template to existing project
+
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+source "$SCRIPT_DIR/lib/gh-project-common.sh"
+
+usage() {
+  cat << EOF
+Usage: gh-project-setup-apply [OPTIONS]
+
+Apply custom field structure from template to an existing project.
+
+This creates fields that don't exist and optionally updates existing fields.
+Useful when:
+  - You need field-only replication (views must be created manually)
+  - Adding standardized fields to an existing project
+  - Synchronizing field structure across multiple projects
+
+Options:
+  --template NAME          Template name (required)
+  --project NUM            Target project number (required)
+  --owner OWNER            Target project owner (default: from config)
+  --update-existing        Update existing fields (default: skip)
+  --dry-run                Show what would be applied
+  -h, --help               Show help
+
+Examples:
+  # Apply fields from template to project #15
+  gh-project-setup-apply \\
+    --template project-14 \\
+    --project 15
+
+  # Apply to project in organization
+  gh-project-setup-apply \\
+    --template project-14 \\
+    --project 20 \\
+    --owner myorg
+
+  # Update existing fields
+  gh-project-setup-apply \\
+    --template project-14 \\
+    --project 15 \\
+    --update-existing
+
+  # Preview changes
+  gh-project-setup-apply \\
+    --template project-14 \\
+    --project 15 \\
+    --dry-run
+
+Supported Field Types:
+  ✓ TEXT - Single-line text fields
+  ✓ NUMBER - Numeric fields
+  ✓ DATE - Date fields
+  ✓ SINGLE_SELECT - Dropdown fields with options
+  ✓ ITERATION - Iteration fields
+
+Note: This script only creates/updates fields. Views must be created manually
+      or via gh-project-setup-clone (which uses copyProjectV2).
+EOF
+  exit 0
+}
+
+# Parse arguments
+TEMPLATE_NAME=""
+PROJECT_NUM=""
+OWNER=""
+UPDATE_EXISTING=false
+DRY_RUN=false
+
+while [[ $# -gt 0 ]]; do
+  case $1 in
+    --template) TEMPLATE_NAME="$2"; shift 2 ;;
+    --project) PROJECT_NUM="$2"; shift 2 ;;
+    --owner) OWNER="$2"; shift 2 ;;
+    --update-existing) UPDATE_EXISTING=true; shift ;;
+    --dry-run) DRY_RUN=true; shift ;;
+    -h|--help) usage ;;
+    *) die "Unknown option: $1" ;;
+  esac
+done
+
+# Validate prerequisites
+validate_prerequisites
+
+# Validate required arguments
+if [[ -z "$TEMPLATE_NAME" ]]; then
+  die "Template name required. Use: --template NAME"
+fi
+
+if [[ -z "$PROJECT_NUM" ]]; then
+  die "Project number required. Use: --project NUM"
+fi
+
+# Load config if owner not provided
+if [[ -z "$OWNER" ]]; then
+  load_config
+  OWNER="$PROJECT_OWNER"
+fi
+
+#------------------------------------------------------------------------------
+# STEP 1: Load Template
+#------------------------------------------------------------------------------
+
+TEMPLATES_DIR="$CACHE_DIR/templates"
+TEMPLATE_PATH="$TEMPLATES_DIR/$TEMPLATE_NAME.json"
+
+if [[ ! -f "$TEMPLATE_PATH" ]]; then
+  die "Template not found: $TEMPLATE_PATH"
+fi
+
+log_info "Loading template: $TEMPLATE_NAME"
+TEMPLATE_DATA=$(cat "$TEMPLATE_PATH")
+SOURCE_TITLE=$(echo "$TEMPLATE_DATA" | jq -r '.source_project.title')
+TEMPLATE_FIELDS=$(echo "$TEMPLATE_DATA" | jq '.fields')
+FIELDS_COUNT=$(echo "$TEMPLATE_FIELDS" | jq 'length')
+
+log_success "Template loaded: $SOURCE_TITLE ($FIELDS_COUNT fields)"
+
+#------------------------------------------------------------------------------
+# STEP 2: Get Target Project Details
+#------------------------------------------------------------------------------
+
+log_info "Querying target project #$PROJECT_NUM..."
+TARGET_PROJECT_DATA=$(gh project view "$PROJECT_NUM" \
+  --owner "$OWNER" \
+  --format json)
+
+TARGET_PROJECT_ID=$(echo "$TARGET_PROJECT_DATA" | jq -r '.id')
+TARGET_PROJECT_TITLE=$(echo "$TARGET_PROJECT_DATA" | jq -r '.title')
+
+if [[ -z "$TARGET_PROJECT_ID" ]]; then
+  die "Failed to get target project ID"
+fi
+
+log_success "Target project: $TARGET_PROJECT_TITLE"
+
+#------------------------------------------------------------------------------
+# STEP 3: Get Existing Fields in Target Project
+#------------------------------------------------------------------------------
+
+log_info "Querying existing fields..."
+EXISTING_FIELDS=$(gh project field-list "$PROJECT_NUM" \
+  --owner "$OWNER" \
+  --format json)
+
+EXISTING_FIELD_NAMES=$(echo "$EXISTING_FIELDS" | jq '[.fields[].name]')
+
+log_success "Found $(echo "$EXISTING_FIELD_NAMES" | jq 'length') existing fields"
+
+#------------------------------------------------------------------------------
+# STEP 4: Plan Field Operations
+#------------------------------------------------------------------------------
+
+log_info "Planning field operations..."
+
+# Build operation plan
+OPERATIONS=$(echo "$TEMPLATE_FIELDS" | jq --argjson existing "$EXISTING_FIELD_NAMES" --argjson update_existing "$UPDATE_EXISTING" '
+  map(. as $field | {
+    name: .name,
+    data_type: .data_type,
+    options: .options,
+    exists: ($existing | index($field.name) != null),
+    action: (
+      if ($existing | index($field.name) != null) then
+        (if $update_existing then "update" else "skip" end)
+      else
+        "create"
+      end
+    )
+  })
+')
+
+CREATE_COUNT=$(echo "$OPERATIONS" | jq '[.[] | select(.action == "create")] | length')
+UPDATE_COUNT=$(echo "$OPERATIONS" | jq '[.[] | select(.action == "update")] | length')
+SKIP_COUNT=$(echo "$OPERATIONS" | jq '[.[] | select(.action == "skip")] | length')
+
+log_success "Plan: $CREATE_COUNT create, $UPDATE_COUNT update, $SKIP_COUNT skip"
+
+#------------------------------------------------------------------------------
+# STEP 5: Preview or Execute
+#------------------------------------------------------------------------------
+
+if [[ "$DRY_RUN" == "true" ]]; then
+  log_warn "[DRY-RUN] Would apply to project #$PROJECT_NUM:"
+  echo ""
+  echo "$OPERATIONS" | jq -r '.[] | "  [\(.action | ascii_upcase)] \(.name) (\(.data_type))"'
+  echo ""
+  echo "Summary:"
+  echo "  Create: $CREATE_COUNT fields"
+  echo "  Update: $UPDATE_COUNT fields"
+  echo "  Skip: $SKIP_COUNT fields"
+  exit 0
+fi
+
+#------------------------------------------------------------------------------
+# STEP 6: Execute Field Operations
+#------------------------------------------------------------------------------
+
+log_info "Applying field operations..."
+
+# Process each field
+CREATED=0
+UPDATED=0
+SKIPPED=0
+FAILED=0
+
+while IFS= read -r field; do
+  FIELD_NAME=$(echo "$field" | jq -r '.name')
+  FIELD_TYPE=$(echo "$field" | jq -r '.data_type')
+  FIELD_ACTION=$(echo "$field" | jq -r '.action')
+  FIELD_OPTIONS=$(echo "$field" | jq -r '.options // []')
+
+  if [[ "$FIELD_ACTION" == "skip" ]]; then
+    log_info "Skipping existing field: $FIELD_NAME"
+    SKIPPED=$((SKIPPED + 1))
+    continue
+  fi
+
+  if [[ "$FIELD_ACTION" == "create" ]]; then
+    log_info "Creating field: $FIELD_NAME ($FIELD_TYPE)"
+
+    # Build GraphQL mutation based on field type
+    if [[ "$FIELD_TYPE" == "ProjectV2SingleSelectField" ]]; then
+      # Single-select field with options
+      OPTIONS_INPUT=$(echo "$FIELD_OPTIONS" | jq -r 'map({name: .name, color: (.color // "GRAY"), description: (.description // "")}) | @json')
+
+      MUTATION="
+        mutation {
+          createProjectV2Field(input: {
+            projectId: \"$TARGET_PROJECT_ID\"
+            dataType: SINGLE_SELECT
+            name: \"$FIELD_NAME\"
+            singleSelectOptions: $OPTIONS_INPUT
+          }) {
+            projectV2Field {
+              ... on ProjectV2SingleSelectField {
+                id
+                name
+                options {
+                  id
+                  name
+                }
+              }
+            }
+          }
+        }
+      "
+    else
+      # Regular field (TEXT, NUMBER, DATE)
+      FIELD_DATA_TYPE=$(echo "$FIELD_TYPE" | sed 's/ProjectV2Field$//' | tr '[:lower:]' '[:upper:]')
+
+      # Handle ProjectV2Field -> TEXT mapping
+      if [[ "$FIELD_DATA_TYPE" == "PROJECTV2" ]]; then
+        FIELD_DATA_TYPE="TEXT"
+      fi
+
+      MUTATION="
+        mutation {
+          createProjectV2Field(input: {
+            projectId: \"$TARGET_PROJECT_ID\"
+            dataType: $FIELD_DATA_TYPE
+            name: \"$FIELD_NAME\"
+          }) {
+            projectV2Field {
+              ... on ProjectV2Field {
+                id
+                name
+              }
+            }
+          }
+        }
+      "
+    fi
+
+    # Execute mutation
+    if RESULT=$(execute_graphql "$MUTATION" 2>&1); then
+      log_success "Created field: $FIELD_NAME"
+      CREATED=$((CREATED + 1))
+    else
+      log_error "Failed to create field: $FIELD_NAME"
+      log_error "Error: $RESULT"
+      FAILED=$((FAILED + 1))
+    fi
+
+  elif [[ "$FIELD_ACTION" == "update" ]]; then
+    log_warn "Update not yet implemented for: $FIELD_NAME"
+    SKIPPED=$((SKIPPED + 1))
+  fi
+
+done < <(echo "$OPERATIONS" | jq -c '.[]')
+
+#------------------------------------------------------------------------------
+# STEP 7: Summary
+#------------------------------------------------------------------------------
+
+echo ""
+if [[ $FAILED -gt 0 ]]; then
+  log_warn "Field operations completed with errors"
+else
+  log_success "Field operations completed successfully"
+fi
+
+echo ""
+echo "  Target Project: #$PROJECT_NUM - $TARGET_PROJECT_TITLE"
+echo ""
+echo "  Summary:"
+echo "    Created: $CREATED fields"
+echo "    Updated: $UPDATED fields"
+echo "    Skipped: $SKIPPED fields"
+if [[ $FAILED -gt 0 ]]; then
+  echo "    Failed: $FAILED fields"
+fi
+echo ""
+log_info "Note: Views must be created manually in the GitHub UI"
+echo ""
+echo "Next steps:"
+echo "  1. Refresh field cache: gh-project-init --project $PROJECT_NUM --refresh-cache"
+echo "  2. Create views manually in GitHub UI"
+echo "  3. Start creating issues: gh-project-create"

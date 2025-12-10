@@ -1,0 +1,260 @@
+#!/bin/bash
+# gh-project-setup-clone - Clone GitHub Project using copyProjectV2 mutation
+
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+source "$SCRIPT_DIR/lib/gh-project-common.sh"
+
+usage() {
+  cat << EOF
+Usage: gh-project-setup-clone [OPTIONS]
+
+Clone a complete GitHub Project including fields, views, workflows, and optionally draft issues.
+
+This uses GitHub's native copyProjectV2 mutation which preserves:
+  ✓ All custom fields (with definitions and options)
+  ✓ All views (Table, Kanban, Roadmap) with filters and sorting
+  ✓ All automation workflows
+  ✓ Draft issues (optional)
+
+Options:
+  --source-project NUM     Source project number (required if no template)
+  --source-owner OWNER     Source project owner (required if no template)
+  --template NAME          Use cached template (alternative to source-project)
+  --title TEXT             New project title (required)
+  --target-owner OWNER     Target owner (user/org, default: authenticated user)
+  --include-drafts         Include draft issues (default: false)
+  --dry-run                Show what would be cloned
+  -h, --help               Show help
+
+Examples:
+  # Clone project #14 to current user
+  gh-project-setup-clone \\
+    --source-project 14 \\
+    --source-owner o2alexanderfedin \\
+    --title "My New Transpiler Project"
+
+  # Clone from template
+  gh-project-setup-clone \\
+    --template project-14 \\
+    --title "Team Transpiler Project"
+
+  # Clone to organization with drafts
+  gh-project-setup-clone \\
+    --source-project 14 \\
+    --source-owner o2alexanderfedin \\
+    --target-owner myorg \\
+    --title "Org Transpiler" \\
+    --include-drafts
+
+  # Preview clone
+  gh-project-setup-clone \\
+    --template project-14 \\
+    --title "Test Project" \\
+    --dry-run
+
+Note: copyProjectV2 creates a complete clone including views (which cannot be
+      created programmatically otherwise). This is the recommended approach
+      for project replication.
+EOF
+  exit 0
+}
+
+# Parse arguments
+SOURCE_PROJECT=""
+SOURCE_OWNER=""
+TEMPLATE_NAME=""
+NEW_TITLE=""
+TARGET_OWNER=""
+INCLUDE_DRAFTS=false
+DRY_RUN=false
+
+while [[ $# -gt 0 ]]; do
+  case $1 in
+    --source-project) SOURCE_PROJECT="$2"; shift 2 ;;
+    --source-owner) SOURCE_OWNER="$2"; shift 2 ;;
+    --template) TEMPLATE_NAME="$2"; shift 2 ;;
+    --title) NEW_TITLE="$2"; shift 2 ;;
+    --target-owner) TARGET_OWNER="$2"; shift 2 ;;
+    --include-drafts) INCLUDE_DRAFTS=true; shift ;;
+    --dry-run) DRY_RUN=true; shift ;;
+    -h|--help) usage ;;
+    *) die "Unknown option: $1" ;;
+  esac
+done
+
+# Validate prerequisites
+validate_prerequisites
+
+# Validate required arguments
+if [[ -z "$NEW_TITLE" ]]; then
+  die "New project title required. Use: --title TEXT"
+fi
+
+if [[ -z "$SOURCE_PROJECT" ]] && [[ -z "$TEMPLATE_NAME" ]]; then
+  die "Either --source-project or --template required"
+fi
+
+#------------------------------------------------------------------------------
+# STEP 1: Resolve Source Project
+#------------------------------------------------------------------------------
+
+if [[ -n "$TEMPLATE_NAME" ]]; then
+  # Load from template
+  TEMPLATES_DIR="$CACHE_DIR/templates"
+  TEMPLATE_PATH="$TEMPLATES_DIR/$TEMPLATE_NAME.json"
+
+  if [[ ! -f "$TEMPLATE_PATH" ]]; then
+    die "Template not found: $TEMPLATE_PATH"
+  fi
+
+  log_info "Loading template: $TEMPLATE_NAME"
+  SOURCE_PROJECT=$(jq -r '.source_project.number' < "$TEMPLATE_PATH")
+  SOURCE_OWNER=$(jq -r '.source_project.owner' < "$TEMPLATE_PATH")
+  SOURCE_TITLE=$(jq -r '.source_project.title' < "$TEMPLATE_PATH")
+
+  log_success "Template loaded: $SOURCE_TITLE"
+fi
+
+if [[ -z "$SOURCE_PROJECT" ]] || [[ -z "$SOURCE_OWNER" ]]; then
+  die "Source project details incomplete"
+fi
+
+#------------------------------------------------------------------------------
+# STEP 2: Get Source Project ID
+#------------------------------------------------------------------------------
+
+log_info "Resolving source project #$SOURCE_PROJECT..."
+SOURCE_PROJECT_ID=$(gh project view "$SOURCE_PROJECT" \
+  --owner "$SOURCE_OWNER" \
+  --format json | jq -r '.id')
+
+if [[ -z "$SOURCE_PROJECT_ID" ]]; then
+  die "Failed to get source project ID"
+fi
+
+log_success "Source project ID: $SOURCE_PROJECT_ID"
+
+#------------------------------------------------------------------------------
+# STEP 3: Get Target Owner ID
+#------------------------------------------------------------------------------
+
+if [[ -z "$TARGET_OWNER" ]]; then
+  # Use authenticated user
+  log_info "Resolving authenticated user as target owner..."
+  TARGET_OWNER_LOGIN=$(gh api user --jq '.login')
+  TARGET_OWNER_ID=$(gh api user --jq '.node_id')
+else
+  # Resolve specified owner (user or org)
+  log_info "Resolving target owner: $TARGET_OWNER"
+
+  # Try as organization first
+  TARGET_OWNER_ID=$(gh api "orgs/$TARGET_OWNER" --jq '.node_id' 2>/dev/null || true)
+
+  if [[ -z "$TARGET_OWNER_ID" ]]; then
+    # Try as user
+    TARGET_OWNER_ID=$(gh api "users/$TARGET_OWNER" --jq '.node_id' 2>/dev/null || true)
+  fi
+
+  if [[ -z "$TARGET_OWNER_ID" ]]; then
+    die "Target owner not found: $TARGET_OWNER"
+  fi
+
+  TARGET_OWNER_LOGIN="$TARGET_OWNER"
+fi
+
+log_success "Target owner: $TARGET_OWNER_LOGIN ($TARGET_OWNER_ID)"
+
+#------------------------------------------------------------------------------
+# STEP 4: Preview or Execute Clone
+#------------------------------------------------------------------------------
+
+if [[ "$DRY_RUN" == "true" ]]; then
+  log_warn "[DRY-RUN] Would clone project:"
+  echo ""
+  echo "  Source:"
+  echo "    Project: #$SOURCE_PROJECT"
+  echo "    Owner: $SOURCE_OWNER"
+  echo "    ID: $SOURCE_PROJECT_ID"
+  echo ""
+  echo "  Target:"
+  echo "    Title: $NEW_TITLE"
+  echo "    Owner: $TARGET_OWNER_LOGIN"
+  echo "    Owner ID: $TARGET_OWNER_ID"
+  echo "    Include Drafts: $INCLUDE_DRAFTS"
+  echo ""
+  echo "  What will be cloned:"
+  echo "    ✓ All custom fields (definitions + options)"
+  echo "    ✓ All views (Table, Kanban, Roadmap)"
+  echo "    ✓ All automation workflows"
+  if [[ "$INCLUDE_DRAFTS" == "true" ]]; then
+    echo "    ✓ All draft issues"
+  else
+    echo "    ✗ Draft issues (not included)"
+  fi
+  exit 0
+fi
+
+log_info "Cloning project..."
+
+# Execute copyProjectV2 mutation
+CLONE_RESULT=$(execute_graphql "
+  mutation {
+    copyProjectV2(input: {
+      projectId: \"$SOURCE_PROJECT_ID\"
+      ownerId: \"$TARGET_OWNER_ID\"
+      title: \"$NEW_TITLE\"
+      includeDraftIssues: $INCLUDE_DRAFTS
+    }) {
+      projectV2 {
+        id
+        number
+        title
+        url
+        fields(first: 50) {
+          totalCount
+        }
+        views(first: 50) {
+          totalCount
+        }
+      }
+    }
+  }
+")
+
+# Extract result details
+NEW_PROJECT_ID=$(echo "$CLONE_RESULT" | jq -r '.data.copyProjectV2.projectV2.id')
+NEW_PROJECT_NUMBER=$(echo "$CLONE_RESULT" | jq -r '.data.copyProjectV2.projectV2.number')
+NEW_PROJECT_URL=$(echo "$CLONE_RESULT" | jq -r '.data.copyProjectV2.projectV2.url')
+FIELDS_COUNT=$(echo "$CLONE_RESULT" | jq -r '.data.copyProjectV2.projectV2.fields.totalCount')
+VIEWS_COUNT=$(echo "$CLONE_RESULT" | jq -r '.data.copyProjectV2.projectV2.views.totalCount')
+
+if [[ -z "$NEW_PROJECT_ID" ]] || [[ "$NEW_PROJECT_ID" == "null" ]]; then
+  die "Clone failed. Error: $(echo "$CLONE_RESULT" | jq -r '.errors[0].message // "Unknown error"')"
+fi
+
+#------------------------------------------------------------------------------
+# STEP 5: Display Success
+#------------------------------------------------------------------------------
+
+echo ""
+log_success "Project cloned successfully!"
+echo ""
+echo "  New Project: #$NEW_PROJECT_NUMBER - $NEW_TITLE"
+echo "  URL: $NEW_PROJECT_URL"
+echo "  Owner: $TARGET_OWNER_LOGIN"
+echo ""
+echo "  Cloned:"
+echo "    ✓ $FIELDS_COUNT custom fields"
+echo "    ✓ $VIEWS_COUNT views"
+echo "    ✓ Automation workflows"
+if [[ "$INCLUDE_DRAFTS" == "true" ]]; then
+  echo "    ✓ Draft issues"
+fi
+echo ""
+log_info "Note: Repository issues are NOT cloned (only drafts if --include-drafts)"
+echo ""
+echo "Next steps:"
+echo "  1. Review project settings and permissions"
+echo "  2. Link to repository if needed"
+echo "  3. Create issues using gh-project-create"
+echo "  4. Link stories to epics using gh-project-link"

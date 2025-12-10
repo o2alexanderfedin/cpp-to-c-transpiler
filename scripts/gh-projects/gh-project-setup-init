@@ -1,0 +1,289 @@
+#!/bin/bash
+# gh-project-setup-init - Export project structure as template
+
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+source "$SCRIPT_DIR/lib/gh-project-common.sh"
+
+usage() {
+  cat << EOF
+Usage: gh-project-setup-init [OPTIONS]
+
+Export GitHub Project structure as a reusable template.
+
+Options:
+  --project NUM        Project number (default: from config)
+  --owner OWNER        Project owner (default: from config)
+  --name NAME          Template name (default: project-{number})
+  --output PATH        Output file path (default: ~/.config/gh-projects/templates/{name}.json)
+  --dry-run            Show what would be exported
+  -h, --help           Show help
+
+Examples:
+  # Export current project as template
+  gh-project-setup-init
+
+  # Export specific project
+  gh-project-setup-init --project 14 --owner o2alexanderfedin
+
+  # Custom template name
+  gh-project-setup-init --name cpp-transpiler-template
+
+  # Preview export without saving
+  gh-project-setup-init --dry-run
+
+Template Format:
+  The template includes:
+  - Project metadata (title, description, readme)
+  - Custom fields with definitions and options
+  - View configurations (layout, filters, sorting)
+  - Field mappings for data types
+
+Note: Views cannot be created programmatically (GitHub API limitation).
+      Use copyProjectV2 mutation for complete project cloning with views.
+EOF
+  exit 0
+}
+
+# Parse arguments
+PROJECT_NUM=""
+OWNER=""
+TEMPLATE_NAME=""
+OUTPUT_PATH=""
+DRY_RUN=false
+
+while [[ $# -gt 0 ]]; do
+  case $1 in
+    --project) PROJECT_NUM="$2"; shift 2 ;;
+    --owner) OWNER="$2"; shift 2 ;;
+    --name) TEMPLATE_NAME="$2"; shift 2 ;;
+    --output) OUTPUT_PATH="$2"; shift 2 ;;
+    --dry-run) DRY_RUN=true; shift ;;
+    -h|--help) usage ;;
+    *) die "Unknown option: $1" ;;
+  esac
+done
+
+# Load config if not provided
+if [[ -z "$PROJECT_NUM" ]] || [[ -z "$OWNER" ]]; then
+  load_config
+  PROJECT_NUM="${PROJECT_NUM:-$PROJECT_NUMBER}"
+  OWNER="${OWNER:-$PROJECT_OWNER}"
+fi
+
+# Validate prerequisites
+validate_prerequisites
+
+# Set defaults
+TEMPLATE_NAME="${TEMPLATE_NAME:-project-$PROJECT_NUM}"
+TEMPLATES_DIR="$CACHE_DIR/templates"
+OUTPUT_PATH="${OUTPUT_PATH:-$TEMPLATES_DIR/$TEMPLATE_NAME.json}"
+
+log_info "Exporting project #$PROJECT_NUM structure..."
+
+#------------------------------------------------------------------------------
+# STEP 1: Query Project Metadata
+#------------------------------------------------------------------------------
+
+log_info "Querying project metadata..."
+PROJECT_DATA=$(gh project view "$PROJECT_NUM" \
+  --owner "$OWNER" \
+  --format json)
+
+PROJECT_ID=$(echo "$PROJECT_DATA" | jq -r '.id')
+PROJECT_TITLE=$(echo "$PROJECT_DATA" | jq -r '.title')
+PROJECT_README=$(echo "$PROJECT_DATA" | jq -r '.readme // ""')
+PROJECT_SHORT_DESC=$(echo "$PROJECT_DATA" | jq -r '.shortDescription // ""')
+
+log_success "Project: $PROJECT_TITLE"
+
+#------------------------------------------------------------------------------
+# STEP 2: Query Custom Fields
+#------------------------------------------------------------------------------
+
+log_info "Querying custom fields..."
+FIELDS_DATA=$(gh project field-list "$PROJECT_NUM" \
+  --owner "$OWNER" \
+  --format json)
+
+FIELDS_COUNT=$(echo "$FIELDS_DATA" | jq '.fields | length')
+log_success "Found $FIELDS_COUNT custom fields"
+
+# Transform fields to template format
+FIELDS_TEMPLATE=$(echo "$FIELDS_DATA" | jq '[
+  .fields[] |
+  select(.name != "Title" and .name != "Assignees" and .name != "Labels" and .name != "Linked pull requests" and .name != "Reviewers" and .name != "Repository" and .name != "Milestone") |
+  {
+    name: .name,
+    data_type: .type,
+    options: (if .options then [.options[] | {name: .name, description: (.description // ""), color: (.color // "")}] else null end)
+  }
+]')
+
+#------------------------------------------------------------------------------
+# STEP 3: Query Views (Metadata Only - Cannot Create Programmatically)
+#------------------------------------------------------------------------------
+
+log_info "Querying view metadata..."
+
+# Use GraphQL to get detailed view information
+VIEWS_DATA=$(execute_graphql "
+  query {
+    node(id: \"$PROJECT_ID\") {
+      ... on ProjectV2 {
+        views(first: 20) {
+          nodes {
+            id
+            name
+            layout
+            number
+            ... on ProjectV2View {
+              filter
+              groupByFields(first: 10) {
+                nodes {
+                  ... on ProjectV2Field {
+                    name
+                  }
+                  ... on ProjectV2SingleSelectField {
+                    name
+                  }
+                }
+              }
+              sortByFields(first: 10) {
+                nodes {
+                  field {
+                    ... on ProjectV2Field {
+                      name
+                    }
+                    ... on ProjectV2SingleSelectField {
+                      name
+                    }
+                  }
+                  direction
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+")
+
+VIEWS_COUNT=$(echo "$VIEWS_DATA" | jq '.data.node.views.nodes | length')
+log_success "Found $VIEWS_COUNT views"
+
+# Transform views to template format (metadata only - views cannot be created via API)
+VIEWS_TEMPLATE=$(echo "$VIEWS_DATA" | jq '.data.node.views.nodes | map({
+  name: .name,
+  layout: .layout,
+  filter: (.filter // ""),
+  group_by_fields: ([.groupByFields.nodes[]?.name] // []),
+  sort_by_fields: ([.sortByFields.nodes[]? | {field: .field.name, direction: .direction}] // []),
+  note: "Views cannot be created programmatically. Use copyProjectV2 mutation to clone with views, or create manually in UI."
+})')
+
+#------------------------------------------------------------------------------
+# STEP 4: Query Project Settings
+#------------------------------------------------------------------------------
+
+log_info "Querying project settings..."
+
+SETTINGS_DATA=$(execute_graphql "
+  query {
+    node(id: \"$PROJECT_ID\") {
+      ... on ProjectV2 {
+        public
+        closed
+        url
+        createdAt
+        updatedAt
+      }
+    }
+  }
+")
+
+SETTINGS_TEMPLATE=$(echo "$SETTINGS_DATA" | jq '.data.node | {
+  public: .public,
+  closed: .closed,
+  created_at: .createdAt,
+  updated_at: .updatedAt
+}')
+
+#------------------------------------------------------------------------------
+# STEP 5: Build Complete Template
+#------------------------------------------------------------------------------
+
+log_info "Building template..."
+
+TEMPLATE=$(jq -n \
+  --arg template_name "$TEMPLATE_NAME" \
+  --arg template_version "1.0" \
+  --arg source_owner "$OWNER" \
+  --argjson source_number "$PROJECT_NUM" \
+  --arg source_id "$PROJECT_ID" \
+  --arg source_title "$PROJECT_TITLE" \
+  --arg source_readme "$PROJECT_README" \
+  --arg source_short_desc "$PROJECT_SHORT_DESC" \
+  --arg export_timestamp "$(date -u +%Y-%m-%dT%H:%M:%SZ)" \
+  --argjson fields "$FIELDS_TEMPLATE" \
+  --argjson views "$VIEWS_TEMPLATE" \
+  --argjson settings "$SETTINGS_TEMPLATE" \
+  '{
+    template_name: $template_name,
+    template_version: $template_version,
+    export_timestamp: $export_timestamp,
+    source_project: {
+      owner: $source_owner,
+      number: $source_number,
+      id: $source_id,
+      title: $source_title,
+      readme: $source_readme,
+      short_description: $source_short_desc
+    },
+    fields: $fields,
+    views: $views,
+    settings: $settings,
+    usage: {
+      clone_complete_project: "Use gh-project-setup-clone with copyProjectV2 mutation (includes views)",
+      apply_fields_only: "Use gh-project-setup-apply to create fields on existing project (views must be created manually)"
+    }
+  }')
+
+#------------------------------------------------------------------------------
+# STEP 6: Preview or Save
+#------------------------------------------------------------------------------
+
+if [[ "$DRY_RUN" == "true" ]]; then
+  log_warn "[DRY-RUN] Would export template to: $OUTPUT_PATH"
+  echo ""
+  echo "Template Preview:"
+  echo "$TEMPLATE" | jq '.'
+  exit 0
+fi
+
+# Ensure templates directory exists
+mkdir -p "$TEMPLATES_DIR"
+
+# Save template
+echo "$TEMPLATE" | jq '.' > "$OUTPUT_PATH"
+
+# Display summary
+echo ""
+log_success "Template exported successfully!"
+echo ""
+echo "  Template: $TEMPLATE_NAME"
+echo "  Location: $OUTPUT_PATH"
+echo "  Size: $(wc -c < "$OUTPUT_PATH" | awk '{print $1}') bytes"
+echo ""
+echo "  Source Project: #$PROJECT_NUM - $PROJECT_TITLE"
+echo "  Fields: $FIELDS_COUNT"
+echo "  Views: $VIEWS_COUNT (metadata only - cannot create programmatically)"
+echo ""
+echo "Usage:"
+echo "  # Clone complete project with views:"
+echo "  gh-project-setup-clone --template $TEMPLATE_NAME --title \"New Project\""
+echo ""
+echo "  # Apply fields only to existing project:"
+echo "  gh-project-setup-apply --template $TEMPLATE_NAME --project 15"
+echo ""
+log_warn "Note: Views cannot be created via API. Use copyProjectV2 for complete cloning."
