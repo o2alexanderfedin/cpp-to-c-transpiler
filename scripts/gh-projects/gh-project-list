@@ -1,0 +1,152 @@
+#!/bin/bash
+# gh-project-list - Query and filter project items
+
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+source "$SCRIPT_DIR/lib/gh-project-common.sh"
+
+usage() {
+  cat << EOF
+Usage: gh-project-list [OPTIONS]
+
+Query and filter project items with advanced filtering.
+
+Options:
+  --status STATUS      Filter by status
+  --type TYPE          Filter by type (epic, story, task, bug, spike)
+  --drafts-only        Show only draft issues
+  --repo-only          Show only repository issues
+  --parent NUM         Show sub-issues of parent epic
+  --format FORMAT      Output format: table, json, csv (default: table)
+  --limit NUM          Limit results (default: 200)
+  -h, --help           Show help
+
+Examples:
+  # List all epics
+  gh-project-list --type epic
+
+  # List in-progress stories
+  gh-project-list --type story --status "In Progress"
+
+  # List drafts only
+  gh-project-list --drafts-only
+
+  # Show stories under epic #42
+  gh-project-list --parent 42
+
+  # Export to CSV
+  gh-project-list --format csv > items.csv
+EOF
+  exit 0
+}
+
+# Parse arguments
+STATUS_FILTER=""
+TYPE_FILTER=""
+DRAFTS_ONLY=false
+REPO_ONLY=false
+PARENT_NUM=""
+OUTPUT_FORMAT="table"
+LIMIT=200
+
+while [[ $# -gt 0 ]]; do
+  case $1 in
+    --status) STATUS_FILTER="$2"; shift 2 ;;
+    --type) TYPE_FILTER="$2"; shift 2 ;;
+    --drafts-only) DRAFTS_ONLY=true; shift ;;
+    --repo-only) REPO_ONLY=true; shift ;;
+    --parent) PARENT_NUM="$2"; shift 2 ;;
+    --format) OUTPUT_FORMAT="$2"; shift 2 ;;
+    --limit) LIMIT="$2"; shift 2 ;;
+    -h|--help) usage ;;
+    *) die "Unknown option: $1" ;;
+  esac
+done
+
+# Validate
+load_config
+validate_prerequisites
+
+# Normalize type filter
+if [[ -n "$TYPE_FILTER" ]]; then
+  case "${TYPE_FILTER,,}" in
+    epic) TYPE_FILTER="Epic" ;;
+    story) TYPE_FILTER="User Story" ;;
+    task) TYPE_FILTER="Task" ;;
+    bug) TYPE_FILTER="Bug" ;;
+    spike) TYPE_FILTER="Spike" ;;
+    *) die "Invalid type: $TYPE_FILTER. Valid: epic, story, task, bug, spike" ;;
+  esac
+fi
+
+# Special case: list sub-issues of parent
+if [[ -n "$PARENT_NUM" ]]; then
+  log_info "Querying sub-issues of Epic #$PARENT_NUM..."
+  EPIC_DATA=$(query_sub_issues "$PARENT_NUM")
+
+  TOTAL_COUNT=$(echo "$EPIC_DATA" | jq -r '.trackedIssues.totalCount')
+  EPIC_TITLE=$(echo "$EPIC_DATA" | jq -r '.title')
+
+  echo ""
+  echo "Epic #$PARENT_NUM: $EPIC_TITLE"
+  echo "Sub-issues ($TOTAL_COUNT total):"
+  echo ""
+
+  if [[ "$OUTPUT_FORMAT" == "json" ]]; then
+    echo "$EPIC_DATA" | jq '.trackedIssues.nodes'
+  elif [[ "$OUTPUT_FORMAT" == "csv" ]]; then
+    echo "number,title,state,url"
+    echo "$EPIC_DATA" | jq -r '.trackedIssues.nodes[] | [.number, .title, .state, .url] | @csv'
+  else
+    printf "%-8s %-50s %-10s\n" "NUMBER" "TITLE" "STATE"
+    printf "%-8s %-50s %-10s\n" "------" "-----" "-----"
+    echo "$EPIC_DATA" | jq -r '.trackedIssues.nodes[] | "\(.number | tostring)\t\(.title)\t\(.state)"' | \
+      while IFS=$'\t' read -r num title state; do
+        printf "%-8s %-50.50s %-10s\n" "$num" "$title" "$state"
+      done
+  fi
+
+  exit 0
+fi
+
+# Fetch all items
+log_info "Fetching project items..."
+ITEMS=$(gh project item-list "$PROJECT_NUMBER" \
+  --owner "$PROJECT_OWNER" \
+  --format json \
+  --limit "$LIMIT")
+
+# Build jq filter
+JQ_FILTER=".items[]"
+
+if [[ "$DRAFTS_ONLY" == "true" ]]; then
+  JQ_FILTER="$JQ_FILTER | select(.content.type == \"DraftIssue\")"
+fi
+
+if [[ "$REPO_ONLY" == "true" ]]; then
+  JQ_FILTER="$JQ_FILTER | select(.content.type == \"Issue\")"
+fi
+
+if [[ -n "$STATUS_FILTER" ]]; then
+  JQ_FILTER="$JQ_FILTER | select(.Status == \"$STATUS_FILTER\")"
+fi
+
+if [[ -n "$TYPE_FILTER" ]]; then
+  JQ_FILTER="$JQ_FILTER | select(.Type == \"$TYPE_FILTER\")"
+fi
+
+# Output results
+if [[ "$OUTPUT_FORMAT" == "json" ]]; then
+  echo "$ITEMS" | jq "[$JQ_FILTER]"
+elif [[ "$OUTPUT_FORMAT" == "csv" ]]; then
+  echo "id,type,number,title,status,priority"
+  echo "$ITEMS" | jq -r "$JQ_FILTER | [.id, .content.type, (.content.number // \"\"), .title, .Status, .Priority] | @csv"
+else
+  # Table format
+  printf "%-12s %-15s %-8s %-40s %-15s %-10s\n" "TYPE" "ITEM_TYPE" "NUMBER" "TITLE" "STATUS" "PRIORITY"
+  printf "%-12s %-15s %-8s %-40s %-15s %-10s\n" "----" "---------" "------" "-----" "------" "--------"
+
+  echo "$ITEMS" | jq -r "$JQ_FILTER | [.Type, .content.type, (.content.number // \"-\"), .title, .Status, (.Priority // \"-\")] | @tsv" | \
+    while IFS=$'\t' read -r type item_type number title status priority; do
+      printf "%-12.12s %-15.15s %-8s %-40.40s %-15.15s %-10.10s\n" "$type" "$item_type" "$number" "$title" "$status" "$priority"
+    done
+fi

@@ -1,0 +1,144 @@
+#!/bin/bash
+# gh-project-delete - Delete draft or remove repository issue from project
+
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+source "$SCRIPT_DIR/lib/gh-project-common.sh"
+
+usage() {
+  cat << EOF
+Usage: gh-project-delete [OPTIONS]
+
+Delete draft or remove repository issue from project.
+
+Options:
+  --item ID            Project item ID
+  --issue NUM          Repository issue number
+  --archive            Archive instead of delete (repo issues only)
+  --yes, -y            Skip confirmation
+  -h, --help           Show help
+
+Examples:
+  # Delete draft
+  gh-project-delete --item PVTI_...
+
+  # Remove repo issue from project
+  gh-project-delete --issue 167
+
+  # Archive (close + remove)
+  gh-project-delete --issue 167 --archive --yes
+
+WARNING:
+  - Deleting drafts is PERMANENT
+  - Removing repo issues only removes from project (issue preserved in repo)
+  - Archive closes the issue AND removes from project
+EOF
+  exit 0
+}
+
+# Parse arguments
+ITEM_ID=""
+ISSUE_NUM=""
+ARCHIVE=false
+SKIP_CONFIRM=false
+
+while [[ $# -gt 0 ]]; do
+  case $1 in
+    --item) ITEM_ID="$2"; shift 2 ;;
+    --issue) ISSUE_NUM="$2"; shift 2 ;;
+    --archive) ARCHIVE=true; shift ;;
+    --yes|-y) SKIP_CONFIRM=true; shift ;;
+    -h|--help) usage ;;
+    *) die "Unknown option: $1" ;;
+  esac
+done
+
+# Validate
+load_config
+validate_prerequisites
+
+if [[ -z "$ITEM_ID" ]] && [[ -z "$ISSUE_NUM" ]]; then
+  die "Either --item or --issue required"
+fi
+
+# Find item ID from issue number if needed
+IS_DRAFT=false
+TITLE=""
+
+if [[ -n "$ISSUE_NUM" ]] && [[ -z "$ITEM_ID" ]]; then
+  log_info "Finding item ID for issue #$ISSUE_NUM..."
+  ITEMS=$(gh project item-list "$PROJECT_NUMBER" \
+    --owner "$PROJECT_OWNER" \
+    --format json \
+    --limit 200)
+
+  ITEM_DATA=$(echo "$ITEMS" | jq -r --argjson num "$ISSUE_NUM" \
+    '.items[] | select(.content.number == $num)' | head -1)
+
+  ITEM_ID=$(echo "$ITEM_DATA" | jq -r '.id')
+  TITLE=$(echo "$ITEM_DATA" | jq -r '.title')
+
+  if [[ -z "$ITEM_ID" ]]; then
+    die "Issue #$ISSUE_NUM not found in project"
+  fi
+
+  log_success "Found item: $ITEM_ID"
+else
+  # Get item details
+  ITEMS=$(gh project item-list "$PROJECT_NUMBER" \
+    --owner "$PROJECT_OWNER" \
+    --format json \
+    --limit 200)
+
+  ITEM_DATA=$(echo "$ITEMS" | jq -r --arg id "$ITEM_ID" \
+    '.items[] | select(.id == $id)')
+
+  TITLE=$(echo "$ITEM_DATA" | jq -r '.title')
+  ITEM_TYPE=$(echo "$ITEM_DATA" | jq -r '.content.type')
+
+  if [[ "$ITEM_TYPE" == "DraftIssue" ]]; then
+    IS_DRAFT=true
+  fi
+fi
+
+# Confirm deletion
+if [[ "$SKIP_CONFIRM" != "true" ]]; then
+  echo ""
+  if [[ "$IS_DRAFT" == "true" ]]; then
+    log_warn "⚠  WARNING: This will PERMANENTLY delete the draft"
+  elif [[ "$ARCHIVE" == "true" ]]; then
+    log_warn "⚠  WARNING: This will CLOSE the issue and remove from project"
+  else
+    log_warn "⚠  This will remove the issue from project (issue preserved in repo)"
+  fi
+  echo ""
+  echo "  Title: $TITLE"
+  echo ""
+  read -p "Continue? (yes/no): " response
+
+  if [[ "$response" != "yes" ]]; then
+    log_warn "Operation cancelled"
+    exit 0
+  fi
+fi
+
+# Archive if requested
+if [[ "$ARCHIVE" == "true" ]] && [[ -n "$ISSUE_NUM" ]]; then
+  log_info "Closing issue #$ISSUE_NUM..."
+  gh issue close "$ISSUE_NUM" --repo "$PROJECT_OWNER/$PROJECT_REPO"
+  log_success "Issue closed"
+fi
+
+# Delete/remove item
+log_info "Removing from project..."
+gh project item-delete "$PROJECT_NUMBER" \
+  --owner "$PROJECT_OWNER" \
+  --id "$ITEM_ID"
+
+echo ""
+if [[ "$IS_DRAFT" == "true" ]]; then
+  log_success "Draft deleted permanently"
+elif [[ "$ARCHIVE" == "true" ]]; then
+  log_success "Issue #$ISSUE_NUM archived (closed and removed from project)"
+else
+  log_success "Issue removed from project (still exists in repository)"
+fi

@@ -1,22 +1,63 @@
 # TO-DOS
 
-## Historical Exception Handling Research - 2025-12-07 22:53
+## ✅ COMPLETED: GitHub Projects Setup & Templating - 2025-12-09
 
-- **Research early C++ compiler exception implementations** - Investigate how early C++ compilers (Cfront era, pre-LLVM) implemented exceptions when translating to C, and how similar C++ to C conversion tools handled exception+RAII interaction. **Problem:** Current research shows exception+RAII as primary challenge; historical implementations may reveal proven patterns or simplifications that modern research overlooks. Early compilers had to solve this exact problem when generating C code. **Files:** `docs/technical-analysis.md:1200-1450` (exception handling analysis), `docs/feasibility-and-roadmap.md:33-43` (exception+RAII challenge). **Solution:** Research Cfront (Bjarne Stroustrup's original C++ to C translator), examine how it handled exceptions in C output; investigate other historical transpilers; look for academic papers on exception handling in C; check if emmtrix documentation reveals their approach; analyze GCC/Clang early exception handling implementations before native code generation.
+**Status:** COMPLETED - All setup scripts implemented, tested, and documented
 
-## Advanced Features Historical Research - 2025-12-08 00:44
+**Implementation:** Created 3 additional scripts for project templating and replication:
 
-- **Research RTTI, virtual inheritance, and coroutines implementations** - Investigate how historical and specialized C++ compilers (Cfront, early GCC/EDG, CUDA C++, embedded C++ compilers) implemented RTTI (typeid/dynamic_cast), virtual inheritance (diamond problem, virtual base pointers), and coroutines (C++20) when generating C or C-like output. **Problem:** Research v1.3 identified these as implementable advanced features with varying complexity but no documented solution patterns yet; historical implementations and specialized compilers (especially CUDA C++ with restricted feature set) may reveal proven approaches or simplifications that make implementation more tractable. **Files:** `docs/feasibility-and-roadmap.md:65-70` (remaining manageable challenges), `docs/SUMMARY.md:1-234` (research summary). **Solution:** Research Cfront approach to virtual inheritance and RTTI; investigate CUDA C++ restrictions and how nvcc handles these features; examine Comeau C++, EDG, and early GCC implementations; check emmtrix eCPP2C documentation for their approach; analyze Itanium C++ ABI specifications for RTTI table structures and virtual inheritance layouts; look for academic papers on coroutine-to-state-machine transformations.
+1. **gh-project-setup-init** - Export project structure as reusable template
+2. **gh-project-setup-clone** - Clone complete project using copyProjectV2 mutation
+3. **gh-project-setup-apply** - Apply field structure from template to existing project
 
-## AST Transformation for Custom Runtime - 2025-12-08 01:21
+**Location:** `scripts/gh-projects/`
 
-- **Investigate AST transformation strategies for custom runtime support** - Analyze whether and how to transform Clang AST to inject custom runtime support for RTTI, exceptions, and other C++ features instead of generating standalone C code with embedded runtime. **Problem:** Current research (v1.4) documents patterns for generating C code with inline runtime support (PNaCl SJLJ exception frames, type_info tables, VTT structures), but it's unclear if transforming the AST before CodeGen to use a separate runtime library would be cleaner/more efficient; need to evaluate trade-offs between inline generation vs. runtime library approach. **Files:** `docs/features/exceptions.md:1-599` (PNaCl inline pattern), `docs/features/rtti.md:1-938` (type_info generation), `docs/features/virtual-inheritance.md:1-997` (VTT generation), `docs/features/coroutines.md:1-1321` (coroutine frames). **Solution:** Research Clang AST transformation APIs (ASTConsumer, RecursiveASTVisitor modifications); evaluate whether to generate runtime library calls (like libcxxabi) vs. inline runtime code; analyze emmtrix eCPP2C approach (do they use runtime library?); consider hybrid approach where complex runtime (exceptions, RTTI) uses library while simple features (name mangling, vtables) remain inline; document pros/cons of each strategy (code size, portability, debuggability, Frama-C compatibility).
+**Features:**
+- ✅ Template export with field definitions, options, and view metadata
+- ✅ Complete project cloning with views, workflows, and fields (copyProjectV2)
+- ✅ Field-only replication for existing projects
+- ✅ Dry-run mode for all operations
+- ✅ Comprehensive documentation and examples
 
-## Epic #19 Missing from GitHub Project - 2025-12-08 14:29
+**Key Findings:**
+- GitHub's `copyProjectV2` mutation is the ONLY way to programmatically create views
+- `createProjectV2View` mutation does NOT exist (verified via GraphQL schema introspection)
+- Views must be created manually in UI or cloned via copyProjectV2
 
-- **Create Epic #19 in GitHub Project #14** - Execute meta-prompt to add header file support Epic #19 to GitHub project, EPICS.md, and create user stories. **Problem:** Meta-prompt created for header file support design (Phase 2.5) but Epic #19 not yet created in GitHub Issues or added to Project #14; architecture design, epic creation, and user stories generation prompts are ready but not executed. **Files:** `.prompts/007-header-file-support/meta-prompt.md:1-end` (complete meta-prompt with 3 sequential prompts), `EPICS.md:1-981` (needs Epic #19 section), `docs/ARCHITECTURE.md:1227-1242` (needs Phase 2.5 weeks 12.5-13.5). **Solution:** Execute the three prompts in meta-prompt.md sequentially: (1) Update ARCHITECTURE.md with Phase 2.5 header generation design, (2) Create Epic #19 in EPICS.md and GitHub Issues with label "epic,phase-2,core-infrastructure,critical", add to Project #14 with Type="Epic", (3) Generate 6 User Stories (#136-141: Header/Impl Separation 2SP, Include Guards 1SP, Forward Decls 2SP, Dependency Tracking 1SP, File Output 1SP, Integration Tests 1SP), create as GitHub Issues, add to Project #14 with Type="User Story", link to Epic #19 as sub-issues.
+**Documentation:**
+- Implementation: `scripts/gh-projects/gh-project-setup-*`
+- README: `scripts/gh-projects/README.md` (updated with new section)
+- Research: `.prompts/011-github-projects-setup-research/github-projects-setup-research.md`
+- Template: `~/.config/gh-projects/templates/project-14.json`
 
-## Task Tool Interruption Pattern - 2025-12-08 16:20
+## ✅ COMPLETED: GitHub Projects-Only Workflow Migration - 2025-12-09
 
-- **Investigate why Task tool delegations are being interrupted** - Understand why user stories for Epic #5 and Epic #6 meta-prompts haven't been executed despite successful meta-prompt creation. **Problem:** Pattern observed: (1) User requests `/taches-cc-resources:create-meta-prompt` for Epic #6/#5, (2) I successfully create comprehensive meta-prompts (.prompts/009-execute-epic-6/ and 010-execute-epic-5/), (3) User requests `/run-prompt XXX` to execute, (4) I invoke Task tool with general-purpose agent to delegate execution, (5) Immediately receive "[Request interrupted by user for tool use]" error, (6) User requests creation of different meta-prompt. Epic #19 was successfully executed but Epics #5 and #6 are stuck at meta-prompt creation stage. **Files:** `.prompts/009-execute-epic-6/meta-prompt.md:1-1201` (Epic #6 Single Inheritance - ready but not executed), `.prompts/010-execute-epic-5/meta-prompt.md:1-end` (Epic #5 RAII - ready but not executed). **Solution:** Determine if: (a) User is manually interrupting to review prompts first, (b) System/UI issue causing automatic interruption, (c) Task tool requires different invocation pattern, (d) User prefers different execution method than Task delegation. Check if Epic #19 used different approach. Consider asking user directly about preferred execution workflow.
+**Status:** COMPLETED - All scripts implemented and tested
+
+**Implementation:** Created 7 production-ready bash scripts with native sub-issue API support:
+
+1. **gh-project-init** - Initialize configuration and cache field metadata
+2. **gh-project-create** - Create draft/repo issues with custom fields
+3. **gh-project-convert** - Convert draft → repository issue (irreversible)
+4. **gh-project-link** - Link stories to epics using native GitHub `addSubIssue` mutation
+5. **gh-project-list** - Query/filter items with advanced filtering
+6. **gh-project-update** - Update custom fields
+7. **gh-project-delete** - Delete drafts or remove repo issues from project
+
+**Location:** `scripts/gh-projects/`
+
+**Features:**
+- ✅ Native sub-issue API support (addSubIssue/removeSubIssue/reprioritizeSubIssue)
+- ✅ Draft-first workflow (create drafts by default, convert only when needed)
+- ✅ Custom fields with automatic caching (Status, Type, Priority)
+- ✅ Production quality (retry logic, error handling, dry-run mode)
+- ✅ Color-coded output and comprehensive help
+- ✅ Full documentation in README.md
+
+**Key Discovery:** Research revealed native GitHub sub-issue API (initially missed), enabling Epic-Story hierarchies without custom field workarounds. This provides UI integration, progress tracking, and ecosystem support.
+
+**Documentation:**
+- Implementation plan: `.prompts/004-github-projects-scripts-plan-updated/github-projects-scripts-plan.md`
+- Research (corrected): `.prompts/003-github-projects-research-refine/github-projects-research-refined.md`
+- README: `scripts/gh-projects/README.md`
 
