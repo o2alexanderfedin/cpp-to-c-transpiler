@@ -39,6 +39,9 @@ gh-project-init --project 14
 # Or specify explicitly
 gh-project-init --project 14 --owner o2alexanderfedin --repo cpp-to-c-transpiler
 
+# Link project to repository (makes it appear in repo's Projects tab)
+gh-project-link-repo --project 14
+
 # Refresh field cache
 gh-project-init --project 14 --refresh-cache
 ```
@@ -278,6 +281,41 @@ gh-project-link --parent NUM --child NUM [OPTIONS]
 - Both parent and child must be repository issues (not drafts)
 - Both must be in the same repository
 
+### gh-project-link-repo
+
+Link a GitHub Project to a repository so it appears in the repository's Projects tab.
+
+**Usage:**
+```bash
+gh-project-link-repo --project NUM [OPTIONS]
+```
+
+**Options:**
+- `--project NUM` - Project number (required)
+- `--owner OWNER` - Project owner (default: from config or auto-detect)
+- `--repo REPO` - Repository name (default: from config or auto-detect)
+- `--repo-owner OWNER` - Repository owner if different from project owner
+- `--unlink` - Unlink project from repository instead of linking
+- `--dry-run` - Show what would be done
+- `-h, --help` - Show help
+
+**What this does:**
+- Makes the project appear in the repository's "Projects" tab
+- Allows easy addition of repository issues to the project
+- Links the project and repository in GitHub's UI
+
+**Examples:**
+```bash
+# Link project to current repository
+gh-project-link-repo --project 14
+
+# Link to specific repository
+gh-project-link-repo --project 14 --repo my-repo
+
+# Unlink project from repository
+gh-project-link-repo --project 14 --unlink
+```
+
 ### gh-project-list
 
 Query and filter project items with advanced filtering.
@@ -431,6 +469,7 @@ scripts/gh-projects/
 ├── gh-project-create                # Create draft/repo issues
 ├── gh-project-convert               # Convert draft → repo
 ├── gh-project-link                  # Link story to epic (native sub-issue)
+├── gh-project-link-repo             # Link project to repository
 ├── gh-project-list                  # Query/filter items
 ├── gh-project-update                # Update custom fields
 ├── gh-project-delete                # Delete/remove items
