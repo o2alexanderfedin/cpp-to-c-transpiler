@@ -2,6 +2,37 @@
 
 Production-ready bash scripts for managing GitHub Projects v2 with **native sub-issue API support**.
 
+## Global Installation Available
+
+**These scripts are now available globally at `~/.claude/bin/gh-projects/`**
+
+This makes them accessible from any project without needing to specify the full path.
+
+### Using Global Scripts
+
+Add to your PATH:
+```bash
+export PATH="$PATH:$HOME/.claude/bin/gh-projects"
+```
+
+Add this line to your shell profile (`~/.zshrc`, `~/.bashrc`, etc.) and reload:
+```bash
+source ~/.zshrc  # or source ~/.bashrc
+```
+
+### Integration with Claude Code Skills
+
+These scripts are used by the `github-project-setup` skill:
+- Skill location: `~/.claude/skills/github-project-setup/`
+- The skill automatically uses these production-tested scripts for robust project setup
+
+### Documentation
+
+- **Global scripts README**: `~/.claude/bin/gh-projects/README.md`
+- **Repository README**: This file (source of truth for script development)
+
+---
+
 ## Features
 
 ✅ **Native Sub-Issue Support** - Uses GitHub's `addSubIssue`/`removeSubIssue` mutations for Epic-Story hierarchies
