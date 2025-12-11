@@ -8,6 +8,23 @@
 
 A research project for converting modern C++ code to clean, readable, formally-verifiable C code using Clang's AST infrastructure.
 
+---
+
+## 📚 Comprehensive Documentation Available
+
+**Visit our interactive documentation site:** [https://o2alexanderfedin.github.io/cpp-to-c-transpiler/](https://o2alexanderfedin.github.io/cpp-to-c-transpiler/)
+
+The documentation site provides:
+- **Architecture Guides** - Two-phase translation approach, AST infrastructure, implementation patterns
+- **Feature Implementations** - PNaCl SJLJ exceptions, RTTI (Itanium ABI), virtual inheritance, C++20 coroutines
+- **Progress Tracking** - Live implementation status, completed epics, upcoming milestones
+- **Research Analysis** - 13,545+ lines of comprehensive technical documentation
+- **Interactive Navigation** - Easy browsing of all project documentation
+
+This README provides a quick overview - the documentation site contains the complete technical details.
+
+---
+
 ## Overview
 
 This project implements a C++ to C transpiler that produces high-quality, human-readable C code suitable for formal verification with tools like Frama-C. The converter handles modern C++ features including:
