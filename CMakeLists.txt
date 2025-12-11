@@ -795,3 +795,33 @@ target_link_libraries(VirtualFunctionIntegrationTest PRIVATE
     clangAST
     clangBasic
 )
+
+# ============================================================================
+# Epic #7: Advanced Constructor/Destructor Features (Story #178)
+# ============================================================================
+
+# Story #178: Member Initialization List Translation tests
+add_executable(MemberInitListTest
+    tests/MemberInitListTest.cpp
+    src/CppToCVisitor.cpp
+    src/CFGAnalyzer.cpp
+    src/NameMangler.cpp
+    src/VirtualMethodAnalyzer.cpp
+    src/VptrInjector.cpp
+    src/CodeGenerator.cpp
+)
+
+target_compile_definitions(MemberInitListTest PRIVATE ${LLVM_DEFINITIONS})
+
+target_include_directories(MemberInitListTest PRIVATE
+    ${CMAKE_SOURCE_DIR}/include
+    ${LLVM_INCLUDE_DIRS}
+    ${CLANG_INCLUDE_DIRS}
+)
+
+target_link_libraries(MemberInitListTest PRIVATE
+    clangTooling
+    clangFrontend
+    clangAST
+    clangBasic
+)
