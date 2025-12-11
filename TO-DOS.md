@@ -61,11 +61,62 @@
 - Research (corrected): `.prompts/003-github-projects-research-refine/github-projects-research-refined.md`
 - README: `scripts/gh-projects/README.md`
 
-## Repository Licensing and Visibility - 2025-12-10 18:30
+## ✅ COMPLETED: Repository Licensing and Visibility - 2025-12-10 18:30
 
-- **Make repository private** - Change repository visibility from public to private. **Problem:** Repository is currently public (visibility: PUBLIC), needs to be private to restrict access. **Files:** Repository settings (via `gh repo edit`). **Solution:** Use `gh repo edit o2alexanderfedin/cpp-to-c-transpiler --visibility private`.
+**Status:** COMPLETED - Released as v0.3.5
 
-- **Add CC BY-NC-ND main license** - Create LICENSE file with Creative Commons Attribution-NonCommercial-NoDerivatives 4.0 International. **Problem:** No LICENSE file exists in repository, need to establish clear licensing terms for non-commercial, no-derivatives use. **Files:** `LICENSE` (new file at repository root). **Solution:** Use official CC BY-NC-ND 4.0 license text from creativecommons.org.
+**Implementation:** Dual licensing structure with CC BY-NC-ND 4.0 and commercial options
 
-- **Make license dual** - Implement dual licensing structure. **Problem:** Need both restrictive default license (CC BY-NC-ND) and alternative commercial licensing option. **Files:** `LICENSE` (main license), `LICENSE-COMMERCIAL.md` (new, commercial terms), `README.md` (licensing section explaining dual structure). **Solution:** Add commercial licensing terms file, update README with clear explanation of dual licensing options and how to obtain commercial license.
+**Changes:**
+- ✅ **Made repository private** - Changed visibility from PUBLIC to PRIVATE
+- ✅ **Added CC BY-NC-ND 4.0 license** - Created LICENSE file (403 lines)
+- ✅ **Implemented dual licensing** - Added LICENSE-COMMERCIAL.md with three tiers
+  - Individual/Startup tier
+  - Enterprise tier
+  - OEM/Redistribution tier
+- ✅ **Updated documentation** - README.md with dual licensing section and badges
+
+**Release:** v0.3.5 - https://github.com/o2alexanderfedin/cpp-to-c-transpiler/releases/tag/v0.3.5
+
+**Files:**
+- `LICENSE` (403 lines) - CC BY-NC-ND 4.0 International
+- `LICENSE-COMMERCIAL.md` (146 lines) - Commercial licensing terms
+- `README.md` - Dual licensing section and badges
+- `TO-DOS.md` - Documentation
+
+## ✅ COMPLETED: Repository Collaborator Access - 2025-12-10 19:04
+
+**Status:** COMPLETED - Invitation sent to EitanNahmias
+
+**Implementation:** Added EitanNahmias as write (push) collaborator
+
+**Details:**
+- ✅ **Found Eitan's GitHub username** - EitanNahmias (Company: Hupyy)
+- ✅ **Sent write permission invitation** - Created 2025-12-11 03:17:04 UTC
+- ⏳ **Pending acceptance** - Awaiting EitanNahmias to accept invitation
+- 🔄 **Permission downgraded** - Changed from admin to write (push access)
+
+**Permissions (write level):**
+- ✅ Read and clone repository
+- ✅ Push commits and branches
+- ✅ Create and manage issues/PRs
+- ❌ No repository settings access
+- ❌ No collaborator management
+
+**Command used:**
+```bash
+# Deleted admin invitation (ID 301595748)
+gh api -X DELETE repos/o2alexanderfedin/cpp-to-c-transpiler/invitations/301595748
+
+# Created new write permission invitation
+gh api repos/o2alexanderfedin/cpp-to-c-transpiler/collaborators/EitanNahmias -X PUT -f permission=push
+```
+
+**Note:** "maintain" permission level is only available for organization repositories. For personal repositories, available levels are: pull (read), push (write), admin.
+
+**Invitation URL:** https://github.com/o2alexanderfedin/cpp-to-c-transpiler/invitations
+
+## GitHub Pages Public Landing - 2025-12-10 19:20
+
+- **Setup GitHub Pages with CI/CD** - Create public landing page for project documentation and progress. **Problem:** Repository is private, but need to share progress updates and architecture documentation with public audience without granting repository access. **Files:** `.github/workflows/pages.yml` (new), `docs/index.html` or `docs/index.md` (new), `README.md` (source for landing), `docs/` directory (architecture docs). **Solution:** Configure GitHub Pages to publish from `docs/` branch or directory, create GitHub Actions workflow to build and deploy on push to main, include project overview, progress tracking, architecture diagrams, and documentation links while keeping source code private.
 
