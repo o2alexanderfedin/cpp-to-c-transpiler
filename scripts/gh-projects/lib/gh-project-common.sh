@@ -238,7 +238,7 @@ add_sub_issue() {
         issue {
           number
           title
-          trackedIssues {
+          subIssues {
             totalCount
           }
         }
@@ -252,7 +252,7 @@ add_sub_issue() {
     -f parentId="$parent_id" \
     -f childId="$child_id")
 
-  local total_count=$(echo "$result" | jq -r '.data.addSubIssue.issue.trackedIssues.totalCount')
+  local total_count=$(echo "$result" | jq -r '.data.addSubIssue.issue.subIssues.totalCount')
   log_success "Story #$child_number linked to Epic #$parent_number ($total_count total sub-issues)"
 }
 
@@ -274,7 +274,7 @@ remove_sub_issue() {
       }) {
         issue {
           number
-          trackedIssues { totalCount }
+          subIssues { totalCount }
         }
         subIssue {
           number
@@ -300,7 +300,7 @@ query_sub_issues() {
       repository(owner: \"$owner\", name: \"$repo_name\") {
         issue(number: $parent_number) {
           title
-          trackedIssues(first: 100) {
+          subIssues(first: 100) {
             totalCount
             nodes {
               number
