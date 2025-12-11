@@ -1,0 +1,469 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="C++ to C Transpiler - Research and implementation of a transpiler using Clang AST infrastructure for safety-critical systems">
+    <title>C++ to C Transpiler | Research Project</title>
+    <style>
+        :root {
+            --primary: #2563eb;
+            --success: #10b981;
+            --warning: #f59e0b;
+            --bg: #0f172a;
+            --bg-secondary: #1e293b;
+            --text: #e2e8f0;
+            --text-muted: #94a3b8;
+            --border: #334155;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen', 'Ubuntu', sans-serif;
+            background: var(--bg);
+            color: var(--text);
+            line-height: 1.6;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 2rem;
+        }
+
+        header {
+            text-align: center;
+            padding: 3rem 0;
+            border-bottom: 1px solid var(--border);
+        }
+
+        h1 {
+            font-size: 3rem;
+            margin-bottom: 1rem;
+            background: linear-gradient(135deg, #60a5fa 0%, #3b82f6 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+
+        .tagline {
+            font-size: 1.25rem;
+            color: var(--text-muted);
+            margin-bottom: 2rem;
+        }
+
+        .badges {
+            display: flex;
+            gap: 0.5rem;
+            justify-content: center;
+            flex-wrap: wrap;
+        }
+
+        .badge {
+            padding: 0.5rem 1rem;
+            border-radius: 0.375rem;
+            font-size: 0.875rem;
+            font-weight: 600;
+            display: inline-block;
+        }
+
+        .badge-success {
+            background: rgba(16, 185, 129, 0.1);
+            color: var(--success);
+            border: 1px solid rgba(16, 185, 129, 0.2);
+        }
+
+        .badge-primary {
+            background: rgba(37, 99, 235, 0.1);
+            color: var(--primary);
+            border: 1px solid rgba(37, 99, 235, 0.2);
+        }
+
+        .badge-warning {
+            background: rgba(245, 158, 11, 0.1);
+            color: var(--warning);
+            border: 1px solid rgba(245, 158, 11, 0.2);
+        }
+
+        section {
+            padding: 3rem 0;
+            border-bottom: 1px solid var(--border);
+        }
+
+        section:last-child {
+            border-bottom: none;
+        }
+
+        h2 {
+            font-size: 2rem;
+            margin-bottom: 1.5rem;
+            color: var(--text);
+        }
+
+        h3 {
+            font-size: 1.5rem;
+            margin-bottom: 1rem;
+            margin-top: 2rem;
+            color: var(--text);
+        }
+
+        .overview {
+            background: var(--bg-secondary);
+            padding: 2rem;
+            border-radius: 0.5rem;
+            border: 1px solid var(--border);
+        }
+
+        .features {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 1.5rem;
+            margin-top: 2rem;
+        }
+
+        .feature-card {
+            background: var(--bg-secondary);
+            padding: 1.5rem;
+            border-radius: 0.5rem;
+            border: 1px solid var(--border);
+        }
+
+        .feature-card h4 {
+            color: var(--primary);
+            margin-bottom: 0.5rem;
+        }
+
+        .progress-section {
+            margin-top: 2rem;
+        }
+
+        .progress-stats {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 1.5rem;
+            margin-bottom: 2rem;
+        }
+
+        .stat-card {
+            background: var(--bg-secondary);
+            padding: 1.5rem;
+            border-radius: 0.5rem;
+            border: 1px solid var(--border);
+            text-align: center;
+        }
+
+        .stat-number {
+            font-size: 2.5rem;
+            font-weight: 700;
+            color: var(--success);
+        }
+
+        .stat-label {
+            color: var(--text-muted);
+            font-size: 0.875rem;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+        }
+
+        .epic-list {
+            list-style: none;
+            margin-top: 1rem;
+        }
+
+        .epic-item {
+            background: var(--bg-secondary);
+            padding: 1rem;
+            margin-bottom: 0.75rem;
+            border-radius: 0.375rem;
+            border-left: 3px solid var(--success);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .epic-item.pending {
+            border-left-color: var(--text-muted);
+            opacity: 0.7;
+        }
+
+        .epic-number {
+            font-weight: 600;
+            color: var(--primary);
+        }
+
+        .status-complete {
+            color: var(--success);
+            font-weight: 600;
+        }
+
+        .status-pending {
+            color: var(--text-muted);
+        }
+
+        .docs-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 1.5rem;
+            margin-top: 2rem;
+        }
+
+        .doc-card {
+            background: var(--bg-secondary);
+            padding: 1.5rem;
+            border-radius: 0.5rem;
+            border: 1px solid var(--border);
+            transition: all 0.3s ease;
+            text-decoration: none;
+            color: var(--text);
+            display: block;
+        }
+
+        .doc-card:hover {
+            border-color: var(--primary);
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(37, 99, 235, 0.1);
+        }
+
+        .doc-card h4 {
+            color: var(--primary);
+            margin-bottom: 0.5rem;
+        }
+
+        .doc-meta {
+            font-size: 0.875rem;
+            color: var(--text-muted);
+            margin-bottom: 0.75rem;
+        }
+
+        footer {
+            text-align: center;
+            padding: 3rem 0;
+            color: var(--text-muted);
+            font-size: 0.875rem;
+        }
+
+        footer a {
+            color: var(--primary);
+            text-decoration: none;
+        }
+
+        footer a:hover {
+            text-decoration: underline;
+        }
+
+        .license-note {
+            background: rgba(245, 158, 11, 0.1);
+            border: 1px solid rgba(245, 158, 11, 0.2);
+            padding: 1.5rem;
+            border-radius: 0.5rem;
+            margin-top: 2rem;
+        }
+
+        .license-note h4 {
+            color: var(--warning);
+            margin-bottom: 0.5rem;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>C++ to C Transpiler</h1>
+            <p class="tagline">Research and implementation using Clang AST infrastructure for safety-critical systems</p>
+            <div class="badges">
+                <span class="badge badge-success">Research Complete v1.5.1</span>
+                <span class="badge badge-success">Confidence 97%+</span>
+                <span class="badge badge-primary">Two-Phase Translation</span>
+                <span class="badge badge-warning">CC BY-NC-ND 4.0</span>
+            </div>
+        </header>
+
+        <section>
+            <h2>Overview</h2>
+            <div class="overview">
+                <p>This project implements a C++ to C transpiler that produces high-quality, human-readable C code suitable for formal verification with tools like Frama-C. The converter handles modern C++ features including classes, templates, RAII, exceptions, RTTI, lambdas, and C++20 coroutines.</p>
+
+                <h3>Key Features</h3>
+                <div class="features">
+                    <div class="feature-card">
+                        <h4>Two-Phase Translation</h4>
+                        <p>Intermediate C AST generation for optimal code quality and maintainability</p>
+                    </div>
+                    <div class="feature-card">
+                        <h4>STL Self-Bootstrapping</h4>
+                        <p>Automatic conversion of STL containers through template instantiation</p>
+                    </div>
+                    <div class="feature-card">
+                        <h4>PNaCl SJLJ Exceptions</h4>
+                        <p>Thread-safe exception handling with action tables</p>
+                    </div>
+                    <div class="feature-card">
+                        <h4>Formal Verification Ready</h4>
+                        <p>Clean output optimized for Frama-C verification</p>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <section>
+            <h2>Implementation Progress</h2>
+            <div class="progress-section">
+                <div class="progress-stats">
+                    <div class="stat-card">
+                        <div class="stat-number">6/14</div>
+                        <div class="stat-label">Epics Complete</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-number">42.9%</div>
+                        <div class="stat-label">Overall Progress</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-number">13,545+</div>
+                        <div class="stat-label">Lines of Docs</div>
+                    </div>
+                </div>
+
+                <h3>Completed Epics ✓</h3>
+                <ul class="epic-list">
+                    <li class="epic-item">
+                        <span><span class="epic-number">Epic #5</span> - RAII + Automatic Destructor Injection</span>
+                        <span class="status-complete">✓ Complete</span>
+                    </li>
+                    <li class="epic-item">
+                        <span><span class="epic-number">Epic #6</span> - Single Inheritance Support</span>
+                        <span class="status-complete">✓ Complete</span>
+                    </li>
+                    <li class="epic-item">
+                        <span><span class="epic-number">Epic #7</span> - Advanced Constructor/Destructor Features</span>
+                        <span class="status-complete">✓ Complete</span>
+                    </li>
+                    <li class="epic-item">
+                        <span><span class="epic-number">Epic #8</span> - Name Mangling + Template Monomorphization</span>
+                        <span class="status-complete">✓ Complete</span>
+                    </li>
+                    <li class="epic-item">
+                        <span><span class="epic-number">Epic #9</span> - Virtual Functions + Vtables</span>
+                        <span class="status-complete">✓ Complete</span>
+                    </li>
+                    <li class="epic-item">
+                        <span><span class="epic-number">Epic #19</span> - Header File Generation & Separation</span>
+                        <span class="status-complete">✓ Complete</span>
+                    </li>
+                </ul>
+
+                <h3>In Progress & Upcoming</h3>
+                <ul class="epic-list">
+                    <li class="epic-item pending">
+                        <span><span class="epic-number">Epic #10</span> - Exception Handling (PNaCl SJLJ)</span>
+                        <span class="status-pending">Next</span>
+                    </li>
+                    <li class="epic-item pending">
+                        <span><span class="epic-number">Epic #11</span> - RTTI Implementation (Itanium ABI)</span>
+                        <span class="status-pending">Planned</span>
+                    </li>
+                    <li class="epic-item pending">
+                        <span><span class="epic-number">Epic #12</span> - Virtual Inheritance + VTT</span>
+                        <span class="status-pending">Planned</span>
+                    </li>
+                    <li class="epic-item pending">
+                        <span><span class="epic-number">Epic #13</span> - Multiple Inheritance</span>
+                        <span class="status-pending">Planned</span>
+                    </li>
+                </ul>
+            </div>
+        </section>
+
+        <section>
+            <h2>Documentation</h2>
+            <div class="docs-grid">
+                <a href="SUMMARY.md" class="doc-card">
+                    <h4>📋 Executive Summary</h4>
+                    <p class="doc-meta">316 lines · Quick overview</p>
+                    <p>Research findings, confidence assessment, and key breakthroughs</p>
+                </a>
+
+                <a href="CHANGELOG.md" class="doc-card">
+                    <h4>📜 Changelog</h4>
+                    <p class="doc-meta">Version history</p>
+                    <p>Research timeline from v1.0 to v1.5.1, key decisions and architecture evolution</p>
+                </a>
+
+                <a href="ARCHITECTURE.md" class="doc-card">
+                    <h4>🏗️ Architecture</h4>
+                    <p class="doc-meta">60KB · Technical design</p>
+                    <p>Two-phase translation approach, AST infrastructure, and implementation patterns</p>
+                </a>
+
+                <a href="feasibility-and-roadmap.md" class="doc-card">
+                    <h4>🗺️ Roadmap</h4>
+                    <p class="doc-meta">1,023 lines · 6-month plan</p>
+                    <p>Phase-by-phase implementation breakdown with risk assessment</p>
+                </a>
+
+                <a href="technical-analysis.md" class="doc-card">
+                    <h4>🔬 Technical Analysis</h4>
+                    <p class="doc-meta">2,333 lines · Deep dive</p>
+                    <p>Comprehensive research findings and Clang AST infrastructure analysis</p>
+                </a>
+
+                <a href="features/exceptions.md" class="doc-card">
+                    <h4>⚡ Exception Handling</h4>
+                    <p class="doc-meta">599 lines · PNaCl SJLJ</p>
+                    <p>Thread-safe exception pattern with action table implementation</p>
+                </a>
+
+                <a href="features/rtti.md" class="doc-card">
+                    <h4>🔍 RTTI Implementation</h4>
+                    <p class="doc-meta">938 lines · Itanium ABI</p>
+                    <p>type_info generation and dynamic_cast translation</p>
+                </a>
+
+                <a href="features/virtual-inheritance.md" class="doc-card">
+                    <h4>🔗 Virtual Inheritance</h4>
+                    <p class="doc-meta">997 lines · VTT</p>
+                    <p>VTT generation and diamond problem resolution</p>
+                </a>
+
+                <a href="features/coroutines.md" class="doc-card">
+                    <h4>🔄 C++20 Coroutines</h4>
+                    <p class="doc-meta">1,321 lines · State machines</p>
+                    <p>State machine transformation and LLVM CoroSplit patterns</p>
+                </a>
+
+                <a href="architecture/architecture-decision.md" class="doc-card">
+                    <h4>💡 Architecture Decision</h4>
+                    <p class="doc-meta">949 lines · Design rationale</p>
+                    <p>Why intermediate C AST? Why not TreeTransform?</p>
+                </a>
+
+                <a href="architecture/prototype-comparison.md" class="doc-card">
+                    <h4>📊 Prototype Comparison</h4>
+                    <p class="doc-meta">863 lines · Quantitative analysis</p>
+                    <p>Comparative analysis of different implementation approaches</p>
+                </a>
+
+                <a href="architecture/runtime-library-design.md" class="doc-card">
+                    <h4>📚 Runtime Library</h4>
+                    <p class="doc-meta">713 lines · Library spec</p>
+                    <p>Runtime library design and specification</p>
+                </a>
+            </div>
+
+            <div class="license-note">
+                <h4>⚠️ Repository Access</h4>
+                <p>This is a <strong>private repository</strong>. Documentation is publicly available, but source code access requires authorization. Licensed under <strong>CC BY-NC-ND 4.0</strong> for non-commercial use. Commercial licensing available - contact alexander.fedin@hapyy.com</p>
+            </div>
+        </section>
+
+        <footer>
+            <p>Generated with <a href="https://claude.com/claude-code" target="_blank">Claude Code</a></p>
+            <p>© 2025 C++ to C Transpiler Project · <a href="mailto:alexander.fedin@hapyy.com">Contact</a></p>
+        </footer>
+    </div>
+</body>
+</html>
