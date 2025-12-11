@@ -61,3 +61,11 @@
 - Research (corrected): `.prompts/003-github-projects-research-refine/github-projects-research-refined.md`
 - README: `scripts/gh-projects/README.md`
 
+## Repository Licensing and Visibility - 2025-12-10 18:30
+
+- **Make repository private** - Change repository visibility from public to private. **Problem:** Repository is currently public (visibility: PUBLIC), needs to be private to restrict access. **Files:** Repository settings (via `gh repo edit`). **Solution:** Use `gh repo edit o2alexanderfedin/cpp-to-c-transpiler --visibility private`.
+
+- **Add CC BY-NC-ND main license** - Create LICENSE file with Creative Commons Attribution-NonCommercial-NoDerivatives 4.0 International. **Problem:** No LICENSE file exists in repository, need to establish clear licensing terms for non-commercial, no-derivatives use. **Files:** `LICENSE` (new file at repository root). **Solution:** Use official CC BY-NC-ND 4.0 license text from creativecommons.org.
+
+- **Make license dual** - Implement dual licensing structure. **Problem:** Need both restrictive default license (CC BY-NC-ND) and alternative commercial licensing option. **Files:** `LICENSE` (main license), `LICENSE-COMMERCIAL.md` (new, commercial terms), `README.md` (licensing section explaining dual structure). **Solution:** Add commercial licensing terms file, update README with clear explanation of dual licensing options and how to obtain commercial license.
+
