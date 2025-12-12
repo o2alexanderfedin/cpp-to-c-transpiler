@@ -936,3 +936,19 @@ target_link_libraries(CatchHandlerTypeMatchingTest PRIVATE
     clangAST
     clangBasic
 )
+
+# Story #81: Exception Runtime Library tests
+add_executable(ExceptionRuntimeTest
+    tests/ExceptionRuntimeTest.cpp
+    runtime/exception_runtime.cpp
+)
+
+target_include_directories(ExceptionRuntimeTest PRIVATE
+    ${CMAKE_SOURCE_DIR}/runtime
+)
+
+# Set C11 standard for thread-local storage
+set_property(TARGET ExceptionRuntimeTest PROPERTY C_STANDARD 11)
+set_property(TARGET ExceptionRuntimeTest PROPERTY C_STANDARD_REQUIRED ON)
+
+# No Clang/LLVM dependencies - pure C runtime library
