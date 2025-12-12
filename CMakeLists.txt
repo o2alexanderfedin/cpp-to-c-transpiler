@@ -893,3 +893,24 @@ target_link_libraries(TryCatchTransformerTest PRIVATE
     clangAST
     clangBasic
 )
+
+# Story #79: Throw Expression Translation tests
+add_executable(ThrowTranslatorTest
+    tests/ThrowTranslatorTest.cpp
+    src/ThrowTranslator.cpp
+)
+
+target_compile_definitions(ThrowTranslatorTest PRIVATE ${LLVM_DEFINITIONS})
+
+target_include_directories(ThrowTranslatorTest PRIVATE
+    ${CMAKE_SOURCE_DIR}/include
+    ${LLVM_INCLUDE_DIRS}
+    ${CLANG_INCLUDE_DIRS}
+)
+
+target_link_libraries(ThrowTranslatorTest PRIVATE
+    clangTooling
+    clangFrontend
+    clangAST
+    clangBasic
+)
