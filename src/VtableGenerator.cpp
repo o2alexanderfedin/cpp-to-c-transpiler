@@ -27,6 +27,10 @@ std::string VtableGenerator::generateVtableStruct(const CXXRecordDecl* Record) {
     // Generate vtable struct
     code << "struct " << className << "_vtable {\n";
 
+    // Story #84: Add type_info pointer as first field (Itanium ABI vtable[-1])
+    // In C, we place it at offset 0 instead of -1
+    code << "    const struct __class_type_info *type_info;  /**< RTTI type_info pointer (Itanium ABI vtable[-1]) */\n";
+
     // Get methods in vtable order
     auto methods = getVtableMethodOrder(Record);
 

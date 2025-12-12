@@ -1012,3 +1012,26 @@ target_link_libraries(TypeInfoGeneratorTest PRIVATE
     clangAST
     clangBasic
 )
+
+# Story #84: typeid Operator Translation tests
+add_executable(TypeidTranslatorTest
+    tests/TypeidTranslatorTest.cpp
+    src/TypeidTranslator.cpp
+    src/TypeInfoGenerator.cpp
+    src/VirtualMethodAnalyzer.cpp
+)
+
+target_compile_definitions(TypeidTranslatorTest PRIVATE ${LLVM_DEFINITIONS})
+
+target_include_directories(TypeidTranslatorTest PRIVATE
+    ${CMAKE_SOURCE_DIR}/include
+    ${LLVM_INCLUDE_DIRS}
+    ${CLANG_INCLUDE_DIRS}
+)
+
+target_link_libraries(TypeidTranslatorTest PRIVATE
+    clangTooling
+    clangFrontend
+    clangAST
+    clangBasic
+)
