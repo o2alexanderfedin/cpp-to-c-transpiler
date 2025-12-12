@@ -2245,8 +2245,161 @@ void test_ReferenceMemberInitialization() {
     TEST_PASS("ReferenceMemberInitialization");
 }
 
+// ============================================================================
+// Story #184: Delegating Constructor Tests (RED - Failing Tests)
+// ============================================================================
+
 /**
- * Test Case 34: Entity System Scenario
+ * Test Case 34: Simple Delegating Constructor
+ *
+ * C++ Input:
+ *   class Point {
+ *       int x, y;
+ *   public:
+ *       Point(int x, int y) : x(x), y(y) {}
+ *       Point(int val) : Point(val, val) {}  // Delegating
+ *   };
+ *
+ * Expected C Output:
+ *   void Point__ctor_int_int(struct Point *this, int x, int y) {
+ *       this->x = x;
+ *       this->y = y;
+ *   }
+ *   void Point__ctor_int(struct Point *this, int val) {
+ *       Point__ctor_int_int(this, val, val);  // Delegate call
+ *   }
+ *
+ * Acceptance Criteria:
+ * - Delegating constructor detected
+ * - Call to target constructor generated
+ * - No member initialization in delegating constructor
+ */
+void test_SimpleDelegatingConstructor() {
+    TEST_START("SimpleDelegatingConstructor");
+
+    const char *code = R"(
+        class Point {
+            int x, y;
+        public:
+            Point(int x, int y) : x(x), y(y) {}
+            Point(int val) : Point(val, val) {}
+        };
+    )";
+
+    std::unique_ptr<ASTUnit> AST = buildAST(code);
+    ASSERT(AST, "Failed to parse C++ code");
+
+    CNodeBuilder builder(AST->getASTContext());
+    CppToCVisitor visitor(AST->getASTContext(), builder);
+    visitor.TraverseDecl(AST->getASTContext().getTranslationUnitDecl());
+
+    // Get delegating constructor: Point(int) → Point__ctor_1
+    FunctionDecl *delegatingCtor = visitor.getCtor("Point__ctor_1");
+    ASSERT(delegatingCtor != nullptr, "Delegating constructor not generated");
+
+    // Check body has exactly one statement: call to target constructor
+    CompoundStmt *body = dyn_cast_or_null<CompoundStmt>(delegatingCtor->getBody());
+    ASSERT(body != nullptr, "Delegating constructor body is null");
+    ASSERT(body->size() == 1, "Delegating constructor should have exactly 1 statement");
+
+    // First statement should be call to Point__ctor (the two-param version)
+    Stmt *firstStmt = *body->body_begin();
+    CallExpr *targetCall = dyn_cast<CallExpr>(firstStmt);
+    ASSERT(targetCall != nullptr, "First statement should be CallExpr to target constructor");
+
+    // Verify it calls the target constructor
+    if (FunctionDecl *callee = targetCall->getDirectCallee()) {
+        std::string calleeName = callee->getNameAsString();
+        ASSERT(calleeName == "Point__ctor",
+               "Should call Point__ctor");
+    }
+
+    TEST_PASS("SimpleDelegatingConstructor");
+}
+
+/**
+ * Test Case 35: Delegation Chain
+ *
+ * C++ Input:
+ *   class Data {
+ *       int a, b, c;
+ *   public:
+ *       Data(int a, int b, int c) : a(a), b(b), c(c) {}
+ *       Data(int a, int b) : Data(a, b, 0) {}
+ *       Data(int a) : Data(a, 0) {}
+ *       Data() : Data(0) {}
+ *   };
+ *
+ * Expected C Output:
+ *   // 4 constructors, each delegating to the next more complete one
+ *   void Data__ctor_int_int_int(struct Data *this, int a, int b, int c) {
+ *       this->a = a; this->b = b; this->c = c;
+ *   }
+ *   void Data__ctor_int_int(struct Data *this, int a, int b) {
+ *       Data__ctor_int_int_int(this, a, b, 0);
+ *   }
+ *   void Data__ctor_int(struct Data *this, int a) {
+ *       Data__ctor_int_int(this, a, 0);
+ *   }
+ *   void Data__ctor_default(struct Data *this) {
+ *       Data__ctor_int(this, 0);
+ *   }
+ *
+ * Acceptance Criteria:
+ * - All constructors in chain detected
+ * - Each delegates to the correct target
+ * - Chain resolves correctly: default → int → int,int → int,int,int
+ */
+void test_DelegationChain() {
+    TEST_START("DelegationChain");
+
+    const char *code = R"(
+        class Data {
+            int a, b, c;
+        public:
+            Data(int a, int b, int c) : a(a), b(b), c(c) {}
+            Data(int a, int b) : Data(a, b, 0) {}
+            Data(int a) : Data(a, 0) {}
+            Data() : Data(0) {}
+        };
+    )";
+
+    std::unique_ptr<ASTUnit> AST = buildAST(code);
+    ASSERT(AST, "Failed to parse C++ code");
+
+    CNodeBuilder builder(AST->getASTContext());
+    CppToCVisitor visitor(AST->getASTContext(), builder);
+    visitor.TraverseDecl(AST->getASTContext().getTranslationUnitDecl());
+
+    // Verify Data() delegates to Data(int) → Data__ctor_0 delegates to Data__ctor_1
+    FunctionDecl *defaultCtor = visitor.getCtor("Data__ctor_0");
+    ASSERT(defaultCtor != nullptr, "Default constructor not generated");
+
+    CompoundStmt *defaultBody = dyn_cast_or_null<CompoundStmt>(defaultCtor->getBody());
+    ASSERT(defaultBody != nullptr && defaultBody->size() == 1,
+           "Default constructor should have 1 delegation statement");
+
+    // Verify Data(int) delegates to Data(int, int) → Data__ctor_1 delegates to Data__ctor_2
+    FunctionDecl *oneCtor = visitor.getCtor("Data__ctor_1");
+    ASSERT(oneCtor != nullptr, "One-param constructor not generated");
+
+    CompoundStmt *oneBody = dyn_cast_or_null<CompoundStmt>(oneCtor->getBody());
+    ASSERT(oneBody != nullptr && oneBody->size() == 1,
+           "One-param constructor should have 1 delegation statement");
+
+    // Verify Data(int, int) delegates to Data(int, int, int) → Data__ctor_2 delegates to Data__ctor
+    FunctionDecl *twoCtor = visitor.getCtor("Data__ctor_2");
+    ASSERT(twoCtor != nullptr, "Two-param constructor not generated");
+
+    CompoundStmt *twoBody = dyn_cast_or_null<CompoundStmt>(twoCtor->getBody());
+    ASSERT(twoBody != nullptr && twoBody->size() == 1,
+           "Two-param constructor should have 1 delegation statement");
+
+    TEST_PASS("DelegationChain");
+}
+
+/**
+ * Test Case 36: Entity System Scenario
  *
  * This test validates a complex real-world scenario: an entity system with
  * inheritance, RAII, and member constructors.
@@ -2589,6 +2742,16 @@ int main() {
     test_CompleteChaining_BaseAndMembers();
     test_MultipleMembersOrderVerification();
     */
+
+    std::cout << "\n";
+    std::cout << "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n";
+    std::cout << " Story #184: Delegating Constructor Tests\n";
+    std::cout << "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n";
+    std::cout << "\n";
+
+    // Run Story #184 tests
+    test_SimpleDelegatingConstructor();
+    test_DelegationChain();
 
     std::cout << "\n";
     std::cout << "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n";

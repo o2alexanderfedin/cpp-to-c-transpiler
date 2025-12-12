@@ -197,12 +197,66 @@ bool CppToCVisitor::VisitCXXConstructorDecl(CXXConstructorDecl *CD) {
   currentThisParam = thisParam;
   currentMethod = CD;
 
-  // Story #51: Emit base constructor calls FIRST (before member initializers)
-  emitBaseConstructorCalls(CD, thisParam, stmts);
+  // Story #184: Handle delegating constructors
+  if (CD->isDelegatingConstructor()) {
+    llvm::outs() << "  Delegating constructor detected\n";
 
-  // Story #63: Emit member constructor calls in DECLARATION order
-  // Handles both class-type members (constructor calls) and primitives (assignment)
-  emitMemberConstructorCalls(CD, thisParam, stmts);
+    // Find the delegating initializer
+    CXXCtorInitializer *DelegatingInit = nullptr;
+    for (CXXCtorInitializer *Init : CD->inits()) {
+      if (Init->isDelegatingInitializer()) {
+        DelegatingInit = Init;
+        break;
+      }
+    }
+
+    if (DelegatingInit) {
+      // Get the target constructor from the delegating initializer
+      Expr *InitExpr = DelegatingInit->getInit();
+      CXXConstructExpr *CtorExpr = dyn_cast_or_null<CXXConstructExpr>(InitExpr);
+
+      if (CtorExpr) {
+        CXXConstructorDecl *TargetCtor = CtorExpr->getConstructor();
+
+        // Lookup the C function for the target constructor
+        auto it = ctorMap.find(TargetCtor);
+        if (it != ctorMap.end()) {
+          FunctionDecl *TargetCFunc = it->second;
+
+          // Build argument list: this + arguments from delegating call
+          std::vector<Expr*> targetArgs;
+          targetArgs.push_back(Builder.ref(thisParam));
+
+          for (unsigned i = 0; i < CtorExpr->getNumArgs(); i++) {
+            Expr *Arg = CtorExpr->getArg(i);
+            Expr *TranslatedArg = translateExpr(Arg);
+            if (TranslatedArg) {
+              targetArgs.push_back(TranslatedArg);
+            }
+          }
+
+          // Create call to target constructor
+          CallExpr *DelegateCall = Builder.call(TargetCFunc, targetArgs);
+          if (DelegateCall) {
+            stmts.push_back(DelegateCall);
+            llvm::outs() << "  -> Delegating to " << TargetCFunc->getNameAsString() << "\n";
+          }
+        } else {
+          llvm::outs() << "  Warning: Target constructor function not found\n";
+        }
+      }
+    }
+    // Note: For delegating constructors, we skip base/member initialization
+    // because the target constructor handles all initialization
+  } else {
+    // Non-delegating constructor: normal initialization
+    // Story #51: Emit base constructor calls FIRST (before member initializers)
+    emitBaseConstructorCalls(CD, thisParam, stmts);
+
+    // Story #63: Emit member constructor calls in DECLARATION order
+    // Handles both class-type members (constructor calls) and primitives (assignment)
+    emitMemberConstructorCalls(CD, thisParam, stmts);
+  }
 
   // Translate constructor body statements
   if (CD->hasBody()) {
