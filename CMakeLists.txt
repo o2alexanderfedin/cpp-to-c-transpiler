@@ -914,3 +914,25 @@ target_link_libraries(ThrowTranslatorTest PRIVATE
     clangAST
     clangBasic
 )
+
+# Story #80: Catch Handler Type Matching tests
+add_executable(CatchHandlerTypeMatchingTest
+    tests/CatchHandlerTypeMatchingTest.cpp
+    src/TryCatchTransformer.cpp
+    src/ExceptionFrameGenerator.cpp
+)
+
+target_compile_definitions(CatchHandlerTypeMatchingTest PRIVATE ${LLVM_DEFINITIONS})
+
+target_include_directories(CatchHandlerTypeMatchingTest PRIVATE
+    ${CMAKE_SOURCE_DIR}/include
+    ${LLVM_INCLUDE_DIRS}
+    ${CLANG_INCLUDE_DIRS}
+)
+
+target_link_libraries(CatchHandlerTypeMatchingTest PRIVATE
+    clangTooling
+    clangFrontend
+    clangAST
+    clangBasic
+)
