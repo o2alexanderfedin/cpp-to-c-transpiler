@@ -45,13 +45,11 @@ std::string ExceptionFrameGenerator::generateFramePop(const std::string& frameVa
 
 std::string ExceptionFrameGenerator::generateActionEntryStruct() const {
     // Generate the action entry struct
-    // Action entries map program counter ranges to catch handlers
+    // Action entries contain destructor function pointer and object address
     std::ostringstream oss;
     oss << "struct __cxx_action_entry {\n"
-        << "    const void *start_pc;\n"
-        << "    const void *end_pc;\n"
-        << "    const void *handler;\n"
-        << "    const char *type_info;\n"
+        << "    void (*destructor)(void*);\n"
+        << "    void *object;\n"
         << "};\n";
     return oss.str();
 }

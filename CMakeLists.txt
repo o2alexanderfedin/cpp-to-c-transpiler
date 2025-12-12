@@ -850,3 +850,24 @@ target_link_libraries(ExceptionFrameTest PRIVATE
     clangAST
     clangBasic
 )
+
+# Story #77: Action Table Generation from CFG Analysis tests
+add_executable(ActionTableGeneratorTest
+    tests/ActionTableGeneratorTest.cpp
+    src/ActionTableGenerator.cpp
+)
+
+target_compile_definitions(ActionTableGeneratorTest PRIVATE ${LLVM_DEFINITIONS})
+
+target_include_directories(ActionTableGeneratorTest PRIVATE
+    ${CMAKE_SOURCE_DIR}/include
+    ${LLVM_INCLUDE_DIRS}
+    ${CLANG_INCLUDE_DIRS}
+)
+
+target_link_libraries(ActionTableGeneratorTest PRIVATE
+    clangTooling
+    clangFrontend
+    clangAST
+    clangBasic
+)
