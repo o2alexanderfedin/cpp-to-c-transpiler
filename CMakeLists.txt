@@ -986,3 +986,29 @@ add_executable(ExceptionPerformanceTest
 target_include_directories(ExceptionPerformanceTest PRIVATE
     ${CMAKE_SOURCE_DIR}/runtime
 )
+
+# ============================================================================
+# Epic #11: RTTI Implementation (Itanium ABI) (Story #83)
+# ============================================================================
+
+# Story #83: type_info Structure Generation tests
+add_executable(TypeInfoGeneratorTest
+    tests/TypeInfoGeneratorTest.cpp
+    src/TypeInfoGenerator.cpp
+    src/VirtualMethodAnalyzer.cpp
+)
+
+target_compile_definitions(TypeInfoGeneratorTest PRIVATE ${LLVM_DEFINITIONS})
+
+target_include_directories(TypeInfoGeneratorTest PRIVATE
+    ${CMAKE_SOURCE_DIR}/include
+    ${LLVM_INCLUDE_DIRS}
+    ${CLANG_INCLUDE_DIRS}
+)
+
+target_link_libraries(TypeInfoGeneratorTest PRIVATE
+    clangTooling
+    clangFrontend
+    clangAST
+    clangBasic
+)
