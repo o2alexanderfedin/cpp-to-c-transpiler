@@ -825,3 +825,28 @@ target_link_libraries(MemberInitListTest PRIVATE
     clangAST
     clangBasic
 )
+
+# ============================================================================
+# Epic #10: Exception Handling (PNaCl SJLJ) (Story #76)
+# ============================================================================
+
+# Story #76: Exception Frame Structure and Thread-Local Stack tests
+add_executable(ExceptionFrameTest
+    tests/ExceptionFrameTest.cpp
+    src/ExceptionFrameGenerator.cpp
+)
+
+target_compile_definitions(ExceptionFrameTest PRIVATE ${LLVM_DEFINITIONS})
+
+target_include_directories(ExceptionFrameTest PRIVATE
+    ${CMAKE_SOURCE_DIR}/include
+    ${LLVM_INCLUDE_DIRS}
+    ${CLANG_INCLUDE_DIRS}
+)
+
+target_link_libraries(ExceptionFrameTest PRIVATE
+    clangTooling
+    clangFrontend
+    clangAST
+    clangBasic
+)
