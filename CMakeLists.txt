@@ -952,3 +952,37 @@ set_property(TARGET ExceptionRuntimeTest PROPERTY C_STANDARD 11)
 set_property(TARGET ExceptionRuntimeTest PROPERTY C_STANDARD_REQUIRED ON)
 
 # No Clang/LLVM dependencies - pure C runtime library
+
+# Story #82: Exception Integration Tests
+add_executable(ExceptionIntegrationTest
+    tests/ExceptionIntegrationTest.cpp
+    runtime/exception_runtime.cpp
+)
+
+target_include_directories(ExceptionIntegrationTest PRIVATE
+    ${CMAKE_SOURCE_DIR}/runtime
+)
+
+# Story #82: Exception Thread Safety Tests
+add_executable(ExceptionThreadSafetyTest
+    tests/ExceptionThreadSafetyTest.cpp
+    runtime/exception_runtime.cpp
+)
+
+target_include_directories(ExceptionThreadSafetyTest PRIVATE
+    ${CMAKE_SOURCE_DIR}/runtime
+)
+
+# Link pthread for thread safety tests
+find_package(Threads REQUIRED)
+target_link_libraries(ExceptionThreadSafetyTest PRIVATE Threads::Threads)
+
+# Story #82: Exception Performance Benchmarks
+add_executable(ExceptionPerformanceTest
+    tests/ExceptionPerformanceTest.cpp
+    runtime/exception_runtime.cpp
+)
+
+target_include_directories(ExceptionPerformanceTest PRIVATE
+    ${CMAKE_SOURCE_DIR}/runtime
+)
