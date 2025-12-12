@@ -871,3 +871,25 @@ target_link_libraries(ActionTableGeneratorTest PRIVATE
     clangAST
     clangBasic
 )
+
+# Story #78: setjmp/longjmp Injection for Try-Catch Blocks tests
+add_executable(TryCatchTransformerTest
+    tests/TryCatchTransformerTest.cpp
+    src/TryCatchTransformer.cpp
+    src/ExceptionFrameGenerator.cpp
+)
+
+target_compile_definitions(TryCatchTransformerTest PRIVATE ${LLVM_DEFINITIONS})
+
+target_include_directories(TryCatchTransformerTest PRIVATE
+    ${CMAKE_SOURCE_DIR}/include
+    ${LLVM_INCLUDE_DIRS}
+    ${CLANG_INCLUDE_DIRS}
+)
+
+target_link_libraries(TryCatchTransformerTest PRIVATE
+    clangTooling
+    clangFrontend
+    clangAST
+    clangBasic
+)
