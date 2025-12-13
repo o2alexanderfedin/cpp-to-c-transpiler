@@ -110,6 +110,25 @@ public:
      */
     std::vector<LocalVariableInfo> analyzeLocalVariables(const clang::FunctionDecl* FD);
 
+    /**
+     * @brief Extract promise_type name from coroutine return type
+     * @param FD Coroutine function
+     * @return C struct name for promise type (e.g., "struct generator_int_promise")
+     *         or "void*" if promise type cannot be determined
+     *
+     * For a coroutine like `generator<int> count_to(int n)`:
+     * 1. Get return type: generator<int>
+     * 2. Look for nested promise_type in the class
+     * 3. Generate C struct name: "struct generator_int_promise"
+     *
+     * Handles:
+     * - Simple class types (task -> struct task_promise)
+     * - Template specializations (generator<int> -> struct generator_int_promise)
+     * - Multiple template arguments (task<int, double> -> struct task_int_double_promise)
+     * - Fallback to void* if promise_type cannot be found
+     */
+    std::string extractPromiseTypeName(const clang::FunctionDecl* FD);
+
 private:
     /**
      * @brief Generate state enum for suspend points
@@ -139,6 +158,18 @@ private:
      * @return C code for local variable fields
      */
     std::string generateLocalVariableFields(const std::vector<LocalVariableInfo>& localVars);
+
+    /**
+     * @brief Generate C struct name for promise type
+     * @param returnType Coroutine return type
+     * @return C struct name (e.g., "generator_int_promise")
+     *
+     * Converts C++ type to C-compatible name:
+     * - generator -> generator_promise
+     * - generator<int> -> generator_int_promise
+     * - task<int, double> -> task_int_double_promise
+     */
+    std::string getPromiseStructName(const clang::CXXRecordDecl* returnType);
 
     clang::ASTContext& Context;
 };

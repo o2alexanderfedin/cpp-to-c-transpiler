@@ -697,6 +697,255 @@ void test_MultipleLocalVariablesSpanningSuspends() {
     TEST_PASS("MultipleLocalVariablesSpanningSuspends");
 }
 
+// Test 12: Extract promise type from simple coroutine return type
+void test_ExtractPromiseTypeFromSimpleReturnType() {
+    TEST_START("ExtractPromiseTypeFromSimpleReturnType");
+
+    const char *code = R"(
+        struct task;
+
+        namespace std {
+            template<typename Promise = void>
+            struct coroutine_handle {
+                static coroutine_handle from_address(void* addr) noexcept { return {}; }
+            };
+
+            template<typename T, typename... Args>
+            struct coroutine_traits {
+                using promise_type = typename T::promise_type;
+            };
+        }
+
+        struct task {
+            struct promise_type {
+                struct awaiter {
+                    bool await_ready() { return false; }
+                    template<typename P> void await_suspend(std::coroutine_handle<P>) {}
+                    void await_resume() {}
+                };
+
+                task get_return_object() { return {}; }
+                awaiter initial_suspend() { return {}; }
+                awaiter final_suspend() noexcept { return {}; }
+                void return_void() {}
+                void unhandled_exception() {}
+            };
+        };
+
+        task simple_coro() {
+            co_return;
+        }
+    )";
+
+    auto AST = buildAST(code);
+    ASSERT(AST, "Failed to build AST");
+
+    CoroutineDetector detector(AST->getASTContext());
+    auto *TU = AST->getASTContext().getTranslationUnitDecl();
+    auto *func = findFunction(TU, "simple_coro");
+
+    ASSERT(func, "Function not found");
+
+    std::string promiseTypeName = detector.extractPromiseTypeName(func);
+    ASSERT(!promiseTypeName.empty(), "Should extract promise type name");
+    ASSERT(promiseTypeName == "struct task_promise", "Promise type should be 'struct task_promise'");
+
+    TEST_PASS("ExtractPromiseTypeFromSimpleReturnType");
+}
+
+// Test 13: Extract promise type from template coroutine return type
+void test_ExtractPromiseTypeFromTemplateReturnType() {
+    TEST_START("ExtractPromiseTypeFromTemplateReturnType");
+
+    const char *code = R"(
+        template<typename T>
+        struct generator;
+
+        namespace std {
+            template<typename Promise = void>
+            struct coroutine_handle {
+                static coroutine_handle from_address(void* addr) noexcept { return {}; }
+            };
+
+            template<typename T, typename... Args>
+            struct coroutine_traits {
+                using promise_type = typename T::promise_type;
+            };
+        }
+
+        template<typename T>
+        struct generator {
+            struct promise_type {
+                struct awaiter {
+                    bool await_ready_val;
+                    awaiter(bool ready) : await_ready_val(ready) {}
+                    bool await_ready() { return await_ready_val; }
+                    template<typename P> void await_suspend(std::coroutine_handle<P>) {}
+                    void await_resume() {}
+                };
+
+                T value;
+                generator get_return_object() { return {}; }
+                awaiter initial_suspend() { return awaiter(true); }
+                awaiter final_suspend() noexcept { return awaiter(true); }
+                awaiter yield_value(T v) { value = v; return awaiter(false); }
+                void return_void() {}
+                void unhandled_exception() {}
+            };
+        };
+
+        generator<int> count_to(int n) {
+            for (int i = 0; i < n; ++i) {
+                co_yield i;
+            }
+        }
+    )";
+
+    auto AST = buildAST(code);
+    ASSERT(AST, "Failed to build AST");
+
+    CoroutineDetector detector(AST->getASTContext());
+    auto *TU = AST->getASTContext().getTranslationUnitDecl();
+    auto *func = findFunction(TU, "count_to");
+
+    ASSERT(func, "Function not found");
+
+    std::string promiseTypeName = detector.extractPromiseTypeName(func);
+    ASSERT(!promiseTypeName.empty(), "Should extract promise type name from template");
+    ASSERT(promiseTypeName == "struct generator_int_promise",
+           "Promise type should be 'struct generator_int_promise'");
+
+    TEST_PASS("ExtractPromiseTypeFromTemplateReturnType");
+}
+
+// Test 14: Frame structure uses actual promise type instead of void*
+void test_FrameUsesActualPromiseType() {
+    TEST_START("FrameUsesActualPromiseType");
+
+    const char *code = R"(
+        struct generator;
+
+        namespace std {
+            template<typename Promise = void>
+            struct coroutine_handle {
+                static coroutine_handle from_address(void* addr) noexcept { return {}; }
+            };
+
+            template<typename T, typename... Args>
+            struct coroutine_traits {
+                using promise_type = typename T::promise_type;
+            };
+        }
+
+        struct generator {
+            struct promise_type {
+                struct awaiter {
+                    bool await_ready_val;
+                    awaiter(bool ready) : await_ready_val(ready) {}
+                    bool await_ready() { return await_ready_val; }
+                    template<typename P> void await_suspend(std::coroutine_handle<P>) {}
+                    void await_resume() {}
+                };
+
+                int value;
+                generator get_return_object() { return {}; }
+                awaiter initial_suspend() { return awaiter(true); }
+                awaiter final_suspend() noexcept { return awaiter(true); }
+                awaiter yield_value(int v) { value = v; return awaiter(false); }
+                void return_void() {}
+                void unhandled_exception() {}
+            };
+        };
+
+        generator count_to(int n) {
+            for (int i = 0; i < n; ++i) {
+                co_yield i;
+            }
+        }
+    )";
+
+    auto AST = buildAST(code);
+    ASSERT(AST, "Failed to build AST");
+
+    CoroutineDetector detector(AST->getASTContext());
+    auto *TU = AST->getASTContext().getTranslationUnitDecl();
+    auto *func = findFunction(TU, "count_to");
+
+    ASSERT(func, "Function not found");
+
+    std::string frameCode = detector.generateFrameStructure(func);
+
+    // Should contain actual promise type, not void*
+    ASSERT(frameCode.find("struct generator_promise promise") != std::string::npos,
+           "Frame should use 'struct generator_promise promise' instead of 'void* promise'");
+    ASSERT(frameCode.find("void* promise") == std::string::npos,
+           "Frame should NOT contain 'void* promise'");
+
+    TEST_PASS("FrameUsesActualPromiseType");
+}
+
+// Test 15: Fallback to void* when promise type cannot be determined
+void test_FallbackToVoidPointerWhenPromiseTypeNotFound() {
+    TEST_START("FallbackToVoidPointerWhenPromiseTypeNotFound");
+
+    // This test uses a coroutine without a proper promise_type (edge case)
+    const char *code = R"(
+        struct broken_task {
+            // Intentionally missing promise_type for testing fallback
+        };
+
+        namespace std {
+            template<typename Promise = void>
+            struct coroutine_handle {
+                static coroutine_handle from_address(void* addr) noexcept { return {}; }
+            };
+
+            template<typename T, typename... Args>
+            struct coroutine_traits;
+
+            template<>
+            struct coroutine_traits<broken_task> {
+                struct promise_type {
+                    struct awaiter {
+                        bool await_ready() { return false; }
+                        template<typename P> void await_suspend(std::coroutine_handle<P>) {}
+                        void await_resume() {}
+                    };
+
+                    broken_task get_return_object() { return {}; }
+                    awaiter initial_suspend() { return {}; }
+                    awaiter final_suspend() noexcept { return {}; }
+                    void return_void() {}
+                    void unhandled_exception() {}
+                };
+            };
+        }
+
+        broken_task broken_coro() {
+            co_return;
+        }
+    )";
+
+    auto AST = buildAST(code);
+    ASSERT(AST, "Failed to build AST");
+
+    CoroutineDetector detector(AST->getASTContext());
+    auto *TU = AST->getASTContext().getTranslationUnitDecl();
+    auto *func = findFunction(TU, "broken_coro");
+
+    ASSERT(func, "Function not found");
+
+    std::string promiseTypeName = detector.extractPromiseTypeName(func);
+    // Should fallback to void* when promise type cannot be extracted
+    ASSERT(promiseTypeName == "void*", "Should fallback to 'void*' when promise type not found");
+
+    std::string frameCode = detector.generateFrameStructure(func);
+    ASSERT(frameCode.find("void* promise") != std::string::npos,
+           "Frame should use 'void* promise' as fallback");
+
+    TEST_PASS("FallbackToVoidPointerWhenPromiseTypeNotFound");
+}
+
 int main() {
     std::cout << "=== Coroutine Detection and Frame Structure Tests (Story #102) ===" << std::endl;
     std::cout << "TDD Phase: RED - All tests should FAIL initially\n" << std::endl;
@@ -712,6 +961,10 @@ int main() {
     test_LocalVarsNotSpanningSuspendsExcluded();
     test_FrameIncludesLocalVariables();
     test_MultipleLocalVariablesSpanningSuspends();
+    test_ExtractPromiseTypeFromSimpleReturnType();
+    test_ExtractPromiseTypeFromTemplateReturnType();
+    test_FrameUsesActualPromiseType();
+    test_FallbackToVoidPointerWhenPromiseTypeNotFound();
 
     std::cout << "\n=== All tests passed! ===" << std::endl;
     return 0;

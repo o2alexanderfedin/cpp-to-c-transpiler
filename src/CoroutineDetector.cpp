@@ -85,8 +85,10 @@ std::string CoroutineDetector::generateFrameStructure(const FunctionDecl* FD) {
     // 3. Destroy function pointer
     code << "    void (*destroy_fn)(void*);    // Destroy function pointer\n";
 
-    // 4. Promise object (simplified - using void* for now)
-    code << "    void* promise;                // Promise object\n";
+    // 4. Promise object (extract actual promise type)
+    std::string promiseTypeName = extractPromiseTypeName(FD);
+    code << "    " << promiseTypeName << " promise;";
+    code << "                // Promise object\n";
 
     // 5. Parameter fields
     std::string paramFields = generateParameterFields(FD);
@@ -376,4 +378,125 @@ std::string CoroutineDetector::generateLocalVariableFields(const std::vector<Loc
     }
 
     return code.str();
+}
+
+std::string CoroutineDetector::extractPromiseTypeName(const FunctionDecl* FD) {
+    if (!FD || !isCoroutine(FD)) {
+        return "void*";
+    }
+
+    // Get the return type
+    QualType returnType = FD->getReturnType();
+    if (returnType.isNull()) {
+        return "void*";
+    }
+
+    // Get the class/record declaration
+    const RecordType* RT = returnType->getAs<RecordType>();
+    if (!RT) {
+        // Try to get through desugaring
+        QualType canonicalType = returnType.getCanonicalType();
+        RT = canonicalType->getAs<RecordType>();
+        if (!RT) {
+            return "void*";
+        }
+    }
+
+    const CXXRecordDecl* returnClass = dyn_cast<CXXRecordDecl>(RT->getDecl());
+    if (!returnClass) {
+        return "void*";
+    }
+
+    // Check if the class has a nested promise_type
+    bool hasPromiseType = false;
+    for (auto *D : returnClass->decls()) {
+        if (auto *RD = dyn_cast<CXXRecordDecl>(D)) {
+            if (RD->getNameAsString() == "promise_type" && RD->isCompleteDefinition()) {
+                hasPromiseType = true;
+                break;
+            }
+        }
+        // Also check type aliases
+        if (auto *TD = dyn_cast<TypedefNameDecl>(D)) {
+            if (TD->getNameAsString() == "promise_type") {
+                hasPromiseType = true;
+                break;
+            }
+        }
+    }
+
+    if (!hasPromiseType) {
+        return "void*";
+    }
+
+    // Generate the C struct name
+    return "struct " + getPromiseStructName(returnClass);
+}
+
+std::string CoroutineDetector::getPromiseStructName(const CXXRecordDecl* returnType) {
+    if (!returnType) {
+        return "";
+    }
+
+    std::ostringstream structName;
+
+    // Get the base class name
+    std::string baseName = returnType->getNameAsString();
+    structName << baseName;
+
+    // Handle template specializations
+    if (const auto* CTSD = dyn_cast<ClassTemplateSpecializationDecl>(returnType)) {
+        const auto& templateArgs = CTSD->getTemplateArgs();
+
+        for (unsigned i = 0; i < templateArgs.size(); ++i) {
+            const auto& arg = templateArgs[i];
+
+            if (arg.getKind() == clang::TemplateArgument::Type) {
+                QualType argType = arg.getAsType();
+                std::string argTypeName;
+
+                // Handle basic types
+                if (argType->isIntegerType()) {
+                    if (argType->isSignedIntegerType()) {
+                        argTypeName = "int";
+                    } else {
+                        argTypeName = "unsigned_int";
+                    }
+                } else if (argType->isFloatingType()) {
+                    if (argType->isSpecificBuiltinType(BuiltinType::Float)) {
+                        argTypeName = "float";
+                    } else if (argType->isSpecificBuiltinType(BuiltinType::Double)) {
+                        argTypeName = "double";
+                    } else {
+                        argTypeName = argType.getAsString();
+                    }
+                } else if (const RecordType* RT = argType->getAs<RecordType>()) {
+                    if (const RecordDecl* RD = RT->getDecl()) {
+                        argTypeName = RD->getNameAsString();
+                    } else {
+                        argTypeName = argType.getAsString();
+                    }
+                } else {
+                    argTypeName = argType.getAsString();
+                }
+
+                // Replace spaces and special characters with underscores
+                for (char& c : argTypeName) {
+                    if (c == ' ' || c == ':' || c == '<' || c == '>') {
+                        c = '_';
+                    }
+                }
+
+                structName << "_" << argTypeName;
+            } else if (arg.getKind() == clang::TemplateArgument::Integral) {
+                // Handle integer template arguments
+                llvm::SmallString<32> intStr;
+                arg.getAsIntegral().toString(intStr, 10);
+                structName << "_" << intStr.c_str();
+            }
+        }
+    }
+
+    structName << "_promise";
+    return structName.str();
 }
