@@ -1200,3 +1200,24 @@ target_link_libraries(ConstructorSplitterTest PRIVATE
     clangAST
     clangBasic
 )
+
+# Story #102: Coroutine Detection and Frame Structure tests (Epic #46)
+add_executable(CoroutineDetectorTest
+    tests/CoroutineDetectorTest.cpp
+    src/CoroutineDetector.cpp
+)
+
+target_compile_definitions(CoroutineDetectorTest PRIVATE ${LLVM_DEFINITIONS})
+
+target_include_directories(CoroutineDetectorTest PRIVATE
+    ${CMAKE_SOURCE_DIR}/include
+    ${LLVM_INCLUDE_DIRS}
+    ${CLANG_INCLUDE_DIRS}
+)
+
+target_link_libraries(CoroutineDetectorTest PRIVATE
+    clangTooling
+    clangFrontend
+    clangAST
+    clangBasic
+)
