@@ -1035,3 +1035,26 @@ target_link_libraries(TypeidTranslatorTest PRIVATE
     clangAST
     clangBasic
 )
+
+# Story #85: dynamic_cast Downcast Support tests
+add_executable(DynamicCastTranslatorTest
+    tests/DynamicCastTranslatorTest.cpp
+    src/DynamicCastTranslator.cpp
+    src/TypeInfoGenerator.cpp
+    src/VirtualMethodAnalyzer.cpp
+)
+
+target_compile_definitions(DynamicCastTranslatorTest PRIVATE ${LLVM_DEFINITIONS})
+
+target_include_directories(DynamicCastTranslatorTest PRIVATE
+    ${CMAKE_SOURCE_DIR}/include
+    ${LLVM_INCLUDE_DIRS}
+    ${CLANG_INCLUDE_DIRS}
+)
+
+target_link_libraries(DynamicCastTranslatorTest PRIVATE
+    clangTooling
+    clangFrontend
+    clangAST
+    clangBasic
+)
