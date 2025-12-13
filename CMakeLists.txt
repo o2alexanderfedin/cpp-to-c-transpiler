@@ -1058,3 +1058,15 @@ target_link_libraries(DynamicCastTranslatorTest PRIVATE
     clangAST
     clangBasic
 )
+
+# Story #86: Hierarchy Traversal Algorithm tests
+add_executable(HierarchyTraversalTest
+    tests/HierarchyTraversalTest.cpp
+    runtime/rtti_runtime.c
+)
+
+target_include_directories(HierarchyTraversalTest PRIVATE
+    ${CMAKE_SOURCE_DIR}/runtime
+)
+
+# No Clang/LLVM dependencies - pure C runtime library
