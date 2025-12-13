@@ -1070,3 +1070,38 @@ target_include_directories(HierarchyTraversalTest PRIVATE
 )
 
 # No Clang/LLVM dependencies - pure C runtime library
+
+# Story #87: dynamic_cast Cross-Casting Support tests
+add_executable(DynamicCastCrossCastTest
+    tests/DynamicCastCrossCastTest.cpp
+    src/DynamicCastTranslator.cpp
+    src/TypeInfoGenerator.cpp
+    src/VirtualMethodAnalyzer.cpp
+)
+
+target_compile_definitions(DynamicCastCrossCastTest PRIVATE ${LLVM_DEFINITIONS})
+
+target_include_directories(DynamicCastCrossCastTest PRIVATE
+    ${CMAKE_SOURCE_DIR}/include
+    ${LLVM_INCLUDE_DIRS}
+    ${CLANG_INCLUDE_DIRS}
+)
+
+target_link_libraries(DynamicCastCrossCastTest PRIVATE
+    clangTooling
+    clangFrontend
+    clangAST
+    clangBasic
+)
+
+# Story #87: Cross-Cast Hierarchy Traversal tests
+add_executable(CrossCastTraversalTest
+    tests/CrossCastTraversalTest.cpp
+    runtime/rtti_runtime.c
+)
+
+target_include_directories(CrossCastTraversalTest PRIVATE
+    ${CMAKE_SOURCE_DIR}/runtime
+)
+
+# No Clang/LLVM dependencies - pure C runtime library

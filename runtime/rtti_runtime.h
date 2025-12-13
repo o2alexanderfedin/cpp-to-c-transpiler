@@ -74,6 +74,29 @@ extern const void *__vt_vmi_class_type_info;
 void *traverse_hierarchy(const void *ptr, const struct __class_type_info *src,
                          const struct __class_type_info *dst);
 
+/**
+ * @brief Cross-cast traverse (Story #87)
+ *
+ * Performs cross-casting between sibling classes in multiple inheritance.
+ * Navigates up from source to common derived type, then down to target.
+ *
+ * Algorithm:
+ * 1. Check if src == dst (same type)
+ * 2. Search dynamic_type hierarchy for both src and dst
+ * 3. If both found, calculate offset from src to dst via dynamic_type
+ * 4. Return adjusted pointer or NULL if cross-cast fails
+ *
+ * @param ptr Pointer to object being cast
+ * @param src Source type_info
+ * @param dst Target type_info
+ * @param dynamic_type Most-derived (actual) type of the object
+ * @return Pointer to target type if found, NULL otherwise
+ */
+void *cross_cast_traverse(const void *ptr,
+                          const struct __class_type_info *src,
+                          const struct __class_type_info *dst,
+                          const struct __class_type_info *dynamic_type);
+
 #ifdef __cplusplus
 }
 #endif
