@@ -1265,3 +1265,24 @@ target_link_libraries(StateMachineTransformerTest PRIVATE
     clangBasic
     clangLex
 )
+
+# Story #105: Promise Object Translation tests (Epic #46)
+add_executable(PromiseTranslatorTest
+    tests/PromiseTranslatorTest.cpp
+    src/PromiseTranslator.cpp
+)
+
+target_compile_definitions(PromiseTranslatorTest PRIVATE ${LLVM_DEFINITIONS})
+
+target_include_directories(PromiseTranslatorTest PRIVATE
+    ${CMAKE_SOURCE_DIR}/include
+    ${LLVM_INCLUDE_DIRS}
+    ${CLANG_INCLUDE_DIRS}
+)
+
+target_link_libraries(PromiseTranslatorTest PRIVATE
+    clangTooling
+    clangFrontend
+    clangAST
+    clangBasic
+)
