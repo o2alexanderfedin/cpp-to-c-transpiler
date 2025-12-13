@@ -1221,3 +1221,24 @@ target_link_libraries(CoroutineDetectorTest PRIVATE
     clangAST
     clangBasic
 )
+
+# Story #103: Suspend Point Identification tests (Epic #46)
+add_executable(SuspendPointIdentifierTest
+    tests/SuspendPointIdentifierTest.cpp
+    src/SuspendPointIdentifier.cpp
+)
+
+target_compile_definitions(SuspendPointIdentifierTest PRIVATE ${LLVM_DEFINITIONS})
+
+target_include_directories(SuspendPointIdentifierTest PRIVATE
+    ${CMAKE_SOURCE_DIR}/include
+    ${LLVM_INCLUDE_DIRS}
+    ${CLANG_INCLUDE_DIRS}
+)
+
+target_link_libraries(SuspendPointIdentifierTest PRIVATE
+    clangTooling
+    clangFrontend
+    clangAST
+    clangBasic
+)
