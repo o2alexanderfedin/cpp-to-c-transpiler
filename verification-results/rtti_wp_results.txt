@@ -1,0 +1,118 @@
+[kernel] Parsing runtime/rtti_runtime.c (with preprocessing)
+[wp] Running WP plugin...
+[rte:annot] annotating function cross_cast_traverse
+[rte:annot] annotating function find_type_offset
+[rte:annot] annotating function traverse_hierarchy
+[wp] runtime/rtti_runtime.c:66: Warning: 
+  Missing decreases clause on recursive function traverse_hierarchy, call must be unreachable
+[wp] runtime/rtti_runtime.c:58: Warning: 
+  Cast with incompatible pointers types (source: __class_type_info*)
+     (target: __si_class_type_info*)
+[wp] runtime/rtti_runtime.c:88: Warning: 
+  Missing decreases clause on recursive function traverse_hierarchy, call must be unreachable
+[wp] runtime/rtti_runtime.c:75: Warning: 
+  Missing assigns clause (assigns 'everything' instead)
+[wp] runtime/rtti_runtime.c:72: Warning: 
+  Cast with incompatible pointers types (source: __class_type_info*)
+     (target: __vmi_class_type_info*)
+[wp] runtime/rtti_runtime.c:136: Warning: 
+  Missing decreases clause on recursive function find_type_offset, call must be unreachable
+[wp] runtime/rtti_runtime.c:127: Warning: 
+  Cast with incompatible pointers types (source: __class_type_info*)
+     (target: __si_class_type_info*)
+[wp] runtime/rtti_runtime.c:158: Warning: 
+  Missing decreases clause on recursive function find_type_offset, call must be unreachable
+[wp] runtime/rtti_runtime.c:145: Warning: 
+  Missing assigns clause (assigns 'everything' instead)
+[wp] runtime/rtti_runtime.c:142: Warning: 
+  Cast with incompatible pointers types (source: __class_type_info*)
+     (target: __vmi_class_type_info*)
+[wp] 72 goals scheduled
+[wp] [Timeout] typed_traverse_hierarchy_assert_rte_mem_access_6 (Qed 12ms) (Alt-Ergo)
+[wp] [Timeout] typed_traverse_hierarchy_assert_rte_mem_access_2 (Qed 5ms) (Alt-Ergo) (Stronger)
+[wp] [Timeout] typed_traverse_hierarchy_ensures_valid_result (Qed 92ms) (Alt-Ergo) (Stronger)
+[wp] [Timeout] typed_traverse_hierarchy_terminates_part4 (Qed 13ms) (Alt-Ergo)
+[wp] [Timeout] typed_traverse_hierarchy_terminates_part3 (Qed 5ms) (Alt-Ergo)
+[wp] [Timeout] typed_traverse_hierarchy_terminates_part2 (Qed 5ms) (Alt-Ergo) (Stronger)
+[wp] [Timeout] typed_traverse_hierarchy_assert_rte_mem_access_5 (Qed 8ms) (Alt-Ergo)
+[wp] [Timeout] typed_traverse_hierarchy_assert_rte_mem_access_7 (Qed 18ms) (Alt-Ergo)
+[wp] [Timeout] typed_traverse_hierarchy_assigns_normal_part07 (Qed 7ms) (Alt-Ergo)
+[wp] [Timeout] typed_traverse_hierarchy_assigns_exit_part2 (Qed 7ms) (Alt-Ergo)
+[wp] [Timeout] typed_traverse_hierarchy_call_traverse_hierarchy_2_requires_valid_dst (Qed 15ms) (Alt-Ergo)
+[wp] [Timeout] typed_traverse_hierarchy_call_traverse_hierarchy_2_requires_valid_src (Qed 16ms) (Alt-Ergo)
+[wp] [Timeout] typed_traverse_hierarchy_call_traverse_hierarchy_requires_valid_src (Qed 5ms) (Alt-Ergo) (Stronger)
+[wp] [Timeout] typed_traverse_hierarchy_assigns_normal_part09 (Qed 16ms) (Alt-Ergo)
+[wp] [Timeout] typed_traverse_hierarchy_assert_rte_mem_access_8 (Qed 21ms) (Alt-Ergo)
+[wp] [Timeout] typed_traverse_hierarchy_call_traverse_hierarchy_2_requires_valid_ptr (Qed 20ms) (Alt-Ergo)
+[wp] [Timeout] typed_cross_cast_traverse_assigns_normal_part3 (Qed 3ms) (Alt-Ergo)
+[wp] [Timeout] typed_cross_cast_traverse_assigns_exit_part1 (Qed 3ms) (Alt-Ergo)
+[wp] [Timeout] typed_cross_cast_traverse_assigns_normal_part5 (Qed 5ms) (Alt-Ergo)
+[wp] [Timeout] typed_cross_cast_traverse_assert_rte_signed_overflow_2 (Qed 4ms) (Alt-Ergo)
+[wp] [Timeout] typed_cross_cast_traverse_assert_rte_signed_overflow (Qed 5ms) (Alt-Ergo)
+[wp] [Timeout] typed_cross_cast_traverse_ensures_valid_result (Qed 72ms) (Alt-Ergo)
+[wp] [Timeout] typed_find_type_offset_terminates_part3 (Qed 10ms) (Alt-Ergo)
+[wp] [Timeout] typed_find_type_offset_terminates_part2 (Qed 8ms) (Alt-Ergo) (Stronger)
+[wp] [Timeout] typed_find_type_offset_assert_rte_mem_access_7 (Qed 13ms) (Alt-Ergo)
+[wp] [Timeout] typed_find_type_offset_assert_rte_mem_access_4 (Qed 5ms) (Alt-Ergo) (Stronger)
+[wp] [Timeout] typed_find_type_offset_assert_rte_mem_access_3 (Qed 4ms) (Alt-Ergo) (Stronger)
+[wp] [Timeout] typed_find_type_offset_assert_rte_mem_access_2 (Qed 4ms) (Alt-Ergo)
+[wp] [Timeout] typed_find_type_offset_assert_rte_mem_access (Qed 3ms) (Alt-Ergo)
+[wp] [Timeout] typed_find_type_offset_terminates_part4 (Qed 24ms) (Alt-Ergo)
+[wp] [Timeout] typed_find_type_offset_assert_rte_mem_access_9 (Qed 18ms) (Alt-Ergo)
+[wp] [Timeout] typed_find_type_offset_assert_rte_mem_access_8 (Qed 11ms) (Alt-Ergo)
+[wp] [Timeout] typed_find_type_offset_assert_rte_signed_overflow_2 (Qed 18ms) (Alt-Ergo)
+[wp] [Timeout] typed_find_type_offset_assert_rte_signed_overflow (Qed 17ms) (Alt-Ergo)
+[wp] [Timeout] typed_find_type_offset_assert_rte_mem_access_13 (Qed 17ms) (Alt-Ergo)
+[wp] [Timeout] typed_find_type_offset_assert_rte_mem_access_11 (Qed 14ms) (Alt-Ergo)
+[wp] [Timeout] typed_find_type_offset_assert_rte_mem_access_10 (Qed 16ms) (Alt-Ergo)
+[wp] Proved goals:   35 / 72
+  Qed:              32 (3ms-8ms-92ms)
+  Alt-Ergo 2.6.2:    3 (14ms-17ms)
+  Timeout:          37
+[wp:pedantic-assigns] runtime/rtti_runtime.c:43: Warning: 
+  No 'assigns \result \from ...' specification for function 'traverse_hierarchy'returning pointer type.
+  Callers assumptions might be imprecise.
+[wp] runtime/rtti_runtime.c:43: Warning: 
+  Memory model hypotheses for function 'traverse_hierarchy':
+  /*@
+     behavior wp_typed:
+       requires
+         \separated(
+           &__vt_si_class_type_info, &__vt_vmi_class_type_info,
+           {src + (..), dst + (..)}
+           );
+       requires
+         \separated(
+           ptr + (..), &__vt_si_class_type_info, &__vt_vmi_class_type_info
+           );
+       ensures
+         \separated(
+           \result, &__vt_si_class_type_info, &__vt_vmi_class_type_info
+           );
+     */
+  void *traverse_hierarchy(void const *ptr,
+                           struct __class_type_info const *src,
+                           struct __class_type_info const *dst);
+[wp:pedantic-assigns] runtime/rtti_runtime.c:188: Warning: 
+  No 'assigns \result \from ...' specification for function 'cross_cast_traverse'returning pointer type.
+  Callers assumptions might be imprecise.
+[wp:pedantic-assigns] runtime/rtti_runtime.c:110: Warning: 
+  No 'assigns' specification for function 'find_type_offset'.
+  Callers assumptions might be imprecise.
+[wp] runtime/rtti_runtime.c:110: Warning: 
+  Memory model hypotheses for function 'find_type_offset':
+  /*@
+     behavior wp_typed:
+       requires
+         \separated(
+           &__vt_si_class_type_info, &__vt_vmi_class_type_info,
+           {src + (..), target + (..)}
+           );
+       requires
+         \separated(
+           offset_out, &__vt_si_class_type_info, &__vt_vmi_class_type_info
+           );
+     */
+  static int find_type_offset(struct __class_type_info const *src,
+                              struct __class_type_info const *target,
+                              ptrdiff_t *offset_out);

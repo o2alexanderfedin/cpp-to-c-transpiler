@@ -21,21 +21,21 @@
   \valid_function not yet implemented
   (rte: function_pointer: \valid_function(action->destructor))
 [wp] 35 goals scheduled
-[wp] [Timeout] typed_cxx_throw_loop_invariant_action_valid_preserved (Qed 4ms) (Alt-Ergo) (Stronger)
-[wp] [Timeout] typed_cxx_throw_loop_invariant_action_progress_preserved (Qed 4ms) (Alt-Ergo) (Stronger)
-[wp] [Timeout] typed_cxx_throw_exits (Qed 5ms) (Alt-Ergo) (Stronger)
+[wp] [Timeout] typed_cxx_throw_assert_rte_function_pointer (Qed 4ms) (Alt-Ergo) (Degenerated)
+[wp] [Timeout] typed_cxx_throw_loop_invariant_action_valid_established (Qed 6ms) (Alt-Ergo)
+[wp] [Timeout] typed_cxx_throw_loop_invariant_action_valid_preserved (Qed 5ms) (Alt-Ergo) (Stronger)
+[wp] [Timeout] typed_cxx_throw_loop_invariant_action_progress_preserved (Qed 5ms) (Alt-Ergo) (Stronger)
+[wp] [Timeout] typed_cxx_throw_exits (Qed 6ms) (Alt-Ergo) (Stronger)
 [wp] [Timeout] typed_cxx_throw_terminates_part5 (Qed 3ms) (Alt-Ergo) (Stronger)
 [wp] [Timeout] typed_cxx_throw_terminates_part4 (Qed 3ms) (Alt-Ergo) (Stronger)
-[wp] [Timeout] typed_cxx_throw_terminates_part3 (Qed 2ms) (Alt-Ergo)
-[wp] [Timeout] typed_cxx_throw_assert_rte_function_pointer (Qed 6ms) (Alt-Ergo) (Degenerated)
-[wp] [Timeout] typed_cxx_throw_loop_invariant_action_valid_established (Qed 8ms) (Alt-Ergo)
-[wp] [Timeout] typed_cxx_throw_loop_assigns_part2 (Qed 3ms) (Alt-Ergo) (Stronger)
+[wp] [Timeout] typed_cxx_throw_terminates_part3 (Qed 3ms) (Alt-Ergo)
 [wp] [Timeout] typed_cxx_throw_assigns_exit_part4 (Qed 3ms) (Alt-Ergo) (Stronger)
-[wp] [Timeout] typed_cxx_throw_assigns_normal_part3 (Qed 9ms) (Alt-Ergo)
-[wp] [Timeout] typed_cxx_throw_assigns_exit_part5 (Qed 8ms) (Alt-Ergo)
+[wp] [Timeout] typed_cxx_throw_loop_assigns_part2 (Qed 4ms) (Alt-Ergo) (Stronger)
+[wp] [Timeout] typed_cxx_throw_assigns_normal_part3 (Qed 10ms) (Alt-Ergo)
+[wp] [Timeout] typed_cxx_throw_assigns_exit_part5 (Qed 9ms) (Alt-Ergo)
 [wp] Proved goals:   23 / 35
   Qed:              16 (1ms-3ms-14ms)
-  Alt-Ergo 2.6.2:    7 (15ms-29ms)
+  Alt-Ergo 2.6.2:    7 (16ms-28ms)
   Timeout:          12
 [wp] runtime/exception_runtime.cpp:65: Warning: 
   Memory model hypotheses for function 'cxx_throw':
