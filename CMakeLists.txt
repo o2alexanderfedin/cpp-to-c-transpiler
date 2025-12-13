@@ -1177,3 +1177,26 @@ target_link_libraries(VTTGeneratorTest PRIVATE
     clangBasic
     clangASTMatchers
 )
+
+# Story #92: Constructor Splitting (C1/C2 Variants) tests (Epic #44)
+add_executable(ConstructorSplitterTest
+    tests/ConstructorSplitterTest.cpp
+    src/ConstructorSplitter.cpp
+    src/VirtualInheritanceAnalyzer.cpp
+    src/VirtualMethodAnalyzer.cpp
+)
+
+target_compile_definitions(ConstructorSplitterTest PRIVATE ${LLVM_DEFINITIONS})
+
+target_include_directories(ConstructorSplitterTest PRIVATE
+    ${CMAKE_SOURCE_DIR}/include
+    ${LLVM_INCLUDE_DIRS}
+    ${CLANG_INCLUDE_DIRS}
+)
+
+target_link_libraries(ConstructorSplitterTest PRIVATE
+    clangTooling
+    clangFrontend
+    clangAST
+    clangBasic
+)
