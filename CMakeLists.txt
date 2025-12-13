@@ -27,6 +27,7 @@ add_executable(cpptoc
     src/CFGAnalyzer.cpp
     src/VirtualMethodAnalyzer.cpp
     src/VptrInjector.cpp
+    src/VirtualInheritanceAnalyzer.cpp
 )
 
 # Apply LLVM/Clang compile definitions to target
@@ -1105,3 +1106,253 @@ target_include_directories(CrossCastTraversalTest PRIVATE
 )
 
 # No Clang/LLVM dependencies - pure C runtime library
+
+# Story #89: Virtual Base Detection and Analysis tests (Epic #44)
+add_executable(VirtualBaseDetectionTest
+    tests/VirtualBaseDetectionTest.cpp
+    src/VirtualInheritanceAnalyzer.cpp
+)
+
+target_compile_definitions(VirtualBaseDetectionTest PRIVATE ${LLVM_DEFINITIONS})
+
+target_include_directories(VirtualBaseDetectionTest PRIVATE
+    ${CMAKE_SOURCE_DIR}/include
+    ${LLVM_INCLUDE_DIRS}
+    ${CLANG_INCLUDE_DIRS}
+)
+
+target_link_libraries(VirtualBaseDetectionTest PRIVATE
+    clangTooling
+    clangFrontend
+    clangAST
+    clangBasic
+    clangASTMatchers
+)
+
+# Story #90: Virtual Base Offset Table Generation tests (Epic #44)
+add_executable(VirtualBaseOffsetTableTest
+    tests/VirtualBaseOffsetTableTest.cpp
+    src/VtableGenerator.cpp
+    src/VirtualMethodAnalyzer.cpp
+    src/VirtualInheritanceAnalyzer.cpp
+    src/OverrideResolver.cpp
+)
+
+target_compile_definitions(VirtualBaseOffsetTableTest PRIVATE ${LLVM_DEFINITIONS})
+
+target_include_directories(VirtualBaseOffsetTableTest PRIVATE
+    ${CMAKE_SOURCE_DIR}/include
+    ${LLVM_INCLUDE_DIRS}
+    ${CLANG_INCLUDE_DIRS}
+)
+
+target_link_libraries(VirtualBaseOffsetTableTest PRIVATE
+    clangTooling
+    clangFrontend
+    clangAST
+    clangBasic
+    clangASTMatchers
+)
+
+# Story #91: VTT (Virtual Table Tables) Generation tests (Epic #44)
+add_executable(VTTGeneratorTest
+    tests/VTTGeneratorTest.cpp
+    src/VTTGenerator.cpp
+    src/VirtualInheritanceAnalyzer.cpp
+    src/VirtualMethodAnalyzer.cpp
+)
+
+target_compile_definitions(VTTGeneratorTest PRIVATE ${LLVM_DEFINITIONS})
+
+target_include_directories(VTTGeneratorTest PRIVATE
+    ${CMAKE_SOURCE_DIR}/include
+    ${LLVM_INCLUDE_DIRS}
+    ${CLANG_INCLUDE_DIRS}
+)
+
+target_link_libraries(VTTGeneratorTest PRIVATE
+    clangTooling
+    clangFrontend
+    clangAST
+    clangBasic
+    clangASTMatchers
+)
+
+# Story #92: Constructor Splitting (C1/C2 Variants) tests (Epic #44)
+add_executable(ConstructorSplitterTest
+    tests/ConstructorSplitterTest.cpp
+    src/ConstructorSplitter.cpp
+    src/VirtualInheritanceAnalyzer.cpp
+    src/VirtualMethodAnalyzer.cpp
+)
+
+target_compile_definitions(ConstructorSplitterTest PRIVATE ${LLVM_DEFINITIONS})
+
+target_include_directories(ConstructorSplitterTest PRIVATE
+    ${CMAKE_SOURCE_DIR}/include
+    ${LLVM_INCLUDE_DIRS}
+    ${CLANG_INCLUDE_DIRS}
+)
+
+target_link_libraries(ConstructorSplitterTest PRIVATE
+    clangTooling
+    clangFrontend
+    clangAST
+    clangBasic
+)
+
+# Story #102: Coroutine Detection and Frame Structure tests (Epic #46)
+add_executable(CoroutineDetectorTest
+    tests/CoroutineDetectorTest.cpp
+    src/CoroutineDetector.cpp
+)
+
+target_compile_definitions(CoroutineDetectorTest PRIVATE ${LLVM_DEFINITIONS})
+
+target_include_directories(CoroutineDetectorTest PRIVATE
+    ${CMAKE_SOURCE_DIR}/include
+    ${LLVM_INCLUDE_DIRS}
+    ${CLANG_INCLUDE_DIRS}
+)
+
+target_link_libraries(CoroutineDetectorTest PRIVATE
+    clangTooling
+    clangFrontend
+    clangAST
+    clangBasic
+)
+
+# Story #103: Suspend Point Identification tests (Epic #46)
+add_executable(SuspendPointIdentifierTest
+    tests/SuspendPointIdentifierTest.cpp
+    src/SuspendPointIdentifier.cpp
+)
+
+target_compile_definitions(SuspendPointIdentifierTest PRIVATE ${LLVM_DEFINITIONS})
+
+target_include_directories(SuspendPointIdentifierTest PRIVATE
+    ${CMAKE_SOURCE_DIR}/include
+    ${LLVM_INCLUDE_DIRS}
+    ${CLANG_INCLUDE_DIRS}
+)
+
+target_link_libraries(SuspendPointIdentifierTest PRIVATE
+    clangTooling
+    clangFrontend
+    clangAST
+    clangBasic
+)
+
+# Story #104: State Machine Transformation tests (Epic #46)
+add_executable(StateMachineTransformerTest
+    tests/StateMachineTransformerTest.cpp
+    src/StateMachineTransformer.cpp
+    src/SuspendPointIdentifier.cpp
+)
+
+target_compile_definitions(StateMachineTransformerTest PRIVATE ${LLVM_DEFINITIONS})
+
+target_include_directories(StateMachineTransformerTest PRIVATE
+    ${CMAKE_SOURCE_DIR}/include
+    ${LLVM_INCLUDE_DIRS}
+    ${CLANG_INCLUDE_DIRS}
+)
+
+target_link_libraries(StateMachineTransformerTest PRIVATE
+    clangTooling
+    clangFrontend
+    clangAST
+    clangBasic
+    clangLex
+)
+
+# Story #105: Promise Object Translation tests (Epic #46)
+add_executable(PromiseTranslatorTest
+    tests/PromiseTranslatorTest.cpp
+    src/PromiseTranslator.cpp
+)
+
+target_compile_definitions(PromiseTranslatorTest PRIVATE ${LLVM_DEFINITIONS})
+
+target_include_directories(PromiseTranslatorTest PRIVATE
+    ${CMAKE_SOURCE_DIR}/include
+    ${LLVM_INCLUDE_DIRS}
+    ${CLANG_INCLUDE_DIRS}
+)
+
+target_link_libraries(PromiseTranslatorTest PRIVATE
+    clangTooling
+    clangFrontend
+    clangAST
+    clangBasic
+)
+
+# Story #106: Resume and Destroy Function Generation tests (Epic #46)
+add_executable(ResumeDestroyFunctionTest
+    tests/ResumeDestroyFunctionTest.cpp
+    src/StateMachineTransformer.cpp
+    src/SuspendPointIdentifier.cpp
+)
+
+target_compile_definitions(ResumeDestroyFunctionTest PRIVATE ${LLVM_DEFINITIONS})
+
+target_include_directories(ResumeDestroyFunctionTest PRIVATE
+    ${CMAKE_SOURCE_DIR}/include
+    ${LLVM_INCLUDE_DIRS}
+    ${CLANG_INCLUDE_DIRS}
+)
+
+target_link_libraries(ResumeDestroyFunctionTest PRIVATE
+    clangTooling
+    clangFrontend
+    clangAST
+    clangBasic
+    clangLex
+)
+
+# Story #107: Frame Allocation and Coroutine Handle tests (Epic #46)
+add_executable(FrameAllocationTest
+    tests/FrameAllocationTest.cpp
+    src/FrameAllocator.cpp
+)
+
+target_compile_definitions(FrameAllocationTest PRIVATE ${LLVM_DEFINITIONS})
+
+target_include_directories(FrameAllocationTest PRIVATE
+    ${CMAKE_SOURCE_DIR}/include
+    ${LLVM_INCLUDE_DIRS}
+    ${CLANG_INCLUDE_DIRS}
+)
+
+target_link_libraries(FrameAllocationTest PRIVATE
+    clangTooling
+    clangFrontend
+    clangAST
+    clangBasic
+)
+
+# Story #108: Integration Testing tests (Epic #46)
+add_executable(CoroutineIntegrationTest
+    tests/CoroutineIntegrationTest.cpp
+    src/CoroutineDetector.cpp
+    src/SuspendPointIdentifier.cpp
+    src/StateMachineTransformer.cpp
+    src/PromiseTranslator.cpp
+    src/FrameAllocator.cpp
+)
+
+target_compile_definitions(CoroutineIntegrationTest PRIVATE ${LLVM_DEFINITIONS})
+
+target_include_directories(CoroutineIntegrationTest PRIVATE
+    ${CMAKE_SOURCE_DIR}/include
+    ${LLVM_INCLUDE_DIRS}
+    ${CLANG_INCLUDE_DIRS}
+)
+
+target_link_libraries(CoroutineIntegrationTest PRIVATE
+    clangTooling
+    clangFrontend
+    clangAST
+    clangBasic
+    clangLex
+)

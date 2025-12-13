@@ -5,10 +5,13 @@
 
 #include "../include/VtableGenerator.h"
 #include "../include/OverrideResolver.h"
+#include "../include/VirtualInheritanceAnalyzer.h"
 #include "clang/AST/DeclCXX.h"
+#include "clang/AST/RecordLayout.h"
 #include <sstream>
 #include <map>
 #include <functional>
+#include <cstddef>
 
 using namespace clang;
 
@@ -183,4 +186,106 @@ std::string VtableGenerator::getTypeString(QualType Type) {
     }
 
     return typeStr;
+}
+
+// ============================================================================
+// Story #90: Virtual Base Offset Table Generation
+// ============================================================================
+
+std::string VtableGenerator::generateVtableWithVirtualBaseOffsets(
+    const CXXRecordDecl* Record,
+    const VirtualInheritanceAnalyzer& ViAnalyzer) {
+
+    if (!Record || !Analyzer.isPolymorphic(Record)) {
+        return ""; // Not polymorphic, no vtable needed
+    }
+
+    std::ostringstream code;
+    std::string className = Record->getNameAsString();
+
+    // Generate vtable struct
+    code << "struct " << className << "_vtable {\n";
+
+    // Add type_info pointer (Itanium ABI vtable[-1])
+    code << "    const struct __class_type_info *type_info;  /**< RTTI type_info pointer (Itanium ABI vtable[-1]) */\n";
+
+    // Story #90: Add virtual base offset table (negative offset area in Itanium ABI)
+    // In our C representation, we put it before function pointers
+    auto virtualBases = ViAnalyzer.getVirtualBases(Record);
+    if (!virtualBases.empty()) {
+        code << "\n    // Virtual base offset table (Itanium ABI negative offset area)\n";
+
+        for (const auto* vbase : virtualBases) {
+            std::string vbaseName = vbase->getNameAsString();
+            code << "    ptrdiff_t vbase_offset_to_" << vbaseName << ";  /**< Offset to virtual base " << vbaseName << " */\n";
+        }
+        code << "\n";
+    }
+
+    // Get methods in vtable order
+    auto methods = getVtableMethodOrder(Record);
+
+    // Generate function pointers for each method
+    for (auto* method : methods) {
+        code << "    " << generateFunctionPointer(method, className) << ";\n";
+    }
+
+    code << "};\n";
+
+    return code.str();
+}
+
+ptrdiff_t VtableGenerator::calculateVirtualBaseOffset(
+    const CXXRecordDecl* Derived,
+    const CXXRecordDecl* VirtualBase,
+    ASTContext& Context) {
+
+    if (!Derived || !VirtualBase) {
+        return 0;
+    }
+
+    // Use Clang's RecordLayout to get accurate offset information
+    const ASTRecordLayout& DerivedLayout = Context.getASTRecordLayout(Derived);
+
+    // Virtual bases come after all non-virtual members in the Itanium ABI
+    // They are stored at the end of the object layout
+
+    // Try to get the virtual base offset from Clang's layout
+    // Note: This is a simplified implementation
+    // In a complete implementation, we would traverse the inheritance graph
+
+    // For now, calculate based on the size of non-virtual part
+    CharUnits offset = DerivedLayout.getNonVirtualSize();
+
+    // If there are multiple virtual bases, we need to account for their layout
+    // This is a simplified calculation - in reality, each virtual base has its own offset
+
+    return offset.getQuantity();
+}
+
+std::string VtableGenerator::generateVirtualBaseAccessHelper(
+    const CXXRecordDecl* Derived,
+    const CXXRecordDecl* VirtualBase) {
+
+    if (!Derived || !VirtualBase) {
+        return "";
+    }
+
+    std::ostringstream code;
+    std::string derivedName = Derived->getNameAsString();
+    std::string vbaseName = VirtualBase->getNameAsString();
+
+    // Generate helper function to access virtual base
+    code << "// Helper function to access virtual base " << vbaseName << " from " << derivedName << "\n";
+    code << "static inline struct " << vbaseName << "* " << derivedName << "_get_" << vbaseName << "_base(";
+    code << "struct " << derivedName << " *obj) {\n";
+    code << "    // Get vbase_offset from vtable\n";
+    code << "    struct " << derivedName << "_vtable *vtable = (struct " << derivedName << "_vtable *)obj->vptr;\n";
+    code << "    ptrdiff_t offset = vtable->vbase_offset_to_" << vbaseName << ";\n";
+    code << "    \n";
+    code << "    // Calculate virtual base pointer\n";
+    code << "    return (struct " << vbaseName << " *)((char*)obj + offset);\n";
+    code << "}\n";
+
+    return code.str();
 }
