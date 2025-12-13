@@ -1286,3 +1286,26 @@ target_link_libraries(PromiseTranslatorTest PRIVATE
     clangAST
     clangBasic
 )
+
+# Story #106: Resume and Destroy Function Generation tests (Epic #46)
+add_executable(ResumeDestroyFunctionTest
+    tests/ResumeDestroyFunctionTest.cpp
+    src/StateMachineTransformer.cpp
+    src/SuspendPointIdentifier.cpp
+)
+
+target_compile_definitions(ResumeDestroyFunctionTest PRIVATE ${LLVM_DEFINITIONS})
+
+target_include_directories(ResumeDestroyFunctionTest PRIVATE
+    ${CMAKE_SOURCE_DIR}/include
+    ${LLVM_INCLUDE_DIRS}
+    ${CLANG_INCLUDE_DIRS}
+)
+
+target_link_libraries(ResumeDestroyFunctionTest PRIVATE
+    clangTooling
+    clangFrontend
+    clangAST
+    clangBasic
+    clangLex
+)
