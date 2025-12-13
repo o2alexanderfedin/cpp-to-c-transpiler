@@ -1153,3 +1153,27 @@ target_link_libraries(VirtualBaseOffsetTableTest PRIVATE
     clangBasic
     clangASTMatchers
 )
+
+# Story #91: VTT (Virtual Table Tables) Generation tests (Epic #44)
+add_executable(VTTGeneratorTest
+    tests/VTTGeneratorTest.cpp
+    src/VTTGenerator.cpp
+    src/VirtualInheritanceAnalyzer.cpp
+    src/VirtualMethodAnalyzer.cpp
+)
+
+target_compile_definitions(VTTGeneratorTest PRIVATE ${LLVM_DEFINITIONS})
+
+target_include_directories(VTTGeneratorTest PRIVATE
+    ${CMAKE_SOURCE_DIR}/include
+    ${LLVM_INCLUDE_DIRS}
+    ${CLANG_INCLUDE_DIRS}
+)
+
+target_link_libraries(VTTGeneratorTest PRIVATE
+    clangTooling
+    clangFrontend
+    clangAST
+    clangBasic
+    clangASTMatchers
+)
