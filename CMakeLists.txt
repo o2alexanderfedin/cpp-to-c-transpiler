@@ -1105,3 +1105,43 @@ target_include_directories(CrossCastTraversalTest PRIVATE
 )
 
 # No Clang/LLVM dependencies - pure C runtime library
+
+# ============================================================================
+# Story #88: RTTI Runtime Library and Integration Testing
+# ============================================================================
+
+# RTTI Integration Test - Complete dynamic_cast runtime
+add_executable(RttiIntegrationTest
+    tests/RttiIntegrationTest.cpp
+    runtime/rtti_runtime.c
+)
+
+target_include_directories(RttiIntegrationTest PRIVATE
+    ${CMAKE_SOURCE_DIR}/runtime
+)
+
+# No Clang/LLVM dependencies - pure C runtime library
+
+# RTTI Exception Integration Test - RTTI + Exception handling
+add_executable(RttiExceptionIntegrationTest
+    tests/RttiExceptionIntegrationTest.cpp
+    runtime/rtti_runtime.c
+)
+
+target_include_directories(RttiExceptionIntegrationTest PRIVATE
+    ${CMAKE_SOURCE_DIR}/runtime
+)
+
+# No Clang/LLVM dependencies - pure C runtime library
+
+# RTTI Performance Test - Validate dynamic_cast overhead < 50%
+add_executable(RttiPerformanceTest
+    tests/RttiPerformanceTest.cpp
+    runtime/rtti_runtime.c
+)
+
+target_include_directories(RttiPerformanceTest PRIVATE
+    ${CMAKE_SOURCE_DIR}/runtime
+)
+
+# No Clang/LLVM dependencies - pure C runtime library

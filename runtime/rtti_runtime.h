@@ -1,13 +1,21 @@
 /**
  * @file rtti_runtime.h
- * @brief Story #86: Hierarchy Traversal Algorithm Header
+ * @brief Story #86, #87, #88: RTTI Runtime Library Header
  *
- * Defines runtime structures and functions for RTTI hierarchy traversal.
- * Follows Itanium C++ ABI specification for type_info structures.
+ * Complete RTTI runtime library following Itanium C++ ABI specification.
+ * Provides type_info structures, hierarchy traversal, dynamic_cast, and
+ * type comparison operations.
+ *
+ * Features:
+ * - Story #86: Hierarchy traversal algorithm
+ * - Story #87: Cross-cast support
+ * - Story #88: Complete dynamic_cast implementation and type comparison
  */
 
 #ifndef RTTI_RUNTIME_H
 #define RTTI_RUNTIME_H
+
+#include <stddef.h> /* For ptrdiff_t */
 
 #ifdef __cplusplus
 extern "C" {
@@ -96,6 +104,68 @@ void *cross_cast_traverse(const void *ptr,
                           const struct __class_type_info *src,
                           const struct __class_type_info *dst,
                           const struct __class_type_info *dynamic_type);
+
+/**
+ * @brief Complete dynamic_cast implementation (Story #88)
+ *
+ * Implements full dynamic_cast runtime according to Itanium C++ ABI.
+ * Performs runtime type checking and pointer adjustment for all cast types:
+ * - Downcasts (Base* -> Derived*)
+ * - Upcasts (Derived* -> Base*)
+ * - Cross-casts (Left* -> Right* in multiple inheritance)
+ * - Identity casts (T* -> T*)
+ *
+ * Algorithm (Itanium ABI):
+ * 1. NULL check: return NULL if sub is NULL
+ * 2. Get dynamic type from vtable
+ * 3. Fast path: use static offset hint if available (src2dst_offset >= 0)
+ * 4. Same type check: if src == dst, return sub
+ * 5. Downcast/cross-cast: use hierarchy traversal or cross-cast
+ * 6. Return NULL if cast fails
+ *
+ * @param sub Source pointer (subobject being cast)
+ * @param src Static source type (compile-time known)
+ * @param dst Destination type (compile-time known)
+ * @param src2dst_offset Static offset hint:
+ *                       -1 = no hint (downcast/unknown)
+ *                       -2 = src is not a public base of dst (cross-cast)
+ *                       -3 = src is a multiple public base
+ *                       >= 0 = static offset from src to dst (upcast)
+ * @return Pointer to destination type if valid, NULL otherwise
+ */
+void *cxx_dynamic_cast(const void *sub, const struct __class_type_info *src,
+                       const struct __class_type_info *dst,
+                       ptrdiff_t src2dst_offset);
+
+/**
+ * @brief Type comparison - equality (Story #88)
+ *
+ * Compares two type_info pointers for equality.
+ * In flat address spaces (x86-64, ARM64), pointer equality is sufficient
+ * because each type has exactly one type_info object globally.
+ *
+ * @param type1 First type_info
+ * @param type2 Second type_info
+ * @return 1 if types are equal, 0 otherwise
+ */
+static inline int type_info_equals(const struct __class_type_info *type1,
+                                   const struct __class_type_info *type2) {
+  return type1 == type2;
+}
+
+/**
+ * @brief Type comparison - inequality (Story #88)
+ *
+ * Compares two type_info pointers for inequality.
+ *
+ * @param type1 First type_info
+ * @param type2 Second type_info
+ * @return 1 if types are not equal, 0 otherwise
+ */
+static inline int type_info_not_equals(const struct __class_type_info *type1,
+                                       const struct __class_type_info *type2) {
+  return type1 != type2;
+}
 
 #ifdef __cplusplus
 }

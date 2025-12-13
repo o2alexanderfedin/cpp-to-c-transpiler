@@ -1,26 +1,45 @@
 /**
  * @file rtti_runtime.c
- * @brief Story #86 & #87: Hierarchy Traversal Algorithm Implementation
+ * @brief Story #86, #87, #88: Complete RTTI Runtime Library
  *
- * Implements runtime hierarchy traversal for dynamic_cast support.
- * Walks inheritance hierarchies (single and multiple) to determine cast
- * validity. Includes cross-casting support for sibling classes.
+ * Complete implementation of RTTI runtime following Itanium C++ ABI.
+ * Provides hierarchy traversal, cross-casting, and full dynamic_cast support.
  *
  * SOLID Principles Applied:
- * - Single Responsibility: Only handles hierarchy traversal
+ * - Single Responsibility: Focused on RTTI type checking and casting
  * - Open/Closed: Extensible for new type_info variants
  * - Interface Segregation: Minimal runtime API
  * - Dependency Inversion: Depends on Itanium ABI abstractions
  *
- * Design Pattern: libcxxabi hierarchy traversal algorithm
+ * Design Pattern: libcxxabi RTTI implementation
  *
- * Story #87 Extensions:
- * - find_type_offset: Helper for finding type offset in hierarchy
- * - cross_cast_traverse: Cross-casting between sibling classes
+ * Features:
+ * - Story #86: Hierarchy traversal algorithm
+ * - Story #87: Cross-cast support for multiple inheritance
+ * - Story #88: Complete cxx_dynamic_cast implementation
  */
 
 #include "rtti_runtime.h"
 #include <stddef.h>
+
+/**
+ * @brief Vtable markers for type_info types (Story #88)
+ *
+ * These markers distinguish between different type_info variants.
+ * They are used to determine the inheritance pattern at runtime.
+ *
+ * Note: These are dummy values - only their addresses matter.
+ * Each type_info structure's vtable_ptr points to one of these.
+ *
+ * These are defined as weak symbols to allow tests to override them.
+ */
+__attribute__((weak)) const int __vt_class_type_info_marker = 0;
+__attribute__((weak)) const int __vt_si_class_type_info_marker = 1;
+__attribute__((weak)) const int __vt_vmi_class_type_info_marker = 2;
+
+__attribute__((weak)) const void *__vt_class_type_info = &__vt_class_type_info_marker;
+__attribute__((weak)) const void *__vt_si_class_type_info = &__vt_si_class_type_info_marker;
+__attribute__((weak)) const void *__vt_vmi_class_type_info = &__vt_vmi_class_type_info_marker;
 
 /**
  * @brief Traverse hierarchy to find target type
@@ -50,6 +69,12 @@ void *traverse_hierarchy(const void *ptr, const struct __class_type_info *src,
   // Same type optimization: if src == dst, return immediately
   if (src == dst) {
     return (void *)ptr;
+  }
+
+  // No inheritance: __class_type_info (leaf class)
+  if (src->vtable_ptr == __vt_class_type_info) {
+    // No bases to check
+    return NULL;
   }
 
   // Single inheritance: __si_class_type_info
@@ -227,4 +252,98 @@ void *cross_cast_traverse(const void *ptr,
 
   ptrdiff_t cross_offset = dst_offset - src_offset;
   return (char *)ptr + cross_offset;
+}
+
+/**
+ * @brief Vtable structure (matches the vtable layout in generated code)
+ *
+ * This structure definition is used to extract type_info from objects.
+ * It must match the vtable layout used by the compiler.
+ */
+struct __vtable_layout {
+  ptrdiff_t offset_to_top;               /**< Offset to most-derived object */
+  const struct __class_type_info *type_info; /**< RTTI type information */
+  void (*virtual_functions[])();         /**< Virtual function pointers */
+};
+
+/**
+ * @brief Complete dynamic_cast implementation (Story #88)
+ *
+ * Implements full dynamic_cast runtime according to Itanium C++ ABI.
+ * Handles all cast scenarios: downcasts, upcasts, cross-casts, and identity.
+ *
+ * Algorithm (Itanium ABI __dynamic_cast):
+ * 1. NULL check: return NULL if sub is NULL
+ * 2. Get dynamic (most-derived) type from object's vtable
+ * 3. Fast path: if src2dst_offset >= 0 (upcast hint), use static offset
+ * 4. Same type check: if src == dst, return sub (identity cast)
+ * 5. Downcast: traverse from dynamic_type down to dst
+ * 6. Cross-cast: use cross_cast_traverse for sibling types
+ * 7. Return NULL if cast fails
+ *
+ * @param sub Source pointer (subobject being cast)
+ * @param src Static source type (compile-time known)
+ * @param dst Destination type (compile-time known)
+ * @param src2dst_offset Static offset hint:
+ *                       -1 = no hint (downcast/unknown)
+ *                       -2 = src is not a public base of dst (cross-cast)
+ *                       -3 = src is a multiple public base
+ *                       >= 0 = static offset from src to dst (upcast)
+ * @return Pointer to destination type if valid, NULL otherwise
+ */
+void *cxx_dynamic_cast(const void *sub, const struct __class_type_info *src,
+                       const struct __class_type_info *dst,
+                       ptrdiff_t src2dst_offset) {
+  // Step 1: NULL pointer check
+  if (sub == NULL || src == NULL || dst == NULL) {
+    return NULL;
+  }
+
+  // Step 2: Get dynamic (most-derived) type from vtable
+  // Object's first pointer is vtable pointer
+  const struct __vtable_layout *vtable =
+      *(const struct __vtable_layout **)sub;
+  const struct __class_type_info *dynamic_type = vtable->type_info;
+
+  // Step 3: Fast path - upcast with static offset hint
+  // If src2dst_offset >= 0, the compiler knows this is an upcast with a known
+  // offset This is an optimization for common upcasts (Derived* -> Base*)
+  if (src2dst_offset >= 0) {
+    // For upcasts, we just need to verify that dst is a base of src
+    // (or dynamic_type is compatible with dst)
+    // The offset tells us how to adjust the pointer
+    // Verify: dst is a base of dynamic_type (so cast is valid)
+    if (traverse_hierarchy(sub, src, dst) != NULL) {
+      // Use the static offset hint for efficiency
+      return (char *)sub + src2dst_offset;
+    }
+    // If hierarchy check fails, fall through to slow path
+  }
+
+  // Step 4: Same type check (identity cast)
+  if (src == dst) {
+    return (void *)sub;
+  }
+
+  // Step 5: Downcast - traverse from dynamic_type to dst
+  // This handles: Base* -> Derived* where object is actually Derived
+  // Also handles "upcasts" where we search from derived dynamic_type to base dst
+  void *downcast_result = traverse_hierarchy(sub, dynamic_type, dst);
+  if (downcast_result != NULL) {
+    return downcast_result;
+  }
+
+  // Step 6: Cross-cast - for sibling classes in multiple inheritance
+  // Hint: src2dst_offset == -2 means src is not a base of dst (cross-cast)
+  if (src2dst_offset == -2) {
+    // Use cross-cast traversal
+    void *crosscast_result =
+        cross_cast_traverse(sub, src, dst, dynamic_type);
+    if (crosscast_result != NULL) {
+      return crosscast_result;
+    }
+  }
+
+  // Step 7: Cast failed - no valid path from src to dst
+  return NULL;
 }
