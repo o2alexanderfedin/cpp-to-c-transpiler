@@ -14,6 +14,18 @@
 #include <vector>
 
 /**
+ * @brief Represents a local variable in a coroutine
+ */
+struct LocalVariableInfo {
+    std::string name;  // Variable name
+    std::string type;  // C type string
+    const clang::VarDecl* decl;  // Original declaration
+
+    LocalVariableInfo(const std::string& n, const std::string& t, const clang::VarDecl* d)
+        : name(n), type(t), decl(d) {}
+};
+
+/**
  * @class CoroutineDetector
  * @brief Detects coroutines and generates frame structures
  *
@@ -84,6 +96,20 @@ public:
      */
     std::string getFrameName(const clang::FunctionDecl* FD) const;
 
+    /**
+     * @brief Analyze local variables that span suspend points
+     * @param FD Coroutine function
+     * @return Vector of local variables that need to be promoted to frame
+     *
+     * Uses CFG analysis to determine which local variables are:
+     * 1. Declared before a suspend point
+     * 2. Used after a suspend point
+     *
+     * These variables must be promoted to the coroutine frame to preserve
+     * their state across suspensions.
+     */
+    std::vector<LocalVariableInfo> analyzeLocalVariables(const clang::FunctionDecl* FD);
+
 private:
     /**
      * @brief Generate state enum for suspend points
@@ -106,6 +132,13 @@ private:
      * @return C type string
      */
     std::string getTypeString(clang::QualType Type);
+
+    /**
+     * @brief Generate local variable fields in frame
+     * @param localVars Vector of local variables to include
+     * @return C code for local variable fields
+     */
+    std::string generateLocalVariableFields(const std::vector<LocalVariableInfo>& localVars);
 
     clang::ASTContext& Context;
 };

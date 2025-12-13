@@ -6,7 +6,11 @@
 #include "../include/CoroutineDetector.h"
 #include "clang/AST/RecursiveASTVisitor.h"
 #include "clang/AST/StmtCXX.h"
+#include "clang/Basic/SourceManager.h"
+#include "clang/Analysis/CFG.h"
 #include <sstream>
+#include <set>
+#include <map>
 
 using namespace clang;
 
@@ -88,6 +92,13 @@ std::string CoroutineDetector::generateFrameStructure(const FunctionDecl* FD) {
     std::string paramFields = generateParameterFields(FD);
     if (!paramFields.empty()) {
         code << paramFields;
+    }
+
+    // 6. Local variable fields (NEW: Story #102 - Local Variable Analysis)
+    std::vector<LocalVariableInfo> localVars = analyzeLocalVariables(FD);
+    std::string localVarFields = generateLocalVariableFields(localVars);
+    if (!localVarFields.empty()) {
+        code << localVarFields;
     }
 
     code << "};\n";
@@ -213,4 +224,156 @@ std::string CoroutineDetector::getTypeString(QualType Type) {
 
     // Fallback to printing the type
     return Type.getAsString();
+}
+
+std::vector<LocalVariableInfo> CoroutineDetector::analyzeLocalVariables(const FunctionDecl* FD) {
+    std::vector<LocalVariableInfo> result;
+
+    if (!FD || !FD->hasBody() || !isCoroutine(FD)) {
+        return result;
+    }
+
+    // Step 1: Find all suspend points in the function
+    class SuspendPointCollector : public RecursiveASTVisitor<SuspendPointCollector> {
+    public:
+        std::vector<const Stmt*> suspendPoints;
+
+        bool VisitCoawaitExpr(CoawaitExpr* E) {
+            suspendPoints.push_back(E);
+            return true;
+        }
+
+        bool VisitCoyieldExpr(CoyieldExpr* E) {
+            suspendPoints.push_back(E);
+            return true;
+        }
+
+        bool VisitCoreturnStmt(CoreturnStmt* S) {
+            suspendPoints.push_back(S);
+            return true;
+        }
+    };
+
+    SuspendPointCollector suspendCollector;
+    suspendCollector.TraverseStmt(FD->getBody());
+
+    if (suspendCollector.suspendPoints.empty()) {
+        return result;  // No suspend points, no locals need to be promoted
+    }
+
+    // Step 2: Find all local variables
+    class LocalVarCollector : public RecursiveASTVisitor<LocalVarCollector> {
+    public:
+        std::vector<const VarDecl*> localVars;
+
+        bool VisitVarDecl(VarDecl* VD) {
+            if (VD->isLocalVarDecl() && !VD->isStaticLocal()) {
+                localVars.push_back(VD);
+            }
+            return true;
+        }
+    };
+
+    LocalVarCollector varCollector;
+    varCollector.TraverseStmt(FD->getBody());
+
+    // Step 3: For each local variable, check if it's used after a suspend point
+    class VariableUseFinder : public RecursiveASTVisitor<VariableUseFinder> {
+    public:
+        const VarDecl* targetVar;
+        std::set<const Stmt*> useLocations;
+
+        explicit VariableUseFinder(const VarDecl* var) : targetVar(var) {}
+
+        bool VisitDeclRefExpr(DeclRefExpr* DRE) {
+            if (DRE->getDecl() == targetVar) {
+                useLocations.insert(DRE);
+            }
+            return true;
+        }
+    };
+
+    // Build a simple ordering map based on source locations
+    auto getStmtOrder = [&](const Stmt* S) -> unsigned {
+        if (!S) return 0;
+        return Context.getSourceManager().getFileOffset(S->getBeginLoc());
+    };
+
+    auto getDeclOrder = [&](const Decl* D) -> unsigned {
+        if (!D) return 0;
+        return Context.getSourceManager().getFileOffset(D->getBeginLoc());
+    };
+
+    for (const VarDecl* var : varCollector.localVars) {
+        unsigned varDeclOrder = getDeclOrder(var);
+
+        // Find all uses of this variable
+        VariableUseFinder useFinder(var);
+        useFinder.TraverseStmt(FD->getBody());
+
+        // Check if variable is used after any suspend point
+        bool spansSupsend = false;
+
+        for (const Stmt* suspendPoint : suspendCollector.suspendPoints) {
+            unsigned suspendOrder = getStmtOrder(suspendPoint);
+
+            // Variable must be declared before the suspend point
+            if (varDeclOrder >= suspendOrder) {
+                continue;
+            }
+
+            // Check if variable is used after this suspend point
+            for (const Stmt* use : useFinder.useLocations) {
+                unsigned useOrder = getStmtOrder(use);
+                if (useOrder > suspendOrder) {
+                    spansSupsend = true;
+                    break;
+                }
+            }
+
+            if (spansSupsend) {
+                break;
+            }
+        }
+
+        // Also check if variable is declared before a suspend and the variable
+        // is part of a loop condition that includes suspend points
+        if (!spansSupsend) {
+            for (const Stmt* suspendPoint : suspendCollector.suspendPoints) {
+                unsigned suspendOrder = getStmtOrder(suspendPoint);
+
+                // If variable declared before suspend, it might span
+                if (varDeclOrder < suspendOrder) {
+                    // Check if any use exists (even before suspend in loop contexts)
+                    if (!useFinder.useLocations.empty()) {
+                        spansSupsend = true;
+                        break;
+                    }
+                }
+            }
+        }
+
+        if (spansSupsend) {
+            std::string varName = var->getNameAsString();
+            std::string varType = getTypeString(var->getType());
+            result.emplace_back(varName, varType, var);
+        }
+    }
+
+    return result;
+}
+
+std::string CoroutineDetector::generateLocalVariableFields(const std::vector<LocalVariableInfo>& localVars) {
+    if (localVars.empty()) {
+        return "";
+    }
+
+    std::ostringstream code;
+    code << "    // Local variables spanning suspend points\n";
+
+    for (const auto& var : localVars) {
+        code << "    " << var.type << " " << var.name << ";\n";
+    }
+
+    return code.str();
 }
