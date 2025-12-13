@@ -1,0 +1,259 @@
+#!/bin/bash
+# gh-project-link-repo - Link GitHub Project to a repository
+
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+source "$SCRIPT_DIR/lib/gh-project-common.sh"
+
+usage() {
+  cat << EOF
+Usage: gh-project-link-repo [OPTIONS]
+
+Link a GitHub Project to a repository so it appears in the repository's
+Projects tab and repository issues can be easily added to the project.
+
+Options:
+  --project NUM        Project number (required)
+  --owner OWNER        Project owner (default: from config or auto-detect)
+  --repo REPO          Repository name (default: from config or auto-detect)
+  --repo-owner OWNER   Repository owner if different from project owner
+  --unlink             Unlink project from repository instead of linking
+  --dry-run            Show what would be done
+  -h, --help           Show help
+
+Examples:
+  # Link project to current repository
+  gh-project-link-repo --project 14
+
+  # Link project to specific repository
+  gh-project-link-repo --project 14 --repo my-repo
+
+  # Link organization project to repository
+  gh-project-link-repo \\
+    --project 14 \\
+    --owner myorg \\
+    --repo myrepo
+
+  # Link to repository in different owner
+  gh-project-link-repo \\
+    --project 14 \\
+    --owner myorg \\
+    --repo other-repo \\
+    --repo-owner otheruser
+
+  # Unlink project from repository
+  gh-project-link-repo --project 14 --unlink
+
+  # Preview operation
+  gh-project-link-repo --project 14 --dry-run
+
+What this does:
+  - Makes the project appear in the repository's "Projects" tab
+  - Allows easy addition of repository issues to the project
+  - Links the project and repository in GitHub's UI
+
+Note: Requires appropriate permissions on both the project and repository.
+EOF
+  exit 0
+}
+
+# Parse arguments
+PROJECT_NUM=""
+OWNER=""
+REPO=""
+REPO_OWNER=""
+UNLINK=false
+DRY_RUN=false
+
+while [[ $# -gt 0 ]]; do
+  case $1 in
+    --project) PROJECT_NUM="$2"; shift 2 ;;
+    --owner) OWNER="$2"; shift 2 ;;
+    --repo) REPO="$2"; shift 2 ;;
+    --repo-owner) REPO_OWNER="$2"; shift 2 ;;
+    --unlink) UNLINK=true; shift ;;
+    --dry-run) DRY_RUN=true; shift ;;
+    -h|--help) usage ;;
+    *) die "Unknown option: $1" ;;
+  esac
+done
+
+# Validate prerequisites
+validate_prerequisites
+
+# Validate project number
+if [[ -z "$PROJECT_NUM" ]]; then
+  die "Project number required. Use: --project NUM"
+fi
+
+# Load config if owner/repo not provided
+if [[ -z "$OWNER" ]] || [[ -z "$REPO" ]]; then
+  if [[ -f "$CONFIG_FILE" ]]; then
+    load_config
+    OWNER="${OWNER:-$PROJECT_OWNER}"
+    REPO="${REPO:-$PROJECT_REPO}"
+  fi
+fi
+
+# Auto-detect repo if still not provided
+if [[ -z "$OWNER" ]] || [[ -z "$REPO" ]]; then
+  log_info "Auto-detecting repository..."
+  REPO_INFO=$(gh repo view --json owner,name 2>/dev/null || echo '{}')
+  OWNER=${OWNER:-$(echo "$REPO_INFO" | jq -r '.owner.login // empty')}
+  REPO=${REPO:-$(echo "$REPO_INFO" | jq -r '.name // empty')}
+
+  if [[ -z "$OWNER" ]] || [[ -z "$REPO" ]]; then
+    die "Could not auto-detect repository. Use: --owner OWNER --repo REPO"
+  fi
+fi
+
+# Set repo owner (defaults to project owner)
+REPO_OWNER="${REPO_OWNER:-$OWNER}"
+
+log_info "Configuration:"
+log_info "  Project: #$PROJECT_NUM (owner: $OWNER)"
+log_info "  Repository: $REPO_OWNER/$REPO"
+
+#------------------------------------------------------------------------------
+# STEP 1: Get Project ID
+#------------------------------------------------------------------------------
+
+log_info "Resolving project ID..."
+PROJECT_DATA=$(gh project view "$PROJECT_NUM" \
+  --owner "$OWNER" \
+  --format json 2>/dev/null)
+
+if [[ -z "$PROJECT_DATA" ]]; then
+  die "Project #$PROJECT_NUM not found for owner $OWNER"
+fi
+
+PROJECT_ID=$(echo "$PROJECT_DATA" | jq -r '.id')
+PROJECT_TITLE=$(echo "$PROJECT_DATA" | jq -r '.title')
+
+if [[ -z "$PROJECT_ID" ]] || [[ "$PROJECT_ID" == "null" ]]; then
+  die "Failed to get project ID"
+fi
+
+log_success "Project: $PROJECT_TITLE ($PROJECT_ID)"
+
+#------------------------------------------------------------------------------
+# STEP 2: Get Repository ID
+#------------------------------------------------------------------------------
+
+log_info "Resolving repository ID..."
+REPO_DATA=$(gh repo view "$REPO_OWNER/$REPO" --json id,name,owner 2>/dev/null)
+
+if [[ -z "$REPO_DATA" ]]; then
+  die "Repository $REPO_OWNER/$REPO not found"
+fi
+
+REPO_ID=$(echo "$REPO_DATA" | jq -r '.id')
+REPO_NAME=$(echo "$REPO_DATA" | jq -r '.name')
+REPO_OWNER_LOGIN=$(echo "$REPO_DATA" | jq -r '.owner.login')
+
+if [[ -z "$REPO_ID" ]] || [[ "$REPO_ID" == "null" ]]; then
+  die "Failed to get repository ID"
+fi
+
+log_success "Repository: $REPO_OWNER_LOGIN/$REPO_NAME ($REPO_ID)"
+
+#------------------------------------------------------------------------------
+# STEP 3: Preview or Execute
+#------------------------------------------------------------------------------
+
+if [[ "$DRY_RUN" == "true" ]]; then
+  log_warn "[DRY-RUN] Would $([ "$UNLINK" == "true" ] && echo "unlink" || echo "link"):"
+  echo ""
+  echo "  Project: #$PROJECT_NUM - $PROJECT_TITLE"
+  echo "  Project ID: $PROJECT_ID"
+  echo "  Repository: $REPO_OWNER_LOGIN/$REPO_NAME"
+  echo "  Repository ID: $REPO_ID"
+  echo ""
+  if [[ "$UNLINK" == "true" ]]; then
+    echo "  Result: Project will NOT appear in repository's Projects tab"
+  else
+    echo "  Result: Project will appear in repository's Projects tab"
+  fi
+  exit 0
+fi
+
+#------------------------------------------------------------------------------
+# STEP 4: Execute Link/Unlink
+#------------------------------------------------------------------------------
+
+if [[ "$UNLINK" == "true" ]]; then
+  log_info "Unlinking project from repository..."
+
+  RESULT=$(execute_graphql '
+    mutation($projectId: ID!, $repositoryId: ID!) {
+      unlinkProjectV2FromRepository(input: {
+        projectId: $projectId
+        repositoryId: $repositoryId
+      }) {
+        repository {
+          name
+          owner {
+            login
+          }
+        }
+      }
+    }
+  ' \
+    -f projectId="$PROJECT_ID" \
+    -f repositoryId="$REPO_ID")
+
+  # Check for errors
+  ERRORS=$(echo "$RESULT" | jq '.errors // []')
+  if [[ "$ERRORS" != "[]" ]]; then
+    ERROR_MSG=$(echo "$ERRORS" | jq -r '.[0].message')
+    die "Failed to unlink: $ERROR_MSG"
+  fi
+
+  echo ""
+  log_success "Project unlinked from repository!"
+  echo ""
+  echo "  Project: #$PROJECT_NUM - $PROJECT_TITLE"
+  echo "  Repository: $REPO_OWNER_LOGIN/$REPO_NAME"
+  echo ""
+  log_info "The project no longer appears in the repository's Projects tab"
+
+else
+  log_info "Linking project to repository..."
+
+  RESULT=$(execute_graphql '
+    mutation($projectId: ID!, $repositoryId: ID!) {
+      linkProjectV2ToRepository(input: {
+        projectId: $projectId
+        repositoryId: $repositoryId
+      }) {
+        repository {
+          name
+          owner {
+            login
+          }
+        }
+      }
+    }
+  ' \
+    -f projectId="$PROJECT_ID" \
+    -f repositoryId="$REPO_ID")
+
+  # Check for errors
+  ERRORS=$(echo "$RESULT" | jq '.errors // []')
+  if [[ "$ERRORS" != "[]" ]]; then
+    ERROR_MSG=$(echo "$ERRORS" | jq -r '.[0].message')
+    die "Failed to link: $ERROR_MSG"
+  fi
+
+  echo ""
+  log_success "Project linked to repository!"
+  echo ""
+  echo "  Project: #$PROJECT_NUM - $PROJECT_TITLE"
+  echo "  Repository: $REPO_OWNER_LOGIN/$REPO_NAME"
+  echo ""
+  log_info "View the project at: https://github.com/$REPO_OWNER_LOGIN/$REPO_NAME/projects"
+  echo ""
+  echo "Next steps:"
+  echo "  1. Visit the repository's Projects tab to see the linked project"
+  echo "  2. Add repository issues to the project using gh-project-create"
+  echo "  3. Issues created from the repository will be easy to add to this project"
+fi

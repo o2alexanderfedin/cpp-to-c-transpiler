@@ -1,0 +1,377 @@
+/**
+ * @file TypeidTranslatorTest.cpp
+ * @brief Test suite for TypeidTranslator (Story #84)
+ *
+ * Tests typeid operator translation to type_info retrieval.
+ * Covers both polymorphic (vtable lookup) and static (direct reference) scenarios.
+ *
+ * SOLID Principles:
+ * - Single Responsibility: Tests only typeid translation
+ * - Interface Segregation: Tests public API only
+ * - Dependency Inversion: Uses abstract AST interfaces
+ */
+
+#include "clang/Tooling/Tooling.h"
+#include "clang/Frontend/ASTUnit.h"
+#include "../include/TypeidTranslator.h"
+#include "../include/TypeInfoGenerator.h"
+#include "../include/VirtualMethodAnalyzer.h"
+#include <iostream>
+#include <cassert>
+#include <sstream>
+
+using namespace clang;
+
+std::unique_ptr<ASTUnit> buildAST(const char *code) {
+    std::vector<std::string> args = {"-std=c++17"};
+    return tooling::buildASTFromCodeWithArgs(code, args, "input.cc");
+}
+
+// Test helper macros
+#define TEST_START(name) std::cout << "Test: " << name << " ... " << std::flush
+#define TEST_PASS(name) std::cout << "PASS" << std::endl
+#define ASSERT(cond, msg) \
+    if (!(cond)) { \
+        std::cerr << "\nASSERT FAILED: " << msg << std::endl; \
+        return; \
+    }
+
+/**
+ * @brief Helper to find first CXXTypeidExpr in AST
+ */
+const CXXTypeidExpr* findTypeidExpr(ASTContext& Context) {
+    const CXXTypeidExpr* result = nullptr;
+
+    class TypeidFinder : public RecursiveASTVisitor<TypeidFinder> {
+    public:
+        const CXXTypeidExpr* Found = nullptr;
+
+        bool VisitCXXTypeidExpr(CXXTypeidExpr* E) {
+            if (!Found) {
+                Found = E;
+            }
+            return true;
+        }
+    };
+
+    TypeidFinder Finder;
+    Finder.TraverseDecl(Context.getTranslationUnitDecl());
+    return Finder.Found;
+}
+
+/**
+ * Test 1: Detect polymorphic typeid expression
+ */
+void test_DetectPolymorphicTypeid() {
+    TEST_START("DetectPolymorphicTypeid");
+
+    const char* code = R"(
+        #include <typeinfo>
+
+        class Base {
+        public:
+            virtual ~Base() {}
+        };
+
+        void test(Base* ptr) {
+            const auto& ti = typeid(*ptr);
+        }
+    )";
+
+    std::unique_ptr<ASTUnit> AST = buildAST(code);
+    ASSERT(AST != nullptr, "Failed to parse C++ code");
+
+    ASTContext& Context = AST->getASTContext();
+    VirtualMethodAnalyzer Analyzer(Context);
+    TypeidTranslator Translator(Context, Analyzer);
+
+    const CXXTypeidExpr* typeidExpr = findTypeidExpr(Context);
+    ASSERT(typeidExpr != nullptr, "typeid expression not found");
+
+    // Verify it's a polymorphic typeid (dereferenced pointer)
+    ASSERT(!typeidExpr->isTypeOperand(), "Expected expression operand, not type operand");
+    ASSERT(Translator.isPolymorphicTypeid(typeidExpr), "Expected polymorphic typeid");
+
+    TEST_PASS("DetectPolymorphicTypeid");
+}
+
+/**
+ * Test 2: Detect static typeid expression
+ */
+void test_DetectStaticTypeid() {
+    TEST_START("DetectStaticTypeid");
+
+    const char* code = R"(
+        #include <typeinfo>
+
+        class Base {
+        public:
+            virtual ~Base() {}
+        };
+
+        void test() {
+            const auto& ti = typeid(Base);
+        }
+    )";
+
+    std::unique_ptr<ASTUnit> AST = buildAST(code);
+    ASSERT(AST != nullptr, "Failed to parse C++ code");
+
+    ASTContext& Context = AST->getASTContext();
+    VirtualMethodAnalyzer Analyzer(Context);
+    TypeidTranslator Translator(Context, Analyzer);
+
+    const CXXTypeidExpr* typeidExpr = findTypeidExpr(Context);
+    ASSERT(typeidExpr != nullptr, "typeid expression not found");
+
+    // Verify it's a static typeid (type operand)
+    ASSERT(typeidExpr->isTypeOperand(), "Expected type operand");
+    ASSERT(!Translator.isPolymorphicTypeid(typeidExpr), "Expected static typeid");
+
+    TEST_PASS("DetectStaticTypeid");
+}
+
+/**
+ * Test 3: Generate polymorphic typeid translation (vtable lookup)
+ */
+void test_GeneratePolymorphicTypeidTranslation() {
+    TEST_START("GeneratePolymorphicTypeidTranslation");
+
+    const char* code = R"(
+        #include <typeinfo>
+
+        class Base {
+        public:
+            virtual ~Base() {}
+        };
+
+        void test(Base* ptr) {
+            const auto& ti = typeid(*ptr);
+        }
+    )";
+
+    std::unique_ptr<ASTUnit> AST = buildAST(code);
+    ASSERT(AST != nullptr, "Failed to parse C++ code");
+
+    ASTContext& Context = AST->getASTContext();
+    VirtualMethodAnalyzer Analyzer(Context);
+    TypeidTranslator Translator(Context, Analyzer);
+
+    const CXXTypeidExpr* typeidExpr = findTypeidExpr(Context);
+    ASSERT(typeidExpr != nullptr, "typeid expression not found");
+
+    std::string translation = Translator.translateTypeid(typeidExpr);
+
+    // Should generate vtable lookup containing vptr reference
+    ASSERT(!translation.empty(), "Translation is empty");
+    ASSERT(translation.find("vptr") != std::string::npos, "Expected vptr reference in translation");
+
+    TEST_PASS("GeneratePolymorphicTypeidTranslation");
+}
+
+/**
+ * Test 4: Generate static typeid translation (direct reference)
+ */
+void test_GenerateStaticTypeidTranslation() {
+    TEST_START("GenerateStaticTypeidTranslation");
+
+    const char* code = R"(
+        #include <typeinfo>
+
+        class Base {
+        public:
+            virtual ~Base() {}
+        };
+
+        void test() {
+            const auto& ti = typeid(Base);
+        }
+    )";
+
+    std::unique_ptr<ASTUnit> AST = buildAST(code);
+    ASSERT(AST != nullptr, "Failed to parse C++ code");
+
+    ASTContext& Context = AST->getASTContext();
+    VirtualMethodAnalyzer Analyzer(Context);
+    TypeidTranslator Translator(Context, Analyzer);
+
+    const CXXTypeidExpr* typeidExpr = findTypeidExpr(Context);
+    ASSERT(typeidExpr != nullptr, "typeid expression not found");
+
+    std::string translation = Translator.translateTypeid(typeidExpr);
+
+    // Should generate direct reference: &__ti_Base
+    ASSERT(!translation.empty(), "Translation is empty");
+    ASSERT(translation.find("__ti_Base") != std::string::npos, "Expected __ti_Base in translation");
+    ASSERT(translation.find("&") != std::string::npos, "Expected address-of operator");
+
+    TEST_PASS("GenerateStaticTypeidTranslation");
+}
+
+/**
+ * Test 5: Non-polymorphic class returns static type_info
+ */
+void test_NonPolymorphicClassStaticTypeid() {
+    TEST_START("NonPolymorphicClassStaticTypeid");
+
+    const char* code = R"(
+        #include <typeinfo>
+
+        class NonPoly {
+        public:
+            int x;
+        };
+
+        void test(NonPoly* ptr) {
+            const auto& ti = typeid(*ptr);
+        }
+    )";
+
+    std::unique_ptr<ASTUnit> AST = buildAST(code);
+    ASSERT(AST != nullptr, "Failed to parse C++ code");
+
+    ASTContext& Context = AST->getASTContext();
+    VirtualMethodAnalyzer Analyzer(Context);
+    TypeidTranslator Translator(Context, Analyzer);
+
+    const CXXTypeidExpr* typeidExpr = findTypeidExpr(Context);
+    ASSERT(typeidExpr != nullptr, "typeid expression not found");
+
+    // Even though it's *ptr, non-polymorphic types use static typeid
+    ASSERT(!Translator.isPolymorphicTypeid(typeidExpr), "Expected static typeid for non-polymorphic class");
+
+    std::string translation = Translator.translateTypeid(typeidExpr);
+    // Should generate static reference, not vtable lookup
+    ASSERT(translation.find("__ti_") != std::string::npos, "Expected __ti_ prefix");
+    ASSERT(translation.find("vptr") == std::string::npos, "Should not contain vptr for non-polymorphic");
+
+    TEST_PASS("NonPolymorphicClassStaticTypeid");
+}
+
+/**
+ * Test 6: Null typeid expression handling
+ */
+void test_NullTypeidExpression() {
+    TEST_START("NullTypeidExpression");
+
+    const char* code = R"(
+        #include <typeinfo>
+
+        class Base {
+        public:
+            virtual ~Base() {}
+        };
+    )";
+
+    std::unique_ptr<ASTUnit> AST = buildAST(code);
+    ASSERT(AST != nullptr, "Failed to parse C++ code");
+
+    ASTContext& Context = AST->getASTContext();
+    VirtualMethodAnalyzer Analyzer(Context);
+    TypeidTranslator Translator(Context, Analyzer);
+
+    // Null typeid expression should return empty string
+    std::string translation = Translator.translateTypeid(nullptr);
+    ASSERT(translation.empty(), "Expected empty string for null expression");
+
+    TEST_PASS("NullTypeidExpression");
+}
+
+/**
+ * Test 7: Polymorphic typeid is not type operand
+ */
+void test_PolymorphicTypeidIsExprOperand() {
+    TEST_START("PolymorphicTypeidIsExprOperand");
+
+    const char* code = R"(
+        #include <typeinfo>
+
+        class Derived {
+        public:
+            virtual ~Derived() {}
+        };
+
+        void test(Derived& ref) {
+            const auto& ti = typeid(ref);
+        }
+    )";
+
+    std::unique_ptr<ASTUnit> AST = buildAST(code);
+    ASSERT(AST != nullptr, "Failed to parse C++ code");
+
+    ASTContext& Context = AST->getASTContext();
+    VirtualMethodAnalyzer Analyzer(Context);
+    TypeidTranslator Translator(Context, Analyzer);
+
+    const CXXTypeidExpr* typeidExpr = findTypeidExpr(Context);
+    ASSERT(typeidExpr != nullptr, "typeid expression not found");
+
+    // typeid(ref) where ref is polymorphic reference should be polymorphic
+    ASSERT(!typeidExpr->isTypeOperand(), "Expected expression operand");
+    ASSERT(Translator.isPolymorphicTypeid(typeidExpr), "Expected polymorphic typeid for reference");
+
+    TEST_PASS("PolymorphicTypeidIsExprOperand");
+}
+
+/**
+ * Test 8: Static typeid for const type
+ */
+void test_StaticTypeidForConstType() {
+    TEST_START("StaticTypeidForConstType");
+
+    const char* code = R"(
+        #include <typeinfo>
+
+        class Shape {
+        public:
+            virtual ~Shape() {}
+        };
+
+        void test() {
+            const auto& ti = typeid(const Shape);
+        }
+    )";
+
+    std::unique_ptr<ASTUnit> AST = buildAST(code);
+    ASSERT(AST != nullptr, "Failed to parse C++ code");
+
+    ASTContext& Context = AST->getASTContext();
+    VirtualMethodAnalyzer Analyzer(Context);
+    TypeidTranslator Translator(Context, Analyzer);
+
+    const CXXTypeidExpr* typeidExpr = findTypeidExpr(Context);
+    ASSERT(typeidExpr != nullptr, "typeid expression not found");
+
+    ASSERT(typeidExpr->isTypeOperand(), "Expected type operand");
+    ASSERT(!Translator.isPolymorphicTypeid(typeidExpr), "Expected static typeid");
+
+    std::string translation = Translator.translateTypeid(typeidExpr);
+    ASSERT(translation.find("__ti_Shape") != std::string::npos, "Expected __ti_Shape");
+
+    TEST_PASS("StaticTypeidForConstType");
+}
+
+/**
+ * Main function: runs all tests
+ */
+int main() {
+    std::cout << "===============================================" << std::endl;
+    std::cout << "TypeidTranslator Tests (Story #84)" << std::endl;
+    std::cout << "===============================================" << std::endl << std::endl;
+
+    test_DetectPolymorphicTypeid();
+    test_DetectStaticTypeid();
+    test_GeneratePolymorphicTypeidTranslation();
+    test_GenerateStaticTypeidTranslation();
+    test_NonPolymorphicClassStaticTypeid();
+    test_NullTypeidExpression();
+    test_PolymorphicTypeidIsExprOperand();
+    test_StaticTypeidForConstType();
+
+    std::cout << std::endl;
+    std::cout << "===============================================" << std::endl;
+    std::cout << "All tests passed!" << std::endl;
+    std::cout << "===============================================" << std::endl;
+
+    return 0;
+}

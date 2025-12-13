@@ -3,9 +3,27 @@
 [![Research Status](https://img.shields.io/badge/Research-v1.5.1%20Complete-brightgreen)](https://github.com)
 [![Confidence](https://img.shields.io/badge/Confidence-97%25-brightgreen)](https://github.com)
 [![Architecture](https://img.shields.io/badge/Architecture-Two--Phase%20Translation-blue)](https://github.com)
-[![License](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
+[![License](https://img.shields.io/badge/License-CC%20BY--NC--ND%204.0-lightgrey.svg)](LICENSE)
+[![Commercial License](https://img.shields.io/badge/Commercial-Available-green.svg)](LICENSE-COMMERCIAL.md)
 
 A research project for converting modern C++ code to clean, readable, formally-verifiable C code using Clang's AST infrastructure.
+
+---
+
+## 📚 Comprehensive Documentation Available
+
+**Visit our interactive documentation site:** [https://o2alexanderfedin.github.io/cpp-to-c-transpiler/](https://o2alexanderfedin.github.io/cpp-to-c-transpiler/)
+
+The documentation site provides:
+- **Architecture Guides** - Two-phase translation approach, AST infrastructure, implementation patterns
+- **Feature Implementations** - PNaCl SJLJ exceptions, RTTI (Itanium ABI), virtual inheritance, C++20 coroutines
+- **Progress Tracking** - Live implementation status, completed epics, upcoming milestones
+- **Research Analysis** - 13,545+ lines of comprehensive technical documentation
+- **Interactive Navigation** - Easy browsing of all project documentation
+
+This README provides a quick overview - the documentation site contains the complete technical details.
+
+---
 
 ## Overview
 
@@ -439,7 +457,45 @@ See [CLAUDE.md](CLAUDE.md) for development guidelines.
 
 ## License
 
-MIT License - See LICENSE file for details
+This project uses **dual licensing**:
+
+### Non-Commercial Use (Default)
+
+**Creative Commons Attribution-NonCommercial-NoDerivatives 4.0 International (CC BY-NC-ND 4.0)**
+
+You are free to:
+- ✅ Download and use the software for personal, educational, and non-commercial research
+- ✅ Share the software with proper attribution
+
+You **cannot**:
+- ❌ Use the software for commercial purposes
+- ❌ Create derivative works or modifications
+- ❌ Distribute modified versions
+
+See the [LICENSE](LICENSE) file for complete terms.
+
+### Commercial Use
+
+If you wish to use this software commercially or create derivative works, you must obtain a **commercial license**.
+
+**Commercial use includes:**
+- Using in commercial products or services
+- Internal business use
+- Consulting or SaaS based on this software
+- Creating derivative works for commercial purposes
+
+**Commercial license benefits:**
+- ✅ Commercial use rights
+- ✅ Modification and derivative works rights
+- ✅ Distribution and sublicensing rights
+- ✅ Priority technical support
+- ✅ Custom development options
+
+**Licensing tiers:** Individual/Startup, Enterprise, OEM/Redistribution
+
+**Contact:** alexander.fedin@hapyy.com
+
+See [LICENSE-COMMERCIAL.md](LICENSE-COMMERCIAL.md) for complete commercial licensing terms and pricing.
 
 ## Acknowledgments
 

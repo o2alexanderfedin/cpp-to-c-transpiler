@@ -1,0 +1,91 @@
+#!/bin/bash
+# gh-project-link - Link story to epic using native sub-issue API
+
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+source "$SCRIPT_DIR/lib/gh-project-common.sh"
+
+usage() {
+  cat << EOF
+Usage: gh-project-link [OPTIONS]
+
+Link story to epic using GitHub's native sub-issue API.
+
+Options:
+  --parent NUM         Parent issue number (epic)
+  --child NUM          Child issue number (story)
+  --children NUM,NUM   Multiple children (comma-separated)
+  --dry-run            Show what would be linked
+  -h, --help           Show help
+
+Examples:
+  # Link single story to epic
+  gh-project-link --parent 42 --child 167
+
+  # Link multiple stories
+  gh-project-link --parent 42 --children 167,168,169
+
+  # Preview
+  gh-project-link --parent 42 --child 167 --dry-run
+
+Requirements:
+  - Both parent and child must be repository issues (not drafts)
+  - Both must be in the same repository
+EOF
+  exit 0
+}
+
+# Parse arguments
+PARENT=""
+CHILDREN=()
+DRY_RUN=false
+
+while [[ $# -gt 0 ]]; do
+  case $1 in
+    --parent) PARENT="$2"; shift 2 ;;
+    --child) CHILDREN+=("$2"); shift 2 ;;
+    --children) IFS=',' read -ra CHILDREN <<< "$2"; shift 2 ;;
+    --dry-run) DRY_RUN=true; shift ;;
+    -h|--help) usage ;;
+    *) die "Unknown option: $1" ;;
+  esac
+done
+
+# Validate
+load_config
+validate_prerequisites
+
+if [[ -z "$PARENT" ]]; then
+  die "Parent issue number required. Use: --parent NUM"
+fi
+
+if [[ ${#CHILDREN[@]} -eq 0 ]]; then
+  die "At least one child issue required. Use: --child NUM or --children NUM,NUM"
+fi
+
+# Dry-run preview
+if [[ "$DRY_RUN" == "true" ]]; then
+  log_warn "[DRY-RUN] Would link:"
+  echo "  Parent Epic: #$PARENT"
+  echo "  Children Stories: ${CHILDREN[*]}"
+  exit 0
+fi
+
+# Link each child to parent
+for CHILD in "${CHILDREN[@]}"; do
+  add_sub_issue "$PARENT" "$CHILD"
+done
+
+# Query final state
+echo ""
+log_info "Querying Epic #$PARENT sub-issues..."
+EPIC_DATA=$(query_sub_issues "$PARENT")
+
+TOTAL_COUNT=$(echo "$EPIC_DATA" | jq -r '.trackedIssues.totalCount')
+EPIC_TITLE=$(echo "$EPIC_DATA" | jq -r '.title')
+
+echo ""
+log_success "Epic #$PARENT now tracks $TOTAL_COUNT sub-issues"
+echo ""
+echo "  Epic: $EPIC_TITLE"
+echo "  Sub-issues:"
+echo "$EPIC_DATA" | jq -r '.trackedIssues.nodes[] | "    - #\(.number): \(.title) [\(.state)]"'

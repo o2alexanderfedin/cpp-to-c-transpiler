@@ -925,6 +925,295 @@ For complete implementation with promise types, awaitables, Duff's device patter
 - **unique_ptr**: Raw pointer + RAII destructor (calls delete)
 - **shared_ptr**: Struct with pointer + ref count, atomic increment/decrement
 
+### 4.6 Header File Generation & Separation
+
+**Approach**: Separate .c and .h file generation with proper include guards and dependency tracking.
+
+**Historical Context**: All production C++ to C tools (emmtrix eCPP2C, historical Cfront) generate separate header files. This is required for:
+- Modular compilation
+- Library distribution
+- Vtable declarations (needed in headers for Phase 3+)
+- Standard C project structure
+
+**Key Components**:
+
+```mermaid
+flowchart TD
+    A[C++ AST] --> B[HeaderSeparator]
+    B --> C{Analyze Each Decl}
+    C -->|RecordDecl complete| D[Header List]
+    C -->|FunctionDecl no body| D
+    C -->|FunctionDecl with body| E[Impl List]
+    C -->|FunctionDecl with body| D2[Create Decl for Header]
+    D2 --> D
+
+    D --> F[IncludeGuardGenerator]
+    F --> G[#ifndef FILENAME_H]
+    G --> H[Generate .h file]
+
+    E --> I[DependencyAnalyzer]
+    I --> J[Add #include directives]
+    J --> K[Generate .c file]
+
+    style D fill:#e1f5ff
+    style E fill:#fff4e1
+```
+
+#### HeaderSeparator Component
+
+**Purpose**: Analyze declarations and route to appropriate output (header vs implementation).
+
+**Algorithm**:
+```cpp
+class HeaderSeparator {
+    std::vector<Decl*> headerDecls;   // → .h file
+    std::vector<Decl*> implDecls;     // → .c file
+    std::set<std::string> forwardDeclared;
+
+public:
+    void analyzeDecl(Decl *D) {
+        if (auto *RD = dyn_cast<RecordDecl>(D)) {
+            // Complete struct definition → header
+            if (RD->isCompleteDefinition()) {
+                // Check for forward declarations needed
+                analyzeForwardDecls(RD);
+                headerDecls.push_back(D);
+            }
+        } else if (auto *FD = dyn_cast<FunctionDecl>(D)) {
+            if (FD->hasBody()) {
+                // Function definition → implementation
+                implDecls.push_back(FD);
+                // Also need declaration in header
+                headerDecls.push_back(createFunctionDeclOnly(FD));
+            } else {
+                // Declaration only → header
+                headerDecls.push_back(FD);
+            }
+        }
+    }
+
+private:
+    void analyzeForwardDecls(RecordDecl *RD) {
+        // Scan fields for pointer types
+        for (auto *Field : RD->fields()) {
+            QualType FT = Field->getType();
+            if (const PointerType *PT = FT->getAs<PointerType>()) {
+                QualType PointeeType = PT->getPointeeType();
+                if (const RecordType *RT = PointeeType->getAs<RecordType>()) {
+                    std::string name = RT->getDecl()->getName().str();
+                    if (forwardDeclared.find(name) == forwardDeclared.end()) {
+                        // Emit forward declaration
+                        emitForwardDecl(name);
+                        forwardDeclared.insert(name);
+                    }
+                }
+            }
+        }
+    }
+
+    FunctionDecl* createFunctionDeclOnly(FunctionDecl *FD);
+};
+```
+
+#### IncludeGuardGenerator Component
+
+**Purpose**: Generate standard C include guards.
+
+**Format**:
+```c
+#ifndef FILENAME_H
+#define FILENAME_H
+
+// ... declarations ...
+
+#endif // FILENAME_H
+```
+
+**Implementation**:
+```cpp
+class IncludeGuardGenerator {
+public:
+    std::string generateGuardName(StringRef filename) {
+        // Point.h → POINT_H
+        // MyClass.h → MYCLASS_H
+        // my-class.h → MY_CLASS_H
+        std::string guard = filename.str();
+        std::replace(guard.begin(), guard.end(), '.', '_');
+        std::replace(guard.begin(), guard.end(), '-', '_');
+        std::transform(guard.begin(), guard.end(),
+                      guard.begin(), ::toupper);
+        return guard;
+    }
+
+    void emitGuardBegin(raw_ostream &OS, StringRef guardName) {
+        OS << "#ifndef " << guardName << "\n";
+        OS << "#define " << guardName << "\n\n";
+    }
+
+    void emitGuardEnd(raw_ostream &OS, StringRef guardName) {
+        OS << "\n#endif // " << guardName << "\n";
+    }
+};
+```
+
+#### DependencyAnalyzer Component
+
+**Purpose**: Track required includes for implementation files.
+
+**Phase 2.5 Implementation** (Basic):
+```cpp
+class DependencyAnalyzer {
+    bool usesRuntimeLibrary;
+    std::string ownHeaderName;
+
+public:
+    void setOwnHeader(StringRef headerFilename) {
+        ownHeaderName = headerFilename.str();
+    }
+
+    std::vector<std::string> getRequiredIncludes() const {
+        std::vector<std::string> includes;
+
+        // Own header always first
+        includes.push_back("#include \"" + ownHeaderName + "\"");
+
+        // Runtime library if needed (Phase 3+)
+        if (usesRuntimeLibrary) {
+            includes.push_back("#include \"cpptoc_runtime.h\"");
+        }
+
+        return includes;
+    }
+};
+```
+
+**Future Enhancement** (Phase 3+):
+- Detect exception usage → include runtime
+- Detect RTTI usage → include runtime
+- Full dependency graph analysis
+
+#### Code Generation Flow
+
+**Example Translation**:
+
+C++ Input (`Point.cpp`):
+```cpp
+class Point {
+    int x, y;
+public:
+    Point(int x, int y);
+    int getX() const;
+};
+
+Point::Point(int x, int y) : x(x), y(y) {}
+int Point::getX() const { return x; }
+```
+
+Generated Header (`Point.h`):
+```c
+#ifndef POINT_H
+#define POINT_H
+
+// Struct definition
+struct Point {
+    int x;
+    int y;
+};
+
+// Function declarations
+void Point_ctor(struct Point *this, int x, int y);
+int Point_getX(const struct Point *this);
+
+#endif // POINT_H
+```
+
+Generated Implementation (`Point.c`):
+```c
+#include "Point.h"
+
+void Point_ctor(struct Point *this, int x, int y) {
+    this->x = x;
+    this->y = y;
+}
+
+int Point_getX(const struct Point *this) {
+    return this->x;
+}
+```
+
+#### Forward Declaration Example
+
+C++ Input with Circular Dependencies:
+```cpp
+class B;  // Forward declaration
+
+class A {
+    B* ptr;
+public:
+    A();
+};
+
+class B {
+    A* ptr;
+public:
+    B();
+};
+```
+
+Generated Header:
+```c
+#ifndef CIRCULAR_H
+#define CIRCULAR_H
+
+// Forward declarations
+struct B;
+struct A;
+
+// Complete definitions
+struct A {
+    struct B* ptr;
+};
+
+struct B {
+    struct A* ptr;
+};
+
+// Function declarations
+void A_ctor(struct A *this);
+void B_ctor(struct B *this);
+
+#endif // CIRCULAR_H
+```
+
+**Success Criteria**:
+- Header compiles standalone: `gcc -c Point.h -o /dev/null`
+- Implementation compiles: `gcc -c Point.c -o Point.o`
+- Multiple inclusion safe: Including header twice causes no errors
+- Forward declarations resolve all pointer dependencies
+- No duplicate definitions between .h and .c
+
+**Testing Strategy**:
+```bash
+# Test 1: Header standalone compilation
+gcc -c Point.h -o /dev/null || exit 1
+
+# Test 2: Implementation compilation
+gcc -c Point.c -o Point.o || exit 1
+
+# Test 3: Multiple inclusion
+cat > test_multi.c << EOF
+#include "Point.h"
+#include "Point.h"
+int main() { return 0; }
+EOF
+gcc test_multi.c Point.o -o test || exit 1
+
+# Test 4: Forward declarations
+gcc -c CircularDeps.c -o CircularDeps.o || exit 1
+```
+
+For complete file output system design and command-line options, see Epic #19.
+
 ---
 
 ## 5. Data Flow & Transformations
@@ -1239,7 +1528,15 @@ int Point_getX(struct Point *this) { return this->x; }
 - ✓ Template instantiation extraction from AST
 - ✓ Monomorphization (generate C per instantiation)
 
-**Deliverable**: Convert real-world embedded C++ classes with move semantics, RAII, and STL containers.
+**Weeks 12.5-13.5: Header File Generation & Separation**
+- Header/implementation file separation
+- Include guard generation (#ifndef/#define/#endif)
+- Declaration vs definition analysis
+- Forward declaration support for pointer types
+- Dependency tracking (runtime library includes)
+- Dual output streams (header + implementation)
+
+**Deliverable**: Convert real-world embedded C++ classes with move semantics, RAII, and STL containers. Generate production-quality separate .h/.c files.
 
 ### Phase 3: Advanced Features (8-12 weeks)
 
@@ -1317,7 +1614,7 @@ int Point_getX(struct Point *this) { return this->x; }
 
 **Deliverable**: Production-ready tool with Frama-C verification.
 
-**Total Timeline**: 6 months (46 weeks) to production-ready tool.
+**Total Timeline**: 47 weeks (approximately 11 months) to production-ready tool.
 
 ---
 

@@ -1,0 +1,96 @@
+#!/bin/bash
+# gh-project-init - Initialize GitHub Projects configuration
+
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+source "$SCRIPT_DIR/lib/gh-project-common.sh"
+
+usage() {
+  cat << EOF
+Usage: gh-project-init [OPTIONS]
+
+Initialize GitHub Projects configuration and field cache.
+
+Options:
+  --project NUM        Project number (required)
+  --owner OWNER        Repository owner (default: auto-detect)
+  --repo REPO          Repository name (default: auto-detect)
+  --refresh-cache      Force refresh field cache
+  -h, --help           Show help
+
+Examples:
+  # Initialize for project #14 (auto-detect repo)
+  gh-project-init --project 14
+
+  # Initialize with explicit repo
+  gh-project-init --project 14 --owner myorg --repo myrepo
+
+  # Refresh cached field metadata
+  gh-project-init --project 14 --refresh-cache
+EOF
+  exit 0
+}
+
+# Parse arguments
+PROJECT_NUMBER=""
+OWNER=""
+REPO=""
+REFRESH_CACHE=false
+
+while [[ $# -gt 0 ]]; do
+  case $1 in
+    --project) PROJECT_NUMBER="$2"; shift 2 ;;
+    --owner) OWNER="$2"; shift 2 ;;
+    --repo) REPO="$2"; shift 2 ;;
+    --refresh-cache) REFRESH_CACHE=true; shift ;;
+    -h|--help) usage ;;
+    *) die "Unknown option: $1" ;;
+  esac
+done
+
+# Validate prerequisites
+validate_prerequisites
+
+# Validate project number
+if [[ -z "$PROJECT_NUMBER" ]]; then
+  die "Project number required. Use: --project NUM"
+fi
+
+# Auto-detect owner/repo if not provided
+if [[ -z "$OWNER" ]] || [[ -z "$REPO" ]]; then
+  log_info "Auto-detecting repository..."
+  REPO_INFO=$(gh repo view --json owner,name)
+  OWNER=${OWNER:-$(echo "$REPO_INFO" | jq -r '.owner.login')}
+  REPO=${REPO:-$(echo "$REPO_INFO" | jq -r '.name')}
+fi
+
+log_info "Configuration:"
+log_info "  Owner: $OWNER"
+log_info "  Repo: $REPO"
+log_info "  Project: #$PROJECT_NUMBER"
+
+# Validate project exists
+log_info "Validating project..."
+if ! gh project view "$PROJECT_NUMBER" --owner "$OWNER" --format json &> /dev/null; then
+  die "Project #$PROJECT_NUMBER not found for owner $OWNER"
+fi
+
+# Get project ID
+PROJECT_ID=$(get_project_id "$PROJECT_NUMBER" "$OWNER")
+log_success "Project validated: $PROJECT_ID"
+
+# Save config
+save_config "$OWNER" "$REPO" "$PROJECT_NUMBER" "$PROJECT_ID"
+log_success "Configuration saved: $CONFIG_FILE"
+
+# Cache fields
+cache_fields "$PROJECT_NUMBER" "$OWNER"
+
+# Display summary
+echo ""
+log_success "Initialization complete!"
+echo ""
+echo "Configuration:"
+jq -r 'to_entries | map(select(.key != "field_cache")) | map("  \(.key): \(.value)") | .[]' < "$CONFIG_FILE"
+echo ""
+echo "Cached fields:"
+jq -r '.field_cache | to_entries | map("  - \(.key) (\(.value.type))") | .[]' < "$CONFIG_FILE"
