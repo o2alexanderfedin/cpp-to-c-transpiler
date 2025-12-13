@@ -83,7 +83,7 @@ if [[ -n "$PARENT_NUM" ]]; then
   log_info "Querying sub-issues of Epic #$PARENT_NUM..."
   EPIC_DATA=$(query_sub_issues "$PARENT_NUM")
 
-  TOTAL_COUNT=$(echo "$EPIC_DATA" | jq -r '.trackedIssues.totalCount')
+  TOTAL_COUNT=$(echo "$EPIC_DATA" | jq -r '.subIssues.totalCount')
   EPIC_TITLE=$(echo "$EPIC_DATA" | jq -r '.title')
 
   echo ""
@@ -92,14 +92,14 @@ if [[ -n "$PARENT_NUM" ]]; then
   echo ""
 
   if [[ "$OUTPUT_FORMAT" == "json" ]]; then
-    echo "$EPIC_DATA" | jq '.trackedIssues.nodes'
+    echo "$EPIC_DATA" | jq '.subIssues.nodes'
   elif [[ "$OUTPUT_FORMAT" == "csv" ]]; then
     echo "number,title,state,url"
-    echo "$EPIC_DATA" | jq -r '.trackedIssues.nodes[] | [.number, .title, .state, .url] | @csv'
+    echo "$EPIC_DATA" | jq -r '.subIssues.nodes[] | [.number, .title, .state, .url] | @csv'
   else
     printf "%-8s %-50s %-10s\n" "NUMBER" "TITLE" "STATE"
     printf "%-8s %-50s %-10s\n" "------" "-----" "-----"
-    echo "$EPIC_DATA" | jq -r '.trackedIssues.nodes[] | "\(.number | tostring)\t\(.title)\t\(.state)"' | \
+    echo "$EPIC_DATA" | jq -r '.subIssues.nodes[] | "\(.number | tostring)\t\(.title)\t\(.state)"' | \
       while IFS=$'\t' read -r num title state; do
         printf "%-8s %-50.50s %-10s\n" "$num" "$title" "$state"
       done

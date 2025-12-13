@@ -795,3 +795,313 @@ target_link_libraries(VirtualFunctionIntegrationTest PRIVATE
     clangAST
     clangBasic
 )
+
+# ============================================================================
+# Epic #7: Advanced Constructor/Destructor Features (Story #178)
+# ============================================================================
+
+# Story #178: Member Initialization List Translation tests
+add_executable(MemberInitListTest
+    tests/MemberInitListTest.cpp
+    src/CppToCVisitor.cpp
+    src/CFGAnalyzer.cpp
+    src/NameMangler.cpp
+    src/VirtualMethodAnalyzer.cpp
+    src/VptrInjector.cpp
+    src/CodeGenerator.cpp
+)
+
+target_compile_definitions(MemberInitListTest PRIVATE ${LLVM_DEFINITIONS})
+
+target_include_directories(MemberInitListTest PRIVATE
+    ${CMAKE_SOURCE_DIR}/include
+    ${LLVM_INCLUDE_DIRS}
+    ${CLANG_INCLUDE_DIRS}
+)
+
+target_link_libraries(MemberInitListTest PRIVATE
+    clangTooling
+    clangFrontend
+    clangAST
+    clangBasic
+)
+
+# ============================================================================
+# Epic #10: Exception Handling (PNaCl SJLJ) (Story #76)
+# ============================================================================
+
+# Story #76: Exception Frame Structure and Thread-Local Stack tests
+add_executable(ExceptionFrameTest
+    tests/ExceptionFrameTest.cpp
+    src/ExceptionFrameGenerator.cpp
+)
+
+target_compile_definitions(ExceptionFrameTest PRIVATE ${LLVM_DEFINITIONS})
+
+target_include_directories(ExceptionFrameTest PRIVATE
+    ${CMAKE_SOURCE_DIR}/include
+    ${LLVM_INCLUDE_DIRS}
+    ${CLANG_INCLUDE_DIRS}
+)
+
+target_link_libraries(ExceptionFrameTest PRIVATE
+    clangTooling
+    clangFrontend
+    clangAST
+    clangBasic
+)
+
+# Story #77: Action Table Generation from CFG Analysis tests
+add_executable(ActionTableGeneratorTest
+    tests/ActionTableGeneratorTest.cpp
+    src/ActionTableGenerator.cpp
+)
+
+target_compile_definitions(ActionTableGeneratorTest PRIVATE ${LLVM_DEFINITIONS})
+
+target_include_directories(ActionTableGeneratorTest PRIVATE
+    ${CMAKE_SOURCE_DIR}/include
+    ${LLVM_INCLUDE_DIRS}
+    ${CLANG_INCLUDE_DIRS}
+)
+
+target_link_libraries(ActionTableGeneratorTest PRIVATE
+    clangTooling
+    clangFrontend
+    clangAST
+    clangBasic
+)
+
+# Story #78: setjmp/longjmp Injection for Try-Catch Blocks tests
+add_executable(TryCatchTransformerTest
+    tests/TryCatchTransformerTest.cpp
+    src/TryCatchTransformer.cpp
+    src/ExceptionFrameGenerator.cpp
+)
+
+target_compile_definitions(TryCatchTransformerTest PRIVATE ${LLVM_DEFINITIONS})
+
+target_include_directories(TryCatchTransformerTest PRIVATE
+    ${CMAKE_SOURCE_DIR}/include
+    ${LLVM_INCLUDE_DIRS}
+    ${CLANG_INCLUDE_DIRS}
+)
+
+target_link_libraries(TryCatchTransformerTest PRIVATE
+    clangTooling
+    clangFrontend
+    clangAST
+    clangBasic
+)
+
+# Story #79: Throw Expression Translation tests
+add_executable(ThrowTranslatorTest
+    tests/ThrowTranslatorTest.cpp
+    src/ThrowTranslator.cpp
+)
+
+target_compile_definitions(ThrowTranslatorTest PRIVATE ${LLVM_DEFINITIONS})
+
+target_include_directories(ThrowTranslatorTest PRIVATE
+    ${CMAKE_SOURCE_DIR}/include
+    ${LLVM_INCLUDE_DIRS}
+    ${CLANG_INCLUDE_DIRS}
+)
+
+target_link_libraries(ThrowTranslatorTest PRIVATE
+    clangTooling
+    clangFrontend
+    clangAST
+    clangBasic
+)
+
+# Story #80: Catch Handler Type Matching tests
+add_executable(CatchHandlerTypeMatchingTest
+    tests/CatchHandlerTypeMatchingTest.cpp
+    src/TryCatchTransformer.cpp
+    src/ExceptionFrameGenerator.cpp
+)
+
+target_compile_definitions(CatchHandlerTypeMatchingTest PRIVATE ${LLVM_DEFINITIONS})
+
+target_include_directories(CatchHandlerTypeMatchingTest PRIVATE
+    ${CMAKE_SOURCE_DIR}/include
+    ${LLVM_INCLUDE_DIRS}
+    ${CLANG_INCLUDE_DIRS}
+)
+
+target_link_libraries(CatchHandlerTypeMatchingTest PRIVATE
+    clangTooling
+    clangFrontend
+    clangAST
+    clangBasic
+)
+
+# Story #81: Exception Runtime Library tests
+add_executable(ExceptionRuntimeTest
+    tests/ExceptionRuntimeTest.cpp
+    runtime/exception_runtime.cpp
+)
+
+target_include_directories(ExceptionRuntimeTest PRIVATE
+    ${CMAKE_SOURCE_DIR}/runtime
+)
+
+# Set C11 standard for thread-local storage
+set_property(TARGET ExceptionRuntimeTest PROPERTY C_STANDARD 11)
+set_property(TARGET ExceptionRuntimeTest PROPERTY C_STANDARD_REQUIRED ON)
+
+# No Clang/LLVM dependencies - pure C runtime library
+
+# Story #82: Exception Integration Tests
+add_executable(ExceptionIntegrationTest
+    tests/ExceptionIntegrationTest.cpp
+    runtime/exception_runtime.cpp
+)
+
+target_include_directories(ExceptionIntegrationTest PRIVATE
+    ${CMAKE_SOURCE_DIR}/runtime
+)
+
+# Story #82: Exception Thread Safety Tests
+add_executable(ExceptionThreadSafetyTest
+    tests/ExceptionThreadSafetyTest.cpp
+    runtime/exception_runtime.cpp
+)
+
+target_include_directories(ExceptionThreadSafetyTest PRIVATE
+    ${CMAKE_SOURCE_DIR}/runtime
+)
+
+# Link pthread for thread safety tests
+find_package(Threads REQUIRED)
+target_link_libraries(ExceptionThreadSafetyTest PRIVATE Threads::Threads)
+
+# Story #82: Exception Performance Benchmarks
+add_executable(ExceptionPerformanceTest
+    tests/ExceptionPerformanceTest.cpp
+    runtime/exception_runtime.cpp
+)
+
+target_include_directories(ExceptionPerformanceTest PRIVATE
+    ${CMAKE_SOURCE_DIR}/runtime
+)
+
+# ============================================================================
+# Epic #11: RTTI Implementation (Itanium ABI) (Story #83)
+# ============================================================================
+
+# Story #83: type_info Structure Generation tests
+add_executable(TypeInfoGeneratorTest
+    tests/TypeInfoGeneratorTest.cpp
+    src/TypeInfoGenerator.cpp
+    src/VirtualMethodAnalyzer.cpp
+)
+
+target_compile_definitions(TypeInfoGeneratorTest PRIVATE ${LLVM_DEFINITIONS})
+
+target_include_directories(TypeInfoGeneratorTest PRIVATE
+    ${CMAKE_SOURCE_DIR}/include
+    ${LLVM_INCLUDE_DIRS}
+    ${CLANG_INCLUDE_DIRS}
+)
+
+target_link_libraries(TypeInfoGeneratorTest PRIVATE
+    clangTooling
+    clangFrontend
+    clangAST
+    clangBasic
+)
+
+# Story #84: typeid Operator Translation tests
+add_executable(TypeidTranslatorTest
+    tests/TypeidTranslatorTest.cpp
+    src/TypeidTranslator.cpp
+    src/TypeInfoGenerator.cpp
+    src/VirtualMethodAnalyzer.cpp
+)
+
+target_compile_definitions(TypeidTranslatorTest PRIVATE ${LLVM_DEFINITIONS})
+
+target_include_directories(TypeidTranslatorTest PRIVATE
+    ${CMAKE_SOURCE_DIR}/include
+    ${LLVM_INCLUDE_DIRS}
+    ${CLANG_INCLUDE_DIRS}
+)
+
+target_link_libraries(TypeidTranslatorTest PRIVATE
+    clangTooling
+    clangFrontend
+    clangAST
+    clangBasic
+)
+
+# Story #85: dynamic_cast Downcast Support tests
+add_executable(DynamicCastTranslatorTest
+    tests/DynamicCastTranslatorTest.cpp
+    src/DynamicCastTranslator.cpp
+    src/TypeInfoGenerator.cpp
+    src/VirtualMethodAnalyzer.cpp
+)
+
+target_compile_definitions(DynamicCastTranslatorTest PRIVATE ${LLVM_DEFINITIONS})
+
+target_include_directories(DynamicCastTranslatorTest PRIVATE
+    ${CMAKE_SOURCE_DIR}/include
+    ${LLVM_INCLUDE_DIRS}
+    ${CLANG_INCLUDE_DIRS}
+)
+
+target_link_libraries(DynamicCastTranslatorTest PRIVATE
+    clangTooling
+    clangFrontend
+    clangAST
+    clangBasic
+)
+
+# Story #86: Hierarchy Traversal Algorithm tests
+add_executable(HierarchyTraversalTest
+    tests/HierarchyTraversalTest.cpp
+    runtime/rtti_runtime.c
+)
+
+target_include_directories(HierarchyTraversalTest PRIVATE
+    ${CMAKE_SOURCE_DIR}/runtime
+)
+
+# No Clang/LLVM dependencies - pure C runtime library
+
+# Story #87: dynamic_cast Cross-Casting Support tests
+add_executable(DynamicCastCrossCastTest
+    tests/DynamicCastCrossCastTest.cpp
+    src/DynamicCastTranslator.cpp
+    src/TypeInfoGenerator.cpp
+    src/VirtualMethodAnalyzer.cpp
+)
+
+target_compile_definitions(DynamicCastCrossCastTest PRIVATE ${LLVM_DEFINITIONS})
+
+target_include_directories(DynamicCastCrossCastTest PRIVATE
+    ${CMAKE_SOURCE_DIR}/include
+    ${LLVM_INCLUDE_DIRS}
+    ${CLANG_INCLUDE_DIRS}
+)
+
+target_link_libraries(DynamicCastCrossCastTest PRIVATE
+    clangTooling
+    clangFrontend
+    clangAST
+    clangBasic
+)
+
+# Story #87: Cross-Cast Hierarchy Traversal tests
+add_executable(CrossCastTraversalTest
+    tests/CrossCastTraversalTest.cpp
+    runtime/rtti_runtime.c
+)
+
+target_include_directories(CrossCastTraversalTest PRIVATE
+    ${CMAKE_SOURCE_DIR}/runtime
+)
+
+# No Clang/LLVM dependencies - pure C runtime library
