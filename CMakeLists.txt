@@ -27,6 +27,7 @@ add_executable(cpptoc
     src/CFGAnalyzer.cpp
     src/VirtualMethodAnalyzer.cpp
     src/VptrInjector.cpp
+    src/VirtualInheritanceAnalyzer.cpp
 )
 
 # Apply LLVM/Clang compile definitions to target
@@ -1105,3 +1106,25 @@ target_include_directories(CrossCastTraversalTest PRIVATE
 )
 
 # No Clang/LLVM dependencies - pure C runtime library
+
+# Story #89: Virtual Base Detection and Analysis tests (Epic #44)
+add_executable(VirtualBaseDetectionTest
+    tests/VirtualBaseDetectionTest.cpp
+    src/VirtualInheritanceAnalyzer.cpp
+)
+
+target_compile_definitions(VirtualBaseDetectionTest PRIVATE ${LLVM_DEFINITIONS})
+
+target_include_directories(VirtualBaseDetectionTest PRIVATE
+    ${CMAKE_SOURCE_DIR}/include
+    ${LLVM_INCLUDE_DIRS}
+    ${CLANG_INCLUDE_DIRS}
+)
+
+target_link_libraries(VirtualBaseDetectionTest PRIVATE
+    clangTooling
+    clangFrontend
+    clangAST
+    clangBasic
+    clangASTMatchers
+)
