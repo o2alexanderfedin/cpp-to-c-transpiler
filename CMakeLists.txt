@@ -1309,3 +1309,24 @@ target_link_libraries(ResumeDestroyFunctionTest PRIVATE
     clangBasic
     clangLex
 )
+
+# Story #107: Frame Allocation and Coroutine Handle tests (Epic #46)
+add_executable(FrameAllocationTest
+    tests/FrameAllocationTest.cpp
+    src/FrameAllocator.cpp
+)
+
+target_compile_definitions(FrameAllocationTest PRIVATE ${LLVM_DEFINITIONS})
+
+target_include_directories(FrameAllocationTest PRIVATE
+    ${CMAKE_SOURCE_DIR}/include
+    ${LLVM_INCLUDE_DIRS}
+    ${CLANG_INCLUDE_DIRS}
+)
+
+target_link_libraries(FrameAllocationTest PRIVATE
+    clangTooling
+    clangFrontend
+    clangAST
+    clangBasic
+)
