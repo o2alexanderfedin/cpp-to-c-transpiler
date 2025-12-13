@@ -14,9 +14,11 @@
 #include "VirtualMethodAnalyzer.h"
 #include <string>
 #include <vector>
+#include <cstddef>
 
-// Forward declaration
+// Forward declarations
 class OverrideResolver;
+class VirtualInheritanceAnalyzer;
 
 /**
  * @class VtableGenerator
@@ -58,6 +60,35 @@ public:
      * @return Vector of methods in vtable order (destructor first, then virtual methods)
      */
     std::vector<clang::CXXMethodDecl*> getVtableMethodOrder(const clang::CXXRecordDecl* Record);
+
+    /**
+     * @brief Generate vtable struct with virtual base offset tables
+     * @param Record Class to generate vtable for
+     * @param ViAnalyzer Virtual inheritance analyzer with virtual base information
+     * @return C code for vtable struct with virtual base offsets, or empty string if not polymorphic
+     */
+    std::string generateVtableWithVirtualBaseOffsets(const clang::CXXRecordDecl* Record,
+                                                      const class VirtualInheritanceAnalyzer& ViAnalyzer);
+
+    /**
+     * @brief Calculate offset from derived class to virtual base
+     * @param Derived Derived class
+     * @param VirtualBase Virtual base class
+     * @param Context AST context for type information
+     * @return Offset in bytes from derived to virtual base
+     */
+    ptrdiff_t calculateVirtualBaseOffset(const clang::CXXRecordDecl* Derived,
+                                          const clang::CXXRecordDecl* VirtualBase,
+                                          clang::ASTContext& Context);
+
+    /**
+     * @brief Generate helper function to access virtual base pointer
+     * @param Derived Derived class
+     * @param VirtualBase Virtual base class
+     * @return C code for virtual base access helper function
+     */
+    std::string generateVirtualBaseAccessHelper(const clang::CXXRecordDecl* Derived,
+                                                 const clang::CXXRecordDecl* VirtualBase);
 
 private:
     /**

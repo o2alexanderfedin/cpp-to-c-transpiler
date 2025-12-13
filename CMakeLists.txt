@@ -1128,3 +1128,28 @@ target_link_libraries(VirtualBaseDetectionTest PRIVATE
     clangBasic
     clangASTMatchers
 )
+
+# Story #90: Virtual Base Offset Table Generation tests (Epic #44)
+add_executable(VirtualBaseOffsetTableTest
+    tests/VirtualBaseOffsetTableTest.cpp
+    src/VtableGenerator.cpp
+    src/VirtualMethodAnalyzer.cpp
+    src/VirtualInheritanceAnalyzer.cpp
+    src/OverrideResolver.cpp
+)
+
+target_compile_definitions(VirtualBaseOffsetTableTest PRIVATE ${LLVM_DEFINITIONS})
+
+target_include_directories(VirtualBaseOffsetTableTest PRIVATE
+    ${CMAKE_SOURCE_DIR}/include
+    ${LLVM_INCLUDE_DIRS}
+    ${CLANG_INCLUDE_DIRS}
+)
+
+target_link_libraries(VirtualBaseOffsetTableTest PRIVATE
+    clangTooling
+    clangFrontend
+    clangAST
+    clangBasic
+    clangASTMatchers
+)
