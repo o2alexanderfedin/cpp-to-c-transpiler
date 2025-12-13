@@ -1330,3 +1330,29 @@ target_link_libraries(FrameAllocationTest PRIVATE
     clangAST
     clangBasic
 )
+
+# Story #108: Integration Testing tests (Epic #46)
+add_executable(CoroutineIntegrationTest
+    tests/CoroutineIntegrationTest.cpp
+    src/CoroutineDetector.cpp
+    src/SuspendPointIdentifier.cpp
+    src/StateMachineTransformer.cpp
+    src/PromiseTranslator.cpp
+    src/FrameAllocator.cpp
+)
+
+target_compile_definitions(CoroutineIntegrationTest PRIVATE ${LLVM_DEFINITIONS})
+
+target_include_directories(CoroutineIntegrationTest PRIVATE
+    ${CMAKE_SOURCE_DIR}/include
+    ${LLVM_INCLUDE_DIRS}
+    ${CLANG_INCLUDE_DIRS}
+)
+
+target_link_libraries(CoroutineIntegrationTest PRIVATE
+    clangTooling
+    clangFrontend
+    clangAST
+    clangBasic
+    clangLex
+)
