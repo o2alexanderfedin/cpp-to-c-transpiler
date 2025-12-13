@@ -55,6 +55,13 @@ _Thread_local struct __cxx_exception_frame *__cxx_exception_stack = NULL;
 /// @param type_info Exception type name (for catch handler matching)
 ///
 /// @note This function never returns - it performs longjmp to catch handler
+/*@ requires valid_exception: exception != \null;
+    requires valid_type: type_info != \null && \valid_read(type_info);
+    requires valid_stack: valid_exception_stack(__cxx_exception_stack);
+    requires has_handler: __cxx_exception_stack != \null;
+    ensures \false;
+    assigns *__cxx_exception_stack;
+*/
 void cxx_throw(void *exception, const char *type_info) {
   // Get current exception frame from thread-local stack
   struct __cxx_exception_frame *frame = __cxx_exception_stack;
@@ -71,6 +78,10 @@ void cxx_throw(void *exception, const char *type_info) {
   // Action tables list destructors in reverse construction order
   const struct __cxx_action_entry *action = frame->actions;
   if (action != NULL) {
+    /*@ loop invariant action_valid: \valid_read(action);
+        loop invariant action_progress: action >= frame->actions;
+        loop assigns action;
+    */
     while (action->destructor != NULL) {
       // Call destructor with object address
       action->destructor(action->object);

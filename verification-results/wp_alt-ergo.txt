@@ -1,0 +1,53 @@
+[kernel] Parsing runtime/exception_runtime.cpp (with preprocessing)
+[wp] Running WP plugin...
+[rte:annot] annotating function cxx_throw
+[kernel:annot:missing-spec] FRAMAC_SHARE/libc/setjmp.h:57: Warning: 
+  Neither code nor explicit exits and terminates for function longjmp,
+   generating default clauses. See -generated-spec-* options for more info
+[kernel:annot:missing-spec] FRAMAC_SHARE/libc/stdio.h:249: Warning: 
+  Neither code nor explicit exits and terminates for function fprintf_va_1,
+   generating default clauses. See -generated-spec-* options for more info
+[wp] runtime/exception_runtime.cpp:65: Warning: 
+  In 'cxx_throw', no 'calls' specification for statement(s) on line(s): 
+  line 87, 
+  Assuming that they can call 'cxx_throw'
+[wp] runtime/exception_runtime.cpp:87: Warning: 
+  Missing 'calls' for default behavior
+[wp] runtime/exception_runtime.cpp:87: Warning: 
+  Unknown callee, considering non-terminating call
+[wp] runtime/exception_runtime.cpp:87: Warning: 
+  Missing decreases clause on recursive function cxx_throw, call must be unreachable
+[wp] runtime/exception_runtime.cpp:87: Warning: 
+  \valid_function not yet implemented
+  (rte: function_pointer: \valid_function(action->destructor))
+[wp] 35 goals scheduled
+[wp] [Timeout] typed_cxx_throw_loop_invariant_action_valid_preserved (Qed 4ms) (Alt-Ergo) (Stronger)
+[wp] [Timeout] typed_cxx_throw_loop_invariant_action_progress_preserved (Qed 4ms) (Alt-Ergo) (Stronger)
+[wp] [Timeout] typed_cxx_throw_exits (Qed 5ms) (Alt-Ergo) (Stronger)
+[wp] [Timeout] typed_cxx_throw_terminates_part5 (Qed 3ms) (Alt-Ergo) (Stronger)
+[wp] [Timeout] typed_cxx_throw_terminates_part4 (Qed 3ms) (Alt-Ergo) (Stronger)
+[wp] [Timeout] typed_cxx_throw_terminates_part3 (Qed 2ms) (Alt-Ergo)
+[wp] [Timeout] typed_cxx_throw_assert_rte_function_pointer (Qed 6ms) (Alt-Ergo) (Degenerated)
+[wp] [Timeout] typed_cxx_throw_loop_invariant_action_valid_established (Qed 8ms) (Alt-Ergo)
+[wp] [Timeout] typed_cxx_throw_loop_assigns_part2 (Qed 3ms) (Alt-Ergo) (Stronger)
+[wp] [Timeout] typed_cxx_throw_assigns_exit_part4 (Qed 3ms) (Alt-Ergo) (Stronger)
+[wp] [Timeout] typed_cxx_throw_assigns_normal_part3 (Qed 9ms) (Alt-Ergo)
+[wp] [Timeout] typed_cxx_throw_assigns_exit_part5 (Qed 8ms) (Alt-Ergo)
+[wp] Proved goals:   23 / 35
+  Qed:              16 (1ms-3ms-14ms)
+  Alt-Ergo 2.6.2:    7 (15ms-29ms)
+  Timeout:          12
+[wp] runtime/exception_runtime.cpp:65: Warning: 
+  Memory model hypotheses for function 'cxx_throw':
+  /*@
+     behavior wp_typed:
+       requires
+         \separated(exception + (..), &__cxx_exception_stack, &__fc_stderr);
+       requires
+         \separated(type_info + (..), &__cxx_exception_stack, &__fc_stderr);
+       requires
+         \separated(
+           __cxx_exception_stack, &__cxx_exception_stack, &__fc_stderr
+           );
+     */
+  void cxx_throw(void *exception, char const *type_info);
