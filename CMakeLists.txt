@@ -1242,3 +1242,26 @@ target_link_libraries(SuspendPointIdentifierTest PRIVATE
     clangAST
     clangBasic
 )
+
+# Story #104: State Machine Transformation tests (Epic #46)
+add_executable(StateMachineTransformerTest
+    tests/StateMachineTransformerTest.cpp
+    src/StateMachineTransformer.cpp
+    src/SuspendPointIdentifier.cpp
+)
+
+target_compile_definitions(StateMachineTransformerTest PRIVATE ${LLVM_DEFINITIONS})
+
+target_include_directories(StateMachineTransformerTest PRIVATE
+    ${CMAKE_SOURCE_DIR}/include
+    ${LLVM_INCLUDE_DIRS}
+    ${CLANG_INCLUDE_DIRS}
+)
+
+target_link_libraries(StateMachineTransformerTest PRIVATE
+    clangTooling
+    clangFrontend
+    clangAST
+    clangBasic
+    clangLex
+)
