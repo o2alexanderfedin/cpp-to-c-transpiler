@@ -72,6 +72,12 @@ void *traverse_hierarchy(const void *ptr, const struct __class_type_info *src,
         (const struct __vmi_class_type_info *)src;
 
     // Iterate through all base classes
+    /*@ loop invariant 0 <= i <= vmi_src->base_count;
+        loop invariant \valid_read(vmi_src);
+        loop invariant \valid_read(vmi_src->base_info + (0 .. vmi_src->base_count - 1));
+        loop assigns i;
+        loop variant vmi_src->base_count - i;
+    */
     for (unsigned i = 0; i < vmi_src->base_count; i++) {
       const struct __base_class_type_info *base = &vmi_src->base_info[i];
 
@@ -79,11 +85,13 @@ void *traverse_hierarchy(const void *ptr, const struct __class_type_info *src,
       if (base->base_type == dst) {
         // Found: apply offset
         ptrdiff_t offset = base->offset_flags >> 8;
+        /*@ assert \valid_read((char*)ptr + offset); */
         return (char *)ptr + offset;
       }
 
       // Recursively check this base's hierarchy
       ptrdiff_t offset = base->offset_flags >> 8;
+      /*@ assert \valid_read((char*)ptr + offset); */
       void *result =
           traverse_hierarchy((char *)ptr + offset, base->base_type, dst);
 
@@ -107,6 +115,14 @@ void *traverse_hierarchy(const void *ptr, const struct __class_type_info *src,
  * @param offset_out Output parameter for offset (set to 0 if found at same level)
  * @return 1 if found, 0 if not found
  */
+/*@ requires \valid(offset_out);
+    requires src == \null || \valid_read(src);
+    requires target == \null || \valid_read(target);
+    assigns *offset_out;
+    ensures \result == 0 || \result == 1;
+    ensures (src == \null || target == \null) ==> \result == 0;
+    ensures (src == target) ==> (\result == 1 && *offset_out == 0);
+*/
 static int find_type_offset(const struct __class_type_info *src,
                             const struct __class_type_info *target,
                             ptrdiff_t *offset_out) {
@@ -142,6 +158,13 @@ static int find_type_offset(const struct __class_type_info *src,
         (const struct __vmi_class_type_info *)src;
 
     // Iterate through all base classes
+    /*@ loop invariant 0 <= i <= vmi_src->base_count;
+        loop invariant \valid_read(vmi_src);
+        loop invariant \valid_read(vmi_src->base_info + (0 .. vmi_src->base_count - 1));
+        loop invariant \valid(offset_out);
+        loop assigns i, *offset_out;
+        loop variant vmi_src->base_count - i;
+    */
     for (unsigned i = 0; i < vmi_src->base_count; i++) {
       const struct __base_class_type_info *base = &vmi_src->base_info[i];
 
@@ -227,4 +250,47 @@ void *cross_cast_traverse(const void *ptr,
 
   ptrdiff_t cross_offset = dst_offset - src_offset;
   return (char *)ptr + cross_offset;
+}
+
+/**
+ * @brief C++ dynamic_cast runtime support (Story #111)
+ *
+ * Main entry point for dynamic_cast<T> operations. Performs runtime type
+ * checking and returns appropriately cast pointer or NULL if cast fails.
+ *
+ * This function provides the core runtime support for C++ dynamic_cast,
+ * ensuring type safety at runtime through RTTI hierarchy traversal.
+ *
+ * Algorithm:
+ * 1. Check if ptr == NULL (null-preserving)
+ * 2. Check if src == dst (same-type shortcut)
+ * 3. Delegate to traverse_hierarchy for actual hierarchy walk
+ * 4. Return result (adjusted pointer or NULL)
+ *
+ * @param ptr Pointer to object being cast
+ * @param src Source type_info (static type of ptr)
+ * @param dst Target type_info (requested cast type)
+ * @return Pointer to target type if cast is valid, NULL otherwise
+ */
+void *cxx_dynamic_cast(const void *ptr,
+                       const struct __class_type_info *src,
+                       const struct __class_type_info *dst) {
+  // NULL pointer check - null-preserving property
+  if (ptr == NULL) {
+    return NULL;
+  }
+
+  // NULL type_info check - defensive
+  if (src == NULL || dst == NULL) {
+    return NULL;
+  }
+
+  // Same type shortcut optimization
+  if (src == dst) {
+    return (void *)ptr;
+  }
+
+  // Delegate to hierarchy traversal
+  // This handles single inheritance, multiple inheritance, and virtual bases
+  return traverse_hierarchy(ptr, src, dst);
 }

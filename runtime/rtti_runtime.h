@@ -92,7 +92,7 @@ extern const void *__vt_vmi_class_type_info;
     ensures null_preserving: ptr == \null ==> \result == \null;
     ensures same_type: src == dst ==> \result == (void*)ptr;
     ensures valid_result: \result == \null || \valid_read((char*)\result);
-    assigns \nothing;
+    assigns \result \from ptr, src, dst, *(struct __si_class_type_info*)src, *(struct __vmi_class_type_info*)src;
 */
 void *traverse_hierarchy(const void *ptr, const struct __class_type_info *src,
                          const struct __class_type_info *dst);
@@ -122,12 +122,38 @@ void *traverse_hierarchy(const void *ptr, const struct __class_type_info *src,
     ensures null_preserving: ptr == \null ==> \result == \null;
     ensures same_type: src == dst ==> \result == (void*)ptr;
     ensures valid_result: \result == \null || \valid_read((char*)\result);
-    assigns \nothing;
+    assigns \result \from ptr, src, dst, dynamic_type, *(struct __vmi_class_type_info*)dynamic_type;
 */
 void *cross_cast_traverse(const void *ptr,
                           const struct __class_type_info *src,
                           const struct __class_type_info *dst,
                           const struct __class_type_info *dynamic_type);
+
+/**
+ * @brief C++ dynamic_cast runtime support (Story #111)
+ *
+ * Main entry point for dynamic_cast<T> operations. Performs runtime type
+ * checking and returns appropriately cast pointer or NULL if cast fails.
+ *
+ * This function provides the core runtime support for C++ dynamic_cast,
+ * ensuring type safety at runtime through RTTI hierarchy traversal.
+ *
+ * @param ptr Pointer to object being cast
+ * @param src Source type_info (static type of ptr)
+ * @param dst Target type_info (requested cast type)
+ * @return Pointer to target type if cast is valid, NULL otherwise
+ */
+/*@ requires valid_src: valid_type_info((struct __class_type_info*)src);
+    requires valid_dst: valid_type_info((struct __class_type_info*)dst);
+    requires valid_ptr: ptr == \null || \valid_read((char*)ptr);
+    ensures null_preserving: ptr == \null ==> \result == \null;
+    ensures same_type: src == dst ==> \result == (void*)ptr;
+    ensures valid_result: \result == \null || \valid_read((char*)\result);
+    assigns \result \from ptr, src, dst, *(struct __si_class_type_info*)src, *(struct __vmi_class_type_info*)src;
+*/
+void *cxx_dynamic_cast(const void *ptr,
+                       const struct __class_type_info *src,
+                       const struct __class_type_info *dst);
 
 #ifdef __cplusplus
 }
