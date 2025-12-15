@@ -50,7 +50,7 @@ These scripts are used by the `github-project-setup` skill:
 
 ```bash
 # Add scripts to PATH
-export PATH="$PATH:/Users/alexanderfedin/Projects/hapyy/hupyy-cpp-to-c/scripts/gh-projects"
+export PATH="$PATH:~/Projects/hapyy/hupyy-cpp-to-c/scripts/gh-projects"
 
 # Or copy to ~/bin
 cp scripts/gh-projects/gh-project-* ~/bin/
