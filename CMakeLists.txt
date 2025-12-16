@@ -1392,5 +1392,15 @@ target_include_directories(RuntimeModeLibraryTest PRIVATE
     ${CMAKE_SOURCE_DIR}/include
 )
 
+# Story #118: Runtime Feature Flags tests
+add_executable(RuntimeFeatureFlagsTest
+    tests/runtime_feature_flags_test.cpp
+    src/RuntimeFeatureFlags.cpp
+)
+
+target_include_directories(RuntimeFeatureFlagsTest PRIVATE
+    ${CMAKE_SOURCE_DIR}/include
+)
+
 # Build runtime library subdirectory
 add_subdirectory(runtime)
