@@ -1,0 +1,48 @@
+GitHub CLI PATH Issue - Fix Summary
+====================================
+
+Date: 2025-12-15
+Status: RESOLVED
+
+Issue:
+------
+The bash script `~/.claude/skills/lib/gh-projects/gh-project-list.sh` could not find 
+the `gh` CLI command when executed from the project directory, but worked fine from 
+the home directory.
+
+Root Cause:
+-----------
+When bash scripts are invoked through certain contexts (like Claude Code's skill system,
+cron jobs, or automation tools), they may run with a minimal PATH that doesn't include
+homebrew directories where `gh` is installed (/opt/homebrew/bin).
+
+Fix Applied:
+------------
+Added explicit PATH setup to /Users/alexanderfedin/.claude/skills/lib/gh-projects/lib/gh-project-common.sh:
+
+  export PATH="/opt/homebrew/bin:/opt/homebrew/sbin:/usr/local/bin:$PATH"
+
+This ensures gh CLI and other homebrew tools are found regardless of invocation context.
+
+Files Modified:
+---------------
+- /Users/alexanderfedin/.claude/skills/lib/gh-projects/lib/gh-project-common.sh (lines 6-8)
+
+Verification Results:
+--------------------
+✓ Script works from project directory: ~/Projects/hapyy/hupyy-cpp-to-c
+✓ Script works from home directory: ~
+✓ Script works with restricted PATH environments
+✓ All 16 gh-projects scripts benefit from this fix
+✓ No regressions detected
+
+Testing Commands:
+-----------------
+cd ~/Projects/hapyy/hupyy-cpp-to-c
+~/.claude/skills/lib/gh-projects/gh-project-list.sh --type epic --format json
+# Returns: [] (0 epics, but command executes successfully)
+
+~/.claude/skills/lib/gh-projects/gh-project-list.sh --format json | jq 'length'
+# Returns: 163 (total items in project)
+
+For detailed analysis, see: debug-reports/gh-cli-path-issue.md
