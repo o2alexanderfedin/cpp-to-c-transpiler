@@ -7,6 +7,17 @@
 
 ---
 
+## 🎯 Script Naming Simplification
+
+**All scripts renamed to remove `gh-` prefix** (KISS principle applied)
+
+**Old:** `gh-epic-create.sh`, `gh-story-list.sh`, etc.
+**New:** `epic-create.sh`, `story-list.sh`, etc.
+
+**Rationale:** Scripts reside in `gh-projects/` directory, making `gh-` prefix redundant.
+
+---
+
 ## Executive Summary
 
 Successfully redesigned and reimplemented 31 GitHub Projects V2 scripts following SOLID/KISS/DRY/YAGNI/TRIZ principles. Replaced complex multi-mode scripts with simple, focused, type-specific tools. Achieved 60% code reduction through Rule of Three refactoring while expanding functionality.
