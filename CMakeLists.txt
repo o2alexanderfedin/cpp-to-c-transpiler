@@ -1356,3 +1356,41 @@ target_link_libraries(CoroutineIntegrationTest PRIVATE
     clangBasic
     clangLex
 )
+
+# ============================================================================
+# Epic #16: Runtime Optimization & Configuration (Story #116)
+# ============================================================================
+
+# Story #116: Inline Runtime Mode tests
+add_executable(RuntimeModeInlineTest
+    tests/runtime_mode_inline_test.cpp
+    src/RuntimeModeInline.cpp
+)
+
+target_compile_definitions(RuntimeModeInlineTest PRIVATE ${LLVM_DEFINITIONS})
+
+target_include_directories(RuntimeModeInlineTest PRIVATE
+    ${CMAKE_SOURCE_DIR}/include
+    ${LLVM_INCLUDE_DIRS}
+    ${CLANG_INCLUDE_DIRS}
+)
+
+target_link_libraries(RuntimeModeInlineTest PRIVATE
+    clangTooling
+    clangFrontend
+    clangAST
+    clangBasic
+)
+
+# Story #117: Library Runtime Mode tests
+add_executable(RuntimeModeLibraryTest
+    tests/runtime_mode_library_test.cpp
+    src/RuntimeModeLibrary.cpp
+)
+
+target_include_directories(RuntimeModeLibraryTest PRIVATE
+    ${CMAKE_SOURCE_DIR}/include
+)
+
+# Build runtime library subdirectory
+add_subdirectory(runtime)
