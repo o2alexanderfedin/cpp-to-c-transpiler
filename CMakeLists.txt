@@ -1402,5 +1402,16 @@ target_include_directories(RuntimeFeatureFlagsTest PRIVATE
     ${CMAKE_SOURCE_DIR}/include
 )
 
+# Story #119: Size Optimization with LTO/PGO Support tests
+add_executable(SizeOptimizationTest
+    tests/size_optimization_test.cpp
+    src/SizeOptimizer.cpp
+    src/BuildConfiguration.cpp
+)
+
+target_include_directories(SizeOptimizationTest PRIVATE
+    ${CMAKE_SOURCE_DIR}/include
+)
+
 # Build runtime library subdirectory
 add_subdirectory(runtime)
