@@ -53,6 +53,21 @@ struct __vmi_class_type_info {
       base_info[1]; /**< Variable-length array of bases */
 };
 
+// ============================================================================
+// ACSL Predicate Definitions for RTTI Formal Verification
+// ============================================================================
+
+/*@ predicate valid_type_info(struct __class_type_info *t) =
+        \valid_read(t) &&
+        \valid_read(t->type_name);
+*/
+
+/*@ predicate valid_si_type_info(struct __si_class_type_info *t) =
+        \valid_read(t) &&
+        \valid_read(t->type_name) &&
+        (t->base_type == \null || valid_type_info((struct __class_type_info*)t->base_type));
+*/
+
 /**
  * @brief External vtable pointers (defined by compiler/runtime)
  */
@@ -71,6 +86,14 @@ extern const void *__vt_vmi_class_type_info;
  * @param dst Target type_info
  * @return Pointer to target type if found, NULL otherwise
  */
+/*@ requires valid_src: valid_type_info((struct __class_type_info*)src);
+    requires valid_dst: valid_type_info((struct __class_type_info*)dst);
+    requires valid_ptr: ptr == \null || \valid_read((char*)ptr);
+    ensures null_preserving: ptr == \null ==> \result == \null;
+    ensures same_type: src == dst ==> \result == (void*)ptr;
+    ensures valid_result: \result == \null || \valid_read((char*)\result);
+    assigns \nothing;
+*/
 void *traverse_hierarchy(const void *ptr, const struct __class_type_info *src,
                          const struct __class_type_info *dst);
 
@@ -92,6 +115,15 @@ void *traverse_hierarchy(const void *ptr, const struct __class_type_info *src,
  * @param dynamic_type Most-derived (actual) type of the object
  * @return Pointer to target type if found, NULL otherwise
  */
+/*@ requires valid_src: valid_type_info((struct __class_type_info*)src);
+    requires valid_dst: valid_type_info((struct __class_type_info*)dst);
+    requires valid_dynamic: valid_type_info((struct __class_type_info*)dynamic_type);
+    requires valid_ptr: ptr == \null || \valid_read((char*)ptr);
+    ensures null_preserving: ptr == \null ==> \result == \null;
+    ensures same_type: src == dst ==> \result == (void*)ptr;
+    ensures valid_result: \result == \null || \valid_read((char*)\result);
+    assigns \nothing;
+*/
 void *cross_cast_traverse(const void *ptr,
                           const struct __class_type_info *src,
                           const struct __class_type_info *dst,

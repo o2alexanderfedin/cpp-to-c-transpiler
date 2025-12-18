@@ -51,6 +51,19 @@ struct __cxx_exception_frame {
 };
 
 // ============================================================================
+// ACSL Predicate Definitions for Formal Verification
+// ============================================================================
+
+/*@ predicate valid_exception_frame(struct __cxx_exception_frame *f) =
+        \valid(f) &&
+        \valid(&f->jmpbuf);
+*/
+
+/*@ predicate valid_exception_stack(struct __cxx_exception_frame *stack) =
+        stack == \null || valid_exception_frame(stack);
+*/
+
+// ============================================================================
 // Thread-Local Exception Stack
 // ============================================================================
 
@@ -77,7 +90,7 @@ extern _Thread_local struct __cxx_exception_frame *__cxx_exception_stack;
 ///
 /// Behavior:
 /// - If __cxx_exception_stack is NULL: abort (uncaught exception)
-/// - Iterate action table and call each destructor
+/// - Iterate action table and call each destructors
 /// - Pop frame from exception stack
 /// - Store exception_object and exception_type in frame
 /// - longjmp to frame->jmpbuf (never returns)
@@ -87,6 +100,13 @@ extern _Thread_local struct __cxx_exception_frame *__cxx_exception_stack;
 ///
 /// @note This function never returns - it performs longjmp to catch handler
 /// @note Caller is responsible for allocating and constructing exception object
+/*@ requires valid_exception: exception != \null;
+    requires valid_type: type_info != \null && \valid_read(type_info);
+    requires valid_stack: valid_exception_stack(__cxx_exception_stack);
+    requires has_handler: __cxx_exception_stack != \null;
+    ensures \false;  // Function never returns (longjmp)
+    assigns *__cxx_exception_stack;
+*/
 void cxx_throw(void *exception, const char *type_info);
 
 #ifdef __cplusplus
