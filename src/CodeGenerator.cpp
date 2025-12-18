@@ -3,6 +3,7 @@
 // KISS: Use Clang's built-in printers (DRY - don't reimplement)
 
 #include "CodeGenerator.h"
+#include "llvm/Config/llvm-config.h"  // For LLVM_VERSION_MAJOR
 #include "clang/AST/Decl.h"
 #include "clang/AST/Stmt.h"
 #include "clang/AST/ASTContext.h"
@@ -29,7 +30,12 @@ PrintingPolicy CodeGenerator::createC99Policy(ASTContext &Ctx) {
     C99Opts.C99 = 1;
     C99Opts.C11 = 0;
     C99Opts.C17 = 0;
+#if LLVM_VERSION_MAJOR >= 16
     C99Opts.C23 = 0;
+#else
+    // LLVM 15 uses C2x instead of C23
+    C99Opts.C2x = 0;
+#endif
 
     // Disable ALL C++ features
     // YAGNI: Only what we need for C99
@@ -38,8 +44,10 @@ PrintingPolicy CodeGenerator::createC99Policy(ASTContext &Ctx) {
     C99Opts.CPlusPlus14 = 0;
     C99Opts.CPlusPlus17 = 0;
     C99Opts.CPlusPlus20 = 0;
+#if LLVM_VERSION_MAJOR >= 16
     C99Opts.CPlusPlus23 = 0;
     C99Opts.CPlusPlus26 = 0;
+#endif
 
     // Disable C++ specific features
     C99Opts.Exceptions = 0;
