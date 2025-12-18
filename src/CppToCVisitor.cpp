@@ -959,6 +959,61 @@ bool CppToCVisitor::comesBefore(Stmt *Before, Stmt *After) {
   return SM.isBeforeInTranslationUnit(beforeLoc, afterLoc);
 }
 
+// ============================================================================
+// Story #46: Nested Scope Tracking Methods
+// ============================================================================
+
+// Enter a new scope (push onto scope stack)
+void CppToCVisitor::enterScope(CompoundStmt *CS) {
+  ScopeInfo info;
+  info.stmt = CS;
+  info.depth = scopeStack.size();  // Current stack size is the depth
+  // objects vector starts empty
+
+  scopeStack.push_back(info);
+
+  llvm::outs() << "  [Scope] Entering scope at depth " << info.depth << "\n";
+}
+
+// Exit current scope (pop from scope stack)
+CppToCVisitor::ScopeInfo CppToCVisitor::exitScope() {
+  if (scopeStack.empty()) {
+    llvm::errs() << "Warning: Attempting to exit scope when stack is empty\n";
+    return ScopeInfo{nullptr, {}, 0};
+  }
+
+  ScopeInfo info = scopeStack.back();
+  scopeStack.pop_back();
+
+  llvm::outs() << "  [Scope] Exiting scope at depth " << info.depth
+               << " with " << info.objects.size() << " objects\n";
+
+  return info;
+}
+
+// Track a variable declaration in the current scope
+void CppToCVisitor::trackObjectInCurrentScope(VarDecl *VD) {
+  if (scopeStack.empty()) {
+    llvm::outs() << "  [Scope] Warning: No active scope to track object in\n";
+    return;
+  }
+
+  // Add to the current (top) scope
+  scopeStack.back().objects.push_back(VD);
+
+  llvm::outs() << "  [Scope] Tracked object '" << VD->getNameAsString()
+               << "' in scope depth " << scopeStack.back().depth << "\n";
+}
+
+// Visit compound statements for scope tracking
+bool CppToCVisitor::VisitCompoundStmt(CompoundStmt *CS) {
+  // We don't enter scope here because VisitCompoundStmt is called
+  // during traversal, but we need to handle scope entry/exit during
+  // translation (in translateCompoundStmt) to properly inject destructors
+  // This visitor is just for detection/analysis if needed
+  return true;
+}
+
 // Helper: Check if type has non-trivial destructor
 bool CppToCVisitor::hasNonTrivialDestructor(QualType type) const {
   // Remove qualifiers and get canonical type
@@ -1215,10 +1270,28 @@ Stmt* CppToCVisitor::translateReturnStmt(ReturnStmt *RS) {
 // The injection logic is now directly in translateCompoundStmt
 
 // Translate compound statements (blocks)
+// Story #46: Enhanced with scope tracking for nested destructor injection
 Stmt* CppToCVisitor::translateCompoundStmt(CompoundStmt *CS) {
+  // Story #46: Enter this scope
+  enterScope(CS);
+
   std::vector<Stmt*> translatedStmts;
 
+  // Translate all statements in the compound statement
   for (Stmt *S : CS->body()) {
+    // Check if this is a VarDecl statement with a destructor
+    if (DeclStmt *DS = dyn_cast<DeclStmt>(S)) {
+      // Check if any decls in this statement have destructors
+      for (Decl *D : DS->decls()) {
+        if (VarDecl *VD = dyn_cast<VarDecl>(D)) {
+          if (hasNonTrivialDestructor(VD->getType())) {
+            // Story #46: Track this object in current scope
+            trackObjectInCurrentScope(VD);
+          }
+        }
+      }
+    }
+
     // Story #45: Check if this statement contains a return that needs injection
     if (ReturnStmt *RS = dyn_cast<ReturnStmt>(S)) {
       // Analyze live objects at this return point
@@ -1252,7 +1325,7 @@ Stmt* CppToCVisitor::translateCompoundStmt(CompoundStmt *CS) {
         translatedStmts.push_back(TranslatedStmt);
       }
     } else {
-      // Regular statement translation
+      // Regular statement translation (includes nested CompoundStmts)
       Stmt *TranslatedStmt = translateStmt(S);
       if (TranslatedStmt) {
         translatedStmts.push_back(TranslatedStmt);
@@ -1260,28 +1333,33 @@ Stmt* CppToCVisitor::translateCompoundStmt(CompoundStmt *CS) {
     }
   }
 
-  // Story #44: Inject destructors at function exit
-  // We inject destructors for function-scope objects at the end of the
-  // function body (before any return statement)
-  //
-  // Heuristic: If we have objects to destroy and this is likely a function body
-  // (not a nested scope), inject the destructors
-  //
-  // TODO Story #154: For nested scopes, we need more sophisticated tracking
-  if (!currentFunctionObjectsToDestroy.empty()) {
-    // Inject destructors in reverse construction order (LIFO)
-    llvm::outs() << "  Injecting " << currentFunctionObjectsToDestroy.size()
-                 << " destructors at scope exit\n";
+  // Story #46: Exit this scope and inject destructors for scope-local objects
+  ScopeInfo exitedScope = exitScope();
 
-    for (auto it = currentFunctionObjectsToDestroy.rbegin();
-         it != currentFunctionObjectsToDestroy.rend(); ++it) {
+  // Inject destructors for objects in THIS scope (not parent scopes)
+  // LIFO order: reverse of declaration order
+  if (!exitedScope.objects.empty()) {
+    llvm::outs() << "  [Scope] Injecting " << exitedScope.objects.size()
+                 << " destructor(s) at end of scope depth " << exitedScope.depth << "\n";
+
+    for (auto it = exitedScope.objects.rbegin(); it != exitedScope.objects.rend(); ++it) {
       VarDecl *VD = *it;
       CallExpr *DtorCall = createDestructorCall(VD);
       if (DtorCall) {
         translatedStmts.push_back(DtorCall);
-        llvm::outs() << "    -> " << VD->getNameAsString() << " destructor call injected\n";
+        llvm::outs() << "    -> " << VD->getNameAsString()
+                     << " destructor injected at scope exit\n";
       }
     }
+  }
+
+  // Story #44: Legacy function-level tracking
+  // Only inject if we're at depth 0 (function body) and have no scope stack
+  // This maintains backward compatibility with Stories #44 and #45
+  if (scopeStack.empty() && !currentFunctionObjectsToDestroy.empty()) {
+    // This is the function body exiting - but objects are already handled by scope tracking
+    // We can skip this if scope tracking handled them
+    llvm::outs() << "  [Legacy] Function-level destruction already handled by scope tracking\n";
   }
 
   return Builder.block(translatedStmts);

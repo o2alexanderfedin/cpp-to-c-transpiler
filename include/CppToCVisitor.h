@@ -58,6 +58,14 @@ class CppToCVisitor : public clang::RecursiveASTVisitor<CppToCVisitor> {
   };
   std::vector<ReturnInfo> currentFunctionReturns;
 
+  // Story #46: Track nested scopes and scope-level objects
+  struct ScopeInfo {
+    clang::CompoundStmt *stmt;              // The compound statement for this scope
+    std::vector<clang::VarDecl*> objects;   // Objects declared in this scope
+    unsigned int depth;                      // Nesting depth (0 = function body)
+  };
+  std::vector<ScopeInfo> scopeStack;        // Stack of currently active scopes
+
 public:
   explicit CppToCVisitor(clang::ASTContext &Context, clang::CNodeBuilder &Builder)
     : Context(Context), Builder(Builder), Mangler(Context),
@@ -82,6 +90,9 @@ public:
 
   // Visit variable declarations (including member variables)
   bool VisitVarDecl(clang::VarDecl *VD);
+
+  // Visit compound statements for scope tracking (Story #46)
+  bool VisitCompoundStmt(clang::CompoundStmt *CS);
 
   // Expression translation (Story #19)
   clang::Expr* translateExpr(clang::Expr *E);
@@ -158,6 +169,34 @@ private:
    * Uses source location comparison to determine order.
    */
   bool comesBefore(clang::Stmt *Before, clang::Stmt *After);
+
+  /**
+   * @brief Enter a new scope (push onto scope stack)
+   * @param CS The CompoundStmt representing this scope
+   *
+   * Story #46: Scope tracking for nested destructor injection
+   * Called when entering a compound statement (scope).
+   */
+  void enterScope(clang::CompoundStmt *CS);
+
+  /**
+   * @brief Exit current scope (pop from scope stack)
+   * @return ScopeInfo for the exited scope (contains objects to destroy)
+   *
+   * Story #46: Scope tracking for nested destructor injection
+   * Called when exiting a compound statement (scope).
+   * Returns the scope info so destructors can be injected.
+   */
+  ScopeInfo exitScope();
+
+  /**
+   * @brief Track a variable declaration in the current scope
+   * @param VD Variable declaration to track
+   *
+   * Story #46: Associate objects with their declaration scope
+   * Called when visiting VarDecls with non-trivial destructors.
+   */
+  void trackObjectInCurrentScope(clang::VarDecl *VD);
 
   // Epic #6: Single Inheritance helper methods
 

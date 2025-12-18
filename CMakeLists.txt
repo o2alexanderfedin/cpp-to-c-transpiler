@@ -614,10 +614,17 @@ target_link_libraries(EarlyReturnDestructorTest PRIVATE
     clangBasic
 )
 
-# Story #154: Nested Scope Destruction tests
+# Story #46: Nested Scope Destruction tests (Epic #5)
 add_executable(NestedScopeDestructorTest
     tests/NestedScopeDestructorTest.cpp
+    src/CppToCVisitor.cpp
     src/CFGAnalyzer.cpp
+    src/NameMangler.cpp
+    src/VirtualMethodAnalyzer.cpp
+    src/VptrInjector.cpp
+    src/MoveConstructorTranslator.cpp
+    src/MoveAssignmentTranslator.cpp
+    src/RvalueRefParamTranslator.cpp
 )
 
 target_compile_definitions(NestedScopeDestructorTest PRIVATE ${LLVM_DEFINITIONS})
