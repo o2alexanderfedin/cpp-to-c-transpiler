@@ -48,6 +48,9 @@ class CppToCVisitor : public clang::RecursiveASTVisitor<CppToCVisitor> {
   clang::ParmVarDecl *currentThisParam = nullptr;
   clang::CXXMethodDecl *currentMethod = nullptr;
 
+  // Story #44: Track local objects with destructors for current function
+  std::vector<clang::VarDecl*> currentFunctionObjectsToDestroy;
+
 public:
   explicit CppToCVisitor(clang::ASTContext &Context, clang::CNodeBuilder &Builder)
     : Context(Context), Builder(Builder), Mangler(Context),

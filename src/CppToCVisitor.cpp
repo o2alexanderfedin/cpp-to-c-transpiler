@@ -492,8 +492,12 @@ bool CppToCVisitor::VisitFunctionDecl(FunctionDecl *FD) {
   if (!objectsToDestroy.empty()) {
     llvm::outs() << "  Will inject destructors for "
                  << objectsToDestroy.size() << " objects\n";
-    // Note: Actual injection happens during translation
-    // This visitor just identifies what needs to be done
+
+    // Story #44: Store objects for destruction at function scope
+    // These will be used during statement translation to inject destructor calls
+    currentFunctionObjectsToDestroy = objectsToDestroy;
+  } else {
+    currentFunctionObjectsToDestroy.clear();
   }
 
   return true;
@@ -1116,6 +1120,30 @@ Stmt* CppToCVisitor::translateCompoundStmt(CompoundStmt *CS) {
     Stmt *TranslatedStmt = translateStmt(S);
     if (TranslatedStmt) {
       translatedStmts.push_back(TranslatedStmt);
+    }
+  }
+
+  // Story #44: Inject destructors at function exit
+  // We inject destructors for function-scope objects at the end of the
+  // function body (before any return statement)
+  //
+  // Heuristic: If we have objects to destroy and this is likely a function body
+  // (not a nested scope), inject the destructors
+  //
+  // TODO Story #154: For nested scopes, we need more sophisticated tracking
+  if (!currentFunctionObjectsToDestroy.empty()) {
+    // Inject destructors in reverse construction order (LIFO)
+    llvm::outs() << "  Injecting " << currentFunctionObjectsToDestroy.size()
+                 << " destructors at scope exit\n";
+
+    for (auto it = currentFunctionObjectsToDestroy.rbegin();
+         it != currentFunctionObjectsToDestroy.rend(); ++it) {
+      VarDecl *VD = *it;
+      CallExpr *DtorCall = createDestructorCall(VD);
+      if (DtorCall) {
+        translatedStmts.push_back(DtorCall);
+        llvm::outs() << "    -> " << VD->getNameAsString() << " destructor call injected\n";
+      }
     }
   }
 
