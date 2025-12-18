@@ -1647,6 +1647,28 @@ target_link_libraries(FeatureInteractionTest PRIVATE
     clangBasic
 )
 
+# FeatureCombinationTest - 20 tests for complex feature combinations
+# Story #123: Integration Test Suite (RAII+exceptions, virtual inheritance+RTTI,
+# multiple inheritance+virtual, coroutines+RAII, complex hierarchies, kitchen sink)
+add_executable(FeatureCombinationTest
+    tests/integration/FeatureCombinationTest.cpp
+)
+
+target_compile_definitions(FeatureCombinationTest PRIVATE ${LLVM_DEFINITIONS})
+
+target_include_directories(FeatureCombinationTest PRIVATE
+    ${CMAKE_SOURCE_DIR}/include
+    ${LLVM_INCLUDE_DIRS}
+    ${CLANG_INCLUDE_DIRS}
+)
+
+target_link_libraries(FeatureCombinationTest PRIVATE
+    clangTooling
+    clangFrontend
+    clangAST
+    clangBasic
+)
+
 # ============================================================================
 # Stream 3: Smart Pointers & RAII Tests (95 tests)
 # ============================================================================

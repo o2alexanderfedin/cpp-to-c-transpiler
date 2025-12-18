@@ -1,13 +1,13 @@
-# Integration Tests - Stream 6: Edge Cases & Integration
+# Integration Test Suite
 
-**Owner**: Tech Lead
-**Stream**: 6 of 6 (Parallel Test Expansion)
-**Test Count**: 85 tests (30 + 25 + 30)
-**Status**: Complete
+**Stories**: #122 (Unit Tests), #123 (Integration Tests)
+**Epics**: #49 (Comprehensive Testing + Documentation)
+**Test Count**: 105 tests (20 + 30 + 25 + 30)
+**Status**: Complete ✅
 
 ## Overview
 
-This directory contains comprehensive integration tests for the C++ to C transpiler, focusing on edge cases, error handling, and complex feature interactions. These tests ensure the transpiler handles unusual inputs, error conditions, and real-world scenarios robustly.
+This directory contains comprehensive integration tests for the C++ to C transpiler, focusing on feature combinations, edge cases, error handling, and real-world scenarios. These tests ensure that complex C++ features work correctly together when transpiled to C.
 
 ## Test Organization
 
@@ -15,15 +15,64 @@ This directory contains comprehensive integration tests for the C++ to C transpi
 
 ```
 tests/integration/
+├── FeatureCombinationTest.cpp     # 20 tests - Feature combinations (Story #123)
+├── FeatureInteractionTest.cpp     # 30 tests - Feature interactions
 ├── EdgeCasesTest.cpp              # 30 tests - Boundary conditions
 ├── ErrorHandlingTest.cpp          # 25 tests - Error handling
-├── FeatureInteractionTest.cpp     # 30 tests - Feature interactions
 └── README.md                      # This file
 ```
 
 ### Test Files
 
-#### 1. EdgeCasesTest.cpp (30 tests)
+#### 1. FeatureCombinationTest.cpp (20 tests) - Story #123
+
+**Purpose**: Test complex feature combinations critical for real-world C++ to C transpilation.
+
+**Categories**:
+- **RAII + Exceptions** (5 tests):
+  - Exception unwinding with destructors
+  - Multiple RAII objects in exception path
+  - Nested try-catch with RAII
+  - Exception specifications (noexcept)
+  - Constructor exceptions
+
+- **Virtual Inheritance + RTTI** (4 tests):
+  - dynamic_cast through virtual bases
+  - typeid with virtual inheritance
+  - Multi-level virtual inheritance
+  - Vtable layout with virtual bases
+
+- **Multiple Inheritance + Virtual Functions** (4 tests):
+  - Multiple interface implementation
+  - Virtual function overriding in MI
+  - Diamond problem (non-virtual)
+  - Thunk generation for MI
+
+- **Coroutines + RAII** (3 tests):
+  - Resource cleanup in coroutines
+  - Exception handling in coroutines
+  - Suspend points with RAII
+
+- **Complex Hierarchies** (3 tests):
+  - 5-level deep inheritance
+  - Mixed multiple and virtual inheritance
+  - All features combined in hierarchy
+
+- **Kitchen Sink** (1 test):
+  - All major C++ features in one test
+  - Validates feature interactions don't cause conflicts
+
+**Key Tests**:
+```cpp
+test_raii_exception_unwinding()           // RAII cleanup during exceptions
+test_virtual_inheritance_dynamic_cast()   // dynamic_cast with virtual bases
+test_multiple_inheritance_thunks()        // Thunk generation for MI
+test_coroutine_raii_cleanup()             // Coroutine resource cleanup
+test_deep_inheritance_5_levels()          // Deep hierarchy handling
+test_kitchen_sink()                       // All features combined
+```
+
+#### 2. EdgeCasesTest.cpp (30 tests)
 
 **Purpose**: Test boundary conditions and unusual but valid C++ constructs.
 
@@ -72,7 +121,7 @@ test_edge_diamond_inheritance()            // Multiple inheritance diamond
 test_edge_template_recursion_depth()       // Template metaprogramming limits
 ```
 
-#### 2. ErrorHandlingTest.cpp (25 tests)
+#### 3. ErrorHandlingTest.cpp (25 tests)
 
 **Purpose**: Verify error detection, graceful degradation, and error message quality.
 
@@ -119,7 +168,7 @@ test_error_message_circular_dependency()   // Clear error reporting
 test_error_abstract_class_instantiation()  // Abstract class checks
 ```
 
-#### 3. FeatureInteractionTest.cpp (30 tests)
+#### 4. FeatureInteractionTest.cpp (30 tests)
 
 **Purpose**: Test complex interactions between multiple C++ features and real-world design patterns.
 
@@ -427,9 +476,9 @@ For questions about Stream 6 tests:
 
 ---
 
-**Version**: 1.0
+**Version**: 2.0 (Story #123 Complete)
 **Last Updated**: 2025-12-18
-**Test Count**: 85 tests (30 + 25 + 30)
+**Test Count**: 105 tests (20 + 30 + 30 + 25)
 **Status**: Complete ✅
 
 Generated with [Claude Code](https://claude.com/claude-code)
