@@ -145,7 +145,7 @@ public:
 #if LLVM_VERSION_MAJOR >= 16
             TagTypeKind::Struct,
 #else
-            TagDecl::TTK_Struct,
+            TTK_Struct,
 #endif
             Ctx.getTranslationUnitDecl(),
             SourceLocation(),
@@ -361,7 +361,7 @@ public:
 #if LLVM_VERSION_MAJOR >= 16
                 ArraySizeModifier::Normal,
 #else
-                ArrayType::Normal,
+                ArrayType::ArraySizeModifier::Normal,
 #endif
                 0
             ),
@@ -880,7 +880,7 @@ public:
 #if LLVM_VERSION_MAJOR >= 16
             TagTypeKind::Struct,
 #else
-            TagDecl::TTK_Struct,
+            TTK_Struct,
 #endif
             Ctx.getTranslationUnitDecl(),
             SourceLocation(),
@@ -947,7 +947,7 @@ public:
 #if LLVM_VERSION_MAJOR >= 16
             TagTypeKind::Struct,
 #else
-            TagDecl::TTK_Struct,
+            TTK_Struct,
 #endif
             Ctx.getTranslationUnitDecl(),
             SourceLocation(),
