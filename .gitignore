@@ -89,3 +89,4 @@ __pycache__/
 .Python
 venv/
 ENV/
+verification-results/
