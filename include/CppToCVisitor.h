@@ -66,6 +66,15 @@ class CppToCVisitor : public clang::RecursiveASTVisitor<CppToCVisitor> {
   };
   std::vector<ScopeInfo> scopeStack;        // Stack of currently active scopes
 
+  // Story #47: Track goto statements and labels for destructor injection
+  struct GotoInfo {
+    clang::GotoStmt *gotoStmt;              // The goto statement
+    clang::LabelStmt *targetLabel;          // The target label (matched by name)
+    std::vector<clang::VarDecl*> liveObjects; // Objects live at goto that need destruction
+  };
+  std::vector<GotoInfo> currentFunctionGotos; // Goto statements in current function
+  std::map<std::string, clang::LabelStmt*> currentFunctionLabels; // Labels in current function
+
 public:
   explicit CppToCVisitor(clang::ASTContext &Context, clang::CNodeBuilder &Builder)
     : Context(Context), Builder(Builder), Mangler(Context),
@@ -108,6 +117,12 @@ public:
 
   // Story #45: Return statement visitor for early return detection
   bool VisitReturnStmt(clang::ReturnStmt *RS);
+
+  // Story #47: Goto statement visitor for goto handling
+  bool VisitGotoStmt(clang::GotoStmt *GS);
+
+  // Story #47: Label statement visitor for goto target detection
+  bool VisitLabelStmt(clang::LabelStmt *LS);
 
   // Retrieve generated C struct by class name (for testing)
   clang::RecordDecl* getCStruct(llvm::StringRef className) const;
@@ -197,6 +212,42 @@ private:
    * Called when visiting VarDecls with non-trivial destructors.
    */
   void trackObjectInCurrentScope(clang::VarDecl *VD);
+
+  /**
+   * @brief Analyze goto-label pairs and determine objects needing destruction
+   * @param FD The function containing goto statements
+   *
+   * Story #47: Goto-label analysis for destructor injection
+   * Called after function traversal to match gotos to labels and identify
+   * which objects need destruction before each goto (forward jumps only).
+   */
+  void analyzeGotoStatements(clang::FunctionDecl *FD);
+
+  /**
+   * @brief Check if goto comes before its target label (forward jump)
+   * @param gotoStmt The goto statement
+   * @param labelStmt The target label statement
+   * @return true if goto precedes label in control flow
+   *
+   * Story #47: Helper for determining jump direction
+   * Uses source location comparison to classify as forward or backward jump.
+   */
+  bool isForwardJump(clang::GotoStmt *gotoStmt, clang::LabelStmt *labelStmt);
+
+  /**
+   * @brief Determine which objects are live at goto and out of scope at label
+   * @param gotoStmt The goto statement
+   * @param labelStmt The target label statement
+   * @param FD The function containing the goto
+   * @return Vector of objects that need destruction before goto
+   *
+   * Story #47: Scope analysis for goto jumps
+   * Identifies objects constructed before goto that won't be in scope at label.
+   */
+  std::vector<clang::VarDecl*> analyzeObjectsForGoto(
+      clang::GotoStmt *gotoStmt,
+      clang::LabelStmt *labelStmt,
+      clang::FunctionDecl *FD);
 
   // Epic #6: Single Inheritance helper methods
 

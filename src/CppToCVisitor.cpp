@@ -501,13 +501,25 @@ bool CppToCVisitor::VisitFunctionDecl(FunctionDecl *FD) {
     // Story #45: Clear previous return tracking for this function
     currentFunctionReturns.clear();
 
+    // Story #47: Clear previous goto/label tracking for this function
+    currentFunctionGotos.clear();
+    currentFunctionLabels.clear();
+
     // Story #45: Analyze return statements in the function
     // The VisitReturnStmt will be called automatically during traversal
     // and will populate currentFunctionReturns
 
+    // Story #47: Analyze goto statements after traversal
+    // The VisitGotoStmt and VisitLabelStmt will be called during traversal
+    // and will populate currentFunctionGotos and currentFunctionLabels
+    // After traversal, we match them and determine destructor injection points
+    analyzeGotoStatements(FD);
+
   } else {
     currentFunctionObjectsToDestroy.clear();
     currentFunctionReturns.clear();
+    currentFunctionGotos.clear();
+    currentFunctionLabels.clear();
   }
 
   return true;
@@ -1003,6 +1015,133 @@ void CppToCVisitor::trackObjectInCurrentScope(VarDecl *VD) {
 
   llvm::outs() << "  [Scope] Tracked object '" << VD->getNameAsString()
                << "' in scope depth " << scopeStack.back().depth << "\n";
+}
+
+// ============================================================================
+// Story #47: Goto Statement Handling Methods
+// ============================================================================
+
+// Visit goto statements for detection and tracking
+bool CppToCVisitor::VisitGotoStmt(GotoStmt *GS) {
+  // Skip if not analyzing a function
+  if (currentFunctionObjectsToDestroy.empty()) {
+    return true;
+  }
+
+  llvm::outs() << "  [Goto] Detected goto to label: " << GS->getLabel()->getName() << "\n";
+
+  // Store goto statement for later analysis
+  GotoInfo info;
+  info.gotoStmt = GS;
+  info.targetLabel = nullptr;  // Will be matched in analyzeGotoStatements()
+  currentFunctionGotos.push_back(info);
+
+  return true;
+}
+
+// Visit label statements for detection and tracking
+bool CppToCVisitor::VisitLabelStmt(LabelStmt *LS) {
+  // Skip if not analyzing a function
+  if (currentFunctionObjectsToDestroy.empty()) {
+    return true;
+  }
+
+  std::string labelName = LS->getName();
+  llvm::outs() << "  [Goto] Detected label: " << labelName << "\n";
+
+  // Store label for goto matching
+  currentFunctionLabels[labelName] = LS;
+
+  return true;
+}
+
+// Analyze goto-label pairs and determine objects needing destruction
+void CppToCVisitor::analyzeGotoStatements(FunctionDecl *FD) {
+  if (currentFunctionGotos.empty()) {
+    return;  // No gotos to analyze
+  }
+
+  llvm::outs() << "  [Goto] Analyzing " << currentFunctionGotos.size()
+               << " goto statement(s)\n";
+
+  // Match each goto to its target label
+  for (GotoInfo &info : currentFunctionGotos) {
+    std::string labelName = info.gotoStmt->getLabel()->getName().str();
+
+    // Find matching label
+    auto it = currentFunctionLabels.find(labelName);
+    if (it == currentFunctionLabels.end()) {
+      llvm::errs() << "  [Goto] Warning: Label '" << labelName
+                   << "' not found for goto\n";
+      continue;
+    }
+
+    info.targetLabel = it->second;
+
+    // Check if this is a forward jump
+    if (isForwardJump(info.gotoStmt, info.targetLabel)) {
+      llvm::outs() << "  [Goto] Forward jump to '" << labelName << "'\n";
+
+      // Analyze which objects need destruction
+      info.liveObjects = analyzeObjectsForGoto(info.gotoStmt, info.targetLabel, FD);
+
+      llvm::outs() << "    -> " << info.liveObjects.size()
+                   << " object(s) need destruction before goto\n";
+    } else {
+      llvm::outs() << "  [Goto] Backward jump to '" << labelName
+                   << "' (no destructor injection)\n";
+      // Backward jumps: objects remain alive, no destruction needed
+    }
+  }
+}
+
+// Check if goto comes before its target label (forward jump)
+bool CppToCVisitor::isForwardJump(GotoStmt *gotoStmt, LabelStmt *labelStmt) {
+  if (!gotoStmt || !labelStmt) {
+    return false;
+  }
+
+  SourceManager &SM = Context.getSourceManager();
+  SourceLocation gotoLoc = gotoStmt->getBeginLoc();
+  SourceLocation labelLoc = labelStmt->getBeginLoc();
+
+  // Forward jump: goto comes before label in source
+  return SM.isBeforeInTranslationUnit(gotoLoc, labelLoc);
+}
+
+// Determine which objects are live at goto and out of scope at label
+std::vector<VarDecl*> CppToCVisitor::analyzeObjectsForGoto(
+    GotoStmt *gotoStmt,
+    LabelStmt *labelStmt,
+    FunctionDecl *FD) {
+
+  std::vector<VarDecl*> objectsToDestroy;
+
+  if (!gotoStmt || !labelStmt || !FD) {
+    return objectsToDestroy;
+  }
+
+  SourceManager &SM = Context.getSourceManager();
+  SourceLocation gotoLoc = gotoStmt->getBeginLoc();
+  SourceLocation labelLoc = labelStmt->getBeginLoc();
+
+  // For each tracked object in the function
+  for (VarDecl *VD : currentFunctionObjectsToDestroy) {
+    SourceLocation varLoc = VD->getBeginLoc();
+
+    // Object is live at goto if:
+    // 1. It's declared before the goto
+    // 2. It needs destruction (already filtered in tracking)
+    if (SM.isBeforeInTranslationUnit(varLoc, gotoLoc)) {
+      // For forward jumps, all objects constructed before goto need destruction
+      // (This is a simplified analysis - a full implementation would check
+      //  exact scope boundaries to determine if object is still in scope at label)
+      objectsToDestroy.push_back(VD);
+      llvm::outs() << "      - Will destroy: " << VD->getNameAsString() << "\n";
+    }
+  }
+
+  return objectsToDestroy;
 }
 
 // Visit compound statements for scope tracking
