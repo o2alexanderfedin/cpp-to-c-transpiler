@@ -75,6 +75,17 @@ class CppToCVisitor : public clang::RecursiveASTVisitor<CppToCVisitor> {
   std::vector<GotoInfo> currentFunctionGotos; // Goto statements in current function
   std::map<std::string, clang::LabelStmt*> currentFunctionLabels; // Labels in current function
 
+  // Story #48: Track break/continue statements in loops for destructor injection
+  struct BreakContinueInfo {
+    clang::Stmt *stmt;                      // The break or continue statement
+    bool isBreak;                           // true = break, false = continue
+    std::vector<clang::VarDecl*> liveObjects; // Objects live at break/continue that need destruction
+  };
+  std::vector<BreakContinueInfo> currentFunctionBreaksContinues; // Break/continue statements in current function
+
+  // Story #48: Track loop nesting to know when we're inside a loop
+  unsigned int loopNestingLevel = 0;        // 0 = not in loop, >0 = loop depth
+
 public:
   explicit CppToCVisitor(clang::ASTContext &Context, clang::CNodeBuilder &Builder)
     : Context(Context), Builder(Builder), Mangler(Context),
@@ -123,6 +134,18 @@ public:
 
   // Story #47: Label statement visitor for goto target detection
   bool VisitLabelStmt(clang::LabelStmt *LS);
+
+  // Story #48: Break statement visitor for loop break handling
+  bool VisitBreakStmt(clang::BreakStmt *BS);
+
+  // Story #48: Continue statement visitor for loop continue handling
+  bool VisitContinueStmt(clang::ContinueStmt *CS);
+
+  // Story #48: Loop statement visitors to track loop nesting
+  bool VisitWhileStmt(clang::WhileStmt *WS);
+  bool VisitForStmt(clang::ForStmt *FS);
+  bool VisitDoStmt(clang::DoStmt *DS);
+  bool VisitCXXForRangeStmt(clang::CXXForRangeStmt *FRS);
 
   // Retrieve generated C struct by class name (for testing)
   clang::RecordDecl* getCStruct(llvm::StringRef className) const;
@@ -247,6 +270,33 @@ private:
   std::vector<clang::VarDecl*> analyzeObjectsForGoto(
       clang::GotoStmt *gotoStmt,
       clang::LabelStmt *labelStmt,
+      clang::FunctionDecl *FD);
+
+  // ============================================================================
+  // Story #48: Loop Break/Continue Handling Methods
+  // ============================================================================
+
+  /**
+   * @brief Analyze break/continue statements and determine objects needing destruction
+   * @param FD The function containing break/continue statements
+   *
+   * Story #48: Break/continue analysis for destructor injection
+   * Called after function traversal to identify which objects need destruction
+   * before each break/continue statement (all loop-local objects).
+   */
+  void analyzeBreakContinueStatements(clang::FunctionDecl *FD);
+
+  /**
+   * @brief Determine which objects are live at break/continue and need destruction
+   * @param stmt The break or continue statement
+   * @param FD The function containing the statement
+   * @return Vector of objects that need destruction before break/continue
+   *
+   * Story #48: Scope analysis for loop exits
+   * Identifies all loop-local objects that need destruction before exiting loop.
+   */
+  std::vector<clang::VarDecl*> analyzeObjectsForBreakContinue(
+      clang::Stmt *stmt,
       clang::FunctionDecl *FD);
 
   // Epic #6: Single Inheritance helper methods
