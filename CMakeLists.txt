@@ -589,7 +589,14 @@ target_link_libraries(FunctionExitDestructorTest PRIVATE
 # Story #153: Destructor Injection at Early Returns tests
 add_executable(EarlyReturnDestructorTest
     tests/EarlyReturnDestructorTest.cpp
+    src/CppToCVisitor.cpp
     src/CFGAnalyzer.cpp
+    src/NameMangler.cpp
+    src/VirtualMethodAnalyzer.cpp
+    src/VptrInjector.cpp
+    src/MoveConstructorTranslator.cpp
+    src/MoveAssignmentTranslator.cpp
+    src/RvalueRefParamTranslator.cpp
 )
 
 target_compile_definitions(EarlyReturnDestructorTest PRIVATE ${LLVM_DEFINITIONS})

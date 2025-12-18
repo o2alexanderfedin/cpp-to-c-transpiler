@@ -51,6 +51,13 @@ class CppToCVisitor : public clang::RecursiveASTVisitor<CppToCVisitor> {
   // Story #44: Track local objects with destructors for current function
   std::vector<clang::VarDecl*> currentFunctionObjectsToDestroy;
 
+  // Story #45: Track return statements and their associated scopes
+  struct ReturnInfo {
+    clang::ReturnStmt *returnStmt;
+    std::vector<clang::VarDecl*> liveObjects;  // Objects live at this return
+  };
+  std::vector<ReturnInfo> currentFunctionReturns;
+
 public:
   explicit CppToCVisitor(clang::ASTContext &Context, clang::CNodeBuilder &Builder)
     : Context(Context), Builder(Builder), Mangler(Context),
@@ -88,6 +95,9 @@ public:
   clang::Stmt* translateReturnStmt(clang::ReturnStmt *RS);
   clang::Stmt* translateCompoundStmt(clang::CompoundStmt *CS);
 
+  // Story #45: Return statement visitor for early return detection
+  bool VisitReturnStmt(clang::ReturnStmt *RS);
+
   // Retrieve generated C struct by class name (for testing)
   clang::RecordDecl* getCStruct(llvm::StringRef className) const;
 
@@ -124,6 +134,30 @@ private:
    */
   void injectDestructorsAtScopeExit(clang::CompoundStmt *CS,
                                     const std::vector<clang::VarDecl*> &vars);
+
+  /**
+   * @brief Analyze which objects are live at a specific return statement
+   * @param RS The return statement to analyze
+   * @param FD The function containing the return
+   * @return Vector of live objects at this return point
+   *
+   * Story #45: Scope analysis for early returns
+   * Determines which objects with destructors are constructed and in scope
+   * at the given return statement location.
+   */
+  std::vector<clang::VarDecl*> analyzeLiveObjectsAtReturn(
+      clang::ReturnStmt *RS, clang::FunctionDecl *FD);
+
+  /**
+   * @brief Check if a statement/decl comes before another in control flow
+   * @param Before The statement that should come first
+   * @param After The statement that should come after
+   * @return true if Before precedes After in the AST
+   *
+   * Story #45: Helper for scope analysis
+   * Uses source location comparison to determine order.
+   */
+  bool comesBefore(clang::Stmt *Before, clang::Stmt *After);
 
   // Epic #6: Single Inheritance helper methods
 
