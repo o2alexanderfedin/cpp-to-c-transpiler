@@ -1,0 +1,45 @@
+C++ to C Runtime Example
+=========================
+
+--- Creating Rectangle ---
+Shape constructor: Rectangle
+Rectangle constructor: 10x5
+
+=== Testing Polymorphism ===
+Rectangle: 10x5 (area: 50)
+Area: 50
+
+=== Testing RTTI ===
+Type of shape: 9Rectangle
+Successfully cast to Rectangle
+Rectangle: 10x5 (area: 50)
+Failed to cast to Circle (expected)
+Rectangle destructor
+Shape destructor: Rectangle
+
+--- Creating Circle ---
+Shape constructor: Circle
+Circle constructor: radius=7
+
+=== Testing Polymorphism ===
+Circle: radius=7 (area: 153.938)
+Area: 153.938
+
+=== Testing RTTI ===
+Type of shape: 6Circle
+Failed to cast to Rectangle (expected)
+Successfully cast to Circle
+Circle: radius=7 (area: 153.938)
+Circle destructor
+Shape destructor: Circle
+
+=== Testing Exception Handling ===
+Resource acquired: file.txt
+Resource acquired: database.db
+About to throw exception...
+Resource released: database.db
+Resource released: file.txt
+Caught exception: Test exception
+(Resources should be automatically released)
+
+=== Program completed successfully ===

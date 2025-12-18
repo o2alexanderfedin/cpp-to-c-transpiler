@@ -5,6 +5,121 @@ project(cpptoc C CXX)
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
+# ============================================================================
+# Code Coverage Configuration
+# ============================================================================
+option(ENABLE_COVERAGE "Enable code coverage reporting" OFF)
+
+if(ENABLE_COVERAGE)
+    message(STATUS "Code coverage enabled")
+
+    # Add coverage compiler flags
+    set(COVERAGE_FLAGS "--coverage -fprofile-arcs -ftest-coverage")
+    set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} ${COVERAGE_FLAGS}")
+    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} ${COVERAGE_FLAGS}")
+    set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} --coverage")
+
+    # Find required tools
+    find_program(LCOV_PATH lcov)
+    find_program(GENHTML_PATH genhtml)
+
+    if(NOT LCOV_PATH)
+        message(WARNING "lcov not found! Coverage reports cannot be generated. Install with: brew install lcov")
+    endif()
+
+    if(NOT GENHTML_PATH)
+        message(WARNING "genhtml not found! HTML coverage reports cannot be generated.")
+    endif()
+
+    # Add custom target for coverage report generation
+    if(LCOV_PATH AND GENHTML_PATH)
+        add_custom_target(coverage
+            COMMAND ${CMAKE_COMMAND} -E echo "Generating coverage report..."
+
+            # Initialize coverage data
+            COMMAND ${LCOV_PATH} --directory . --zerocounters
+
+            # Run tests (this will be filled in by the script)
+            COMMAND ${CMAKE_COMMAND} -E echo "Run tests before generating coverage"
+
+            # Capture coverage data
+            COMMAND ${LCOV_PATH} --directory . --capture --output-file coverage.info
+
+            # Remove system headers and test files from coverage
+            COMMAND ${LCOV_PATH} --remove coverage.info '/usr/*' '*/tests/*' '*/build/*' --output-file coverage.info.cleaned
+
+            # Generate HTML report
+            COMMAND ${GENHTML_PATH} coverage.info.cleaned --output-directory coverage --demangle-cpp
+
+            COMMAND ${CMAKE_COMMAND} -E echo "Coverage report generated in coverage/"
+
+            WORKING_DIRECTORY ${CMAKE_BINARY_DIR}
+            COMMENT "Generating code coverage report"
+        )
+    endif()
+endif()
+
+# ============================================================================
+# Sanitizer Configuration (Story #125 - Memory Safety, UB, Thread Safety)
+# ============================================================================
+option(ENABLE_ASAN "Enable AddressSanitizer (memory errors, leaks)" OFF)
+option(ENABLE_UBSAN "Enable UndefinedBehaviorSanitizer (UB detection)" OFF)
+option(ENABLE_TSAN "Enable ThreadSanitizer (data races)" OFF)
+option(ENABLE_MSAN "Enable MemorySanitizer (uninitialized reads)" OFF)
+
+# AddressSanitizer: Detects memory errors, use-after-free, buffer overflows, leaks
+if(ENABLE_ASAN)
+    message(STATUS "AddressSanitizer enabled")
+    set(SANITIZER_FLAGS "${SANITIZER_FLAGS} -fsanitize=address -fno-omit-frame-pointer")
+    set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} -fsanitize=address")
+
+    # ASan options can be controlled via ASAN_OPTIONS environment variable:
+    # detect_leaks=1, halt_on_error=0, allocator_may_return_null=1, etc.
+endif()
+
+# UndefinedBehaviorSanitizer: Detects undefined behavior (integer overflow, null deref, etc.)
+if(ENABLE_UBSAN)
+    message(STATUS "UndefinedBehaviorSanitizer enabled")
+    set(SANITIZER_FLAGS "${SANITIZER_FLAGS} -fsanitize=undefined -fno-sanitize-recover=all")
+    set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} -fsanitize=undefined")
+
+    # UBSan checks: alignment, bounds, builtin, enum, float-cast-overflow,
+    # float-divide-by-zero, integer-divide-by-zero, nonnull-attribute, null,
+    # object-size, pointer-overflow, return, returns-nonnull-attribute, shift,
+    # signed-integer-overflow, unreachable, vla-bound, vptr
+endif()
+
+# ThreadSanitizer: Detects data races and thread safety issues
+# Note: TSan cannot be combined with ASan or MSan
+if(ENABLE_TSAN)
+    message(STATUS "ThreadSanitizer enabled")
+    if(ENABLE_ASAN OR ENABLE_MSAN)
+        message(FATAL_ERROR "ThreadSanitizer cannot be combined with AddressSanitizer or MemorySanitizer")
+    endif()
+    set(SANITIZER_FLAGS "${SANITIZER_FLAGS} -fsanitize=thread")
+    set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} -fsanitize=thread")
+endif()
+
+# MemorySanitizer: Detects uninitialized memory reads (requires full rebuild)
+if(ENABLE_MSAN)
+    message(STATUS "MemorySanitizer enabled")
+    if(ENABLE_ASAN OR ENABLE_TSAN)
+        message(FATAL_ERROR "MemorySanitizer cannot be combined with AddressSanitizer or ThreadSanitizer")
+    endif()
+    set(SANITIZER_FLAGS "${SANITIZER_FLAGS} -fsanitize=memory -fno-omit-frame-pointer")
+    set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} -fsanitize=memory")
+endif()
+
+# Apply sanitizer flags if any sanitizer is enabled
+if(ENABLE_ASAN OR ENABLE_UBSAN OR ENABLE_TSAN OR ENABLE_MSAN)
+    set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} ${SANITIZER_FLAGS} -g -O1")
+    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} ${SANITIZER_FLAGS} -g -O1")
+
+    message(STATUS "Sanitizer flags: ${SANITIZER_FLAGS}")
+    message(STATUS "Note: Sanitizers add 2-10x performance overhead for comprehensive checking")
+    message(STATUS "Use scripts/run-sanitizers.sh for automated sanitizer testing")
+endif()
+
 # Find LLVM and Clang packages
 # Using CONFIG mode for better reliability
 find_package(LLVM REQUIRED CONFIG)
@@ -28,6 +143,10 @@ add_executable(cpptoc
     src/VirtualMethodAnalyzer.cpp
     src/VptrInjector.cpp
     src/VirtualInheritanceAnalyzer.cpp
+    src/MoveConstructorTranslator.cpp
+    src/MoveAssignmentTranslator.cpp
+    src/StdMoveTranslator.cpp
+    src/RvalueRefParamTranslator.cpp
 )
 
 # Apply LLVM/Clang compile definitions to target
@@ -63,6 +182,9 @@ add_executable(CppToCVisitorTest
     src/CFGAnalyzer.cpp
     src/VirtualMethodAnalyzer.cpp
     src/VptrInjector.cpp
+    src/MoveConstructorTranslator.cpp
+    src/MoveAssignmentTranslator.cpp
+    src/RvalueRefParamTranslator.cpp
 )
 
 target_compile_definitions(CppToCVisitorTest PRIVATE ${LLVM_DEFINITIONS})
@@ -197,6 +319,9 @@ add_executable(TranslationIntegrationTest
     src/NameMangler.cpp
     src/VirtualMethodAnalyzer.cpp
     src/VptrInjector.cpp
+    src/MoveConstructorTranslator.cpp
+    src/MoveAssignmentTranslator.cpp
+    src/RvalueRefParamTranslator.cpp
 )
 
 target_compile_definitions(TranslationIntegrationTest PRIVATE ${LLVM_DEFINITIONS})
@@ -252,6 +377,9 @@ add_executable(ValidationTest
     src/NameMangler.cpp
     src/VirtualMethodAnalyzer.cpp
     src/VptrInjector.cpp
+    src/MoveConstructorTranslator.cpp
+    src/MoveAssignmentTranslator.cpp
+    src/RvalueRefParamTranslator.cpp
 )
 
 target_compile_definitions(ValidationTest PRIVATE ${LLVM_DEFINITIONS})
@@ -437,6 +565,9 @@ add_executable(FunctionExitDestructorTest
     src/CFGAnalyzer.cpp
     src/VirtualMethodAnalyzer.cpp
     src/VptrInjector.cpp
+    src/MoveConstructorTranslator.cpp
+    src/MoveAssignmentTranslator.cpp
+    src/RvalueRefParamTranslator.cpp
 )
 
 target_compile_definitions(FunctionExitDestructorTest PRIVATE ${LLVM_DEFINITIONS})
@@ -458,7 +589,14 @@ target_link_libraries(FunctionExitDestructorTest PRIVATE
 # Story #153: Destructor Injection at Early Returns tests
 add_executable(EarlyReturnDestructorTest
     tests/EarlyReturnDestructorTest.cpp
+    src/CppToCVisitor.cpp
     src/CFGAnalyzer.cpp
+    src/NameMangler.cpp
+    src/VirtualMethodAnalyzer.cpp
+    src/VptrInjector.cpp
+    src/MoveConstructorTranslator.cpp
+    src/MoveAssignmentTranslator.cpp
+    src/RvalueRefParamTranslator.cpp
 )
 
 target_compile_definitions(EarlyReturnDestructorTest PRIVATE ${LLVM_DEFINITIONS})
@@ -476,10 +614,17 @@ target_link_libraries(EarlyReturnDestructorTest PRIVATE
     clangBasic
 )
 
-# Story #154: Nested Scope Destruction tests
+# Story #46: Nested Scope Destruction tests (Epic #5)
 add_executable(NestedScopeDestructorTest
     tests/NestedScopeDestructorTest.cpp
+    src/CppToCVisitor.cpp
     src/CFGAnalyzer.cpp
+    src/NameMangler.cpp
+    src/VirtualMethodAnalyzer.cpp
+    src/VptrInjector.cpp
+    src/MoveConstructorTranslator.cpp
+    src/MoveAssignmentTranslator.cpp
+    src/RvalueRefParamTranslator.cpp
 )
 
 target_compile_definitions(NestedScopeDestructorTest PRIVATE ${LLVM_DEFINITIONS})
@@ -572,6 +717,9 @@ add_executable(InheritanceTest
     src/NameMangler.cpp
     src/VirtualMethodAnalyzer.cpp
     src/VptrInjector.cpp
+    src/MoveConstructorTranslator.cpp
+    src/MoveAssignmentTranslator.cpp
+    src/RvalueRefParamTranslator.cpp
 )
 
 target_compile_definitions(InheritanceTest PRIVATE ${LLVM_DEFINITIONS})
@@ -810,6 +958,9 @@ add_executable(MemberInitListTest
     src/VirtualMethodAnalyzer.cpp
     src/VptrInjector.cpp
     src/CodeGenerator.cpp
+    src/MoveConstructorTranslator.cpp
+    src/MoveAssignmentTranslator.cpp
+    src/RvalueRefParamTranslator.cpp
 )
 
 target_compile_definitions(MemberInitListTest PRIVATE ${LLVM_DEFINITIONS})
@@ -1356,3 +1507,481 @@ target_link_libraries(CoroutineIntegrationTest PRIVATE
     clangBasic
     clangLex
 )
+
+# ============================================================================
+# Epic #16: Runtime Optimization & Configuration (Story #116)
+# ============================================================================
+
+# Story #116: Inline Runtime Mode tests
+add_executable(RuntimeModeInlineTest
+    tests/runtime_mode_inline_test.cpp
+    src/RuntimeModeInline.cpp
+)
+
+target_compile_definitions(RuntimeModeInlineTest PRIVATE ${LLVM_DEFINITIONS})
+
+target_include_directories(RuntimeModeInlineTest PRIVATE
+    ${CMAKE_SOURCE_DIR}/include
+    ${LLVM_INCLUDE_DIRS}
+    ${CLANG_INCLUDE_DIRS}
+)
+
+target_link_libraries(RuntimeModeInlineTest PRIVATE
+    clangTooling
+    clangFrontend
+    clangAST
+    clangBasic
+)
+
+# Story #117: Library Runtime Mode tests
+add_executable(RuntimeModeLibraryTest
+    tests/runtime_mode_library_test.cpp
+    src/RuntimeModeLibrary.cpp
+)
+
+target_include_directories(RuntimeModeLibraryTest PRIVATE
+    ${CMAKE_SOURCE_DIR}/include
+)
+
+# Story #118: Runtime Feature Flags tests
+add_executable(RuntimeFeatureFlagsTest
+    tests/runtime_feature_flags_test.cpp
+    src/RuntimeFeatureFlags.cpp
+)
+
+target_include_directories(RuntimeFeatureFlagsTest PRIVATE
+    ${CMAKE_SOURCE_DIR}/include
+)
+
+# Story #119: Size Optimization with LTO/PGO Support tests
+add_executable(SizeOptimizationTest
+    tests/size_optimization_test.cpp
+    src/SizeOptimizer.cpp
+    src/BuildConfiguration.cpp
+)
+
+target_include_directories(SizeOptimizationTest PRIVATE
+    ${CMAKE_SOURCE_DIR}/include
+)
+
+# ============================================================================
+# Stream 4: Operator Overloading Tests (62 tests)
+# ============================================================================
+
+# Comprehensive operator overloading tests covering all operator categories
+add_executable(OperatorOverloadingTest
+    tests/unit/operators/OperatorOverloadingTest.cpp
+    src/NameMangler.cpp
+)
+
+target_compile_definitions(OperatorOverloadingTest PRIVATE ${LLVM_DEFINITIONS})
+
+target_include_directories(OperatorOverloadingTest PRIVATE
+    ${CMAKE_SOURCE_DIR}/include
+    ${LLVM_INCLUDE_DIRS}
+    ${CLANG_INCLUDE_DIRS}
+)
+
+target_link_libraries(OperatorOverloadingTest PRIVATE
+    clangTooling
+    clangFrontend
+    clangAST
+    clangBasic
+)
+
+# ============================================================================
+# Stream 1: Lambdas & Closures Tests (60 tests)
+# ============================================================================
+
+# Lambda Translation and Closure Generation tests
+add_executable(LambdaTranslatorTest
+    tests/unit/lambdas/LambdaTranslatorTest.cpp
+)
+
+target_compile_definitions(LambdaTranslatorTest PRIVATE ${LLVM_DEFINITIONS})
+
+target_include_directories(LambdaTranslatorTest PRIVATE
+    ${CMAKE_SOURCE_DIR}/include
+    ${LLVM_INCLUDE_DIRS}
+    ${CLANG_INCLUDE_DIRS}
+)
+
+target_link_libraries(LambdaTranslatorTest PRIVATE
+    clangTooling
+    clangFrontend
+    clangAST
+    clangBasic
+)
+
+# ============================================================================
+# Stream 2: Move Semantics & Perfect Forwarding Tests (50 tests)
+# ============================================================================
+
+add_executable(MoveSemanticTranslatorTest
+    tests/unit/move_semantics/MoveSemanticTranslatorTest.cpp
+)
+
+target_compile_definitions(MoveSemanticTranslatorTest PRIVATE ${LLVM_DEFINITIONS})
+
+target_include_directories(MoveSemanticTranslatorTest PRIVATE
+    ${CMAKE_SOURCE_DIR}/include
+    ${LLVM_INCLUDE_DIRS}
+    ${CLANG_INCLUDE_DIRS}
+)
+
+target_link_libraries(MoveSemanticTranslatorTest PRIVATE
+    clangTooling
+    clangFrontend
+    clangAST
+    clangBasic
+)
+
+# Story #130: Move Constructor Detection and Translation tests
+add_executable(MoveConstructorTranslationTest
+    tests/unit/move_semantics/MoveConstructorTranslationTest.cpp
+    src/MoveConstructorTranslator.cpp
+)
+
+target_compile_definitions(MoveConstructorTranslationTest PRIVATE ${LLVM_DEFINITIONS})
+
+target_include_directories(MoveConstructorTranslationTest PRIVATE
+    ${CMAKE_SOURCE_DIR}/include
+    ${LLVM_INCLUDE_DIRS}
+    ${CLANG_INCLUDE_DIRS}
+)
+
+target_link_libraries(MoveConstructorTranslationTest PRIVATE
+    clangTooling
+    clangFrontend
+    clangAST
+    clangBasic
+)
+
+# Story #131: Move Assignment Operator Detection and Translation tests
+add_executable(MoveAssignmentTranslationTest
+    tests/unit/move_semantics/MoveAssignmentTranslationTest.cpp
+    src/MoveAssignmentTranslator.cpp
+)
+
+target_compile_definitions(MoveAssignmentTranslationTest PRIVATE ${LLVM_DEFINITIONS})
+
+target_include_directories(MoveAssignmentTranslationTest PRIVATE
+    ${CMAKE_SOURCE_DIR}/include
+    ${LLVM_INCLUDE_DIRS}
+    ${CLANG_INCLUDE_DIRS}
+)
+
+target_link_libraries(MoveAssignmentTranslationTest PRIVATE
+    clangTooling
+    clangFrontend
+    clangAST
+    clangBasic
+)
+
+# Story #132: std::move() Call Detection and Translation tests
+add_executable(StdMoveTranslationTest
+    tests/unit/move_semantics/StdMoveTranslationTest.cpp
+    src/StdMoveTranslator.cpp
+)
+
+target_compile_definitions(StdMoveTranslationTest PRIVATE ${LLVM_DEFINITIONS})
+
+target_include_directories(StdMoveTranslationTest PRIVATE
+    ${CMAKE_SOURCE_DIR}/include
+    ${LLVM_INCLUDE_DIRS}
+    ${CLANG_INCLUDE_DIRS}
+)
+
+target_link_libraries(StdMoveTranslationTest PRIVATE
+    clangTooling
+    clangFrontend
+    clangAST
+    clangBasic
+)
+
+# Story #133: Rvalue Reference Parameter Handling tests
+add_executable(RvalueRefParameterTest
+    tests/unit/move_semantics/RvalueRefParameterTest.cpp
+    src/RvalueRefParamTranslator.cpp
+)
+
+target_compile_definitions(RvalueRefParameterTest PRIVATE ${LLVM_DEFINITIONS})
+
+target_include_directories(RvalueRefParameterTest PRIVATE
+    ${CMAKE_SOURCE_DIR}/include
+    ${LLVM_INCLUDE_DIRS}
+    ${CLANG_INCLUDE_DIRS}
+)
+
+target_link_libraries(RvalueRefParameterTest PRIVATE
+    clangTooling
+    clangFrontend
+    clangAST
+    clangBasic
+)
+
+# Story #134: Integration with Copy Semantics tests
+add_executable(CopyMoveIntegrationTest
+    tests/unit/move_semantics/CopyMoveIntegrationTest.cpp
+    src/CppToCVisitor.cpp
+    src/CFGAnalyzer.cpp
+    src/NameMangler.cpp
+    src/VirtualMethodAnalyzer.cpp
+    src/VptrInjector.cpp
+    src/MoveConstructorTranslator.cpp
+    src/MoveAssignmentTranslator.cpp
+    src/RvalueRefParamTranslator.cpp
+)
+
+target_compile_definitions(CopyMoveIntegrationTest PRIVATE ${LLVM_DEFINITIONS})
+
+target_include_directories(CopyMoveIntegrationTest PRIVATE
+    ${CMAKE_SOURCE_DIR}/include
+    ${LLVM_INCLUDE_DIRS}
+    ${CLANG_INCLUDE_DIRS}
+)
+
+target_link_libraries(CopyMoveIntegrationTest PRIVATE
+    clangTooling
+    clangFrontend
+    clangAST
+    clangBasic
+)
+
+# ============================================================================
+# Stream 5: Type Traits & Template Metaprogramming Tests (85 tests)
+# ============================================================================
+
+# TypeTraitsTest - 40 tests for type traits, SFINAE, and compile-time conditionals
+add_executable(TypeTraitsTest
+    tests/unit/type_traits/TypeTraitsTest.cpp
+)
+
+target_compile_definitions(TypeTraitsTest PRIVATE ${LLVM_DEFINITIONS})
+
+target_include_directories(TypeTraitsTest PRIVATE
+    ${CMAKE_SOURCE_DIR}/include
+    ${LLVM_INCLUDE_DIRS}
+    ${CLANG_INCLUDE_DIRS}
+)
+
+target_link_libraries(TypeTraitsTest PRIVATE
+    clangTooling
+    clangFrontend
+    clangAST
+    clangBasic
+)
+
+# MetaprogrammingTest - 45 tests for variadic templates, constexpr, and recursive metaprogramming
+add_executable(MetaprogrammingTest
+    tests/unit/type_traits/MetaprogrammingTest.cpp
+)
+
+target_compile_definitions(MetaprogrammingTest PRIVATE ${LLVM_DEFINITIONS})
+
+target_include_directories(MetaprogrammingTest PRIVATE
+    ${CMAKE_SOURCE_DIR}/include
+    ${LLVM_INCLUDE_DIRS}
+    ${CLANG_INCLUDE_DIRS}
+)
+
+target_link_libraries(MetaprogrammingTest PRIVATE
+    clangTooling
+    clangFrontend
+    clangAST
+    clangBasic
+)
+
+# ============================================================================
+# Stream 6: Edge Cases & Integration Tests (75 tests)
+# ============================================================================
+
+# EdgeCasesTest - 30 tests for boundary conditions
+add_executable(EdgeCasesTest
+    tests/integration/EdgeCasesTest.cpp
+)
+
+target_compile_definitions(EdgeCasesTest PRIVATE ${LLVM_DEFINITIONS})
+
+target_include_directories(EdgeCasesTest PRIVATE
+    ${CMAKE_SOURCE_DIR}/include
+    ${LLVM_INCLUDE_DIRS}
+    ${CLANG_INCLUDE_DIRS}
+)
+
+target_link_libraries(EdgeCasesTest PRIVATE
+    clangTooling
+    clangFrontend
+    clangAST
+    clangBasic
+)
+
+# ErrorHandlingTest - 25 tests for error handling
+add_executable(ErrorHandlingTest
+    tests/integration/ErrorHandlingTest.cpp
+)
+
+target_compile_definitions(ErrorHandlingTest PRIVATE ${LLVM_DEFINITIONS})
+
+target_include_directories(ErrorHandlingTest PRIVATE
+    ${CMAKE_SOURCE_DIR}/include
+    ${LLVM_INCLUDE_DIRS}
+    ${CLANG_INCLUDE_DIRS}
+)
+
+target_link_libraries(ErrorHandlingTest PRIVATE
+    clangTooling
+    clangFrontend
+    clangAST
+    clangBasic
+)
+
+# FeatureInteractionTest - 30 tests for feature interactions
+add_executable(FeatureInteractionTest
+    tests/integration/FeatureInteractionTest.cpp
+)
+
+target_compile_definitions(FeatureInteractionTest PRIVATE ${LLVM_DEFINITIONS})
+
+target_include_directories(FeatureInteractionTest PRIVATE
+    ${CMAKE_SOURCE_DIR}/include
+    ${LLVM_INCLUDE_DIRS}
+    ${CLANG_INCLUDE_DIRS}
+)
+
+target_link_libraries(FeatureInteractionTest PRIVATE
+    clangTooling
+    clangFrontend
+    clangAST
+    clangBasic
+)
+
+# FeatureCombinationTest - 20 tests for complex feature combinations
+# Story #123: Integration Test Suite (RAII+exceptions, virtual inheritance+RTTI,
+# multiple inheritance+virtual, coroutines+RAII, complex hierarchies, kitchen sink)
+add_executable(FeatureCombinationTest
+    tests/integration/FeatureCombinationTest.cpp
+)
+
+target_compile_definitions(FeatureCombinationTest PRIVATE ${LLVM_DEFINITIONS})
+
+target_include_directories(FeatureCombinationTest PRIVATE
+    ${CMAKE_SOURCE_DIR}/include
+    ${LLVM_INCLUDE_DIRS}
+    ${CLANG_INCLUDE_DIRS}
+)
+
+target_link_libraries(FeatureCombinationTest PRIVATE
+    clangTooling
+    clangFrontend
+    clangAST
+    clangBasic
+)
+
+# MoveSemanticIntegrationTest - Story #135 - Move Semantics Integration Testing
+# 15 comprehensive integration tests for move semantics
+add_executable(MoveSemanticIntegrationTest
+    tests/integration/move_semantics_integration_test.cpp
+    src/CppToCVisitor.cpp
+    src/MoveConstructorTranslator.cpp
+    src/MoveAssignmentTranslator.cpp
+    src/StdMoveTranslator.cpp
+    src/RvalueRefParamTranslator.cpp
+    src/VirtualMethodAnalyzer.cpp
+    src/VptrInjector.cpp
+    src/VirtualInheritanceAnalyzer.cpp
+    src/NameMangler.cpp
+    src/CFGAnalyzer.cpp
+)
+
+target_compile_definitions(MoveSemanticIntegrationTest PRIVATE ${LLVM_DEFINITIONS})
+
+target_include_directories(MoveSemanticIntegrationTest PRIVATE
+    ${CMAKE_SOURCE_DIR}/include
+    ${LLVM_INCLUDE_DIRS}
+    ${CLANG_INCLUDE_DIRS}
+)
+
+target_link_libraries(MoveSemanticIntegrationTest PRIVATE
+    clangTooling
+    clangFrontend
+    clangAST
+    clangBasic
+)
+
+# ============================================================================
+# Stream 3: Smart Pointers & RAII Tests (95 tests)
+# ============================================================================
+
+# File 1: UniquePtrTest.cpp (30 tests)
+# unique_ptr creation, moves, make_unique, custom deleters
+add_executable(UniquePtrTest
+    tests/unit/smart_pointers/UniquePtrTest.cpp
+)
+
+target_compile_definitions(UniquePtrTest PRIVATE ${LLVM_DEFINITIONS})
+
+target_include_directories(UniquePtrTest PRIVATE
+    ${CMAKE_SOURCE_DIR}/include
+    ${LLVM_INCLUDE_DIRS}
+    ${CLANG_INCLUDE_DIRS}
+)
+
+target_link_libraries(UniquePtrTest PRIVATE
+    clangTooling
+    clangFrontend
+    clangAST
+    clangBasic
+)
+
+# File 2: SharedPtrTest.cpp (40 tests)
+# shared_ptr, ref counting, make_shared, weak_ptr, thread-safety
+add_executable(SharedPtrTest
+    tests/unit/smart_pointers/SharedPtrTest.cpp
+)
+
+target_compile_definitions(SharedPtrTest PRIVATE ${LLVM_DEFINITIONS})
+
+target_include_directories(SharedPtrTest PRIVATE
+    ${CMAKE_SOURCE_DIR}/include
+    ${LLVM_INCLUDE_DIRS}
+    ${CLANG_INCLUDE_DIRS}
+)
+
+target_link_libraries(SharedPtrTest PRIVATE
+    clangTooling
+    clangFrontend
+    clangAST
+    clangBasic
+)
+
+# File 3: RaiiIntegrationTest.cpp (25 tests)
+# Smart pointers with RAII (file, network, locks), exception safety
+add_executable(SmartPointerRaiiIntegrationTest
+    tests/unit/smart_pointers/RaiiIntegrationTest.cpp
+)
+
+target_compile_definitions(SmartPointerRaiiIntegrationTest PRIVATE ${LLVM_DEFINITIONS})
+
+target_include_directories(SmartPointerRaiiIntegrationTest PRIVATE
+    ${CMAKE_SOURCE_DIR}/include
+    ${LLVM_INCLUDE_DIRS}
+    ${CLANG_INCLUDE_DIRS}
+)
+
+target_link_libraries(SmartPointerRaiiIntegrationTest PRIVATE
+    clangTooling
+    clangFrontend
+    clangAST
+    clangBasic
+)
+
+# Build runtime library subdirectory
+add_subdirectory(runtime)
+
+# ============================================================================
+# Benchmarks (Optional)
+# ============================================================================
+# Performance benchmarks are optional and controlled by BUILD_BENCHMARKS flag
+# To build benchmarks: cmake -B build -DBUILD_BENCHMARKS=ON
+add_subdirectory(benchmarks)

@@ -1,0 +1,46 @@
+Test Execution Summary - Thu Dec 18 04:20:13 PST 2025
+=====================================
+
+PASSED: CFGAnalysisTest
+PASSED: CodeGeneratorTest
+PASSED: CppToCVisitorTest
+PASSED: DependencyAnalyzerTest
+PASSED: EarlyReturnDestructorTest
+PASSED: EdgeCasesTest
+PASSED: ErrorHandlingTest
+PASSED: FeatureCombinationTest
+PASSED: FeatureInteractionTest
+PASSED: FileOutputManagerTest
+PASSED: ForwardDeclTest
+PASSED: FunctionExitDestructorTest
+PASSED: GotoDestructorTest
+PASSED: HeaderSeparatorTest
+PASSED: IncludeGuardGeneratorTest
+PASSED: InheritanceTest
+PASSED: IntegrationTest
+PASSED: LambdaTranslatorTest
+PASSED: LoopDestructorTest
+PASSED: MetaprogrammingTest
+PASSED: MonomorphizationTest
+PASSED: MoveSemanticTranslatorTest
+PASSED: NameManglerTest
+PASSED: NestedScopeDestructorTest
+PASSED: OperatorOverloadingTest
+PASSED: OverloadResolutionTest
+PASSED: RAIIIntegrationTest
+PASSED: SharedPtrTest
+PASSED: SizeOptimizationTest
+PASSED: SmartPointerRaiiIntegrationTest
+PASSED: STLIntegrationTest
+PASSED: TemplateExtractorTest
+PASSED: TranslationIntegrationTest
+PASSED: TypeTraitsTest
+PASSED: UniquePtrTest
+PASSED: ValidationTest
+PASSED: VirtualMethodAnalyzerTest
+
+=====================================
+Total tests: 37
+Passed: 37
+Failed: 0
+Pass rate: % Pass rate: %

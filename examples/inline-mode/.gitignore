@@ -1,0 +1,4 @@
+build/
+*.o
+*.a
+simple_example
