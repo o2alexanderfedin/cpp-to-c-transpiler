@@ -143,6 +143,8 @@ add_executable(cpptoc
     src/VirtualMethodAnalyzer.cpp
     src/VptrInjector.cpp
     src/VirtualInheritanceAnalyzer.cpp
+    src/MoveConstructorTranslator.cpp
+    src/MoveAssignmentTranslator.cpp
 )
 
 # Apply LLVM/Clang compile definitions to target
@@ -178,6 +180,8 @@ add_executable(CppToCVisitorTest
     src/CFGAnalyzer.cpp
     src/VirtualMethodAnalyzer.cpp
     src/VptrInjector.cpp
+    src/MoveConstructorTranslator.cpp
+    src/MoveAssignmentTranslator.cpp
 )
 
 target_compile_definitions(CppToCVisitorTest PRIVATE ${LLVM_DEFINITIONS})
@@ -312,6 +316,8 @@ add_executable(TranslationIntegrationTest
     src/NameMangler.cpp
     src/VirtualMethodAnalyzer.cpp
     src/VptrInjector.cpp
+    src/MoveConstructorTranslator.cpp
+    src/MoveAssignmentTranslator.cpp
 )
 
 target_compile_definitions(TranslationIntegrationTest PRIVATE ${LLVM_DEFINITIONS})
@@ -367,6 +373,8 @@ add_executable(ValidationTest
     src/NameMangler.cpp
     src/VirtualMethodAnalyzer.cpp
     src/VptrInjector.cpp
+    src/MoveConstructorTranslator.cpp
+    src/MoveAssignmentTranslator.cpp
 )
 
 target_compile_definitions(ValidationTest PRIVATE ${LLVM_DEFINITIONS})
@@ -552,6 +560,8 @@ add_executable(FunctionExitDestructorTest
     src/CFGAnalyzer.cpp
     src/VirtualMethodAnalyzer.cpp
     src/VptrInjector.cpp
+    src/MoveConstructorTranslator.cpp
+    src/MoveAssignmentTranslator.cpp
 )
 
 target_compile_definitions(FunctionExitDestructorTest PRIVATE ${LLVM_DEFINITIONS})
@@ -687,6 +697,8 @@ add_executable(InheritanceTest
     src/NameMangler.cpp
     src/VirtualMethodAnalyzer.cpp
     src/VptrInjector.cpp
+    src/MoveConstructorTranslator.cpp
+    src/MoveAssignmentTranslator.cpp
 )
 
 target_compile_definitions(InheritanceTest PRIVATE ${LLVM_DEFINITIONS})
@@ -925,6 +937,8 @@ add_executable(MemberInitListTest
     src/VirtualMethodAnalyzer.cpp
     src/VptrInjector.cpp
     src/CodeGenerator.cpp
+    src/MoveConstructorTranslator.cpp
+    src/MoveAssignmentTranslator.cpp
 )
 
 target_compile_definitions(MemberInitListTest PRIVATE ${LLVM_DEFINITIONS})
@@ -1615,6 +1629,27 @@ target_include_directories(MoveConstructorTranslationTest PRIVATE
 )
 
 target_link_libraries(MoveConstructorTranslationTest PRIVATE
+    clangTooling
+    clangFrontend
+    clangAST
+    clangBasic
+)
+
+# Story #131: Move Assignment Operator Detection and Translation tests
+add_executable(MoveAssignmentTranslationTest
+    tests/unit/move_semantics/MoveAssignmentTranslationTest.cpp
+    src/MoveAssignmentTranslator.cpp
+)
+
+target_compile_definitions(MoveAssignmentTranslationTest PRIVATE ${LLVM_DEFINITIONS})
+
+target_include_directories(MoveAssignmentTranslationTest PRIVATE
+    ${CMAKE_SOURCE_DIR}/include
+    ${LLVM_INCLUDE_DIRS}
+    ${CLANG_INCLUDE_DIRS}
+)
+
+target_link_libraries(MoveAssignmentTranslationTest PRIVATE
     clangTooling
     clangFrontend
     clangAST

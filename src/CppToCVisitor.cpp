@@ -79,6 +79,17 @@ bool CppToCVisitor::VisitCXXMethodDecl(CXXMethodDecl *MD) {
     return true;
   }
 
+  // Story #131: Handle move assignment operators
+  if (MoveAssignTranslator.isMoveAssignmentOperator(MD)) {
+    llvm::outs() << "Translating move assignment operator: " << MD->getQualifiedNameAsString() << "\n";
+    std::string cCode = MoveAssignTranslator.generateMoveAssignment(MD);
+    if (!cCode.empty()) {
+      llvm::outs() << "Generated move assignment C code:\n" << cCode << "\n";
+      // TODO: Store generated function for later output
+    }
+    return true;
+  }
+
   llvm::outs() << "Translating method: " << MD->getQualifiedNameAsString() << "\n";
 
   CXXRecordDecl *Parent = MD->getParent();
