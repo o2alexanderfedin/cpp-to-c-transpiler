@@ -90,6 +90,14 @@ bool CppToCVisitor::VisitCXXMethodDecl(CXXMethodDecl *MD) {
     return true;
   }
 
+  // Story #134: Handle copy assignment operators (skip for now, similar to move)
+  if (MD->isCopyAssignmentOperator()) {
+    llvm::outs() << "Translating copy assignment operator: " << MD->getQualifiedNameAsString() << "\n";
+    // Copy assignment operators are handled similar to move assignments
+    // TODO: Generate C code for copy assignment
+    return true;
+  }
+
   llvm::outs() << "Translating method: " << MD->getQualifiedNameAsString() << "\n";
 
   CXXRecordDecl *Parent = MD->getParent();
