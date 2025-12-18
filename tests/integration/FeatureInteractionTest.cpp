@@ -3,6 +3,7 @@
 // Target: 25-35 tests covering multiple features combined and real-world scenarios
 
 #include "clang/AST/ASTContext.h"
+#include "clang/AST/DeclTemplate.h"
 #include "clang/Frontend/ASTUnit.h"
 #include "clang/Tooling/Tooling.h"
 #include <iostream>

@@ -27,7 +27,7 @@ jobs:
   unit-tests-linux:
     name: Unit Tests (Linux)
     runs-on: ubuntu-latest
-    timeout-minutes: 15
+    timeout-minutes: 20  # Increased from 15 to allow first build to complete
 
     steps:
       - name: Checkout repository
@@ -40,6 +40,7 @@ jobs:
             build-essential \
             cmake \
             ninja-build \
+            ccache \
             llvm-${{ env.LLVM_VERSION }}-dev \
             libclang-${{ env.LLVM_VERSION }}-dev \
             clang-${{ env.LLVM_VERSION }}
@@ -56,17 +57,28 @@ jobs:
           path: |
             /usr/lib/llvm-${{ env.LLVM_VERSION }}
           key: ${{ runner.os }}-llvm-${{ env.LLVM_VERSION }}
+      - name: Setup ccache
+        uses: hendrikmuhs/ccache-action@v1.2
+        with:
+          key: ${{ github.job }}-${{ runner.os }}
+          max-size: 500M
+
 
       - name: Configure CMake
         run: |
           cmake -B build \
             -G Ninja \
             -DCMAKE_BUILD_TYPE=${{ env.BUILD_TYPE }} \
+            -DCMAKE_C_COMPILER_LAUNCHER=ccache \
+            -DCMAKE_CXX_COMPILER_LAUNCHER=ccache \
             -DLLVM_DIR=${{ env.LLVM_DIR }} \
             -DClang_DIR=${{ env.Clang_DIR }}
 
       - name: Build project
-        run: cmake --build build --config ${{ env.BUILD_TYPE }} --parallel $(nproc)
+        run: |
+          ccache -z
+          cmake --build build --config ${{ env.BUILD_TYPE }} --parallel $(nproc)
+          ccache -s
 
       - name: Run unit tests
         run: |
@@ -226,17 +238,28 @@ jobs:
           path: |
             /usr/lib/llvm-${{ env.LLVM_VERSION }}
           key: ${{ runner.os }}-llvm-${{ env.LLVM_VERSION }}
+      - name: Setup ccache
+        uses: hendrikmuhs/ccache-action@v1.2
+        with:
+          key: ${{ github.job }}-${{ runner.os }}
+          max-size: 500M
+
 
       - name: Configure CMake
         run: |
           cmake -B build \
             -G Ninja \
             -DCMAKE_BUILD_TYPE=${{ env.BUILD_TYPE }} \
+            -DCMAKE_C_COMPILER_LAUNCHER=ccache \
+            -DCMAKE_CXX_COMPILER_LAUNCHER=ccache \
             -DLLVM_DIR=${{ env.LLVM_DIR }} \
             -DClang_DIR=${{ env.Clang_DIR }}
 
       - name: Build project
-        run: cmake --build build --config ${{ env.BUILD_TYPE }} --parallel $(nproc)
+        run: |
+          ccache -z
+          cmake --build build --config ${{ env.BUILD_TYPE }} --parallel $(nproc)
+          ccache -s
 
       - name: Run integration tests
         run: |
@@ -314,17 +337,28 @@ jobs:
           path: |
             /usr/lib/llvm-${{ env.LLVM_VERSION }}
           key: ${{ runner.os }}-llvm-${{ env.LLVM_VERSION }}
+      - name: Setup ccache
+        uses: hendrikmuhs/ccache-action@v1.2
+        with:
+          key: ${{ github.job }}-${{ runner.os }}
+          max-size: 500M
+
 
       - name: Configure CMake
         run: |
           cmake -B build \
             -G Ninja \
             -DCMAKE_BUILD_TYPE=${{ env.BUILD_TYPE }} \
+            -DCMAKE_C_COMPILER_LAUNCHER=ccache \
+            -DCMAKE_CXX_COMPILER_LAUNCHER=ccache \
             -DLLVM_DIR=${{ env.LLVM_DIR }} \
             -DClang_DIR=${{ env.Clang_DIR }}
 
       - name: Build project
-        run: cmake --build build --config ${{ env.BUILD_TYPE }} --parallel $(nproc)
+        run: |
+          ccache -z
+          cmake --build build --config ${{ env.BUILD_TYPE }} --parallel $(nproc)
+          ccache -s
 
       - name: Build and run real-world tests
         run: |
