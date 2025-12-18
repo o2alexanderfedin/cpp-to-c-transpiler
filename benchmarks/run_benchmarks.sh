@@ -176,8 +176,44 @@ extract_metrics() {
     echo "Metrics extraction not yet implemented"
 }
 
+# Function to extract metrics from benchmark output
+extract_benchmark_metrics() {
+    local benchmark_output="$1"
+    local benchmark_name="$2"
+
+    # Extract timing metrics (this is a simplified parser - adjust based on actual output format)
+    # Look for patterns like "Time per operation: X ns" or "Mean: X ns"
+    local mean_time=$(echo "$benchmark_output" | grep -i "time per" | head -1 | grep -oE '[0-9]+\.?[0-9]*' | head -1)
+    local ops_per_sec=$(echo "$benchmark_output" | grep -i "operations/sec" | head -1 | grep -oE '[0-9]+\.?[0-9]*' | head -1)
+    local memory_mb=$(echo "$benchmark_output" | grep -i "memory" | head -1 | grep -oE '[0-9]+\.?[0-9]*' | head -1)
+
+    # Default values if not found
+    mean_time=${mean_time:-0}
+    ops_per_sec=${ops_per_sec:-0}
+    memory_mb=${memory_mb:-0}
+
+    echo "\"$benchmark_name\": { \"mean_time_ns\": $mean_time, \"ops_per_second\": $ops_per_sec, \"memory_usage_mb\": $memory_mb }"
+}
+
 # Function to generate JSON report
 generate_json_report() {
+    local benchmarks_json=""
+
+    # Extract metrics from each benchmark in results file
+    for benchmark_spec in "${BENCHMARKS[@]}"; do
+        IFS='|' read -r benchmark_name benchmark_title <<< "$benchmark_spec"
+
+        # Try to extract metrics from the results file
+        local bench_section=$(awk "/^$benchmark_title/,/^$/" "$RESULTS_FILE")
+        local metrics=$(extract_benchmark_metrics "$bench_section" "$benchmark_name")
+
+        if [ -n "$benchmarks_json" ]; then
+            benchmarks_json="$benchmarks_json, $metrics"
+        else
+            benchmarks_json="$metrics"
+        fi
+    done
+
     cat > "$JSON_FILE" <<EOF
 {
   "timestamp": "$(date -u +"%Y-%m-%dT%H:%M:%SZ")",
@@ -188,18 +224,14 @@ generate_json_report() {
   "cpu_cores": "$(nproc 2>/dev/null || sysctl -n hw.ncpu 2>/dev/null || echo 'unknown')",
   "quick_mode": $QUICK_MODE,
   "benchmarks": {
-    "ast_traversal": {},
-    "name_mangling": {},
-    "code_generation": {},
-    "e2e_transpilation": {},
-    "memory_usage": {},
-    "virtual_functions": {}
+    $benchmarks_json
   },
   "summary": {
-    "total_benchmarks": 6,
-    "passed": 0,
-    "failed": 0,
-    "warnings": 0
+    "total_benchmarks": $TOTAL_BENCHMARKS,
+    "passed": $PASSED_BENCHMARKS,
+    "failed": $FAILED_BENCHMARKS,
+    "warnings": 0,
+    "success_rate": $(awk "BEGIN {printf \"%.1f\", ($PASSED_BENCHMARKS/$TOTAL_BENCHMARKS)*100}" 2>/dev/null || echo "0")
   }
 }
 EOF
@@ -220,10 +252,31 @@ compare_with_baseline() {
     print_info "Comparing against: $baseline_file"
     echo ""
 
-    # This is a placeholder - actual implementation would parse both JSON files
-    # and compare performance metrics, highlighting regressions and improvements
+    # Check if Python comparison script exists
+    if [ -f "$SCRIPT_DIR/compare_benchmarks.py" ]; then
+        # Use the Python script for detailed comparison
+        if command -v python3 &> /dev/null; then
+            local threshold=${REGRESSION_THRESHOLD:-5.0}
+            local compare_args="--threshold $threshold"
 
-    print_warn "Baseline comparison not yet fully implemented"
+            if [ "$CI_MODE" = true ]; then
+                compare_args="$compare_args --ci"
+            fi
+
+            python3 "$SCRIPT_DIR/compare_benchmarks.py" "$baseline_file" "$JSON_FILE" $compare_args
+            local exit_code=$?
+
+            if [ $exit_code -ne 0 ] && [ "$CI_MODE" = true ]; then
+                print_error "Performance regression detected!"
+                return 1
+            fi
+        else
+            print_warn "Python 3 not found. Skipping detailed comparison."
+        fi
+    else
+        print_warn "Comparison script not found. Skipping baseline comparison."
+    fi
+
     echo ""
 }
 
