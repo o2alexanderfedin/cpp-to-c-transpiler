@@ -4,6 +4,38 @@
 **Project**: C++ to C Transpiler Runtime Performance Validation
 **Coverage**: RTTI, Exception Handling, Virtual Calls, Coroutines
 
+## Table of Contents
+
+- [Executive Summary](#executive-summary)
+- [Overall Performance Summary](#overall-performance-summary)
+- [1. RTTI Runtime Benchmark](#1-rtti-runtime-benchmark)
+  - [RTTI Performance Results](#rtti-performance-results)
+  - [RTTI Key Achievements](#rtti-key-achievements)
+  - [RTTI Technical Details](#rtti-technical-details)
+- [2. Virtual Call Runtime Benchmark](#2-virtual-call-runtime-benchmark)
+  - [Virtual Call Performance Results](#virtual-call-performance-results)
+  - [Virtual Call Key Achievements](#virtual-call-key-achievements)
+  - [Virtual Call Technical Details](#virtual-call-technical-details)
+- [3. Coroutine Runtime Benchmark](#3-coroutine-runtime-benchmark)
+  - [Coroutine Performance Results](#coroutine-performance-results)
+  - [Coroutine Key Achievements](#coroutine-key-achievements)
+  - [Coroutine Technical Details](#coroutine-technical-details)
+- [4. Exception Handling Runtime Benchmark](#4-exception-handling-runtime-benchmark)
+  - [Exception Performance Results](#exception-performance-results)
+  - [Exception Key Achievements](#exception-key-achievements)
+- [Comparison Methodology](#comparison-methodology)
+  - [Benchmark Executables](#benchmark-executables)
+- [Build Instructions](#build-instructions)
+- [Files Delivered](#files-delivered)
+  - [RTTI Benchmarks](#rtti-benchmarks)
+  - [Virtual Call Benchmarks](#virtual-call-benchmarks)
+  - [Coroutine Benchmarks](#coroutine-benchmarks)
+  - [Exception Benchmarks](#exception-benchmarks)
+  - [Infrastructure](#infrastructure)
+- [Conclusion](#conclusion)
+  - [Performance Summary by Feature](#performance-summary-by-feature)
+- [Next Steps](#next-steps)
+
 ## Executive Summary
 
 The complete runtime benchmark suite has been implemented and validates **OUTSTANDING** performance across all C++ runtime features. All performance targets have been met or exceeded.
