@@ -25,6 +25,7 @@
 #ifndef CNODEBUILDER_H
 #define CNODEBUILDER_H
 
+#include "llvm/Config/llvm-config.h"  // For LLVM_VERSION_MAJOR
 #include "clang/AST/ASTContext.h"
 #include "clang/AST/Decl.h"
 #include "clang/AST/Expr.h"
@@ -141,7 +142,11 @@ public:
         // Create a tag declaration for the struct
         RecordDecl *RD = RecordDecl::Create(
             Ctx,
+#if LLVM_VERSION_MAJOR >= 16
             TagTypeKind::Struct,
+#else
+            TagDecl::TTK_Struct,
+#endif
             Ctx.getTranslationUnitDecl(),
             SourceLocation(),
             SourceLocation(),
@@ -343,13 +348,21 @@ public:
         return StringLiteral::Create(
             Ctx,
             str,
+#if LLVM_VERSION_MAJOR >= 16
             StringLiteralKind::Ordinary,
+#else
+            StringLiteral::Ordinary,
+#endif
             false,
             Ctx.getConstantArrayType(
                 charType(),
                 llvm::APInt(32, str.size() + 1),
                 nullptr,
+#if LLVM_VERSION_MAJOR >= 16
                 ArraySizeModifier::Normal,
+#else
+                ArrayType::Normal,
+#endif
                 0
             ),
             SourceLocation()
@@ -864,7 +877,11 @@ public:
 
         RecordDecl *RD = RecordDecl::Create(
             Ctx,
+#if LLVM_VERSION_MAJOR >= 16
             TagTypeKind::Struct,
+#else
+            TagDecl::TTK_Struct,
+#endif
             Ctx.getTranslationUnitDecl(),
             SourceLocation(),
             SourceLocation(),
@@ -927,7 +944,11 @@ public:
 
         return RecordDecl::Create(
             Ctx,
+#if LLVM_VERSION_MAJOR >= 16
             TagTypeKind::Struct,
+#else
+            TagDecl::TTK_Struct,
+#endif
             Ctx.getTranslationUnitDecl(),
             SourceLocation(),
             SourceLocation(),
