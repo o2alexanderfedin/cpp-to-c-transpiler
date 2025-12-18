@@ -59,6 +59,67 @@ if(ENABLE_COVERAGE)
     endif()
 endif()
 
+# ============================================================================
+# Sanitizer Configuration (Story #125 - Memory Safety, UB, Thread Safety)
+# ============================================================================
+option(ENABLE_ASAN "Enable AddressSanitizer (memory errors, leaks)" OFF)
+option(ENABLE_UBSAN "Enable UndefinedBehaviorSanitizer (UB detection)" OFF)
+option(ENABLE_TSAN "Enable ThreadSanitizer (data races)" OFF)
+option(ENABLE_MSAN "Enable MemorySanitizer (uninitialized reads)" OFF)
+
+# AddressSanitizer: Detects memory errors, use-after-free, buffer overflows, leaks
+if(ENABLE_ASAN)
+    message(STATUS "AddressSanitizer enabled")
+    set(SANITIZER_FLAGS "${SANITIZER_FLAGS} -fsanitize=address -fno-omit-frame-pointer")
+    set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} -fsanitize=address")
+
+    # ASan options can be controlled via ASAN_OPTIONS environment variable:
+    # detect_leaks=1, halt_on_error=0, allocator_may_return_null=1, etc.
+endif()
+
+# UndefinedBehaviorSanitizer: Detects undefined behavior (integer overflow, null deref, etc.)
+if(ENABLE_UBSAN)
+    message(STATUS "UndefinedBehaviorSanitizer enabled")
+    set(SANITIZER_FLAGS "${SANITIZER_FLAGS} -fsanitize=undefined -fno-sanitize-recover=all")
+    set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} -fsanitize=undefined")
+
+    # UBSan checks: alignment, bounds, builtin, enum, float-cast-overflow,
+    # float-divide-by-zero, integer-divide-by-zero, nonnull-attribute, null,
+    # object-size, pointer-overflow, return, returns-nonnull-attribute, shift,
+    # signed-integer-overflow, unreachable, vla-bound, vptr
+endif()
+
+# ThreadSanitizer: Detects data races and thread safety issues
+# Note: TSan cannot be combined with ASan or MSan
+if(ENABLE_TSAN)
+    message(STATUS "ThreadSanitizer enabled")
+    if(ENABLE_ASAN OR ENABLE_MSAN)
+        message(FATAL_ERROR "ThreadSanitizer cannot be combined with AddressSanitizer or MemorySanitizer")
+    endif()
+    set(SANITIZER_FLAGS "${SANITIZER_FLAGS} -fsanitize=thread")
+    set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} -fsanitize=thread")
+endif()
+
+# MemorySanitizer: Detects uninitialized memory reads (requires full rebuild)
+if(ENABLE_MSAN)
+    message(STATUS "MemorySanitizer enabled")
+    if(ENABLE_ASAN OR ENABLE_TSAN)
+        message(FATAL_ERROR "MemorySanitizer cannot be combined with AddressSanitizer or ThreadSanitizer")
+    endif()
+    set(SANITIZER_FLAGS "${SANITIZER_FLAGS} -fsanitize=memory -fno-omit-frame-pointer")
+    set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} -fsanitize=memory")
+endif()
+
+# Apply sanitizer flags if any sanitizer is enabled
+if(ENABLE_ASAN OR ENABLE_UBSAN OR ENABLE_TSAN OR ENABLE_MSAN)
+    set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} ${SANITIZER_FLAGS} -g -O1")
+    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} ${SANITIZER_FLAGS} -g -O1")
+
+    message(STATUS "Sanitizer flags: ${SANITIZER_FLAGS}")
+    message(STATUS "Note: Sanitizers add 2-10x performance overhead for comprehensive checking")
+    message(STATUS "Use scripts/run-sanitizers.sh for automated sanitizer testing")
+endif()
+
 # Find LLVM and Clang packages
 # Using CONFIG mode for better reliability
 find_package(LLVM REQUIRED CONFIG)

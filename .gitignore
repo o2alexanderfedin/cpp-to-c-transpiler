@@ -69,6 +69,17 @@ compile_commands.json
 *.gcno
 *.gcov
 coverage/
+build-coverage/
+
+# Sanitizers (Story #125)
+build-sanitizers/
+sanitizer-reports/
+*san_log.*
+asan_log.*
+ubsan_log.*
+tsan_log.*
+msan_log.*
+valgrind-*.log
 
 # Profiling
 *.prof

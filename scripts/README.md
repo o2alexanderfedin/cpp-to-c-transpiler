@@ -73,9 +73,63 @@ Opens and displays code coverage reports.
 
 Optimizes build configuration and settings.
 
+### Memory Safety Testing
+
+#### run-sanitizers.sh
+
+**Story #125** - Comprehensive memory safety, undefined behavior, and thread safety testing using industry-standard sanitizers.
+
+**Quick Start:**
+```bash
+./scripts/run-sanitizers.sh
+```
+
+**Options:**
+- `--asan` - Run AddressSanitizer only
+- `--ubsan` - Run UndefinedBehaviorSanitizer only
+- `--tsan` - Run ThreadSanitizer only
+- `--valgrind` - Run Valgrind only (if available)
+- `--all` - Run all sanitizers (default)
+- `--fail-fast` - Exit on first failure
+- `--verbose` - Show detailed output
+- `--report` - Generate HTML reports
+- `--help` - Show help message
+
+**What it detects:**
+- **AddressSanitizer (ASan)**: Memory leaks, use-after-free, buffer overflows, heap corruption
+- **UndefinedBehaviorSanitizer (UBSan)**: Integer overflow, null pointer dereference, invalid casts, alignment issues
+- **ThreadSanitizer (TSan)**: Data races, deadlocks, thread safety violations
+- **Valgrind**: Memory leaks, invalid memory access (Linux only, limited macOS support)
+
+**Output:**
+- Text reports: `sanitizer-reports/*.txt`
+- HTML report: `sanitizer-reports/sanitizer-report.html`
+- Logs: `sanitizer-reports/sanitizer-run.log`
+
+**Examples:**
+```bash
+# Run all sanitizers
+./scripts/run-sanitizers.sh
+
+# Run only ASan and UBSan (fast check)
+./scripts/run-sanitizers.sh --asan --ubsan
+
+# Run with verbose output and fail fast
+./scripts/run-sanitizers.sh --fail-fast --verbose
+
+# Generate HTML report
+./scripts/run-sanitizers.sh --report
+```
+
+**Platform Support:**
+- macOS (Apple Silicon/Intel): ASan, UBSan, TSan
+- Linux: ASan, UBSan, TSan, Valgrind
+
+See [docs/MEMORY_SAFETY_TESTING.md](/docs/MEMORY_SAFETY_TESTING.md) for complete documentation.
+
 #### test_memory_leaks.sh
 
-Tests for memory leaks in the transpiler.
+Legacy memory leak testing script (superseded by run-sanitizers.sh).
 
 ### GitHub Projects
 
