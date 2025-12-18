@@ -1,0 +1,538 @@
+name: Memory Safety and Sanitizers
+
+on:
+  push:
+    branches:
+      - develop
+      - main
+  pull_request:
+    branches:
+      - develop
+      - main
+  schedule:
+    # Run nightly at 2 AM UTC
+    - cron: '0 2 * * *'
+  workflow_dispatch:
+
+# Cancel in-progress runs for the same branch
+concurrency:
+  group: sanitizers-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  BUILD_TYPE: Debug
+  LLVM_VERSION: 15
+
+jobs:
+  # Address Sanitizer (ASan) - detects memory errors
+  address-sanitizer:
+    name: AddressSanitizer
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Install system dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y \
+            build-essential \
+            cmake \
+            ninja-build \
+            llvm-${{ env.LLVM_VERSION }}-dev \
+            libclang-${{ env.LLVM_VERSION }}-dev \
+            clang-${{ env.LLVM_VERSION }}
+
+      - name: Setup LLVM environment
+        run: |
+          echo "LLVM_DIR=/usr/lib/llvm-${{ env.LLVM_VERSION }}/lib/cmake/llvm" >> $GITHUB_ENV
+          echo "Clang_DIR=/usr/lib/llvm-${{ env.LLVM_VERSION }}/lib/cmake/clang" >> $GITHUB_ENV
+          echo "/usr/lib/llvm-${{ env.LLVM_VERSION }}/bin" >> $GITHUB_PATH
+
+      - name: Configure CMake with ASan
+        run: |
+          cmake -B build \
+            -G Ninja \
+            -DCMAKE_BUILD_TYPE=${{ env.BUILD_TYPE }} \
+            -DCMAKE_CXX_FLAGS="-fsanitize=address -fno-omit-frame-pointer -g" \
+            -DCMAKE_C_FLAGS="-fsanitize=address -fno-omit-frame-pointer -g" \
+            -DCMAKE_EXE_LINKER_FLAGS="-fsanitize=address" \
+            -DLLVM_DIR=${{ env.LLVM_DIR }} \
+            -DClang_DIR=${{ env.Clang_DIR }}
+
+      - name: Build project
+        run: cmake --build build --config ${{ env.BUILD_TYPE }} --parallel $(nproc)
+
+      - name: Run tests with ASan
+        env:
+          ASAN_OPTIONS: detect_leaks=1:halt_on_error=0:log_path=asan_log
+        run: |
+          cd build
+
+          # Run subset of critical tests
+          CRITICAL_TESTS=(
+            "CppToCVisitorTest"
+            "NameManglerTest"
+            "CodeGeneratorTest"
+            "CFGAnalysisTest"
+            "ExceptionRuntimeTest"
+            "RAIIIntegrationTest"
+            "VirtualFunctionIntegrationTest"
+          )
+
+          FAILED_TESTS=()
+          PASSED_TESTS=0
+
+          for test in "${CRITICAL_TESTS[@]}"; do
+            if [ -f "./$test" ]; then
+              echo "Running $test with AddressSanitizer..."
+              if ./"$test"; then
+                echo "✓ $test PASSED"
+                PASSED_TESTS=$((PASSED_TESTS + 1))
+              else
+                echo "✗ $test FAILED"
+                FAILED_TESTS+=("$test")
+              fi
+            fi
+          done
+
+          echo ""
+          echo "======================================"
+          echo "AddressSanitizer Results"
+          echo "======================================"
+          echo "Passed: $PASSED_TESTS"
+          echo "Failed: ${#FAILED_TESTS[@]}"
+
+          # Check for ASan reports
+          if ls asan_log.* 1> /dev/null 2>&1; then
+            echo ""
+            echo "⚠️ AddressSanitizer detected issues:"
+            cat asan_log.*
+          fi
+
+          if [ ${#FAILED_TESTS[@]} -ne 0 ]; then
+            exit 1
+          fi
+
+      - name: Upload ASan logs
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: asan-logs
+          path: build/asan_log.*
+          retention-days: 7
+          if-no-files-found: ignore
+
+  # Undefined Behavior Sanitizer (UBSan)
+  undefined-behavior-sanitizer:
+    name: UndefinedBehaviorSanitizer
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Install system dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y \
+            build-essential \
+            cmake \
+            ninja-build \
+            llvm-${{ env.LLVM_VERSION }}-dev \
+            libclang-${{ env.LLVM_VERSION }}-dev \
+            clang-${{ env.LLVM_VERSION }}
+
+      - name: Setup LLVM environment
+        run: |
+          echo "LLVM_DIR=/usr/lib/llvm-${{ env.LLVM_VERSION }}/lib/cmake/llvm" >> $GITHUB_ENV
+          echo "Clang_DIR=/usr/lib/llvm-${{ env.LLVM_VERSION }}/lib/cmake/clang" >> $GITHUB_ENV
+          echo "/usr/lib/llvm-${{ env.LLVM_VERSION }}/bin" >> $GITHUB_PATH
+
+      - name: Configure CMake with UBSan
+        run: |
+          cmake -B build \
+            -G Ninja \
+            -DCMAKE_BUILD_TYPE=${{ env.BUILD_TYPE }} \
+            -DCMAKE_CXX_FLAGS="-fsanitize=undefined -fno-omit-frame-pointer -g" \
+            -DCMAKE_C_FLAGS="-fsanitize=undefined -fno-omit-frame-pointer -g" \
+            -DCMAKE_EXE_LINKER_FLAGS="-fsanitize=undefined" \
+            -DLLVM_DIR=${{ env.LLVM_DIR }} \
+            -DClang_DIR=${{ env.Clang_DIR }}
+
+      - name: Build project
+        run: cmake --build build --config ${{ env.BUILD_TYPE }} --parallel $(nproc)
+
+      - name: Run tests with UBSan
+        env:
+          UBSAN_OPTIONS: print_stacktrace=1:halt_on_error=0:log_path=ubsan_log
+        run: |
+          cd build
+
+          CRITICAL_TESTS=(
+            "CppToCVisitorTest"
+            "NameManglerTest"
+            "CodeGeneratorTest"
+            "TemplateExtractorTest"
+            "MonomorphizationTest"
+          )
+
+          FAILED_TESTS=()
+          PASSED_TESTS=0
+
+          for test in "${CRITICAL_TESTS[@]}"; do
+            if [ -f "./$test" ]; then
+              echo "Running $test with UndefinedBehaviorSanitizer..."
+              if ./"$test"; then
+                echo "✓ $test PASSED"
+                PASSED_TESTS=$((PASSED_TESTS + 1))
+              else
+                echo "✗ $test FAILED"
+                FAILED_TESTS+=("$test")
+              fi
+            fi
+          done
+
+          echo ""
+          echo "======================================"
+          echo "UndefinedBehaviorSanitizer Results"
+          echo "======================================"
+          echo "Passed: $PASSED_TESTS"
+          echo "Failed: ${#FAILED_TESTS[@]}"
+
+          # Check for UBSan reports
+          if ls ubsan_log.* 1> /dev/null 2>&1; then
+            echo ""
+            echo "⚠️ UndefinedBehaviorSanitizer detected issues:"
+            cat ubsan_log.*
+          fi
+
+          if [ ${#FAILED_TESTS[@]} -ne 0 ]; then
+            exit 1
+          fi
+
+      - name: Upload UBSan logs
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: ubsan-logs
+          path: build/ubsan_log.*
+          retention-days: 7
+          if-no-files-found: ignore
+
+  # Thread Sanitizer (TSan) - detects data races
+  thread-sanitizer:
+    name: ThreadSanitizer
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Install system dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y \
+            build-essential \
+            cmake \
+            ninja-build \
+            llvm-${{ env.LLVM_VERSION }}-dev \
+            libclang-${{ env.LLVM_VERSION }}-dev \
+            clang-${{ env.LLVM_VERSION }}
+
+      - name: Setup LLVM environment
+        run: |
+          echo "LLVM_DIR=/usr/lib/llvm-${{ env.LLVM_VERSION }}/lib/cmake/llvm" >> $GITHUB_ENV
+          echo "Clang_DIR=/usr/lib/llvm-${{ env.LLVM_VERSION }}/lib/cmake/clang" >> $GITHUB_ENV
+          echo "/usr/lib/llvm-${{ env.LLVM_VERSION }}/bin" >> $GITHUB_PATH
+
+      - name: Configure CMake with TSan
+        run: |
+          cmake -B build \
+            -G Ninja \
+            -DCMAKE_BUILD_TYPE=${{ env.BUILD_TYPE }} \
+            -DCMAKE_CXX_FLAGS="-fsanitize=thread -fno-omit-frame-pointer -g" \
+            -DCMAKE_C_FLAGS="-fsanitize=thread -fno-omit-frame-pointer -g" \
+            -DCMAKE_EXE_LINKER_FLAGS="-fsanitize=thread" \
+            -DLLVM_DIR=${{ env.LLVM_DIR }} \
+            -DClang_DIR=${{ env.Clang_DIR }}
+
+      - name: Build project
+        run: cmake --build build --config ${{ env.BUILD_TYPE }} --parallel $(nproc)
+
+      - name: Run thread-safety tests with TSan
+        env:
+          TSAN_OPTIONS: halt_on_error=0:log_path=tsan_log
+        run: |
+          cd build
+
+          # Only run tests that involve threading
+          THREAD_TESTS=(
+            "ExceptionThreadSafetyTest"
+          )
+
+          FAILED_TESTS=()
+          PASSED_TESTS=0
+
+          for test in "${THREAD_TESTS[@]}"; do
+            if [ -f "./$test" ]; then
+              echo "Running $test with ThreadSanitizer..."
+              if ./"$test"; then
+                echo "✓ $test PASSED"
+                PASSED_TESTS=$((PASSED_TESTS + 1))
+              else
+                echo "✗ $test FAILED"
+                FAILED_TESTS+=("$test")
+              fi
+            fi
+          done
+
+          echo ""
+          echo "======================================"
+          echo "ThreadSanitizer Results"
+          echo "======================================"
+          echo "Passed: $PASSED_TESTS"
+          echo "Failed: ${#FAILED_TESTS[@]}"
+
+          # Check for TSan reports
+          if ls tsan_log.* 1> /dev/null 2>&1; then
+            echo ""
+            echo "⚠️ ThreadSanitizer detected issues:"
+            cat tsan_log.*
+          fi
+
+          if [ ${#FAILED_TESTS[@]} -ne 0 ]; then
+            exit 1
+          fi
+
+      - name: Upload TSan logs
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: tsan-logs
+          path: build/tsan_log.*
+          retention-days: 7
+          if-no-files-found: ignore
+
+  # Memory Sanitizer (MSan) - detects uninitialized memory reads
+  memory-sanitizer:
+    name: MemorySanitizer
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Install system dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y \
+            build-essential \
+            cmake \
+            ninja-build \
+            llvm-${{ env.LLVM_VERSION }}-dev \
+            libclang-${{ env.LLVM_VERSION }}-dev \
+            clang-${{ env.LLVM_VERSION }}
+
+      - name: Setup LLVM environment
+        run: |
+          echo "LLVM_DIR=/usr/lib/llvm-${{ env.LLVM_VERSION }}/lib/cmake/llvm" >> $GITHUB_ENV
+          echo "Clang_DIR=/usr/lib/llvm-${{ env.LLVM_VERSION }}/lib/cmake/clang" >> $GITHUB_ENV
+          echo "/usr/lib/llvm-${{ env.LLVM_VERSION }}/bin" >> $GITHUB_PATH
+
+      - name: Configure CMake with MSan
+        run: |
+          cmake -B build \
+            -G Ninja \
+            -DCMAKE_BUILD_TYPE=${{ env.BUILD_TYPE }} \
+            -DCMAKE_CXX_COMPILER=clang++-${{ env.LLVM_VERSION }} \
+            -DCMAKE_C_COMPILER=clang-${{ env.LLVM_VERSION }} \
+            -DCMAKE_CXX_FLAGS="-fsanitize=memory -fno-omit-frame-pointer -g" \
+            -DCMAKE_C_FLAGS="-fsanitize=memory -fno-omit-frame-pointer -g" \
+            -DCMAKE_EXE_LINKER_FLAGS="-fsanitize=memory" \
+            -DLLVM_DIR=${{ env.LLVM_DIR }} \
+            -DClang_DIR=${{ env.Clang_DIR }}
+
+      - name: Build project
+        run: cmake --build build --config ${{ env.BUILD_TYPE }} --parallel $(nproc)
+
+      - name: Run tests with MSan
+        env:
+          MSAN_OPTIONS: halt_on_error=0:log_path=msan_log
+        continue-on-error: true
+        run: |
+          cd build
+
+          # MSan is very strict, run minimal tests
+          MINIMAL_TESTS=(
+            "NameManglerTest"
+            "CodeGeneratorTest"
+          )
+
+          FAILED_TESTS=()
+          PASSED_TESTS=0
+
+          for test in "${MINIMAL_TESTS[@]}"; do
+            if [ -f "./$test" ]; then
+              echo "Running $test with MemorySanitizer..."
+              if ./"$test"; then
+                echo "✓ $test PASSED"
+                PASSED_TESTS=$((PASSED_TESTS + 1))
+              else
+                echo "✗ $test FAILED"
+                FAILED_TESTS+=("$test")
+              fi
+            fi
+          done
+
+          echo ""
+          echo "======================================"
+          echo "MemorySanitizer Results"
+          echo "======================================"
+          echo "Passed: $PASSED_TESTS"
+          echo "Failed: ${#FAILED_TESTS[@]}"
+
+          # Check for MSan reports
+          if ls msan_log.* 1> /dev/null 2>&1; then
+            echo ""
+            echo "⚠️ MemorySanitizer detected issues:"
+            cat msan_log.*
+          fi
+
+      - name: Upload MSan logs
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: msan-logs
+          path: build/msan_log.*
+          retention-days: 7
+          if-no-files-found: ignore
+
+  # Valgrind - additional memory checking
+  valgrind:
+    name: Valgrind Memory Check
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Install system dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y \
+            build-essential \
+            cmake \
+            ninja-build \
+            llvm-${{ env.LLVM_VERSION }}-dev \
+            libclang-${{ env.LLVM_VERSION }}-dev \
+            clang-${{ env.LLVM_VERSION }} \
+            valgrind
+
+      - name: Setup LLVM environment
+        run: |
+          echo "LLVM_DIR=/usr/lib/llvm-${{ env.LLVM_VERSION }}/lib/cmake/llvm" >> $GITHUB_ENV
+          echo "Clang_DIR=/usr/lib/llvm-${{ env.LLVM_VERSION }}/lib/cmake/clang" >> $GITHUB_ENV
+          echo "/usr/lib/llvm-${{ env.LLVM_VERSION }}/bin" >> $GITHUB_PATH
+
+      - name: Configure CMake
+        run: |
+          cmake -B build \
+            -G Ninja \
+            -DCMAKE_BUILD_TYPE=${{ env.BUILD_TYPE }} \
+            -DLLVM_DIR=${{ env.LLVM_DIR }} \
+            -DClang_DIR=${{ env.Clang_DIR }}
+
+      - name: Build project
+        run: cmake --build build --config ${{ env.BUILD_TYPE }} --parallel $(nproc)
+
+      - name: Run tests with Valgrind
+        run: |
+          cd build
+
+          # Run a few critical tests under Valgrind
+          VALGRIND_TESTS=(
+            "NameManglerTest"
+            "CodeGeneratorTest"
+          )
+
+          for test in "${VALGRIND_TESTS[@]}"; do
+            if [ -f "./$test" ]; then
+              echo "Running $test with Valgrind..."
+              valgrind \
+                --leak-check=full \
+                --show-leak-kinds=all \
+                --track-origins=yes \
+                --verbose \
+                --log-file=valgrind-$test.log \
+                ./"$test" || true
+            fi
+          done
+
+          # Check for errors
+          echo ""
+          echo "======================================"
+          echo "Valgrind Results"
+          echo "======================================"
+
+          for log in valgrind-*.log; do
+            if [ -f "$log" ]; then
+              echo "Report: $log"
+              grep -E "ERROR SUMMARY|definitely lost|indirectly lost|possibly lost" "$log" || true
+              echo ""
+            fi
+          done
+
+      - name: Upload Valgrind logs
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: valgrind-logs
+          path: build/valgrind-*.log
+          retention-days: 7
+          if-no-files-found: ignore
+
+  # Report overall sanitizer status
+  sanitizers-status:
+    name: Sanitizers Status
+    runs-on: ubuntu-latest
+    needs: [address-sanitizer, undefined-behavior-sanitizer, thread-sanitizer, memory-sanitizer, valgrind]
+    if: always()
+
+    steps:
+      - name: Check job statuses
+        run: |
+          echo "AddressSanitizer: ${{ needs.address-sanitizer.result }}"
+          echo "UndefinedBehaviorSanitizer: ${{ needs.undefined-behavior-sanitizer.result }}"
+          echo "ThreadSanitizer: ${{ needs.thread-sanitizer.result }}"
+          echo "MemorySanitizer: ${{ needs.memory-sanitizer.result }}"
+          echo "Valgrind: ${{ needs.valgrind.result }}"
+
+          # Only fail on critical sanitizers (ASan, UBSan, TSan)
+          if [ "${{ needs.address-sanitizer.result }}" != "success" ] || \
+             [ "${{ needs.undefined-behavior-sanitizer.result }}" != "success" ] || \
+             [ "${{ needs.thread-sanitizer.result }}" != "success" ]; then
+            echo "❌ Critical sanitizers failed"
+            exit 1
+          else
+            echo "✅ Critical sanitizers passed!"
+          fi
+
+      - name: Generate summary
+        if: always()
+        run: |
+          echo "## Memory Safety Checks Summary" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "| Sanitizer | Status |" >> $GITHUB_STEP_SUMMARY
+          echo "|-----------|--------|" >> $GITHUB_STEP_SUMMARY
+          echo "| AddressSanitizer | ${{ needs.address-sanitizer.result }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| UndefinedBehaviorSanitizer | ${{ needs.undefined-behavior-sanitizer.result }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| ThreadSanitizer | ${{ needs.thread-sanitizer.result }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| MemorySanitizer | ${{ needs.memory-sanitizer.result }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| Valgrind | ${{ needs.valgrind.result }} |" >> $GITHUB_STEP_SUMMARY

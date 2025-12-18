@@ -1,0 +1,486 @@
+name: Continuous Integration
+
+on:
+  push:
+    branches:
+      - develop
+      - main
+      - 'feature/**'
+      - 'bugfix/**'
+  pull_request:
+    branches:
+      - develop
+      - main
+  workflow_dispatch:
+
+# Cancel in-progress runs for the same branch
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  BUILD_TYPE: Release
+  LLVM_VERSION: 15
+
+jobs:
+  # Fast unit tests on Linux (main platform)
+  unit-tests-linux:
+    name: Unit Tests (Linux)
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Install system dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y \
+            build-essential \
+            cmake \
+            ninja-build \
+            llvm-${{ env.LLVM_VERSION }}-dev \
+            libclang-${{ env.LLVM_VERSION }}-dev \
+            clang-${{ env.LLVM_VERSION }}
+
+      - name: Setup LLVM environment
+        run: |
+          echo "LLVM_DIR=/usr/lib/llvm-${{ env.LLVM_VERSION }}/lib/cmake/llvm" >> $GITHUB_ENV
+          echo "Clang_DIR=/usr/lib/llvm-${{ env.LLVM_VERSION }}/lib/cmake/clang" >> $GITHUB_ENV
+          echo "/usr/lib/llvm-${{ env.LLVM_VERSION }}/bin" >> $GITHUB_PATH
+
+      - name: Cache LLVM/Clang
+        uses: actions/cache@v4
+        with:
+          path: |
+            /usr/lib/llvm-${{ env.LLVM_VERSION }}
+          key: ${{ runner.os }}-llvm-${{ env.LLVM_VERSION }}
+
+      - name: Configure CMake
+        run: |
+          cmake -B build \
+            -G Ninja \
+            -DCMAKE_BUILD_TYPE=${{ env.BUILD_TYPE }} \
+            -DLLVM_DIR=${{ env.LLVM_DIR }} \
+            -DClang_DIR=${{ env.Clang_DIR }}
+
+      - name: Build project
+        run: cmake --build build --config ${{ env.BUILD_TYPE }} --parallel $(nproc)
+
+      - name: Run unit tests
+        run: |
+          cd build
+
+          # List of unit test executables (excluding integration/real-world tests)
+          UNIT_TESTS=(
+            "CppToCVisitorTest"
+            "NameManglerTest"
+            "OverloadResolutionTest"
+            "TemplateExtractorTest"
+            "MonomorphizationTest"
+            "STLIntegrationTest"
+            "CodeGeneratorTest"
+            "HeaderSeparatorTest"
+            "IncludeGuardGeneratorTest"
+            "ForwardDeclTest"
+            "DependencyAnalyzerTest"
+            "FileOutputManagerTest"
+            "CFGAnalysisTest"
+            "FunctionExitDestructorTest"
+            "EarlyReturnDestructorTest"
+            "NestedScopeDestructorTest"
+            "GotoDestructorTest"
+            "LoopDestructorTest"
+            "RAIIIntegrationTest"
+            "InheritanceTest"
+            "VirtualMethodAnalyzerTest"
+            "VtableGeneratorTest"
+            "VptrInjectorTest"
+            "OverrideResolverTest"
+            "VtableInitializerTest"
+            "VirtualCallTranslatorTest"
+            "PureVirtualHandlerTest"
+            "VirtualDestructorHandlerTest"
+            "VirtualFunctionIntegrationTest"
+            "MemberInitListTest"
+            "ExceptionFrameTest"
+            "ActionTableGeneratorTest"
+            "TryCatchTransformerTest"
+            "ThrowTranslatorTest"
+            "CatchHandlerTypeMatchingTest"
+            "ExceptionRuntimeTest"
+            "ExceptionIntegrationTest"
+            "ExceptionThreadSafetyTest"
+            "ExceptionPerformanceTest"
+            "TypeInfoGeneratorTest"
+            "TypeidTranslatorTest"
+            "DynamicCastTranslatorTest"
+            "HierarchyTraversalTest"
+            "DynamicCastCrossCastTest"
+            "CrossCastTraversalTest"
+            "VirtualBaseDetectionTest"
+            "VirtualBaseOffsetTableTest"
+            "VTTGeneratorTest"
+            "ConstructorSplitterTest"
+            "CoroutineDetectorTest"
+            "SuspendPointIdentifierTest"
+            "StateMachineTransformerTest"
+            "PromiseTranslatorTest"
+            "ResumeDestroyFunctionTest"
+            "FrameAllocationTest"
+            "CoroutineIntegrationTest"
+            "RuntimeModeInlineTest"
+            "RuntimeModeLibraryTest"
+            "RuntimeFeatureFlagsTest"
+            "SizeOptimizationTest"
+            "OperatorOverloadingTest"
+            "LambdaTranslatorTest"
+            "MoveSemanticTranslatorTest"
+            "TypeTraitsTest"
+            "MetaprogrammingTest"
+            "EdgeCasesTest"
+            "ErrorHandlingTest"
+            "FeatureInteractionTest"
+            "FeatureCombinationTest"
+            "UniquePtrTest"
+            "SharedPtrTest"
+            "SmartPointerRaiiIntegrationTest"
+          )
+
+          FAILED_TESTS=()
+          PASSED_TESTS=0
+
+          for test in "${UNIT_TESTS[@]}"; do
+            if [ -f "./$test" ]; then
+              echo "Running $test..."
+              if ./"$test"; then
+                echo "✓ $test PASSED"
+                PASSED_TESTS=$((PASSED_TESTS + 1))
+              else
+                echo "✗ $test FAILED"
+                FAILED_TESTS+=("$test")
+              fi
+            else
+              echo "⚠ $test not found (may not be built)"
+            fi
+          done
+
+          echo ""
+          echo "======================================"
+          echo "Unit Tests Summary"
+          echo "======================================"
+          echo "Passed: $PASSED_TESTS"
+          echo "Failed: ${#FAILED_TESTS[@]}"
+
+          if [ ${#FAILED_TESTS[@]} -ne 0 ]; then
+            echo ""
+            echo "Failed tests:"
+            for test in "${FAILED_TESTS[@]}"; do
+              echo "  - $test"
+            done
+            exit 1
+          fi
+
+      - name: Upload test results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: unit-test-results-linux
+          path: |
+            build/**/*.log
+            build/Testing/
+          retention-days: 7
+
+  # Integration tests (Linux)
+  integration-tests-linux:
+    name: Integration Tests (Linux)
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    needs: unit-tests-linux
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Install system dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y \
+            build-essential \
+            cmake \
+            ninja-build \
+            llvm-${{ env.LLVM_VERSION }}-dev \
+            libclang-${{ env.LLVM_VERSION }}-dev \
+            clang-${{ env.LLVM_VERSION }}
+
+      - name: Setup LLVM environment
+        run: |
+          echo "LLVM_DIR=/usr/lib/llvm-${{ env.LLVM_VERSION }}/lib/cmake/llvm" >> $GITHUB_ENV
+          echo "Clang_DIR=/usr/lib/llvm-${{ env.LLVM_VERSION }}/lib/cmake/clang" >> $GITHUB_ENV
+          echo "/usr/lib/llvm-${{ env.LLVM_VERSION }}/bin" >> $GITHUB_PATH
+
+      - name: Cache LLVM/Clang
+        uses: actions/cache@v4
+        with:
+          path: |
+            /usr/lib/llvm-${{ env.LLVM_VERSION }}
+          key: ${{ runner.os }}-llvm-${{ env.LLVM_VERSION }}
+
+      - name: Configure CMake
+        run: |
+          cmake -B build \
+            -G Ninja \
+            -DCMAKE_BUILD_TYPE=${{ env.BUILD_TYPE }} \
+            -DLLVM_DIR=${{ env.LLVM_DIR }} \
+            -DClang_DIR=${{ env.Clang_DIR }}
+
+      - name: Build project
+        run: cmake --build build --config ${{ env.BUILD_TYPE }} --parallel $(nproc)
+
+      - name: Run integration tests
+        run: |
+          cd build
+
+          INTEGRATION_TESTS=(
+            "TranslationIntegrationTest"
+            "ValidationTest"
+            "IntegrationTest"
+          )
+
+          FAILED_TESTS=()
+          PASSED_TESTS=0
+
+          for test in "${INTEGRATION_TESTS[@]}"; do
+            if [ -f "./$test" ]; then
+              echo "Running $test..."
+              if ./"$test"; then
+                echo "✓ $test PASSED"
+                PASSED_TESTS=$((PASSED_TESTS + 1))
+              else
+                echo "✗ $test FAILED"
+                FAILED_TESTS+=("$test")
+              fi
+            fi
+          done
+
+          echo ""
+          echo "======================================"
+          echo "Integration Tests Summary"
+          echo "======================================"
+          echo "Passed: $PASSED_TESTS"
+          echo "Failed: ${#FAILED_TESTS[@]}"
+
+          if [ ${#FAILED_TESTS[@]} -ne 0 ]; then
+            echo ""
+            echo "Failed tests:"
+            for test in "${FAILED_TESTS[@]}"; do
+              echo "  - $test"
+            done
+            exit 1
+          fi
+
+  # Real-world tests (Linux)
+  real-world-tests-linux:
+    name: Real-World Tests (Linux)
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    needs: integration-tests-linux
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Install system dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y \
+            build-essential \
+            cmake \
+            ninja-build \
+            llvm-${{ env.LLVM_VERSION }}-dev \
+            libclang-${{ env.LLVM_VERSION }}-dev \
+            clang-${{ env.LLVM_VERSION }}
+
+      - name: Setup LLVM environment
+        run: |
+          echo "LLVM_DIR=/usr/lib/llvm-${{ env.LLVM_VERSION }}/lib/cmake/llvm" >> $GITHUB_ENV
+          echo "Clang_DIR=/usr/lib/llvm-${{ env.LLVM_VERSION }}/lib/cmake/clang" >> $GITHUB_ENV
+          echo "/usr/lib/llvm-${{ env.LLVM_VERSION }}/bin" >> $GITHUB_PATH
+
+      - name: Cache LLVM/Clang
+        uses: actions/cache@v4
+        with:
+          path: |
+            /usr/lib/llvm-${{ env.LLVM_VERSION }}
+          key: ${{ runner.os }}-llvm-${{ env.LLVM_VERSION }}
+
+      - name: Configure CMake
+        run: |
+          cmake -B build \
+            -G Ninja \
+            -DCMAKE_BUILD_TYPE=${{ env.BUILD_TYPE }} \
+            -DLLVM_DIR=${{ env.LLVM_DIR }} \
+            -DClang_DIR=${{ env.Clang_DIR }}
+
+      - name: Build project
+        run: cmake --build build --config ${{ env.BUILD_TYPE }} --parallel $(nproc)
+
+      - name: Build and run real-world tests
+        run: |
+          REAL_WORLD_TESTS=(
+            "json-parser"
+            "logger"
+            "test-framework"
+            "string-formatter"
+            "resource-manager"
+          )
+
+          FAILED_TESTS=()
+          PASSED_TESTS=0
+
+          for test_dir in "${REAL_WORLD_TESTS[@]}"; do
+            echo "======================================"
+            echo "Testing: $test_dir"
+            echo "======================================"
+
+            cd tests/real-world/$test_dir
+
+            # Build the test
+            if cmake -B build -G Ninja -DCMAKE_BUILD_TYPE=${{ env.BUILD_TYPE }}; then
+              if cmake --build build --parallel $(nproc); then
+                # Run the test
+                if ./build/test_*; then
+                  echo "✓ $test_dir PASSED"
+                  PASSED_TESTS=$((PASSED_TESTS + 1))
+                else
+                  echo "✗ $test_dir execution FAILED"
+                  FAILED_TESTS+=("$test_dir")
+                fi
+              else
+                echo "✗ $test_dir build FAILED"
+                FAILED_TESTS+=("$test_dir")
+              fi
+            else
+              echo "✗ $test_dir configure FAILED"
+              FAILED_TESTS+=("$test_dir")
+            fi
+
+            cd ../../..
+          done
+
+          echo ""
+          echo "======================================"
+          echo "Real-World Tests Summary"
+          echo "======================================"
+          echo "Passed: $PASSED_TESTS"
+          echo "Failed: ${#FAILED_TESTS[@]}"
+
+          if [ ${#FAILED_TESTS[@]} -ne 0 ]; then
+            echo ""
+            echo "Failed tests:"
+            for test in "${FAILED_TESTS[@]}"; do
+              echo "  - $test"
+            done
+            exit 1
+          fi
+
+  # Matrix tests for multiple OS/compiler combinations
+  matrix-tests:
+    name: Matrix Tests (${{ matrix.os }})
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 20
+    needs: unit-tests-linux
+
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, macos-latest, windows-latest]
+        include:
+          - os: ubuntu-latest
+            llvm_install: |
+              sudo apt-get update
+              sudo apt-get install -y llvm-15-dev libclang-15-dev clang-15
+            llvm_dir: /usr/lib/llvm-15/lib/cmake/llvm
+            clang_dir: /usr/lib/llvm-15/lib/cmake/clang
+          - os: macos-latest
+            llvm_install: |
+              brew install llvm@15
+            llvm_dir: /usr/local/opt/llvm@15/lib/cmake/llvm
+            clang_dir: /usr/local/opt/llvm@15/lib/cmake/clang
+          - os: windows-latest
+            llvm_install: |
+              choco install llvm --version=15.0.7
+            llvm_dir: C:/Program Files/LLVM/lib/cmake/llvm
+            clang_dir: C:/Program Files/LLVM/lib/cmake/clang
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Install LLVM/Clang
+        run: ${{ matrix.llvm_install }}
+
+      - name: Configure CMake (Unix)
+        if: runner.os != 'Windows'
+        run: |
+          cmake -B build \
+            -DCMAKE_BUILD_TYPE=${{ env.BUILD_TYPE }} \
+            -DLLVM_DIR="${{ matrix.llvm_dir }}" \
+            -DClang_DIR="${{ matrix.clang_dir }}"
+
+      - name: Configure CMake (Windows)
+        if: runner.os == 'Windows'
+        run: |
+          cmake -B build `
+            -DCMAKE_BUILD_TYPE=${{ env.BUILD_TYPE }} `
+            -DLLVM_DIR="${{ matrix.llvm_dir }}" `
+            -DClang_DIR="${{ matrix.clang_dir }}"
+
+      - name: Build project
+        run: cmake --build build --config ${{ env.BUILD_TYPE }} --parallel
+
+      - name: Run smoke tests
+        run: |
+          cd build
+          # Run a subset of critical tests
+          ./CppToCVisitorTest || exit 1
+          ./NameManglerTest || exit 1
+          ./CodeGeneratorTest || exit 1
+
+  # Report overall status
+  ci-status:
+    name: CI Status
+    runs-on: ubuntu-latest
+    needs: [unit-tests-linux, integration-tests-linux, real-world-tests-linux, matrix-tests]
+    if: always()
+
+    steps:
+      - name: Check job statuses
+        run: |
+          echo "Unit Tests: ${{ needs.unit-tests-linux.result }}"
+          echo "Integration Tests: ${{ needs.integration-tests-linux.result }}"
+          echo "Real-World Tests: ${{ needs.real-world-tests-linux.result }}"
+          echo "Matrix Tests: ${{ needs.matrix-tests.result }}"
+
+          if [ "${{ needs.unit-tests-linux.result }}" != "success" ] || \
+             [ "${{ needs.integration-tests-linux.result }}" != "success" ] || \
+             [ "${{ needs.real-world-tests-linux.result }}" != "success" ] || \
+             [ "${{ needs.matrix-tests.result }}" != "success" ]; then
+            echo "❌ CI Failed"
+            exit 1
+          else
+            echo "✅ All CI checks passed!"
+          fi
+
+      - name: Generate summary
+        if: always()
+        run: |
+          echo "## CI Pipeline Summary" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "| Job | Status |" >> $GITHUB_STEP_SUMMARY
+          echo "|-----|--------|" >> $GITHUB_STEP_SUMMARY
+          echo "| Unit Tests (Linux) | ${{ needs.unit-tests-linux.result }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| Integration Tests (Linux) | ${{ needs.integration-tests-linux.result }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| Real-World Tests (Linux) | ${{ needs.real-world-tests-linux.result }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| Matrix Tests | ${{ needs.matrix-tests.result }} |" >> $GITHUB_STEP_SUMMARY
