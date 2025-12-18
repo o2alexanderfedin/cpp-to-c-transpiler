@@ -4,6 +4,7 @@
  */
 
 #include "../include/VirtualMethodAnalyzer.h"
+#include "llvm/Config/llvm-config.h"  // For LLVM_VERSION_MAJOR
 #include "clang/AST/DeclCXX.h"
 
 using namespace clang;
@@ -45,7 +46,12 @@ bool VirtualMethodAnalyzer::isPureVirtual(const CXXMethodDecl* Method) const {
     }
 
     // Check if method is pure virtual (= 0)
+#if LLVM_VERSION_MAJOR >= 16
     return Method->isPureVirtual();
+#else
+    // LLVM 15 uses isPure() instead of isPureVirtual()
+    return Method->isPure();
+#endif
 }
 
 bool VirtualMethodAnalyzer::isAbstractClass(const CXXRecordDecl* Record) const {
