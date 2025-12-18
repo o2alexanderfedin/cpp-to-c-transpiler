@@ -8,6 +8,7 @@
 #include "VptrInjector.h"
 #include "MoveConstructorTranslator.h"
 #include "MoveAssignmentTranslator.h"
+#include "RvalueRefParamTranslator.h"
 #include <map>
 #include <string>
 
@@ -27,6 +28,9 @@ class CppToCVisitor : public clang::RecursiveASTVisitor<CppToCVisitor> {
 
   // Story #131: Move assignment operator translation
   MoveAssignmentTranslator MoveAssignTranslator;
+
+  // Story #133: Rvalue reference parameter translation
+  RvalueRefParamTranslator RvalueRefParamTrans;
 
   // Mapping: C++ class -> C struct (Story #15)
   std::map<clang::CXXRecordDecl*, clang::RecordDecl*> cppToCMap;
@@ -48,7 +52,8 @@ public:
   explicit CppToCVisitor(clang::ASTContext &Context, clang::CNodeBuilder &Builder)
     : Context(Context), Builder(Builder), Mangler(Context),
       VirtualAnalyzer(Context), VptrInjectorInstance(Context, VirtualAnalyzer),
-      MoveCtorTranslator(Context), MoveAssignTranslator(Context) {}
+      MoveCtorTranslator(Context), MoveAssignTranslator(Context),
+      RvalueRefParamTrans(Context) {}
 
   // Visit C++ class/struct declarations
   bool VisitCXXRecordDecl(clang::CXXRecordDecl *D);

@@ -146,6 +146,7 @@ add_executable(cpptoc
     src/MoveConstructorTranslator.cpp
     src/MoveAssignmentTranslator.cpp
     src/StdMoveTranslator.cpp
+    src/RvalueRefParamTranslator.cpp
 )
 
 # Apply LLVM/Clang compile definitions to target
@@ -183,6 +184,7 @@ add_executable(CppToCVisitorTest
     src/VptrInjector.cpp
     src/MoveConstructorTranslator.cpp
     src/MoveAssignmentTranslator.cpp
+    src/RvalueRefParamTranslator.cpp
 )
 
 target_compile_definitions(CppToCVisitorTest PRIVATE ${LLVM_DEFINITIONS})
@@ -319,6 +321,7 @@ add_executable(TranslationIntegrationTest
     src/VptrInjector.cpp
     src/MoveConstructorTranslator.cpp
     src/MoveAssignmentTranslator.cpp
+    src/RvalueRefParamTranslator.cpp
 )
 
 target_compile_definitions(TranslationIntegrationTest PRIVATE ${LLVM_DEFINITIONS})
@@ -376,6 +379,7 @@ add_executable(ValidationTest
     src/VptrInjector.cpp
     src/MoveConstructorTranslator.cpp
     src/MoveAssignmentTranslator.cpp
+    src/RvalueRefParamTranslator.cpp
 )
 
 target_compile_definitions(ValidationTest PRIVATE ${LLVM_DEFINITIONS})
@@ -563,6 +567,7 @@ add_executable(FunctionExitDestructorTest
     src/VptrInjector.cpp
     src/MoveConstructorTranslator.cpp
     src/MoveAssignmentTranslator.cpp
+    src/RvalueRefParamTranslator.cpp
 )
 
 target_compile_definitions(FunctionExitDestructorTest PRIVATE ${LLVM_DEFINITIONS})
@@ -700,6 +705,7 @@ add_executable(InheritanceTest
     src/VptrInjector.cpp
     src/MoveConstructorTranslator.cpp
     src/MoveAssignmentTranslator.cpp
+    src/RvalueRefParamTranslator.cpp
 )
 
 target_compile_definitions(InheritanceTest PRIVATE ${LLVM_DEFINITIONS})
@@ -940,6 +946,7 @@ add_executable(MemberInitListTest
     src/CodeGenerator.cpp
     src/MoveConstructorTranslator.cpp
     src/MoveAssignmentTranslator.cpp
+    src/RvalueRefParamTranslator.cpp
 )
 
 target_compile_definitions(MemberInitListTest PRIVATE ${LLVM_DEFINITIONS})
@@ -1672,6 +1679,27 @@ target_include_directories(StdMoveTranslationTest PRIVATE
 )
 
 target_link_libraries(StdMoveTranslationTest PRIVATE
+    clangTooling
+    clangFrontend
+    clangAST
+    clangBasic
+)
+
+# Story #133: Rvalue Reference Parameter Handling tests
+add_executable(RvalueRefParameterTest
+    tests/unit/move_semantics/RvalueRefParameterTest.cpp
+    src/RvalueRefParamTranslator.cpp
+)
+
+target_compile_definitions(RvalueRefParameterTest PRIVATE ${LLVM_DEFINITIONS})
+
+target_include_directories(RvalueRefParameterTest PRIVATE
+    ${CMAKE_SOURCE_DIR}/include
+    ${LLVM_INCLUDE_DIRS}
+    ${CLANG_INCLUDE_DIRS}
+)
+
+target_link_libraries(RvalueRefParameterTest PRIVATE
     clangTooling
     clangFrontend
     clangAST
