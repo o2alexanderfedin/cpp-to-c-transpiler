@@ -145,6 +145,7 @@ add_executable(cpptoc
     src/VirtualInheritanceAnalyzer.cpp
     src/MoveConstructorTranslator.cpp
     src/MoveAssignmentTranslator.cpp
+    src/StdMoveTranslator.cpp
 )
 
 # Apply LLVM/Clang compile definitions to target
@@ -1650,6 +1651,27 @@ target_include_directories(MoveAssignmentTranslationTest PRIVATE
 )
 
 target_link_libraries(MoveAssignmentTranslationTest PRIVATE
+    clangTooling
+    clangFrontend
+    clangAST
+    clangBasic
+)
+
+# Story #132: std::move() Call Detection and Translation tests
+add_executable(StdMoveTranslationTest
+    tests/unit/move_semantics/StdMoveTranslationTest.cpp
+    src/StdMoveTranslator.cpp
+)
+
+target_compile_definitions(StdMoveTranslationTest PRIVATE ${LLVM_DEFINITIONS})
+
+target_include_directories(StdMoveTranslationTest PRIVATE
+    ${CMAKE_SOURCE_DIR}/include
+    ${LLVM_INCLUDE_DIRS}
+    ${CLANG_INCLUDE_DIRS}
+)
+
+target_link_libraries(StdMoveTranslationTest PRIVATE
     clangTooling
     clangFrontend
     clangAST
