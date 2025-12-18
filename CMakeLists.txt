@@ -1864,6 +1864,37 @@ target_link_libraries(FeatureCombinationTest PRIVATE
     clangBasic
 )
 
+# MoveSemanticIntegrationTest - Story #135 - Move Semantics Integration Testing
+# 15 comprehensive integration tests for move semantics
+add_executable(MoveSemanticIntegrationTest
+    tests/integration/move_semantics_integration_test.cpp
+    src/CppToCVisitor.cpp
+    src/MoveConstructorTranslator.cpp
+    src/MoveAssignmentTranslator.cpp
+    src/StdMoveTranslator.cpp
+    src/RvalueRefParamTranslator.cpp
+    src/VirtualMethodAnalyzer.cpp
+    src/VptrInjector.cpp
+    src/VirtualInheritanceAnalyzer.cpp
+    src/NameMangler.cpp
+    src/CFGAnalyzer.cpp
+)
+
+target_compile_definitions(MoveSemanticIntegrationTest PRIVATE ${LLVM_DEFINITIONS})
+
+target_include_directories(MoveSemanticIntegrationTest PRIVATE
+    ${CMAKE_SOURCE_DIR}/include
+    ${LLVM_INCLUDE_DIRS}
+    ${CLANG_INCLUDE_DIRS}
+)
+
+target_link_libraries(MoveSemanticIntegrationTest PRIVATE
+    clangTooling
+    clangFrontend
+    clangAST
+    clangBasic
+)
+
 # ============================================================================
 # Stream 3: Smart Pointers & RAII Tests (95 tests)
 # ============================================================================
