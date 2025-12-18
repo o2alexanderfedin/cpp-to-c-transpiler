@@ -3,6 +3,7 @@
 // Target: 25-30 tests covering empty inputs, maximum nesting, unusual type combinations
 
 #include "clang/AST/ASTContext.h"
+#include "clang/AST/DeclTemplate.h"
 #include "clang/Frontend/ASTUnit.h"
 #include "clang/Tooling/Tooling.h"
 #include <iostream>
