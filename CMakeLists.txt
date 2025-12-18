@@ -1415,3 +1415,10 @@ target_include_directories(SizeOptimizationTest PRIVATE
 
 # Build runtime library subdirectory
 add_subdirectory(runtime)
+
+# ============================================================================
+# Benchmarks (Optional)
+# ============================================================================
+# Performance benchmarks are optional and controlled by BUILD_BENCHMARKS flag
+# To build benchmarks: cmake -B build -DBUILD_BENCHMARKS=ON
+add_subdirectory(benchmarks)
