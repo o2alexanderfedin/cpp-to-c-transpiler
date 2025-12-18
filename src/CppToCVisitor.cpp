@@ -151,6 +151,21 @@ bool CppToCVisitor::VisitCXXConstructorDecl(CXXConstructorDecl *CD) {
     return true;
   }
 
+  // Story #130: Handle move constructors specially
+  if (MoveCtorTranslator.isMoveConstructor(CD)) {
+    llvm::outs() << "Detected move constructor: " << CD->getParent()->getName()
+                 << "::" << CD->getParent()->getName() << "(&&)\n";
+
+    std::string moveCtorCode = MoveCtorTranslator.generateMoveConstructor(CD);
+    if (!moveCtorCode.empty()) {
+      llvm::outs() << "Generated move constructor C code:\n" << moveCtorCode << "\n";
+    }
+
+    // Note: For now, we just generate the code for testing/validation
+    // Full integration would store this in a function declaration
+    // Continue with normal processing to store in ctorMap for now
+  }
+
   llvm::outs() << "Translating constructor: " << CD->getParent()->getName()
                << "::" << CD->getParent()->getName() << "\n";
 

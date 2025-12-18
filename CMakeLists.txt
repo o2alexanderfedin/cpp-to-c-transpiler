@@ -1600,6 +1600,27 @@ target_link_libraries(MoveSemanticTranslatorTest PRIVATE
     clangBasic
 )
 
+# Story #130: Move Constructor Detection and Translation tests
+add_executable(MoveConstructorTranslationTest
+    tests/unit/move_semantics/MoveConstructorTranslationTest.cpp
+    src/MoveConstructorTranslator.cpp
+)
+
+target_compile_definitions(MoveConstructorTranslationTest PRIVATE ${LLVM_DEFINITIONS})
+
+target_include_directories(MoveConstructorTranslationTest PRIVATE
+    ${CMAKE_SOURCE_DIR}/include
+    ${LLVM_INCLUDE_DIRS}
+    ${CLANG_INCLUDE_DIRS}
+)
+
+target_link_libraries(MoveConstructorTranslationTest PRIVATE
+    clangTooling
+    clangFrontend
+    clangAST
+    clangBasic
+)
+
 # ============================================================================
 # Stream 5: Type Traits & Template Metaprogramming Tests (85 tests)
 # ============================================================================
