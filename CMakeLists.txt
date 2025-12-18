@@ -1467,6 +1467,253 @@ target_include_directories(SizeOptimizationTest PRIVATE
     ${CMAKE_SOURCE_DIR}/include
 )
 
+# ============================================================================
+# Stream 4: Operator Overloading Tests (62 tests)
+# ============================================================================
+
+# Comprehensive operator overloading tests covering all operator categories
+add_executable(OperatorOverloadingTest
+    tests/unit/operators/OperatorOverloadingTest.cpp
+    src/NameMangler.cpp
+)
+
+target_compile_definitions(OperatorOverloadingTest PRIVATE ${LLVM_DEFINITIONS})
+
+target_include_directories(OperatorOverloadingTest PRIVATE
+    ${CMAKE_SOURCE_DIR}/include
+    ${LLVM_INCLUDE_DIRS}
+    ${CLANG_INCLUDE_DIRS}
+)
+
+target_link_libraries(OperatorOverloadingTest PRIVATE
+    clangTooling
+    clangFrontend
+    clangAST
+    clangBasic
+)
+
+# ============================================================================
+# Stream 1: Lambdas & Closures Tests (60 tests)
+# ============================================================================
+
+# Lambda Translation and Closure Generation tests
+add_executable(LambdaTranslatorTest
+    tests/unit/lambdas/LambdaTranslatorTest.cpp
+)
+
+target_compile_definitions(LambdaTranslatorTest PRIVATE ${LLVM_DEFINITIONS})
+
+target_include_directories(LambdaTranslatorTest PRIVATE
+    ${CMAKE_SOURCE_DIR}/include
+    ${LLVM_INCLUDE_DIRS}
+    ${CLANG_INCLUDE_DIRS}
+)
+
+target_link_libraries(LambdaTranslatorTest PRIVATE
+    clangTooling
+    clangFrontend
+    clangAST
+    clangBasic
+)
+
+# ============================================================================
+# Stream 2: Move Semantics & Perfect Forwarding Tests (50 tests)
+# ============================================================================
+
+add_executable(MoveSemanticTranslatorTest
+    tests/unit/move_semantics/MoveSemanticTranslatorTest.cpp
+)
+
+target_compile_definitions(MoveSemanticTranslatorTest PRIVATE ${LLVM_DEFINITIONS})
+
+target_include_directories(MoveSemanticTranslatorTest PRIVATE
+    ${CMAKE_SOURCE_DIR}/include
+    ${LLVM_INCLUDE_DIRS}
+    ${CLANG_INCLUDE_DIRS}
+)
+
+target_link_libraries(MoveSemanticTranslatorTest PRIVATE
+    clangTooling
+    clangFrontend
+    clangAST
+    clangBasic
+)
+
+# ============================================================================
+# Stream 5: Type Traits & Template Metaprogramming Tests (85 tests)
+# ============================================================================
+
+# TypeTraitsTest - 40 tests for type traits, SFINAE, and compile-time conditionals
+add_executable(TypeTraitsTest
+    tests/unit/type_traits/TypeTraitsTest.cpp
+)
+
+target_compile_definitions(TypeTraitsTest PRIVATE ${LLVM_DEFINITIONS})
+
+target_include_directories(TypeTraitsTest PRIVATE
+    ${CMAKE_SOURCE_DIR}/include
+    ${LLVM_INCLUDE_DIRS}
+    ${CLANG_INCLUDE_DIRS}
+)
+
+target_link_libraries(TypeTraitsTest PRIVATE
+    clangTooling
+    clangFrontend
+    clangAST
+    clangBasic
+)
+
+# MetaprogrammingTest - 45 tests for variadic templates, constexpr, and recursive metaprogramming
+add_executable(MetaprogrammingTest
+    tests/unit/type_traits/MetaprogrammingTest.cpp
+)
+
+target_compile_definitions(MetaprogrammingTest PRIVATE ${LLVM_DEFINITIONS})
+
+target_include_directories(MetaprogrammingTest PRIVATE
+    ${CMAKE_SOURCE_DIR}/include
+    ${LLVM_INCLUDE_DIRS}
+    ${CLANG_INCLUDE_DIRS}
+)
+
+target_link_libraries(MetaprogrammingTest PRIVATE
+    clangTooling
+    clangFrontend
+    clangAST
+    clangBasic
+)
+
+# ============================================================================
+# Stream 6: Edge Cases & Integration Tests (75 tests)
+# ============================================================================
+
+# EdgeCasesTest - 30 tests for boundary conditions
+add_executable(EdgeCasesTest
+    tests/integration/EdgeCasesTest.cpp
+)
+
+target_compile_definitions(EdgeCasesTest PRIVATE ${LLVM_DEFINITIONS})
+
+target_include_directories(EdgeCasesTest PRIVATE
+    ${CMAKE_SOURCE_DIR}/include
+    ${LLVM_INCLUDE_DIRS}
+    ${CLANG_INCLUDE_DIRS}
+)
+
+target_link_libraries(EdgeCasesTest PRIVATE
+    clangTooling
+    clangFrontend
+    clangAST
+    clangBasic
+)
+
+# ErrorHandlingTest - 25 tests for error handling
+add_executable(ErrorHandlingTest
+    tests/integration/ErrorHandlingTest.cpp
+)
+
+target_compile_definitions(ErrorHandlingTest PRIVATE ${LLVM_DEFINITIONS})
+
+target_include_directories(ErrorHandlingTest PRIVATE
+    ${CMAKE_SOURCE_DIR}/include
+    ${LLVM_INCLUDE_DIRS}
+    ${CLANG_INCLUDE_DIRS}
+)
+
+target_link_libraries(ErrorHandlingTest PRIVATE
+    clangTooling
+    clangFrontend
+    clangAST
+    clangBasic
+)
+
+# FeatureInteractionTest - 30 tests for feature interactions
+add_executable(FeatureInteractionTest
+    tests/integration/FeatureInteractionTest.cpp
+)
+
+target_compile_definitions(FeatureInteractionTest PRIVATE ${LLVM_DEFINITIONS})
+
+target_include_directories(FeatureInteractionTest PRIVATE
+    ${CMAKE_SOURCE_DIR}/include
+    ${LLVM_INCLUDE_DIRS}
+    ${CLANG_INCLUDE_DIRS}
+)
+
+target_link_libraries(FeatureInteractionTest PRIVATE
+    clangTooling
+    clangFrontend
+    clangAST
+    clangBasic
+)
+
+# ============================================================================
+# Stream 3: Smart Pointers & RAII Tests (95 tests)
+# ============================================================================
+
+# File 1: UniquePtrTest.cpp (30 tests)
+# unique_ptr creation, moves, make_unique, custom deleters
+add_executable(UniquePtrTest
+    tests/unit/smart_pointers/UniquePtrTest.cpp
+)
+
+target_compile_definitions(UniquePtrTest PRIVATE ${LLVM_DEFINITIONS})
+
+target_include_directories(UniquePtrTest PRIVATE
+    ${CMAKE_SOURCE_DIR}/include
+    ${LLVM_INCLUDE_DIRS}
+    ${CLANG_INCLUDE_DIRS}
+)
+
+target_link_libraries(UniquePtrTest PRIVATE
+    clangTooling
+    clangFrontend
+    clangAST
+    clangBasic
+)
+
+# File 2: SharedPtrTest.cpp (40 tests)
+# shared_ptr, ref counting, make_shared, weak_ptr, thread-safety
+add_executable(SharedPtrTest
+    tests/unit/smart_pointers/SharedPtrTest.cpp
+)
+
+target_compile_definitions(SharedPtrTest PRIVATE ${LLVM_DEFINITIONS})
+
+target_include_directories(SharedPtrTest PRIVATE
+    ${CMAKE_SOURCE_DIR}/include
+    ${LLVM_INCLUDE_DIRS}
+    ${CLANG_INCLUDE_DIRS}
+)
+
+target_link_libraries(SharedPtrTest PRIVATE
+    clangTooling
+    clangFrontend
+    clangAST
+    clangBasic
+)
+
+# File 3: RaiiIntegrationTest.cpp (25 tests)
+# Smart pointers with RAII (file, network, locks), exception safety
+add_executable(SmartPointerRaiiIntegrationTest
+    tests/unit/smart_pointers/RaiiIntegrationTest.cpp
+)
+
+target_compile_definitions(SmartPointerRaiiIntegrationTest PRIVATE ${LLVM_DEFINITIONS})
+
+target_include_directories(SmartPointerRaiiIntegrationTest PRIVATE
+    ${CMAKE_SOURCE_DIR}/include
+    ${LLVM_INCLUDE_DIRS}
+    ${CLANG_INCLUDE_DIRS}
+)
+
+target_link_libraries(SmartPointerRaiiIntegrationTest PRIVATE
+    clangTooling
+    clangFrontend
+    clangAST
+    clangBasic
+)
+
 # Build runtime library subdirectory
 add_subdirectory(runtime)
 
