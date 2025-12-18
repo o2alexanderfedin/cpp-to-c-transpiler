@@ -5,6 +5,60 @@ project(cpptoc C CXX)
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
+# ============================================================================
+# Code Coverage Configuration
+# ============================================================================
+option(ENABLE_COVERAGE "Enable code coverage reporting" OFF)
+
+if(ENABLE_COVERAGE)
+    message(STATUS "Code coverage enabled")
+
+    # Add coverage compiler flags
+    set(COVERAGE_FLAGS "--coverage -fprofile-arcs -ftest-coverage")
+    set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} ${COVERAGE_FLAGS}")
+    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} ${COVERAGE_FLAGS}")
+    set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} --coverage")
+
+    # Find required tools
+    find_program(LCOV_PATH lcov)
+    find_program(GENHTML_PATH genhtml)
+
+    if(NOT LCOV_PATH)
+        message(WARNING "lcov not found! Coverage reports cannot be generated. Install with: brew install lcov")
+    endif()
+
+    if(NOT GENHTML_PATH)
+        message(WARNING "genhtml not found! HTML coverage reports cannot be generated.")
+    endif()
+
+    # Add custom target for coverage report generation
+    if(LCOV_PATH AND GENHTML_PATH)
+        add_custom_target(coverage
+            COMMAND ${CMAKE_COMMAND} -E echo "Generating coverage report..."
+
+            # Initialize coverage data
+            COMMAND ${LCOV_PATH} --directory . --zerocounters
+
+            # Run tests (this will be filled in by the script)
+            COMMAND ${CMAKE_COMMAND} -E echo "Run tests before generating coverage"
+
+            # Capture coverage data
+            COMMAND ${LCOV_PATH} --directory . --capture --output-file coverage.info
+
+            # Remove system headers and test files from coverage
+            COMMAND ${LCOV_PATH} --remove coverage.info '/usr/*' '*/tests/*' '*/build/*' --output-file coverage.info.cleaned
+
+            # Generate HTML report
+            COMMAND ${GENHTML_PATH} coverage.info.cleaned --output-directory coverage --demangle-cpp
+
+            COMMAND ${CMAKE_COMMAND} -E echo "Coverage report generated in coverage/"
+
+            WORKING_DIRECTORY ${CMAKE_BINARY_DIR}
+            COMMENT "Generating code coverage report"
+        )
+    endif()
+endif()
+
 # Find LLVM and Clang packages
 # Using CONFIG mode for better reliability
 find_package(LLVM REQUIRED CONFIG)

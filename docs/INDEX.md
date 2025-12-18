@@ -67,13 +67,51 @@
     - rtti_runtime.c design
     - Size estimates (1.7-2.8 KB)
 
+### Implementation Guides
+
+12. **[CONSTRUCTOR-GUIDE.md](CONSTRUCTOR-GUIDE.md)** - Constructor implementation guide
+    - Constructor splitting and initialization
+    - Member initialization lists
+    - Base class constructor chaining
+
+13. **[RUNTIME_CONFIGURATION.md](RUNTIME_CONFIGURATION.md)** - Runtime configuration guide
+    - Runtime modes (library vs inline)
+    - Feature flags
+    - Size optimization strategies
+
+14. **[MIGRATION_GUIDE.md](MIGRATION_GUIDE.md)** - Migration guide for developers
+    - Transpiling existing C++ codebases
+    - Common patterns and solutions
+    - Best practices
+
+15. **[PROFILING_GUIDE.md](PROFILING_GUIDE.md)** - Performance profiling guide
+    - Profiling transpiled code
+    - Performance optimization strategies
+    - Benchmarking methodology
+
+16. **[FORMAL_VERIFICATION_GUIDE.md](FORMAL_VERIFICATION_GUIDE.md)** - Formal verification guide
+    - Frama-C integration
+    - ACSL annotations
+    - Verification workflow
+
+17. **[ACSL_ANNOTATIONS.md](ACSL_ANNOTATIONS.md)** - ACSL annotation reference
+    - ACSL syntax and semantics
+    - Annotation patterns for generated code
+    - Verification examples
+
+18. **[TEST_SUITE.md](TEST_SUITE.md)** - Test suite documentation (958 lines)
+    - 66 test files, 492+ test functions, 1,956+ assertions
+    - 9 test categories (virtual functions, exceptions, RTTI, coroutines, etc.)
+    - Integration tests and performance benchmarks
+    - Test expansion roadmap
+
 ## Research Archive
 
 See **[../research-archive/INDEX.md](../research-archive/INDEX.md)** for the complete research process documentation.
 
 ## Total Documentation
 
-**13,545+ lines** of comprehensive technical research across 11 primary documents.
+**15,461+ lines** of comprehensive technical research and implementation guides across 18 primary documents.
 
 ## Key Achievements
 
