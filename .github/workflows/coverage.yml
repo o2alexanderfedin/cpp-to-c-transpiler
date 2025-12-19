@@ -104,11 +104,10 @@ jobs:
           # Capture coverage data
           lcov --directory . --capture --output-file coverage.info
 
-          # Remove system headers, test files, and build artifacts
+          # Remove system headers and test files
           lcov --remove coverage.info \
             '/usr/*' \
             '*/tests/*' \
-            '*/test/*' \
             --output-file coverage.info.cleaned
 
           # Generate HTML report
