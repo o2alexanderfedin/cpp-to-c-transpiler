@@ -50,7 +50,7 @@ The workflow was using `actions/configure-pages@v4` with the default configurati
 ### Code Changes
 
 **File**: `.github/workflows/pages.yml`
-**Change**: Added `enablement: true` parameter to `actions/configure-pages@v4`
+**Change**: Added documentation comment explaining manual configuration requirement
 
 **Before**:
 ```yaml
@@ -62,18 +62,18 @@ The workflow was using `actions/configure-pages@v4` with the default configurati
 ```yaml
 - name: Setup Pages
   uses: actions/configure-pages@v4
-  with:
-    enablement: true
+  # Note: Pages must be enabled manually in repository settings
+  # Navigate to: Settings → Pages → Source: "GitHub Actions"
 ```
 
 ### What This Fix Does
 
-Setting `enablement: true` allows the workflow to automatically:
-1. Enable GitHub Pages for the repository if not already enabled
-2. Configure Pages to use "GitHub Actions" as the source
-3. Set up the necessary permissions and environment
+The workflow file now includes clear documentation that:
+1. GitHub Pages must be enabled manually in repository settings
+2. Provides the navigation path to enable it
+3. Clarifies that "GitHub Actions" must be selected as the source
 
-This eliminates the need for manual repository configuration.
+**Note**: The `enablement: true` parameter was initially attempted but does not work due to GitHub security restrictions. The GITHUB_TOKEN does not have permission to create Pages sites programmatically.
 
 ---
 
@@ -177,10 +177,71 @@ An alternative approach would be to manually enable GitHub Pages in repository s
 
 ---
 
-## Status: RESOLVED
+## Update: Additional Manual Configuration Required
+
+### Second Failure (Run 20384249287)
+
+After implementing the `enablement: true` fix, a new error occurred:
+
+```
+##[error]Create Pages site failed
+##[error]HttpError: Resource not accessible by integration
+```
+
+**Root Cause**: The `GITHUB_TOKEN` used by GitHub Actions does **not** have permission to create Pages sites programmatically, even with `enablement: true`. This is a GitHub security restriction.
+
+**Resolution**: GitHub Pages **must be enabled manually** in repository settings before the workflow can deploy to it.
+
+## Manual Configuration Required
+
+**IMPORTANT**: The following manual steps must be completed for the workflow to succeed.
+
+### Steps to Enable GitHub Pages
+
+1. Navigate to repository settings:
+   ```
+   https://github.com/o2alexanderfedin/cpp-to-c-transpiler/settings/pages
+   ```
+
+2. Under **"Build and deployment"** section:
+   - **Source**: Select **"GitHub Actions"** from the dropdown
+   - This tells GitHub to accept deployments from Actions workflows
+
+3. Save the configuration (automatic)
+
+4. Trigger the workflow again:
+   - Option 1: Push another commit to `main`
+   - Option 2: Manually trigger via GitHub UI:
+     ```
+     https://github.com/o2alexanderfedin/cpp-to-c-transpiler/actions/workflows/pages.yml
+     ```
+     Click "Run workflow" button
+
+### Why Manual Configuration Is Required
+
+GitHub Actions has limited permissions for security reasons:
+- **Cannot** create Pages sites programmatically
+- **Cannot** modify repository settings
+- **Can** deploy to Pages *after* it's enabled
+
+This is intentional to prevent malicious workflows from:
+- Enabling Pages without owner knowledge
+- Publishing unauthorized content
+- Modifying repository configuration
+
+### After Manual Configuration
+
+Once Pages is enabled in repository settings:
+- The `enablement: true` parameter will be ignored (Pages already exists)
+- The workflow will successfully deploy to Pages
+- Future deployments will be automatic on every push to `main`
+
+## Status: REQUIRES MANUAL ACTION
 
 - [x] Root cause identified
-- [x] Fix implemented in `.github/workflows/pages.yml`
+- [x] Workflow fix implemented in `.github/workflows/pages.yml`
 - [x] Report documented
-- [ ] Changes committed and pushed (pending)
-- [ ] Workflow verification (pending after push)
+- [x] Changes committed and pushed
+- [x] Workflow triggered (failed due to permissions)
+- [ ] **MANUAL ACTION REQUIRED**: Enable GitHub Pages in repository settings
+- [ ] Final workflow verification (after manual configuration)
