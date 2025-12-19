@@ -425,7 +425,8 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        os: [ubuntu-latest, macos-latest, windows-latest]
+        # Note: Windows excluded - chocolatey LLVM package doesn't include CMake config files
+        os: [ubuntu-latest, macos-latest]
 
     steps:
       - name: Checkout repository
@@ -441,11 +442,6 @@ jobs:
         if: runner.os == 'macOS'
         run: |
           brew install llvm@15
-
-      - name: Install LLVM/Clang (Windows)
-        if: runner.os == 'Windows'
-        run: |
-          choco install llvm --version=15.0.7 --allow-downgrade --force
 
       - name: Setup LLVM paths (Ubuntu)
         if: runner.os == 'Linux'
@@ -465,35 +461,12 @@ jobs:
           echo "LLVM_DIR=$LLVM_PREFIX/lib/cmake/llvm" >> $GITHUB_ENV
           echo "Clang_DIR=$LLVM_PREFIX/lib/cmake/clang" >> $GITHUB_ENV
 
-      - name: Setup LLVM paths (Windows)
-        if: runner.os == 'Windows'
-        shell: pwsh
-        run: |
-          # Find LLVM installation directory
-          $llvmPath = "C:\Program Files\LLVM"
-          if (Test-Path "$llvmPath\lib\cmake\llvm") {
-            Add-Content $env:GITHUB_ENV "LLVM_DIR=$llvmPath\lib\cmake\llvm"
-            Add-Content $env:GITHUB_ENV "Clang_DIR=$llvmPath\lib\cmake\clang"
-          } else {
-            Write-Error "LLVM cmake files not found at $llvmPath"
-            exit 1
-          }
-
-      - name: Configure CMake (Unix)
-        if: runner.os != 'Windows'
+      - name: Configure CMake
         run: |
           cmake -B build \
             -DCMAKE_BUILD_TYPE=${{ env.BUILD_TYPE }} \
             -DLLVM_DIR="${{ env.LLVM_DIR }}" \
             -DClang_DIR="${{ env.Clang_DIR }}"
-
-      - name: Configure CMake (Windows)
-        if: runner.os == 'Windows'
-        run: |
-          cmake -B build `
-            -DCMAKE_BUILD_TYPE=${{ env.BUILD_TYPE }} `
-            -DLLVM_DIR="$env:LLVM_DIR" `
-            -DClang_DIR="$env:Clang_DIR"
 
       - name: Build smoke test targets only
         run: |
@@ -503,23 +476,13 @@ jobs:
           cmake --build build --config ${{ env.BUILD_TYPE }} --target NameManglerTest --parallel
           cmake --build build --config ${{ env.BUILD_TYPE }} --target CodeGeneratorTest --parallel
 
-      - name: Run smoke tests (Unix)
-        if: runner.os != 'Windows'
+      - name: Run smoke tests
         run: |
           cd build
           # Run a subset of critical tests
           ./CppToCVisitorTest || exit 1
           ./NameManglerTest || exit 1
           ./CodeGeneratorTest || exit 1
-
-      - name: Run smoke tests (Windows)
-        if: runner.os == 'Windows'
-        run: |
-          cd build
-          # Run a subset of critical tests
-          .\Release\CppToCVisitorTest.exe
-          .\Release\NameManglerTest.exe
-          .\Release\CodeGeneratorTest.exe
 
   # Report overall status
   ci-status:
