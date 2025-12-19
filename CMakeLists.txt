@@ -1939,6 +1939,76 @@ target_link_libraries(SmartPointerRaiiIntegrationTest PRIVATE
     clangBasic
 )
 
+# ============================================================================
+# extern "C" and Calling Convention Support (Milestone 1-4)
+# ============================================================================
+
+# Milestone 1: Linkage Detection tests
+add_executable(LinkageDetectionTest
+    tests/LinkageDetectionTest.cpp
+)
+
+target_compile_definitions(LinkageDetectionTest PRIVATE ${LLVM_DEFINITIONS})
+
+target_include_directories(LinkageDetectionTest PRIVATE
+    ${CMAKE_SOURCE_DIR}/include
+    ${LLVM_INCLUDE_DIRS}
+    ${CLANG_INCLUDE_DIRS}
+)
+
+target_link_libraries(LinkageDetectionTest PRIVATE
+    cpptoc_core
+    clangTooling
+    clangFrontend
+    clangAST
+    clangBasic
+    clangASTMatchers
+)
+
+# Milestone 2: Name Mangling Suppression tests
+add_executable(ExternCManglingTest
+    tests/ExternCManglingTest.cpp
+)
+
+target_compile_definitions(ExternCManglingTest PRIVATE ${LLVM_DEFINITIONS})
+
+target_include_directories(ExternCManglingTest PRIVATE
+    ${CMAKE_SOURCE_DIR}/include
+    ${LLVM_INCLUDE_DIRS}
+    ${CLANG_INCLUDE_DIRS}
+)
+
+target_link_libraries(ExternCManglingTest PRIVATE
+    cpptoc_core
+    clangTooling
+    clangFrontend
+    clangAST
+    clangBasic
+    clangASTMatchers
+)
+
+# Milestone 3: Calling Convention Detection tests
+add_executable(CallingConventionTest
+    tests/CallingConventionTest.cpp
+)
+
+target_compile_definitions(CallingConventionTest PRIVATE ${LLVM_DEFINITIONS})
+
+target_include_directories(CallingConventionTest PRIVATE
+    ${CMAKE_SOURCE_DIR}/include
+    ${LLVM_INCLUDE_DIRS}
+    ${CLANG_INCLUDE_DIRS}
+)
+
+target_link_libraries(CallingConventionTest PRIVATE
+    cpptoc_core
+    clangTooling
+    clangFrontend
+    clangAST
+    clangBasic
+    clangASTMatchers
+)
+
 # Build runtime library subdirectory
 add_subdirectory(runtime)
 
