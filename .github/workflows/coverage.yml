@@ -3,12 +3,9 @@ name: Code Coverage
 on:
   push:
     branches:
-      - develop
-      - main
-  pull_request:
-    branches:
-      - develop
-      - main
+      - 'release/**'
+    tags:
+      - 'v*'
   workflow_dispatch:
 
 # Cancel in-progress runs for the same branch

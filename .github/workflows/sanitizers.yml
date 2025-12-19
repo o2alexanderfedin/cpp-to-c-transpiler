@@ -3,14 +3,11 @@ name: Memory Safety and Sanitizers
 on:
   push:
     branches:
-      - develop
-      - main
-  pull_request:
-    branches:
-      - develop
-      - main
+      - 'release/**'
+    tags:
+      - 'v*'
   schedule:
-    # Run nightly at 2 AM UTC
+    # Run nightly at 2 AM UTC on default branch (main)
     - cron: '0 2 * * *'
   workflow_dispatch:
 
