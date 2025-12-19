@@ -419,64 +419,102 @@ jobs:
   matrix-tests:
     name: Matrix Tests (${{ matrix.os }})
     runs-on: ${{ matrix.os }}
-    timeout-minutes: 20
+    timeout-minutes: 30
     needs: unit-tests-linux
 
     strategy:
       fail-fast: false
       matrix:
         os: [ubuntu-latest, macos-latest, windows-latest]
-        include:
-          - os: ubuntu-latest
-            llvm_install: |
-              sudo apt-get update
-              sudo apt-get install -y llvm-15-dev libclang-15-dev clang-15
-            llvm_dir: /usr/lib/llvm-15/lib/cmake/llvm
-            clang_dir: /usr/lib/llvm-15/lib/cmake/clang
-          - os: macos-latest
-            llvm_install: |
-              brew install llvm@15
-            llvm_dir: /usr/local/opt/llvm@15/lib/cmake/llvm
-            clang_dir: /usr/local/opt/llvm@15/lib/cmake/clang
-          - os: windows-latest
-            llvm_install: |
-              choco install llvm --version=15.0.7 --allow-downgrade --force
-            llvm_dir: C:/Program Files/LLVM/lib/cmake/llvm
-            clang_dir: C:/Program Files/LLVM/lib/cmake/clang
 
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      - name: Install LLVM/Clang
-        run: ${{ matrix.llvm_install }}
+      - name: Install LLVM/Clang (Ubuntu)
+        if: runner.os == 'Linux'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y llvm-15-dev libclang-15-dev clang-15
+
+      - name: Install LLVM/Clang (macOS)
+        if: runner.os == 'macOS'
+        run: |
+          brew install llvm@15
+
+      - name: Install LLVM/Clang (Windows)
+        if: runner.os == 'Windows'
+        run: |
+          choco install llvm --version=15.0.7 --allow-downgrade --force
+
+      - name: Setup LLVM paths (Ubuntu)
+        if: runner.os == 'Linux'
+        run: |
+          echo "LLVM_DIR=/usr/lib/llvm-15/lib/cmake/llvm" >> $GITHUB_ENV
+          echo "Clang_DIR=/usr/lib/llvm-15/lib/cmake/clang" >> $GITHUB_ENV
+
+      - name: Setup LLVM paths (macOS)
+        if: runner.os == 'macOS'
+        run: |
+          # Check both possible homebrew locations
+          if [ -d "/opt/homebrew/opt/llvm@15" ]; then
+            LLVM_PREFIX="/opt/homebrew/opt/llvm@15"
+          else
+            LLVM_PREFIX="/usr/local/opt/llvm@15"
+          fi
+          echo "LLVM_DIR=$LLVM_PREFIX/lib/cmake/llvm" >> $GITHUB_ENV
+          echo "Clang_DIR=$LLVM_PREFIX/lib/cmake/clang" >> $GITHUB_ENV
+
+      - name: Setup LLVM paths (Windows)
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: |
+          # Find LLVM installation directory
+          $llvmPath = "C:\Program Files\LLVM"
+          if (Test-Path "$llvmPath\lib\cmake\llvm") {
+            echo "LLVM_DIR=$llvmPath\lib\cmake\llvm" >> $env:GITHUB_ENV
+            echo "Clang_DIR=$llvmPath\lib\cmake\clang" >> $env:GITHUB_ENV
+          } else {
+            Write-Error "LLVM cmake files not found at $llvmPath"
+            exit 1
+          }
 
       - name: Configure CMake (Unix)
         if: runner.os != 'Windows'
         run: |
           cmake -B build \
             -DCMAKE_BUILD_TYPE=${{ env.BUILD_TYPE }} \
-            -DLLVM_DIR="${{ matrix.llvm_dir }}" \
-            -DClang_DIR="${{ matrix.clang_dir }}"
+            -DLLVM_DIR="${{ env.LLVM_DIR }}" \
+            -DClang_DIR="${{ env.Clang_DIR }}"
 
       - name: Configure CMake (Windows)
         if: runner.os == 'Windows'
         run: |
           cmake -B build `
             -DCMAKE_BUILD_TYPE=${{ env.BUILD_TYPE }} `
-            -DLLVM_DIR="${{ matrix.llvm_dir }}" `
-            -DClang_DIR="${{ matrix.clang_dir }}"
+            -DLLVM_DIR="$env:LLVM_DIR" `
+            -DClang_DIR="$env:Clang_DIR"
 
       - name: Build project
         run: cmake --build build --config ${{ env.BUILD_TYPE }} --parallel
 
-      - name: Run smoke tests
+      - name: Run smoke tests (Unix)
+        if: runner.os != 'Windows'
         run: |
           cd build
           # Run a subset of critical tests
           ./CppToCVisitorTest || exit 1
           ./NameManglerTest || exit 1
           ./CodeGeneratorTest || exit 1
+
+      - name: Run smoke tests (Windows)
+        if: runner.os == 'Windows'
+        run: |
+          cd build
+          # Run a subset of critical tests
+          .\Release\CppToCVisitorTest.exe
+          .\Release\NameManglerTest.exe
+          .\Release\CodeGeneratorTest.exe
 
   # Report overall status
   ci-status:
