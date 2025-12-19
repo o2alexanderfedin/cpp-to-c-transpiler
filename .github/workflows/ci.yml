@@ -3,13 +3,7 @@ name: Continuous Integration
 on:
   push:
     branches:
-      - develop
-      - main
-      - 'feature/**'
-      - 'bugfix/**'
-  pull_request:
-    branches:
-      - develop
+      - 'release/**'
       - main
   workflow_dispatch:
 
