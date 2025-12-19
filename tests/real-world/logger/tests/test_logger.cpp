@@ -54,8 +54,8 @@ void testFileLogger() {
     while (std::getline(file, line)) {
         lineCount++;
         test("Log line contains timestamp", line.find("[20") != std::string::npos);
-        test("Log line contains level", line.find("[INFO]") != std::string::npos ||
-                                       line.find("[WARN]") != std::string::npos ||
+        test("Log line contains level", line.find("[INFO ]") != std::string::npos ||
+                                       line.find("[WARN ]") != std::string::npos ||
                                        line.find("[ERROR]") != std::string::npos);
     }
 

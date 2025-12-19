@@ -282,8 +282,8 @@ brew install llvm cmake
 # Set LLVM path for CMake
 export CMAKE_PREFIX_PATH="/opt/homebrew/opt/llvm"
 
-# Clone repository
-git clone https://github.com/o2alexanderfedin/cpp-to-c-transpiler.git
+# Clone repository (with website submodule)
+git clone --recursive https://github.com/o2alexanderfedin/cpp-to-c-transpiler.git
 cd cpp-to-c-transpiler
 
 # Configure and build
@@ -301,8 +301,8 @@ cmake --build build
 sudo apt update
 sudo apt install clang-15 llvm-15-dev libclang-15-dev cmake build-essential
 
-# Clone repository
-git clone https://github.com/o2alexanderfedin/cpp-to-c-transpiler.git
+# Clone repository (with website submodule)
+git clone --recursive https://github.com/o2alexanderfedin/cpp-to-c-transpiler.git
 cd cpp-to-c-transpiler
 
 # Configure and build (CMake will find system LLVM)
@@ -362,6 +362,49 @@ cpptoc input.cpp -o output.c --runtime-mode=library
 
 # Verify with Frama-C
 frama-c -wp output.c cpptoc_runtime.c
+```
+
+## Website Submodule
+
+The presentation website is maintained as a separate repository: [cpp-to-c-website](https://github.com/o2alexanderfedin/cpp-to-c-website)
+
+### Cloning with Submodules
+
+```bash
+# Clone with submodules initialized
+git clone --recursive https://github.com/o2alexanderfedin/cpp-to-c-transpiler.git
+
+# Or if already cloned, initialize submodules
+git submodule update --init --recursive
+```
+
+### Updating the Website Submodule
+
+```bash
+# Update to latest website commit
+cd website
+git pull origin main
+cd ..
+git add website
+git commit -m "chore: update website submodule"
+git push
+```
+
+### Working on the Website
+
+```bash
+# Make changes in website directory
+cd website
+git checkout -b feature/my-changes
+# ... make changes ...
+git commit -am "feat: add new feature"
+git push origin feature/my-changes
+
+# Update main repo to reference new commit
+cd ..
+git add website
+git commit -m "chore: update website submodule to include new feature"
+git push
 ```
 
 ## Project Structure

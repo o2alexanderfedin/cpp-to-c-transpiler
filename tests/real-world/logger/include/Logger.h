@@ -7,6 +7,7 @@
 #include <memory>
 #include <ctime>
 #include <iostream>
+#include <vector>
 
 namespace logging {
 

@@ -21,7 +21,7 @@ public:
 };
 
 // Forward declarations
-template<typename T>
+template<typename T, typename Enable = void>
 struct Formatter;
 
 class FormatterBase;
@@ -158,7 +158,7 @@ inline std::string applyAlignment(const std::string& str, const FormatSpec& spec
 }
 
 // Base formatter template
-template<typename T, typename Enable = void>
+template<typename T, typename Enable>
 struct Formatter {
     static std::string format(const T& value, const FormatSpec& spec) {
         std::ostringstream oss;
@@ -251,6 +251,15 @@ template<>
 struct Formatter<bool> {
     static std::string format(const bool& value, const FormatSpec& spec) {
         std::string str = value ? "true" : "false";
+        return applyAlignment(str, spec);
+    }
+};
+
+// Specialization for char (as character, not integer)
+template<>
+struct Formatter<char> {
+    static std::string format(const char& value, const FormatSpec& spec) {
+        std::string str(1, value);
         return applyAlignment(str, spec);
     }
 };
