@@ -317,3 +317,69 @@ This is a healthy coverage baseline for the project.
 **All tests passing**: The failure was purely in coverage reporting tooling, not in code quality or functionality.
 
 **Ready for rerun**: Fix committed and pushed, monitoring new CI run for validation.
+
+## Fix Implementation
+
+### Initial Fix Attempt (Incomplete)
+- **Commit**: cc4b7c6
+- **Change**: Removed `*/build/*` pattern only
+- **Result**: FAILED - `*/test/*` pattern also unused
+- **Run**: 20357273446 (failed with exit code 25)
+
+### Complete Fix (Successful)
+- **Commit**: 00f742b (develop), 0293963 (main)
+- **Changes**: Removed BOTH `*/build/*` and `*/test/*` patterns
+- **Kept**: `/usr/*` (system headers) and `*/tests/*` (test source files)
+- **Result**: SUCCESS
+- **Run**: 20357639833 (completed successfully)
+
+### Verification Results
+
+```xml
+  <verification_results>
+    <local_tests>
+      <status>NOT_REQUIRED</status>
+      <reason>Configuration-only change, no code modifications</reason>
+    </local_tests>
+
+    <ci_rerun>
+      <run_id>20357639833</run_id>
+      <url>https://github.com/o2alexanderfedin/cpp-to-c-transpiler/actions/runs/20357639833</url>
+      <status>completed</status>
+      <conclusion>success</conclusion>
+      <trigger_method>Push to main branch (commit 0293963)</trigger_method>
+
+      <actual_outcome>
+✅ Coverage job completed successfully
+✅ Coverage report generated: 78.0% lines (3583/4596), 89.5% functions (419/468)
+✅ HTML coverage report generated and uploaded
+✅ Codecov XML report generated
+✅ All artifacts uploaded successfully
+✅ No errors or warnings in logs
+      </actual_outcome>
+
+      <verification_notes>
+- Fix required removing BOTH unused patterns (*/build/* and */test/*)
+- First attempt only removed */build/*, discovered */test/* also unused
+- Final fix removed both patterns, kept only /usr/* and */tests/*
+- Coverage percentage identical to failed run (confirms filtering unchanged)
+- Job duration: ~17 minutes (build + test + coverage generation)
+      </verification_notes>
+    </ci_rerun>
+  </verification_results>
+```
+
+## Final Status
+
+**ALL ISSUES RESOLVED**: ✅
+
+- Original run 20356140652: FAILED (lcov exit code 25 on unused pattern)
+- Fix attempt 1 (run 20357273446): FAILED (incomplete fix)
+- Fix attempt 2 (run 20357639833): SUCCESS (complete fix)
+
+**Coverage Quality Maintained**:
+- Line coverage: 78.0% (unchanged)
+- Function coverage: 89.5% (unchanged)
+- No functional impact from pattern removal
+
+**Release Status**: v0.5.1 CI/CD pipeline now passing, release validated.
