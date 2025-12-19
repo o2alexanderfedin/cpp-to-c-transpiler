@@ -440,7 +440,7 @@ jobs:
             clang_dir: /usr/local/opt/llvm@15/lib/cmake/clang
           - os: windows-latest
             llvm_install: |
-              choco install llvm --version=15.0.7
+              choco install llvm --version=15.0.7 --allow-downgrade --force
             llvm_dir: C:/Program Files/LLVM/lib/cmake/llvm
             clang_dir: C:/Program Files/LLVM/lib/cmake/clang
 
