@@ -175,6 +175,10 @@ public:
         }
     }
 
+    RefCounter(RefCounter&& other) noexcept : count_(other.count_) {
+        other.count_ = nullptr;
+    }
+
     RefCounter& operator=(const RefCounter& other) {
         if (this != &other) {
             release();
@@ -182,6 +186,15 @@ public:
             if (count_) {
                 ++(*count_);
             }
+        }
+        return *this;
+    }
+
+    RefCounter& operator=(RefCounter&& other) noexcept {
+        if (this != &other) {
+            release();
+            count_ = other.count_;
+            other.count_ = nullptr;
         }
         return *this;
     }
