@@ -170,6 +170,13 @@ std::string NameMangler::mangleMethodName(CXXMethodDecl *MD) {
 }
 
 std::string NameMangler::mangleFunctionName(FunctionDecl *FD) {
+    // Prompt #031: extern "C" and Calling Convention Support
+    // CRITICAL: Check for extern "C" linkage BEFORE any mangling
+    // extern "C" functions must have unmangled names to preserve C ABI
+    if (FD->isExternC()) {
+        return FD->getName().str();  // Return unmangled name for C linkage
+    }
+
     // Extract namespace hierarchy
     std::vector<std::string> namespaces = extractNamespaceHierarchy(FD);
 

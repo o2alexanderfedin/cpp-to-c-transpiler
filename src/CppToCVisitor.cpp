@@ -2051,3 +2051,39 @@ FunctionDecl* CppToCVisitor::generateCopyConstructor(CXXRecordDecl *D) {
   llvm::outs() << "  Generated copy constructor: " << funcName << "\n";
   return CFunc;
 }
+
+// ============================================================================
+// Prompt #031: extern "C" and Calling Convention Support
+// ============================================================================
+
+/**
+ * @brief Visit linkage specification declarations (extern "C" blocks)
+ *
+ * This visitor method is called automatically by Clang's AST traversal when
+ * encountering extern "C" { } or extern "C++" { } blocks.
+ *
+ * Note: The actual linkage information is already available via
+ * FunctionDecl::isExternC() and FunctionDecl::getLanguageLinkage(), so
+ * this visitor is primarily for logging/debugging purposes.
+ *
+ * @param LS The LinkageSpecDecl node
+ * @return true to continue visiting children
+ */
+bool CppToCVisitor::VisitLinkageSpecDecl(clang::LinkageSpecDecl *LS) {
+  if (!LS) {
+    return true;
+  }
+
+  // Optional: Track entering extern "C" or extern "C++" blocks for debugging
+  if (LS->getLanguage() == clang::LinkageSpecDecl::lang_c) {
+    // This is an extern "C" block
+    // In the future, we could add logging here if needed
+    // llvm::outs() << "Entering extern \"C\" block\n";
+  } else if (LS->getLanguage() == clang::LinkageSpecDecl::lang_cxx) {
+    // This is an extern "C++" block (rare, but possible)
+    // llvm::outs() << "Entering extern \"C++\" block\n";
+  }
+
+  // Continue visiting child declarations (functions, variables, etc.)
+  return true;
+}

@@ -147,6 +147,9 @@ public:
   bool VisitDoStmt(clang::DoStmt *DS);
   bool VisitCXXForRangeStmt(clang::CXXForRangeStmt *FRS);
 
+  // Prompt #031: extern "C" and calling convention support
+  bool VisitLinkageSpecDecl(clang::LinkageSpecDecl *LS);
+
   // Retrieve generated C struct by class name (for testing)
   clang::RecordDecl* getCStruct(llvm::StringRef className) const;
 
