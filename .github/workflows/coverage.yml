@@ -108,7 +108,6 @@ jobs:
           lcov --remove coverage.info \
             '/usr/*' \
             '*/tests/*' \
-            '*/build/*' \
             '*/test/*' \
             --output-file coverage.info.cleaned
 
