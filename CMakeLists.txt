@@ -1987,6 +1987,28 @@ target_link_libraries(ExternCManglingTest PRIVATE
     clangASTMatchers
 )
 
+# Milestone 3: Calling Convention Detection tests
+add_executable(CallingConventionTest
+    tests/CallingConventionTest.cpp
+)
+
+target_compile_definitions(CallingConventionTest PRIVATE ${LLVM_DEFINITIONS})
+
+target_include_directories(CallingConventionTest PRIVATE
+    ${CMAKE_SOURCE_DIR}/include
+    ${LLVM_INCLUDE_DIRS}
+    ${CLANG_INCLUDE_DIRS}
+)
+
+target_link_libraries(CallingConventionTest PRIVATE
+    cpptoc_core
+    clangTooling
+    clangFrontend
+    clangAST
+    clangBasic
+    clangASTMatchers
+)
+
 # Build runtime library subdirectory
 add_subdirectory(runtime)
 
