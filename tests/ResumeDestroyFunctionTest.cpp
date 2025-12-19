@@ -13,7 +13,6 @@ using namespace clang;
 std::unique_ptr<ASTUnit> buildAST(const char *code) {
     std::vector<std::string> args = {
         "-std=c++20",
-        "-fcoroutines",
         "-isystem", "/opt/homebrew/Cellar/llvm/21.1.7/include/c++/v1",
         "-isystem", "/opt/homebrew/Cellar/llvm/21.1.7/lib/clang/21/include",
         "-isysroot", "/Library/Developer/CommandLineTools/SDKs/MacOSX15.sdk"
@@ -63,9 +62,9 @@ void test_GenerateResumeFunctionSignature() {
         struct task {
             struct promise_type {
                 struct awaiter {
-                    bool await_ready() { return false; }
-                    template<typename P> void await_suspend(std::coroutine_handle<P>) {}
-                    void await_resume() {}
+                    bool await_ready() noexcept { return false; }
+                    template<typename P> void await_suspend(std::coroutine_handle<P>) noexcept {}
+                    void await_resume() noexcept {}
                 };
 
                 task get_return_object() { return {}; }
@@ -124,9 +123,9 @@ void test_GenerateDestroyFunctionSignature() {
         struct task {
             struct promise_type {
                 struct awaiter {
-                    bool await_ready() { return false; }
-                    template<typename P> void await_suspend(std::coroutine_handle<P>) {}
-                    void await_resume() {}
+                    bool await_ready() noexcept { return false; }
+                    template<typename P> void await_suspend(std::coroutine_handle<P>) noexcept {}
+                    void await_resume() noexcept {}
                 };
 
                 task get_return_object() { return {}; }
@@ -187,9 +186,9 @@ void test_ResumeFunctionContainsStateMachine() {
                 struct awaiter {
                     bool await_ready_val;
                     awaiter(bool ready) : await_ready_val(ready) {}
-                    bool await_ready() { return await_ready_val; }
-                    template<typename P> void await_suspend(std::coroutine_handle<P>) {}
-                    void await_resume() {}
+                    bool await_ready() noexcept { return await_ready_val; }
+                    template<typename P> void await_suspend(std::coroutine_handle<P>) noexcept {}
+                    void await_resume() noexcept {}
                 };
 
                 int value;
@@ -248,9 +247,9 @@ void test_DestroyFunctionFreesMemory() {
         struct task {
             struct promise_type {
                 struct awaiter {
-                    bool await_ready() { return false; }
-                    template<typename P> void await_suspend(std::coroutine_handle<P>) {}
-                    void await_resume() {}
+                    bool await_ready() noexcept { return false; }
+                    template<typename P> void await_suspend(std::coroutine_handle<P>) noexcept {}
+                    void await_resume() noexcept {}
                 };
 
                 task get_return_object() { return {}; }
@@ -305,9 +304,9 @@ void test_ResumeFunctionAcceptsFramePointer() {
         struct task {
             struct promise_type {
                 struct awaiter {
-                    bool await_ready() { return false; }
-                    template<typename P> void await_suspend(std::coroutine_handle<P>) {}
-                    void await_resume() {}
+                    bool await_ready() noexcept { return false; }
+                    template<typename P> void await_suspend(std::coroutine_handle<P>) noexcept {}
+                    void await_resume() noexcept {}
                 };
 
                 task get_return_object() { return {}; }
@@ -363,9 +362,9 @@ void test_DestroyFunctionAcceptsFramePointer() {
         struct task {
             struct promise_type {
                 struct awaiter {
-                    bool await_ready() { return false; }
-                    template<typename P> void await_suspend(std::coroutine_handle<P>) {}
-                    void await_resume() {}
+                    bool await_ready() noexcept { return false; }
+                    template<typename P> void await_suspend(std::coroutine_handle<P>) noexcept {}
+                    void await_resume() noexcept {}
                 };
 
                 task get_return_object() { return {}; }
@@ -421,9 +420,9 @@ void test_FunctionNamesMatchCoroutineName() {
         struct task {
             struct promise_type {
                 struct awaiter {
-                    bool await_ready() { return false; }
-                    template<typename P> void await_suspend(std::coroutine_handle<P>) {}
-                    void await_resume() {}
+                    bool await_ready() noexcept { return false; }
+                    template<typename P> void await_suspend(std::coroutine_handle<P>) noexcept {}
+                    void await_resume() noexcept {}
                 };
 
                 task get_return_object() { return {}; }
