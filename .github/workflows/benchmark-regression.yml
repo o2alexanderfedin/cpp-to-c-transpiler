@@ -3,12 +3,9 @@ name: Benchmark Performance Regression Detection
 on:
   push:
     branches:
-      - develop
-      - main
-  pull_request:
-    branches:
-      - develop
-      - main
+      - 'release/**'
+    tags:
+      - 'v*'
   workflow_dispatch:
     inputs:
       threshold:
