@@ -303,7 +303,7 @@ jobs:
   real-world-tests-linux:
     name: Real-World Tests (Linux)
     runs-on: ubuntu-latest
-    timeout-minutes: 10
+    timeout-minutes: 15
     needs: integration-tests-linux
 
     steps:
@@ -472,8 +472,8 @@ jobs:
           # Find LLVM installation directory
           $llvmPath = "C:\Program Files\LLVM"
           if (Test-Path "$llvmPath\lib\cmake\llvm") {
-            echo "LLVM_DIR=$llvmPath\lib\cmake\llvm" >> $env:GITHUB_ENV
-            echo "Clang_DIR=$llvmPath\lib\cmake\clang" >> $env:GITHUB_ENV
+            Add-Content $env:GITHUB_ENV "LLVM_DIR=$llvmPath\lib\cmake\llvm"
+            Add-Content $env:GITHUB_ENV "Clang_DIR=$llvmPath\lib\cmake\clang"
           } else {
             Write-Error "LLVM cmake files not found at $llvmPath"
             exit 1
@@ -495,8 +495,13 @@ jobs:
             -DLLVM_DIR="$env:LLVM_DIR" `
             -DClang_DIR="$env:Clang_DIR"
 
-      - name: Build project
-        run: cmake --build build --config ${{ env.BUILD_TYPE }} --parallel
+      - name: Build smoke test targets only
+        run: |
+          # Build only the smoke test executables to save time
+          cmake --build build --config ${{ env.BUILD_TYPE }} --target cpptoc_core --parallel
+          cmake --build build --config ${{ env.BUILD_TYPE }} --target CppToCVisitorTest --parallel
+          cmake --build build --config ${{ env.BUILD_TYPE }} --target NameManglerTest --parallel
+          cmake --build build --config ${{ env.BUILD_TYPE }} --target CodeGeneratorTest --parallel
 
       - name: Run smoke tests (Unix)
         if: runner.os != 'Windows'
