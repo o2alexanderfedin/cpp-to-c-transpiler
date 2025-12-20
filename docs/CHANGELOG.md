@@ -105,7 +105,7 @@ This completes **Phase 1 of 7** for comprehensive Frama-C ACSL support:
 - [ ] Phase 7: Model Variables
 
 ### Commits
-- TBD: Will be added after git-flow release
+- `c2710be` - feat(phase-01): implement ACSL statement annotations (v1.18.0)
 
 ---
 
