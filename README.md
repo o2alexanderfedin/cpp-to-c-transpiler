@@ -38,6 +38,7 @@ This project implements a C++ to C transpiler that produces high-quality, human-
 - ✅ Lambdas and closures
 - ✅ C++20 coroutines
 - ✅ Smart pointers
+- ✅ **ACSL Annotations** (v1.17.0) - Automatic generation of formal specifications for Frama-C verification
 
 ## Architecture (v1.5.1)
 

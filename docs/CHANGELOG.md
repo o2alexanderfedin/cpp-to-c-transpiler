@@ -1,5 +1,100 @@
 # Research Changelog
 
+## Version 1.17.0 - Complete ACSL Annotation System (December 20, 2024)
+
+### ✅ EPIC #193 COMPLETE: ACSL Annotation Generation for Transpiled Code
+
+**Release Status:** PRODUCTION READY
+
+**Test Coverage:** 37/37 tests passing (100%)
+
+### New Features
+
+**ACSL (ANSI/ISO C Specification Language) Automatic Annotation Generation**
+
+Three specialized annotators working together for comprehensive formal specifications:
+
+#### 1. **ACSLFunctionAnnotator** (Story #196) - 15/15 tests ✅
+- **Preconditions (requires clauses):**
+  - Pointer validity: `\valid(ptr)`, `\valid_read(const_ptr)`
+  - Array bounds: `\valid(arr + (0..n-1))`
+  - Separation: `\separated(p1, p2)`
+  - Value constraints: implicit bounds checking for unsigned types and indices
+
+- **Postconditions (ensures clauses):**
+  - Universal quantification: `\forall integer i; ...`
+  - Existential quantification: `\exists integer i; ...`
+  - Old values: `\old(*counter) + 1`
+  - Return values: `\valid(\result)`, `\result >= 0`
+  - Fresh memory: `\fresh(\result, size)`
+
+- **Side Effects (assigns clauses):**
+  - Pointer dereferences: `*ptr`
+  - Array ranges: `arr[0..n-1]`
+  - Pure functions: `\nothing`
+
+#### 2. **ACSLLoopAnnotator** (Story #197) - 12/12 tests ✅
+- **Loop Invariants:** Automatic bounds and pattern detection for for/while/do-while loops
+- **Loop Variants:** Termination measures (ascending: `n - i`, descending: `i`)
+- **Loop Assigns:** Side effect tracking for loop bodies
+- **Pattern Detection:** Array fill, accumulator, and search patterns
+- **Quantified Invariants:** `\forall integer j; 0 <= j < i ==> arr[j] == value`
+
+#### 3. **ACSLClassAnnotator** (Story #198) - 10/10 tests ✅
+- **Class Invariant Predicates:** Named predicates for class invariants
+- **Member Constraints:**
+  - Pointer members: `\valid(this->ptr)`
+  - Array members with bounds: `\valid(this->data + (0..capacity-1))`
+  - Value relationships: `this->size <= this->capacity`
+  - Virtual class vtables: `\valid(this)`
+- **Injection:** Constructor/method/destructor invariant verification
+
+### Command Line Interface
+
+```bash
+# Generate basic ACSL annotations (inline mode)
+cpptoc input.cpp --acsl-level=basic --acsl-output=inline
+
+# Generate full ACSL annotations (separate file)
+cpptoc input.cpp --acsl-level=full --acsl-output=separate
+```
+
+### Implementation Details
+
+- **Technology:** Clang LibTooling + RecursiveASTVisitor for AST analysis
+- **SOLID Principles:** Focused class responsibilities with clean inheritance
+- **TDD Methodology:** Test-first development with comprehensive coverage
+- **Lines of Code:** 3,948 lines added across 15 files
+- **Compatibility:** Frama-C WP plugin (v1.22+)
+
+### Use Cases
+
+- **Safety-Critical Systems:** Prove absence of runtime errors, memory safety
+- **Formal Verification:** Mathematical proofs of correctness with Frama-C
+- **Certification:** Generate verification artifacts for DO-178C, IEC 61508
+- **Contract-Based Design:** Specify and verify interface contracts
+
+### Architecture Integration
+
+ACSL annotations seamlessly integrate with the two-phase translation architecture:
+
+```
+C++ Source → Clang AST → CppToCVisitor → C Code + ACSL Annotations → Frama-C Verification
+                                ↓
+                    ACSLFunctionAnnotator (function contracts)
+                    ACSLLoopAnnotator (loop properties)
+                    ACSLClassAnnotator (class invariants)
+```
+
+### Commits
+- `fdd8cfd` - feat: complete Story #196 - ACSLFunctionAnnotator (15/15 tests)
+- `d5b6825` - fix: complete Story #197 - ACSLLoopAnnotator (12/12 tests)
+- `4f9fa8f` - feat: Story #198 - ACSLClassAnnotator (10/10 tests)
+- `6d768de` - feat: Story #197 - ACSLLoopAnnotator implementation
+- `4fe92c8` - Merge release/1.17.0 into main
+
+---
+
 ## Version 1.5 - Architecture Decision: Direct C Code Generation (December 8, 2025)
 
 ### ✅ DECISION MADE: Direct C Code Generation
