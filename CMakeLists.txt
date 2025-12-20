@@ -143,6 +143,7 @@ add_library(cpptoc_core STATIC
     src/ACSLLoopAnnotator.cpp
     src/ACSLClassAnnotator.cpp
     src/ACSLStatementAnnotator.cpp
+    src/ACSLTypeInvariantGenerator.cpp
     src/HeaderSeparator.cpp
     src/IncludeGuardGenerator.cpp
     src/DependencyAnalyzer.cpp
@@ -2149,6 +2150,27 @@ target_include_directories(ACSLStatementAnnotatorTest PRIVATE
 )
 
 target_link_libraries(ACSLStatementAnnotatorTest PRIVATE
+    cpptoc_core
+    clangTooling
+    clangFrontend
+    clangAST
+    clangBasic
+)
+
+# Phase 2 (v1.19.0): ACSLTypeInvariantGenerator tests
+add_executable(ACSLTypeInvariantGeneratorTest
+    tests/ACSLTypeInvariantGeneratorTest.cpp
+)
+
+target_compile_definitions(ACSLTypeInvariantGeneratorTest PRIVATE ${LLVM_DEFINITIONS})
+
+target_include_directories(ACSLTypeInvariantGeneratorTest PRIVATE
+    ${CMAKE_SOURCE_DIR}/include
+    ${LLVM_INCLUDE_DIRS}
+    ${CLANG_INCLUDE_DIRS}
+)
+
+target_link_libraries(ACSLTypeInvariantGeneratorTest PRIVATE
     cpptoc_core
     clangTooling
     clangFrontend
