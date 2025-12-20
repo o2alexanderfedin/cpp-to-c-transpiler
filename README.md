@@ -38,12 +38,13 @@ This project implements a C++ to C transpiler that produces high-quality, human-
 - ✅ Lambdas and closures
 - ✅ C++20 coroutines
 - ✅ Smart pointers
-- ✅ **ACSL Annotations** (v1.19.0) - Automatic generation of formal specifications for Frama-C verification
+- ✅ **ACSL Annotations** (v1.20.0) - Automatic generation of formal specifications for Frama-C verification
   - Function contracts (requires, ensures, assigns)
   - Loop invariants and variants
   - Class invariants
   - Statement assertions (assert, assume, check)
-  - Type invariants (NEW in v1.19.0)
+  - Type invariants (v1.19.0)
+  - Axiomatic definitions (NEW in v1.20.0) - Logic functions, axioms, lemmas
 
 ## Architecture (v1.5.1)
 

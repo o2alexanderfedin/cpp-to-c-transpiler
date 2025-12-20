@@ -144,6 +144,7 @@ add_library(cpptoc_core STATIC
     src/ACSLClassAnnotator.cpp
     src/ACSLStatementAnnotator.cpp
     src/ACSLTypeInvariantGenerator.cpp
+    src/ACSLAxiomaticBuilder.cpp
     src/HeaderSeparator.cpp
     src/IncludeGuardGenerator.cpp
     src/DependencyAnalyzer.cpp
@@ -2171,6 +2172,27 @@ target_include_directories(ACSLTypeInvariantGeneratorTest PRIVATE
 )
 
 target_link_libraries(ACSLTypeInvariantGeneratorTest PRIVATE
+    cpptoc_core
+    clangTooling
+    clangFrontend
+    clangAST
+    clangBasic
+)
+
+# Phase 3 (v1.20.0): ACSLAxiomaticBuilder tests
+add_executable(ACSLAxiomaticBuilderTest
+    tests/ACSLAxiomaticBuilderTest.cpp
+)
+
+target_compile_definitions(ACSLAxiomaticBuilderTest PRIVATE ${LLVM_DEFINITIONS})
+
+target_include_directories(ACSLAxiomaticBuilderTest PRIVATE
+    ${CMAKE_SOURCE_DIR}/include
+    ${LLVM_INCLUDE_DIRS}
+    ${CLANG_INCLUDE_DIRS}
+)
+
+target_link_libraries(ACSLAxiomaticBuilderTest PRIVATE
     cpptoc_core
     clangTooling
     clangFrontend
