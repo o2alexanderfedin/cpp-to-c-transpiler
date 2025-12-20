@@ -138,6 +138,10 @@ add_library(cpptoc_core STATIC
     src/CFGAnalyzer.cpp
     src/NameMangler.cpp
     src/CodeGenerator.cpp
+    src/ACSLGenerator.cpp
+    src/ACSLFunctionAnnotator.cpp
+    src/ACSLLoopAnnotator.cpp
+    src/ACSLClassAnnotator.cpp
     src/HeaderSeparator.cpp
     src/IncludeGuardGenerator.cpp
     src/DependencyAnalyzer.cpp
@@ -199,6 +203,7 @@ target_link_libraries(cpptoc PRIVATE
     clangFrontend
     clangAST
     clangBasic
+    LLVMSupport
 )
 
 # ============================================================================
@@ -2040,3 +2045,91 @@ add_subdirectory(runtime)
 # Performance benchmarks are optional and controlled by BUILD_BENCHMARKS flag
 # To build benchmarks: cmake -B build -DBUILD_BENCHMARKS=ON
 add_subdirectory(benchmarks)
+
+# ============================================================================
+# Epic #193: ACSL Annotation Generation (Story #194)
+# ============================================================================
+
+# Story #194: ACSLGenerator base class tests
+add_executable(ACSLGeneratorTest
+    tests/ACSLGeneratorTest.cpp
+)
+
+target_compile_definitions(ACSLGeneratorTest PRIVATE ${LLVM_DEFINITIONS})
+
+target_include_directories(ACSLGeneratorTest PRIVATE
+    ${CMAKE_SOURCE_DIR}/include
+    ${LLVM_INCLUDE_DIRS}
+    ${CLANG_INCLUDE_DIRS}
+)
+
+target_link_libraries(ACSLGeneratorTest PRIVATE
+    cpptoc_core
+    clangTooling
+    clangFrontend
+    clangAST
+    clangBasic
+)
+
+# Story #196: ACSLFunctionAnnotator tests
+add_executable(ACSLFunctionAnnotatorTest
+    tests/ACSLFunctionAnnotatorTest.cpp
+)
+
+target_compile_definitions(ACSLFunctionAnnotatorTest PRIVATE ${LLVM_DEFINITIONS})
+
+target_include_directories(ACSLFunctionAnnotatorTest PRIVATE
+    ${CMAKE_SOURCE_DIR}/include
+    ${LLVM_INCLUDE_DIRS}
+    ${CLANG_INCLUDE_DIRS}
+)
+
+target_link_libraries(ACSLFunctionAnnotatorTest PRIVATE
+    cpptoc_core
+    clangTooling
+    clangFrontend
+    clangAST
+    clangBasic
+)
+
+# Story #197: ACSLLoopAnnotator tests
+add_executable(ACSLLoopAnnotatorTest
+    tests/ACSLLoopAnnotatorTest.cpp
+)
+
+target_compile_definitions(ACSLLoopAnnotatorTest PRIVATE ${LLVM_DEFINITIONS})
+
+target_include_directories(ACSLLoopAnnotatorTest PRIVATE
+    ${CMAKE_SOURCE_DIR}/include
+    ${LLVM_INCLUDE_DIRS}
+    ${CLANG_INCLUDE_DIRS}
+)
+
+target_link_libraries(ACSLLoopAnnotatorTest PRIVATE
+    cpptoc_core
+    clangTooling
+    clangFrontend
+    clangAST
+    clangBasic
+)
+
+# Story #198: ACSLClassAnnotator tests
+add_executable(ACSLClassAnnotatorTest
+    tests/ACSLClassAnnotatorTest.cpp
+)
+
+target_compile_definitions(ACSLClassAnnotatorTest PRIVATE ${LLVM_DEFINITIONS})
+
+target_include_directories(ACSLClassAnnotatorTest PRIVATE
+    ${CMAKE_SOURCE_DIR}/include
+    ${LLVM_INCLUDE_DIRS}
+    ${CLANG_INCLUDE_DIRS}
+)
+
+target_link_libraries(ACSLClassAnnotatorTest PRIVATE
+    cpptoc_core
+    clangTooling
+    clangFrontend
+    clangAST
+    clangBasic
+)
