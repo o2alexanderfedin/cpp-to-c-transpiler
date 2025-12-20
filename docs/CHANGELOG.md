@@ -1,5 +1,68 @@
 # Research Changelog
 
+## Version 1.21.0 - ACSL Ghost Code Injection (December 20, 2024)
+
+### ✅ PHASE 4 IN PROGRESS: Ghost Variables for Proof-Relevant State
+
+**Release Status:** DEVELOPMENT (TDD - Tests Written, Implementation In Progress)
+
+**Test Coverage:** 10/10 test cases defined (TDD cycle started)
+
+### New Features
+
+**ACSL Ghost Code** - Ghost variables and blocks for specification-only state tracking
+
+#### **ACSLGhostCodeInjector** (Phase 4) - 10/10 tests defined ✅
+
+Generates ghost code to track proof-relevant values not present in the original code, enabling more precise invariants and assertions without runtime impact.
+
+**Syntax:**
+```c
+//@ ghost int max_seen = arr[0];
+for (int i = 1; i < size; i++) {
+    //@ ghost if (arr[i] > max_seen) max_seen = arr[i];
+    if (arr[i] > max) max = arr[i];
+}
+```
+
+**Capabilities (Planned):**
+- **Ghost Variable Declaration:** Specification-only variables for proofs
+- **Ghost Assignment:** Track ghost values throughout execution
+- **Ghost Blocks:** Multi-statement ghost logic
+- **Max/Min Tracking:** Track maximum/minimum values seen
+- **Sum Tracking:** Track accumulator values
+- **Counter Tracking:** Track occurrence counts
+- **Previous Value:** Capture values before updates
+- **Array Snapshots:** Ghost array copies for verification
+- **Loop Invariant Integration:** Use ghost vars in invariants
+- **No Runtime Impact:** Comment-only specification
+
+**Test Cases:**
+1. `GhostVariableDeclaration` - Simple ghost variable
+2. `GhostAssignment` - Ghost variable update
+3. `GhostInLoopInvariant` - Ghost var in loop invariant
+4. `GhostMaxTracking` - Track maximum value
+5. `GhostSumTracking` - Track accumulator
+6. `GhostCounterTracking` - Track occurrences
+7. `GhostBlockStatement` - Multi-statement ghost block
+8. `GhostConditionalUpdate` - Ghost in conditional branch
+9. `GhostArrayCopy` - Ghost array for verification
+10. `GhostNoRuntimeImpact` - Verify comment-only nature
+
+### Implementation Status
+
+**Completed:**
+- Class structure (ACSLGhostCodeInjector)
+- Test suite (10 comprehensive tests)
+- CMake integration
+- Header/source file scaffolding
+
+**Next Steps:**
+- Complete pattern detection algorithms
+- Implement ghost variable generation
+- Integrate with loop annotator
+- Full TDD cycle completion
+
 ## Version 1.20.0 - ACSL Axiomatic Definitions (December 20, 2024)
 
 ### ✅ PHASE 3 COMPLETE: Axiomatic Blocks for Mathematical Abstractions

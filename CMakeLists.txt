@@ -145,6 +145,7 @@ add_library(cpptoc_core STATIC
     src/ACSLStatementAnnotator.cpp
     src/ACSLTypeInvariantGenerator.cpp
     src/ACSLAxiomaticBuilder.cpp
+    src/ACSLGhostCodeInjector.cpp
     src/HeaderSeparator.cpp
     src/IncludeGuardGenerator.cpp
     src/DependencyAnalyzer.cpp
@@ -2193,6 +2194,27 @@ target_include_directories(ACSLAxiomaticBuilderTest PRIVATE
 )
 
 target_link_libraries(ACSLAxiomaticBuilderTest PRIVATE
+    cpptoc_core
+    clangTooling
+    clangFrontend
+    clangAST
+    clangBasic
+)
+
+# Phase 4 (v1.21.0): ACSLGhostCodeInjector tests
+add_executable(ACSLGhostCodeInjectorTest
+    tests/ACSLGhostCodeInjectorTest.cpp
+)
+
+target_compile_definitions(ACSLGhostCodeInjectorTest PRIVATE ${LLVM_DEFINITIONS})
+
+target_include_directories(ACSLGhostCodeInjectorTest PRIVATE
+    ${CMAKE_SOURCE_DIR}/include
+    ${LLVM_INCLUDE_DIRS}
+    ${CLANG_INCLUDE_DIRS}
+)
+
+target_link_libraries(ACSLGhostCodeInjectorTest PRIVATE
     cpptoc_core
     clangTooling
     clangFrontend
