@@ -1,0 +1,243 @@
+{
+  "project": {
+    "name": "C++ to C Transpiler",
+    "analysis_date": "2025-12-19",
+    "analysis_type": "actual_time_based",
+    "repository": "cpp-to-c-transpiler",
+    "analysis_version": "1.0"
+  },
+  "timeline": {
+    "first_commit": "2025-12-08T02:53:48",
+    "last_commit": "2025-12-19T14:44:09",
+    "calendar_days": 12,
+    "active_days": 11,
+    "total_commits": 249,
+    "total_sessions": 13,
+    "average_session_duration_hours": 4.57
+  },
+  "actual_effort": {
+    "total_hours": 59.36,
+    "total_days_equivalent": 7.42,
+    "total_weeks_equivalent": 1.48,
+    "average_hours_per_day": 5.4,
+    "active_days_worked": 11,
+    "calculation_method": "session_based_with_gaps"
+  },
+  "sessions": {
+    "total_count": 13,
+    "average_duration_hours": 4.57,
+    "median_duration_hours": 3.77,
+    "shortest_session_hours": 0.69,
+    "longest_session_hours": 8.0,
+    "sessions_by_day_of_week": {
+      "Monday": 2,
+      "Tuesday": 4,
+      "Wednesday": 2,
+      "Friday": 2,
+      "Saturday": 1,
+      "Sunday": 1,
+      "Thursday": 1
+    },
+    "sessions_by_hour_of_day": {
+      "2": 1,
+      "10": 2,
+      "11": 1,
+      "12": 1,
+      "13": 2,
+      "17": 1,
+      "18": 1,
+      "19": 1,
+      "21": 2,
+      "23": 1
+    }
+  },
+  "daily_breakdown": [
+    {
+      "date": "2025-12-08",
+      "hours_worked": 8.0,
+      "sessions": 1,
+      "commits": 69,
+      "loc_added": 53404,
+      "loc_removed": 223,
+      "primary_activity": "implementation"
+    },
+    {
+      "date": "2025-12-09",
+      "hours_worked": 4.65,
+      "sessions": 2,
+      "commits": 21,
+      "loc_added": 15315,
+      "loc_removed": 206,
+      "primary_activity": "implementation"
+    },
+    {
+      "date": "2025-12-10",
+      "hours_worked": 5.2,
+      "sessions": 1,
+      "commits": 11,
+      "loc_added": 13201,
+      "loc_removed": 17,
+      "primary_activity": "implementation"
+    },
+    {
+      "date": "2025-12-12",
+      "hours_worked": 8.0,
+      "sessions": 1,
+      "commits": 31,
+      "loc_added": 27792,
+      "loc_removed": 28,
+      "primary_activity": "implementation"
+    },
+    {
+      "date": "2025-12-13",
+      "hours_worked": 0.69,
+      "sessions": 1,
+      "commits": 4,
+      "loc_added": 51621,
+      "loc_removed": 11,
+      "primary_activity": "implementation"
+    },
+    {
+      "date": "2025-12-14",
+      "hours_worked": 3.77,
+      "sessions": 1,
+      "commits": 1,
+      "loc_added": 0,
+      "loc_removed": 0,
+      "primary_activity": "implementation"
+    },
+    {
+      "date": "2025-12-15",
+      "hours_worked": 7.1,
+      "sessions": 1,
+      "commits": 16,
+      "loc_added": 15030,
+      "loc_removed": 411,
+      "primary_activity": "implementation"
+    },
+    {
+      "date": "2025-12-16",
+      "hours_worked": 3.1,
+      "sessions": 2,
+      "commits": 7,
+      "loc_added": 5366,
+      "loc_removed": 0,
+      "primary_activity": "implementation"
+    },
+    {
+      "date": "2025-12-17",
+      "hours_worked": 8.0,
+      "sessions": 1,
+      "commits": 8,
+      "loc_added": 16763,
+      "loc_removed": 0,
+      "primary_activity": "implementation"
+    },
+    {
+      "date": "2025-12-18",
+      "hours_worked": 8.0,
+      "sessions": 1,
+      "commits": 64,
+      "loc_added": 84891,
+      "loc_removed": 987,
+      "primary_activity": "implementation"
+    },
+    {
+      "date": "2025-12-19",
+      "hours_worked": 2.85,
+      "sessions": 1,
+      "commits": 17,
+      "loc_added": 14193,
+      "loc_removed": 6509,
+      "primary_activity": "testing"
+    }
+  ],
+  "phases_actual": [
+    {
+      "phase_number": 0,
+      "phase_name": "Phase 0: Research & Planning",
+      "start_date": "2025-12-08",
+      "end_date": "2025-12-08",
+      "calendar_days": 1,
+      "active_hours": 8.0,
+      "sessions": 1,
+      "commits": 69,
+      "identification_method": "date_range_analysis"
+    },
+    {
+      "phase_number": 1,
+      "phase_name": "Phase 1: Proof of Concept (POC)",
+      "start_date": "2025-12-09",
+      "end_date": "2025-12-16",
+      "calendar_days": 8,
+      "active_hours": 32.51,
+      "sessions": 9,
+      "commits": 91,
+      "identification_method": "date_range_analysis"
+    },
+    {
+      "phase_number": 2,
+      "phase_name": "Phase 2: Core Features",
+      "start_date": "2025-12-17",
+      "end_date": "2025-12-19",
+      "calendar_days": 3,
+      "active_hours": 18.85,
+      "sessions": 3,
+      "commits": 89,
+      "identification_method": "date_range_analysis"
+    }
+  ],
+  "productivity_metrics": {
+    "actual_loc_per_hour": 5013.07,
+    "actual_commits_per_hour": 4.19,
+    "actual_files_per_hour": 0,
+    "actual_tests_per_hour": 0,
+    "actual_docs_pages_per_hour": 0
+  },
+  "comparison_with_estimates": {
+    "estimated_total_hours": 1840,
+    "actual_total_hours": 59.36,
+    "variance_hours": 1780.64,
+    "variance_percentage": 96.77,
+    "efficiency_multiplier": 31.0,
+    "notes": "Actual time (59.36h) was 31.0x faster than estimated (1840h). This indicates exceptionally high productivity, likely AI-assisted development."
+  },
+  "activity_patterns": {
+    "most_productive_hour": 10,
+    "most_productive_day_of_week": "Tuesday",
+    "average_gap_between_sessions_hours": 16.05,
+    "longest_continuous_work_period_hours": 8.0,
+    "work_schedule_type": "part_time"
+  },
+  "methodology": {
+    "session_gap_threshold_hours": 4,
+    "minimum_session_duration_hours": 0.25,
+    "maximum_session_duration_hours": 8.0,
+    "maximum_daily_hours": 16.0,
+    "single_commit_default_hours": 0.25,
+    "post_commit_buffer_hours": 0.5,
+    "assumptions": [
+      "Sessions separated by >4 hours are distinct work periods",
+      "Single commits represent minimum 15 minutes of work",
+      "Multi-commit sessions get 30-minute post-commit buffer",
+      "Daily hours capped at 16 hours (sanity limit)",
+      "Session hours capped at 8 hours per work period",
+      "Phase mapping based on documented project timeline dates"
+    ]
+  },
+  "confidence": {
+    "overall": "high",
+    "session_detection": "high",
+    "phase_mapping": "medium",
+    "notes": "High confidence in session detection based on clear commit patterns. Medium confidence in phase mapping due to approximate date boundaries."
+  },
+  "raw_data_files": [
+    "/tmp/full_commit_history.txt",
+    "/tmp/chronological_commits.txt",
+    "/tmp/commits_per_day_author.txt",
+    "/tmp/commit_gaps.txt",
+    "/tmp/commits_by_hour.txt",
+    "/tmp/phase_commits.txt",
+    "/tmp/epic_dates.txt"
+  ]
+}
