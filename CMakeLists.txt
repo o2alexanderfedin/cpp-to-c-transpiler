@@ -141,6 +141,7 @@ add_library(cpptoc_core STATIC
     src/HeaderSeparator.cpp
     src/IncludeGuardGenerator.cpp
     src/DependencyAnalyzer.cpp
+    src/DependencyGraphVisualizer.cpp
     src/FileOutputManager.cpp
     src/VirtualMethodAnalyzer.cpp
     src/VptrInjector.cpp
@@ -487,6 +488,27 @@ target_include_directories(DependencyAnalyzerTest PRIVATE
 )
 
 target_link_libraries(DependencyAnalyzerTest PRIVATE
+    cpptoc_core
+    clangTooling
+    clangFrontend
+    clangAST
+    clangBasic
+)
+
+# Dependency Graph Visualizer tests
+add_executable(DependencyGraphVisualizerTest
+    tests/DependencyGraphVisualizerTest.cpp
+)
+
+target_compile_definitions(DependencyGraphVisualizerTest PRIVATE ${LLVM_DEFINITIONS})
+
+target_include_directories(DependencyGraphVisualizerTest PRIVATE
+    ${CMAKE_SOURCE_DIR}/include
+    ${LLVM_INCLUDE_DIRS}
+    ${CLANG_INCLUDE_DIRS}
+)
+
+target_link_libraries(DependencyGraphVisualizerTest PRIVATE
     cpptoc_core
     clangTooling
     clangFrontend

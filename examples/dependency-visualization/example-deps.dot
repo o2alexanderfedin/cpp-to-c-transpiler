@@ -1,0 +1,36 @@
+digraph example_dependencies {
+    // Graph attributes
+    rankdir=TB;
+    node [fontname="Arial"];
+    edge [fontname="Arial"];
+
+    // Legend
+    subgraph cluster_legend {
+        label="Legend";
+        style=filled;
+        fillcolor=lightyellow;
+        "Header File" [shape=box,style=filled,fillcolor=lightblue];
+        "Implementation File" [shape=ellipse,style=filled,fillcolor=lightgreen];
+        "Forward Decl" [shape=diamond,style=filled,fillcolor=pink];
+    }
+
+    // Nodes (files)
+    "Point.h" [shape=box,style=filled,fillcolor=lightblue];
+    "Point.c" [shape=ellipse,style=filled,fillcolor=lightgreen];
+    "Circle.h" [shape=box,style=filled,fillcolor=lightblue];
+    "Circle.c" [shape=ellipse,style=filled,fillcolor=lightgreen];
+    "Rectangle.h" [shape=box,style=filled,fillcolor=lightblue];
+    "Rectangle.c" [shape=ellipse,style=filled,fillcolor=lightgreen];
+    "Main.c" [shape=ellipse,style=filled,fillcolor=lightgreen];
+
+    // Edges (include dependencies)
+    "Point.c" -> "Point.h";
+    "Circle.h" -> "Point.h";
+    "Circle.c" -> "Circle.h";
+    "Rectangle.h" -> "Point.h";
+    "Rectangle.c" -> "Rectangle.h";
+    "Main.c" -> "Point.h";
+    "Main.c" -> "Circle.h";
+    "Main.c" -> "Rectangle.h";
+
+}
