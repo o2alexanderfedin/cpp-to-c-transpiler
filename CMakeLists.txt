@@ -142,6 +142,7 @@ add_library(cpptoc_core STATIC
     src/ACSLFunctionAnnotator.cpp
     src/ACSLLoopAnnotator.cpp
     src/ACSLClassAnnotator.cpp
+    src/ACSLStatementAnnotator.cpp
     src/HeaderSeparator.cpp
     src/IncludeGuardGenerator.cpp
     src/DependencyAnalyzer.cpp
@@ -2127,6 +2128,27 @@ target_include_directories(ACSLClassAnnotatorTest PRIVATE
 )
 
 target_link_libraries(ACSLClassAnnotatorTest PRIVATE
+    cpptoc_core
+    clangTooling
+    clangFrontend
+    clangAST
+    clangBasic
+)
+
+# Phase 1 (v1.18.0): ACSLStatementAnnotator tests
+add_executable(ACSLStatementAnnotatorTest
+    tests/ACSLStatementAnnotatorTest.cpp
+)
+
+target_compile_definitions(ACSLStatementAnnotatorTest PRIVATE ${LLVM_DEFINITIONS})
+
+target_include_directories(ACSLStatementAnnotatorTest PRIVATE
+    ${CMAKE_SOURCE_DIR}/include
+    ${LLVM_INCLUDE_DIRS}
+    ${CLANG_INCLUDE_DIRS}
+)
+
+target_link_libraries(ACSLStatementAnnotatorTest PRIVATE
     cpptoc_core
     clangTooling
     clangFrontend
