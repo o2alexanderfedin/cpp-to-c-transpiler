@@ -543,7 +543,11 @@ std::string ACSLFunctionAnnotator::analyzeReturnValue(const FunctionDecl* func) 
 
     // Pointer return
     if (returnType->isPointerType()) {
-        // Always require validity for non-null pointers
+        // For allocation functions, result is always valid (not null)
+        if (allocatesMemory(func)) {
+            return "\\valid(\\result)";
+        }
+        // Otherwise, allow null returns
         return "\\valid(\\result) || \\result == \\null";
     }
 
