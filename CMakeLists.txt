@@ -138,6 +138,7 @@ add_library(cpptoc_core STATIC
     src/CFGAnalyzer.cpp
     src/NameMangler.cpp
     src/CodeGenerator.cpp
+    src/ACSLGenerator.cpp
     src/HeaderSeparator.cpp
     src/IncludeGuardGenerator.cpp
     src/DependencyAnalyzer.cpp
@@ -2040,3 +2041,28 @@ add_subdirectory(runtime)
 # Performance benchmarks are optional and controlled by BUILD_BENCHMARKS flag
 # To build benchmarks: cmake -B build -DBUILD_BENCHMARKS=ON
 add_subdirectory(benchmarks)
+
+# ============================================================================
+# Epic #193: ACSL Annotation Generation (Story #194)
+# ============================================================================
+
+# Story #194: ACSLGenerator base class tests
+add_executable(ACSLGeneratorTest
+    tests/ACSLGeneratorTest.cpp
+)
+
+target_compile_definitions(ACSLGeneratorTest PRIVATE ${LLVM_DEFINITIONS})
+
+target_include_directories(ACSLGeneratorTest PRIVATE
+    ${CMAKE_SOURCE_DIR}/include
+    ${LLVM_INCLUDE_DIRS}
+    ${CLANG_INCLUDE_DIRS}
+)
+
+target_link_libraries(ACSLGeneratorTest PRIVATE
+    cpptoc_core
+    clangTooling
+    clangFrontend
+    clangAST
+    clangBasic
+)
