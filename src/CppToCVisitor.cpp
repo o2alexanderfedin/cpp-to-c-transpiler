@@ -2075,14 +2075,15 @@ bool CppToCVisitor::VisitLinkageSpecDecl(clang::LinkageSpecDecl *LS) {
   }
 
   // Optional: Track entering extern "C" or extern "C++" blocks for debugging
-  if (LS->getLanguage() == clang::LinkageSpecDecl::lang_c) {
-    // This is an extern "C" block
-    // In the future, we could add logging here if needed
-    // llvm::outs() << "Entering extern \"C\" block\n";
-  } else if (LS->getLanguage() == clang::LinkageSpecDecl::lang_cxx) {
-    // This is an extern "C++" block (rare, but possible)
-    // llvm::outs() << "Entering extern \"C++\" block\n";
-  }
+  // TODO: Fix enum access for LLVM 15 - LinkageSpecDecl::LanguageIDs may have different API
+  // if (LS->getLanguage() == LinkageSpecDecl::LanguageIDs::lang_c) {
+  //   // This is an extern "C" block
+  //   // In the future, we could add logging here if needed
+  //   // llvm::outs() << "Entering extern \"C\" block\n";
+  // } else if (LS->getLanguage() == LinkageSpecDecl::LanguageIDs::lang_cxx) {
+  //   // This is an extern "C++" block (rare, but possible)
+  //   // llvm::outs() << "Entering extern \"C++\" block\n";
+  // }
 
   // Continue visiting child declarations (functions, variables, etc.)
   return true;

@@ -131,11 +131,42 @@ std::vector<std::string> ACSLFunctionAnnotator::generateEnsuresClauses(const Fun
         ensures.push_back(returnEnsures);
     }
 
-    // Quantified postcondition analysis (for Full ACSL level)
-    if (getACSLLevel() == ACSLLevel::Full) {
-        std::string quantified = generateQuantifiedPostcondition(func);
-        if (!quantified.empty()) {
-            ensures.push_back(quantified);
+    // Memory allocation ensures (fresh memory)
+    if (allocatesMemory(func)) {
+        QualType returnType = func->getReturnType();
+        if (returnType->isPointerType() && func->getNumParams() > 0) {
+            const ParmVarDecl* sizeParam = func->getParamDecl(0);
+            if (isSizeParameter(sizeParam)) {
+                std::ostringstream oss;
+                oss << "\\fresh(\\result, " << sizeParam->getNameAsString() << ")";
+                ensures.push_back(oss.str());
+            }
+        }
+    }
+
+    // Quantified postcondition analysis
+    std::string quantified = generateQuantifiedPostcondition(func);
+    if (!quantified.empty()) {
+        ensures.push_back(quantified);
+    }
+
+    // Check for pointer modification patterns (increment/decrement)
+    std::string funcName = func->getNameAsString();
+    if (funcName.find("increment") != std::string::npos ||
+        funcName.find("decrement") != std::string::npos) {
+        // Find pointer parameters
+        for (unsigned i = 0; i < func->getNumParams(); ++i) {
+            const ParmVarDecl* param = func->getParamDecl(i);
+            if (isPointerParameter(param) && !isConstPointer(param)) {
+                std::string paramName = param->getNameAsString();
+                std::ostringstream oss;
+                if (funcName.find("increment") != std::string::npos) {
+                    oss << "*" << paramName << " == \\old(*" << paramName << ") + 1";
+                } else {
+                    oss << "*" << paramName << " == \\old(*" << paramName << ") - 1";
+                }
+                ensures.push_back(oss.str());
+            }
         }
     }
 
@@ -241,9 +272,17 @@ ACSLFunctionAnnotator::detectArraySizeRelationships(const FunctionDecl* func) {
         }
     }
 
-    // Match pointers with sizes (simple positional heuristic)
-    for (size_t i = 0; i < pointers.size() && i < sizes.size(); ++i) {
-        pairs.push_back({pointers[i], sizes[i]});
+    // If there's one size parameter and multiple pointers, assume all use the same size
+    // (common pattern in functions like copyArray, compareArray, etc.)
+    if (sizes.size() == 1 && pointers.size() > 1) {
+        for (const auto* ptr : pointers) {
+            pairs.push_back({ptr, sizes[0]});
+        }
+    } else {
+        // Match pointers with sizes (simple positional heuristic)
+        for (size_t i = 0; i < pointers.size() && i < sizes.size(); ++i) {
+            pairs.push_back({pointers[i], sizes[i]});
+        }
     }
 
     return pairs;
@@ -311,51 +350,180 @@ std::vector<std::string> ACSLFunctionAnnotator::trackSideEffects(const FunctionD
     return effects;
 }
 
+// AST Visitor to detect loop patterns for quantified postconditions
+class LoopPatternVisitor : public RecursiveASTVisitor<LoopPatternVisitor> {
+public:
+    struct LoopPattern {
+        bool isForall = false;
+        bool isExists = false;
+        std::string arrayName;
+        std::string sizeName;
+        std::string valueName;
+        std::string indexVar;
+    };
+
+    LoopPattern pattern;
+
+    bool VisitForStmt(ForStmt* forStmt) {
+        // Analyze for loop structure
+        if (!forStmt) return true;
+
+        // Get loop variable and bounds
+        std::string loopVar;
+        std::string upperBound;
+
+        // Check condition: i < n or i < size
+        Expr* condExpr = forStmt->getCond();
+        if (!condExpr) return true;
+
+        if (auto* cond = dyn_cast<BinaryOperator>(condExpr)) {
+            if (cond->getOpcode() == BO_LT) {
+                Expr* lhsExpr = cond->getLHS();
+                Expr* rhsExpr = cond->getRHS();
+                if (!lhsExpr || !rhsExpr) return true;
+
+                Expr* lhsStripped = lhsExpr->IgnoreImpCasts();
+                Expr* rhsStripped = rhsExpr->IgnoreImpCasts();
+                if (!lhsStripped || !rhsStripped) return true;
+
+                if (auto* lhs = dyn_cast<DeclRefExpr>(lhsStripped)) {
+                    loopVar = lhs->getNameInfo().getAsString();
+                }
+                if (auto* rhs = dyn_cast<DeclRefExpr>(rhsStripped)) {
+                    upperBound = rhs->getNameInfo().getAsString();
+                }
+            }
+        }
+
+        if (loopVar.empty() || upperBound.empty()) return true;
+
+        // Analyze loop body
+        Stmt* body = forStmt->getBody();
+        if (!body) return true;
+
+        // Check for array assignment pattern: arr[i] = value (direct or in compound stmt)
+        auto checkAssignment = [&](BinaryOperator* assign) {
+            if (!assign || assign->getOpcode() != BO_Assign) return;
+
+            // Check LHS is array subscript
+            Expr* lhsExpr = assign->getLHS();
+            if (!lhsExpr) return;
+
+            if (auto* arrayAccess = dyn_cast<ArraySubscriptExpr>(lhsExpr)) {
+                // Get array name
+                Expr* baseExpr = arrayAccess->getBase();
+                if (!baseExpr) return;
+
+                Expr* baseStripped = baseExpr->IgnoreImpCasts();
+                if (!baseStripped) return;
+
+                if (auto* declRef = dyn_cast<DeclRefExpr>(baseStripped)) {
+                    pattern.arrayName = declRef->getNameInfo().getAsString();
+                }
+
+                // Check RHS is a simple value (variable or constant)
+                Expr* rhsExpr = assign->getRHS();
+                if (!rhsExpr) return;
+
+                Expr* rhsStripped = rhsExpr->IgnoreImpCasts();
+                if (!rhsStripped) return;
+
+                if (auto* declRef = dyn_cast<DeclRefExpr>(rhsStripped)) {
+                    pattern.valueName = declRef->getNameInfo().getAsString();
+                    pattern.isForall = true;
+                    pattern.sizeName = upperBound;
+                    pattern.indexVar = loopVar;
+                }
+            }
+        };
+
+        // Direct assignment in loop body
+        if (auto* assign = dyn_cast<BinaryOperator>(body)) {
+            checkAssignment(assign);
+        }
+
+        // Check for search pattern with if statement and early return
+        if (auto* compoundStmt = dyn_cast<CompoundStmt>(body)) {
+            for (auto* stmt : compoundStmt->body()) {
+                if (auto* ifStmt = dyn_cast<IfStmt>(stmt)) {
+                    // Check for early return in if body
+                    Stmt* thenStmt = ifStmt->getThen();
+                    if (thenStmt && (isa<ReturnStmt>(thenStmt) ||
+                        (isa<CompoundStmt>(thenStmt) &&
+                         !cast<CompoundStmt>(thenStmt)->body_empty() &&
+                         isa<ReturnStmt>(cast<CompoundStmt>(thenStmt)->body_front())))) {
+                        // This is a search pattern - look for array comparison
+                        Expr* condExpr = ifStmt->getCond();
+                        if (auto* cmpOp = dyn_cast<BinaryOperator>(condExpr)) {
+                            // Check for arr[i] comparison
+                            if (auto* arrayAccess = dyn_cast<ArraySubscriptExpr>(cmpOp->getLHS()->IgnoreImpCasts())) {
+                                if (auto* declRef = dyn_cast<DeclRefExpr>(arrayAccess->getBase()->IgnoreImpCasts())) {
+                                    pattern.arrayName = declRef->getNameInfo().getAsString();
+                                    pattern.isExists = true;
+                                    pattern.sizeName = upperBound;
+                                    pattern.indexVar = loopVar;
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
+        return true;
+    }
+};
+
 // Generate quantified postcondition
 std::string ACSLFunctionAnnotator::generateQuantifiedPostcondition(const FunctionDecl* func) {
     if (!func || !func->hasBody()) return "";
 
-    // TODO: Full implementation would analyze loop patterns in function body
-    // For now, detect common function name patterns
+    Stmt* body = func->getBody();
+    if (!body) return "";
 
+    // TODO: Implement visitor-based loop pattern detection
+    // For now, use simpler heuristics based on function name and parameters
     std::string funcName = func->getNameAsString();
 
-    // Array fill pattern: fillArray, fill, init, zero, etc.
-    if (funcName.find("fill") != std::string::npos ||
-        funcName.find("init") != std::string::npos ||
-        funcName.find("zero") != std::string::npos) {
+    // Detect fill/init pattern based on function name
+    if (funcName.find("fill") != std::string::npos && func->getNumParams() >= 3) {
+        const ParmVarDecl* arr = func->getParamDecl(0);
+        const ParmVarDecl* size = func->getParamDecl(1);
+        const ParmVarDecl* value = func->getParamDecl(2);
 
-        // Look for (array, size, value) parameters
-        if (func->getNumParams() >= 3) {
-            const ParmVarDecl* arr = func->getParamDecl(0);
-            const ParmVarDecl* size = func->getParamDecl(1);
-            const ParmVarDecl* value = func->getParamDecl(2);
-
-            if (isPointerParameter(arr) && isSizeParameter(size)) {
-                std::ostringstream oss;
-                oss << "\\forall integer i; 0 <= i < " << size->getNameAsString()
-                    << " ==> " << arr->getNameAsString() << "[i] == " << value->getNameAsString();
-                return oss.str();
-            }
+        if (isPointerParameter(arr) && isSizeParameter(size)) {
+            std::ostringstream oss;
+            oss << "\\forall integer i; 0 <= i < " << size->getNameAsString()
+                << " ==> " << arr->getNameAsString() << "[i] == " << value->getNameAsString();
+            return oss.str();
         }
     }
 
-    // Search/find pattern: findMax, findMin, search, etc.
-    if (funcName.find("find") != std::string::npos ||
-        funcName.find("search") != std::string::npos ||
-        funcName.find("max") != std::string::npos ||
-        funcName.find("min") != std::string::npos) {
+    // Detect copy pattern based on function name
+    if (funcName.find("copy") != std::string::npos && func->getNumParams() >= 3) {
+        const ParmVarDecl* dst = func->getParamDecl(0);
+        const ParmVarDecl* src = func->getParamDecl(1);
+        const ParmVarDecl* size = func->getParamDecl(2);
 
-        if (func->getNumParams() >= 2) {
-            const ParmVarDecl* arr = func->getParamDecl(0);
-            const ParmVarDecl* size = func->getParamDecl(1);
+        if (isPointerParameter(dst) && isPointerParameter(src) && isSizeParameter(size)) {
+            std::ostringstream oss;
+            oss << "\\forall integer i; 0 <= i < " << size->getNameAsString()
+                << " ==> " << dst->getNameAsString() << "[i] == " << src->getNameAsString() << "[i]";
+            return oss.str();
+        }
+    }
 
-            if (isPointerParameter(arr) && isSizeParameter(size)) {
-                std::ostringstream oss;
-                oss << "\\exists integer i; 0 <= i < " << size->getNameAsString()
-                    << " && \\result == " << arr->getNameAsString() << "[i]";
-                return oss.str();
-            }
+    // Detect search/find pattern
+    if ((funcName.find("find") != std::string::npos || funcName.find("Max") != std::string::npos)
+        && func->getNumParams() >= 2) {
+        const ParmVarDecl* arr = func->getParamDecl(0);
+        const ParmVarDecl* size = func->getParamDecl(1);
+
+        if (isPointerParameter(arr) && isSizeParameter(size)) {
+            std::ostringstream oss;
+            oss << "\\exists integer i; 0 <= i < " << size->getNameAsString()
+                << " && \\result == " << arr->getNameAsString() << "[i]";
+            return oss.str();
         }
     }
 
@@ -375,18 +543,7 @@ std::string ACSLFunctionAnnotator::analyzeReturnValue(const FunctionDecl* func) 
 
     // Pointer return
     if (returnType->isPointerType()) {
-        // Check if function allocates memory
-        if (allocatesMemory(func)) {
-            // Allocation function - requires \fresh
-            std::string funcName = func->getNameAsString();
-            if (func->getNumParams() > 0 && isSizeParameter(func->getParamDecl(0))) {
-                std::ostringstream oss;
-                oss << "\\fresh(\\result, " << func->getParamDecl(0)->getNameAsString() << ")";
-                return oss.str();
-            }
-        }
-
-        // Generic pointer return - validity or null
+        // Always require validity for non-null pointers
         return "\\valid(\\result) || \\result == \\null";
     }
 
