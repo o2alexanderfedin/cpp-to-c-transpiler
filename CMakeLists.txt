@@ -200,6 +200,7 @@ target_link_libraries(cpptoc PRIVATE
     clangFrontend
     clangAST
     clangBasic
+    LLVMSupport
 )
 
 # ============================================================================
