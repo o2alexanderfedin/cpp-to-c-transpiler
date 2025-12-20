@@ -139,6 +139,7 @@ add_library(cpptoc_core STATIC
     src/NameMangler.cpp
     src/CodeGenerator.cpp
     src/ACSLGenerator.cpp
+    src/ACSLFunctionAnnotator.cpp
     src/HeaderSeparator.cpp
     src/IncludeGuardGenerator.cpp
     src/DependencyAnalyzer.cpp
@@ -2061,6 +2062,27 @@ target_include_directories(ACSLGeneratorTest PRIVATE
 )
 
 target_link_libraries(ACSLGeneratorTest PRIVATE
+    cpptoc_core
+    clangTooling
+    clangFrontend
+    clangAST
+    clangBasic
+)
+
+# Story #196: ACSLFunctionAnnotator tests
+add_executable(ACSLFunctionAnnotatorTest
+    tests/ACSLFunctionAnnotatorTest.cpp
+)
+
+target_compile_definitions(ACSLFunctionAnnotatorTest PRIVATE ${LLVM_DEFINITIONS})
+
+target_include_directories(ACSLFunctionAnnotatorTest PRIVATE
+    ${CMAKE_SOURCE_DIR}/include
+    ${LLVM_INCLUDE_DIRS}
+    ${CLANG_INCLUDE_DIRS}
+)
+
+target_link_libraries(ACSLFunctionAnnotatorTest PRIVATE
     cpptoc_core
     clangTooling
     clangFrontend
