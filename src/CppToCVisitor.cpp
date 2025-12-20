@@ -3,6 +3,7 @@
 #include "llvm/Support/raw_ostream.h"
 #include "clang/AST/Expr.h"
 #include "clang/AST/ExprCXX.h"
+#include "clang/Basic/SourceManager.h"
 #include <vector>
 #include <algorithm>
 
@@ -79,6 +80,25 @@ bool CppToCVisitor::VisitCXXMethodDecl(CXXMethodDecl *MD) {
     return true;
   }
 
+  // Story #131: Handle move assignment operators
+  if (MoveAssignTranslator.isMoveAssignmentOperator(MD)) {
+    llvm::outs() << "Translating move assignment operator: " << MD->getQualifiedNameAsString() << "\n";
+    std::string cCode = MoveAssignTranslator.generateMoveAssignment(MD);
+    if (!cCode.empty()) {
+      llvm::outs() << "Generated move assignment C code:\n" << cCode << "\n";
+      // TODO: Store generated function for later output
+    }
+    return true;
+  }
+
+  // Story #134: Handle copy assignment operators (skip for now, similar to move)
+  if (MD->isCopyAssignmentOperator()) {
+    llvm::outs() << "Translating copy assignment operator: " << MD->getQualifiedNameAsString() << "\n";
+    // Copy assignment operators are handled similar to move assignments
+    // TODO: Generate C code for copy assignment
+    return true;
+  }
+
   llvm::outs() << "Translating method: " << MD->getQualifiedNameAsString() << "\n";
 
   CXXRecordDecl *Parent = MD->getParent();
@@ -149,6 +169,21 @@ bool CppToCVisitor::VisitCXXConstructorDecl(CXXConstructorDecl *CD) {
   // Edge case: Skip implicit constructors (compiler-generated)
   if (CD->isImplicit()) {
     return true;
+  }
+
+  // Story #130: Handle move constructors specially
+  if (MoveCtorTranslator.isMoveConstructor(CD)) {
+    llvm::outs() << "Detected move constructor: " << CD->getParent()->getName()
+                 << "::" << CD->getParent()->getName() << "(&&)\n";
+
+    std::string moveCtorCode = MoveCtorTranslator.generateMoveConstructor(CD);
+    if (!moveCtorCode.empty()) {
+      llvm::outs() << "Generated move constructor C code:\n" << moveCtorCode << "\n";
+    }
+
+    // Note: For now, we just generate the code for testing/validation
+    // Full integration would store this in a function declaration
+    // Continue with normal processing to store in ctorMap for now
   }
 
   llvm::outs() << "Translating constructor: " << CD->getParent()->getName()
@@ -458,8 +493,43 @@ bool CppToCVisitor::VisitFunctionDecl(FunctionDecl *FD) {
   if (!objectsToDestroy.empty()) {
     llvm::outs() << "  Will inject destructors for "
                  << objectsToDestroy.size() << " objects\n";
-    // Note: Actual injection happens during translation
-    // This visitor just identifies what needs to be done
+
+    // Story #44: Store objects for destruction at function scope
+    // These will be used during statement translation to inject destructor calls
+    currentFunctionObjectsToDestroy = objectsToDestroy;
+
+    // Story #45: Clear previous return tracking for this function
+    currentFunctionReturns.clear();
+
+    // Story #47: Clear previous goto/label tracking for this function
+    currentFunctionGotos.clear();
+    currentFunctionLabels.clear();
+
+    // Story #48: Clear previous break/continue tracking for this function
+    currentFunctionBreaksContinues.clear();
+
+    // Story #45: Analyze return statements in the function
+    // The VisitReturnStmt will be called automatically during traversal
+    // and will populate currentFunctionReturns
+
+    // Story #47: Analyze goto statements after traversal
+    // The VisitGotoStmt and VisitLabelStmt will be called during traversal
+    // and will populate currentFunctionGotos and currentFunctionLabels
+    // After traversal, we match them and determine destructor injection points
+    analyzeGotoStatements(FD);
+
+    // Story #48: Analyze break/continue statements after traversal
+    // The VisitBreakStmt and VisitContinueStmt will be called during traversal
+    // and will populate currentFunctionBreaksContinues
+    // After traversal, we identify objects needing destruction
+    analyzeBreakContinueStatements(FD);
+
+  } else {
+    currentFunctionObjectsToDestroy.clear();
+    currentFunctionReturns.clear();
+    currentFunctionGotos.clear();
+    currentFunctionLabels.clear();
+    currentFunctionBreaksContinues.clear();
   }
 
   return true;
@@ -836,6 +906,403 @@ void CppToCVisitor::emitMemberDestructorCalls(CXXRecordDecl *ClassDecl,
 // Epic #5: RAII Helper Methods
 // ============================================================================
 
+// Story #45: Visit return statements for early return detection
+bool CppToCVisitor::VisitReturnStmt(ReturnStmt *RS) {
+  // Skip if not analyzing a function
+  if (currentFunctionObjectsToDestroy.empty()) {
+    return true;
+  }
+
+  llvm::outs() << "  Detected return statement for early return analysis\n";
+
+  // Track this return statement (we'll analyze scope later during translation)
+  ReturnInfo info;
+  info.returnStmt = RS;
+  // Live objects will be determined during translation phase
+  currentFunctionReturns.push_back(info);
+
+  return true;
+}
+
+// Story #45: Analyze which objects are live at a specific return point
+std::vector<VarDecl*> CppToCVisitor::analyzeLiveObjectsAtReturn(
+    ReturnStmt *RS, FunctionDecl *FD) {
+
+  std::vector<VarDecl*> liveObjects;
+
+  if (!FD || !RS) {
+    return liveObjects;
+  }
+
+  // Get source location of the return statement
+  SourceLocation returnLoc = RS->getBeginLoc();
+
+  llvm::outs() << "  Analyzing live objects at return statement...\n";
+
+  // For each object with a destructor in the function
+  for (VarDecl *VD : currentFunctionObjectsToDestroy) {
+    SourceLocation varLoc = VD->getBeginLoc();
+
+    // Check if variable is declared before the return statement
+    if (varLoc.isValid() && returnLoc.isValid()) {
+      // Use source manager to compare locations
+      SourceManager &SM = Context.getSourceManager();
+
+      // Variable must be declared before return to be live
+      if (SM.isBeforeInTranslationUnit(varLoc, returnLoc)) {
+        // Additional check: ensure variable is in scope at return point
+        // For now, we assume lexical ordering implies scope
+        // TODO: More sophisticated scope analysis for nested blocks
+
+        liveObjects.push_back(VD);
+        llvm::outs() << "    Variable '" << VD->getNameAsString()
+                     << "' is live at return\n";
+      }
+    }
+  }
+
+  return liveObjects;
+}
+
+// Story #45: Check if one statement comes before another
+bool CppToCVisitor::comesBefore(Stmt *Before, Stmt *After) {
+  if (!Before || !After) {
+    return false;
+  }
+
+  SourceLocation beforeLoc = Before->getBeginLoc();
+  SourceLocation afterLoc = After->getBeginLoc();
+
+  if (!beforeLoc.isValid() || !afterLoc.isValid()) {
+    return false;
+  }
+
+  SourceManager &SM = Context.getSourceManager();
+  return SM.isBeforeInTranslationUnit(beforeLoc, afterLoc);
+}
+
+// ============================================================================
+// Story #46: Nested Scope Tracking Methods
+// ============================================================================
+
+// Enter a new scope (push onto scope stack)
+void CppToCVisitor::enterScope(CompoundStmt *CS) {
+  ScopeInfo info;
+  info.stmt = CS;
+  info.depth = scopeStack.size();  // Current stack size is the depth
+  // objects vector starts empty
+
+  scopeStack.push_back(info);
+
+  llvm::outs() << "  [Scope] Entering scope at depth " << info.depth << "\n";
+}
+
+// Exit current scope (pop from scope stack)
+CppToCVisitor::ScopeInfo CppToCVisitor::exitScope() {
+  if (scopeStack.empty()) {
+    llvm::errs() << "Warning: Attempting to exit scope when stack is empty\n";
+    return ScopeInfo{nullptr, {}, 0};
+  }
+
+  ScopeInfo info = scopeStack.back();
+  scopeStack.pop_back();
+
+  llvm::outs() << "  [Scope] Exiting scope at depth " << info.depth
+               << " with " << info.objects.size() << " objects\n";
+
+  return info;
+}
+
+// Track a variable declaration in the current scope
+void CppToCVisitor::trackObjectInCurrentScope(VarDecl *VD) {
+  if (scopeStack.empty()) {
+    llvm::outs() << "  [Scope] Warning: No active scope to track object in\n";
+    return;
+  }
+
+  // Add to the current (top) scope
+  scopeStack.back().objects.push_back(VD);
+
+  llvm::outs() << "  [Scope] Tracked object '" << VD->getNameAsString()
+               << "' in scope depth " << scopeStack.back().depth << "\n";
+}
+
+// ============================================================================
+// Story #47: Goto Statement Handling Methods
+// ============================================================================
+
+// Visit goto statements for detection and tracking
+bool CppToCVisitor::VisitGotoStmt(GotoStmt *GS) {
+  // Skip if not analyzing a function
+  if (currentFunctionObjectsToDestroy.empty()) {
+    return true;
+  }
+
+  llvm::outs() << "  [Goto] Detected goto to label: " << GS->getLabel()->getName() << "\n";
+
+  // Store goto statement for later analysis
+  GotoInfo info;
+  info.gotoStmt = GS;
+  info.targetLabel = nullptr;  // Will be matched in analyzeGotoStatements()
+  currentFunctionGotos.push_back(info);
+
+  return true;
+}
+
+// Visit label statements for detection and tracking
+bool CppToCVisitor::VisitLabelStmt(LabelStmt *LS) {
+  // Skip if not analyzing a function
+  if (currentFunctionObjectsToDestroy.empty()) {
+    return true;
+  }
+
+  std::string labelName = LS->getName();
+  llvm::outs() << "  [Goto] Detected label: " << labelName << "\n";
+
+  // Store label for goto matching
+  currentFunctionLabels[labelName] = LS;
+
+  return true;
+}
+
+// Analyze goto-label pairs and determine objects needing destruction
+void CppToCVisitor::analyzeGotoStatements(FunctionDecl *FD) {
+  if (currentFunctionGotos.empty()) {
+    return;  // No gotos to analyze
+  }
+
+  llvm::outs() << "  [Goto] Analyzing " << currentFunctionGotos.size()
+               << " goto statement(s)\n";
+
+  // Match each goto to its target label
+  for (GotoInfo &info : currentFunctionGotos) {
+    std::string labelName = info.gotoStmt->getLabel()->getName().str();
+
+    // Find matching label
+    auto it = currentFunctionLabels.find(labelName);
+    if (it == currentFunctionLabels.end()) {
+      llvm::errs() << "  [Goto] Warning: Label '" << labelName
+                   << "' not found for goto\n";
+      continue;
+    }
+
+    info.targetLabel = it->second;
+
+    // Check if this is a forward jump
+    if (isForwardJump(info.gotoStmt, info.targetLabel)) {
+      llvm::outs() << "  [Goto] Forward jump to '" << labelName << "'\n";
+
+      // Analyze which objects need destruction
+      info.liveObjects = analyzeObjectsForGoto(info.gotoStmt, info.targetLabel, FD);
+
+      llvm::outs() << "    -> " << info.liveObjects.size()
+                   << " object(s) need destruction before goto\n";
+    } else {
+      llvm::outs() << "  [Goto] Backward jump to '" << labelName
+                   << "' (no destructor injection)\n";
+      // Backward jumps: objects remain alive, no destruction needed
+    }
+  }
+}
+
+// Check if goto comes before its target label (forward jump)
+bool CppToCVisitor::isForwardJump(GotoStmt *gotoStmt, LabelStmt *labelStmt) {
+  if (!gotoStmt || !labelStmt) {
+    return false;
+  }
+
+  SourceManager &SM = Context.getSourceManager();
+  SourceLocation gotoLoc = gotoStmt->getBeginLoc();
+  SourceLocation labelLoc = labelStmt->getBeginLoc();
+
+  // Forward jump: goto comes before label in source
+  return SM.isBeforeInTranslationUnit(gotoLoc, labelLoc);
+}
+
+// Determine which objects are live at goto and out of scope at label
+std::vector<VarDecl*> CppToCVisitor::analyzeObjectsForGoto(
+    GotoStmt *gotoStmt,
+    LabelStmt *labelStmt,
+    FunctionDecl *FD) {
+
+  std::vector<VarDecl*> objectsToDestroy;
+
+  if (!gotoStmt || !labelStmt || !FD) {
+    return objectsToDestroy;
+  }
+
+  SourceManager &SM = Context.getSourceManager();
+  SourceLocation gotoLoc = gotoStmt->getBeginLoc();
+  SourceLocation labelLoc = labelStmt->getBeginLoc();
+
+  // For each tracked object in the function
+  for (VarDecl *VD : currentFunctionObjectsToDestroy) {
+    SourceLocation varLoc = VD->getBeginLoc();
+
+    // Object is live at goto if:
+    // 1. It's declared before the goto
+    // 2. It needs destruction (already filtered in tracking)
+    if (SM.isBeforeInTranslationUnit(varLoc, gotoLoc)) {
+      // For forward jumps, all objects constructed before goto need destruction
+      // (This is a simplified analysis - a full implementation would check
+      //  exact scope boundaries to determine if object is still in scope at label)
+      objectsToDestroy.push_back(VD);
+      llvm::outs() << "      - Will destroy: " << VD->getNameAsString() << "\n";
+    }
+  }
+
+  return objectsToDestroy;
+}
+
+// ============================================================================
+// Story #48: Loop Break/Continue Handling Methods
+// ============================================================================
+
+// Visit break statements for detection and tracking
+bool CppToCVisitor::VisitBreakStmt(BreakStmt *BS) {
+  // Skip if not analyzing a function
+  if (currentFunctionObjectsToDestroy.empty() && scopeStack.empty()) {
+    return true;
+  }
+
+  // Only track breaks inside loops (loopNestingLevel > 0)
+  // Breaks in switch statements (loopNestingLevel == 0) are not tracked
+  if (loopNestingLevel == 0) {
+    llvm::outs() << "  [Break] Detected break in switch (no destructor injection)\n";
+    return true;
+  }
+
+  llvm::outs() << "  [Break] Detected break in loop (nesting level: "
+               << loopNestingLevel << ")\n";
+
+  // Store break statement for later analysis
+  BreakContinueInfo info;
+  info.stmt = BS;
+  info.isBreak = true;
+  currentFunctionBreaksContinues.push_back(info);
+
+  return true;
+}
+
+// Visit continue statements for detection and tracking
+bool CppToCVisitor::VisitContinueStmt(ContinueStmt *CS) {
+  // Skip if not analyzing a function
+  if (currentFunctionObjectsToDestroy.empty() && scopeStack.empty()) {
+    return true;
+  }
+
+  // Continue is only valid inside loops
+  if (loopNestingLevel == 0) {
+    llvm::errs() << "  [Continue] Warning: Continue outside loop (should not happen)\n";
+    return true;
+  }
+
+  llvm::outs() << "  [Continue] Detected continue in loop (nesting level: "
+               << loopNestingLevel << ")\n";
+
+  // Store continue statement for later analysis
+  BreakContinueInfo info;
+  info.stmt = CS;
+  info.isBreak = false;
+  currentFunctionBreaksContinues.push_back(info);
+
+  return true;
+}
+
+// Visit while statements to track loop nesting
+bool CppToCVisitor::VisitWhileStmt(WhileStmt *WS) {
+  // Don't increment here - we'll do it during traversal
+  // This is just a marker visitor
+  return true;
+}
+
+// Visit for statements to track loop nesting
+bool CppToCVisitor::VisitForStmt(ForStmt *FS) {
+  // Don't increment here - we'll do it during traversal
+  // This is just a marker visitor
+  return true;
+}
+
+// Visit do statements to track loop nesting
+bool CppToCVisitor::VisitDoStmt(DoStmt *DS) {
+  // Don't increment here - we'll do it during traversal
+  // This is just a marker visitor
+  return true;
+}
+
+// Visit range-based for statements to track loop nesting
+bool CppToCVisitor::VisitCXXForRangeStmt(CXXForRangeStmt *FRS) {
+  // Don't increment here - we'll do it during traversal
+  // This is just a marker visitor
+  return true;
+}
+
+// Analyze break/continue statements and determine objects needing destruction
+void CppToCVisitor::analyzeBreakContinueStatements(FunctionDecl *FD) {
+  if (currentFunctionBreaksContinues.empty()) {
+    return;  // No breaks/continues to analyze
+  }
+
+  llvm::outs() << "  [Break/Continue] Analyzing " << currentFunctionBreaksContinues.size()
+               << " break/continue statement(s)\n";
+
+  // For each break/continue statement
+  for (BreakContinueInfo &info : currentFunctionBreaksContinues) {
+    const char *stmtType = info.isBreak ? "break" : "continue";
+
+    // Analyze which objects need destruction
+    info.liveObjects = analyzeObjectsForBreakContinue(info.stmt, FD);
+
+    llvm::outs() << "  [" << stmtType << "] " << info.liveObjects.size()
+                 << " object(s) need destruction before " << stmtType << "\n";
+  }
+}
+
+// Determine which objects are live at break/continue and need destruction
+std::vector<VarDecl*> CppToCVisitor::analyzeObjectsForBreakContinue(
+    Stmt *stmt,
+    FunctionDecl *FD) {
+
+  std::vector<VarDecl*> objectsToDestroy;
+
+  if (!stmt || !FD) {
+    return objectsToDestroy;
+  }
+
+  SourceManager &SM = Context.getSourceManager();
+  SourceLocation stmtLoc = stmt->getBeginLoc();
+
+  // For break/continue: destroy all loop-local objects that are live at this point
+  // This includes:
+  // 1. Objects declared in the loop body before this statement
+  // 2. Objects declared in nested scopes that are still alive
+  //
+  // Simplified approach: Destroy all objects constructed before the break/continue
+
+  for (VarDecl *VD : currentFunctionObjectsToDestroy) {
+    SourceLocation varLoc = VD->getBeginLoc();
+
+    // Object is live at break/continue if:
+    // 1. It's declared before the break/continue
+    // 2. It has a destructor (already filtered in tracking)
+    if (SM.isBeforeInTranslationUnit(varLoc, stmtLoc)) {
+      objectsToDestroy.push_back(VD);
+      llvm::outs() << "      - Will destroy: " << VD->getNameAsString() << "\n";
+    }
+  }
+
+  return objectsToDestroy;
+}
+
+// Visit compound statements for scope tracking
+bool CppToCVisitor::VisitCompoundStmt(CompoundStmt *CS) {
+  // We don't enter scope here because VisitCompoundStmt is called
+  // during traversal, but we need to handle scope entry/exit during
+  // translation (in translateCompoundStmt) to properly inject destructors
+  // This visitor is just for detection/analysis if needed
+  return true;
+}
+
 // Helper: Check if type has non-trivial destructor
 bool CppToCVisitor::hasNonTrivialDestructor(QualType type) const {
   // Remove qualifiers and get canonical type
@@ -1065,24 +1532,177 @@ Stmt* CppToCVisitor::translateStmt(Stmt *S) {
 }
 
 // Translate return statements
+// Story #45: Modified to inject destructors before early returns
 Stmt* CppToCVisitor::translateReturnStmt(ReturnStmt *RS) {
+  // If we have objects to destroy at this return point, we need to
+  // inject destructor calls before the return
+  // This creates a compound statement: { dtors...; return; }
+
   Expr *RetValue = RS->getRetValue();
+  Expr *TranslatedValue = nullptr;
   if (RetValue) {
-    Expr *TranslatedValue = translateExpr(RetValue);
+    TranslatedValue = translateExpr(RetValue);
+  }
+
+  // Story #45: Check if we need to inject destructors before this return
+  // For now, we'll do this during the VisitFunctionDecl analysis phase
+  // The actual injection happens in a later pass
+  // For this implementation, we just return the translated return statement
+
+  if (TranslatedValue) {
     return Builder.returnStmt(TranslatedValue);
   }
   return Builder.returnStmt();
 }
 
+// Story #45: Helper - removed inline class since it needs access to private members
+// The injection logic is now directly in translateCompoundStmt
+
 // Translate compound statements (blocks)
+// Story #46: Enhanced with scope tracking for nested destructor injection
 Stmt* CppToCVisitor::translateCompoundStmt(CompoundStmt *CS) {
+  // Story #46: Enter this scope
+  enterScope(CS);
+
   std::vector<Stmt*> translatedStmts;
 
+  // Translate all statements in the compound statement
   for (Stmt *S : CS->body()) {
-    Stmt *TranslatedStmt = translateStmt(S);
-    if (TranslatedStmt) {
-      translatedStmts.push_back(TranslatedStmt);
+    // Check if this is a VarDecl statement with a destructor
+    if (DeclStmt *DS = dyn_cast<DeclStmt>(S)) {
+      // Check if any decls in this statement have destructors
+      for (Decl *D : DS->decls()) {
+        if (VarDecl *VD = dyn_cast<VarDecl>(D)) {
+          if (hasNonTrivialDestructor(VD->getType())) {
+            // Story #46: Track this object in current scope
+            trackObjectInCurrentScope(VD);
+          }
+        }
+      }
     }
+
+    // Story #45: Check if this statement contains a return that needs injection
+    if (ReturnStmt *RS = dyn_cast<ReturnStmt>(S)) {
+      // Analyze live objects at this return point
+      std::vector<VarDecl*> liveObjects = analyzeLiveObjectsAtReturn(RS, nullptr);
+
+      if (!liveObjects.empty()) {
+        llvm::outs() << "  Injecting " << liveObjects.size()
+                     << " destructors before return in compound\n";
+
+        // Inject destructors in reverse order (LIFO)
+        for (auto it = liveObjects.rbegin(); it != liveObjects.rend(); ++it) {
+          CallExpr *DtorCall = createDestructorCall(*it);
+          if (DtorCall) {
+            translatedStmts.push_back(DtorCall);
+            llvm::outs() << "    -> " << (*it)->getNameAsString()
+                         << " destructor before return\n";
+          }
+        }
+      }
+
+      // Translate and add the return statement
+      Stmt *TranslatedStmt = translateStmt(S);
+      if (TranslatedStmt) {
+        translatedStmts.push_back(TranslatedStmt);
+      }
+    } else if (BreakStmt *BS = dyn_cast<BreakStmt>(S)) {
+      // Story #48: Check if this break needs destructor injection
+      for (const BreakContinueInfo &info : currentFunctionBreaksContinues) {
+        if (info.stmt == BS && info.isBreak) {
+          if (!info.liveObjects.empty()) {
+            llvm::outs() << "  Injecting " << info.liveObjects.size()
+                         << " destructors before break\n";
+
+            // Inject destructors in reverse order (LIFO)
+            for (auto it = info.liveObjects.rbegin(); it != info.liveObjects.rend(); ++it) {
+              CallExpr *DtorCall = createDestructorCall(*it);
+              if (DtorCall) {
+                translatedStmts.push_back(DtorCall);
+                llvm::outs() << "    -> " << (*it)->getNameAsString()
+                             << " destructor before break\n";
+              }
+            }
+          }
+          break;  // Found the matching break info
+        }
+      }
+
+      // Translate and add the break statement
+      Stmt *TranslatedStmt = translateStmt(S);
+      if (TranslatedStmt) {
+        translatedStmts.push_back(TranslatedStmt);
+      }
+    } else if (ContinueStmt *CS_Cont = dyn_cast<ContinueStmt>(S)) {
+      // Story #48: Check if this continue needs destructor injection
+      for (const BreakContinueInfo &info : currentFunctionBreaksContinues) {
+        if (info.stmt == CS_Cont && !info.isBreak) {
+          if (!info.liveObjects.empty()) {
+            llvm::outs() << "  Injecting " << info.liveObjects.size()
+                         << " destructors before continue\n";
+
+            // Inject destructors in reverse order (LIFO)
+            for (auto it = info.liveObjects.rbegin(); it != info.liveObjects.rend(); ++it) {
+              CallExpr *DtorCall = createDestructorCall(*it);
+              if (DtorCall) {
+                translatedStmts.push_back(DtorCall);
+                llvm::outs() << "    -> " << (*it)->getNameAsString()
+                             << " destructor before continue\n";
+              }
+            }
+          }
+          break;  // Found the matching continue info
+        }
+      }
+
+      // Translate and add the continue statement
+      Stmt *TranslatedStmt = translateStmt(S);
+      if (TranslatedStmt) {
+        translatedStmts.push_back(TranslatedStmt);
+      }
+    } else if (IfStmt *IS = dyn_cast<IfStmt>(S)) {
+      // Story #45: Recursively handle nested if statements
+      // Returns inside if blocks need destructor injection too
+      Stmt *TranslatedStmt = translateStmt(S);
+      if (TranslatedStmt) {
+        translatedStmts.push_back(TranslatedStmt);
+      }
+    } else {
+      // Regular statement translation (includes nested CompoundStmts)
+      Stmt *TranslatedStmt = translateStmt(S);
+      if (TranslatedStmt) {
+        translatedStmts.push_back(TranslatedStmt);
+      }
+    }
+  }
+
+  // Story #46: Exit this scope and inject destructors for scope-local objects
+  ScopeInfo exitedScope = exitScope();
+
+  // Inject destructors for objects in THIS scope (not parent scopes)
+  // LIFO order: reverse of declaration order
+  if (!exitedScope.objects.empty()) {
+    llvm::outs() << "  [Scope] Injecting " << exitedScope.objects.size()
+                 << " destructor(s) at end of scope depth " << exitedScope.depth << "\n";
+
+    for (auto it = exitedScope.objects.rbegin(); it != exitedScope.objects.rend(); ++it) {
+      VarDecl *VD = *it;
+      CallExpr *DtorCall = createDestructorCall(VD);
+      if (DtorCall) {
+        translatedStmts.push_back(DtorCall);
+        llvm::outs() << "    -> " << VD->getNameAsString()
+                     << " destructor injected at scope exit\n";
+      }
+    }
+  }
+
+  // Story #44: Legacy function-level tracking
+  // Only inject if we're at depth 0 (function body) and have no scope stack
+  // This maintains backward compatibility with Stories #44 and #45
+  if (scopeStack.empty() && !currentFunctionObjectsToDestroy.empty()) {
+    // This is the function body exiting - but objects are already handled by scope tracking
+    // We can skip this if scope tracking handled them
+    llvm::outs() << "  [Legacy] Function-level destruction already handled by scope tracking\n";
   }
 
   return Builder.block(translatedStmts);
@@ -1430,4 +2050,40 @@ FunctionDecl* CppToCVisitor::generateCopyConstructor(CXXRecordDecl *D) {
 
   llvm::outs() << "  Generated copy constructor: " << funcName << "\n";
   return CFunc;
+}
+
+// ============================================================================
+// Prompt #031: extern "C" and Calling Convention Support
+// ============================================================================
+
+/**
+ * @brief Visit linkage specification declarations (extern "C" blocks)
+ *
+ * This visitor method is called automatically by Clang's AST traversal when
+ * encountering extern "C" { } or extern "C++" { } blocks.
+ *
+ * Note: The actual linkage information is already available via
+ * FunctionDecl::isExternC() and FunctionDecl::getLanguageLinkage(), so
+ * this visitor is primarily for logging/debugging purposes.
+ *
+ * @param LS The LinkageSpecDecl node
+ * @return true to continue visiting children
+ */
+bool CppToCVisitor::VisitLinkageSpecDecl(clang::LinkageSpecDecl *LS) {
+  if (!LS) {
+    return true;
+  }
+
+  // Optional: Track entering extern "C" or extern "C++" blocks for debugging
+  if (LS->getLanguage() == clang::LinkageSpecDecl::lang_c) {
+    // This is an extern "C" block
+    // In the future, we could add logging here if needed
+    // llvm::outs() << "Entering extern \"C\" block\n";
+  } else if (LS->getLanguage() == clang::LinkageSpecDecl::lang_cxx) {
+    // This is an extern "C++" block (rare, but possible)
+    // llvm::outs() << "Entering extern \"C++\" block\n";
+  }
+
+  // Continue visiting child declarations (functions, variables, etc.)
+  return true;
 }

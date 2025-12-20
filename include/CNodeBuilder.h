@@ -25,6 +25,7 @@
 #ifndef CNODEBUILDER_H
 #define CNODEBUILDER_H
 
+#include "llvm/Config/llvm-config.h"  // For LLVM_VERSION_MAJOR
 #include "clang/AST/ASTContext.h"
 #include "clang/AST/Decl.h"
 #include "clang/AST/Expr.h"
@@ -141,7 +142,11 @@ public:
         // Create a tag declaration for the struct
         RecordDecl *RD = RecordDecl::Create(
             Ctx,
+#if LLVM_VERSION_MAJOR >= 16
             TagTypeKind::Struct,
+#else
+            TTK_Struct,
+#endif
             Ctx.getTranslationUnitDecl(),
             SourceLocation(),
             SourceLocation(),
@@ -343,13 +348,21 @@ public:
         return StringLiteral::Create(
             Ctx,
             str,
+#if LLVM_VERSION_MAJOR >= 16
             StringLiteralKind::Ordinary,
+#else
+            StringLiteral::Ordinary,
+#endif
             false,
             Ctx.getConstantArrayType(
                 charType(),
                 llvm::APInt(32, str.size() + 1),
                 nullptr,
+#if LLVM_VERSION_MAJOR >= 16
                 ArraySizeModifier::Normal,
+#else
+                ArrayType::ArraySizeModifier::Normal,
+#endif
                 0
             ),
             SourceLocation()
@@ -864,7 +877,11 @@ public:
 
         RecordDecl *RD = RecordDecl::Create(
             Ctx,
+#if LLVM_VERSION_MAJOR >= 16
             TagTypeKind::Struct,
+#else
+            TTK_Struct,
+#endif
             Ctx.getTranslationUnitDecl(),
             SourceLocation(),
             SourceLocation(),
@@ -927,7 +944,11 @@ public:
 
         return RecordDecl::Create(
             Ctx,
+#if LLVM_VERSION_MAJOR >= 16
             TagTypeKind::Struct,
+#else
+            TTK_Struct,
+#endif
             Ctx.getTranslationUnitDecl(),
             SourceLocation(),
             SourceLocation(),
@@ -950,17 +971,22 @@ public:
      */
     FunctionDecl* funcDecl(llvm::StringRef name, QualType retType,
                           llvm::ArrayRef<ParmVarDecl*> params,
-                          Stmt* body = nullptr) {
+                          Stmt* body = nullptr,
+                          CallingConv callConv = CC_C) {
         IdentifierInfo &II = Ctx.Idents.get(name);
         DeclarationName DN(&II);
 
-        // Create function type
+        // Create function type with calling convention
         llvm::SmallVector<QualType, 4> paramTypes;
         for (ParmVarDecl *P : params) {
             paramTypes.push_back(P->getType());
         }
 
-        QualType funcType = Ctx.getFunctionType(retType, paramTypes, {});
+        // Prompt #031: Set calling convention via ExtProtoInfo
+        FunctionProtoType::ExtProtoInfo EPI;
+        EPI.ExtInfo = EPI.ExtInfo.withCallingConv(callConv);
+
+        QualType funcType = Ctx.getFunctionType(retType, paramTypes, EPI);
 
         FunctionDecl *FD = FunctionDecl::Create(
             Ctx,
@@ -1009,6 +1035,66 @@ public:
             SC_None,
             nullptr
         );
+    }
+
+    // ========================================================================
+    // Prompt #031: Calling Convention Support
+    // ========================================================================
+
+    /**
+     * @brief Map CallingConv enum to GCC/Clang __attribute__ string for C code
+     * @param CC The calling convention enum value
+     * @return String representation of the calling convention attribute
+     *
+     * Returns empty string for CC_C (default calling convention, no attribute needed).
+     * Returns appropriate __attribute__((convention)) string for platform-specific conventions.
+     *
+     * Example:
+     * @code
+     *   std::string attr = builder.getCallingConvAttribute(CC_X86StdCall);
+     *   // Returns: "__attribute__((stdcall))"
+     * @endcode
+     *
+     * Platform Support:
+     * - x86: cdecl (default), stdcall, fastcall, thiscall, pascal, vectorcall, regcall
+     * - x86_64: ms_abi (Windows), sysv_abi (Unix/Linux)
+     * - ARM: pcs("aapcs"), pcs("aapcs-vfp")
+     */
+    std::string getCallingConvAttribute(CallingConv CC) const {
+        switch (CC) {
+            case CC_C:
+                return "";  // Default, no attribute needed
+
+            // x86 calling conventions
+            case CC_X86StdCall:
+                return "__attribute__((stdcall))";
+            case CC_X86FastCall:
+                return "__attribute__((fastcall))";
+            case CC_X86ThisCall:
+                return "__attribute__((thiscall))";
+            case CC_X86Pascal:
+                return "__attribute__((pascal))";
+            case CC_X86VectorCall:
+                return "__attribute__((vectorcall))";
+            case CC_X86RegCall:
+                return "__attribute__((regcall))";
+
+            // x86_64 ABI conventions
+            case CC_Win64:
+                return "__attribute__((ms_abi))";
+            case CC_X86_64SysV:
+                return "__attribute__((sysv_abi))";
+
+            // ARM conventions
+            case CC_AAPCS:
+                return "__attribute__((pcs(\"aapcs\")))";
+            case CC_AAPCS_VFP:
+                return "__attribute__((pcs(\"aapcs-vfp\")))";
+
+            // Other/unsupported conventions - no attribute
+            default:
+                return "";  // Unknown/unsupported convention
+        }
     }
 };
 

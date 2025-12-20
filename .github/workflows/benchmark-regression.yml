@@ -1,0 +1,266 @@
+name: Benchmark Performance Regression Detection
+
+on:
+  push:
+    branches:
+      - 'release/**'
+    tags:
+      - 'v*'
+  workflow_dispatch:
+    inputs:
+      threshold:
+        description: 'Regression threshold percentage'
+        required: false
+        default: '5.0'
+        type: string
+
+# Cancel in-progress runs for the same branch
+concurrency:
+  group: benchmark-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  REGRESSION_THRESHOLD: ${{ github.event.inputs.threshold || '5.0' }}
+  BUILD_TYPE: Release
+  LLVM_VERSION: 15
+
+jobs:
+  benchmark:
+    name: Run Benchmarks and Check Regressions
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0  # Need full history for comparison
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install system dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y \
+            build-essential \
+            cmake \
+            ninja-build \
+            llvm-${{ env.LLVM_VERSION }}-dev \
+            libclang-${{ env.LLVM_VERSION }}-dev \
+            clang-${{ env.LLVM_VERSION }}
+
+      - name: Setup LLVM environment
+        run: |
+          echo "LLVM_DIR=/usr/lib/llvm-${{ env.LLVM_VERSION }}/lib/cmake/llvm" >> $GITHUB_ENV
+          echo "Clang_DIR=/usr/lib/llvm-${{ env.LLVM_VERSION }}/lib/cmake/clang" >> $GITHUB_ENV
+          echo "/usr/lib/llvm-${{ env.LLVM_VERSION }}/bin" >> $GITHUB_PATH
+
+      - name: Cache LLVM/Clang
+        uses: actions/cache@v4
+        with:
+          path: |
+            /usr/lib/llvm-${{ env.LLVM_VERSION }}
+          key: ${{ runner.os }}-llvm-${{ env.LLVM_VERSION }}
+
+      - name: Configure CMake
+        run: |
+          cmake -B build \
+            -G Ninja \
+            -DCMAKE_BUILD_TYPE=${{ env.BUILD_TYPE }} \
+            -DBUILD_BENCHMARKS=ON \
+            -DLLVM_DIR=${{ env.LLVM_DIR }} \
+            -DClang_DIR=${{ env.Clang_DIR }}
+
+      - name: Build project with benchmarks
+        run: cmake --build build --config ${{ env.BUILD_TYPE }} --parallel $(nproc)
+
+      - name: Download baseline benchmark results
+        id: download-baseline
+        uses: dawidd6/action-download-artifact@v6
+        continue-on-error: true
+        with:
+          workflow: benchmark-regression.yml
+          branch: ${{ github.base_ref || github.ref_name }}
+          name: benchmark-baseline
+          path: benchmark-baseline
+          if_no_artifact_found: warn
+
+      - name: Run benchmarks (current)
+        run: |
+          mkdir -p benchmark-results
+          cd benchmarks
+          ./run_benchmarks.sh --baseline
+
+          # Copy the generated baseline.json to benchmark-results
+          if [ -f ../benchmark-results/baseline.json ]; then
+            cp ../benchmark-results/baseline.json ../benchmark-results/current.json
+          fi
+
+      - name: Compare with baseline (if exists)
+        id: compare
+        if: steps.download-baseline.outcome == 'success'
+        continue-on-error: true
+        run: |
+          echo "Baseline found, performing comparison..."
+
+          BASELINE_FILE="benchmark-baseline/baseline.json"
+          CURRENT_FILE="benchmark-results/current.json"
+
+          if [ -f "$BASELINE_FILE" ] && [ -f "$CURRENT_FILE" ]; then
+            # Run comparison
+            python3 benchmarks/compare_benchmarks.py \
+              "$BASELINE_FILE" \
+              "$CURRENT_FILE" \
+              --threshold ${{ env.REGRESSION_THRESHOLD }} \
+              --format markdown \
+              --output benchmark-results/comparison.md
+
+            # Also generate JSON for artifacts
+            python3 benchmarks/compare_benchmarks.py \
+              "$BASELINE_FILE" \
+              "$CURRENT_FILE" \
+              --threshold ${{ env.REGRESSION_THRESHOLD }} \
+              --format json \
+              --output benchmark-results/comparison.json
+
+            # Check for regressions (will exit 1 if regression detected)
+            python3 benchmarks/compare_benchmarks.py \
+              "$BASELINE_FILE" \
+              "$CURRENT_FILE" \
+              --threshold ${{ env.REGRESSION_THRESHOLD }} \
+              --ci || echo "REGRESSION_DETECTED=true" >> $GITHUB_OUTPUT
+          else
+            echo "Baseline or current results not found. Skipping comparison."
+            echo "REGRESSION_DETECTED=false" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Comment PR with benchmark results
+        if: github.event_name == 'pull_request' && steps.download-baseline.outcome == 'success'
+        uses: actions/github-script@v7
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          script: |
+            const fs = require('fs');
+            const comparisonFile = 'benchmark-results/comparison.md';
+
+            if (fs.existsSync(comparisonFile)) {
+              const comparison = fs.readFileSync(comparisonFile, 'utf8');
+
+              // Find existing comment
+              const { data: comments } = await github.rest.issues.listComments({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: context.issue.number,
+              });
+
+              const botComment = comments.find(comment =>
+                comment.user.type === 'Bot' &&
+                comment.body.includes('## Benchmark Comparison Report')
+              );
+
+              const commentBody = `${comparison}\n\n---\n*Automated benchmark comparison by GitHub Actions*`;
+
+              if (botComment) {
+                // Update existing comment
+                await github.rest.issues.updateComment({
+                  owner: context.repo.owner,
+                  repo: context.repo.repo,
+                  comment_id: botComment.id,
+                  body: commentBody,
+                });
+              } else {
+                // Create new comment
+                await github.rest.issues.createComment({
+                  owner: context.repo.owner,
+                  repo: context.repo.repo,
+                  issue_number: context.issue.number,
+                  body: commentBody,
+                });
+              }
+            }
+
+      - name: Upload benchmark results as artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: benchmark-baseline
+          path: benchmark-results/current.json
+          retention-days: 90
+
+      - name: Upload full benchmark results
+        uses: actions/upload-artifact@v4
+        with:
+          name: benchmark-results-${{ github.sha }}
+          path: |
+            benchmark-results/
+          retention-days: 30
+
+      - name: Generate job summary
+        if: always()
+        run: |
+          echo "## Benchmark Results" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+
+          if [ -f benchmark-results/comparison.md ]; then
+            cat benchmark-results/comparison.md >> $GITHUB_STEP_SUMMARY
+          else
+            echo "Baseline benchmarks established." >> $GITHUB_STEP_SUMMARY
+            echo "" >> $GITHUB_STEP_SUMMARY
+            echo "Results saved as baseline for future comparisons." >> $GITHUB_STEP_SUMMARY
+          fi
+
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "### Build Information" >> $GITHUB_STEP_SUMMARY
+          echo "- **Commit:** ${{ github.sha }}" >> $GITHUB_STEP_SUMMARY
+          echo "- **Branch:** ${{ github.ref_name }}" >> $GITHUB_STEP_SUMMARY
+          echo "- **Runner OS:** ${{ runner.os }}" >> $GITHUB_STEP_SUMMARY
+          echo "- **LLVM Version:** ${{ env.LLVM_VERSION }}" >> $GITHUB_STEP_SUMMARY
+
+      - name: Fail if regression detected
+        if: steps.compare.outputs.REGRESSION_DETECTED == 'true'
+        run: |
+          echo "Performance regression detected!"
+          echo "Benchmark performance has degraded beyond the threshold of ${{ env.REGRESSION_THRESHOLD }}%"
+          exit 1
+
+  # Job to track performance trends over time
+  track-performance:
+    name: Track Performance Trends
+    runs-on: ubuntu-latest
+    needs: benchmark
+    if: github.event_name == 'push' && (github.ref == 'refs/heads/develop' || github.ref == 'refs/heads/main')
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Download current benchmark results
+        uses: actions/download-artifact@v4
+        with:
+          name: benchmark-baseline
+          path: benchmark-current
+
+      - name: Append to performance history
+        run: |
+          mkdir -p performance-history
+
+          # Create performance history entry
+          cat > performance-history/entry-${{ github.sha }}.json <<EOF
+          {
+            "sha": "${{ github.sha }}",
+            "ref": "${{ github.ref_name }}",
+            "timestamp": "$(date -u +"%Y-%m-%dT%H:%M:%SZ")",
+            "actor": "${{ github.actor }}",
+            "run_id": "${{ github.run_id }}",
+            "benchmark_file": "benchmark-current/current.json"
+          }
+          EOF
+
+      - name: Upload performance history
+        uses: actions/upload-artifact@v4
+        with:
+          name: performance-history-${{ github.sha }}
+          path: performance-history/
+          retention-days: 365  # Keep for 1 year

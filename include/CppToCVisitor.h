@@ -6,6 +6,9 @@
 #include "NameMangler.h"
 #include "VirtualMethodAnalyzer.h"
 #include "VptrInjector.h"
+#include "MoveConstructorTranslator.h"
+#include "MoveAssignmentTranslator.h"
+#include "RvalueRefParamTranslator.h"
 #include <map>
 #include <string>
 
@@ -19,6 +22,15 @@ class CppToCVisitor : public clang::RecursiveASTVisitor<CppToCVisitor> {
   // Story #169: Virtual function support
   VirtualMethodAnalyzer VirtualAnalyzer;
   VptrInjector VptrInjectorInstance;
+
+  // Story #130: Move constructor translation
+  MoveConstructorTranslator MoveCtorTranslator;
+
+  // Story #131: Move assignment operator translation
+  MoveAssignmentTranslator MoveAssignTranslator;
+
+  // Story #133: Rvalue reference parameter translation
+  RvalueRefParamTranslator RvalueRefParamTrans;
 
   // Mapping: C++ class -> C struct (Story #15)
   std::map<clang::CXXRecordDecl*, clang::RecordDecl*> cppToCMap;
@@ -36,10 +48,50 @@ class CppToCVisitor : public clang::RecursiveASTVisitor<CppToCVisitor> {
   clang::ParmVarDecl *currentThisParam = nullptr;
   clang::CXXMethodDecl *currentMethod = nullptr;
 
+  // Story #44: Track local objects with destructors for current function
+  std::vector<clang::VarDecl*> currentFunctionObjectsToDestroy;
+
+  // Story #45: Track return statements and their associated scopes
+  struct ReturnInfo {
+    clang::ReturnStmt *returnStmt;
+    std::vector<clang::VarDecl*> liveObjects;  // Objects live at this return
+  };
+  std::vector<ReturnInfo> currentFunctionReturns;
+
+  // Story #46: Track nested scopes and scope-level objects
+  struct ScopeInfo {
+    clang::CompoundStmt *stmt;              // The compound statement for this scope
+    std::vector<clang::VarDecl*> objects;   // Objects declared in this scope
+    unsigned int depth;                      // Nesting depth (0 = function body)
+  };
+  std::vector<ScopeInfo> scopeStack;        // Stack of currently active scopes
+
+  // Story #47: Track goto statements and labels for destructor injection
+  struct GotoInfo {
+    clang::GotoStmt *gotoStmt;              // The goto statement
+    clang::LabelStmt *targetLabel;          // The target label (matched by name)
+    std::vector<clang::VarDecl*> liveObjects; // Objects live at goto that need destruction
+  };
+  std::vector<GotoInfo> currentFunctionGotos; // Goto statements in current function
+  std::map<std::string, clang::LabelStmt*> currentFunctionLabels; // Labels in current function
+
+  // Story #48: Track break/continue statements in loops for destructor injection
+  struct BreakContinueInfo {
+    clang::Stmt *stmt;                      // The break or continue statement
+    bool isBreak;                           // true = break, false = continue
+    std::vector<clang::VarDecl*> liveObjects; // Objects live at break/continue that need destruction
+  };
+  std::vector<BreakContinueInfo> currentFunctionBreaksContinues; // Break/continue statements in current function
+
+  // Story #48: Track loop nesting to know when we're inside a loop
+  unsigned int loopNestingLevel = 0;        // 0 = not in loop, >0 = loop depth
+
 public:
   explicit CppToCVisitor(clang::ASTContext &Context, clang::CNodeBuilder &Builder)
     : Context(Context), Builder(Builder), Mangler(Context),
-      VirtualAnalyzer(Context), VptrInjectorInstance(Context, VirtualAnalyzer) {}
+      VirtualAnalyzer(Context), VptrInjectorInstance(Context, VirtualAnalyzer),
+      MoveCtorTranslator(Context), MoveAssignTranslator(Context),
+      RvalueRefParamTrans(Context) {}
 
   // Visit C++ class/struct declarations
   bool VisitCXXRecordDecl(clang::CXXRecordDecl *D);
@@ -59,6 +111,9 @@ public:
   // Visit variable declarations (including member variables)
   bool VisitVarDecl(clang::VarDecl *VD);
 
+  // Visit compound statements for scope tracking (Story #46)
+  bool VisitCompoundStmt(clang::CompoundStmt *CS);
+
   // Expression translation (Story #19)
   clang::Expr* translateExpr(clang::Expr *E);
   clang::Expr* translateDeclRefExpr(clang::DeclRefExpr *DRE);
@@ -70,6 +125,30 @@ public:
   clang::Stmt* translateStmt(clang::Stmt *S);
   clang::Stmt* translateReturnStmt(clang::ReturnStmt *RS);
   clang::Stmt* translateCompoundStmt(clang::CompoundStmt *CS);
+
+  // Story #45: Return statement visitor for early return detection
+  bool VisitReturnStmt(clang::ReturnStmt *RS);
+
+  // Story #47: Goto statement visitor for goto handling
+  bool VisitGotoStmt(clang::GotoStmt *GS);
+
+  // Story #47: Label statement visitor for goto target detection
+  bool VisitLabelStmt(clang::LabelStmt *LS);
+
+  // Story #48: Break statement visitor for loop break handling
+  bool VisitBreakStmt(clang::BreakStmt *BS);
+
+  // Story #48: Continue statement visitor for loop continue handling
+  bool VisitContinueStmt(clang::ContinueStmt *CS);
+
+  // Story #48: Loop statement visitors to track loop nesting
+  bool VisitWhileStmt(clang::WhileStmt *WS);
+  bool VisitForStmt(clang::ForStmt *FS);
+  bool VisitDoStmt(clang::DoStmt *DS);
+  bool VisitCXXForRangeStmt(clang::CXXForRangeStmt *FRS);
+
+  // Prompt #031: extern "C" and calling convention support
+  bool VisitLinkageSpecDecl(clang::LinkageSpecDecl *LS);
 
   // Retrieve generated C struct by class name (for testing)
   clang::RecordDecl* getCStruct(llvm::StringRef className) const;
@@ -107,6 +186,121 @@ private:
    */
   void injectDestructorsAtScopeExit(clang::CompoundStmt *CS,
                                     const std::vector<clang::VarDecl*> &vars);
+
+  /**
+   * @brief Analyze which objects are live at a specific return statement
+   * @param RS The return statement to analyze
+   * @param FD The function containing the return
+   * @return Vector of live objects at this return point
+   *
+   * Story #45: Scope analysis for early returns
+   * Determines which objects with destructors are constructed and in scope
+   * at the given return statement location.
+   */
+  std::vector<clang::VarDecl*> analyzeLiveObjectsAtReturn(
+      clang::ReturnStmt *RS, clang::FunctionDecl *FD);
+
+  /**
+   * @brief Check if a statement/decl comes before another in control flow
+   * @param Before The statement that should come first
+   * @param After The statement that should come after
+   * @return true if Before precedes After in the AST
+   *
+   * Story #45: Helper for scope analysis
+   * Uses source location comparison to determine order.
+   */
+  bool comesBefore(clang::Stmt *Before, clang::Stmt *After);
+
+  /**
+   * @brief Enter a new scope (push onto scope stack)
+   * @param CS The CompoundStmt representing this scope
+   *
+   * Story #46: Scope tracking for nested destructor injection
+   * Called when entering a compound statement (scope).
+   */
+  void enterScope(clang::CompoundStmt *CS);
+
+  /**
+   * @brief Exit current scope (pop from scope stack)
+   * @return ScopeInfo for the exited scope (contains objects to destroy)
+   *
+   * Story #46: Scope tracking for nested destructor injection
+   * Called when exiting a compound statement (scope).
+   * Returns the scope info so destructors can be injected.
+   */
+  ScopeInfo exitScope();
+
+  /**
+   * @brief Track a variable declaration in the current scope
+   * @param VD Variable declaration to track
+   *
+   * Story #46: Associate objects with their declaration scope
+   * Called when visiting VarDecls with non-trivial destructors.
+   */
+  void trackObjectInCurrentScope(clang::VarDecl *VD);
+
+  /**
+   * @brief Analyze goto-label pairs and determine objects needing destruction
+   * @param FD The function containing goto statements
+   *
+   * Story #47: Goto-label analysis for destructor injection
+   * Called after function traversal to match gotos to labels and identify
+   * which objects need destruction before each goto (forward jumps only).
+   */
+  void analyzeGotoStatements(clang::FunctionDecl *FD);
+
+  /**
+   * @brief Check if goto comes before its target label (forward jump)
+   * @param gotoStmt The goto statement
+   * @param labelStmt The target label statement
+   * @return true if goto precedes label in control flow
+   *
+   * Story #47: Helper for determining jump direction
+   * Uses source location comparison to classify as forward or backward jump.
+   */
+  bool isForwardJump(clang::GotoStmt *gotoStmt, clang::LabelStmt *labelStmt);
+
+  /**
+   * @brief Determine which objects are live at goto and out of scope at label
+   * @param gotoStmt The goto statement
+   * @param labelStmt The target label statement
+   * @param FD The function containing the goto
+   * @return Vector of objects that need destruction before goto
+   *
+   * Story #47: Scope analysis for goto jumps
+   * Identifies objects constructed before goto that won't be in scope at label.
+   */
+  std::vector<clang::VarDecl*> analyzeObjectsForGoto(
+      clang::GotoStmt *gotoStmt,
+      clang::LabelStmt *labelStmt,
+      clang::FunctionDecl *FD);
+
+  // ============================================================================
+  // Story #48: Loop Break/Continue Handling Methods
+  // ============================================================================
+
+  /**
+   * @brief Analyze break/continue statements and determine objects needing destruction
+   * @param FD The function containing break/continue statements
+   *
+   * Story #48: Break/continue analysis for destructor injection
+   * Called after function traversal to identify which objects need destruction
+   * before each break/continue statement (all loop-local objects).
+   */
+  void analyzeBreakContinueStatements(clang::FunctionDecl *FD);
+
+  /**
+   * @brief Determine which objects are live at break/continue and need destruction
+   * @param stmt The break or continue statement
+   * @param FD The function containing the statement
+   * @return Vector of objects that need destruction before break/continue
+   *
+   * Story #48: Scope analysis for loop exits
+   * Identifies all loop-local objects that need destruction before exiting loop.
+   */
+  std::vector<clang::VarDecl*> analyzeObjectsForBreakContinue(
+      clang::Stmt *stmt,
+      clang::FunctionDecl *FD);
 
   // Epic #6: Single Inheritance helper methods
 

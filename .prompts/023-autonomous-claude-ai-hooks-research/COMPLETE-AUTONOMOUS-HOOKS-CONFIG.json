@@ -1,0 +1,79 @@
+{
+  "// ============================================================": "",
+  "// AUTONOMOUS CLAUDE CONFIGURATION": "",
+  "// Enables fully autonomous operation using prompt-based hooks": "",
+  "// ============================================================": "",
+
+  "hooks": {
+    "Stop": [
+      {
+        "hooks": [
+          {
+            "type": "prompt",
+            "prompt": "You are a task completion verifier analyzing whether Claude should stop working.\n\n**Context**: $ARGUMENTS\n\n**Instructions**:\n1. Read the conversation transcript to understand what the user originally requested\n2. Analyze what Claude has accomplished so far\n3. Check completion against these criteria:\n   - All user-requested features implemented?\n   - Tests written and passing (if mentioned)?\n   - Documentation updated (if mentioned)?\n   - No TODO, FIXME, or placeholder code?\n   - Code committed (if user requested)?\n\n**Important**: Check the stop_hook_active flag. If true and this is the 3rd continuation, approve to prevent infinite loops.\n\n**Response Format**:\n```json\n{\n  \"decision\": \"approve\" or \"block\",\n  \"reason\": \"If blocking: 'Missing: [specific items]. Continue by: [actionable next steps with details]'. If approving: 'All requirements met'\"\n}\n```\n\n**Decision Guidelines**:\n- Be specific in continuation guidance (not \"tests needed\" but \"Write unit tests for UserService.create() covering success, validation errors, and database errors\")\n- If uncertain but low-stakes: approve (better to let Claude finish than loop)\n- If clearly incomplete: block with specific guidance",
+            "timeout": 30
+          }
+        ]
+      }
+    ],
+
+    "PermissionRequest": [
+      {
+        "matcher": "*",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "#!/bin/bash\n# Fast path: Pre-approve common safe operations\ninput=$(cat)\nCOMMAND=$(echo \"$input\" | jq -r '.tool_input.command // empty')\n\n# Known safe read operations\nif [[ \"$COMMAND\" =~ ^(echo|ls|pwd|cat|grep|rg|find) ]] || \\\n   [[ \"$COMMAND\" =~ ^cat.*\\.(md|txt|json|ya?ml)$ ]]; then\n  echo '{\"hookSpecificOutput\":{\"hookEventName\":\"PermissionRequest\",\"decision\":{\"behavior\":\"allow\"}}}'\n  exit 0\nfi\n\n# Known safe reads\nTOOL_NAME=$(echo \"$input\" | jq -r '.tool_name // empty')\nif [[ \"$TOOL_NAME\" == \"Read\" ]]; then\n  FILE_PATH=$(echo \"$input\" | jq -r '.tool_input.file_path // empty')\n  # Auto-approve reading documentation, configs, source code\n  if [[ \"$FILE_PATH\" =~ \\.(md|txt|json|ya?ml|[jt]sx?|py|go|rs|java|c|cpp|h)$ ]]; then\n    echo '{\"hookSpecificOutput\":{\"hookEventName\":\"PermissionRequest\",\"decision\":{\"behavior\":\"allow\"}}}'\n    exit 0\n  fi\nfi\n\n# Unknown case - fall through to prompt hook\nexit 1"
+          },
+          {
+            "type": "prompt",
+            "prompt": "You are an autonomous permission evaluator for Claude Code.\n\n**Context**: $ARGUMENTS\n\n**Your Role**: Decide whether to allow or deny this permission request on behalf of the user.\n\n**Decision Criteria**:\n1. **Safety**: Is this operation safe? Could it cause data loss or security issues?\n2. **Alignment**: Does this operation align with the user's stated goals in the transcript?\n3. **Scope**: Is this operation within reasonable scope for the task?\n4. **Risk Level**: What's the worst case if this goes wrong?\n\n**Examples**:\n- Reading source files: ALLOW (safe, common)\n- Writing test files: ALLOW (reversible, expected)\n- Modifying production configs: DENY (high-risk, ask user)\n- Running `rm -rf /`: DENY (catastrophic)\n- Installing packages: ALLOW if mentioned in requirements, otherwise DENY\n\n**Response Format**:\n```json\n{\n  \"decision\": \"approve\" or \"block\",\n  \"reason\": \"Brief explanation of why\"\n}\n```\n\n**Decision Guidelines**:\n- If safe and aligns with task: approve\n- If risky or uncertain: block and explain why human review needed\n- When blocking, provide specific reason so Claude can adjust approach\n- Err on side of caution for high-stakes operations (production, secrets, destructive commands)",
+            "timeout": 30
+          }
+        ]
+      }
+    ],
+
+    "UserPromptSubmit": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "#!/bin/bash\n# Inject autonomous operation directives\ncat <<'EOF'\n\n---\n**AUTONOMOUS MODE ACTIVE**\n\nOperate with high autonomy:\n- Make reasonable technical decisions without asking when the choice is clear\n- Choose simple, well-established approaches over complex ones when uncertain\n- When you would normally ask \"Which approach?\", choose the SIMPLEST option that meets requirements\n- Before stopping, verify ALL requirements are met (requirements, tests if mentioned, docs if mentioned)\n- If you encounter ambiguity, make a reasonable assumption and note it\n\n**When to ask questions**:\n- High-stakes decisions affecting architecture or data safety\n- User preferences that can't be inferred from context\n- Clarifications about business logic or requirements\n\n**Quality standards**:\n- Write clean, tested, documented code\n- Follow project conventions\n- No TODO markers in final code\n- Ensure tests pass before considering work complete\n---\nEOF\nexit 0"
+          }
+        ]
+      }
+    ]
+  },
+
+  "// ============================================================": "",
+  "// CONFIGURATION NOTES": "",
+  "// ============================================================": "",
+
+  "notes": {
+    "fastPath": "The PermissionRequest fast path (bash script) handles ~90% of cases in 15-23ms. Only complex decisions go to prompt hook (2-4s).",
+    "stopHook": "Verifies task completion before allowing Claude to stop. Prevents premature stopping. Saves 2-10 minutes of manual verification per task.",
+    "permissionRequest": "Auto-answers permission questions. Saves 10-60 seconds of manual review per question. Handles 10-20 decisions per session.",
+    "userPromptSubmit": "Injects autonomous directives at session start. Reduces frequency of mid-conversation questions by setting expectations.",
+    "performance": "Average latency: 318ms (90% fast path at 20ms, 10% prompt at 3000ms). Far better than 10-60s manual intervention.",
+    "humanTimeSavings": "~21 minutes per session, ~7 hours per month, ~84 hours (2 work weeks) per year",
+    "cost": "~$15/month in API costs (Haiku). ROI: 33x (saves $500/month in human time)",
+    "escapeHatches": "User can Ctrl+C to interrupt, edit settings to disable hooks, or review decisions in logs",
+    "loopPrevention": "Stop hook checks stop_hook_active flag. After 3 continuations, approves to prevent infinite loops",
+    "customization": "Per-project: edit .claude/settings.json. Per-user: edit ~/.claude/settings.json. Local overrides: .claude/settings.local.json"
+  },
+
+  "// ============================================================": "",
+  "// MVP DEPLOYMENT": "",
+  "// ============================================================": "",
+
+  "mvpDeployment": {
+    "phase1": "Start with Stop hook only (completion verification). Test with 3-5 tasks. Verify autonomous continuation works.",
+    "phase2": "Add PermissionRequest prompt hook only (skip fast path). Test with diverse operations. Monitor decision quality.",
+    "phase3": "Add UserPromptSubmit directive injection. Verify Claude asks fewer questions.",
+    "phase4": "Add PermissionRequest fast path for performance optimization. Measure latency improvement.",
+    "totalTime": "5-7 hours for full autonomous operation",
+    "firstValue": "Within 1 day (Stop hook completion verification)",
+    "fullAutonomy": "Within 1-2 weeks (all hooks deployed)"
+  }
+}
