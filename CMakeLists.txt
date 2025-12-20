@@ -140,6 +140,8 @@ add_library(cpptoc_core STATIC
     src/CodeGenerator.cpp
     src/ACSLGenerator.cpp
     src/ACSLFunctionAnnotator.cpp
+    src/ACSLLoopAnnotator.cpp
+    src/ACSLClassAnnotator.cpp
     src/HeaderSeparator.cpp
     src/IncludeGuardGenerator.cpp
     src/DependencyAnalyzer.cpp
@@ -2083,6 +2085,48 @@ target_include_directories(ACSLFunctionAnnotatorTest PRIVATE
 )
 
 target_link_libraries(ACSLFunctionAnnotatorTest PRIVATE
+    cpptoc_core
+    clangTooling
+    clangFrontend
+    clangAST
+    clangBasic
+)
+
+# Story #197: ACSLLoopAnnotator tests
+add_executable(ACSLLoopAnnotatorTest
+    tests/ACSLLoopAnnotatorTest.cpp
+)
+
+target_compile_definitions(ACSLLoopAnnotatorTest PRIVATE ${LLVM_DEFINITIONS})
+
+target_include_directories(ACSLLoopAnnotatorTest PRIVATE
+    ${CMAKE_SOURCE_DIR}/include
+    ${LLVM_INCLUDE_DIRS}
+    ${CLANG_INCLUDE_DIRS}
+)
+
+target_link_libraries(ACSLLoopAnnotatorTest PRIVATE
+    cpptoc_core
+    clangTooling
+    clangFrontend
+    clangAST
+    clangBasic
+)
+
+# Story #198: ACSLClassAnnotator tests
+add_executable(ACSLClassAnnotatorTest
+    tests/ACSLClassAnnotatorTest.cpp
+)
+
+target_compile_definitions(ACSLClassAnnotatorTest PRIVATE ${LLVM_DEFINITIONS})
+
+target_include_directories(ACSLClassAnnotatorTest PRIVATE
+    ${CMAKE_SOURCE_DIR}/include
+    ${LLVM_INCLUDE_DIRS}
+    ${CLANG_INCLUDE_DIRS}
+)
+
+target_link_libraries(ACSLClassAnnotatorTest PRIVATE
     cpptoc_core
     clangTooling
     clangFrontend
