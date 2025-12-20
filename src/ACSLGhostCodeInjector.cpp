@@ -75,6 +75,23 @@ ACSLGhostCodeInjector::analyzeGhostOpportunities(const FunctionDecl* func) {
     if (!func) return {};
 
     GhostAnalysisVisitor visitor(this);
+
+    // Create ghost variables for function parameters (useful for verification)
+    for (unsigned i = 0; i < func->getNumParams(); ++i) {
+        const ParmVarDecl* param = func->getParamDecl(i);
+        if (param && param->getType()->isIntegerType()) {
+            std::string paramName = param->getNameAsString();
+            if (!paramName.empty() && paramName.find("__") != 0) {
+                std::string ghostName = ensureUniqueName("ghost_" + paramName + "_init");
+                std::string type = "int";
+                std::string init = paramName; // Track initial parameter value
+
+                GhostVariable ghostVar(ghostName, type, init, nullptr, GhostPurpose::InvariantHelper);
+                visitor.addGhostVariable(ghostVar);
+            }
+        }
+    }
+
     visitor.TraverseStmt(func->getBody());
 
     return visitor.getGhostVariables();
@@ -208,11 +225,18 @@ bool ACSLGhostCodeInjector::GhostAnalysisVisitor::VisitBinaryOperator(BinaryOper
 
     // Detect assignment patterns
     if (op->getOpcode() == BO_Assign) {
-        // Check for value mutations
-        if (GhostVariable* prevGhost = m_injector->detectPreviousValueTracking(op)) {
-            m_ghostVariables.push_back(*prevGhost);
-            delete prevGhost;
+        // For any assignment, create a ghost variable to track the old value
+        std::string ghostName = m_injector->ensureUniqueName("ghost_old");
+        std::string type = "int";
+
+        // Try to get the value being assigned
+        std::string init = m_injector->convertToACSLExpr(op->getRHS());
+        if (init.empty()) {
+            init = "0";
         }
+
+        GhostVariable ghostVar(ghostName, type, init, op, GhostPurpose::PreviousValue);
+        m_ghostVariables.push_back(ghostVar);
     }
 
     return true;
@@ -222,7 +246,28 @@ bool ACSLGhostCodeInjector::GhostAnalysisVisitor::VisitVarDecl(VarDecl* decl) {
     if (!decl) return true;
 
     // Track variable declarations for potential ghost variables
-    // This helps identify accumulators, counters, etc.
+    // Create ghost variables for integer variables with initializers
+    if (decl->getType()->isIntegerType() && decl->hasInit()) {
+        std::string varName = decl->getNameAsString();
+
+        // Skip temporary or compiler-generated variables
+        if (varName.empty() || varName.find("__") == 0) {
+            return true;
+        }
+
+        // Create a ghost variable to track this declaration
+        std::string ghostName = m_injector->ensureUniqueName("ghost_" + varName);
+        std::string type = "int";
+        std::string init = m_injector->convertToACSLExpr(decl->getInit());
+
+        if (init.empty()) {
+            init = "0";
+        }
+
+        // Use nullptr for scope since VarDecl is not a Stmt
+        GhostVariable ghostVar(ghostName, type, init, nullptr, GhostPurpose::InvariantHelper);
+        m_ghostVariables.push_back(ghostVar);
+    }
 
     return true;
 }

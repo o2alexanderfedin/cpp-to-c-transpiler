@@ -181,6 +181,11 @@ private:
             return m_ghostVariables;
         }
 
+        /// @brief Add a ghost variable to the collection
+        void addGhostVariable(const GhostVariable& ghostVar) {
+            m_ghostVariables.push_back(ghostVar);
+        }
+
     private:
         ACSLGhostCodeInjector* m_injector;
         std::vector<GhostVariable> m_ghostVariables;
