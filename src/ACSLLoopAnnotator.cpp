@@ -179,26 +179,32 @@ ACSLLoopAnnotator::generateLoopInvariants(const Stmt *loop) {
     return invariants;
   }
 
-  // For ForStmt, detect loop counter and generate bounds invariant
+  // Detect loop counter and bounds for all loop types
+  std::string counter;
+  auto bounds = detectLoopBounds(loop);
+
+  // For ForStmt, use dedicated counter detection
   if (auto *forLoop = dyn_cast<ForStmt>(loop)) {
-    std::string counter = detectLoopCounter(forLoop);
-    auto bounds = detectLoopBounds(loop);
+    counter = detectLoopCounter(forLoop);
+  } else {
+    // For while/do-while, extract counter from condition
+    counter = extractCounterFromCondition(loop);
+  }
 
-    if (!counter.empty()) {
-      // Generate bounds invariant: lower_bound <= counter <= upper_bound
-      std::ostringstream oss;
-      if (!bounds.first.empty() && !bounds.second.empty()) {
-        oss << bounds.first << " <= " << counter << " && " << counter
-            << " <= " << bounds.second;
-      } else if (!bounds.first.empty()) {
-        oss << bounds.first << " <= " << counter;
-      } else if (!bounds.second.empty()) {
-        oss << counter << " <= " << bounds.second;
-      }
+  if (!counter.empty()) {
+    // Generate bounds invariant: lower_bound <= counter <= upper_bound
+    std::ostringstream oss;
+    if (!bounds.first.empty() && !bounds.second.empty()) {
+      oss << bounds.first << " <= " << counter << " && " << counter
+          << " <= " << bounds.second;
+    } else if (!bounds.first.empty()) {
+      oss << bounds.first << " <= " << counter;
+    } else if (!bounds.second.empty()) {
+      oss << counter << " <= " << bounds.second;
+    }
 
-      if (!oss.str().empty()) {
-        invariants.push_back(oss.str());
-      }
+    if (!oss.str().empty()) {
+      invariants.push_back(oss.str());
     }
   }
 
@@ -244,19 +250,30 @@ std::string ACSLLoopAnnotator::generateLoopVariant(const Stmt *loop) {
     return "";
   }
 
-  // For ForStmt with simple counter
-  if (auto *forLoop = dyn_cast<ForStmt>(loop)) {
-    std::string counter = detectLoopCounter(forLoop);
-    auto bounds = detectLoopBounds(loop);
+  std::string counter;
+  auto bounds = detectLoopBounds(loop);
 
-    if (!counter.empty() && !bounds.second.empty()) {
-      if (isAscendingLoop(loop)) {
-        // Ascending loop: variant = upper_bound - counter
-        return bounds.second + " - " + counter;
-      } else if (isDescendingLoop(loop)) {
-        // Descending loop: variant = counter
-        return counter;
+  // Detect counter for different loop types
+  if (auto *forLoop = dyn_cast<ForStmt>(loop)) {
+    counter = detectLoopCounter(forLoop);
+  } else {
+    // For while/do-while, extract from condition
+    counter = extractCounterFromCondition(loop);
+  }
+
+  if (!counter.empty()) {
+    // For descending loops (i--, i > 0)
+    if (isDescendingLoop(loop)) {
+      // Variant is simply the counter value (decreases to 0 or lower bound)
+      if (!bounds.first.empty() && bounds.first != "0") {
+        return counter + " - " + bounds.first;
       }
+      return counter;
+    }
+    // For ascending loops (i++, i < n)
+    else if (!bounds.second.empty()) {
+      // Variant is upper_bound - counter
+      return bounds.second + " - " + counter;
     }
   }
 
@@ -495,6 +512,26 @@ const Expr *ACSLLoopAnnotator::getLoopIncrement(const ForStmt *loop) {
     return loop->getInc();
   }
   return nullptr;
+}
+
+// Extract counter variable from loop condition (for while/do-while)
+std::string ACSLLoopAnnotator::extractCounterFromCondition(const Stmt *loop) {
+  const Expr *cond = getLoopCondition(loop);
+  if (!cond) {
+    return "";
+  }
+
+  // Parse binary operator condition (e.g., i < 10, counter < n)
+  if (auto *binOp = dyn_cast<BinaryOperator>(cond->IgnoreImpCasts())) {
+    Expr *lhs = binOp->getLHS();
+
+    // Get left side variable name (typically the counter)
+    if (auto *declRef = dyn_cast<DeclRefExpr>(lhs->IgnoreImpCasts())) {
+      return declRef->getNameInfo().getAsString();
+    }
+  }
+
+  return "";
 }
 
 // Format loop assigns clause

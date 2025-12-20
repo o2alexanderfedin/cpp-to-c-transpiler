@@ -169,6 +169,11 @@ protected:
   /// @return Increment expression (or nullptr if not found)
   const clang::Expr *getLoopIncrement(const clang::ForStmt *loop);
 
+  /// @brief Extract counter variable name from loop condition (while/do-while)
+  /// @param loop Loop statement (WhileStmt or DoStmt)
+  /// @return Counter variable name (e.g., "i", "counter")
+  std::string extractCounterFromCondition(const clang::Stmt *loop);
+
 private:
   /// @brief Helper: Format loop assigns clause items into single string
   /// @param items Vector of individual assign locations
