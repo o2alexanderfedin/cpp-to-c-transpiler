@@ -364,6 +364,36 @@ cpptoc input.cpp -o output.c --runtime-mode=library
 frama-c -wp output.c cpptoc_runtime.c
 ```
 
+**ACSL Annotation Generation (Epic #193):**
+
+```bash
+# Generate ACSL annotations with defaults (basic level, inline mode)
+./build/cpptoc --generate-acsl input.cpp --
+
+# Generate ACSL with full coverage (functions + loops + class invariants)
+./build/cpptoc --generate-acsl --acsl-level=full input.cpp --
+
+# Generate ACSL in separate .acsl files
+./build/cpptoc --generate-acsl --acsl-output=separate input.cpp --
+
+# Verify generated code with Frama-C
+./build/cpptoc --generate-acsl input.cpp -- > output.c
+frama-c -cpp-extra-args="-I./runtime" output.c
+```
+
+**CLI Options:**
+
+- `--generate-acsl` - Enable ACSL annotation generation (default: off)
+- `--acsl-level=<basic|full>` - Set ACSL coverage level (requires `--generate-acsl`)
+  - `basic`: Function contracts only (requires, ensures, assigns)
+  - `full`: Function contracts + loop invariants + class invariants
+- `--acsl-output=<inline|separate>` - Set ACSL output mode (requires `--generate-acsl`)
+  - `inline`: Annotations embedded in C code (default)
+  - `separate`: Annotations in separate .acsl files
+- `--use-pragma-once` - Use #pragma once instead of traditional include guards
+- `--visualize-deps` - Generate dependency graph visualization (saved as deps.dot)
+- `--dump-deps=<filename>` - Generate dependency graph in DOT format to specified file
+
 ## Website Submodule
 
 The presentation website is maintained as a separate repository: [cpp-to-c-website](https://github.com/o2alexanderfedin/cpp-to-c-website)

@@ -65,7 +65,7 @@ void test_UnderscoredFilename() {
     TEST_PASS("UnderscoredFilename");
 }
 
-// Test 5: Full guard emission
+// Test 5: Full guard emission (traditional mode)
 void test_GuardEmission() {
     TEST_START("GuardEmission");
 
@@ -90,6 +90,92 @@ void test_GuardEmission() {
     TEST_PASS("GuardEmission");
 }
 
+// Test 6: #pragma once mode - guard begin
+void test_PragmaOnceGuardBegin() {
+    TEST_START("PragmaOnceGuardBegin");
+
+    IncludeGuardGenerator generator(true); // Enable pragma once mode
+    std::string guardName = "POINT_H";
+
+    std::string guardBegin = generator.emitGuardBegin(guardName);
+
+    // Verify #pragma once is emitted
+    ASSERT(guardBegin.find("#pragma once") != std::string::npos,
+           "Expected '#pragma once' in guard begin");
+
+    // Verify traditional guards are NOT emitted
+    ASSERT(guardBegin.find("#ifndef") == std::string::npos,
+           "Should not contain '#ifndef' in pragma once mode");
+    ASSERT(guardBegin.find("#define") == std::string::npos,
+           "Should not contain '#define' in pragma once mode");
+
+    TEST_PASS("PragmaOnceGuardBegin");
+}
+
+// Test 7: #pragma once mode - guard end
+void test_PragmaOnceGuardEnd() {
+    TEST_START("PragmaOnceGuardEnd");
+
+    IncludeGuardGenerator generator(true); // Enable pragma once mode
+    std::string guardName = "POINT_H";
+
+    std::string guardEnd = generator.emitGuardEnd(guardName);
+
+    // In pragma once mode, guard end should be empty or minimal
+    ASSERT(guardEnd.find("#endif") == std::string::npos,
+           "Should not contain '#endif' in pragma once mode");
+
+    TEST_PASS("PragmaOnceGuardEnd");
+}
+
+// Test 8: Traditional mode explicitly set
+void test_TraditionalModeExplicit() {
+    TEST_START("TraditionalModeExplicit");
+
+    IncludeGuardGenerator generator(false); // Explicitly disable pragma once
+    std::string guardName = "TEST_H";
+
+    std::string guardBegin = generator.emitGuardBegin(guardName);
+    std::string guardEnd = generator.emitGuardEnd(guardName);
+
+    // Verify traditional guards are emitted
+    ASSERT(guardBegin.find("#ifndef TEST_H") != std::string::npos,
+           "Expected '#ifndef TEST_H' in traditional mode");
+    ASSERT(guardBegin.find("#define TEST_H") != std::string::npos,
+           "Expected '#define TEST_H' in traditional mode");
+    ASSERT(guardEnd.find("#endif") != std::string::npos,
+           "Expected '#endif' in traditional mode");
+
+    TEST_PASS("TraditionalModeExplicit");
+}
+
+// Test 9: Toggle between modes
+void test_ModeToggle() {
+    TEST_START("ModeToggle");
+
+    IncludeGuardGenerator generator;
+    std::string guardName = "TOGGLE_H";
+
+    // Default should be traditional
+    std::string guardBegin1 = generator.emitGuardBegin(guardName);
+    ASSERT(guardBegin1.find("#ifndef") != std::string::npos,
+           "Default should use traditional guards");
+
+    // Switch to pragma once
+    generator.setUsePragmaOnce(true);
+    std::string guardBegin2 = generator.emitGuardBegin(guardName);
+    ASSERT(guardBegin2.find("#pragma once") != std::string::npos,
+           "Should use pragma once after enabling");
+
+    // Switch back to traditional
+    generator.setUsePragmaOnce(false);
+    std::string guardBegin3 = generator.emitGuardBegin(guardName);
+    ASSERT(guardBegin3.find("#ifndef") != std::string::npos,
+           "Should use traditional guards after disabling pragma once");
+
+    TEST_PASS("ModeToggle");
+}
+
 int main() {
     std::cout << "\n=== IncludeGuardGenerator Tests (Story #138) ===\n\n";
 
@@ -99,6 +185,10 @@ int main() {
     test_HyphenatedFilename();
     test_UnderscoredFilename();
     test_GuardEmission();
+    test_PragmaOnceGuardBegin();
+    test_PragmaOnceGuardEnd();
+    test_TraditionalModeExplicit();
+    test_ModeToggle();
 
     // Summary
     std::cout << "\n=== Test Summary ===\n";
