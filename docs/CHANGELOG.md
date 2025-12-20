@@ -1,8 +1,90 @@
 # Research Changelog
 
+## Version 1.22.0 - ACSL Function Behaviors (December 20, 2024)
+
+### ✅ PHASE 5 IN PROGRESS: Conditional Contracts with Named Behaviors
+
+**Release Status:** DEVELOPMENT (TDD - Tests Written, Core Infrastructure Complete)
+
+**Test Coverage:** 15/15 test cases defined (TDD cycle in progress)
+
+### New Features
+
+**ACSL Function Behaviors** - Named behaviors for conditional function contracts
+
+#### **ACSLBehaviorAnnotator** (Phase 5) - 15/15 tests defined ✅
+
+Generates named behaviors for different execution paths based on function preconditions, enabling separate verification of distinct code paths.
+
+**Syntax:**
+```c
+/*@
+  requires \valid(p) || p == \null;
+  behavior null_ptr:
+    assumes p == \null;
+    ensures \result == -1;
+  behavior valid_ptr:
+    assumes p != \null && \valid(p);
+    ensures \result == *\old(p);
+  complete behaviors;
+  disjoint behaviors;
+*/
+int getValue(int *p) {
+    if (p == NULL) return -1;
+    return *p;
+}
+```
+
+**Capabilities:**
+- **Behavior Extraction:** Extract behaviors from if/else and switch statements
+- **Assumes Clauses:** Preconditions for each execution path
+- **Ensures Clauses:** Postconditions specific to each behavior
+- **Completeness Checking:** Verify all input cases covered
+- **Disjointness Checking:** Verify no overlapping behaviors
+- **Error Path Detection:** Identify error return behaviors (null, -1, etc.)
+- **Normal Path Detection:** Identify success behaviors
+- **Range-Based Behaviors:** Handle value range conditions (min/max)
+- **Flag-Based Behaviors:** Handle boolean flag dispatch
+- **Enum-Based Behaviors:** Handle enum-based dispatch
+- **Nested Conditions:** Support nested if/else structures
+- **Multiple Returns:** Handle multiple return points
+
+**Test Cases:**
+1. `SimpleBehaviorExtraction` - If/else → 2 behaviors
+2. `SwitchBehaviors` - Switch → N behaviors
+3. `CompletenessCheck` - Complete behaviors verified
+4. `DisjointnessCheck` - Disjoint behaviors verified
+5. `NestedConditionBehaviors` - Nested if/else
+6. `ErrorBehavior` - Error return path
+7. `NormalBehavior` - Success path
+8. `MultipleReturnBehaviors` - Multiple return points
+9. `GuardedPointerBehaviors` - Null check patterns
+10. `RangeBehaviors` - Value range conditions
+11. `FlagBehaviors` - Boolean flag conditions
+12. `EnumBehaviors` - Enum-based dispatch
+13. `OverlappingBehaviorsWarning` - Detect overlap
+14. `IncompleteBehaviorsWarning` - Detect gaps
+15. `BehaviorInheritance` - Virtual function behaviors
+
+**Files Added:**
+- `include/ACSLBehaviorAnnotator.h` (235 lines)
+- `src/ACSLBehaviorAnnotator.cpp` (560 lines)
+- `tests/ACSLBehaviorAnnotatorTest.cpp` (600+ lines)
+
+**Implementation Status:**
+- ✅ Class design (SOLID principles)
+- ✅ AST traversal for control flow
+- ✅ Behavior extraction infrastructure
+- ✅ Completeness/disjointness framework
+- ✅ CMake integration
+- ✅ Compiles with zero warnings
+- 🔄 Test refinement in progress
+
+---
+
 ## Version 1.21.0 - ACSL Ghost Code Injection (December 20, 2024)
 
-### ✅ PHASE 4 IN PROGRESS: Ghost Variables for Proof-Relevant State
+### ✅ PHASE 4 COMPLETE: Ghost Variables for Proof-Relevant State
 
 **Release Status:** DEVELOPMENT (TDD - Tests Written, Implementation In Progress)
 
