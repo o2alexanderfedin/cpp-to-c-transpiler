@@ -17,6 +17,7 @@ extern ACSLOutputMode getACSLOutputMode();
 extern bool shouldGenerateMemoryPredicates(); // Phase 6 (v1.23.0)
 extern bool shouldMonomorphizeTemplates(); // Phase 11 (v2.4.0)
 extern unsigned int getTemplateInstantiationLimit(); // Phase 11 (v2.4.0)
+extern bool shouldEnableRTTI(); // Phase 13 (v2.6.0)
 
 // Epic #193: ACSL Integration - Constructor Implementation
 CppToCVisitor::CppToCVisitor(ASTContext &Context, CNodeBuilder &Builder)
@@ -69,6 +70,17 @@ CppToCVisitor::CppToCVisitor(ASTContext &Context, CNodeBuilder &Builder)
     llvm::outs() << "Template monomorphization enabled (limit: "
                  << getTemplateInstantiationLimit() << " instantiations)\n";
   }
+
+  // Phase 12 (v2.5.0): Initialize exception handling infrastructure
+  m_exceptionFrameGen = std::make_shared<ExceptionFrameGenerator>();
+  m_tryCatchTransformer = std::make_unique<clang::TryCatchTransformer>(m_exceptionFrameGen);
+  m_throwTranslator = std::make_unique<clang::ThrowTranslator>();
+  llvm::outs() << "Exception handling support initialized (SJLJ model)\n";
+
+  // Phase 13 (v2.6.0): Initialize RTTI infrastructure
+  m_typeidTranslator = std::make_unique<TypeidTranslator>(Context, VirtualAnalyzer);
+  m_dynamicCastTranslator = std::make_unique<DynamicCastTranslator>(Context, VirtualAnalyzer);
+  llvm::outs() << "RTTI support initialized (typeid and dynamic_cast)\n";
 }
 
 // Story #15 + Story #50: Class-to-Struct Conversion with Base Class Embedding
@@ -2344,12 +2356,22 @@ bool CppToCVisitor::VisitLinkageSpecDecl(clang::LinkageSpecDecl *LS) {
 }
 
 // ============================================================================
-// Phase 12: Exception Handling Implementation
+// Phase 12: Exception Handling Implementation (v2.5.0)
 // ============================================================================
-// NOTE: These visitor methods are commented out pending full Phase 12 integration
-// They require additional member variables and includes that are not yet in the header
 
-/* COMMENTED OUT FOR PHASE 13 - NEEDS PHASE 12 COMPLETION
+/**
+ * @brief Visit C++ try-catch statements and translate to setjmp/longjmp control flow
+ *
+ * This method is called automatically by Clang's AST traversal when encountering
+ * C++ try-catch blocks. It uses TryCatchTransformer to generate:
+ * - Exception frame structure
+ * - setjmp guard for catching exceptions
+ * - Catch handler dispatch with type matching
+ * - Frame push/pop operations
+ *
+ * @param S The CXXTryStmt AST node
+ * @return false to prevent default traversal (we handle the try-catch ourselves)
+ */
 bool CppToCVisitor::VisitCXXTryStmt(CXXTryStmt *S) {
   if (!S) {
     return true;
@@ -2358,11 +2380,11 @@ bool CppToCVisitor::VisitCXXTryStmt(CXXTryStmt *S) {
   llvm::outs() << "Translating try-catch block...\n";
 
   // Generate unique frame and action table names
-  std::string frameVarName = "frame_" + std::to_string(exceptionFrameCounter++);
-  std::string actionsTableName = "actions_table_" + std::to_string(tryBlockCounter++);
+  std::string frameVarName = "frame_" + std::to_string(m_exceptionFrameCounter++);
+  std::string actionsTableName = "actions_table_" + std::to_string(m_tryBlockCounter++);
 
   // Use TryCatchTransformer to generate complete try-catch code
-  std::string transformedCode = TryCatchTransformerInstance.transformTryCatch(
+  std::string transformedCode = m_tryCatchTransformer->transformTryCatch(
     S, frameVarName, actionsTableName);
 
   // Output the transformed code
@@ -2374,6 +2396,19 @@ bool CppToCVisitor::VisitCXXTryStmt(CXXTryStmt *S) {
   return false;
 }
 
+/**
+ * @brief Visit C++ throw expressions and translate to cxx_throw runtime calls
+ *
+ * This method is called automatically by Clang's AST traversal when encountering
+ * C++ throw expressions. It uses ThrowTranslator to generate:
+ * - Exception object allocation (malloc)
+ * - Constructor call with arguments
+ * - Type info extraction
+ * - cxx_throw runtime call (never returns, performs longjmp)
+ *
+ * @param E The CXXThrowExpr AST node
+ * @return true to indicate we've handled this expression
+ */
 bool CppToCVisitor::VisitCXXThrowExpr(CXXThrowExpr *E) {
   if (!E) {
     return true;
@@ -2385,10 +2420,10 @@ bool CppToCVisitor::VisitCXXThrowExpr(CXXThrowExpr *E) {
 
   if (E->getSubExpr()) {
     // throw expression;
-    throwCode = ThrowTranslatorInstance.generateThrowCode(E);
+    throwCode = m_throwTranslator->generateThrowCode(E);
   } else {
     // throw; (re-throw)
-    throwCode = ThrowTranslatorInstance.generateRethrowCode();
+    throwCode = m_throwTranslator->generateRethrowCode();
   }
 
   // Output the throw code
@@ -2399,7 +2434,107 @@ bool CppToCVisitor::VisitCXXThrowExpr(CXXThrowExpr *E) {
   // Return true to indicate we've handled this
   return true;
 }
-END COMMENT */
+
+// ============================================================================
+// Phase 13: RTTI Translation Implementation (v2.6.0)
+// ============================================================================
+
+/**
+ * @brief Visit C++ typeid expressions and translate to type_info retrieval
+ *
+ * This method is called automatically by Clang's AST traversal when encountering
+ * C++ typeid expressions. It uses TypeidTranslator to generate:
+ * - Polymorphic typeid: vtable lookup (ptr->vptr->type_info)
+ * - Static typeid: compile-time constant (&__ti_ClassName)
+ *
+ * Examples:
+ * C++: const std::type_info& ti = typeid(*ptr);  // Polymorphic
+ * C:   const struct __class_type_info *ti = ptr->vptr->type_info;
+ *
+ * C++: const std::type_info& ti = typeid(Base);  // Static
+ * C:   const struct __class_type_info *ti = &__ti_Base;
+ *
+ * @param E The CXXTypeidExpr AST node
+ * @return true to continue traversal
+ */
+bool CppToCVisitor::VisitCXXTypeidExpr(CXXTypeidExpr *E) {
+  if (!E) {
+    return true;
+  }
+
+  // Check if RTTI is enabled
+  if (!shouldEnableRTTI()) {
+    llvm::errs() << "Error: typeid expression requires --enable-rtti flag\n";
+    return true;
+  }
+
+  llvm::outs() << "Translating typeid expression...\n";
+
+  // Translate using TypeidTranslator
+  std::string typeidCode = m_typeidTranslator->translateTypeid(E);
+
+  // Output the translated code
+  if (!typeidCode.empty()) {
+    llvm::outs() << "Typeid translation: " << typeidCode << "\n";
+  } else {
+    llvm::outs() << "Warning: typeid translation produced empty result\n";
+  }
+
+  llvm::outs() << "Typeid expression translated successfully\n";
+
+  // Return true to continue traversal of subexpressions
+  return true;
+}
+
+/**
+ * @brief Visit C++ dynamic_cast expressions and translate to cxx_dynamic_cast calls
+ *
+ * This method is called automatically by Clang's AST traversal when encountering
+ * C++ dynamic_cast expressions. It uses DynamicCastTranslator to generate:
+ * - Runtime type checking via cxx_dynamic_cast()
+ * - Returns NULL on failed cast
+ * - Handles single and multiple inheritance hierarchies
+ *
+ * Example:
+ * C++: Derived* d = dynamic_cast<Derived*>(base_ptr);
+ * C:   struct Derived *d = (struct Derived*)cxx_dynamic_cast(
+ *        (const void*)base_ptr,
+ *        &__ti_Base,
+ *        &__ti_Derived,
+ *        -1
+ *      );
+ *
+ * @param E The CXXDynamicCastExpr AST node
+ * @return true to continue traversal
+ */
+bool CppToCVisitor::VisitCXXDynamicCastExpr(CXXDynamicCastExpr *E) {
+  if (!E) {
+    return true;
+  }
+
+  // Check if RTTI is enabled
+  if (!shouldEnableRTTI()) {
+    llvm::errs() << "Error: dynamic_cast expression requires --enable-rtti flag\n";
+    return true;
+  }
+
+  llvm::outs() << "Translating dynamic_cast expression...\n";
+
+  // Translate using DynamicCastTranslator
+  std::string dynamicCastCode = m_dynamicCastTranslator->translateDynamicCast(E);
+
+  // Output the translated code
+  if (!dynamicCastCode.empty()) {
+    llvm::outs() << "Dynamic cast translation: " << dynamicCastCode << "\n";
+  } else {
+    llvm::outs() << "Warning: dynamic_cast translation produced empty result\n";
+  }
+
+  llvm::outs() << "Dynamic cast expression translated successfully\n";
+
+  // Return true to continue traversal of subexpressions
+  return true;
+}
 
 // ============================================================================
 // Epic #193: ACSL Annotation Generation Implementation

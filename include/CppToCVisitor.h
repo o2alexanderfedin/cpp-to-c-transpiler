@@ -23,6 +23,11 @@
 #include "TemplateExtractor.h"
 #include "TemplateMonomorphizer.h"
 #include "TemplateInstantiationTracker.h"
+#include "TryCatchTransformer.h"
+#include "ThrowTranslator.h"
+#include "ExceptionFrameGenerator.h"
+#include "TypeidTranslator.h"
+#include "DynamicCastTranslator.h"
 #include <map>
 #include <string>
 #include <memory>
@@ -81,6 +86,17 @@ class CppToCVisitor : public clang::RecursiveASTVisitor<CppToCVisitor> {
   std::unique_ptr<TemplateMonomorphizer> m_templateMonomorphizer;
   std::unique_ptr<TemplateInstantiationTracker> m_templateTracker;
   std::string m_monomorphizedCode;  // Store generated template code
+
+  // Phase 12: Exception handling infrastructure (v2.5.0)
+  std::unique_ptr<clang::TryCatchTransformer> m_tryCatchTransformer;
+  std::unique_ptr<clang::ThrowTranslator> m_throwTranslator;
+  std::shared_ptr<ExceptionFrameGenerator> m_exceptionFrameGen;
+  unsigned int m_exceptionFrameCounter = 0;  // Counter for unique frame names
+  unsigned int m_tryBlockCounter = 0;         // Counter for unique action table names
+
+  // Phase 13: RTTI infrastructure (v2.6.0)
+  std::unique_ptr<TypeidTranslator> m_typeidTranslator;
+  std::unique_ptr<DynamicCastTranslator> m_dynamicCastTranslator;
 
   // Current translation context (Story #19)
   clang::ParmVarDecl *currentThisParam = nullptr;
@@ -188,6 +204,14 @@ public:
   bool VisitClassTemplateDecl(clang::ClassTemplateDecl *D);
   bool VisitFunctionTemplateDecl(clang::FunctionTemplateDecl *D);
   bool VisitClassTemplateSpecializationDecl(clang::ClassTemplateSpecializationDecl *D);
+
+  // Phase 12: Exception handling visitor methods (v2.5.0)
+  bool VisitCXXTryStmt(clang::CXXTryStmt *S);
+  bool VisitCXXThrowExpr(clang::CXXThrowExpr *E);
+
+  // Phase 13: RTTI visitor methods (v2.6.0)
+  bool VisitCXXTypeidExpr(clang::CXXTypeidExpr *E);
+  bool VisitCXXDynamicCastExpr(clang::CXXDynamicCastExpr *E);
 
   // Retrieve generated C struct by class name (for testing)
   clang::RecordDecl* getCStruct(llvm::StringRef className) const;
