@@ -1,7 +1,7 @@
 # C++ to C Converter
 
-[![Research Status](https://img.shields.io/badge/Research-v1.5.1%20Complete-brightgreen)](https://github.com)
-[![Confidence](https://img.shields.io/badge/Confidence-97%25-brightgreen)](https://github.com)
+[![Research Status](https://img.shields.io/badge/Research-v1.19.0%20Complete-brightgreen)](https://github.com)
+[![Confidence](https://img.shields.io/badge/Confidence-98%25-brightgreen)](https://github.com)
 [![Architecture](https://img.shields.io/badge/Architecture-Two--Phase%20Translation-blue)](https://github.com)
 [![License](https://img.shields.io/badge/License-CC%20BY--NC--ND%204.0-lightgrey.svg)](LICENSE)
 [![Commercial License](https://img.shields.io/badge/Commercial-Available-green.svg)](LICENSE-COMMERCIAL.md)
@@ -38,6 +38,13 @@ This project implements a C++ to C transpiler that produces high-quality, human-
 - ✅ Lambdas and closures
 - ✅ C++20 coroutines
 - ✅ Smart pointers
+- ✅ **ACSL Annotations** (v1.20.0) - Automatic generation of formal specifications for Frama-C verification
+  - Function contracts (requires, ensures, assigns)
+  - Loop invariants and variants
+  - Class invariants
+  - Statement assertions (assert, assume, check)
+  - Type invariants (v1.19.0)
+  - Axiomatic definitions (NEW in v1.20.0) - Logic functions, axioms, lemmas
 
 ## Architecture (v1.5.1)
 

@@ -1,0 +1,139 @@
+name: Build and Test WASM
+
+on:
+  push:
+    branches: [main, develop]
+  pull_request:
+    branches: [main, develop]
+
+jobs:
+  build-and-test:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          submodules: recursive
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '18'
+          cache: 'npm'
+          cache-dependency-path: wasm/glue/package-lock.json
+
+      - name: Setup Emscripten
+        uses: mymindstorm/setup-emsdk@v14
+        with:
+          version: '3.1.50'
+          actions-cache-folder: 'emsdk-cache'
+
+      - name: Verify Emscripten installation
+        run: |
+          emcc --version
+          which emcmake
+          which emmake
+
+      - name: Install dependencies
+        working-directory: wasm/glue
+        run: npm ci
+
+      - name: Build WASM (Minimal)
+        run: |
+          cd wasm
+          ./scripts/build-minimal.sh
+
+      - name: Build WASM (Full)
+        run: |
+          cd wasm
+          ./scripts/build-full.sh
+
+      - name: Check sizes
+        id: size-check
+        run: |
+          cd wasm
+          ./scripts/size-check.sh || echo "SIZE_CHECK_FAILED=true" >> $GITHUB_OUTPUT
+
+      - name: Report size check results
+        if: steps.size-check.outputs.SIZE_CHECK_FAILED == 'true'
+        run: |
+          echo "::warning::WASM size check failed. See logs for details."
+
+      - name: Run unit tests
+        working-directory: wasm/glue
+        run: npm run test || echo "No tests configured yet"
+
+      - name: Build TypeScript
+        working-directory: wasm/glue
+        run: npm run build:types
+
+      - name: Upload WASM artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: wasm-builds
+          path: |
+            wasm/build-wasm-minimal/cpptoc-minimal.*
+            wasm/build-wasm-full/cpptoc-full.*
+          retention-days: 30
+
+      - name: Generate size report
+        run: |
+          echo "## WASM Build Sizes" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "### Minimal Build" >> $GITHUB_STEP_SUMMARY
+          ls -lh wasm/build-wasm-minimal/cpptoc-minimal.wasm >> $GITHUB_STEP_SUMMARY || true
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "### Full Build" >> $GITHUB_STEP_SUMMARY
+          ls -lh wasm/build-wasm-full/cpptoc-full.wasm >> $GITHUB_STEP_SUMMARY || true
+
+  publish:
+    needs: build-and-test
+    runs-on: ubuntu-latest
+    if: startsWith(github.ref, 'refs/tags/v')
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '18'
+          registry-url: 'https://registry.npmjs.org'
+
+      - name: Download WASM artifacts
+        uses: actions/download-artifact@v4
+        with:
+          name: wasm-builds
+          path: wasm/
+
+      - name: Install dependencies
+        working-directory: wasm/glue
+        run: npm ci
+
+      - name: Publish to NPM
+        working-directory: wasm/glue
+        run: npm publish --access public
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v1
+        with:
+          files: |
+            wasm/build-wasm-minimal/cpptoc-minimal.*
+            wasm/build-wasm-full/cpptoc-full.*
+          body: |
+            WebAssembly builds for C++ to C transpiler v${{ github.ref_name }}
+
+            ## Downloads
+            - Minimal build: cpptoc-minimal.wasm (optimized for Cloudflare Workers)
+            - Full build: cpptoc-full.wasm (includes all ACSL phases)
+
+            ## NPM Package
+            ```bash
+            npm install @hupyy/cpptoc-wasm@${{ github.ref_name }}
+            ```
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

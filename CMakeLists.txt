@@ -142,6 +142,11 @@ add_library(cpptoc_core STATIC
     src/ACSLFunctionAnnotator.cpp
     src/ACSLLoopAnnotator.cpp
     src/ACSLClassAnnotator.cpp
+    src/ACSLStatementAnnotator.cpp
+    src/ACSLTypeInvariantGenerator.cpp
+    src/ACSLAxiomaticBuilder.cpp
+    src/ACSLGhostCodeInjector.cpp
+    src/ACSLBehaviorAnnotator.cpp
     src/HeaderSeparator.cpp
     src/IncludeGuardGenerator.cpp
     src/DependencyAnalyzer.cpp
@@ -2127,6 +2132,111 @@ target_include_directories(ACSLClassAnnotatorTest PRIVATE
 )
 
 target_link_libraries(ACSLClassAnnotatorTest PRIVATE
+    cpptoc_core
+    clangTooling
+    clangFrontend
+    clangAST
+    clangBasic
+)
+
+# Phase 1 (v1.18.0): ACSLStatementAnnotator tests
+add_executable(ACSLStatementAnnotatorTest
+    tests/ACSLStatementAnnotatorTest.cpp
+)
+
+target_compile_definitions(ACSLStatementAnnotatorTest PRIVATE ${LLVM_DEFINITIONS})
+
+target_include_directories(ACSLStatementAnnotatorTest PRIVATE
+    ${CMAKE_SOURCE_DIR}/include
+    ${LLVM_INCLUDE_DIRS}
+    ${CLANG_INCLUDE_DIRS}
+)
+
+target_link_libraries(ACSLStatementAnnotatorTest PRIVATE
+    cpptoc_core
+    clangTooling
+    clangFrontend
+    clangAST
+    clangBasic
+)
+
+# Phase 2 (v1.19.0): ACSLTypeInvariantGenerator tests
+add_executable(ACSLTypeInvariantGeneratorTest
+    tests/ACSLTypeInvariantGeneratorTest.cpp
+)
+
+target_compile_definitions(ACSLTypeInvariantGeneratorTest PRIVATE ${LLVM_DEFINITIONS})
+
+target_include_directories(ACSLTypeInvariantGeneratorTest PRIVATE
+    ${CMAKE_SOURCE_DIR}/include
+    ${LLVM_INCLUDE_DIRS}
+    ${CLANG_INCLUDE_DIRS}
+)
+
+target_link_libraries(ACSLTypeInvariantGeneratorTest PRIVATE
+    cpptoc_core
+    clangTooling
+    clangFrontend
+    clangAST
+    clangBasic
+)
+
+# Phase 3 (v1.20.0): ACSLAxiomaticBuilder tests
+add_executable(ACSLAxiomaticBuilderTest
+    tests/ACSLAxiomaticBuilderTest.cpp
+)
+
+target_compile_definitions(ACSLAxiomaticBuilderTest PRIVATE ${LLVM_DEFINITIONS})
+
+target_include_directories(ACSLAxiomaticBuilderTest PRIVATE
+    ${CMAKE_SOURCE_DIR}/include
+    ${LLVM_INCLUDE_DIRS}
+    ${CLANG_INCLUDE_DIRS}
+)
+
+target_link_libraries(ACSLAxiomaticBuilderTest PRIVATE
+    cpptoc_core
+    clangTooling
+    clangFrontend
+    clangAST
+    clangBasic
+)
+
+# Phase 4 (v1.21.0): ACSLGhostCodeInjector tests
+add_executable(ACSLGhostCodeInjectorTest
+    tests/ACSLGhostCodeInjectorTest.cpp
+)
+
+target_compile_definitions(ACSLGhostCodeInjectorTest PRIVATE ${LLVM_DEFINITIONS})
+
+target_include_directories(ACSLGhostCodeInjectorTest PRIVATE
+    ${CMAKE_SOURCE_DIR}/include
+    ${LLVM_INCLUDE_DIRS}
+    ${CLANG_INCLUDE_DIRS}
+)
+
+target_link_libraries(ACSLGhostCodeInjectorTest PRIVATE
+    cpptoc_core
+    clangTooling
+    clangFrontend
+    clangAST
+    clangBasic
+)
+
+# Phase 5 (v1.22.0): ACSLBehaviorAnnotator tests
+add_executable(ACSLBehaviorAnnotatorTest
+    tests/ACSLBehaviorAnnotatorTest.cpp
+)
+
+target_compile_definitions(ACSLBehaviorAnnotatorTest PRIVATE ${LLVM_DEFINITIONS})
+
+target_include_directories(ACSLBehaviorAnnotatorTest PRIVATE
+    ${CMAKE_SOURCE_DIR}/include
+    ${LLVM_INCLUDE_DIRS}
+    ${CLANG_INCLUDE_DIRS}
+)
+
+target_link_libraries(ACSLBehaviorAnnotatorTest PRIVATE
     cpptoc_core
     clangTooling
     clangFrontend
