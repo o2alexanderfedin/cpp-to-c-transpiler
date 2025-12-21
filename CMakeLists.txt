@@ -1468,118 +1468,162 @@ target_link_libraries(ConstructorSplitterTest PRIVATE
     clangBasic
 )
 
-# Story #102: Coroutine Detection and Frame Structure tests (Epic #46)
-add_executable(CoroutineDetectorTest
-    tests/CoroutineDetectorTest.cpp
+# ============================================================================
+# Epic #46: C++20 Coroutines Support - GTest Migration (Phase 15-01)
+# ============================================================================
+
+# Story #102: Coroutine Detection and Frame Structure tests (GTest)
+add_executable(CoroutineDetectorTest_GTest
+    tests/CoroutineDetectorTest_GTest.cpp
     src/CoroutineDetector.cpp
 )
 
-target_compile_definitions(CoroutineDetectorTest PRIVATE ${LLVM_DEFINITIONS})
+target_compile_definitions(CoroutineDetectorTest_GTest PRIVATE ${LLVM_DEFINITIONS})
 
-target_include_directories(CoroutineDetectorTest PRIVATE
+target_include_directories(CoroutineDetectorTest_GTest PRIVATE
     ${CMAKE_SOURCE_DIR}/include
     ${LLVM_INCLUDE_DIRS}
     ${CLANG_INCLUDE_DIRS}
 )
 
-target_link_libraries(CoroutineDetectorTest PRIVATE
+target_link_libraries(CoroutineDetectorTest_GTest PRIVATE
     cpptoc_core
     clangTooling
     clangFrontend
     clangAST
     clangBasic
+    GTest::gtest
+    GTest::gtest_main
 )
 
-# Story #103: Suspend Point Identification tests (Epic #46)
-add_executable(SuspendPointIdentifierTest
-    tests/SuspendPointIdentifierTest.cpp
+# Register with CTest
+gtest_discover_tests(CoroutineDetectorTest_GTest
+    WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
+    PROPERTIES LABELS "unit;coroutines;epic46"
+)
+
+# Story #103: Suspend Point Identification tests (GTest)
+add_executable(SuspendPointIdentifierTest_GTest
+    tests/SuspendPointIdentifierTest_GTest.cpp
     src/SuspendPointIdentifier.cpp
 )
 
-target_compile_definitions(SuspendPointIdentifierTest PRIVATE ${LLVM_DEFINITIONS})
+target_compile_definitions(SuspendPointIdentifierTest_GTest PRIVATE ${LLVM_DEFINITIONS})
 
-target_include_directories(SuspendPointIdentifierTest PRIVATE
+target_include_directories(SuspendPointIdentifierTest_GTest PRIVATE
     ${CMAKE_SOURCE_DIR}/include
     ${LLVM_INCLUDE_DIRS}
     ${CLANG_INCLUDE_DIRS}
 )
 
-target_link_libraries(SuspendPointIdentifierTest PRIVATE
+target_link_libraries(SuspendPointIdentifierTest_GTest PRIVATE
     cpptoc_core
     clangTooling
     clangFrontend
     clangAST
     clangBasic
+    GTest::gtest
+    GTest::gtest_main
 )
 
-# Story #104: State Machine Transformation tests (Epic #46)
-add_executable(StateMachineTransformerTest
-    tests/StateMachineTransformerTest.cpp
+# Register with CTest
+gtest_discover_tests(SuspendPointIdentifierTest_GTest
+    WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
+    PROPERTIES LABELS "unit;coroutines;epic46"
+)
+
+# Story #104: State Machine Transformation tests (GTest)
+add_executable(StateMachineTransformerTest_GTest
+    tests/StateMachineTransformerTest_GTest.cpp
     src/StateMachineTransformer.cpp
     src/SuspendPointIdentifier.cpp
 )
 
-target_compile_definitions(StateMachineTransformerTest PRIVATE ${LLVM_DEFINITIONS})
+target_compile_definitions(StateMachineTransformerTest_GTest PRIVATE ${LLVM_DEFINITIONS})
 
-target_include_directories(StateMachineTransformerTest PRIVATE
+target_include_directories(StateMachineTransformerTest_GTest PRIVATE
     ${CMAKE_SOURCE_DIR}/include
     ${LLVM_INCLUDE_DIRS}
     ${CLANG_INCLUDE_DIRS}
 )
 
-target_link_libraries(StateMachineTransformerTest PRIVATE
+target_link_libraries(StateMachineTransformerTest_GTest PRIVATE
     cpptoc_core
     clangTooling
     clangFrontend
     clangAST
     clangBasic
     clangLex
+    GTest::gtest
+    GTest::gtest_main
 )
 
-# Story #105: Promise Object Translation tests (Epic #46)
-add_executable(PromiseTranslatorTest
-    tests/PromiseTranslatorTest.cpp
+# Register with CTest
+gtest_discover_tests(StateMachineTransformerTest_GTest
+    WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
+    PROPERTIES LABELS "unit;coroutines;epic46"
+)
+
+# Story #105: Promise Object Translation tests (GTest)
+add_executable(PromiseTranslatorTest_GTest
+    tests/PromiseTranslatorTest_GTest.cpp
     src/PromiseTranslator.cpp
 )
 
-target_compile_definitions(PromiseTranslatorTest PRIVATE ${LLVM_DEFINITIONS})
+target_compile_definitions(PromiseTranslatorTest_GTest PRIVATE ${LLVM_DEFINITIONS})
 
-target_include_directories(PromiseTranslatorTest PRIVATE
+target_include_directories(PromiseTranslatorTest_GTest PRIVATE
     ${CMAKE_SOURCE_DIR}/include
     ${LLVM_INCLUDE_DIRS}
     ${CLANG_INCLUDE_DIRS}
 )
 
-target_link_libraries(PromiseTranslatorTest PRIVATE
+target_link_libraries(PromiseTranslatorTest_GTest PRIVATE
     cpptoc_core
     clangTooling
     clangFrontend
     clangAST
     clangBasic
+    GTest::gtest
+    GTest::gtest_main
 )
 
-# Story #106: Resume and Destroy Function Generation tests (Epic #46)
-add_executable(ResumeDestroyFunctionTest
-    tests/ResumeDestroyFunctionTest.cpp
+# Register with CTest
+gtest_discover_tests(PromiseTranslatorTest_GTest
+    WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
+    PROPERTIES LABELS "unit;coroutines;epic46"
+)
+
+# Story #106: Resume and Destroy Function Generation tests (GTest)
+add_executable(ResumeDestroyFunctionTest_GTest
+    tests/ResumeDestroyFunctionTest_GTest.cpp
     src/StateMachineTransformer.cpp
     src/SuspendPointIdentifier.cpp
 )
 
-target_compile_definitions(ResumeDestroyFunctionTest PRIVATE ${LLVM_DEFINITIONS})
+target_compile_definitions(ResumeDestroyFunctionTest_GTest PRIVATE ${LLVM_DEFINITIONS})
 
-target_include_directories(ResumeDestroyFunctionTest PRIVATE
+target_include_directories(ResumeDestroyFunctionTest_GTest PRIVATE
     ${CMAKE_SOURCE_DIR}/include
     ${LLVM_INCLUDE_DIRS}
     ${CLANG_INCLUDE_DIRS}
 )
 
-target_link_libraries(ResumeDestroyFunctionTest PRIVATE
+target_link_libraries(ResumeDestroyFunctionTest_GTest PRIVATE
     cpptoc_core
     clangTooling
     clangFrontend
     clangAST
     clangBasic
     clangLex
+    GTest::gtest
+    GTest::gtest_main
+)
+
+# Register with CTest
+gtest_discover_tests(ResumeDestroyFunctionTest_GTest
+    WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
+    PROPERTIES LABELS "unit;coroutines;epic46"
 )
 
 # Story #107: Frame Allocation and Coroutine Handle tests (Epic #46)
@@ -1737,6 +1781,14 @@ target_link_libraries(LambdaTranslatorTest PRIVATE
     clangFrontend
     clangAST
     clangBasic
+    GTest::gtest
+    GTest::gtest_main
+)
+
+# Register with CTest
+gtest_discover_tests(LambdaTranslatorTest
+    WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
+    PROPERTIES LABELS "unit;lambdas;stream1"
 )
 
 # ============================================================================
