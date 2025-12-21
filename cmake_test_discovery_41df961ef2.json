@@ -1,0 +1,87 @@
+{
+  "tests": 15,
+  "name": "AllTests",
+  "testsuites": [
+    {
+      "name": "ValidationTest",
+      "tests": 15,
+      "testsuite": [
+        {
+          "name": "EmptyStructCompiles",
+          "file": "\/Users\/alexanderfedin\/Projects\/hapyy\/hupyy-cpp-to-c\/tests\/ValidationTest.cpp",
+          "line": 93
+        },
+        {
+          "name": "StructWithFieldsCompiles",
+          "file": "\/Users\/alexanderfedin\/Projects\/hapyy\/hupyy-cpp-to-c\/tests\/ValidationTest.cpp",
+          "line": 118
+        },
+        {
+          "name": "FunctionDeclCompiles",
+          "file": "\/Users\/alexanderfedin\/Projects\/hapyy\/hupyy-cpp-to-c\/tests\/ValidationTest.cpp",
+          "line": 143
+        },
+        {
+          "name": "MultipleDeclarationsCompile",
+          "file": "\/Users\/alexanderfedin\/Projects\/hapyy\/hupyy-cpp-to-c\/tests\/ValidationTest.cpp",
+          "line": 167
+        },
+        {
+          "name": "ComplexStructCompiles",
+          "file": "\/Users\/alexanderfedin\/Projects\/hapyy\/hupyy-cpp-to-c\/tests\/ValidationTest.cpp",
+          "line": 194
+        },
+        {
+          "name": "SimpleProgramOutput",
+          "file": "\/Users\/alexanderfedin\/Projects\/hapyy\/hupyy-cpp-to-c\/tests\/ValidationTest.cpp",
+          "line": 229
+        },
+        {
+          "name": "StructInitialization",
+          "file": "\/Users\/alexanderfedin\/Projects\/hapyy\/hupyy-cpp-to-c\/tests\/ValidationTest.cpp",
+          "line": 245
+        },
+        {
+          "name": "FunctionCalls",
+          "file": "\/Users\/alexanderfedin\/Projects\/hapyy\/hupyy-cpp-to-c\/tests\/ValidationTest.cpp",
+          "line": 262
+        },
+        {
+          "name": "MultipleFunctionCalls",
+          "file": "\/Users\/alexanderfedin\/Projects\/hapyy\/hupyy-cpp-to-c\/tests\/ValidationTest.cpp",
+          "line": 279
+        },
+        {
+          "name": "StructWithFunctions",
+          "file": "\/Users\/alexanderfedin\/Projects\/hapyy\/hupyy-cpp-to-c\/tests\/ValidationTest.cpp",
+          "line": 297
+        },
+        {
+          "name": "SimpleProgramNoLeaks",
+          "file": "\/Users\/alexanderfedin\/Projects\/hapyy\/hupyy-cpp-to-c\/tests\/ValidationTest.cpp",
+          "line": 319
+        },
+        {
+          "name": "StackStructNoLeaks",
+          "file": "\/Users\/alexanderfedin\/Projects\/hapyy\/hupyy-cpp-to-c\/tests\/ValidationTest.cpp",
+          "line": 335
+        },
+        {
+          "name": "MultipleStackObjectsNoLeaks",
+          "file": "\/Users\/alexanderfedin\/Projects\/hapyy\/hupyy-cpp-to-c\/tests\/ValidationTest.cpp",
+          "line": 355
+        },
+        {
+          "name": "FunctionLocalVarsNoLeaks",
+          "file": "\/Users\/alexanderfedin\/Projects\/hapyy\/hupyy-cpp-to-c\/tests\/ValidationTest.cpp",
+          "line": 377
+        },
+        {
+          "name": "ComplexProgramNoLeaks",
+          "file": "\/Users\/alexanderfedin\/Projects\/hapyy\/hupyy-cpp-to-c\/tests\/ValidationTest.cpp",
+          "line": 400
+        }
+      ]
+    }
+  ]
+}

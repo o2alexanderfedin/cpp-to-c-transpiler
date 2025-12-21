@@ -1,0 +1,87 @@
+{
+  "tests": 15,
+  "name": "AllTests",
+  "testsuites": [
+    {
+      "name": "TemplateIntegrationTest",
+      "tests": 15,
+      "testsuite": [
+        {
+          "name": "SimpleClassTemplateInstantiation",
+          "file": "\/Users\/alexanderfedin\/Projects\/hapyy\/hupyy-cpp-to-c\/tests\/gtest\/TemplateIntegrationTest_GTest.cpp",
+          "line": 43
+        },
+        {
+          "name": "TemplateFunctionMultipleInstantiations",
+          "file": "\/Users\/alexanderfedin\/Projects\/hapyy\/hupyy-cpp-to-c\/tests\/gtest\/TemplateIntegrationTest_GTest.cpp",
+          "line": 94
+        },
+        {
+          "name": "ExplicitInstantiation",
+          "file": "\/Users\/alexanderfedin\/Projects\/hapyy\/hupyy-cpp-to-c\/tests\/gtest\/TemplateIntegrationTest_GTest.cpp",
+          "line": 121
+        },
+        {
+          "name": "ImplicitInstantiation",
+          "file": "\/Users\/alexanderfedin\/Projects\/hapyy\/hupyy-cpp-to-c\/tests\/gtest\/TemplateIntegrationTest_GTest.cpp",
+          "line": 151
+        },
+        {
+          "name": "NestedTemplateInstantiation",
+          "file": "\/Users\/alexanderfedin\/Projects\/hapyy\/hupyy-cpp-to-c\/tests\/gtest\/TemplateIntegrationTest_GTest.cpp",
+          "line": 177
+        },
+        {
+          "name": "FullTemplateSpecialization",
+          "file": "\/Users\/alexanderfedin\/Projects\/hapyy\/hupyy-cpp-to-c\/tests\/gtest\/TemplateIntegrationTest_GTest.cpp",
+          "line": 222
+        },
+        {
+          "name": "PartialTemplateSpecialization",
+          "file": "\/Users\/alexanderfedin\/Projects\/hapyy\/hupyy-cpp-to-c\/tests\/gtest\/TemplateIntegrationTest_GTest.cpp",
+          "line": 256
+        },
+        {
+          "name": "TemplateFunctionCallingTemplateClass",
+          "file": "\/Users\/alexanderfedin\/Projects\/hapyy\/hupyy-cpp-to-c\/tests\/gtest\/TemplateIntegrationTest_GTest.cpp",
+          "line": 288
+        },
+        {
+          "name": "DeduplicationSameTemplateSameArgs",
+          "file": "\/Users\/alexanderfedin\/Projects\/hapyy\/hupyy-cpp-to-c\/tests\/gtest\/TemplateIntegrationTest_GTest.cpp",
+          "line": 323
+        },
+        {
+          "name": "TemplateInstantiationTrackerBasics",
+          "file": "\/Users\/alexanderfedin\/Projects\/hapyy\/hupyy-cpp-to-c\/tests\/gtest\/TemplateIntegrationTest_GTest.cpp",
+          "line": 368
+        },
+        {
+          "name": "TemplateFriendFunction",
+          "file": "\/Users\/alexanderfedin\/Projects\/hapyy\/hupyy-cpp-to-c\/tests\/gtest\/TemplateIntegrationTest_GTest.cpp",
+          "line": 403
+        },
+        {
+          "name": "DependentTypeResolution",
+          "file": "\/Users\/alexanderfedin\/Projects\/hapyy\/hupyy-cpp-to-c\/tests\/gtest\/TemplateIntegrationTest_GTest.cpp",
+          "line": 437
+        },
+        {
+          "name": "ComplexTemplateHierarchy",
+          "file": "\/Users\/alexanderfedin\/Projects\/hapyy\/hupyy-cpp-to-c\/tests\/gtest\/TemplateIntegrationTest_GTest.cpp",
+          "line": 476
+        },
+        {
+          "name": "NonTypeTemplateParameters",
+          "file": "\/Users\/alexanderfedin\/Projects\/hapyy\/hupyy-cpp-to-c\/tests\/gtest\/TemplateIntegrationTest_GTest.cpp",
+          "line": 519
+        },
+        {
+          "name": "VariadicTemplate",
+          "file": "\/Users\/alexanderfedin\/Projects\/hapyy\/hupyy-cpp-to-c\/tests\/gtest\/TemplateIntegrationTest_GTest.cpp",
+          "line": 551
+        }
+      ]
+    }
+  ]
+}

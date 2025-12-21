@@ -1,0 +1,352 @@
+{
+  "tests": 62,
+  "name": "AllTests",
+  "testsuites": [
+    {
+      "name": "ArithmeticOperatorTest",
+      "tests": 15,
+      "testsuite": [
+        {
+          "name": "BinaryPlusOperator",
+          "file": "\/Users\/alexanderfedin\/Projects\/hapyy\/hupyy-cpp-to-c\/tests\/unit\/operators\/OperatorOverloadingTest.cpp",
+          "line": 29
+        },
+        {
+          "name": "BinaryMinusOperator",
+          "file": "\/Users\/alexanderfedin\/Projects\/hapyy\/hupyy-cpp-to-c\/tests\/unit\/operators\/OperatorOverloadingTest.cpp",
+          "line": 63
+        },
+        {
+          "name": "BinaryMultiplyOperator",
+          "file": "\/Users\/alexanderfedin\/Projects\/hapyy\/hupyy-cpp-to-c\/tests\/unit\/operators\/OperatorOverloadingTest.cpp",
+          "line": 96
+        },
+        {
+          "name": "BinaryDivideOperator",
+          "file": "\/Users\/alexanderfedin\/Projects\/hapyy\/hupyy-cpp-to-c\/tests\/unit\/operators\/OperatorOverloadingTest.cpp",
+          "line": 127
+        },
+        {
+          "name": "BinaryModuloOperator",
+          "file": "\/Users\/alexanderfedin\/Projects\/hapyy\/hupyy-cpp-to-c\/tests\/unit\/operators\/OperatorOverloadingTest.cpp",
+          "line": 159
+        },
+        {
+          "name": "UnaryMinusOperator",
+          "file": "\/Users\/alexanderfedin\/Projects\/hapyy\/hupyy-cpp-to-c\/tests\/unit\/operators\/OperatorOverloadingTest.cpp",
+          "line": 191
+        },
+        {
+          "name": "UnaryPlusOperator",
+          "file": "\/Users\/alexanderfedin\/Projects\/hapyy\/hupyy-cpp-to-c\/tests\/unit\/operators\/OperatorOverloadingTest.cpp",
+          "line": 224
+        },
+        {
+          "name": "PrefixIncrementOperator",
+          "file": "\/Users\/alexanderfedin\/Projects\/hapyy\/hupyy-cpp-to-c\/tests\/unit\/operators\/OperatorOverloadingTest.cpp",
+          "line": 257
+        },
+        {
+          "name": "PostfixIncrementOperator",
+          "file": "\/Users\/alexanderfedin\/Projects\/hapyy\/hupyy-cpp-to-c\/tests\/unit\/operators\/OperatorOverloadingTest.cpp",
+          "line": 290
+        },
+        {
+          "name": "PrefixDecrementOperator",
+          "file": "\/Users\/alexanderfedin\/Projects\/hapyy\/hupyy-cpp-to-c\/tests\/unit\/operators\/OperatorOverloadingTest.cpp",
+          "line": 323
+        },
+        {
+          "name": "PostfixDecrementOperator",
+          "file": "\/Users\/alexanderfedin\/Projects\/hapyy\/hupyy-cpp-to-c\/tests\/unit\/operators\/OperatorOverloadingTest.cpp",
+          "line": 355
+        },
+        {
+          "name": "CompoundPlusAssignOperator",
+          "file": "\/Users\/alexanderfedin\/Projects\/hapyy\/hupyy-cpp-to-c\/tests\/unit\/operators\/OperatorOverloadingTest.cpp",
+          "line": 387
+        },
+        {
+          "name": "CompoundMinusAssignOperator",
+          "file": "\/Users\/alexanderfedin\/Projects\/hapyy\/hupyy-cpp-to-c\/tests\/unit\/operators\/OperatorOverloadingTest.cpp",
+          "line": 419
+        },
+        {
+          "name": "CompoundMultiplyAssignOperator",
+          "file": "\/Users\/alexanderfedin\/Projects\/hapyy\/hupyy-cpp-to-c\/tests\/unit\/operators\/OperatorOverloadingTest.cpp",
+          "line": 451
+        },
+        {
+          "name": "CompoundDivideAssignOperator",
+          "file": "\/Users\/alexanderfedin\/Projects\/hapyy\/hupyy-cpp-to-c\/tests\/unit\/operators\/OperatorOverloadingTest.cpp",
+          "line": 483
+        }
+      ]
+    },
+    {
+      "name": "ComparisonOperatorTest",
+      "tests": 10,
+      "testsuite": [
+        {
+          "name": "EqualityOperator",
+          "file": "\/Users\/alexanderfedin\/Projects\/hapyy\/hupyy-cpp-to-c\/tests\/unit\/operators\/OperatorOverloadingTest.cpp",
+          "line": 521
+        },
+        {
+          "name": "InequalityOperator",
+          "file": "\/Users\/alexanderfedin\/Projects\/hapyy\/hupyy-cpp-to-c\/tests\/unit\/operators\/OperatorOverloadingTest.cpp",
+          "line": 554
+        },
+        {
+          "name": "LessThanOperator",
+          "file": "\/Users\/alexanderfedin\/Projects\/hapyy\/hupyy-cpp-to-c\/tests\/unit\/operators\/OperatorOverloadingTest.cpp",
+          "line": 586
+        },
+        {
+          "name": "GreaterThanOperator",
+          "file": "\/Users\/alexanderfedin\/Projects\/hapyy\/hupyy-cpp-to-c\/tests\/unit\/operators\/OperatorOverloadingTest.cpp",
+          "line": 618
+        },
+        {
+          "name": "LessOrEqualOperator",
+          "file": "\/Users\/alexanderfedin\/Projects\/hapyy\/hupyy-cpp-to-c\/tests\/unit\/operators\/OperatorOverloadingTest.cpp",
+          "line": 650
+        },
+        {
+          "name": "GreaterOrEqualOperator",
+          "file": "\/Users\/alexanderfedin\/Projects\/hapyy\/hupyy-cpp-to-c\/tests\/unit\/operators\/OperatorOverloadingTest.cpp",
+          "line": 682
+        },
+        {
+          "name": "MultipleComparisonOperators",
+          "file": "\/Users\/alexanderfedin\/Projects\/hapyy\/hupyy-cpp-to-c\/tests\/unit\/operators\/OperatorOverloadingTest.cpp",
+          "line": 714
+        },
+        {
+          "name": "ComparisonWithDifferentTypes",
+          "file": "\/Users\/alexanderfedin\/Projects\/hapyy\/hupyy-cpp-to-c\/tests\/unit\/operators\/OperatorOverloadingTest.cpp",
+          "line": 748
+        },
+        {
+          "name": "FriendComparisonOperators",
+          "file": "\/Users\/alexanderfedin\/Projects\/hapyy\/hupyy-cpp-to-c\/tests\/unit\/operators\/OperatorOverloadingTest.cpp",
+          "line": 788
+        },
+        {
+          "name": "ConstCorrectnessComparison",
+          "file": "\/Users\/alexanderfedin\/Projects\/hapyy\/hupyy-cpp-to-c\/tests\/unit\/operators\/OperatorOverloadingTest.cpp",
+          "line": 818
+        }
+      ]
+    },
+    {
+      "name": "SubscriptCallOperatorTest",
+      "tests": 12,
+      "testsuite": [
+        {
+          "name": "SubscriptOperator",
+          "file": "\/Users\/alexanderfedin\/Projects\/hapyy\/hupyy-cpp-to-c\/tests\/unit\/operators\/OperatorOverloadingTest.cpp",
+          "line": 864
+        },
+        {
+          "name": "ConstSubscriptOperator",
+          "file": "\/Users\/alexanderfedin\/Projects\/hapyy\/hupyy-cpp-to-c\/tests\/unit\/operators\/OperatorOverloadingTest.cpp",
+          "line": 897
+        },
+        {
+          "name": "SubscriptOperatorNonIntIndex",
+          "file": "\/Users\/alexanderfedin\/Projects\/hapyy\/hupyy-cpp-to-c\/tests\/unit\/operators\/OperatorOverloadingTest.cpp",
+          "line": 930
+        },
+        {
+          "name": "OverloadedSubscriptOperator",
+          "file": "\/Users\/alexanderfedin\/Projects\/hapyy\/hupyy-cpp-to-c\/tests\/unit\/operators\/OperatorOverloadingTest.cpp",
+          "line": 972
+        },
+        {
+          "name": "CallOperatorNoParams",
+          "file": "\/Users\/alexanderfedin\/Projects\/hapyy\/hupyy-cpp-to-c\/tests\/unit\/operators\/OperatorOverloadingTest.cpp",
+          "line": 1003
+        },
+        {
+          "name": "CallOperatorSingleParam",
+          "file": "\/Users\/alexanderfedin\/Projects\/hapyy\/hupyy-cpp-to-c\/tests\/unit\/operators\/OperatorOverloadingTest.cpp",
+          "line": 1035
+        },
+        {
+          "name": "CallOperatorMultipleParams",
+          "file": "\/Users\/alexanderfedin\/Projects\/hapyy\/hupyy-cpp-to-c\/tests\/unit\/operators\/OperatorOverloadingTest.cpp",
+          "line": 1067
+        },
+        {
+          "name": "OverloadedCallOperator",
+          "file": "\/Users\/alexanderfedin\/Projects\/hapyy\/hupyy-cpp-to-c\/tests\/unit\/operators\/OperatorOverloadingTest.cpp",
+          "line": 1099
+        },
+        {
+          "name": "ConstCallOperator",
+          "file": "\/Users\/alexanderfedin\/Projects\/hapyy\/hupyy-cpp-to-c\/tests\/unit\/operators\/OperatorOverloadingTest.cpp",
+          "line": 1131
+        },
+        {
+          "name": "LambdaLikeCallOperator",
+          "file": "\/Users\/alexanderfedin\/Projects\/hapyy\/hupyy-cpp-to-c\/tests\/unit\/operators\/OperatorOverloadingTest.cpp",
+          "line": 1163
+        },
+        {
+          "name": "CallOperatorReturningReference",
+          "file": "\/Users\/alexanderfedin\/Projects\/hapyy\/hupyy-cpp-to-c\/tests\/unit\/operators\/OperatorOverloadingTest.cpp",
+          "line": 1198
+        },
+        {
+          "name": "BothSubscriptAndCallOperators",
+          "file": "\/Users\/alexanderfedin\/Projects\/hapyy\/hupyy-cpp-to-c\/tests\/unit\/operators\/OperatorOverloadingTest.cpp",
+          "line": 1231
+        }
+      ]
+    },
+    {
+      "name": "SpecialOperatorTest",
+      "tests": 12,
+      "testsuite": [
+        {
+          "name": "ArrowOperator",
+          "file": "\/Users\/alexanderfedin\/Projects\/hapyy\/hupyy-cpp-to-c\/tests\/unit\/operators\/OperatorOverloadingTest.cpp",
+          "line": 1275
+        },
+        {
+          "name": "ConstArrowOperator",
+          "file": "\/Users\/alexanderfedin\/Projects\/hapyy\/hupyy-cpp-to-c\/tests\/unit\/operators\/OperatorOverloadingTest.cpp",
+          "line": 1312
+        },
+        {
+          "name": "DereferenceOperator",
+          "file": "\/Users\/alexanderfedin\/Projects\/hapyy\/hupyy-cpp-to-c\/tests\/unit\/operators\/OperatorOverloadingTest.cpp",
+          "line": 1349
+        },
+        {
+          "name": "ConstDereferenceOperator",
+          "file": "\/Users\/alexanderfedin\/Projects\/hapyy\/hupyy-cpp-to-c\/tests\/unit\/operators\/OperatorOverloadingTest.cpp",
+          "line": 1386
+        },
+        {
+          "name": "SmartPointerOperators",
+          "file": "\/Users\/alexanderfedin\/Projects\/hapyy\/hupyy-cpp-to-c\/tests\/unit\/operators\/OperatorOverloadingTest.cpp",
+          "line": 1423
+        },
+        {
+          "name": "AddressOfOperator",
+          "file": "\/Users\/alexanderfedin\/Projects\/hapyy\/hupyy-cpp-to-c\/tests\/unit\/operators\/OperatorOverloadingTest.cpp",
+          "line": 1466
+        },
+        {
+          "name": "CommaOperator",
+          "file": "\/Users\/alexanderfedin\/Projects\/hapyy\/hupyy-cpp-to-c\/tests\/unit\/operators\/OperatorOverloadingTest.cpp",
+          "line": 1498
+        },
+        {
+          "name": "BitwiseOperators",
+          "file": "\/Users\/alexanderfedin\/Projects\/hapyy\/hupyy-cpp-to-c\/tests\/unit\/operators\/OperatorOverloadingTest.cpp",
+          "line": 1530
+        },
+        {
+          "name": "ShiftOperators",
+          "file": "\/Users\/alexanderfedin\/Projects\/hapyy\/hupyy-cpp-to-c\/tests\/unit\/operators\/OperatorOverloadingTest.cpp",
+          "line": 1567
+        },
+        {
+          "name": "LogicalOperators",
+          "file": "\/Users\/alexanderfedin\/Projects\/hapyy\/hupyy-cpp-to-c\/tests\/unit\/operators\/OperatorOverloadingTest.cpp",
+          "line": 1606
+        },
+        {
+          "name": "AssignmentOperator",
+          "file": "\/Users\/alexanderfedin\/Projects\/hapyy\/hupyy-cpp-to-c\/tests\/unit\/operators\/OperatorOverloadingTest.cpp",
+          "line": 1642
+        },
+        {
+          "name": "MoveAssignmentOperator",
+          "file": "\/Users\/alexanderfedin\/Projects\/hapyy\/hupyy-cpp-to-c\/tests\/unit\/operators\/OperatorOverloadingTest.cpp",
+          "line": 1675
+        }
+      ]
+    },
+    {
+      "name": "ConversionOperatorTest",
+      "tests": 10,
+      "testsuite": [
+        {
+          "name": "ImplicitConversionOperator",
+          "file": "\/Users\/alexanderfedin\/Projects\/hapyy\/hupyy-cpp-to-c\/tests\/unit\/operators\/OperatorOverloadingTest.cpp",
+          "line": 1718
+        },
+        {
+          "name": "ExplicitConversionOperator",
+          "file": "\/Users\/alexanderfedin\/Projects\/hapyy\/hupyy-cpp-to-c\/tests\/unit\/operators\/OperatorOverloadingTest.cpp",
+          "line": 1751
+        },
+        {
+          "name": "ConversionToBool",
+          "file": "\/Users\/alexanderfedin\/Projects\/hapyy\/hupyy-cpp-to-c\/tests\/unit\/operators\/OperatorOverloadingTest.cpp",
+          "line": 1784
+        },
+        {
+          "name": "ConversionToPointer",
+          "file": "\/Users\/alexanderfedin\/Projects\/hapyy\/hupyy-cpp-to-c\/tests\/unit\/operators\/OperatorOverloadingTest.cpp",
+          "line": 1817
+        },
+        {
+          "name": "ConversionToReference",
+          "file": "\/Users\/alexanderfedin\/Projects\/hapyy\/hupyy-cpp-to-c\/tests\/unit\/operators\/OperatorOverloadingTest.cpp",
+          "line": 1850
+        },
+        {
+          "name": "ConversionToUserType",
+          "file": "\/Users\/alexanderfedin\/Projects\/hapyy\/hupyy-cpp-to-c\/tests\/unit\/operators\/OperatorOverloadingTest.cpp",
+          "line": 1883
+        },
+        {
+          "name": "MultipleConversionOperators",
+          "file": "\/Users\/alexanderfedin\/Projects\/hapyy\/hupyy-cpp-to-c\/tests\/unit\/operators\/OperatorOverloadingTest.cpp",
+          "line": 1920
+        },
+        {
+          "name": "ConversionConstCorrectness",
+          "file": "\/Users\/alexanderfedin\/Projects\/hapyy\/hupyy-cpp-to-c\/tests\/unit\/operators\/OperatorOverloadingTest.cpp",
+          "line": 1953
+        },
+        {
+          "name": "ConversionToConstType",
+          "file": "\/Users\/alexanderfedin\/Projects\/hapyy\/hupyy-cpp-to-c\/tests\/unit\/operators\/OperatorOverloadingTest.cpp",
+          "line": 1986
+        },
+        {
+          "name": "ConversionOperatorWithBody",
+          "file": "\/Users\/alexanderfedin\/Projects\/hapyy\/hupyy-cpp-to-c\/tests\/unit\/operators\/OperatorOverloadingTest.cpp",
+          "line": 2021
+        }
+      ]
+    },
+    {
+      "name": "StreamOperatorTest",
+      "tests": 3,
+      "testsuite": [
+        {
+          "name": "OutputStreamOperator",
+          "file": "\/Users\/alexanderfedin\/Projects\/hapyy\/hupyy-cpp-to-c\/tests\/unit\/operators\/OperatorOverloadingTest.cpp",
+          "line": 2060
+        },
+        {
+          "name": "InputStreamOperator",
+          "file": "\/Users\/alexanderfedin\/Projects\/hapyy\/hupyy-cpp-to-c\/tests\/unit\/operators\/OperatorOverloadingTest.cpp",
+          "line": 2092
+        },
+        {
+          "name": "FriendStreamOperators",
+          "file": "\/Users\/alexanderfedin\/Projects\/hapyy\/hupyy-cpp-to-c\/tests\/unit\/operators\/OperatorOverloadingTest.cpp",
+          "line": 2123
+        }
+      ]
+    }
+  ]
+}

@@ -1,0 +1,62 @@
+{
+  "tests": 10,
+  "name": "AllTests",
+  "testsuites": [
+    {
+      "name": "CodeGeneratorTest",
+      "tests": 10,
+      "testsuite": [
+        {
+          "name": "PrintStructDecl",
+          "file": "\/Users\/alexanderfedin\/Projects\/hapyy\/hupyy-cpp-to-c\/tests\/CodeGeneratorTest.cpp",
+          "line": 34
+        },
+        {
+          "name": "PrintFunctionDecl",
+          "file": "\/Users\/alexanderfedin\/Projects\/hapyy\/hupyy-cpp-to-c\/tests\/CodeGeneratorTest.cpp",
+          "line": 62
+        },
+        {
+          "name": "PrintTranslationUnit",
+          "file": "\/Users\/alexanderfedin\/Projects\/hapyy\/hupyy-cpp-to-c\/tests\/CodeGeneratorTest.cpp",
+          "line": 90
+        },
+        {
+          "name": "OutputToFile",
+          "file": "\/Users\/alexanderfedin\/Projects\/hapyy\/hupyy-cpp-to-c\/tests\/CodeGeneratorTest.cpp",
+          "line": 119
+        },
+        {
+          "name": "BoolTypeC99",
+          "file": "\/Users\/alexanderfedin\/Projects\/hapyy\/hupyy-cpp-to-c\/tests\/CodeGeneratorTest.cpp",
+          "line": 155
+        },
+        {
+          "name": "IndentationConfigured",
+          "file": "\/Users\/alexanderfedin\/Projects\/hapyy\/hupyy-cpp-to-c\/tests\/CodeGeneratorTest.cpp",
+          "line": 172
+        },
+        {
+          "name": "StructKeyword",
+          "file": "\/Users\/alexanderfedin\/Projects\/hapyy\/hupyy-cpp-to-c\/tests\/CodeGeneratorTest.cpp",
+          "line": 190
+        },
+        {
+          "name": "CompileWithGcc",
+          "file": "\/Users\/alexanderfedin\/Projects\/hapyy\/hupyy-cpp-to-c\/tests\/CodeGeneratorTest.cpp",
+          "line": 212
+        },
+        {
+          "name": "LineDirectivePresent",
+          "file": "\/Users\/alexanderfedin\/Projects\/hapyy\/hupyy-cpp-to-c\/tests\/CodeGeneratorTest.cpp",
+          "line": 251
+        },
+        {
+          "name": "MultipleDeclarationsWithLines",
+          "file": "\/Users\/alexanderfedin\/Projects\/hapyy\/hupyy-cpp-to-c\/tests\/CodeGeneratorTest.cpp",
+          "line": 274
+        }
+      ]
+    }
+  ]
+}

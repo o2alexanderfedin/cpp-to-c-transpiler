@@ -1,0 +1,87 @@
+{
+  "tests": 15,
+  "name": "AllTests",
+  "testsuites": [
+    {
+      "name": "ACSLBehaviorAnnotatorTest",
+      "tests": 15,
+      "testsuite": [
+        {
+          "name": "SimpleBehaviorExtraction",
+          "file": "\/Users\/alexanderfedin\/Projects\/hapyy\/hupyy-cpp-to-c\/tests\/gtest\/ACSLBehaviorAnnotatorTest_GTest.cpp",
+          "line": 70
+        },
+        {
+          "name": "SwitchBehaviors",
+          "file": "\/Users\/alexanderfedin\/Projects\/hapyy\/hupyy-cpp-to-c\/tests\/gtest\/ACSLBehaviorAnnotatorTest_GTest.cpp",
+          "line": 102
+        },
+        {
+          "name": "CompletenessCheck",
+          "file": "\/Users\/alexanderfedin\/Projects\/hapyy\/hupyy-cpp-to-c\/tests\/gtest\/ACSLBehaviorAnnotatorTest_GTest.cpp",
+          "line": 127
+        },
+        {
+          "name": "DisjointnessCheck",
+          "file": "\/Users\/alexanderfedin\/Projects\/hapyy\/hupyy-cpp-to-c\/tests\/gtest\/ACSLBehaviorAnnotatorTest_GTest.cpp",
+          "line": 153
+        },
+        {
+          "name": "NestedConditionBehaviors",
+          "file": "\/Users\/alexanderfedin\/Projects\/hapyy\/hupyy-cpp-to-c\/tests\/gtest\/ACSLBehaviorAnnotatorTest_GTest.cpp",
+          "line": 177
+        },
+        {
+          "name": "ErrorBehavior",
+          "file": "\/Users\/alexanderfedin\/Projects\/hapyy\/hupyy-cpp-to-c\/tests\/gtest\/ACSLBehaviorAnnotatorTest_GTest.cpp",
+          "line": 205
+        },
+        {
+          "name": "NormalBehavior",
+          "file": "\/Users\/alexanderfedin\/Projects\/hapyy\/hupyy-cpp-to-c\/tests\/gtest\/ACSLBehaviorAnnotatorTest_GTest.cpp",
+          "line": 229
+        },
+        {
+          "name": "MultipleReturnBehaviors",
+          "file": "\/Users\/alexanderfedin\/Projects\/hapyy\/hupyy-cpp-to-c\/tests\/gtest\/ACSLBehaviorAnnotatorTest_GTest.cpp",
+          "line": 252
+        },
+        {
+          "name": "GuardedPointerBehaviors",
+          "file": "\/Users\/alexanderfedin\/Projects\/hapyy\/hupyy-cpp-to-c\/tests\/gtest\/ACSLBehaviorAnnotatorTest_GTest.cpp",
+          "line": 275
+        },
+        {
+          "name": "RangeBehaviors",
+          "file": "\/Users\/alexanderfedin\/Projects\/hapyy\/hupyy-cpp-to-c\/tests\/gtest\/ACSLBehaviorAnnotatorTest_GTest.cpp",
+          "line": 299
+        },
+        {
+          "name": "FlagBehaviors",
+          "file": "\/Users\/alexanderfedin\/Projects\/hapyy\/hupyy-cpp-to-c\/tests\/gtest\/ACSLBehaviorAnnotatorTest_GTest.cpp",
+          "line": 321
+        },
+        {
+          "name": "EnumBehaviors",
+          "file": "\/Users\/alexanderfedin\/Projects\/hapyy\/hupyy-cpp-to-c\/tests\/gtest\/ACSLBehaviorAnnotatorTest_GTest.cpp",
+          "line": 343
+        },
+        {
+          "name": "OverlappingBehaviorsWarning",
+          "file": "\/Users\/alexanderfedin\/Projects\/hapyy\/hupyy-cpp-to-c\/tests\/gtest\/ACSLBehaviorAnnotatorTest_GTest.cpp",
+          "line": 365
+        },
+        {
+          "name": "IncompleteBehaviorsWarning",
+          "file": "\/Users\/alexanderfedin\/Projects\/hapyy\/hupyy-cpp-to-c\/tests\/gtest\/ACSLBehaviorAnnotatorTest_GTest.cpp",
+          "line": 383
+        },
+        {
+          "name": "BehaviorInheritance",
+          "file": "\/Users\/alexanderfedin\/Projects\/hapyy\/hupyy-cpp-to-c\/tests\/gtest\/ACSLBehaviorAnnotatorTest_GTest.cpp",
+          "line": 401
+        }
+      ]
+    }
+  ]
+}

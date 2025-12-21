@@ -1,0 +1,47 @@
+{
+  "tests": 7,
+  "name": "AllTests",
+  "testsuites": [
+    {
+      "name": "SuspendPointIdentifierTestFixture",
+      "tests": 7,
+      "testsuite": [
+        {
+          "name": "IdentifyCoAwaitSuspendPoints",
+          "file": "\/Users\/alexanderfedin\/Projects\/hapyy\/hupyy-cpp-to-c\/tests\/SuspendPointIdentifierTest_GTest.cpp",
+          "line": 37
+        },
+        {
+          "name": "IdentifyCoYieldSuspendPoints",
+          "file": "\/Users\/alexanderfedin\/Projects\/hapyy\/hupyy-cpp-to-c\/tests\/SuspendPointIdentifierTest_GTest.cpp",
+          "line": 83
+        },
+        {
+          "name": "IdentifyCoReturnSuspendPoints",
+          "file": "\/Users\/alexanderfedin\/Projects\/hapyy\/hupyy-cpp-to-c\/tests\/SuspendPointIdentifierTest_GTest.cpp",
+          "line": 134
+        },
+        {
+          "name": "GetSuspendPointLocations",
+          "file": "\/Users\/alexanderfedin\/Projects\/hapyy\/hupyy-cpp-to-c\/tests\/SuspendPointIdentifierTest_GTest.cpp",
+          "line": 179
+        },
+        {
+          "name": "ClassifySuspendPointTypes",
+          "file": "\/Users\/alexanderfedin\/Projects\/hapyy\/hupyy-cpp-to-c\/tests\/SuspendPointIdentifierTest_GTest.cpp",
+          "line": 234
+        },
+        {
+          "name": "GenerateStateLabels",
+          "file": "\/Users\/alexanderfedin\/Projects\/hapyy\/hupyy-cpp-to-c\/tests\/SuspendPointIdentifierTest_GTest.cpp",
+          "line": 294
+        },
+        {
+          "name": "OrderSuspendPointsByFlow",
+          "file": "\/Users\/alexanderfedin\/Projects\/hapyy\/hupyy-cpp-to-c\/tests\/SuspendPointIdentifierTest_GTest.cpp",
+          "line": 346
+        }
+      ]
+    }
+  ]
+}

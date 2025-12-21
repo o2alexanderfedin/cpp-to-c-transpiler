@@ -1,0 +1,47 @@
+{
+  "tests": 7,
+  "name": "AllTests",
+  "testsuites": [
+    {
+      "name": "ResumeDestroyFunctionTestFixture",
+      "tests": 7,
+      "testsuite": [
+        {
+          "name": "GenerateResumeFunctionSignature",
+          "file": "\/Users\/alexanderfedin\/Projects\/hapyy\/hupyy-cpp-to-c\/tests\/ResumeDestroyFunctionTest_GTest.cpp",
+          "line": 36
+        },
+        {
+          "name": "GenerateDestroyFunctionSignature",
+          "file": "\/Users\/alexanderfedin\/Projects\/hapyy\/hupyy-cpp-to-c\/tests\/ResumeDestroyFunctionTest_GTest.cpp",
+          "line": 83
+        },
+        {
+          "name": "ResumeFunctionContainsStateMachine",
+          "file": "\/Users\/alexanderfedin\/Projects\/hapyy\/hupyy-cpp-to-c\/tests\/ResumeDestroyFunctionTest_GTest.cpp",
+          "line": 130
+        },
+        {
+          "name": "DestroyFunctionFreesMemory",
+          "file": "\/Users\/alexanderfedin\/Projects\/hapyy\/hupyy-cpp-to-c\/tests\/ResumeDestroyFunctionTest_GTest.cpp",
+          "line": 179
+        },
+        {
+          "name": "ResumeFunctionAcceptsFramePointer",
+          "file": "\/Users\/alexanderfedin\/Projects\/hapyy\/hupyy-cpp-to-c\/tests\/ResumeDestroyFunctionTest_GTest.cpp",
+          "line": 222
+        },
+        {
+          "name": "DestroyFunctionAcceptsFramePointer",
+          "file": "\/Users\/alexanderfedin\/Projects\/hapyy\/hupyy-cpp-to-c\/tests\/ResumeDestroyFunctionTest_GTest.cpp",
+          "line": 266
+        },
+        {
+          "name": "FunctionNamesMatchCoroutineName",
+          "file": "\/Users\/alexanderfedin\/Projects\/hapyy\/hupyy-cpp-to-c\/tests\/ResumeDestroyFunctionTest_GTest.cpp",
+          "line": 310
+        }
+      ]
+    }
+  ]
+}

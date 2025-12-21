@@ -1,0 +1,87 @@
+{
+  "tests": 15,
+  "name": "AllTests",
+  "testsuites": [
+    {
+      "name": "RTTIIntegrationTest",
+      "tests": 15,
+      "testsuite": [
+        {
+          "name": "TypidStaticTypeName",
+          "file": "\/Users\/alexanderfedin\/Projects\/hapyy\/hupyy-cpp-to-c\/tests\/gtest\/RTTIIntegrationTest_GTest.cpp",
+          "line": 19
+        },
+        {
+          "name": "TypeidPolymorphicBasic",
+          "file": "\/Users\/alexanderfedin\/Projects\/hapyy\/hupyy-cpp-to-c\/tests\/gtest\/RTTIIntegrationTest_GTest.cpp",
+          "line": 59
+        },
+        {
+          "name": "TypeidNullPointer",
+          "file": "\/Users\/alexanderfedin\/Projects\/hapyy\/hupyy-cpp-to-c\/tests\/gtest\/RTTIIntegrationTest_GTest.cpp",
+          "line": 103
+        },
+        {
+          "name": "TypeidEquality",
+          "file": "\/Users\/alexanderfedin\/Projects\/hapyy\/hupyy-cpp-to-c\/tests\/gtest\/RTTIIntegrationTest_GTest.cpp",
+          "line": 140
+        },
+        {
+          "name": "TypeidNameFunction",
+          "file": "\/Users\/alexanderfedin\/Projects\/hapyy\/hupyy-cpp-to-c\/tests\/gtest\/RTTIIntegrationTest_GTest.cpp",
+          "line": 180
+        },
+        {
+          "name": "TypeidInheritanceChain",
+          "file": "\/Users\/alexanderfedin\/Projects\/hapyy\/hupyy-cpp-to-c\/tests\/gtest\/RTTIIntegrationTest_GTest.cpp",
+          "line": 213
+        },
+        {
+          "name": "DynamicCastDowncast",
+          "file": "\/Users\/alexanderfedin\/Projects\/hapyy\/hupyy-cpp-to-c\/tests\/gtest\/RTTIIntegrationTest_GTest.cpp",
+          "line": 255
+        },
+        {
+          "name": "DynamicCastUpcast",
+          "file": "\/Users\/alexanderfedin\/Projects\/hapyy\/hupyy-cpp-to-c\/tests\/gtest\/RTTIIntegrationTest_GTest.cpp",
+          "line": 300
+        },
+        {
+          "name": "DynamicCastWrongType",
+          "file": "\/Users\/alexanderfedin\/Projects\/hapyy\/hupyy-cpp-to-c\/tests\/gtest\/RTTIIntegrationTest_GTest.cpp",
+          "line": 338
+        },
+        {
+          "name": "DynamicCastCrossHierarchy",
+          "file": "\/Users\/alexanderfedin\/Projects\/hapyy\/hupyy-cpp-to-c\/tests\/gtest\/RTTIIntegrationTest_GTest.cpp",
+          "line": 378
+        },
+        {
+          "name": "DynamicCastNullPtr",
+          "file": "\/Users\/alexanderfedin\/Projects\/hapyy\/hupyy-cpp-to-c\/tests\/gtest\/RTTIIntegrationTest_GTest.cpp",
+          "line": 411
+        },
+        {
+          "name": "DynamicCastSameType",
+          "file": "\/Users\/alexanderfedin\/Projects\/hapyy\/hupyy-cpp-to-c\/tests\/gtest\/RTTIIntegrationTest_GTest.cpp",
+          "line": 442
+        },
+        {
+          "name": "MultipleInheritanceRTTI",
+          "file": "\/Users\/alexanderfedin\/Projects\/hapyy\/hupyy-cpp-to-c\/tests\/gtest\/RTTIIntegrationTest_GTest.cpp",
+          "line": 472
+        },
+        {
+          "name": "VirtualMethodsWithRTTI",
+          "file": "\/Users\/alexanderfedin\/Projects\/hapyy\/hupyy-cpp-to-c\/tests\/gtest\/RTTIIntegrationTest_GTest.cpp",
+          "line": 514
+        },
+        {
+          "name": "PolymorphicContainers",
+          "file": "\/Users\/alexanderfedin\/Projects\/hapyy\/hupyy-cpp-to-c\/tests\/gtest\/RTTIIntegrationTest_GTest.cpp",
+          "line": 563
+        }
+      ]
+    }
+  ]
+}

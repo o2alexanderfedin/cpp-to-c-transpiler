@@ -1,0 +1,262 @@
+{
+  "tests": 50,
+  "name": "AllTests",
+  "testsuites": [
+    {
+      "name": "MoveSemanticTestFixture",
+      "tests": 50,
+      "testsuite": [
+        {
+          "name": "RvalueReferenceParameterDetection",
+          "file": "\/Users\/alexanderfedin\/Projects\/hapyy\/hupyy-cpp-to-c\/tests\/unit\/move_semantics\/MoveSemanticTranslatorTest_gtest.cpp",
+          "line": 83
+        },
+        {
+          "name": "RvalueReferenceReturnType",
+          "file": "\/Users\/alexanderfedin\/Projects\/hapyy\/hupyy-cpp-to-c\/tests\/unit\/move_semantics\/MoveSemanticTranslatorTest_gtest.cpp",
+          "line": 102
+        },
+        {
+          "name": "LvalueCannotBindToRvalueReference",
+          "file": "\/Users\/alexanderfedin\/Projects\/hapyy\/hupyy-cpp-to-c\/tests\/unit\/move_semantics\/MoveSemanticTranslatorTest_gtest.cpp",
+          "line": 134
+        },
+        {
+          "name": "RvalueReferenceVariableDeclaration",
+          "file": "\/Users\/alexanderfedin\/Projects\/hapyy\/hupyy-cpp-to-c\/tests\/unit\/move_semantics\/MoveSemanticTranslatorTest_gtest.cpp",
+          "line": 156
+        },
+        {
+          "name": "ReferenceCollapsingRvalueRvalue",
+          "file": "\/Users\/alexanderfedin\/Projects\/hapyy\/hupyy-cpp-to-c\/tests\/unit\/move_semantics\/MoveSemanticTranslatorTest_gtest.cpp",
+          "line": 174
+        },
+        {
+          "name": "ReferenceCollapsingLvalueRvalue",
+          "file": "\/Users\/alexanderfedin\/Projects\/hapyy\/hupyy-cpp-to-c\/tests\/unit\/move_semantics\/MoveSemanticTranslatorTest_gtest.cpp",
+          "line": 193
+        },
+        {
+          "name": "RvalueReferenceMemberVariable",
+          "file": "\/Users\/alexanderfedin\/Projects\/hapyy\/hupyy-cpp-to-c\/tests\/unit\/move_semantics\/MoveSemanticTranslatorTest_gtest.cpp",
+          "line": 213
+        },
+        {
+          "name": "RvalueReferenceTemporaryLifetimeExtension",
+          "file": "\/Users\/alexanderfedin\/Projects\/hapyy\/hupyy-cpp-to-c\/tests\/unit\/move_semantics\/MoveSemanticTranslatorTest_gtest.cpp",
+          "line": 244
+        },
+        {
+          "name": "RvalueReferenceFunctionOverloading",
+          "file": "\/Users\/alexanderfedin\/Projects\/hapyy\/hupyy-cpp-to-c\/tests\/unit\/move_semantics\/MoveSemanticTranslatorTest_gtest.cpp",
+          "line": 268
+        },
+        {
+          "name": "RvalueReferenceCastExpression",
+          "file": "\/Users\/alexanderfedin\/Projects\/hapyy\/hupyy-cpp-to-c\/tests\/unit\/move_semantics\/MoveSemanticTranslatorTest_gtest.cpp",
+          "line": 298
+        },
+        {
+          "name": "MoveConstructorDetection",
+          "file": "\/Users\/alexanderfedin\/Projects\/hapyy\/hupyy-cpp-to-c\/tests\/unit\/move_semantics\/MoveSemanticTranslatorTest_gtest.cpp",
+          "line": 319
+        },
+        {
+          "name": "MoveAssignmentOperatorDetection",
+          "file": "\/Users\/alexanderfedin\/Projects\/hapyy\/hupyy-cpp-to-c\/tests\/unit\/move_semantics\/MoveSemanticTranslatorTest_gtest.cpp",
+          "line": 339
+        },
+        {
+          "name": "CompilerGeneratedMoveConstructor",
+          "file": "\/Users\/alexanderfedin\/Projects\/hapyy\/hupyy-cpp-to-c\/tests\/unit\/move_semantics\/MoveSemanticTranslatorTest_gtest.cpp",
+          "line": 364
+        },
+        {
+          "name": "DeletedMoveConstructor",
+          "file": "\/Users\/alexanderfedin\/Projects\/hapyy\/hupyy-cpp-to-c\/tests\/unit\/move_semantics\/MoveSemanticTranslatorTest_gtest.cpp",
+          "line": 399
+        },
+        {
+          "name": "MoveConstructorWithNoexcept",
+          "file": "\/Users\/alexanderfedin\/Projects\/hapyy\/hupyy-cpp-to-c\/tests\/unit\/move_semantics\/MoveSemanticTranslatorTest_gtest.cpp",
+          "line": 432
+        },
+        {
+          "name": "MoveAssignmentSelfAssignmentCheck",
+          "file": "\/Users\/alexanderfedin\/Projects\/hapyy\/hupyy-cpp-to-c\/tests\/unit\/move_semantics\/MoveSemanticTranslatorTest_gtest.cpp",
+          "line": 459
+        },
+        {
+          "name": "MemberwiseMoveConstruction",
+          "file": "\/Users\/alexanderfedin\/Projects\/hapyy\/hupyy-cpp-to-c\/tests\/unit\/move_semantics\/MoveSemanticTranslatorTest_gtest.cpp",
+          "line": 486
+        },
+        {
+          "name": "MoveConstructorResourceTransfer",
+          "file": "\/Users\/alexanderfedin\/Projects\/hapyy\/hupyy-cpp-to-c\/tests\/unit\/move_semantics\/MoveSemanticTranslatorTest_gtest.cpp",
+          "line": 514
+        },
+        {
+          "name": "MoveAssignmentResourceCleanup",
+          "file": "\/Users\/alexanderfedin\/Projects\/hapyy\/hupyy-cpp-to-c\/tests\/unit\/move_semantics\/MoveSemanticTranslatorTest_gtest.cpp",
+          "line": 539
+        },
+        {
+          "name": "MoveConstructorWithBaseClass",
+          "file": "\/Users\/alexanderfedin\/Projects\/hapyy\/hupyy-cpp-to-c\/tests\/unit\/move_semantics\/MoveSemanticTranslatorTest_gtest.cpp",
+          "line": 566
+        },
+        {
+          "name": "MoveOnlyType",
+          "file": "\/Users\/alexanderfedin\/Projects\/hapyy\/hupyy-cpp-to-c\/tests\/unit\/move_semantics\/MoveSemanticTranslatorTest_gtest.cpp",
+          "line": 591
+        },
+        {
+          "name": "MoveConstructorExceptionSafety",
+          "file": "\/Users\/alexanderfedin\/Projects\/hapyy\/hupyy-cpp-to-c\/tests\/unit\/move_semantics\/MoveSemanticTranslatorTest_gtest.cpp",
+          "line": 623
+        },
+        {
+          "name": "ExplicitStdMoveCall",
+          "file": "\/Users\/alexanderfedin\/Projects\/hapyy\/hupyy-cpp-to-c\/tests\/unit\/move_semantics\/MoveSemanticTranslatorTest_gtest.cpp",
+          "line": 651
+        },
+        {
+          "name": "StdMoveInReturnStatement",
+          "file": "\/Users\/alexanderfedin\/Projects\/hapyy\/hupyy-cpp-to-c\/tests\/unit\/move_semantics\/MoveSemanticTranslatorTest_gtest.cpp",
+          "line": 672
+        },
+        {
+          "name": "StdMoveWithFunctionArgument",
+          "file": "\/Users\/alexanderfedin\/Projects\/hapyy\/hupyy-cpp-to-c\/tests\/unit\/move_semantics\/MoveSemanticTranslatorTest_gtest.cpp",
+          "line": 697
+        },
+        {
+          "name": "StdMoveInConstructorInitialization",
+          "file": "\/Users\/alexanderfedin\/Projects\/hapyy\/hupyy-cpp-to-c\/tests\/unit\/move_semantics\/MoveSemanticTranslatorTest_gtest.cpp",
+          "line": 720
+        },
+        {
+          "name": "StdMoveWithVectorPushBack",
+          "file": "\/Users\/alexanderfedin\/Projects\/hapyy\/hupyy-cpp-to-c\/tests\/unit\/move_semantics\/MoveSemanticTranslatorTest_gtest.cpp",
+          "line": 747
+        },
+        {
+          "name": "StdMoveWithUniquePtr",
+          "file": "\/Users\/alexanderfedin\/Projects\/hapyy\/hupyy-cpp-to-c\/tests\/unit\/move_semantics\/MoveSemanticTranslatorTest_gtest.cpp",
+          "line": 775
+        },
+        {
+          "name": "StdMoveOnConstObject",
+          "file": "\/Users\/alexanderfedin\/Projects\/hapyy\/hupyy-cpp-to-c\/tests\/unit\/move_semantics\/MoveSemanticTranslatorTest_gtest.cpp",
+          "line": 797
+        },
+        {
+          "name": "StdMoveChain",
+          "file": "\/Users\/alexanderfedin\/Projects\/hapyy\/hupyy-cpp-to-c\/tests\/unit\/move_semantics\/MoveSemanticTranslatorTest_gtest.cpp",
+          "line": 818
+        },
+        {
+          "name": "StdMoveUnnecessaryOnTemporary",
+          "file": "\/Users\/alexanderfedin\/Projects\/hapyy\/hupyy-cpp-to-c\/tests\/unit\/move_semantics\/MoveSemanticTranslatorTest_gtest.cpp",
+          "line": 846
+        },
+        {
+          "name": "StdMoveWithMemberVariable",
+          "file": "\/Users\/alexanderfedin\/Projects\/hapyy\/hupyy-cpp-to-c\/tests\/unit\/move_semantics\/MoveSemanticTranslatorTest_gtest.cpp",
+          "line": 868
+        },
+        {
+          "name": "StdMoveInRangeBasedForLoop",
+          "file": "\/Users\/alexanderfedin\/Projects\/hapyy\/hupyy-cpp-to-c\/tests\/unit\/move_semantics\/MoveSemanticTranslatorTest_gtest.cpp",
+          "line": 894
+        },
+        {
+          "name": "StdMoveWithSwap",
+          "file": "\/Users\/alexanderfedin\/Projects\/hapyy\/hupyy-cpp-to-c\/tests\/unit\/move_semantics\/MoveSemanticTranslatorTest_gtest.cpp",
+          "line": 922
+        },
+        {
+          "name": "StdForwardBasicUsage",
+          "file": "\/Users\/alexanderfedin\/Projects\/hapyy\/hupyy-cpp-to-c\/tests\/unit\/move_semantics\/MoveSemanticTranslatorTest_gtest.cpp",
+          "line": 949
+        },
+        {
+          "name": "UniversalReferenceTemplateParameter",
+          "file": "\/Users\/alexanderfedin\/Projects\/hapyy\/hupyy-cpp-to-c\/tests\/unit\/move_semantics\/MoveSemanticTranslatorTest_gtest.cpp",
+          "line": 970
+        },
+        {
+          "name": "StdForwardToConstructor",
+          "file": "\/Users\/alexanderfedin\/Projects\/hapyy\/hupyy-cpp-to-c\/tests\/unit\/move_semantics\/MoveSemanticTranslatorTest_gtest.cpp",
+          "line": 995
+        },
+        {
+          "name": "VariadicTemplatePerfectForwarding",
+          "file": "\/Users\/alexanderfedin\/Projects\/hapyy\/hupyy-cpp-to-c\/tests\/unit\/move_semantics\/MoveSemanticTranslatorTest_gtest.cpp",
+          "line": 1019
+        },
+        {
+          "name": "StdForwardWithEmplace",
+          "file": "\/Users\/alexanderfedin\/Projects\/hapyy\/hupyy-cpp-to-c\/tests\/unit\/move_semantics\/MoveSemanticTranslatorTest_gtest.cpp",
+          "line": 1039
+        },
+        {
+          "name": "StdForwardPreservesLvalue",
+          "file": "\/Users\/alexanderfedin\/Projects\/hapyy\/hupyy-cpp-to-c\/tests\/unit\/move_semantics\/MoveSemanticTranslatorTest_gtest.cpp",
+          "line": 1063
+        },
+        {
+          "name": "StdForwardPreservesRvalue",
+          "file": "\/Users\/alexanderfedin\/Projects\/hapyy\/hupyy-cpp-to-c\/tests\/unit\/move_semantics\/MoveSemanticTranslatorTest_gtest.cpp",
+          "line": 1088
+        },
+        {
+          "name": "MakeUniquePerfectForwarding",
+          "file": "\/Users\/alexanderfedin\/Projects\/hapyy\/hupyy-cpp-to-c\/tests\/unit\/move_semantics\/MoveSemanticTranslatorTest_gtest.cpp",
+          "line": 1112
+        },
+        {
+          "name": "StdForwardWithMultipleParameters",
+          "file": "\/Users\/alexanderfedin\/Projects\/hapyy\/hupyy-cpp-to-c\/tests\/unit\/move_semantics\/MoveSemanticTranslatorTest_gtest.cpp",
+          "line": 1135
+        },
+        {
+          "name": "StdForwardInLambda",
+          "file": "\/Users\/alexanderfedin\/Projects\/hapyy\/hupyy-cpp-to-c\/tests\/unit\/move_semantics\/MoveSemanticTranslatorTest_gtest.cpp",
+          "line": 1160
+        },
+        {
+          "name": "MoveFromMovedObject",
+          "file": "\/Users\/alexanderfedin\/Projects\/hapyy\/hupyy-cpp-to-c\/tests\/unit\/move_semantics\/MoveSemanticTranslatorTest_gtest.cpp",
+          "line": 1185
+        },
+        {
+          "name": "SelfMoveAssignment",
+          "file": "\/Users\/alexanderfedin\/Projects\/hapyy\/hupyy-cpp-to-c\/tests\/unit\/move_semantics\/MoveSemanticTranslatorTest_gtest.cpp",
+          "line": 1214
+        },
+        {
+          "name": "NoexceptGuaranteeVerification",
+          "file": "\/Users\/alexanderfedin\/Projects\/hapyy\/hupyy-cpp-to-c\/tests\/unit\/move_semantics\/MoveSemanticTranslatorTest_gtest.cpp",
+          "line": 1248
+        },
+        {
+          "name": "MoveWithExceptionThrowingOperation",
+          "file": "\/Users\/alexanderfedin\/Projects\/hapyy\/hupyy-cpp-to-c\/tests\/unit\/move_semantics\/MoveSemanticTranslatorTest_gtest.cpp",
+          "line": 1277
+        },
+        {
+          "name": "MoveSemanticsWithConstMember",
+          "file": "\/Users\/alexanderfedin\/Projects\/hapyy\/hupyy-cpp-to-c\/tests\/unit\/move_semantics\/MoveSemanticTranslatorTest_gtest.cpp",
+          "line": 1302
+        },
+        {
+          "name": "MoveSemanticsWithReferenceMember",
+          "file": "\/Users\/alexanderfedin\/Projects\/hapyy\/hupyy-cpp-to-c\/tests\/unit\/move_semantics\/MoveSemanticTranslatorTest_gtest.cpp",
+          "line": 1325
+        }
+      ]
+    }
+  ]
+}
