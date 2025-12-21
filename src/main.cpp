@@ -98,6 +98,30 @@ static llvm::cl::opt<unsigned int> TemplateInstantiationLimit(
     llvm::cl::cat(ToolCategory),
     llvm::cl::init(1000));
 
+// Phase 12 (v2.5.0): Exception Handling
+// Command line option to enable exception handling translation
+static llvm::cl::opt<bool> EnableExceptions(
+    "enable-exceptions",
+    llvm::cl::desc("Enable exception handling translation (try-catch-throw to setjmp/longjmp) (default: on)"),
+    llvm::cl::cat(ToolCategory),
+    llvm::cl::init(true));
+
+// Exception handling model enum
+enum ExceptionModelEnum {
+  SJLJ,    // Setjmp/Longjmp model (default)
+  Tables   // Table-based model (future)
+};
+
+// Command line option for exception handling model
+static llvm::cl::opt<ExceptionModelEnum> ExceptionModel(
+    "exception-model",
+    llvm::cl::desc("Exception handling model (default: sjlj)"),
+    llvm::cl::values(
+        clEnumValN(SJLJ, "sjlj", "Setjmp/longjmp model (default)"),
+        clEnumValN(Tables, "tables", "Table-based model (future)")),
+    llvm::cl::cat(ToolCategory),
+    llvm::cl::init(SJLJ));
+
 // Phase 13 (v2.6.0): RTTI Support
 // Command line option to enable RTTI translation
 static llvm::cl::opt<bool> EnableRTTI(
@@ -139,6 +163,16 @@ bool shouldMonomorphizeTemplates() {
 // Global accessor for template instantiation limit (Phase 11, v2.4.0)
 unsigned int getTemplateInstantiationLimit() {
   return TemplateInstantiationLimit;
+}
+
+// Global accessor for exception handling setting (Phase 12, v2.5.0)
+bool shouldEnableExceptions() {
+  return EnableExceptions;
+}
+
+// Global accessor for exception model (Phase 12, v2.5.0)
+std::string getExceptionModel() {
+  return (ExceptionModel == SJLJ) ? "sjlj" : "tables";
 }
 
 // Global accessor for RTTI setting (Phase 13, v2.6.0)

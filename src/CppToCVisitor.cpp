@@ -17,6 +17,8 @@ extern ACSLOutputMode getACSLOutputMode();
 extern bool shouldGenerateMemoryPredicates();        // Phase 6 (v1.23.0)
 extern bool shouldMonomorphizeTemplates();           // Phase 11 (v2.4.0)
 extern unsigned int getTemplateInstantiationLimit(); // Phase 11 (v2.4.0)
+extern bool shouldEnableExceptions();                // Phase 12 (v2.5.0)
+extern std::string getExceptionModel();              // Phase 12 (v2.5.0)
 extern bool shouldEnableRTTI();                      // Phase 13 (v2.6.0)
 
 // Epic #193: ACSL Integration - Constructor Implementation

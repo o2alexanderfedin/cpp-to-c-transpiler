@@ -54,7 +54,16 @@ This project implements a C++ to C transpiler that produces high-quality, human-
   - ✅ **Deduplication** - Single definition for identical instantiations
 - ✅ STL containers (vector, map, set, etc.)
 - ✅ RAII (Resource Acquisition Is Initialization)
-- ✅ Exceptions (PNaCl SJLJ pattern)
+- ✅ **Exception Handling** (v2.5.0) - Complete try-catch-throw translation with RAII unwinding
+  - ✅ **Try-catch blocks** - setjmp/longjmp control flow with frame management
+  - ✅ **Throw expressions** - Heap-allocated exception objects with type information
+  - ✅ **Stack unwinding** - Automatic destructor invocation (RAII) during exceptions
+  - ✅ **Type matching** - strcmp-based catch handler selection
+  - ✅ **Nested try-catch** - Frame stack for multi-level exception handling
+  - ✅ **Re-throw support** - throw; expressions in catch handlers
+  - ✅ **Catch-all handlers** - catch(...) support
+  - ✅ **Uncaught propagation** - Automatic exception propagation across functions
+  - ✅ **CLI flags** - --enable-exceptions and --exception-model options
 - ✅ **Complete RTTI Support** (v2.6.0) - Runtime Type Information with Itanium ABI compatibility
   - ✅ **typeid() operator** - Static (compile-time) and polymorphic (runtime vtable lookup) translation
   - ✅ **dynamic_cast<>()** - Safe downcasting with runtime type checking and NULL on failure
