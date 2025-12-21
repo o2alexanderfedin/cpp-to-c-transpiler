@@ -9,6 +9,41 @@
 
 using namespace clang;
 
+// Forward declarations of CLI accessor functions from main.cpp
+extern bool shouldGenerateACSL();
+extern ACSLLevel getACSLLevel();
+extern ACSLOutputMode getACSLOutputMode();
+
+// Epic #193: ACSL Integration - Constructor Implementation
+CppToCVisitor::CppToCVisitor(ASTContext &Context, CNodeBuilder &Builder)
+    : Context(Context), Builder(Builder), Mangler(Context),
+      VirtualAnalyzer(Context), VptrInjectorInstance(Context, VirtualAnalyzer),
+      MoveCtorTranslator(Context), MoveAssignTranslator(Context),
+      RvalueRefParamTrans(Context) {
+
+  // Initialize ACSL annotators if --generate-acsl flag is enabled
+  if (shouldGenerateACSL()) {
+    ACSLLevel level = getACSLLevel();
+    ACSLOutputMode mode = getACSLOutputMode();
+
+    llvm::outs() << "Initializing ACSL annotators (level: "
+                 << (level == ACSLLevel::Basic ? "basic" : "full")
+                 << ", mode: " << (mode == ACSLOutputMode::Inline ? "inline" : "separate")
+                 << ")\n";
+
+    // Initialize all 8 ACSL annotator classes
+    m_functionAnnotator = std::make_unique<ACSLFunctionAnnotator>(level, mode);
+    m_loopAnnotator = std::make_unique<ACSLLoopAnnotator>(level, mode);
+    m_classAnnotator = std::make_unique<ACSLClassAnnotator>(level, mode);
+    m_statementAnnotator = std::make_unique<ACSLStatementAnnotator>(level, mode);
+    m_typeInvariantGen = std::make_unique<ACSLTypeInvariantGenerator>(level, mode);
+    m_axiomaticBuilder = std::make_unique<ACSLAxiomaticBuilder>(level, mode);
+    m_ghostInjector = std::make_unique<ACSLGhostCodeInjector>(level, mode);
+    // Note: ACSLBehaviorAnnotator only accepts level parameter (no mode parameter)
+    m_behaviorAnnotator = std::make_unique<ACSLBehaviorAnnotator>(level);
+  }
+}
+
 // Story #15 + Story #50: Class-to-Struct Conversion with Base Class Embedding
 bool CppToCVisitor::VisitCXXRecordDecl(CXXRecordDecl *D) {
   // Edge case 1: Forward declarations - skip
@@ -58,6 +93,32 @@ bool CppToCVisitor::VisitCXXRecordDecl(CXXRecordDecl *D) {
 
   // Story #62: Generate implicit constructors if needed
   generateImplicitConstructors(D);
+
+  // Epic #193: Generate ACSL class invariants if enabled
+  if (m_classAnnotator && m_typeInvariantGen) {
+    llvm::outs() << "Generating ACSL invariants for class: "
+                 << D->getNameAsString() << "\n";
+
+    // Generate class invariants
+    std::string classInvariant = m_classAnnotator->generateClassInvariantPredicate(D);
+
+    // Generate type invariants if full level
+    std::string typeInvariants;
+    if (getACSLLevel() == ACSLLevel::Full && m_typeInvariantGen) {
+      typeInvariants = m_typeInvariantGen->generateTypeInvariant(D);
+    }
+
+    // Combine annotations
+    std::string fullAnnotation = classInvariant;
+    if (!typeInvariants.empty()) {
+      fullAnnotation += "\n" + typeInvariants;
+    }
+
+    // Emit ACSL annotation
+    if (!fullAnnotation.empty()) {
+      emitACSL(fullAnnotation, getACSLOutputMode());
+    }
+  }
 
   return true;
 }
@@ -530,6 +591,32 @@ bool CppToCVisitor::VisitFunctionDecl(FunctionDecl *FD) {
     currentFunctionGotos.clear();
     currentFunctionLabels.clear();
     currentFunctionBreaksContinues.clear();
+  }
+
+  // Epic #193: Generate ACSL function contracts if enabled
+  if (m_functionAnnotator && m_behaviorAnnotator) {
+    llvm::outs() << "Generating ACSL contract for function: "
+                 << FD->getNameAsString() << "\n";
+
+    // Generate function contract (requires, ensures, assigns)
+    std::string functionContract = m_functionAnnotator->generateFunctionContract(FD);
+
+    // Generate behavior annotations if full level
+    std::string behaviorAnnotations;
+    if (getACSLLevel() == ACSLLevel::Full && m_behaviorAnnotator) {
+      behaviorAnnotations = m_behaviorAnnotator->generateBehaviors(FD);
+    }
+
+    // Combine annotations
+    std::string fullAnnotation = functionContract;
+    if (!behaviorAnnotations.empty()) {
+      fullAnnotation += "\n" + behaviorAnnotations;
+    }
+
+    // Emit ACSL annotation
+    if (!fullAnnotation.empty()) {
+      emitACSL(fullAnnotation, getACSLOutputMode());
+    }
   }
 
   return true;
@@ -1213,6 +1300,15 @@ bool CppToCVisitor::VisitContinueStmt(ContinueStmt *CS) {
 bool CppToCVisitor::VisitWhileStmt(WhileStmt *WS) {
   // Don't increment here - we'll do it during traversal
   // This is just a marker visitor
+
+  // Epic #193: Generate ACSL loop invariants if enabled
+  if (m_loopAnnotator && getACSLLevel() == ACSLLevel::Full) {
+    std::string loopInvariant = m_loopAnnotator->generateLoopAnnotations(WS);
+    if (!loopInvariant.empty()) {
+      emitACSL(loopInvariant, getACSLOutputMode());
+    }
+  }
+
   return true;
 }
 
@@ -1220,6 +1316,15 @@ bool CppToCVisitor::VisitWhileStmt(WhileStmt *WS) {
 bool CppToCVisitor::VisitForStmt(ForStmt *FS) {
   // Don't increment here - we'll do it during traversal
   // This is just a marker visitor
+
+  // Epic #193: Generate ACSL loop invariants if enabled
+  if (m_loopAnnotator && getACSLLevel() == ACSLLevel::Full) {
+    std::string loopInvariant = m_loopAnnotator->generateLoopAnnotations(FS);
+    if (!loopInvariant.empty()) {
+      emitACSL(loopInvariant, getACSLOutputMode());
+    }
+  }
+
   return true;
 }
 
@@ -1227,6 +1332,15 @@ bool CppToCVisitor::VisitForStmt(ForStmt *FS) {
 bool CppToCVisitor::VisitDoStmt(DoStmt *DS) {
   // Don't increment here - we'll do it during traversal
   // This is just a marker visitor
+
+  // Epic #193: Generate ACSL loop invariants if enabled
+  if (m_loopAnnotator && getACSLLevel() == ACSLLevel::Full) {
+    std::string loopInvariant = m_loopAnnotator->generateLoopAnnotations(DS);
+    if (!loopInvariant.empty()) {
+      emitACSL(loopInvariant, getACSLOutputMode());
+    }
+  }
+
   return true;
 }
 
@@ -1234,6 +1348,10 @@ bool CppToCVisitor::VisitDoStmt(DoStmt *DS) {
 bool CppToCVisitor::VisitCXXForRangeStmt(CXXForRangeStmt *FRS) {
   // Don't increment here - we'll do it during traversal
   // This is just a marker visitor
+
+  // Epic #193: Note - CXXForRangeStmt not yet supported by ACSLLoopAnnotator
+  // TODO: Add generateLoopAnnotations(const clang::CXXForRangeStmt *loop) overload to ACSLLoopAnnotator
+
   return true;
 }
 
@@ -2087,4 +2205,31 @@ bool CppToCVisitor::VisitLinkageSpecDecl(clang::LinkageSpecDecl *LS) {
 
   // Continue visiting child declarations (functions, variables, etc.)
   return true;
+}
+
+// ============================================================================
+// Epic #193: ACSL Annotation Generation Implementation
+// ============================================================================
+
+void CppToCVisitor::emitACSL(const std::string& acsl, ACSLOutputMode mode) {
+  if (acsl.empty()) {
+    return;  // Nothing to emit
+  }
+
+  if (mode == ACSLOutputMode::Inline) {
+    // Emit ACSL as inline comments in the C output
+    llvm::outs() << "/*@\n" << acsl << "\n*/\n";
+  } else {
+    // For separate mode, store the annotation for later output
+    // Note: Actual file writing will be handled by FileOutputManager or Consumer
+    // For now, we just output to stdout with a marker
+    llvm::outs() << "/* ACSL (separate mode): */\n";
+    llvm::outs() << "/*@\n" << acsl << "\n*/\n";
+  }
+}
+
+void CppToCVisitor::storeACSLAnnotation(const std::string& key, const std::string& acsl) {
+  if (!acsl.empty()) {
+    m_acslAnnotations[key] = acsl;
+  }
 }

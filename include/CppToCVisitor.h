@@ -9,8 +9,17 @@
 #include "MoveConstructorTranslator.h"
 #include "MoveAssignmentTranslator.h"
 #include "RvalueRefParamTranslator.h"
+#include "ACSLFunctionAnnotator.h"
+#include "ACSLLoopAnnotator.h"
+#include "ACSLClassAnnotator.h"
+#include "ACSLStatementAnnotator.h"
+#include "ACSLTypeInvariantGenerator.h"
+#include "ACSLAxiomaticBuilder.h"
+#include "ACSLGhostCodeInjector.h"
+#include "ACSLBehaviorAnnotator.h"
 #include <map>
 #include <string>
+#include <memory>
 
 // RecursiveASTVisitor that traverses C++ AST nodes
 // Single Responsibility: Visit and identify AST nodes for translation
@@ -31,6 +40,16 @@ class CppToCVisitor : public clang::RecursiveASTVisitor<CppToCVisitor> {
 
   // Story #133: Rvalue reference parameter translation
   RvalueRefParamTranslator RvalueRefParamTrans;
+
+  // Epic #193: ACSL Annotation Generation
+  std::unique_ptr<ACSLFunctionAnnotator> m_functionAnnotator;
+  std::unique_ptr<ACSLLoopAnnotator> m_loopAnnotator;
+  std::unique_ptr<ACSLClassAnnotator> m_classAnnotator;
+  std::unique_ptr<ACSLStatementAnnotator> m_statementAnnotator;
+  std::unique_ptr<ACSLTypeInvariantGenerator> m_typeInvariantGen;
+  std::unique_ptr<ACSLAxiomaticBuilder> m_axiomaticBuilder;
+  std::unique_ptr<ACSLGhostCodeInjector> m_ghostInjector;
+  std::unique_ptr<ACSLBehaviorAnnotator> m_behaviorAnnotator;
 
   // Mapping: C++ class -> C struct (Story #15)
   std::map<clang::CXXRecordDecl*, clang::RecordDecl*> cppToCMap;
@@ -87,11 +106,7 @@ class CppToCVisitor : public clang::RecursiveASTVisitor<CppToCVisitor> {
   unsigned int loopNestingLevel = 0;        // 0 = not in loop, >0 = loop depth
 
 public:
-  explicit CppToCVisitor(clang::ASTContext &Context, clang::CNodeBuilder &Builder)
-    : Context(Context), Builder(Builder), Mangler(Context),
-      VirtualAnalyzer(Context), VptrInjectorInstance(Context, VirtualAnalyzer),
-      MoveCtorTranslator(Context), MoveAssignTranslator(Context),
-      RvalueRefParamTrans(Context) {}
+  explicit CppToCVisitor(clang::ASTContext &Context, clang::CNodeBuilder &Builder);
 
   // Visit C++ class/struct declarations
   bool VisitCXXRecordDecl(clang::CXXRecordDecl *D);
@@ -458,4 +473,31 @@ private:
    * - Class has at least one constructor (explicit or default)
    */
   bool needsImplicitCopyConstructor(clang::CXXRecordDecl *D) const;
+
+  // ============================================================================
+  // Epic #193: ACSL Annotation Generation Helper Methods
+  // ============================================================================
+
+  /**
+   * @brief Emit ACSL annotation based on output mode
+   * @param acsl The ACSL annotation string to emit
+   * @param mode Output mode (Inline or Separate)
+   *
+   * Single Responsibility: Handle ACSL output emission
+   * Inline mode: Sends ACSL to current output stream as comments
+   * Separate mode: Writes ACSL to separate .acsl file
+   */
+  void emitACSL(const std::string& acsl, ACSLOutputMode mode);
+
+  /**
+   * @brief Store ACSL annotations for later output
+   * @param key Identifier for the annotation (e.g., function name)
+   * @param acsl The ACSL annotation string
+   *
+   * Used when --acsl-output=separate is specified
+   */
+  void storeACSLAnnotation(const std::string& key, const std::string& acsl);
+
+  // Storage for ACSL annotations when using separate output mode
+  std::map<std::string, std::string> m_acslAnnotations;
 };
