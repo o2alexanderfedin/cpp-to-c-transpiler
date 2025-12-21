@@ -130,6 +130,21 @@ static llvm::cl::opt<bool> EnableRTTI(
     llvm::cl::cat(ToolCategory),
     llvm::cl::init(true));
 
+// Phase 16 (v2.9.0): Enum and Range-For Support
+// Command line option to enable enum translation
+static llvm::cl::opt<bool> EnableEnumTranslation(
+    "enable-enum",
+    llvm::cl::desc("Enable enum translation (scoped and unscoped) (default: on)"),
+    llvm::cl::cat(ToolCategory),
+    llvm::cl::init(true));
+
+// Command line option to enable range-for expansion
+static llvm::cl::opt<bool> EnableRangeForExpansion(
+    "enable-range-for",
+    llvm::cl::desc("Enable range-for loop expansion to traditional loops (default: on)"),
+    llvm::cl::cat(ToolCategory),
+    llvm::cl::init(true));
+
 // Global accessor for pragma once setting
 bool shouldUsePragmaOnce() {
   return UsePragmaOnce;
@@ -178,6 +193,16 @@ std::string getExceptionModel() {
 // Global accessor for RTTI setting (Phase 13, v2.6.0)
 bool shouldEnableRTTI() {
   return EnableRTTI;
+}
+
+// Global accessor for enum translation setting (Phase 16, v2.9.0)
+bool shouldEnableEnumTranslation() {
+  return EnableEnumTranslation;
+}
+
+// Global accessor for range-for expansion setting (Phase 16, v2.9.0)
+bool shouldEnableRangeForExpansion() {
+  return EnableRangeForExpansion;
 }
 
 int main(int argc, const char **argv) {

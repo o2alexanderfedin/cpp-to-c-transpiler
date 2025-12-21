@@ -263,6 +263,23 @@ public:
   // Retrieve generated C destructor function by name (for testing - Story #152)
   clang::FunctionDecl *getDtor(llvm::StringRef funcName) const;
 
+  // Phase 11 (v2.4.0): Template monomorphization public interface
+  /**
+   * @brief Process all template instantiations and generate monomorphized code
+   * @param TU Translation unit declaration
+   *
+   * Single Responsibility: Orchestrate template extraction and monomorphization
+   * Called after AST traversal to process all discovered template
+   * instantiations.
+   */
+  void processTemplateInstantiations(clang::TranslationUnitDecl *TU);
+
+  /**
+   * @brief Get generated monomorphized template code
+   * @return String containing all monomorphized C code
+   */
+  std::string getMonomorphizedCode() const { return m_monomorphizedCode; }
+
 private:
   // Epic #5: RAII helper methods
 
@@ -561,26 +578,6 @@ private:
    * - Class has at least one constructor (explicit or default)
    */
   bool needsImplicitCopyConstructor(clang::CXXRecordDecl *D) const;
-
-  // ============================================================================
-  // Phase 11: Template Monomorphization Helper Methods (v2.4.0)
-  // ============================================================================
-
-  /**
-   * @brief Process all template instantiations and generate monomorphized code
-   * @param TU Translation unit declaration
-   *
-   * Single Responsibility: Orchestrate template extraction and monomorphization
-   * Called after AST traversal to process all discovered template
-   * instantiations.
-   */
-  void processTemplateInstantiations(clang::TranslationUnitDecl *TU);
-
-  /**
-   * @brief Get generated monomorphized template code
-   * @return String containing all monomorphized C code
-   */
-  std::string getMonomorphizedCode() const { return m_monomorphizedCode; }
 
   // ============================================================================
   // Epic #193: ACSL Annotation Generation Helper Methods

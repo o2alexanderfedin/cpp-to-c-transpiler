@@ -211,6 +211,8 @@ add_library(cpptoc_core STATIC
     src/VirtualInheritanceAnalyzer.cpp
     src/MoveConstructorTranslator.cpp
     src/MoveAssignmentTranslator.cpp
+    src/CopyAssignmentTranslator.cpp
+    src/StaticMemberTranslator.cpp
     src/StdMoveTranslator.cpp
     src/RvalueRefParamTranslator.cpp
     src/VtableGenerator.cpp
@@ -1453,6 +1455,35 @@ target_link_libraries(RTTIIntegrationTest PRIVATE
     clangBasic
 )
 
+# Phase 16: Enum and Range-For Integration Tests (v2.9.0)
+add_executable(EnumRangeForIntegrationTest
+    tests/gtest/EnumRangeForIntegrationTest_GTest.cpp
+)
+
+target_compile_definitions(EnumRangeForIntegrationTest PRIVATE ${LLVM_DEFINITIONS})
+
+target_include_directories(EnumRangeForIntegrationTest PRIVATE
+    ${CMAKE_SOURCE_DIR}/include
+    ${LLVM_INCLUDE_DIRS}
+    ${CLANG_INCLUDE_DIRS}
+)
+
+target_link_libraries(EnumRangeForIntegrationTest PRIVATE
+    cpptoc_core
+    clangTooling
+    clangFrontend
+    clangAST
+    clangBasic
+    GTest::gtest
+    GTest::gtest_main
+)
+
+# Register with CTest
+gtest_discover_tests(EnumRangeForIntegrationTest
+    WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
+    PROPERTIES LABELS "integration;phase16"
+)
+
 # Story #89: Virtual Base Detection and Analysis tests (Epic #44)
 add_executable(VirtualBaseDetectionTest
     tests/VirtualBaseDetectionTest.cpp
@@ -1953,6 +1984,23 @@ target_link_libraries(StdMoveTranslationTest PRIVATE
     clangFrontend
     clangAST
     clangBasic
+)
+
+# Phase 15 (v2.8.0): Static Members & Assignment Operators Integration Test
+add_executable(StaticAssignmentIntegrationTest
+    tests/StaticAssignmentIntegrationTest.cpp
+)
+
+find_package(GTest REQUIRED)
+
+target_include_directories(StaticAssignmentIntegrationTest PRIVATE
+    ${CMAKE_SOURCE_DIR}/include
+    ${GTEST_INCLUDE_DIRS}
+)
+
+target_link_libraries(StaticAssignmentIntegrationTest PRIVATE
+    GTest::GTest
+    GTest::Main
 )
 
 # Story #133: Rvalue Reference Parameter Handling tests
