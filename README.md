@@ -33,6 +33,12 @@ This README provides a quick overview - the documentation site contains the comp
 This project implements a C++ to C transpiler that produces high-quality, human-readable C code suitable for formal verification with tools like Frama-C. The converter handles modern C++ features including:
 
 - ✅ Classes (single/multiple/virtual inheritance)
+- ✅ **Standalone Functions** (v2.1.0) - Free function translation with overloading support
+  - ✅ **Function overloading** - Intelligent name mangling for same-named functions
+  - ✅ **Variadic functions** - Proper ellipsis (...) preservation
+  - ✅ **Linkage preservation** - static, extern, inline specifiers
+  - ✅ **Main function** - Special handling (no mangling)
+  - ✅ **Const-qualified parameters** - Full qualifier preservation
 - ✅ **Template Monomorphization** (v2.4.0) - Compile-time template instantiation to C
   - ✅ **Class templates** - Automatic generation of concrete types from templates
   - ✅ **Function templates** - Type-specific function generation

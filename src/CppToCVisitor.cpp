@@ -1,12 +1,12 @@
 #include "CppToCVisitor.h"
 #include "CFGAnalyzer.h"
-#include "llvm/Support/raw_ostream.h"
 #include "clang/AST/Expr.h"
 #include "clang/AST/ExprCXX.h"
 #include "clang/Basic/SourceManager.h"
-#include <vector>
+#include "llvm/Support/raw_ostream.h"
 #include <algorithm>
 #include <sstream>
+#include <vector>
 
 using namespace clang;
 
@@ -14,10 +14,10 @@ using namespace clang;
 extern bool shouldGenerateACSL();
 extern ACSLLevel getACSLLevel();
 extern ACSLOutputMode getACSLOutputMode();
-extern bool shouldGenerateMemoryPredicates(); // Phase 6 (v1.23.0)
-extern bool shouldMonomorphizeTemplates(); // Phase 11 (v2.4.0)
+extern bool shouldGenerateMemoryPredicates();        // Phase 6 (v1.23.0)
+extern bool shouldMonomorphizeTemplates();           // Phase 11 (v2.4.0)
 extern unsigned int getTemplateInstantiationLimit(); // Phase 11 (v2.4.0)
-extern bool shouldEnableRTTI(); // Phase 13 (v2.6.0)
+extern bool shouldEnableRTTI();                      // Phase 13 (v2.6.0)
 
 // Epic #193: ACSL Integration - Constructor Implementation
 CppToCVisitor::CppToCVisitor(ASTContext &Context, CNodeBuilder &Builder)
@@ -32,38 +32,47 @@ CppToCVisitor::CppToCVisitor(ASTContext &Context, CNodeBuilder &Builder)
     ACSLOutputMode mode = getACSLOutputMode();
 
     llvm::outs() << "Initializing ACSL annotators (level: "
-                 << (level == ACSLLevel::Basic ? "basic" : "full")
-                 << ", mode: " << (mode == ACSLOutputMode::Inline ? "inline" : "separate")
+                 << (level == ACSLLevel::Basic ? "basic" : "full") << ", mode: "
+                 << (mode == ACSLOutputMode::Inline ? "inline" : "separate")
                  << ")\n";
 
     // Initialize all 8 ACSL annotator classes
     m_functionAnnotator = std::make_unique<ACSLFunctionAnnotator>(level, mode);
     m_loopAnnotator = std::make_unique<ACSLLoopAnnotator>(level, mode);
     m_classAnnotator = std::make_unique<ACSLClassAnnotator>(level, mode);
-    m_statementAnnotator = std::make_unique<ACSLStatementAnnotator>(level, mode);
-    m_typeInvariantGen = std::make_unique<ACSLTypeInvariantGenerator>(level, mode);
+    m_statementAnnotator =
+        std::make_unique<ACSLStatementAnnotator>(level, mode);
+    m_typeInvariantGen =
+        std::make_unique<ACSLTypeInvariantGenerator>(level, mode);
     m_axiomaticBuilder = std::make_unique<ACSLAxiomaticBuilder>(level, mode);
     m_ghostInjector = std::make_unique<ACSLGhostCodeInjector>(level, mode);
-    // Note: ACSLBehaviorAnnotator only accepts level parameter (no mode parameter)
+    // Note: ACSLBehaviorAnnotator only accepts level parameter (no mode
+    // parameter)
     m_behaviorAnnotator = std::make_unique<ACSLBehaviorAnnotator>(level);
 
     // Phase 6 (v1.23.0): Configure memory predicates if enabled
     if (shouldGenerateMemoryPredicates()) {
       m_functionAnnotator->setMemoryPredicatesEnabled(true);
-      llvm::outs() << "Memory predicates enabled (allocable, freeable, block_length, base_addr)\n";
+      llvm::outs() << "Memory predicates enabled (allocable, freeable, "
+                      "block_length, base_addr)\n";
     }
   }
 
   // Phase 9 (v2.2.0): Initialize virtual method infrastructure
-  m_overrideResolver = std::make_unique<OverrideResolver>(Context, VirtualAnalyzer);
-  m_vtableGenerator = std::make_unique<VtableGenerator>(Context, VirtualAnalyzer, m_overrideResolver.get());
-  m_virtualCallTrans = std::make_unique<VirtualCallTranslator>(Context, VirtualAnalyzer);
+  m_overrideResolver =
+      std::make_unique<OverrideResolver>(Context, VirtualAnalyzer);
+  m_vtableGenerator = std::make_unique<VtableGenerator>(
+      Context, VirtualAnalyzer, m_overrideResolver.get());
+  m_virtualCallTrans =
+      std::make_unique<VirtualCallTranslator>(Context, VirtualAnalyzer);
   llvm::outs() << "Virtual method support initialized\n";
 
   // Phase 11 (v2.4.0): Initialize template monomorphization infrastructure
-  // Note: Always initialize these, but only use them if shouldMonomorphizeTemplates() is true
+  // Note: Always initialize these, but only use them if
+  // shouldMonomorphizeTemplates() is true
   m_templateExtractor = std::make_unique<TemplateExtractor>(Context);
-  m_templateMonomorphizer = std::make_unique<TemplateMonomorphizer>(Context, Mangler);
+  m_templateMonomorphizer =
+      std::make_unique<TemplateMonomorphizer>(Context, Mangler);
   m_templateTracker = std::make_unique<TemplateInstantiationTracker>();
 
   if (shouldMonomorphizeTemplates()) {
@@ -73,13 +82,16 @@ CppToCVisitor::CppToCVisitor(ASTContext &Context, CNodeBuilder &Builder)
 
   // Phase 12 (v2.5.0): Initialize exception handling infrastructure
   m_exceptionFrameGen = std::make_shared<ExceptionFrameGenerator>();
-  m_tryCatchTransformer = std::make_unique<clang::TryCatchTransformer>(m_exceptionFrameGen);
+  m_tryCatchTransformer =
+      std::make_unique<clang::TryCatchTransformer>(m_exceptionFrameGen);
   m_throwTranslator = std::make_unique<clang::ThrowTranslator>();
   llvm::outs() << "Exception handling support initialized (SJLJ model)\n";
 
   // Phase 13 (v2.6.0): Initialize RTTI infrastructure
-  m_typeidTranslator = std::make_unique<TypeidTranslator>(Context, VirtualAnalyzer);
-  m_dynamicCastTranslator = std::make_unique<DynamicCastTranslator>(Context, VirtualAnalyzer);
+  m_typeidTranslator =
+      std::make_unique<TypeidTranslator>(Context, VirtualAnalyzer);
+  m_dynamicCastTranslator =
+      std::make_unique<DynamicCastTranslator>(Context, VirtualAnalyzer);
   llvm::outs() << "RTTI support initialized (typeid and dynamic_cast)\n";
 }
 
@@ -100,7 +112,7 @@ bool CppToCVisitor::VisitCXXRecordDecl(CXXRecordDecl *D) {
   llvm::outs() << "Translating class: " << D->getNameAsString() << "\n";
 
   // Build field list for C struct
-  std::vector<FieldDecl*> fields;
+  std::vector<FieldDecl *> fields;
 
   // Story #50: Embed base class fields at offset 0 (SRP: delegate to helper)
   collectBaseClassFields(D, fields);
@@ -114,10 +126,7 @@ bool CppToCVisitor::VisitCXXRecordDecl(CXXRecordDecl *D) {
   // Add derived class's own fields after base class fields and vptr
   for (FieldDecl *Field : D->fields()) {
     // Create C field with same type and name
-    FieldDecl *CField = Builder.fieldDecl(
-      Field->getType(),
-      Field->getName()
-    );
+    FieldDecl *CField = Builder.fieldDecl(Field->getType(), Field->getName());
     fields.push_back(CField);
   }
 
@@ -139,7 +148,8 @@ bool CppToCVisitor::VisitCXXRecordDecl(CXXRecordDecl *D) {
                  << D->getNameAsString() << "\n";
 
     // Generate class invariants
-    std::string classInvariant = m_classAnnotator->generateClassInvariantPredicate(D);
+    std::string classInvariant =
+        m_classAnnotator->generateClassInvariantPredicate(D);
 
     // Generate type invariants if full level
     std::string typeInvariants;
@@ -173,21 +183,25 @@ bool CppToCVisitor::VisitCXXRecordDecl(CXXRecordDecl *D) {
       std::string className = D->getNameAsString();
       std::ostringstream vtableInstance;
       vtableInstance << "\n// Vtable instance for " << className << "\n";
-      vtableInstance << "struct " << className << "_vtable " << className << "_vtable_instance = {\n";
-      vtableInstance << "    .type_info = &" << className << "_type_info,  // RTTI type_info (placeholder)\n";
+      vtableInstance << "struct " << className << "_vtable " << className
+                     << "_vtable_instance = {\n";
+      vtableInstance << "    .type_info = &" << className
+                     << "_type_info,  // RTTI type_info (placeholder)\n";
 
       // Get methods in vtable order
       auto methods = m_vtableGenerator->getVtableMethodOrder(D);
 
       // Initialize function pointers
-      for (auto* method : methods) {
+      for (auto *method : methods) {
         std::string methodName;
         if (isa<CXXDestructorDecl>(method)) {
           methodName = "destructor";
-          vtableInstance << "    ." << methodName << " = " << className << "_destructor,\n";
+          vtableInstance << "    ." << methodName << " = " << className
+                         << "_destructor,\n";
         } else {
           methodName = method->getNameAsString();
-          vtableInstance << "    ." << methodName << " = " << className << "_" << methodName << ",\n";
+          vtableInstance << "    ." << methodName << " = " << className << "_"
+                         << methodName << ",\n";
         }
       }
 
@@ -196,7 +210,8 @@ bool CppToCVisitor::VisitCXXRecordDecl(CXXRecordDecl *D) {
       // Store vtable instance code
       m_vtableInstances[className] = vtableInstance.str();
 
-      llvm::outs() << "Vtable instance generated:\n" << vtableInstance.str() << "\n";
+      llvm::outs() << "Vtable instance generated:\n"
+                   << vtableInstance.str() << "\n";
     }
   }
 
@@ -217,7 +232,8 @@ bool CppToCVisitor::VisitCXXMethodDecl(CXXMethodDecl *MD) {
 
   // Story #131: Handle move assignment operators
   if (MoveAssignTranslator.isMoveAssignmentOperator(MD)) {
-    llvm::outs() << "Translating move assignment operator: " << MD->getQualifiedNameAsString() << "\n";
+    llvm::outs() << "Translating move assignment operator: "
+                 << MD->getQualifiedNameAsString() << "\n";
     std::string cCode = MoveAssignTranslator.generateMoveAssignment(MD);
     if (!cCode.empty()) {
       llvm::outs() << "Generated move assignment C code:\n" << cCode << "\n";
@@ -226,15 +242,18 @@ bool CppToCVisitor::VisitCXXMethodDecl(CXXMethodDecl *MD) {
     return true;
   }
 
-  // Story #134: Handle copy assignment operators (skip for now, similar to move)
+  // Story #134: Handle copy assignment operators (skip for now, similar to
+  // move)
   if (MD->isCopyAssignmentOperator()) {
-    llvm::outs() << "Translating copy assignment operator: " << MD->getQualifiedNameAsString() << "\n";
+    llvm::outs() << "Translating copy assignment operator: "
+                 << MD->getQualifiedNameAsString() << "\n";
     // Copy assignment operators are handled similar to move assignments
     // TODO: Generate C code for copy assignment
     return true;
   }
 
-  llvm::outs() << "Translating method: " << MD->getQualifiedNameAsString() << "\n";
+  llvm::outs() << "Translating method: " << MD->getQualifiedNameAsString()
+               << "\n";
 
   CXXRecordDecl *Parent = MD->getParent();
   RecordDecl *CStruct = nullptr;
@@ -248,7 +267,7 @@ bool CppToCVisitor::VisitCXXMethodDecl(CXXMethodDecl *MD) {
   }
 
   // Build parameter list: this + original params
-  std::vector<ParmVarDecl*> params;
+  std::vector<ParmVarDecl *> params;
 
   // Add this parameter
   QualType thisType = Builder.ptrType(Builder.structType(Parent->getName()));
@@ -265,12 +284,8 @@ bool CppToCVisitor::VisitCXXMethodDecl(CXXMethodDecl *MD) {
   std::string funcName = Mangler.mangleName(MD);
 
   // Create C function (body will be added below)
-  FunctionDecl *CFunc = Builder.funcDecl(
-    funcName,
-    MD->getReturnType(),
-    params,
-    nullptr
-  );
+  FunctionDecl *CFunc =
+      Builder.funcDecl(funcName, MD->getReturnType(), params, nullptr);
 
   // Set translation context for body translation (Story #19)
   currentThisParam = thisParam;
@@ -293,8 +308,8 @@ bool CppToCVisitor::VisitCXXMethodDecl(CXXMethodDecl *MD) {
   // Store mapping
   methodToCFunc[MD] = CFunc;
 
-  llvm::outs() << "  -> " << funcName << " with "
-               << params.size() << " parameters\n";
+  llvm::outs() << "  -> " << funcName << " with " << params.size()
+               << " parameters\n";
 
   return true;
 }
@@ -313,7 +328,8 @@ bool CppToCVisitor::VisitCXXConstructorDecl(CXXConstructorDecl *CD) {
 
     std::string moveCtorCode = MoveCtorTranslator.generateMoveConstructor(CD);
     if (!moveCtorCode.empty()) {
-      llvm::outs() << "Generated move constructor C code:\n" << moveCtorCode << "\n";
+      llvm::outs() << "Generated move constructor C code:\n"
+                   << moveCtorCode << "\n";
     }
 
     // Note: For now, we just generate the code for testing/validation
@@ -336,7 +352,7 @@ bool CppToCVisitor::VisitCXXConstructorDecl(CXXConstructorDecl *CD) {
   }
 
   // Build parameter list: this + original params
-  std::vector<ParmVarDecl*> params;
+  std::vector<ParmVarDecl *> params;
 
   // Add 'this' parameter - use the existing C struct type
   QualType thisType = Builder.ptrType(Context.getRecordType(CStruct));
@@ -353,15 +369,11 @@ bool CppToCVisitor::VisitCXXConstructorDecl(CXXConstructorDecl *CD) {
   std::string funcName = Mangler.mangleConstructor(CD);
 
   // Create C init function (body will be added below)
-  FunctionDecl *CFunc = Builder.funcDecl(
-    funcName,
-    Builder.voidType(),
-    params,
-    nullptr
-  );
+  FunctionDecl *CFunc =
+      Builder.funcDecl(funcName, Builder.voidType(), params, nullptr);
 
   // Build function body
-  std::vector<Stmt*> stmts;
+  std::vector<Stmt *> stmts;
 
   // Set translation context for expression translation
   currentThisParam = thisParam;
@@ -394,7 +406,7 @@ bool CppToCVisitor::VisitCXXConstructorDecl(CXXConstructorDecl *CD) {
           FunctionDecl *TargetCFunc = it->second;
 
           // Build argument list: this + arguments from delegating call
-          std::vector<Expr*> targetArgs;
+          std::vector<Expr *> targetArgs;
           targetArgs.push_back(Builder.ref(thisParam));
 
           for (unsigned i = 0; i < CtorExpr->getNumArgs(); i++) {
@@ -409,7 +421,8 @@ bool CppToCVisitor::VisitCXXConstructorDecl(CXXConstructorDecl *CD) {
           CallExpr *DelegateCall = Builder.call(TargetCFunc, targetArgs);
           if (DelegateCall) {
             stmts.push_back(DelegateCall);
-            llvm::outs() << "  -> Delegating to " << TargetCFunc->getNameAsString() << "\n";
+            llvm::outs() << "  -> Delegating to "
+                         << TargetCFunc->getNameAsString() << "\n";
           }
         } else {
           llvm::outs() << "  Warning: Target constructor function not found\n";
@@ -424,7 +437,8 @@ bool CppToCVisitor::VisitCXXConstructorDecl(CXXConstructorDecl *CD) {
     emitBaseConstructorCalls(CD, thisParam, stmts);
 
     // Story #63: Emit member constructor calls in DECLARATION order
-    // Handles both class-type members (constructor calls) and primitives (assignment)
+    // Handles both class-type members (constructor calls) and primitives
+    // (assignment)
     emitMemberConstructorCalls(CD, thisParam, stmts);
   }
 
@@ -451,9 +465,8 @@ bool CppToCVisitor::VisitCXXConstructorDecl(CXXConstructorDecl *CD) {
   // Store mapping
   ctorMap[CD] = CFunc;
 
-  llvm::outs() << "  -> " << funcName << " with "
-               << params.size() << " parameters, "
-               << stmts.size() << " statements\n";
+  llvm::outs() << "  -> " << funcName << " with " << params.size()
+               << " parameters, " << stmts.size() << " statements\n";
 
   return true;
 }
@@ -464,7 +477,7 @@ bool CppToCVisitor::VisitVarDecl(VarDecl *VD) {
 }
 
 // Retrieve generated C struct by class name (for testing)
-RecordDecl* CppToCVisitor::getCStruct(llvm::StringRef className) const {
+RecordDecl *CppToCVisitor::getCStruct(llvm::StringRef className) const {
   // Search through mapping to find struct by name
   for (const auto &entry : cppToCMap) {
     if (entry.second && entry.second->getName() == className) {
@@ -475,7 +488,7 @@ RecordDecl* CppToCVisitor::getCStruct(llvm::StringRef className) const {
 }
 
 // Retrieve generated C function by name (for testing)
-FunctionDecl* CppToCVisitor::getCFunc(llvm::StringRef funcName) const {
+FunctionDecl *CppToCVisitor::getCFunc(llvm::StringRef funcName) const {
   // Search through method mapping to find function by name
   for (const auto &entry : methodToCFunc) {
     if (entry.second && entry.second->getName() == funcName) {
@@ -493,7 +506,7 @@ FunctionDecl* CppToCVisitor::getCFunc(llvm::StringRef funcName) const {
 }
 
 // Retrieve generated C constructor function by name (for testing)
-FunctionDecl* CppToCVisitor::getCtor(llvm::StringRef funcName) const {
+FunctionDecl *CppToCVisitor::getCtor(llvm::StringRef funcName) const {
   // Search through mapping to find constructor by name
   for (const auto &entry : ctorMap) {
     if (entry.second && entry.second->getName() == funcName) {
@@ -504,7 +517,7 @@ FunctionDecl* CppToCVisitor::getCtor(llvm::StringRef funcName) const {
 }
 
 // Retrieve generated C destructor function by name (for testing - Story #152)
-FunctionDecl* CppToCVisitor::getDtor(llvm::StringRef funcName) const {
+FunctionDecl *CppToCVisitor::getDtor(llvm::StringRef funcName) const {
   // Search through mapping to find destructor by name
   for (const auto &entry : dtorMap) {
     if (entry.second && entry.second->getName() == funcName) {
@@ -526,7 +539,8 @@ bool CppToCVisitor::VisitCXXDestructorDecl(CXXDestructorDecl *DD) {
     return true;
   }
 
-  llvm::outs() << "Translating destructor: ~" << DD->getParent()->getName() << "\n";
+  llvm::outs() << "Translating destructor: ~" << DD->getParent()->getName()
+               << "\n";
 
   CXXRecordDecl *Parent = DD->getParent();
   RecordDecl *CStruct = nullptr;
@@ -540,7 +554,7 @@ bool CppToCVisitor::VisitCXXDestructorDecl(CXXDestructorDecl *DD) {
   }
 
   // Build parameter list: this pointer only
-  std::vector<ParmVarDecl*> params;
+  std::vector<ParmVarDecl *> params;
   QualType thisType = Builder.ptrType(Context.getRecordType(CStruct));
   ParmVarDecl *thisParam = Builder.param(thisType, "this");
   params.push_back(thisParam);
@@ -549,19 +563,15 @@ bool CppToCVisitor::VisitCXXDestructorDecl(CXXDestructorDecl *DD) {
   std::string funcName = Mangler.mangleDestructor(DD);
 
   // Create C cleanup function
-  FunctionDecl *CFunc = Builder.funcDecl(
-    funcName,
-    Builder.voidType(),
-    params,
-    nullptr
-  );
+  FunctionDecl *CFunc =
+      Builder.funcDecl(funcName, Builder.voidType(), params, nullptr);
 
   // Set translation context for body translation
   currentThisParam = thisParam;
   currentMethod = DD;
 
   // Build destructor body with base destructor chaining
-  std::vector<Stmt*> stmts;
+  std::vector<Stmt *> stmts;
 
   // Translate derived destructor body FIRST
   if (DD->hasBody()) {
@@ -586,7 +596,8 @@ bool CppToCVisitor::VisitCXXDestructorDecl(CXXDestructorDecl *DD) {
 
   // Set complete body
   CFunc->setBody(Builder.block(stmts));
-  llvm::outs() << "  -> " << funcName << " with " << stmts.size() << " statements\n";
+  llvm::outs() << "  -> " << funcName << " with " << stmts.size()
+               << " statements\n";
 
   // Clear translation context
   currentThisParam = nullptr;
@@ -613,17 +624,18 @@ bool CppToCVisitor::VisitFunctionDecl(FunctionDecl *FD) {
   }
 
   // Story #152: Analyze function for RAII objects and inject destructors
-  llvm::outs() << "Analyzing function for RAII: " << FD->getNameAsString() << "\n";
+  llvm::outs() << "Analyzing function for RAII: " << FD->getNameAsString()
+               << "\n";
 
   // Use CFGAnalyzer to find local variables
   CFGAnalyzer analyzer;
   analyzer.analyzeCFG(FD);
 
-  std::vector<VarDecl*> localVars = analyzer.getLocalVars();
+  std::vector<VarDecl *> localVars = analyzer.getLocalVars();
   llvm::outs() << "  Found " << localVars.size() << " local variables\n";
 
   // Filter to only objects with destructors
-  std::vector<VarDecl*> objectsToDestroy;
+  std::vector<VarDecl *> objectsToDestroy;
   for (VarDecl *VD : localVars) {
     if (hasNonTrivialDestructor(VD->getType())) {
       objectsToDestroy.push_back(VD);
@@ -633,11 +645,12 @@ bool CppToCVisitor::VisitFunctionDecl(FunctionDecl *FD) {
   }
 
   if (!objectsToDestroy.empty()) {
-    llvm::outs() << "  Will inject destructors for "
-                 << objectsToDestroy.size() << " objects\n";
+    llvm::outs() << "  Will inject destructors for " << objectsToDestroy.size()
+                 << " objects\n";
 
     // Story #44: Store objects for destruction at function scope
-    // These will be used during statement translation to inject destructor calls
+    // These will be used during statement translation to inject destructor
+    // calls
     currentFunctionObjectsToDestroy = objectsToDestroy;
 
     // Story #45: Clear previous return tracking for this function
@@ -680,7 +693,8 @@ bool CppToCVisitor::VisitFunctionDecl(FunctionDecl *FD) {
                  << FD->getNameAsString() << "\n";
 
     // Generate function contract (requires, ensures, assigns)
-    std::string functionContract = m_functionAnnotator->generateFunctionContract(FD);
+    std::string functionContract =
+        m_functionAnnotator->generateFunctionContract(FD);
 
     // Generate behavior annotations if full level
     std::string behaviorAnnotations;
@@ -708,15 +722,16 @@ bool CppToCVisitor::VisitFunctionDecl(FunctionDecl *FD) {
 
   // Skip methods - they're handled by VisitCXXMethodDecl
   if (isa<CXXMethodDecl>(FD)) {
-    return true;  // Already handled
+    return true; // Already handled
   }
 
   // Skip forward declarations (no body)
   if (!FD->hasBody()) {
-    return true;  // Only translate definitions
+    return true; // Only translate definitions
   }
 
-  llvm::outs() << "Translating standalone function: " << FD->getNameAsString() << "\n";
+  llvm::outs() << "Translating standalone function: " << FD->getNameAsString()
+               << "\n";
 
   // Get mangled name (handles overloading, main(), extern "C")
   std::string mangledName = Mangler.mangleStandaloneFunction(FD);
@@ -724,7 +739,7 @@ bool CppToCVisitor::VisitFunctionDecl(FunctionDecl *FD) {
   llvm::outs() << "  Mangled name: " << mangledName << "\n";
 
   // Build parameter list for C function
-  llvm::SmallVector<ParmVarDecl*, 4> cParams;
+  llvm::SmallVector<ParmVarDecl *, 4> cParams;
   for (ParmVarDecl *Param : FD->parameters()) {
     // Create parameter with same type and name
     ParmVarDecl *CParam = Builder.param(Param->getType(), Param->getName());
@@ -734,13 +749,15 @@ bool CppToCVisitor::VisitFunctionDecl(FunctionDecl *FD) {
   // Get function body (will be translated separately if needed)
   Stmt *body = FD->getBody();
 
+  // Check if function is variadic
+  bool isVariadic = FD->isVariadic();
+
   // Create C function declaration with mangled name
-  FunctionDecl *CFunc = Builder.funcDecl(
-    mangledName,
-    FD->getReturnType(),
-    cParams,
-    body
-  );
+  FunctionDecl *CFunc =
+      Builder.funcDecl(mangledName, FD->getReturnType(), cParams, body,
+                       CC_C,      // Calling convention (default)
+                       isVariadic // Variadic property
+      );
 
   // Preserve linkage and storage class
   if (FD->getStorageClass() == SC_Static) {
@@ -757,15 +774,18 @@ bool CppToCVisitor::VisitFunctionDecl(FunctionDecl *FD) {
     llvm::outs() << "  Inline: yes\n";
   }
 
-  // Preserve variadic property
-  // Note: Builder.funcDecl already preserves this through function type
+  // Log variadic property
+  if (isVariadic) {
+    llvm::outs() << "  Variadic: yes\n";
+  }
 
   // Store in standalone function map
   standaloneFuncMap[mangledName] = CFunc;
 
   llvm::outs() << "  -> C function '" << mangledName << "' created\n";
   llvm::outs() << "  Parameters: " << cParams.size() << "\n";
-  llvm::outs() << "  Return type: " << CFunc->getReturnType().getAsString() << "\n";
+  llvm::outs() << "  Return type: " << CFunc->getReturnType().getAsString()
+               << "\n";
 
   return true;
 }
@@ -789,7 +809,7 @@ bool CppToCVisitor::VisitFunctionDecl(FunctionDecl *FD) {
  * 4. This naturally handles multi-level inheritance (A -> B -> C)
  */
 void CppToCVisitor::collectBaseClassFields(CXXRecordDecl *D,
-                                            std::vector<FieldDecl*> &fields) {
+                                           std::vector<FieldDecl *> &fields) {
   // For each direct base class
   for (const CXXBaseSpecifier &Base : D->bases()) {
     CXXRecordDecl *BaseClass = Base.getType()->getAsCXXRecordDecl();
@@ -815,10 +835,8 @@ void CppToCVisitor::collectBaseClassFields(CXXRecordDecl *D,
     // The base C struct already contains its own base fields (multi-level)
     for (FieldDecl *BaseField : BaseCStruct->fields()) {
       // Create new field with same type and name for derived struct
-      FieldDecl *CField = Builder.fieldDecl(
-        BaseField->getType(),
-        BaseField->getName()
-      );
+      FieldDecl *CField =
+          Builder.fieldDecl(BaseField->getType(), BaseField->getName());
       fields.push_back(CField);
     }
   }
@@ -827,8 +845,9 @@ void CppToCVisitor::collectBaseClassFields(CXXRecordDecl *D,
 /**
  * Story #51: Base Constructor Chaining (Epic #6)
  *
- * Single Responsibility: Extract base constructor call logic from VisitCXXConstructorDecl
- * Open/Closed: Open for extension (virtual inheritance), closed for modification
+ * Single Responsibility: Extract base constructor call logic from
+ * VisitCXXConstructorDecl Open/Closed: Open for extension (virtual
+ * inheritance), closed for modification
  *
  * Implementation Strategy:
  * 1. Iterate through constructor's member initializer list
@@ -845,8 +864,8 @@ void CppToCVisitor::collectBaseClassFields(CXXRecordDecl *D,
  * - For multi-level inheritance, each level calls its immediate parent only
  */
 void CppToCVisitor::emitBaseConstructorCalls(CXXConstructorDecl *CD,
-                                              ParmVarDecl *thisParam,
-                                              std::vector<Stmt*> &stmts) {
+                                             ParmVarDecl *thisParam,
+                                             std::vector<Stmt *> &stmts) {
   // Process base class initializers in order
   for (CXXCtorInitializer *Init : CD->inits()) {
     // Skip non-base initializers (member, delegating, etc.)
@@ -864,7 +883,8 @@ void CppToCVisitor::emitBaseConstructorCalls(CXXConstructorDecl *CD,
       continue;
     }
 
-    llvm::outs() << "  Translating base class initializer: " << BaseClass->getName() << "\n";
+    llvm::outs() << "  Translating base class initializer: "
+                 << BaseClass->getName() << "\n";
 
     // Get the init expression (should be CXXConstructExpr)
     Expr *BaseInit = Init->getInit();
@@ -889,7 +909,7 @@ void CppToCVisitor::emitBaseConstructorCalls(CXXConstructorDecl *CD,
     FunctionDecl *BaseCFunc = it->second;
 
     // Build argument list for base constructor call
-    std::vector<Expr*> baseArgs;
+    std::vector<Expr *> baseArgs;
 
     // First argument: this pointer
     // No explicit cast needed - base class fields are at offset 0 (Story #50)
@@ -917,8 +937,9 @@ void CppToCVisitor::emitBaseConstructorCalls(CXXConstructorDecl *CD,
 /**
  * Story #52: Base Destructor Chaining (Epic #6)
  *
- * Single Responsibility: Extract base destructor call logic from VisitCXXDestructorDecl
- * Open/Closed: Open for extension (virtual inheritance), closed for modification
+ * Single Responsibility: Extract base destructor call logic from
+ * VisitCXXDestructorDecl Open/Closed: Open for extension (virtual inheritance),
+ * closed for modification
  *
  * Implementation Strategy:
  * 1. Get the derived class's base classes
@@ -934,8 +955,8 @@ void CppToCVisitor::emitBaseConstructorCalls(CXXConstructorDecl *CD,
  * - For multi-level inheritance, each level calls its immediate parent only
  */
 void CppToCVisitor::emitBaseDestructorCalls(CXXDestructorDecl *DD,
-                                             ParmVarDecl *thisParam,
-                                             std::vector<Stmt*> &stmts) {
+                                            ParmVarDecl *thisParam,
+                                            std::vector<Stmt *> &stmts) {
   CXXRecordDecl *DerivedClass = DD->getParent();
 
   // Process each direct base class
@@ -947,7 +968,8 @@ void CppToCVisitor::emitBaseDestructorCalls(CXXDestructorDecl *DD,
       continue;
     }
 
-    llvm::outs() << "  Emitting base destructor call for: " << BaseClass->getName() << "\n";
+    llvm::outs() << "  Emitting base destructor call for: "
+                 << BaseClass->getName() << "\n";
 
     // Get the base class destructor
     CXXDestructorDecl *BaseDtor = BaseClass->getDestructor();
@@ -966,7 +988,7 @@ void CppToCVisitor::emitBaseDestructorCalls(CXXDestructorDecl *DD,
     FunctionDecl *BaseDFunc = it->second;
 
     // Build argument list: just 'this' pointer
-    std::vector<Expr*> baseArgs;
+    std::vector<Expr *> baseArgs;
     baseArgs.push_back(Builder.ref(thisParam));
 
     // Create the base destructor call expression
@@ -984,9 +1006,9 @@ void CppToCVisitor::emitBaseDestructorCalls(CXXDestructorDecl *DD,
 // ============================================================================
 
 // Helper: Find initializer for a specific field in constructor init list
-CXXCtorInitializer* CppToCVisitor::findInitializerForField(
-    CXXConstructorDecl *CD,
-    FieldDecl *Field) {
+CXXCtorInitializer *
+CppToCVisitor::findInitializerForField(CXXConstructorDecl *CD,
+                                       FieldDecl *Field) {
   for (CXXCtorInitializer *Init : CD->inits()) {
     if (Init->isAnyMemberInitializer() && Init->getAnyMember() == Field) {
       return Init;
@@ -997,8 +1019,8 @@ CXXCtorInitializer* CppToCVisitor::findInitializerForField(
 
 // Emit member constructor calls in declaration order
 void CppToCVisitor::emitMemberConstructorCalls(CXXConstructorDecl *CD,
-                                                ParmVarDecl *thisParam,
-                                                std::vector<Stmt*> &stmts) {
+                                               ParmVarDecl *thisParam,
+                                               std::vector<Stmt *> &stmts) {
   CXXRecordDecl *ClassDecl = CD->getParent();
 
   // Iterate fields in DECLARATION order (not init list order)
@@ -1028,21 +1050,23 @@ void CppToCVisitor::emitMemberConstructorCalls(CXXConstructorDecl *CD,
           // Lookup the C constructor function
           auto it = ctorMap.find(MemberCtor);
           if (it == ctorMap.end()) {
-            llvm::outs() << "  Warning: Member constructor function not found\n";
+            llvm::outs()
+                << "  Warning: Member constructor function not found\n";
             continue;
           }
 
           FunctionDecl *MemberCFunc = it->second;
 
           // Build argument list: &this->field, arg1, arg2, ...
-          MemberExpr *ThisMember = Builder.arrowMember(Builder.ref(thisParam), Field->getName());
+          MemberExpr *ThisMember =
+              Builder.arrowMember(Builder.ref(thisParam), Field->getName());
           Expr *memberAddr = Builder.addrOf(ThisMember);
 
-          std::vector<Expr*> args;
+          std::vector<Expr *> args;
           args.push_back(memberAddr);
 
           for (const Expr *Arg : CE->arguments()) {
-            args.push_back(translateExpr(const_cast<Expr*>(Arg)));
+            args.push_back(translateExpr(const_cast<Expr *>(Arg)));
           }
 
           CallExpr *ctorCall = Builder.call(MemberCFunc, args);
@@ -1051,9 +1075,11 @@ void CppToCVisitor::emitMemberConstructorCalls(CXXConstructorDecl *CD,
         } else {
           // Copy/assignment: inner = other or inner(other) for copy
           // Treat as assignment for now
-          MemberExpr *ThisMember = Builder.arrowMember(Builder.ref(thisParam), Field->getName());
+          MemberExpr *ThisMember =
+              Builder.arrowMember(Builder.ref(thisParam), Field->getName());
           Expr *TranslatedExpr = translateExpr(InitExpr);
-          BinaryOperator *Assignment = Builder.assign(ThisMember, TranslatedExpr);
+          BinaryOperator *Assignment =
+              Builder.assign(ThisMember, TranslatedExpr);
           stmts.push_back(Assignment);
         }
       } else {
@@ -1073,7 +1099,8 @@ void CppToCVisitor::emitMemberConstructorCalls(CXXConstructorDecl *CD,
           if (it != ctorMap.end()) {
             FunctionDecl *MemberCFunc = it->second;
 
-            MemberExpr *ThisMember = Builder.arrowMember(Builder.ref(thisParam), Field->getName());
+            MemberExpr *ThisMember =
+                Builder.arrowMember(Builder.ref(thisParam), Field->getName());
             Expr *memberAddr = Builder.addrOf(ThisMember);
 
             CallExpr *ctorCall = Builder.call(MemberCFunc, {memberAddr});
@@ -1084,7 +1111,8 @@ void CppToCVisitor::emitMemberConstructorCalls(CXXConstructorDecl *CD,
     } else {
       // Primitive member: use assignment if has initializer
       if (Init) {
-        MemberExpr *ThisMember = Builder.arrowMember(Builder.ref(thisParam), Field->getName());
+        MemberExpr *ThisMember =
+            Builder.arrowMember(Builder.ref(thisParam), Field->getName());
         Expr *TranslatedExpr = translateExpr(Init->getInit());
         BinaryOperator *Assignment = Builder.assign(ThisMember, TranslatedExpr);
         stmts.push_back(Assignment);
@@ -1095,10 +1123,10 @@ void CppToCVisitor::emitMemberConstructorCalls(CXXConstructorDecl *CD,
 
 // Emit member destructor calls in reverse declaration order
 void CppToCVisitor::emitMemberDestructorCalls(CXXRecordDecl *ClassDecl,
-                                               ParmVarDecl *thisParam,
-                                               std::vector<Stmt*> &stmts) {
+                                              ParmVarDecl *thisParam,
+                                              std::vector<Stmt *> &stmts) {
   // Collect fields with non-trivial destructors
-  std::vector<FieldDecl*> fieldsToDestroy;
+  std::vector<FieldDecl *> fieldsToDestroy;
 
   for (FieldDecl *Field : ClassDecl->fields()) {
     if (hasNonTrivialDestructor(Field->getType())) {
@@ -1113,13 +1141,16 @@ void CppToCVisitor::emitMemberDestructorCalls(CXXRecordDecl *ClassDecl,
 
     // Get destructor for member type
     const RecordType *RT = fieldType->getAs<RecordType>();
-    if (!RT) continue;
+    if (!RT)
+      continue;
 
     CXXRecordDecl *FieldClass = dyn_cast<CXXRecordDecl>(RT->getDecl());
-    if (!FieldClass || !FieldClass->hasDefinition()) continue;
+    if (!FieldClass || !FieldClass->hasDefinition())
+      continue;
 
     CXXDestructorDecl *FieldDtor = FieldClass->getDestructor();
-    if (!FieldDtor) continue;
+    if (!FieldDtor)
+      continue;
 
     // Lookup the C destructor function
     auto it2 = dtorMap.find(FieldDtor);
@@ -1130,7 +1161,8 @@ void CppToCVisitor::emitMemberDestructorCalls(CXXRecordDecl *ClassDecl,
     FunctionDecl *FieldDFunc = it2->second;
 
     // Build: FieldDtor(&this->field)
-    MemberExpr *ThisMember = Builder.arrowMember(Builder.ref(thisParam), Field->getName());
+    MemberExpr *ThisMember =
+        Builder.arrowMember(Builder.ref(thisParam), Field->getName());
     Expr *memberAddr = Builder.addrOf(ThisMember);
     CallExpr *dtorCall = Builder.call(FieldDFunc, {memberAddr});
     stmts.push_back(dtorCall);
@@ -1160,10 +1192,10 @@ bool CppToCVisitor::VisitReturnStmt(ReturnStmt *RS) {
 }
 
 // Story #45: Analyze which objects are live at a specific return point
-std::vector<VarDecl*> CppToCVisitor::analyzeLiveObjectsAtReturn(
-    ReturnStmt *RS, FunctionDecl *FD) {
+std::vector<VarDecl *>
+CppToCVisitor::analyzeLiveObjectsAtReturn(ReturnStmt *RS, FunctionDecl *FD) {
 
-  std::vector<VarDecl*> liveObjects;
+  std::vector<VarDecl *> liveObjects;
 
   if (!FD || !RS) {
     return liveObjects;
@@ -1224,7 +1256,7 @@ bool CppToCVisitor::comesBefore(Stmt *Before, Stmt *After) {
 void CppToCVisitor::enterScope(CompoundStmt *CS) {
   ScopeInfo info;
   info.stmt = CS;
-  info.depth = scopeStack.size();  // Current stack size is the depth
+  info.depth = scopeStack.size(); // Current stack size is the depth
   // objects vector starts empty
 
   scopeStack.push_back(info);
@@ -1242,8 +1274,8 @@ CppToCVisitor::ScopeInfo CppToCVisitor::exitScope() {
   ScopeInfo info = scopeStack.back();
   scopeStack.pop_back();
 
-  llvm::outs() << "  [Scope] Exiting scope at depth " << info.depth
-               << " with " << info.objects.size() << " objects\n";
+  llvm::outs() << "  [Scope] Exiting scope at depth " << info.depth << " with "
+               << info.objects.size() << " objects\n";
 
   return info;
 }
@@ -1273,12 +1305,13 @@ bool CppToCVisitor::VisitGotoStmt(GotoStmt *GS) {
     return true;
   }
 
-  llvm::outs() << "  [Goto] Detected goto to label: " << GS->getLabel()->getName() << "\n";
+  llvm::outs() << "  [Goto] Detected goto to label: "
+               << GS->getLabel()->getName() << "\n";
 
   // Store goto statement for later analysis
   GotoInfo info;
   info.gotoStmt = GS;
-  info.targetLabel = nullptr;  // Will be matched in analyzeGotoStatements()
+  info.targetLabel = nullptr; // Will be matched in analyzeGotoStatements()
   currentFunctionGotos.push_back(info);
 
   return true;
@@ -1303,7 +1336,7 @@ bool CppToCVisitor::VisitLabelStmt(LabelStmt *LS) {
 // Analyze goto-label pairs and determine objects needing destruction
 void CppToCVisitor::analyzeGotoStatements(FunctionDecl *FD) {
   if (currentFunctionGotos.empty()) {
-    return;  // No gotos to analyze
+    return; // No gotos to analyze
   }
 
   llvm::outs() << "  [Goto] Analyzing " << currentFunctionGotos.size()
@@ -1328,7 +1361,8 @@ void CppToCVisitor::analyzeGotoStatements(FunctionDecl *FD) {
       llvm::outs() << "  [Goto] Forward jump to '" << labelName << "'\n";
 
       // Analyze which objects need destruction
-      info.liveObjects = analyzeObjectsForGoto(info.gotoStmt, info.targetLabel, FD);
+      info.liveObjects =
+          analyzeObjectsForGoto(info.gotoStmt, info.targetLabel, FD);
 
       llvm::outs() << "    -> " << info.liveObjects.size()
                    << " object(s) need destruction before goto\n";
@@ -1355,12 +1389,11 @@ bool CppToCVisitor::isForwardJump(GotoStmt *gotoStmt, LabelStmt *labelStmt) {
 }
 
 // Determine which objects are live at goto and out of scope at label
-std::vector<VarDecl*> CppToCVisitor::analyzeObjectsForGoto(
-    GotoStmt *gotoStmt,
-    LabelStmt *labelStmt,
-    FunctionDecl *FD) {
+std::vector<VarDecl *>
+CppToCVisitor::analyzeObjectsForGoto(GotoStmt *gotoStmt, LabelStmt *labelStmt,
+                                     FunctionDecl *FD) {
 
-  std::vector<VarDecl*> objectsToDestroy;
+  std::vector<VarDecl *> objectsToDestroy;
 
   if (!gotoStmt || !labelStmt || !FD) {
     return objectsToDestroy;
@@ -1380,7 +1413,8 @@ std::vector<VarDecl*> CppToCVisitor::analyzeObjectsForGoto(
     if (SM.isBeforeInTranslationUnit(varLoc, gotoLoc)) {
       // For forward jumps, all objects constructed before goto need destruction
       // (This is a simplified analysis - a full implementation would check
-      //  exact scope boundaries to determine if object is still in scope at label)
+      //  exact scope boundaries to determine if object is still in scope at
+      //  label)
       objectsToDestroy.push_back(VD);
       llvm::outs() << "      - Will destroy: " << VD->getNameAsString() << "\n";
     }
@@ -1403,7 +1437,8 @@ bool CppToCVisitor::VisitBreakStmt(BreakStmt *BS) {
   // Only track breaks inside loops (loopNestingLevel > 0)
   // Breaks in switch statements (loopNestingLevel == 0) are not tracked
   if (loopNestingLevel == 0) {
-    llvm::outs() << "  [Break] Detected break in switch (no destructor injection)\n";
+    llvm::outs()
+        << "  [Break] Detected break in switch (no destructor injection)\n";
     return true;
   }
 
@@ -1428,7 +1463,8 @@ bool CppToCVisitor::VisitContinueStmt(ContinueStmt *CS) {
 
   // Continue is only valid inside loops
   if (loopNestingLevel == 0) {
-    llvm::errs() << "  [Continue] Warning: Continue outside loop (should not happen)\n";
+    llvm::errs()
+        << "  [Continue] Warning: Continue outside loop (should not happen)\n";
     return true;
   }
 
@@ -1498,7 +1534,8 @@ bool CppToCVisitor::VisitCXXForRangeStmt(CXXForRangeStmt *FRS) {
   // This is just a marker visitor
 
   // Epic #193: Note - CXXForRangeStmt not yet supported by ACSLLoopAnnotator
-  // TODO: Add generateLoopAnnotations(const clang::CXXForRangeStmt *loop) overload to ACSLLoopAnnotator
+  // TODO: Add generateLoopAnnotations(const clang::CXXForRangeStmt *loop)
+  // overload to ACSLLoopAnnotator
 
   return true;
 }
@@ -1506,10 +1543,11 @@ bool CppToCVisitor::VisitCXXForRangeStmt(CXXForRangeStmt *FRS) {
 // Analyze break/continue statements and determine objects needing destruction
 void CppToCVisitor::analyzeBreakContinueStatements(FunctionDecl *FD) {
   if (currentFunctionBreaksContinues.empty()) {
-    return;  // No breaks/continues to analyze
+    return; // No breaks/continues to analyze
   }
 
-  llvm::outs() << "  [Break/Continue] Analyzing " << currentFunctionBreaksContinues.size()
+  llvm::outs() << "  [Break/Continue] Analyzing "
+               << currentFunctionBreaksContinues.size()
                << " break/continue statement(s)\n";
 
   // For each break/continue statement
@@ -1525,11 +1563,10 @@ void CppToCVisitor::analyzeBreakContinueStatements(FunctionDecl *FD) {
 }
 
 // Determine which objects are live at break/continue and need destruction
-std::vector<VarDecl*> CppToCVisitor::analyzeObjectsForBreakContinue(
-    Stmt *stmt,
-    FunctionDecl *FD) {
+std::vector<VarDecl *>
+CppToCVisitor::analyzeObjectsForBreakContinue(Stmt *stmt, FunctionDecl *FD) {
 
-  std::vector<VarDecl*> objectsToDestroy;
+  std::vector<VarDecl *> objectsToDestroy;
 
   if (!stmt || !FD) {
     return objectsToDestroy;
@@ -1538,12 +1575,13 @@ std::vector<VarDecl*> CppToCVisitor::analyzeObjectsForBreakContinue(
   SourceManager &SM = Context.getSourceManager();
   SourceLocation stmtLoc = stmt->getBeginLoc();
 
-  // For break/continue: destroy all loop-local objects that are live at this point
-  // This includes:
+  // For break/continue: destroy all loop-local objects that are live at this
+  // point This includes:
   // 1. Objects declared in the loop body before this statement
   // 2. Objects declared in nested scopes that are still alive
   //
-  // Simplified approach: Destroy all objects constructed before the break/continue
+  // Simplified approach: Destroy all objects constructed before the
+  // break/continue
 
   for (VarDecl *VD : currentFunctionObjectsToDestroy) {
     SourceLocation varLoc = VD->getBeginLoc();
@@ -1585,7 +1623,7 @@ bool CppToCVisitor::hasNonTrivialDestructor(QualType type) const {
   CXXRecordDecl *CXXRD = dyn_cast<CXXRecordDecl>(RD);
 
   if (!CXXRD) {
-    return false;  // C struct, no destructor
+    return false; // C struct, no destructor
   }
 
   // Check if destructor exists and is non-trivial
@@ -1597,7 +1635,7 @@ bool CppToCVisitor::hasNonTrivialDestructor(QualType type) const {
 }
 
 // Helper: Create destructor call for a variable
-CallExpr* CppToCVisitor::createDestructorCall(VarDecl *VD) {
+CallExpr *CppToCVisitor::createDestructorCall(VarDecl *VD) {
   QualType type = VD->getType();
   const RecordType *RT = type->getAs<RecordType>();
   if (!RT) {
@@ -1635,14 +1673,14 @@ CallExpr* CppToCVisitor::createDestructorCall(VarDecl *VD) {
 }
 
 // Helper: Inject destructors at scope exit
-void CppToCVisitor::injectDestructorsAtScopeExit(CompoundStmt *CS,
-                                                  const std::vector<VarDecl*> &vars) {
+void CppToCVisitor::injectDestructorsAtScopeExit(
+    CompoundStmt *CS, const std::vector<VarDecl *> &vars) {
   if (vars.empty()) {
     return;
   }
 
   // Get existing statements
-  std::vector<Stmt*> stmts;
+  std::vector<Stmt *> stmts;
   for (Stmt *S : CS->body()) {
     stmts.push_back(S);
   }
@@ -1667,8 +1705,9 @@ void CppToCVisitor::injectDestructorsAtScopeExit(CompoundStmt *CS,
 // ============================================================================
 
 // Main expression translation dispatcher
-Expr* CppToCVisitor::translateExpr(Expr *E) {
-  if (!E) return nullptr;
+Expr *CppToCVisitor::translateExpr(Expr *E) {
+  if (!E)
+    return nullptr;
 
   // Dispatch to specific translators based on expression type
   if (MemberExpr *ME = dyn_cast<MemberExpr>(E)) {
@@ -1692,7 +1731,7 @@ Expr* CppToCVisitor::translateExpr(Expr *E) {
 }
 
 // Translate DeclRefExpr - handles implicit 'this'
-Expr* CppToCVisitor::translateDeclRefExpr(DeclRefExpr *DRE) {
+Expr *CppToCVisitor::translateDeclRefExpr(DeclRefExpr *DRE) {
   ValueDecl *D = DRE->getDecl();
 
   // Check if this is an implicit member access (field without explicit this)
@@ -1702,10 +1741,7 @@ Expr* CppToCVisitor::translateDeclRefExpr(DeclRefExpr *DRE) {
       llvm::outs() << "  Translating implicit member access: " << FD->getName()
                    << " -> this->" << FD->getName() << "\n";
 
-      return Builder.arrowMember(
-        Builder.ref(currentThisParam),
-        FD->getName()
-      );
+      return Builder.arrowMember(Builder.ref(currentThisParam), FD->getName());
     }
   }
 
@@ -1714,7 +1750,7 @@ Expr* CppToCVisitor::translateDeclRefExpr(DeclRefExpr *DRE) {
 }
 
 // Translate MemberExpr - handles explicit member access
-Expr* CppToCVisitor::translateMemberExpr(MemberExpr *ME) {
+Expr *CppToCVisitor::translateMemberExpr(MemberExpr *ME) {
   Expr *Base = ME->getBase();
   ValueDecl *Member = ME->getMemberDecl();
 
@@ -1732,43 +1768,29 @@ Expr* CppToCVisitor::translateMemberExpr(MemberExpr *ME) {
 }
 
 // Translate CallExpr - handles function calls
-Expr* CppToCVisitor::translateCallExpr(CallExpr *CE) {
+Expr *CppToCVisitor::translateCallExpr(CallExpr *CE) {
   // Translate callee and arguments
   Expr *Callee = translateExpr(CE->getCallee());
 
-  std::vector<Expr*> args;
+  std::vector<Expr *> args;
   for (Expr *Arg : CE->arguments()) {
     args.push_back(translateExpr(Arg));
   }
 
   // Reconstruct call expression with translated parts
-  return CallExpr::Create(
-    Context,
-    Callee,
-    args,
-    CE->getType(),
-    CE->getValueKind(),
-    SourceLocation(),
-    FPOptionsOverride()
-  );
+  return CallExpr::Create(Context, Callee, args, CE->getType(),
+                          CE->getValueKind(), SourceLocation(),
+                          FPOptionsOverride());
 }
 
 // Translate BinaryOperator - handles assignments, arithmetic, etc.
-Expr* CppToCVisitor::translateBinaryOperator(BinaryOperator *BO) {
+Expr *CppToCVisitor::translateBinaryOperator(BinaryOperator *BO) {
   Expr *LHS = translateExpr(BO->getLHS());
   Expr *RHS = translateExpr(BO->getRHS());
 
   return BinaryOperator::Create(
-    Context,
-    LHS,
-    RHS,
-    BO->getOpcode(),
-    BO->getType(),
-    BO->getValueKind(),
-    BO->getObjectKind(),
-    SourceLocation(),
-    FPOptionsOverride()
-  );
+      Context, LHS, RHS, BO->getOpcode(), BO->getType(), BO->getValueKind(),
+      BO->getObjectKind(), SourceLocation(), FPOptionsOverride());
 }
 
 // ============================================================================
@@ -1776,8 +1798,9 @@ Expr* CppToCVisitor::translateBinaryOperator(BinaryOperator *BO) {
 // ============================================================================
 
 // Main statement translation dispatcher
-Stmt* CppToCVisitor::translateStmt(Stmt *S) {
-  if (!S) return nullptr;
+Stmt *CppToCVisitor::translateStmt(Stmt *S) {
+  if (!S)
+    return nullptr;
 
   // Dispatch to specific translators
   if (ReturnStmt *RS = dyn_cast<ReturnStmt>(S)) {
@@ -1799,7 +1822,7 @@ Stmt* CppToCVisitor::translateStmt(Stmt *S) {
 
 // Translate return statements
 // Story #45: Modified to inject destructors before early returns
-Stmt* CppToCVisitor::translateReturnStmt(ReturnStmt *RS) {
+Stmt *CppToCVisitor::translateReturnStmt(ReturnStmt *RS) {
   // If we have objects to destroy at this return point, we need to
   // inject destructor calls before the return
   // This creates a compound statement: { dtors...; return; }
@@ -1821,16 +1844,16 @@ Stmt* CppToCVisitor::translateReturnStmt(ReturnStmt *RS) {
   return Builder.returnStmt();
 }
 
-// Story #45: Helper - removed inline class since it needs access to private members
-// The injection logic is now directly in translateCompoundStmt
+// Story #45: Helper - removed inline class since it needs access to private
+// members The injection logic is now directly in translateCompoundStmt
 
 // Translate compound statements (blocks)
 // Story #46: Enhanced with scope tracking for nested destructor injection
-Stmt* CppToCVisitor::translateCompoundStmt(CompoundStmt *CS) {
+Stmt *CppToCVisitor::translateCompoundStmt(CompoundStmt *CS) {
   // Story #46: Enter this scope
   enterScope(CS);
 
-  std::vector<Stmt*> translatedStmts;
+  std::vector<Stmt *> translatedStmts;
 
   // Translate all statements in the compound statement
   for (Stmt *S : CS->body()) {
@@ -1850,7 +1873,8 @@ Stmt* CppToCVisitor::translateCompoundStmt(CompoundStmt *CS) {
     // Story #45: Check if this statement contains a return that needs injection
     if (ReturnStmt *RS = dyn_cast<ReturnStmt>(S)) {
       // Analyze live objects at this return point
-      std::vector<VarDecl*> liveObjects = analyzeLiveObjectsAtReturn(RS, nullptr);
+      std::vector<VarDecl *> liveObjects =
+          analyzeLiveObjectsAtReturn(RS, nullptr);
 
       if (!liveObjects.empty()) {
         llvm::outs() << "  Injecting " << liveObjects.size()
@@ -1881,7 +1905,8 @@ Stmt* CppToCVisitor::translateCompoundStmt(CompoundStmt *CS) {
                          << " destructors before break\n";
 
             // Inject destructors in reverse order (LIFO)
-            for (auto it = info.liveObjects.rbegin(); it != info.liveObjects.rend(); ++it) {
+            for (auto it = info.liveObjects.rbegin();
+                 it != info.liveObjects.rend(); ++it) {
               CallExpr *DtorCall = createDestructorCall(*it);
               if (DtorCall) {
                 translatedStmts.push_back(DtorCall);
@@ -1890,7 +1915,7 @@ Stmt* CppToCVisitor::translateCompoundStmt(CompoundStmt *CS) {
               }
             }
           }
-          break;  // Found the matching break info
+          break; // Found the matching break info
         }
       }
 
@@ -1908,7 +1933,8 @@ Stmt* CppToCVisitor::translateCompoundStmt(CompoundStmt *CS) {
                          << " destructors before continue\n";
 
             // Inject destructors in reverse order (LIFO)
-            for (auto it = info.liveObjects.rbegin(); it != info.liveObjects.rend(); ++it) {
+            for (auto it = info.liveObjects.rbegin();
+                 it != info.liveObjects.rend(); ++it) {
               CallExpr *DtorCall = createDestructorCall(*it);
               if (DtorCall) {
                 translatedStmts.push_back(DtorCall);
@@ -1917,7 +1943,7 @@ Stmt* CppToCVisitor::translateCompoundStmt(CompoundStmt *CS) {
               }
             }
           }
-          break;  // Found the matching continue info
+          break; // Found the matching continue info
         }
       }
 
@@ -1949,9 +1975,11 @@ Stmt* CppToCVisitor::translateCompoundStmt(CompoundStmt *CS) {
   // LIFO order: reverse of declaration order
   if (!exitedScope.objects.empty()) {
     llvm::outs() << "  [Scope] Injecting " << exitedScope.objects.size()
-                 << " destructor(s) at end of scope depth " << exitedScope.depth << "\n";
+                 << " destructor(s) at end of scope depth " << exitedScope.depth
+                 << "\n";
 
-    for (auto it = exitedScope.objects.rbegin(); it != exitedScope.objects.rend(); ++it) {
+    for (auto it = exitedScope.objects.rbegin();
+         it != exitedScope.objects.rend(); ++it) {
       VarDecl *VD = *it;
       CallExpr *DtorCall = createDestructorCall(VD);
       if (DtorCall) {
@@ -1966,9 +1994,10 @@ Stmt* CppToCVisitor::translateCompoundStmt(CompoundStmt *CS) {
   // Only inject if we're at depth 0 (function body) and have no scope stack
   // This maintains backward compatibility with Stories #44 and #45
   if (scopeStack.empty() && !currentFunctionObjectsToDestroy.empty()) {
-    // This is the function body exiting - but objects are already handled by scope tracking
-    // We can skip this if scope tracking handled them
-    llvm::outs() << "  [Legacy] Function-level destruction already handled by scope tracking\n";
+    // This is the function body exiting - but objects are already handled by
+    // scope tracking We can skip this if scope tracking handled them
+    llvm::outs() << "  [Legacy] Function-level destruction already handled by "
+                    "scope tracking\n";
   }
 
   return Builder.block(translatedStmts);
@@ -1982,7 +2011,8 @@ Stmt* CppToCVisitor::translateCompoundStmt(CompoundStmt *CS) {
  * Story #62: Check if class needs implicit default constructor
  *
  * Returns true if:
- * - No user-declared constructors exist (hasUserDeclaredConstructor() returns false)
+ * - No user-declared constructors exist (hasUserDeclaredConstructor() returns
+ * false)
  */
 bool CppToCVisitor::needsImplicitDefaultConstructor(CXXRecordDecl *D) const {
   // If user declared ANY constructor, no implicit default constructor
@@ -2000,7 +2030,7 @@ bool CppToCVisitor::needsImplicitCopyConstructor(CXXRecordDecl *D) const {
   // Check if user declared a copy constructor (not compiler-generated)
   for (CXXConstructorDecl *Ctor : D->ctors()) {
     if (Ctor->isCopyConstructor() && !Ctor->isImplicit()) {
-      return false;  // User declared copy constructor exists
+      return false; // User declared copy constructor exists
     }
   }
 
@@ -2021,8 +2051,10 @@ void CppToCVisitor::generateImplicitConstructors(CXXRecordDecl *D) {
     FunctionDecl *DefaultCtor = generateDefaultConstructor(D);
     if (DefaultCtor) {
       // Store in constructor map for retrieval by tests
-      // Use the FunctionDecl pointer cast as key (implicit ctors don't have CXXConstructorDecl)
-      ctorMap[reinterpret_cast<CXXConstructorDecl*>(DefaultCtor)] = DefaultCtor;
+      // Use the FunctionDecl pointer cast as key (implicit ctors don't have
+      // CXXConstructorDecl)
+      ctorMap[reinterpret_cast<CXXConstructorDecl *>(DefaultCtor)] =
+          DefaultCtor;
     }
   }
 
@@ -2032,8 +2064,9 @@ void CppToCVisitor::generateImplicitConstructors(CXXRecordDecl *D) {
     FunctionDecl *CopyCtor = generateCopyConstructor(D);
     if (CopyCtor) {
       // Store in constructor map for retrieval by tests
-      // Use the FunctionDecl pointer cast as key (implicit ctors don't have CXXConstructorDecl)
-      ctorMap[reinterpret_cast<CXXConstructorDecl*>(CopyCtor)] = CopyCtor;
+      // Use the FunctionDecl pointer cast as key (implicit ctors don't have
+      // CXXConstructorDecl)
+      ctorMap[reinterpret_cast<CXXConstructorDecl *>(CopyCtor)] = CopyCtor;
     }
   }
 }
@@ -2046,16 +2079,17 @@ void CppToCVisitor::generateImplicitConstructors(CXXRecordDecl *D) {
  * - Calls default constructors for class-type members
  * - Calls base class default constructor if derived
  */
-FunctionDecl* CppToCVisitor::generateDefaultConstructor(CXXRecordDecl *D) {
+FunctionDecl *CppToCVisitor::generateDefaultConstructor(CXXRecordDecl *D) {
   // Get the C struct for this class
   RecordDecl *CStruct = cppToCMap[D];
   if (!CStruct) {
-    llvm::outs() << "  Warning: C struct not found for default ctor generation\n";
+    llvm::outs()
+        << "  Warning: C struct not found for default ctor generation\n";
     return nullptr;
   }
 
   // Build parameter list: only 'this' parameter
-  std::vector<ParmVarDecl*> params;
+  std::vector<ParmVarDecl *> params;
   QualType thisType = Builder.ptrType(Context.getRecordType(CStruct));
   ParmVarDecl *thisParam = Builder.param(thisType, "this");
   params.push_back(thisParam);
@@ -2064,15 +2098,11 @@ FunctionDecl* CppToCVisitor::generateDefaultConstructor(CXXRecordDecl *D) {
   std::string funcName = D->getName().str() + "__ctor_default";
 
   // Create C init function
-  FunctionDecl *CFunc = Builder.funcDecl(
-    funcName,
-    Builder.voidType(),
-    params,
-    nullptr
-  );
+  FunctionDecl *CFunc =
+      Builder.funcDecl(funcName, Builder.voidType(), params, nullptr);
 
   // Build function body
-  std::vector<Stmt*> stmts;
+  std::vector<Stmt *> stmts;
 
   // Set translation context
   currentThisParam = thisParam;
@@ -2082,10 +2112,12 @@ FunctionDecl* CppToCVisitor::generateDefaultConstructor(CXXRecordDecl *D) {
   if (D->getNumBases() > 0) {
     for (const CXXBaseSpecifier &Base : D->bases()) {
       CXXRecordDecl *BaseClass = Base.getType()->getAsCXXRecordDecl();
-      if (!BaseClass) continue;
+      if (!BaseClass)
+        continue;
 
       std::string baseCtorName = BaseClass->getName().str() + "__ctor_default";
-      llvm::outs() << "    TODO: Call base default constructor: " << baseCtorName << "\n";
+      llvm::outs() << "    TODO: Call base default constructor: "
+                   << baseCtorName << "\n";
       // TODO: Look up base constructor and create call expression
       // For now, this is left for Story #63 (Complete Constructor Chaining)
     }
@@ -2096,16 +2128,15 @@ FunctionDecl* CppToCVisitor::generateDefaultConstructor(CXXRecordDecl *D) {
     QualType fieldType = Field->getType();
 
     // Create this->field member expression
-    MemberExpr *ThisMember = Builder.arrowMember(
-      Builder.ref(thisParam),
-      Field->getName()
-    );
+    MemberExpr *ThisMember =
+        Builder.arrowMember(Builder.ref(thisParam), Field->getName());
 
     if (fieldType->isRecordType()) {
       // Class-type member: call default constructor
       CXXRecordDecl *FieldClass = fieldType->getAsCXXRecordDecl();
       if (FieldClass) {
-        std::string fieldCtorName = FieldClass->getName().str() + "__ctor_default";
+        std::string fieldCtorName =
+            FieldClass->getName().str() + "__ctor_default";
 
         // Look up the member's default constructor
         // Try implicit name first (_default suffix)
@@ -2123,8 +2154,10 @@ FunctionDecl* CppToCVisitor::generateDefaultConstructor(CXXRecordDecl *D) {
           for (CXXConstructorDecl *Ctor : FieldClass->ctors()) {
             if (Ctor->isDefaultConstructor() && !Ctor->isImplicit()) {
               // Translate this explicit default constructor now
-              std::string explicitCtorName = FieldClass->getName().str() + "__ctor";
-              llvm::outs() << "    On-demand translation of " << explicitCtorName << "\n";
+              std::string explicitCtorName =
+                  FieldClass->getName().str() + "__ctor";
+              llvm::outs() << "    On-demand translation of "
+                           << explicitCtorName << "\n";
               VisitCXXConstructorDecl(Ctor);
               MemberCtor = getCtor(explicitCtorName);
               break;
@@ -2134,7 +2167,7 @@ FunctionDecl* CppToCVisitor::generateDefaultConstructor(CXXRecordDecl *D) {
 
         if (MemberCtor) {
           // Create call: MemberClass__ctor_default(&this->member);
-          std::vector<Expr*> args;
+          std::vector<Expr *> args;
 
           // Address of this->member
           Expr *memberAddr = Builder.addrOf(ThisMember);
@@ -2144,10 +2177,13 @@ FunctionDecl* CppToCVisitor::generateDefaultConstructor(CXXRecordDecl *D) {
           CallExpr *memberCtorCall = Builder.call(MemberCtor, args);
           if (memberCtorCall) {
             stmts.push_back(memberCtorCall);
-            llvm::outs() << "    Calling member default constructor: " << fieldCtorName << " for field " << Field->getName() << "\n";
+            llvm::outs() << "    Calling member default constructor: "
+                         << fieldCtorName << " for field " << Field->getName()
+                         << "\n";
           }
         } else {
-          llvm::outs() << "    Warning: Member default constructor not found: " << fieldCtorName << "\n";
+          llvm::outs() << "    Warning: Member default constructor not found: "
+                       << fieldCtorName << "\n";
         }
       }
     } else if (fieldType->isPointerType()) {
@@ -2182,7 +2218,7 @@ FunctionDecl* CppToCVisitor::generateDefaultConstructor(CXXRecordDecl *D) {
  * - Performs shallow copy for pointer members
  * - Calls base class copy constructor if derived
  */
-FunctionDecl* CppToCVisitor::generateCopyConstructor(CXXRecordDecl *D) {
+FunctionDecl *CppToCVisitor::generateCopyConstructor(CXXRecordDecl *D) {
   // Get the C struct for this class
   RecordDecl *CStruct = cppToCMap[D];
   if (!CStruct) {
@@ -2191,16 +2227,15 @@ FunctionDecl* CppToCVisitor::generateCopyConstructor(CXXRecordDecl *D) {
   }
 
   // Build parameter list: this + other
-  std::vector<ParmVarDecl*> params;
+  std::vector<ParmVarDecl *> params;
 
   QualType thisType = Builder.ptrType(Context.getRecordType(CStruct));
   ParmVarDecl *thisParam = Builder.param(thisType, "this");
   params.push_back(thisParam);
 
   // const struct Class *other
-  QualType otherType = Builder.ptrType(
-    Context.getConstType(Context.getRecordType(CStruct))
-  );
+  QualType otherType =
+      Builder.ptrType(Context.getConstType(Context.getRecordType(CStruct)));
   ParmVarDecl *otherParam = Builder.param(otherType, "other");
   params.push_back(otherParam);
 
@@ -2208,15 +2243,11 @@ FunctionDecl* CppToCVisitor::generateCopyConstructor(CXXRecordDecl *D) {
   std::string funcName = D->getName().str() + "__ctor_copy";
 
   // Create C init function
-  FunctionDecl *CFunc = Builder.funcDecl(
-    funcName,
-    Builder.voidType(),
-    params,
-    nullptr
-  );
+  FunctionDecl *CFunc =
+      Builder.funcDecl(funcName, Builder.voidType(), params, nullptr);
 
   // Build function body
-  std::vector<Stmt*> stmts;
+  std::vector<Stmt *> stmts;
 
   // Set translation context
   currentThisParam = thisParam;
@@ -2226,10 +2257,12 @@ FunctionDecl* CppToCVisitor::generateCopyConstructor(CXXRecordDecl *D) {
   if (D->getNumBases() > 0) {
     for (const CXXBaseSpecifier &Base : D->bases()) {
       CXXRecordDecl *BaseClass = Base.getType()->getAsCXXRecordDecl();
-      if (!BaseClass) continue;
+      if (!BaseClass)
+        continue;
 
       std::string baseCopyCtorName = BaseClass->getName().str() + "__ctor_copy";
-      llvm::outs() << "    TODO: Call base copy constructor: " << baseCopyCtorName << "\n";
+      llvm::outs() << "    TODO: Call base copy constructor: "
+                   << baseCopyCtorName << "\n";
     }
   }
 
@@ -2238,21 +2271,18 @@ FunctionDecl* CppToCVisitor::generateCopyConstructor(CXXRecordDecl *D) {
     QualType fieldType = Field->getType();
 
     // Create this->field and other->field member expressions
-    MemberExpr *ThisMember = Builder.arrowMember(
-      Builder.ref(thisParam),
-      Field->getName()
-    );
+    MemberExpr *ThisMember =
+        Builder.arrowMember(Builder.ref(thisParam), Field->getName());
 
-    MemberExpr *OtherMember = Builder.arrowMember(
-      Builder.ref(otherParam),
-      Field->getName()
-    );
+    MemberExpr *OtherMember =
+        Builder.arrowMember(Builder.ref(otherParam), Field->getName());
 
     if (fieldType->isRecordType()) {
       // Class-type member: call copy constructor
       CXXRecordDecl *FieldClass = fieldType->getAsCXXRecordDecl();
       if (FieldClass) {
-        std::string fieldCopyCtorName = FieldClass->getName().str() + "__ctor_copy";
+        std::string fieldCopyCtorName =
+            FieldClass->getName().str() + "__ctor_copy";
 
         // Look up the member's copy constructor
         // Try implicit name first (_copy suffix)
@@ -2264,15 +2294,18 @@ FunctionDecl* CppToCVisitor::generateCopyConstructor(CXXRecordDecl *D) {
           for (CXXConstructorDecl *Ctor : FieldClass->ctors()) {
             if (Ctor->isCopyConstructor() && !Ctor->isImplicit()) {
               // Translate this explicit copy constructor now
-              llvm::outs() << "    On-demand translation of explicit copy constructor\n";
+              llvm::outs()
+                  << "    On-demand translation of explicit copy constructor\n";
               VisitCXXConstructorDecl(Ctor);
               // After translation, look it up directly using the key
               auto it = ctorMap.find(Ctor);
               if (it != ctorMap.end()) {
                 MemberCopyCtor = it->second;
-                llvm::outs() << "    Found copy constructor: " << MemberCopyCtor->getNameAsString() << "\n";
+                llvm::outs() << "    Found copy constructor: "
+                             << MemberCopyCtor->getNameAsString() << "\n";
               } else {
-                llvm::outs() << "    Warning: Translated copy constructor not found in map\n";
+                llvm::outs() << "    Warning: Translated copy constructor not "
+                                "found in map\n";
               }
               break;
             }
@@ -2281,7 +2314,7 @@ FunctionDecl* CppToCVisitor::generateCopyConstructor(CXXRecordDecl *D) {
 
         if (MemberCopyCtor) {
           // Create call: MemberClass__ctor_copy(&this->member, &other->member);
-          std::vector<Expr*> args;
+          std::vector<Expr *> args;
 
           // First arg: address of this->member
           Expr *thisMemberAddr = Builder.addrOf(ThisMember);
@@ -2295,10 +2328,13 @@ FunctionDecl* CppToCVisitor::generateCopyConstructor(CXXRecordDecl *D) {
           CallExpr *memberCopyCall = Builder.call(MemberCopyCtor, args);
           if (memberCopyCall) {
             stmts.push_back(memberCopyCall);
-            llvm::outs() << "    Calling member copy constructor: " << MemberCopyCtor->getNameAsString() << " for field " << Field->getName() << "\n";
+            llvm::outs() << "    Calling member copy constructor: "
+                         << MemberCopyCtor->getNameAsString() << " for field "
+                         << Field->getName() << "\n";
           }
         } else {
-          llvm::outs() << "    Warning: Member copy constructor not found: " << fieldCopyCtorName << "\n";
+          llvm::outs() << "    Warning: Member copy constructor not found: "
+                       << fieldCopyCtorName << "\n";
         }
       }
     } else {
@@ -2341,8 +2377,9 @@ bool CppToCVisitor::VisitLinkageSpecDecl(clang::LinkageSpecDecl *LS) {
   }
 
   // Optional: Track entering extern "C" or extern "C++" blocks for debugging
-  // TODO: Fix enum access for LLVM 15 - LinkageSpecDecl::LanguageIDs may have different API
-  // if (LS->getLanguage() == LinkageSpecDecl::LanguageIDs::lang_c) {
+  // TODO: Fix enum access for LLVM 15 - LinkageSpecDecl::LanguageIDs may have
+  // different API if (LS->getLanguage() ==
+  // LinkageSpecDecl::LanguageIDs::lang_c) {
   //   // This is an extern "C" block
   //   // In the future, we could add logging here if needed
   //   // llvm::outs() << "Entering extern \"C\" block\n";
@@ -2360,17 +2397,19 @@ bool CppToCVisitor::VisitLinkageSpecDecl(clang::LinkageSpecDecl *LS) {
 // ============================================================================
 
 /**
- * @brief Visit C++ try-catch statements and translate to setjmp/longjmp control flow
+ * @brief Visit C++ try-catch statements and translate to setjmp/longjmp control
+ * flow
  *
- * This method is called automatically by Clang's AST traversal when encountering
- * C++ try-catch blocks. It uses TryCatchTransformer to generate:
+ * This method is called automatically by Clang's AST traversal when
+ * encountering C++ try-catch blocks. It uses TryCatchTransformer to generate:
  * - Exception frame structure
  * - setjmp guard for catching exceptions
  * - Catch handler dispatch with type matching
  * - Frame push/pop operations
  *
  * @param S The CXXTryStmt AST node
- * @return false to prevent default traversal (we handle the try-catch ourselves)
+ * @return false to prevent default traversal (we handle the try-catch
+ * ourselves)
  */
 bool CppToCVisitor::VisitCXXTryStmt(CXXTryStmt *S) {
   if (!S) {
@@ -2380,27 +2419,30 @@ bool CppToCVisitor::VisitCXXTryStmt(CXXTryStmt *S) {
   llvm::outs() << "Translating try-catch block...\n";
 
   // Generate unique frame and action table names
-  std::string frameVarName = "frame_" + std::to_string(m_exceptionFrameCounter++);
-  std::string actionsTableName = "actions_table_" + std::to_string(m_tryBlockCounter++);
+  std::string frameVarName =
+      "frame_" + std::to_string(m_exceptionFrameCounter++);
+  std::string actionsTableName =
+      "actions_table_" + std::to_string(m_tryBlockCounter++);
 
   // Use TryCatchTransformer to generate complete try-catch code
   std::string transformedCode = m_tryCatchTransformer->transformTryCatch(
-    S, frameVarName, actionsTableName);
+      S, frameVarName, actionsTableName);
 
   // Output the transformed code
   llvm::outs() << transformedCode;
 
   llvm::outs() << "Try-catch block translated successfully\n";
 
-  // Return false to prevent default traversal (we handle the try-catch block ourselves)
+  // Return false to prevent default traversal (we handle the try-catch block
+  // ourselves)
   return false;
 }
 
 /**
  * @brief Visit C++ throw expressions and translate to cxx_throw runtime calls
  *
- * This method is called automatically by Clang's AST traversal when encountering
- * C++ throw expressions. It uses ThrowTranslator to generate:
+ * This method is called automatically by Clang's AST traversal when
+ * encountering C++ throw expressions. It uses ThrowTranslator to generate:
  * - Exception object allocation (malloc)
  * - Constructor call with arguments
  * - Type info extraction
@@ -2442,8 +2484,8 @@ bool CppToCVisitor::VisitCXXThrowExpr(CXXThrowExpr *E) {
 /**
  * @brief Visit C++ typeid expressions and translate to type_info retrieval
  *
- * This method is called automatically by Clang's AST traversal when encountering
- * C++ typeid expressions. It uses TypeidTranslator to generate:
+ * This method is called automatically by Clang's AST traversal when
+ * encountering C++ typeid expressions. It uses TypeidTranslator to generate:
  * - Polymorphic typeid: vtable lookup (ptr->vptr->type_info)
  * - Static typeid: compile-time constant (&__ti_ClassName)
  *
@@ -2487,10 +2529,12 @@ bool CppToCVisitor::VisitCXXTypeidExpr(CXXTypeidExpr *E) {
 }
 
 /**
- * @brief Visit C++ dynamic_cast expressions and translate to cxx_dynamic_cast calls
+ * @brief Visit C++ dynamic_cast expressions and translate to cxx_dynamic_cast
+ * calls
  *
- * This method is called automatically by Clang's AST traversal when encountering
- * C++ dynamic_cast expressions. It uses DynamicCastTranslator to generate:
+ * This method is called automatically by Clang's AST traversal when
+ * encountering C++ dynamic_cast expressions. It uses DynamicCastTranslator to
+ * generate:
  * - Runtime type checking via cxx_dynamic_cast()
  * - Returns NULL on failed cast
  * - Handles single and multiple inheritance hierarchies
@@ -2514,14 +2558,16 @@ bool CppToCVisitor::VisitCXXDynamicCastExpr(CXXDynamicCastExpr *E) {
 
   // Check if RTTI is enabled
   if (!shouldEnableRTTI()) {
-    llvm::errs() << "Error: dynamic_cast expression requires --enable-rtti flag\n";
+    llvm::errs()
+        << "Error: dynamic_cast expression requires --enable-rtti flag\n";
     return true;
   }
 
   llvm::outs() << "Translating dynamic_cast expression...\n";
 
   // Translate using DynamicCastTranslator
-  std::string dynamicCastCode = m_dynamicCastTranslator->translateDynamicCast(E);
+  std::string dynamicCastCode =
+      m_dynamicCastTranslator->translateDynamicCast(E);
 
   // Output the translated code
   if (!dynamicCastCode.empty()) {
@@ -2540,9 +2586,9 @@ bool CppToCVisitor::VisitCXXDynamicCastExpr(CXXDynamicCastExpr *E) {
 // Epic #193: ACSL Annotation Generation Implementation
 // ============================================================================
 
-void CppToCVisitor::emitACSL(const std::string& acsl, ACSLOutputMode mode) {
+void CppToCVisitor::emitACSL(const std::string &acsl, ACSLOutputMode mode) {
   if (acsl.empty()) {
-    return;  // Nothing to emit
+    return; // Nothing to emit
   }
 
   if (mode == ACSLOutputMode::Inline) {
@@ -2550,14 +2596,15 @@ void CppToCVisitor::emitACSL(const std::string& acsl, ACSLOutputMode mode) {
     llvm::outs() << "/*@\n" << acsl << "\n*/\n";
   } else {
     // For separate mode, store the annotation for later output
-    // Note: Actual file writing will be handled by FileOutputManager or Consumer
-    // For now, we just output to stdout with a marker
+    // Note: Actual file writing will be handled by FileOutputManager or
+    // Consumer For now, we just output to stdout with a marker
     llvm::outs() << "/* ACSL (separate mode): */\n";
     llvm::outs() << "/*@\n" << acsl << "\n*/\n";
   }
 }
 
-void CppToCVisitor::storeACSLAnnotation(const std::string& key, const std::string& acsl) {
+void CppToCVisitor::storeACSLAnnotation(const std::string &key,
+                                        const std::string &acsl) {
   if (!acsl.empty()) {
     m_acslAnnotations[key] = acsl;
   }
@@ -2570,9 +2617,9 @@ void CppToCVisitor::storeACSLAnnotation(const std::string& key, const std::strin
 /**
  * @brief Visit class template declarations
  *
- * ClassTemplateDecl is the template itself (e.g., template<typename T> class Stack).
- * We don't generate code for the template directly. Instead, we let TemplateExtractor
- * find all specializations during AST traversal.
+ * ClassTemplateDecl is the template itself (e.g., template<typename T> class
+ * Stack). We don't generate code for the template directly. Instead, we let
+ * TemplateExtractor find all specializations during AST traversal.
  *
  * This visitor just marks that we've seen a template declaration.
  */
@@ -2589,9 +2636,9 @@ bool CppToCVisitor::VisitClassTemplateDecl(ClassTemplateDecl *D) {
 /**
  * @brief Visit function template declarations
  *
- * FunctionTemplateDecl is the template itself (e.g., template<typename T> T max(T, T)).
- * We don't generate code for the template directly. TemplateExtractor will find
- * all specializations.
+ * FunctionTemplateDecl is the template itself (e.g., template<typename T> T
+ * max(T, T)). We don't generate code for the template directly.
+ * TemplateExtractor will find all specializations.
  */
 bool CppToCVisitor::VisitFunctionTemplateDecl(FunctionTemplateDecl *D) {
   if (!D || !shouldMonomorphizeTemplates()) {
@@ -2610,19 +2657,22 @@ bool CppToCVisitor::VisitFunctionTemplateDecl(FunctionTemplateDecl *D) {
  * (e.g., Stack<int>, Stack<double>). The TemplateExtractor will collect these
  * during traversal, and we'll process them in processTemplateInstantiations().
  */
-bool CppToCVisitor::VisitClassTemplateSpecializationDecl(ClassTemplateSpecializationDecl *D) {
+bool CppToCVisitor::VisitClassTemplateSpecializationDecl(
+    ClassTemplateSpecializationDecl *D) {
   if (!D || !shouldMonomorphizeTemplates()) {
     return true;
   }
 
   // Log the specialization (TemplateExtractor handles collection)
   std::string templateName = D->getSpecializedTemplate()->getNameAsString();
-  llvm::outs() << "Found class template specialization: " << templateName << "<";
+  llvm::outs() << "Found class template specialization: " << templateName
+               << "<";
 
-  const TemplateArgumentList& args = D->getTemplateArgs();
+  const TemplateArgumentList &args = D->getTemplateArgs();
   for (unsigned i = 0; i < args.size(); ++i) {
-    if (i > 0) llvm::outs() << ", ";
-    const TemplateArgument& arg = args[i];
+    if (i > 0)
+      llvm::outs() << ", ";
+    const TemplateArgument &arg = args[i];
     if (arg.getKind() == TemplateArgument::Type) {
       llvm::outs() << arg.getAsType().getAsString();
     } else if (arg.getKind() == TemplateArgument::Integral) {
@@ -2658,8 +2708,10 @@ void CppToCVisitor::processTemplateInstantiations(TranslationUnitDecl *TU) {
   auto classInsts = m_templateExtractor->getClassInstantiations();
   auto funcInsts = m_templateExtractor->getFunctionInstantiations();
 
-  llvm::outs() << "Found " << classInsts.size() << " class template instantiation(s)\n";
-  llvm::outs() << "Found " << funcInsts.size() << " function template instantiation(s)\n";
+  llvm::outs() << "Found " << classInsts.size()
+               << " class template instantiation(s)\n";
+  llvm::outs() << "Found " << funcInsts.size()
+               << " function template instantiation(s)\n";
 
   // Check instantiation limit
   unsigned int limit = getTemplateInstantiationLimit();
@@ -2669,18 +2721,23 @@ void CppToCVisitor::processTemplateInstantiations(TranslationUnitDecl *TU) {
     llvm::errs() << "Error: Template instantiation limit exceeded!\n";
     llvm::errs() << "  Found: " << totalInsts << " instantiations\n";
     llvm::errs() << "  Limit: " << limit << "\n";
-    llvm::errs() << "  Use --template-instantiation-limit=<N> to increase the limit\n";
+    llvm::errs()
+        << "  Use --template-instantiation-limit=<N> to increase the limit\n";
     return;
   }
 
   std::ostringstream codeStream;
-  codeStream << "\n// ============================================================================\n";
+  codeStream << "\n// "
+                "=============================================================="
+                "==============\n";
   codeStream << "// Monomorphized Template Code (Phase 11 - v2.4.0)\n";
-  codeStream << "// ============================================================================\n\n";
+  codeStream << "// "
+                "=============================================================="
+                "==============\n\n";
 
   // Step 2: Process class template instantiations
   llvm::outs() << "\nMonomorphizing class templates:\n";
-  for (auto* classInst : classInsts) {
+  for (auto *classInst : classInsts) {
     // Generate unique key for deduplication
     std::string key = m_templateExtractor->getClassInstantiationKey(classInst);
 
@@ -2702,9 +2759,10 @@ void CppToCVisitor::processTemplateInstantiations(TranslationUnitDecl *TU) {
 
   // Step 3: Process function template instantiations
   llvm::outs() << "\nMonomorphizing function templates:\n";
-  for (auto* funcInst : funcInsts) {
+  for (auto *funcInst : funcInsts) {
     // Generate unique key for deduplication
-    std::string key = m_templateExtractor->getFunctionInstantiationKey(funcInst);
+    std::string key =
+        m_templateExtractor->getFunctionInstantiationKey(funcInst);
 
     // Check if already processed (deduplication)
     if (!m_templateTracker->addInstantiation(key)) {
@@ -2727,7 +2785,8 @@ void CppToCVisitor::processTemplateInstantiations(TranslationUnitDecl *TU) {
 
   llvm::outs() << "\n========================================\n";
   llvm::outs() << "Template Monomorphization Complete\n";
-  llvm::outs() << "  Unique instantiations: " << m_templateTracker->getCount() << "\n";
+  llvm::outs() << "  Unique instantiations: " << m_templateTracker->getCount()
+               << "\n";
   llvm::outs() << "========================================\n\n";
 
   // Output the generated code
