@@ -7,23 +7,40 @@
 // - make_unique support
 // - Custom deleters
 //
-// Target: 25-30 tests
+// Migrated to Google Test Framework
+// Total: 30 tests
 
+#include <gtest/gtest.h>
 #include "clang/Tooling/Tooling.h"
-#include <cassert>
-#include <iostream>
 #include <string>
 
 using namespace clang;
 
 // ============================================================================
+// Test Fixture for Smart Pointer Tests
+// ============================================================================
+
+class UniquePtrTest : public ::testing::Test {
+protected:
+    void SetUp() override {
+        // Common setup if needed
+    }
+
+    void TearDown() override {
+        // Common cleanup if needed
+    }
+
+    // Helper method to build AST from code
+    std::unique_ptr<clang::ASTUnit> buildAST(const char* code) {
+        return tooling::buildASTFromCode(code);
+    }
+};
+
+// ============================================================================
 // Group 1: Basic unique_ptr Creation and Ownership (8 tests)
 // ============================================================================
 
-// Test 1: Basic unique_ptr constructor
-void test_unique_ptr_basic_constructor() {
-    std::cout << "Running test_unique_ptr_basic_constructor... ";
-
+TEST_F(UniquePtrTest, BasicConstructor) {
     const char *Code = R"(
         #include <memory>
 
@@ -37,8 +54,8 @@ void test_unique_ptr_basic_constructor() {
         }
     )";
 
-    auto AST = tooling::buildASTFromCode(Code);
-    assert(AST && "AST should be built");
+    auto AST = buildAST(Code);
+    ASSERT_NE(AST, nullptr) << "AST should be built";
 
     // Expected C translation:
     // struct Widget { int value; };
@@ -47,14 +64,9 @@ void test_unique_ptr_basic_constructor() {
     //     struct Widget* ptr = Widget_new();
     //     Widget_destroy(ptr);  // at scope exit
     // }
-
-    std::cout << "✓" << std::endl;
 }
 
-// Test 2: unique_ptr with nullptr
-void test_unique_ptr_nullptr_initialization() {
-    std::cout << "Running test_unique_ptr_nullptr_initialization... ";
-
+TEST_F(UniquePtrTest, NullptrInitialization) {
     const char *Code = R"(
         #include <memory>
 
@@ -66,21 +78,16 @@ void test_unique_ptr_nullptr_initialization() {
         }
     )";
 
-    auto AST = tooling::buildASTFromCode(Code);
-    assert(AST && "AST should be built");
+    auto AST = buildAST(Code);
+    ASSERT_NE(AST, nullptr) << "AST should be built";
 
     // Expected C translation:
     // struct Widget* ptr = NULL;
     // struct Widget* ptr2 = NULL;
     // No destructor call needed for null pointers
-
-    std::cout << "✓" << std::endl;
 }
 
-// Test 3: unique_ptr get() method
-void test_unique_ptr_get_method() {
-    std::cout << "Running test_unique_ptr_get_method... ";
-
+TEST_F(UniquePtrTest, GetMethod) {
     const char *Code = R"(
         #include <memory>
 
@@ -95,20 +102,15 @@ void test_unique_ptr_get_method() {
         }
     )";
 
-    auto AST = tooling::buildASTFromCode(Code);
-    assert(AST && "AST should be built");
+    auto AST = buildAST(Code);
+    ASSERT_NE(AST, nullptr) << "AST should be built";
 
     // Expected C translation:
     // struct Widget* ptr = Widget_new();
     // struct Widget* raw = ptr;  // get() is just identity in C
-
-    std::cout << "✓" << std::endl;
 }
 
-// Test 4: unique_ptr reset() method
-void test_unique_ptr_reset_releases_old_pointer() {
-    std::cout << "Running test_unique_ptr_reset_releases_old_pointer... ";
-
+TEST_F(UniquePtrTest, ResetReleasesOldPointer) {
     const char *Code = R"(
         #include <memory>
 
@@ -123,21 +125,16 @@ void test_unique_ptr_reset_releases_old_pointer() {
         }
     )";
 
-    auto AST = tooling::buildASTFromCode(Code);
-    assert(AST && "AST should be built");
+    auto AST = buildAST(Code);
+    ASSERT_NE(AST, nullptr) << "AST should be built";
 
     // Expected C translation:
     // struct Widget* ptr = Widget_new();
     // if (ptr) Widget_destroy(ptr);
     // ptr = Widget_new();
-
-    std::cout << "✓" << std::endl;
 }
 
-// Test 5: unique_ptr reset() with nullptr
-void test_unique_ptr_reset_with_nullptr() {
-    std::cout << "Running test_unique_ptr_reset_with_nullptr... ";
-
+TEST_F(UniquePtrTest, ResetWithNullptr) {
     const char *Code = R"(
         #include <memory>
 
@@ -149,21 +146,16 @@ void test_unique_ptr_reset_with_nullptr() {
         }
     )";
 
-    auto AST = tooling::buildASTFromCode(Code);
-    assert(AST && "AST should be built");
+    auto AST = buildAST(Code);
+    ASSERT_NE(AST, nullptr) << "AST should be built";
 
     // Expected C translation:
     // struct Widget* ptr = Widget_new();
     // if (ptr) Widget_destroy(ptr);
     // ptr = NULL;
-
-    std::cout << "✓" << std::endl;
 }
 
-// Test 6: unique_ptr release() method
-void test_unique_ptr_release_transfers_ownership() {
-    std::cout << "Running test_unique_ptr_release_transfers_ownership... ";
-
+TEST_F(UniquePtrTest, ReleaseTransfersOwnership) {
     const char *Code = R"(
         #include <memory>
 
@@ -176,22 +168,17 @@ void test_unique_ptr_release_transfers_ownership() {
         }
     )";
 
-    auto AST = tooling::buildASTFromCode(Code);
-    assert(AST && "AST should be built");
+    auto AST = buildAST(Code);
+    ASSERT_NE(AST, nullptr) << "AST should be built";
 
     // Expected C translation:
     // struct Widget* ptr = Widget_new();
     // struct Widget* raw = ptr;
     // ptr = NULL;  // release() sets to null without destroying
     // Widget_destroy(raw);
-
-    std::cout << "✓" << std::endl;
 }
 
-// Test 7: unique_ptr bool conversion
-void test_unique_ptr_bool_conversion() {
-    std::cout << "Running test_unique_ptr_bool_conversion... ";
-
+TEST_F(UniquePtrTest, BoolConversion) {
     const char *Code = R"(
         #include <memory>
 
@@ -205,22 +192,17 @@ void test_unique_ptr_bool_conversion() {
         }
     )";
 
-    auto AST = tooling::buildASTFromCode(Code);
-    assert(AST && "AST should be built");
+    auto AST = buildAST(Code);
+    ASSERT_NE(AST, nullptr) << "AST should be built";
 
     // Expected C translation:
     // struct Widget* ptr = Widget_new();
     // if (ptr != NULL) {
     //     // Use ptr
     // }
-
-    std::cout << "✓" << std::endl;
 }
 
-// Test 8: unique_ptr dereference operators
-void test_unique_ptr_dereference_operators() {
-    std::cout << "Running test_unique_ptr_dereference_operators... ";
-
+TEST_F(UniquePtrTest, DereferenceOperators) {
     const char *Code = R"(
         #include <memory>
 
@@ -237,25 +219,20 @@ void test_unique_ptr_dereference_operators() {
         }
     )";
 
-    auto AST = tooling::buildASTFromCode(Code);
-    assert(AST && "AST should be built");
+    auto AST = buildAST(Code);
+    ASSERT_NE(AST, nullptr) << "AST should be built";
 
     // Expected C translation:
     // struct Widget* ptr = Widget_new();
     // ptr->value = 42;
     // Widget_method(ptr);
-
-    std::cout << "✓" << std::endl;
 }
 
 // ============================================================================
 // Group 2: Move Semantics (unique_ptr is move-only) (7 tests)
 // ============================================================================
 
-// Test 9: unique_ptr move constructor
-void test_unique_ptr_move_constructor_transfers_ownership() {
-    std::cout << "Running test_unique_ptr_move_constructor_transfers_ownership... ";
-
+TEST_F(UniquePtrTest, MoveConstructorTransfersOwnership) {
     const char *Code = R"(
         #include <memory>
         #include <utility>
@@ -268,21 +245,16 @@ void test_unique_ptr_move_constructor_transfers_ownership() {
         }
     )";
 
-    auto AST = tooling::buildASTFromCode(Code);
-    assert(AST && "AST should be built");
+    auto AST = buildAST(Code);
+    ASSERT_NE(AST, nullptr) << "AST should be built";
 
     // Expected C translation:
     // struct Widget* ptr1 = Widget_new();
     // struct Widget* ptr2 = ptr1;
     // ptr1 = NULL;  // move sets source to null
-
-    std::cout << "✓" << std::endl;
 }
 
-// Test 10: unique_ptr move assignment
-void test_unique_ptr_move_assignment_destroys_old() {
-    std::cout << "Running test_unique_ptr_move_assignment_destroys_old... ";
-
+TEST_F(UniquePtrTest, MoveAssignmentDestroysOld) {
     const char *Code = R"(
         #include <memory>
         #include <utility>
@@ -296,8 +268,8 @@ void test_unique_ptr_move_assignment_destroys_old() {
         }
     )";
 
-    auto AST = tooling::buildASTFromCode(Code);
-    assert(AST && "AST should be built");
+    auto AST = buildAST(Code);
+    ASSERT_NE(AST, nullptr) << "AST should be built";
 
     // Expected C translation:
     // struct Widget* ptr1 = Widget_new();
@@ -305,14 +277,9 @@ void test_unique_ptr_move_assignment_destroys_old() {
     // if (ptr2) Widget_destroy(ptr2);  // Destroy old
     // ptr2 = ptr1;
     // ptr1 = NULL;
-
-    std::cout << "✓" << std::endl;
 }
 
-// Test 11: unique_ptr return by value (implicit move)
-void test_unique_ptr_return_by_value_moves() {
-    std::cout << "Running test_unique_ptr_return_by_value_moves... ";
-
+TEST_F(UniquePtrTest, ReturnByValueMoves) {
     const char *Code = R"(
         #include <memory>
 
@@ -327,8 +294,8 @@ void test_unique_ptr_return_by_value_moves() {
         }
     )";
 
-    auto AST = tooling::buildASTFromCode(Code);
-    assert(AST && "AST should be built");
+    auto AST = buildAST(Code);
+    ASSERT_NE(AST, nullptr) << "AST should be built";
 
     // Expected C translation:
     // struct Widget* create() {
@@ -337,14 +304,9 @@ void test_unique_ptr_return_by_value_moves() {
     // void test() {
     //     struct Widget* ptr = create();
     // }
-
-    std::cout << "✓" << std::endl;
 }
 
-// Test 12: unique_ptr function parameter (move)
-void test_unique_ptr_function_parameter_takes_ownership() {
-    std::cout << "Running test_unique_ptr_function_parameter_takes_ownership... ";
-
+TEST_F(UniquePtrTest, FunctionParameterTakesOwnership) {
     const char *Code = R"(
         #include <memory>
         #include <utility>
@@ -361,8 +323,8 @@ void test_unique_ptr_function_parameter_takes_ownership() {
         }
     )";
 
-    auto AST = tooling::buildASTFromCode(Code);
-    assert(AST && "AST should be built");
+    auto AST = buildAST(Code);
+    ASSERT_NE(AST, nullptr) << "AST should be built";
 
     // Expected C translation:
     // void consume(struct Widget* ptr) {
@@ -374,14 +336,9 @@ void test_unique_ptr_function_parameter_takes_ownership() {
     //     ptr = NULL;
     //     // No destruction at end - ownership transferred
     // }
-
-    std::cout << "✓" << std::endl;
 }
 
-// Test 13: unique_ptr copy constructor deleted (compile error)
-void test_unique_ptr_copy_constructor_deleted() {
-    std::cout << "Running test_unique_ptr_copy_constructor_deleted... ";
-
+TEST_F(UniquePtrTest, CopyConstructorDeleted) {
     // This should fail to compile in C++
     const char *Code = R"(
         #include <memory>
@@ -394,18 +351,13 @@ void test_unique_ptr_copy_constructor_deleted() {
         }
     )";
 
-    auto AST = tooling::buildASTFromCode(Code);
-    assert(AST && "AST should be built");
+    auto AST = buildAST(Code);
+    ASSERT_NE(AST, nullptr) << "AST should be built";
 
     // This test verifies the transpiler recognizes unique_ptr cannot be copied
-
-    std::cout << "✓" << std::endl;
 }
 
-// Test 14: unique_ptr copy assignment deleted (compile error)
-void test_unique_ptr_copy_assignment_deleted() {
-    std::cout << "Running test_unique_ptr_copy_assignment_deleted... ";
-
+TEST_F(UniquePtrTest, CopyAssignmentDeleted) {
     const char *Code = R"(
         #include <memory>
 
@@ -418,16 +370,11 @@ void test_unique_ptr_copy_assignment_deleted() {
         }
     )";
 
-    auto AST = tooling::buildASTFromCode(Code);
-    assert(AST && "AST should be built");
-
-    std::cout << "✓" << std::endl;
+    auto AST = buildAST(Code);
+    ASSERT_NE(AST, nullptr) << "AST should be built";
 }
 
-// Test 15: unique_ptr swap
-void test_unique_ptr_swap_exchanges_ownership() {
-    std::cout << "Running test_unique_ptr_swap_exchanges_ownership... ";
-
+TEST_F(UniquePtrTest, SwapExchangesOwnership) {
     const char *Code = R"(
         #include <memory>
 
@@ -440,8 +387,8 @@ void test_unique_ptr_swap_exchanges_ownership() {
         }
     )";
 
-    auto AST = tooling::buildASTFromCode(Code);
-    assert(AST && "AST should be built");
+    auto AST = buildAST(Code);
+    ASSERT_NE(AST, nullptr) << "AST should be built";
 
     // Expected C translation:
     // struct Widget* ptr1 = Widget_new();
@@ -449,18 +396,13 @@ void test_unique_ptr_swap_exchanges_ownership() {
     // struct Widget* temp = ptr1;
     // ptr1 = ptr2;
     // ptr2 = temp;
-
-    std::cout << "✓" << std::endl;
 }
 
 // ============================================================================
 // Group 3: make_unique Support (5 tests)
 // ============================================================================
 
-// Test 16: make_unique basic usage
-void test_make_unique_basic_usage() {
-    std::cout << "Running test_make_unique_basic_usage... ";
-
+TEST_F(UniquePtrTest, MakeUniqueBasicUsage) {
     const char *Code = R"(
         #include <memory>
 
@@ -475,19 +417,14 @@ void test_make_unique_basic_usage() {
         }
     )";
 
-    auto AST = tooling::buildASTFromCode(Code);
-    assert(AST && "AST should be built");
+    auto AST = buildAST(Code);
+    ASSERT_NE(AST, nullptr) << "AST should be built";
 
     // Expected C translation:
     // struct Widget* ptr = Widget_new_int(42);
-
-    std::cout << "✓" << std::endl;
 }
 
-// Test 17: make_unique with multiple arguments
-void test_make_unique_with_multiple_arguments() {
-    std::cout << "Running test_make_unique_with_multiple_arguments... ";
-
+TEST_F(UniquePtrTest, MakeUniqueWithMultipleArguments) {
     const char *Code = R"(
         #include <memory>
 
@@ -502,19 +439,14 @@ void test_make_unique_with_multiple_arguments() {
         }
     )";
 
-    auto AST = tooling::buildASTFromCode(Code);
-    assert(AST && "AST should be built");
+    auto AST = buildAST(Code);
+    ASSERT_NE(AST, nullptr) << "AST should be built";
 
     // Expected C translation:
     // struct Widget* ptr = Widget_new_int_int(10, 20);
-
-    std::cout << "✓" << std::endl;
 }
 
-// Test 18: make_unique with default constructor
-void test_make_unique_with_default_constructor() {
-    std::cout << "Running test_make_unique_with_default_constructor... ";
-
+TEST_F(UniquePtrTest, MakeUniqueWithDefaultConstructor) {
     const char *Code = R"(
         #include <memory>
 
@@ -528,19 +460,14 @@ void test_make_unique_with_default_constructor() {
         }
     )";
 
-    auto AST = tooling::buildASTFromCode(Code);
-    assert(AST && "AST should be built");
+    auto AST = buildAST(Code);
+    ASSERT_NE(AST, nullptr) << "AST should be built";
 
     // Expected C translation:
     // struct Widget* ptr = Widget_new();
-
-    std::cout << "✓" << std::endl;
 }
 
-// Test 19: make_unique vs unique_ptr constructor (exception safety)
-void test_make_unique_exception_safety() {
-    std::cout << "Running test_make_unique_exception_safety... ";
-
+TEST_F(UniquePtrTest, MakeUniqueExceptionSafety) {
     const char *Code = R"(
         #include <memory>
 
@@ -558,16 +485,11 @@ void test_make_unique_exception_safety() {
         }
     )";
 
-    auto AST = tooling::buildASTFromCode(Code);
-    assert(AST && "AST should be built");
-
-    std::cout << "✓" << std::endl;
+    auto AST = buildAST(Code);
+    ASSERT_NE(AST, nullptr) << "AST should be built";
 }
 
-// Test 20: make_unique with array types
-void test_make_unique_with_array_types() {
-    std::cout << "Running test_make_unique_with_array_types... ";
-
+TEST_F(UniquePtrTest, MakeUniqueWithArrayTypes) {
     const char *Code = R"(
         #include <memory>
 
@@ -576,23 +498,18 @@ void test_make_unique_with_array_types() {
         }
     )";
 
-    auto AST = tooling::buildASTFromCode(Code);
-    assert(AST && "AST should be built");
+    auto AST = buildAST(Code);
+    ASSERT_NE(AST, nullptr) << "AST should be built";
 
     // Expected C translation:
     // int* ptr = (int*)malloc(10 * sizeof(int));
-
-    std::cout << "✓" << std::endl;
 }
 
 // ============================================================================
 // Group 4: Custom Deleters (6 tests)
 // ============================================================================
 
-// Test 21: unique_ptr with custom deleter (function pointer)
-void test_unique_ptr_custom_deleter_function_pointer() {
-    std::cout << "Running test_unique_ptr_custom_deleter_function_pointer... ";
-
+TEST_F(UniquePtrTest, CustomDeleterFunctionPointer) {
     const char *Code = R"(
         #include <memory>
 
@@ -611,20 +528,15 @@ void test_unique_ptr_custom_deleter_function_pointer() {
         }
     )";
 
-    auto AST = tooling::buildASTFromCode(Code);
-    assert(AST && "AST should be built");
+    auto AST = buildAST(Code);
+    ASSERT_NE(AST, nullptr) << "AST should be built";
 
     // Expected C translation:
     // struct Resource* ptr = Resource_new();
     // custom_deleter(ptr);  // at scope exit
-
-    std::cout << "✓" << std::endl;
 }
 
-// Test 22: unique_ptr with lambda deleter
-void test_unique_ptr_custom_deleter_lambda() {
-    std::cout << "Running test_unique_ptr_custom_deleter_lambda... ";
-
+TEST_F(UniquePtrTest, CustomDeleterLambda) {
     const char *Code = R"(
         #include <memory>
 
@@ -642,22 +554,17 @@ void test_unique_ptr_custom_deleter_lambda() {
         }
     )";
 
-    auto AST = tooling::buildASTFromCode(Code);
-    assert(AST && "AST should be built");
+    auto AST = buildAST(Code);
+    ASSERT_NE(AST, nullptr) << "AST should be built";
 
     // Expected C translation:
     // struct deleter_struct { /* capture */ };
     // void deleter_func(struct deleter_struct* ctx, struct Resource* res) { }
     // struct Resource* ptr = Resource_new();
     // deleter_func(&deleter, ptr);  // at scope exit
-
-    std::cout << "✓" << std::endl;
 }
 
-// Test 23: unique_ptr with stateful deleter
-void test_unique_ptr_stateful_deleter() {
-    std::cout << "Running test_unique_ptr_stateful_deleter... ";
-
+TEST_F(UniquePtrTest, StatefulDeleter) {
     const char *Code = R"(
         #include <memory>
 
@@ -679,8 +586,8 @@ void test_unique_ptr_stateful_deleter() {
         }
     )";
 
-    auto AST = tooling::buildASTFromCode(Code);
-    assert(AST && "AST should be built");
+    auto AST = buildAST(Code);
+    ASSERT_NE(AST, nullptr) << "AST should be built";
 
     // Expected C translation:
     // struct FileDeleter { int log_fd; };
@@ -688,14 +595,9 @@ void test_unique_ptr_stateful_deleter() {
     // struct Resource* ptr = Resource_new();
     // struct FileDeleter deleter = {3};
     // FileDeleter_call(&deleter, ptr);  // at scope exit
-
-    std::cout << "✓" << std::endl;
 }
 
-// Test 24: unique_ptr with C API resource (FILE*)
-void test_unique_ptr_with_c_api_resource() {
-    std::cout << "Running test_unique_ptr_with_c_api_resource... ";
-
+TEST_F(UniquePtrTest, WithCApiResource) {
     const char *Code = R"(
         #include <memory>
         #include <cstdio>
@@ -707,20 +609,15 @@ void test_unique_ptr_with_c_api_resource() {
         }
     )";
 
-    auto AST = tooling::buildASTFromCode(Code);
-    assert(AST && "AST should be built");
+    auto AST = buildAST(Code);
+    ASSERT_NE(AST, nullptr) << "AST should be built";
 
     // Expected C translation:
     // FILE* file = fopen("test.txt", "r");
     // if (file) fclose(file);  // at scope exit
-
-    std::cout << "✓" << std::endl;
 }
 
-// Test 25: unique_ptr with array deleter
-void test_unique_ptr_array_deleter() {
-    std::cout << "Running test_unique_ptr_array_deleter... ";
-
+TEST_F(UniquePtrTest, ArrayDeleter) {
     const char *Code = R"(
         #include <memory>
 
@@ -729,20 +626,15 @@ void test_unique_ptr_array_deleter() {
         }
     )";
 
-    auto AST = tooling::buildASTFromCode(Code);
-    assert(AST && "AST should be built");
+    auto AST = buildAST(Code);
+    ASSERT_NE(AST, nullptr) << "AST should be built";
 
     // Expected C translation:
     // int* arr = (int*)malloc(10 * sizeof(int));
     // free(arr);  // at scope exit
-
-    std::cout << "✓" << std::endl;
 }
 
-// Test 26: unique_ptr deleter with reference wrapper
-void test_unique_ptr_deleter_reference_wrapper() {
-    std::cout << "Running test_unique_ptr_deleter_reference_wrapper... ";
-
+TEST_F(UniquePtrTest, DeleterReferenceWrapper) {
     const char *Code = R"(
         #include <memory>
         #include <functional>
@@ -761,20 +653,15 @@ void test_unique_ptr_deleter_reference_wrapper() {
         }
     )";
 
-    auto AST = tooling::buildASTFromCode(Code);
-    assert(AST && "AST should be built");
-
-    std::cout << "✓" << std::endl;
+    auto AST = buildAST(Code);
+    ASSERT_NE(AST, nullptr) << "AST should be built";
 }
 
 // ============================================================================
 // Group 5: Edge Cases and Advanced Scenarios (4 tests)
 // ============================================================================
 
-// Test 27: unique_ptr in container
-void test_unique_ptr_in_container() {
-    std::cout << "Running test_unique_ptr_in_container... ";
-
+TEST_F(UniquePtrTest, InContainer) {
     const char *Code = R"(
         #include <memory>
         #include <vector>
@@ -787,16 +674,11 @@ void test_unique_ptr_in_container() {
         }
     )";
 
-    auto AST = tooling::buildASTFromCode(Code);
-    assert(AST && "AST should be built");
-
-    std::cout << "✓" << std::endl;
+    auto AST = buildAST(Code);
+    ASSERT_NE(AST, nullptr) << "AST should be built";
 }
 
-// Test 28: unique_ptr member variable
-void test_unique_ptr_member_variable() {
-    std::cout << "Running test_unique_ptr_member_variable... ";
-
+TEST_F(UniquePtrTest, MemberVariable) {
     const char *Code = R"(
         #include <memory>
 
@@ -810,8 +692,8 @@ void test_unique_ptr_member_variable() {
         };
     )";
 
-    auto AST = tooling::buildASTFromCode(Code);
-    assert(AST && "AST should be built");
+    auto AST = buildAST(Code);
+    ASSERT_NE(AST, nullptr) << "AST should be built";
 
     // Expected C translation:
     // struct Owner {
@@ -823,14 +705,9 @@ void test_unique_ptr_member_variable() {
     // void Owner_destroy(struct Owner* self) {
     //     if (self->resource) Resource_destroy(self->resource);
     // }
-
-    std::cout << "✓" << std::endl;
 }
 
-// Test 29: unique_ptr with polymorphism
-void test_unique_ptr_with_polymorphism() {
-    std::cout << "Running test_unique_ptr_with_polymorphism... ";
-
+TEST_F(UniquePtrTest, WithPolymorphism) {
     const char *Code = R"(
         #include <memory>
 
@@ -846,20 +723,15 @@ void test_unique_ptr_with_polymorphism() {
         }
     )";
 
-    auto AST = tooling::buildASTFromCode(Code);
-    assert(AST && "AST should be built");
+    auto AST = buildAST(Code);
+    ASSERT_NE(AST, nullptr) << "AST should be built";
 
     // Expected C translation:
     // struct Base* ptr = (struct Base*)Derived_new();
     // Base_destroy_virtual(ptr);  // Virtual destructor call
-
-    std::cout << "✓" << std::endl;
 }
 
-// Test 30: unique_ptr comparison operators
-void test_unique_ptr_comparison_operators() {
-    std::cout << "Running test_unique_ptr_comparison_operators... ";
-
+TEST_F(UniquePtrTest, ComparisonOperators) {
     const char *Code = R"(
         #include <memory>
 
@@ -877,8 +749,8 @@ void test_unique_ptr_comparison_operators() {
         }
     )";
 
-    auto AST = tooling::buildASTFromCode(Code);
-    assert(AST && "AST should be built");
+    auto AST = buildAST(Code);
+    ASSERT_NE(AST, nullptr) << "AST should be built";
 
     // Expected C translation:
     // struct Widget* ptr1 = Widget_new();
@@ -888,58 +760,13 @@ void test_unique_ptr_comparison_operators() {
     // bool ne = (ptr1 != ptr2);
     // bool lt = (ptr1 < ptr2);
     // bool null_check = (ptr3 == NULL);
-
-    std::cout << "✓" << std::endl;
 }
 
 // ============================================================================
 // Main Function
 // ============================================================================
 
-int main() {
-    std::cout << "\n=== UniquePtrTest - Stream 3: Smart Pointers & RAII ===" << std::endl;
-    std::cout << "File 1 of 3: unique_ptr tests (30 tests)\n" << std::endl;
-
-    // Group 1: Basic unique_ptr Creation and Ownership (8 tests)
-    test_unique_ptr_basic_constructor();
-    test_unique_ptr_nullptr_initialization();
-    test_unique_ptr_get_method();
-    test_unique_ptr_reset_releases_old_pointer();
-    test_unique_ptr_reset_with_nullptr();
-    test_unique_ptr_release_transfers_ownership();
-    test_unique_ptr_bool_conversion();
-    test_unique_ptr_dereference_operators();
-
-    // Group 2: Move Semantics (7 tests)
-    test_unique_ptr_move_constructor_transfers_ownership();
-    test_unique_ptr_move_assignment_destroys_old();
-    test_unique_ptr_return_by_value_moves();
-    test_unique_ptr_function_parameter_takes_ownership();
-    test_unique_ptr_copy_constructor_deleted();
-    test_unique_ptr_copy_assignment_deleted();
-    test_unique_ptr_swap_exchanges_ownership();
-
-    // Group 3: make_unique Support (5 tests)
-    test_make_unique_basic_usage();
-    test_make_unique_with_multiple_arguments();
-    test_make_unique_with_default_constructor();
-    test_make_unique_exception_safety();
-    test_make_unique_with_array_types();
-
-    // Group 4: Custom Deleters (6 tests)
-    test_unique_ptr_custom_deleter_function_pointer();
-    test_unique_ptr_custom_deleter_lambda();
-    test_unique_ptr_stateful_deleter();
-    test_unique_ptr_with_c_api_resource();
-    test_unique_ptr_array_deleter();
-    test_unique_ptr_deleter_reference_wrapper();
-
-    // Group 5: Edge Cases (4 tests)
-    test_unique_ptr_in_container();
-    test_unique_ptr_member_variable();
-    test_unique_ptr_with_polymorphism();
-    test_unique_ptr_comparison_operators();
-
-    std::cout << "\n=== All 30 unique_ptr tests passed! ===" << std::endl;
-    return 0;
+int main(int argc, char **argv) {
+    ::testing::InitGoogleTest(&argc, argv);
+    return RUN_ALL_TESTS();
 }

@@ -5,39 +5,28 @@
 // These tests validate operator detection, parameter types, const correctness,
 // and operator classification - prerequisites for transpilation to C functions.
 
+#include <gtest/gtest.h>
 #include "clang/Tooling/Tooling.h"
 #include "clang/Frontend/ASTUnit.h"
-#include <iostream>
-#include <cassert>
 
 using namespace clang;
 
-// Test counter
-static int tests_passed = 0;
-static int tests_failed = 0;
-
-// Test helper macros
-#define TEST_START(name) std::cout << "Test: " << name << " ... " << std::flush
-#define TEST_PASS(name) { std::cout << "PASS" << std::endl; tests_passed++; }
-#define TEST_FAIL(name, msg) { std::cout << "FAIL: " << msg << std::endl; tests_failed++; }
-#define ASSERT(cond, msg) \
-    if (!(cond)) { \
-        TEST_FAIL("", msg); \
-        return; \
+// Test fixture base class with helper method
+class OperatorOverloadingTestBase : public ::testing::Test {
+protected:
+    std::unique_ptr<ASTUnit> buildAST(const char *code) {
+        return tooling::buildASTFromCode(code);
     }
-
-std::unique_ptr<ASTUnit> buildAST(const char *code) {
-    return tooling::buildASTFromCode(code);
-}
+};
 
 // ============================================================================
 // ARITHMETIC OPERATORS (15 tests)
 // ============================================================================
 
-// Test 1: Binary + operator
-void test_BinaryPlusOperator() {
-    TEST_START("BinaryPlusOperator");
+class ArithmeticOperatorTest : public OperatorOverloadingTestBase {};
 
+// Test 1: Binary + operator
+TEST_F(ArithmeticOperatorTest, BinaryPlusOperator) {
     const char *code = R"(
         class Vector2D {
         public:
@@ -47,7 +36,7 @@ void test_BinaryPlusOperator() {
     )";
 
     std::unique_ptr<ASTUnit> AST = buildAST(code);
-    ASSERT(AST, "Failed to parse C++ code");
+    ASSERT_NE(AST, nullptr) << "Failed to parse C++ code";
 
     auto *TU = AST->getASTContext().getTranslationUnitDecl();
 
@@ -65,17 +54,13 @@ void test_BinaryPlusOperator() {
         }
     }
 
-    ASSERT(opPlus != nullptr, "operator+ not found");
-    ASSERT(opPlus->getNumParams() == 1, "operator+ should have 1 parameter");
-    ASSERT(opPlus->isConst(), "operator+ should be const");
-
-    TEST_PASS("BinaryPlusOperator");
+    ASSERT_NE(opPlus, nullptr) << "operator+ not found";
+    EXPECT_EQ(opPlus->getNumParams(), 1) << "operator+ should have 1 parameter";
+    EXPECT_TRUE(opPlus->isConst()) << "operator+ should be const";
 }
 
 // Test 2: Binary - operator
-void test_BinaryMinusOperator() {
-    TEST_START("BinaryMinusOperator");
-
+TEST_F(ArithmeticOperatorTest, BinaryMinusOperator) {
     const char *code = R"(
         class Complex {
         public:
@@ -85,7 +70,7 @@ void test_BinaryMinusOperator() {
     )";
 
     std::unique_ptr<ASTUnit> AST = buildAST(code);
-    ASSERT(AST, "Failed to parse C++ code");
+    ASSERT_NE(AST, nullptr) << "Failed to parse C++ code";
 
     auto *TU = AST->getASTContext().getTranslationUnitDecl();
 
@@ -103,16 +88,12 @@ void test_BinaryMinusOperator() {
         }
     }
 
-    ASSERT(opMinus != nullptr, "operator- not found");
-    ASSERT(opMinus->getNumParams() == 1, "Binary operator- should have 1 parameter");
-
-    TEST_PASS("BinaryMinusOperator");
+    ASSERT_NE(opMinus, nullptr) << "operator- not found";
+    EXPECT_EQ(opMinus->getNumParams(), 1) << "Binary operator- should have 1 parameter";
 }
 
 // Test 3: Binary * operator
-void test_BinaryMultiplyOperator() {
-    TEST_START("BinaryMultiplyOperator");
-
+TEST_F(ArithmeticOperatorTest, BinaryMultiplyOperator) {
     const char *code = R"(
         class Matrix {
         public:
@@ -121,7 +102,7 @@ void test_BinaryMultiplyOperator() {
     )";
 
     std::unique_ptr<ASTUnit> AST = buildAST(code);
-    ASSERT(AST, "Failed to parse C++ code");
+    ASSERT_NE(AST, nullptr) << "Failed to parse C++ code";
 
     auto *TU = AST->getASTContext().getTranslationUnitDecl();
 
@@ -139,15 +120,11 @@ void test_BinaryMultiplyOperator() {
         }
     }
 
-    ASSERT(opMul != nullptr, "operator* not found");
-
-    TEST_PASS("BinaryMultiplyOperator");
+    ASSERT_NE(opMul, nullptr) << "operator* not found";
 }
 
 // Test 4: Binary / operator
-void test_BinaryDivideOperator() {
-    TEST_START("BinaryDivideOperator");
-
+TEST_F(ArithmeticOperatorTest, BinaryDivideOperator) {
     const char *code = R"(
         class Fraction {
         public:
@@ -157,7 +134,7 @@ void test_BinaryDivideOperator() {
     )";
 
     std::unique_ptr<ASTUnit> AST = buildAST(code);
-    ASSERT(AST, "Failed to parse C++ code");
+    ASSERT_NE(AST, nullptr) << "Failed to parse C++ code";
 
     auto *TU = AST->getASTContext().getTranslationUnitDecl();
 
@@ -175,15 +152,11 @@ void test_BinaryDivideOperator() {
         }
     }
 
-    ASSERT(opDiv != nullptr, "operator/ not found");
-
-    TEST_PASS("BinaryDivideOperator");
+    ASSERT_NE(opDiv, nullptr) << "operator/ not found";
 }
 
 // Test 5: Binary % operator
-void test_BinaryModuloOperator() {
-    TEST_START("BinaryModuloOperator");
-
+TEST_F(ArithmeticOperatorTest, BinaryModuloOperator) {
     const char *code = R"(
         class Integer {
         public:
@@ -193,7 +166,7 @@ void test_BinaryModuloOperator() {
     )";
 
     std::unique_ptr<ASTUnit> AST = buildAST(code);
-    ASSERT(AST, "Failed to parse C++ code");
+    ASSERT_NE(AST, nullptr) << "Failed to parse C++ code";
 
     auto *TU = AST->getASTContext().getTranslationUnitDecl();
 
@@ -211,15 +184,11 @@ void test_BinaryModuloOperator() {
         }
     }
 
-    ASSERT(opMod != nullptr, "operator% not found");
-
-    TEST_PASS("BinaryModuloOperator");
+    ASSERT_NE(opMod, nullptr) << "operator% not found";
 }
 
 // Test 6: Unary - operator
-void test_UnaryMinusOperator() {
-    TEST_START("UnaryMinusOperator");
-
+TEST_F(ArithmeticOperatorTest, UnaryMinusOperator) {
     const char *code = R"(
         class Number {
         public:
@@ -229,7 +198,7 @@ void test_UnaryMinusOperator() {
     )";
 
     std::unique_ptr<ASTUnit> AST = buildAST(code);
-    ASSERT(AST, "Failed to parse C++ code");
+    ASSERT_NE(AST, nullptr) << "Failed to parse C++ code";
 
     auto *TU = AST->getASTContext().getTranslationUnitDecl();
 
@@ -247,16 +216,12 @@ void test_UnaryMinusOperator() {
         }
     }
 
-    ASSERT(opUnaryMinus != nullptr, "Unary operator- not found");
-    ASSERT(opUnaryMinus->getNumParams() == 0, "Unary operator- should have 0 parameters");
-
-    TEST_PASS("UnaryMinusOperator");
+    ASSERT_NE(opUnaryMinus, nullptr) << "Unary operator- not found";
+    EXPECT_EQ(opUnaryMinus->getNumParams(), 0) << "Unary operator- should have 0 parameters";
 }
 
 // Test 7: Unary + operator
-void test_UnaryPlusOperator() {
-    TEST_START("UnaryPlusOperator");
-
+TEST_F(ArithmeticOperatorTest, UnaryPlusOperator) {
     const char *code = R"(
         class SignedInt {
         public:
@@ -266,7 +231,7 @@ void test_UnaryPlusOperator() {
     )";
 
     std::unique_ptr<ASTUnit> AST = buildAST(code);
-    ASSERT(AST, "Failed to parse C++ code");
+    ASSERT_NE(AST, nullptr) << "Failed to parse C++ code";
 
     auto *TU = AST->getASTContext().getTranslationUnitDecl();
 
@@ -284,16 +249,12 @@ void test_UnaryPlusOperator() {
         }
     }
 
-    ASSERT(opUnaryPlus != nullptr, "Unary operator+ not found");
-    ASSERT(opUnaryPlus->getNumParams() == 0, "Unary operator+ should have 0 parameters");
-
-    TEST_PASS("UnaryPlusOperator");
+    ASSERT_NE(opUnaryPlus, nullptr) << "Unary operator+ not found";
+    EXPECT_EQ(opUnaryPlus->getNumParams(), 0) << "Unary operator+ should have 0 parameters";
 }
 
 // Test 8: Prefix ++ operator
-void test_PrefixIncrementOperator() {
-    TEST_START("PrefixIncrementOperator");
-
+TEST_F(ArithmeticOperatorTest, PrefixIncrementOperator) {
     const char *code = R"(
         class Counter {
         public:
@@ -303,7 +264,7 @@ void test_PrefixIncrementOperator() {
     )";
 
     std::unique_ptr<ASTUnit> AST = buildAST(code);
-    ASSERT(AST, "Failed to parse C++ code");
+    ASSERT_NE(AST, nullptr) << "Failed to parse C++ code";
 
     auto *TU = AST->getASTContext().getTranslationUnitDecl();
 
@@ -321,16 +282,12 @@ void test_PrefixIncrementOperator() {
         }
     }
 
-    ASSERT(opPrefixInc != nullptr, "Prefix operator++ not found");
-    ASSERT(opPrefixInc->getReturnType()->isReferenceType(), "Prefix operator++ should return reference");
-
-    TEST_PASS("PrefixIncrementOperator");
+    ASSERT_NE(opPrefixInc, nullptr) << "Prefix operator++ not found";
+    EXPECT_TRUE(opPrefixInc->getReturnType()->isReferenceType()) << "Prefix operator++ should return reference";
 }
 
 // Test 9: Postfix ++ operator
-void test_PostfixIncrementOperator() {
-    TEST_START("PostfixIncrementOperator");
-
+TEST_F(ArithmeticOperatorTest, PostfixIncrementOperator) {
     const char *code = R"(
         class Iterator {
         public:
@@ -340,7 +297,7 @@ void test_PostfixIncrementOperator() {
     )";
 
     std::unique_ptr<ASTUnit> AST = buildAST(code);
-    ASSERT(AST, "Failed to parse C++ code");
+    ASSERT_NE(AST, nullptr) << "Failed to parse C++ code";
 
     auto *TU = AST->getASTContext().getTranslationUnitDecl();
 
@@ -358,16 +315,12 @@ void test_PostfixIncrementOperator() {
         }
     }
 
-    ASSERT(opPostfixInc != nullptr, "Postfix operator++ not found");
-    ASSERT(opPostfixInc->getNumParams() == 1, "Postfix operator++ should have dummy int parameter");
-
-    TEST_PASS("PostfixIncrementOperator");
+    ASSERT_NE(opPostfixInc, nullptr) << "Postfix operator++ not found";
+    EXPECT_EQ(opPostfixInc->getNumParams(), 1) << "Postfix operator++ should have dummy int parameter";
 }
 
 // Test 10: Prefix -- operator
-void test_PrefixDecrementOperator() {
-    TEST_START("PrefixDecrementOperator");
-
+TEST_F(ArithmeticOperatorTest, PrefixDecrementOperator) {
     const char *code = R"(
         class Countdown {
         public:
@@ -377,7 +330,7 @@ void test_PrefixDecrementOperator() {
     )";
 
     std::unique_ptr<ASTUnit> AST = buildAST(code);
-    ASSERT(AST, "Failed to parse C++ code");
+    ASSERT_NE(AST, nullptr) << "Failed to parse C++ code";
 
     auto *TU = AST->getASTContext().getTranslationUnitDecl();
 
@@ -395,15 +348,11 @@ void test_PrefixDecrementOperator() {
         }
     }
 
-    ASSERT(opPrefixDec != nullptr, "Prefix operator-- not found");
-
-    TEST_PASS("PrefixDecrementOperator");
+    ASSERT_NE(opPrefixDec, nullptr) << "Prefix operator-- not found";
 }
 
 // Test 11: Postfix -- operator
-void test_PostfixDecrementOperator() {
-    TEST_START("PostfixDecrementOperator");
-
+TEST_F(ArithmeticOperatorTest, PostfixDecrementOperator) {
     const char *code = R"(
         class ReverseIterator {
         public:
@@ -413,7 +362,7 @@ void test_PostfixDecrementOperator() {
     )";
 
     std::unique_ptr<ASTUnit> AST = buildAST(code);
-    ASSERT(AST, "Failed to parse C++ code");
+    ASSERT_NE(AST, nullptr) << "Failed to parse C++ code";
 
     auto *TU = AST->getASTContext().getTranslationUnitDecl();
 
@@ -431,15 +380,11 @@ void test_PostfixDecrementOperator() {
         }
     }
 
-    ASSERT(opPostfixDec != nullptr, "Postfix operator-- not found");
-
-    TEST_PASS("PostfixDecrementOperator");
+    ASSERT_NE(opPostfixDec, nullptr) << "Postfix operator-- not found";
 }
 
 // Test 12: Compound += operator
-void test_CompoundPlusAssignOperator() {
-    TEST_START("CompoundPlusAssignOperator");
-
+TEST_F(ArithmeticOperatorTest, CompoundPlusAssignOperator) {
     const char *code = R"(
         class Accumulator {
         public:
@@ -449,7 +394,7 @@ void test_CompoundPlusAssignOperator() {
     )";
 
     std::unique_ptr<ASTUnit> AST = buildAST(code);
-    ASSERT(AST, "Failed to parse C++ code");
+    ASSERT_NE(AST, nullptr) << "Failed to parse C++ code";
 
     auto *TU = AST->getASTContext().getTranslationUnitDecl();
 
@@ -467,15 +412,11 @@ void test_CompoundPlusAssignOperator() {
         }
     }
 
-    ASSERT(opPlusAssign != nullptr, "operator+= not found");
-
-    TEST_PASS("CompoundPlusAssignOperator");
+    ASSERT_NE(opPlusAssign, nullptr) << "operator+= not found";
 }
 
 // Test 13: Compound -= operator
-void test_CompoundMinusAssignOperator() {
-    TEST_START("CompoundMinusAssignOperator");
-
+TEST_F(ArithmeticOperatorTest, CompoundMinusAssignOperator) {
     const char *code = R"(
         class Balance {
         public:
@@ -485,7 +426,7 @@ void test_CompoundMinusAssignOperator() {
     )";
 
     std::unique_ptr<ASTUnit> AST = buildAST(code);
-    ASSERT(AST, "Failed to parse C++ code");
+    ASSERT_NE(AST, nullptr) << "Failed to parse C++ code";
 
     auto *TU = AST->getASTContext().getTranslationUnitDecl();
 
@@ -503,15 +444,11 @@ void test_CompoundMinusAssignOperator() {
         }
     }
 
-    ASSERT(opMinusAssign != nullptr, "operator-= not found");
-
-    TEST_PASS("CompoundMinusAssignOperator");
+    ASSERT_NE(opMinusAssign, nullptr) << "operator-= not found";
 }
 
 // Test 14: Compound *= operator
-void test_CompoundMultiplyAssignOperator() {
-    TEST_START("CompoundMultiplyAssignOperator");
-
+TEST_F(ArithmeticOperatorTest, CompoundMultiplyAssignOperator) {
     const char *code = R"(
         class Scale {
         public:
@@ -521,7 +458,7 @@ void test_CompoundMultiplyAssignOperator() {
     )";
 
     std::unique_ptr<ASTUnit> AST = buildAST(code);
-    ASSERT(AST, "Failed to parse C++ code");
+    ASSERT_NE(AST, nullptr) << "Failed to parse C++ code";
 
     auto *TU = AST->getASTContext().getTranslationUnitDecl();
 
@@ -539,15 +476,11 @@ void test_CompoundMultiplyAssignOperator() {
         }
     }
 
-    ASSERT(opMulAssign != nullptr, "operator*= not found");
-
-    TEST_PASS("CompoundMultiplyAssignOperator");
+    ASSERT_NE(opMulAssign, nullptr) << "operator*= not found";
 }
 
 // Test 15: Compound /= operator
-void test_CompoundDivideAssignOperator() {
-    TEST_START("CompoundDivideAssignOperator");
-
+TEST_F(ArithmeticOperatorTest, CompoundDivideAssignOperator) {
     const char *code = R"(
         class Ratio {
         public:
@@ -557,7 +490,7 @@ void test_CompoundDivideAssignOperator() {
     )";
 
     std::unique_ptr<ASTUnit> AST = buildAST(code);
-    ASSERT(AST, "Failed to parse C++ code");
+    ASSERT_NE(AST, nullptr) << "Failed to parse C++ code";
 
     auto *TU = AST->getASTContext().getTranslationUnitDecl();
 
@@ -575,19 +508,17 @@ void test_CompoundDivideAssignOperator() {
         }
     }
 
-    ASSERT(opDivAssign != nullptr, "operator/= not found");
-
-    TEST_PASS("CompoundDivideAssignOperator");
+    ASSERT_NE(opDivAssign, nullptr) << "operator/= not found";
 }
 
 // ============================================================================
 // COMPARISON OPERATORS (10 tests)
 // ============================================================================
 
-// Test 16: operator==
-void test_EqualityOperator() {
-    TEST_START("EqualityOperator");
+class ComparisonOperatorTest : public OperatorOverloadingTestBase {};
 
+// Test 16: operator==
+TEST_F(ComparisonOperatorTest, EqualityOperator) {
     const char *code = R"(
         class Point {
         public:
@@ -597,7 +528,7 @@ void test_EqualityOperator() {
     )";
 
     std::unique_ptr<ASTUnit> AST = buildAST(code);
-    ASSERT(AST, "Failed to parse C++ code");
+    ASSERT_NE(AST, nullptr) << "Failed to parse C++ code";
 
     auto *TU = AST->getASTContext().getTranslationUnitDecl();
 
@@ -615,16 +546,12 @@ void test_EqualityOperator() {
         }
     }
 
-    ASSERT(opEqual != nullptr, "operator== not found");
-    ASSERT(opEqual->getReturnType()->isBooleanType(), "operator== should return bool");
-
-    TEST_PASS("EqualityOperator");
+    ASSERT_NE(opEqual, nullptr) << "operator== not found";
+    EXPECT_TRUE(opEqual->getReturnType()->isBooleanType()) << "operator== should return bool";
 }
 
 // Test 17: operator!=
-void test_InequalityOperator() {
-    TEST_START("InequalityOperator");
-
+TEST_F(ComparisonOperatorTest, InequalityOperator) {
     const char *code = R"(
         class String {
         public:
@@ -634,7 +561,7 @@ void test_InequalityOperator() {
     )";
 
     std::unique_ptr<ASTUnit> AST = buildAST(code);
-    ASSERT(AST, "Failed to parse C++ code");
+    ASSERT_NE(AST, nullptr) << "Failed to parse C++ code";
 
     auto *TU = AST->getASTContext().getTranslationUnitDecl();
 
@@ -652,15 +579,11 @@ void test_InequalityOperator() {
         }
     }
 
-    ASSERT(opNotEqual != nullptr, "operator!= not found");
-
-    TEST_PASS("InequalityOperator");
+    ASSERT_NE(opNotEqual, nullptr) << "operator!= not found";
 }
 
 // Test 18: operator<
-void test_LessThanOperator() {
-    TEST_START("LessThanOperator");
-
+TEST_F(ComparisonOperatorTest, LessThanOperator) {
     const char *code = R"(
         class ComparableInt {
         public:
@@ -670,7 +593,7 @@ void test_LessThanOperator() {
     )";
 
     std::unique_ptr<ASTUnit> AST = buildAST(code);
-    ASSERT(AST, "Failed to parse C++ code");
+    ASSERT_NE(AST, nullptr) << "Failed to parse C++ code";
 
     auto *TU = AST->getASTContext().getTranslationUnitDecl();
 
@@ -688,15 +611,11 @@ void test_LessThanOperator() {
         }
     }
 
-    ASSERT(opLess != nullptr, "operator< not found");
-
-    TEST_PASS("LessThanOperator");
+    ASSERT_NE(opLess, nullptr) << "operator< not found";
 }
 
 // Test 19: operator>
-void test_GreaterThanOperator() {
-    TEST_START("GreaterThanOperator");
-
+TEST_F(ComparisonOperatorTest, GreaterThanOperator) {
     const char *code = R"(
         class Priority {
         public:
@@ -706,7 +625,7 @@ void test_GreaterThanOperator() {
     )";
 
     std::unique_ptr<ASTUnit> AST = buildAST(code);
-    ASSERT(AST, "Failed to parse C++ code");
+    ASSERT_NE(AST, nullptr) << "Failed to parse C++ code";
 
     auto *TU = AST->getASTContext().getTranslationUnitDecl();
 
@@ -724,15 +643,11 @@ void test_GreaterThanOperator() {
         }
     }
 
-    ASSERT(opGreater != nullptr, "operator> not found");
-
-    TEST_PASS("GreaterThanOperator");
+    ASSERT_NE(opGreater, nullptr) << "operator> not found";
 }
 
 // Test 20: operator<=
-void test_LessOrEqualOperator() {
-    TEST_START("LessOrEqualOperator");
-
+TEST_F(ComparisonOperatorTest, LessOrEqualOperator) {
     const char *code = R"(
         class Version {
         public:
@@ -742,7 +657,7 @@ void test_LessOrEqualOperator() {
     )";
 
     std::unique_ptr<ASTUnit> AST = buildAST(code);
-    ASSERT(AST, "Failed to parse C++ code");
+    ASSERT_NE(AST, nullptr) << "Failed to parse C++ code";
 
     auto *TU = AST->getASTContext().getTranslationUnitDecl();
 
@@ -760,15 +675,11 @@ void test_LessOrEqualOperator() {
         }
     }
 
-    ASSERT(opLessEqual != nullptr, "operator<= not found");
-
-    TEST_PASS("LessOrEqualOperator");
+    ASSERT_NE(opLessEqual, nullptr) << "operator<= not found";
 }
 
 // Test 21: operator>=
-void test_GreaterOrEqualOperator() {
-    TEST_START("GreaterOrEqualOperator");
-
+TEST_F(ComparisonOperatorTest, GreaterOrEqualOperator) {
     const char *code = R"(
         class Score {
         public:
@@ -778,7 +689,7 @@ void test_GreaterOrEqualOperator() {
     )";
 
     std::unique_ptr<ASTUnit> AST = buildAST(code);
-    ASSERT(AST, "Failed to parse C++ code");
+    ASSERT_NE(AST, nullptr) << "Failed to parse C++ code";
 
     auto *TU = AST->getASTContext().getTranslationUnitDecl();
 
@@ -796,15 +707,11 @@ void test_GreaterOrEqualOperator() {
         }
     }
 
-    ASSERT(opGreaterEqual != nullptr, "operator>= not found");
-
-    TEST_PASS("GreaterOrEqualOperator");
+    ASSERT_NE(opGreaterEqual, nullptr) << "operator>= not found";
 }
 
 // Test 22: Multiple comparison operators in same class
-void test_MultipleComparisonOperators() {
-    TEST_START("MultipleComparisonOperators");
-
+TEST_F(ComparisonOperatorTest, MultipleComparisonOperators) {
     const char *code = R"(
         class Comparable {
         public:
@@ -817,7 +724,7 @@ void test_MultipleComparisonOperators() {
     )";
 
     std::unique_ptr<ASTUnit> AST = buildAST(code);
-    ASSERT(AST, "Failed to parse C++ code");
+    ASSERT_NE(AST, nullptr) << "Failed to parse C++ code";
 
     auto *TU = AST->getASTContext().getTranslationUnitDecl();
 
@@ -834,15 +741,11 @@ void test_MultipleComparisonOperators() {
         }
     }
 
-    ASSERT(operatorCount == 4, "Expected 4 comparison operators");
-
-    TEST_PASS("MultipleComparisonOperators");
+    EXPECT_EQ(operatorCount, 4) << "Expected 4 comparison operators";
 }
 
 // Test 23: Comparison with different parameter types
-void test_ComparisonWithDifferentTypes() {
-    TEST_START("ComparisonWithDifferentTypes");
-
+TEST_F(ComparisonOperatorTest, ComparisonWithDifferentTypes) {
     const char *code = R"(
         class Mixed {
         public:
@@ -853,7 +756,7 @@ void test_ComparisonWithDifferentTypes() {
     )";
 
     std::unique_ptr<ASTUnit> AST = buildAST(code);
-    ASSERT(AST, "Failed to parse C++ code");
+    ASSERT_NE(AST, nullptr) << "Failed to parse C++ code";
 
     auto *TU = AST->getASTContext().getTranslationUnitDecl();
 
@@ -877,16 +780,12 @@ void test_ComparisonWithDifferentTypes() {
         }
     }
 
-    ASSERT(opEqualInt != nullptr, "operator==(int) not found");
-    ASSERT(opEqualMixed != nullptr, "operator==(const Mixed&) not found");
-
-    TEST_PASS("ComparisonWithDifferentTypes");
+    ASSERT_NE(opEqualInt, nullptr) << "operator==(int) not found";
+    ASSERT_NE(opEqualMixed, nullptr) << "operator==(const Mixed&) not found";
 }
 
 // Test 24: Friend comparison operators
-void test_FriendComparisonOperators() {
-    TEST_START("FriendComparisonOperators");
-
+TEST_F(ComparisonOperatorTest, FriendComparisonOperators) {
     const char *code = R"(
         class Value {
         public:
@@ -897,7 +796,7 @@ void test_FriendComparisonOperators() {
     )";
 
     std::unique_ptr<ASTUnit> AST = buildAST(code);
-    ASSERT(AST, "Failed to parse C++ code");
+    ASSERT_NE(AST, nullptr) << "Failed to parse C++ code";
 
     auto *TU = AST->getASTContext().getTranslationUnitDecl();
 
@@ -911,16 +810,12 @@ void test_FriendComparisonOperators() {
         }
     }
 
-    ASSERT(friendOp != nullptr, "Friend operator== not found");
-    ASSERT(friendOp->getNumParams() == 2, "Friend operator== should have 2 parameters");
-
-    TEST_PASS("FriendComparisonOperators");
+    ASSERT_NE(friendOp, nullptr) << "Friend operator== not found";
+    EXPECT_EQ(friendOp->getNumParams(), 2) << "Friend operator== should have 2 parameters";
 }
 
 // Test 25: Const correctness in comparison operators
-void test_ConstCorrectnessComparison() {
-    TEST_START("ConstCorrectnessComparison");
-
+TEST_F(ComparisonOperatorTest, ConstCorrectnessComparison) {
     const char *code = R"(
         class ConstTest {
         public:
@@ -930,7 +825,7 @@ void test_ConstCorrectnessComparison() {
     )";
 
     std::unique_ptr<ASTUnit> AST = buildAST(code);
-    ASSERT(AST, "Failed to parse C++ code");
+    ASSERT_NE(AST, nullptr) << "Failed to parse C++ code";
 
     auto *TU = AST->getASTContext().getTranslationUnitDecl();
 
@@ -948,27 +843,25 @@ void test_ConstCorrectnessComparison() {
         }
     }
 
-    ASSERT(opLess != nullptr, "operator< not found");
-    ASSERT(opLess->isConst(), "Comparison operator should be const");
+    ASSERT_NE(opLess, nullptr) << "operator< not found";
+    EXPECT_TRUE(opLess->isConst()) << "Comparison operator should be const";
 
     // For reference parameters, check if the referenced type is const-qualified
     QualType paramType = opLess->getParamDecl(0)->getType();
     if (paramType->isReferenceType()) {
         paramType = paramType->getPointeeType();
     }
-    ASSERT(paramType.isConstQualified(), "Parameter should be const");
-
-    TEST_PASS("ConstCorrectnessComparison");
+    EXPECT_TRUE(paramType.isConstQualified()) << "Parameter should be const";
 }
 
 // ============================================================================
 // SUBSCRIPT & CALL OPERATORS (12 tests)
 // ============================================================================
 
-// Test 26: operator[] - array subscript
-void test_SubscriptOperator() {
-    TEST_START("SubscriptOperator");
+class SubscriptCallOperatorTest : public OperatorOverloadingTestBase {};
 
+// Test 26: operator[] - array subscript
+TEST_F(SubscriptCallOperatorTest, SubscriptOperator) {
     const char *code = R"(
         class Array {
         public:
@@ -978,7 +871,7 @@ void test_SubscriptOperator() {
     )";
 
     std::unique_ptr<ASTUnit> AST = buildAST(code);
-    ASSERT(AST, "Failed to parse C++ code");
+    ASSERT_NE(AST, nullptr) << "Failed to parse C++ code";
 
     auto *TU = AST->getASTContext().getTranslationUnitDecl();
 
@@ -996,16 +889,12 @@ void test_SubscriptOperator() {
         }
     }
 
-    ASSERT(opSubscript != nullptr, "operator[] not found");
-    ASSERT(opSubscript->getReturnType()->isReferenceType(), "operator[] should return reference");
-
-    TEST_PASS("SubscriptOperator");
+    ASSERT_NE(opSubscript, nullptr) << "operator[] not found";
+    EXPECT_TRUE(opSubscript->getReturnType()->isReferenceType()) << "operator[] should return reference";
 }
 
 // Test 27: const operator[]
-void test_ConstSubscriptOperator() {
-    TEST_START("ConstSubscriptOperator");
-
+TEST_F(SubscriptCallOperatorTest, ConstSubscriptOperator) {
     const char *code = R"(
         class ConstArray {
         public:
@@ -1015,7 +904,7 @@ void test_ConstSubscriptOperator() {
     )";
 
     std::unique_ptr<ASTUnit> AST = buildAST(code);
-    ASSERT(AST, "Failed to parse C++ code");
+    ASSERT_NE(AST, nullptr) << "Failed to parse C++ code";
 
     auto *TU = AST->getASTContext().getTranslationUnitDecl();
 
@@ -1033,16 +922,12 @@ void test_ConstSubscriptOperator() {
         }
     }
 
-    ASSERT(opSubscript != nullptr, "const operator[] not found");
-    ASSERT(opSubscript->isConst(), "operator[] should be const");
-
-    TEST_PASS("ConstSubscriptOperator");
+    ASSERT_NE(opSubscript, nullptr) << "const operator[] not found";
+    EXPECT_TRUE(opSubscript->isConst()) << "operator[] should be const";
 }
 
 // Test 28: operator[] with non-int parameter
-void test_SubscriptOperatorNonIntIndex() {
-    TEST_START("SubscriptOperatorNonIntIndex");
-
+TEST_F(SubscriptCallOperatorTest, SubscriptOperatorNonIntIndex) {
     const char *code = R"(
         class StringKey {
         public:
@@ -1055,7 +940,7 @@ void test_SubscriptOperatorNonIntIndex() {
     )";
 
     std::unique_ptr<ASTUnit> AST = buildAST(code);
-    ASSERT(AST, "Failed to parse C++ code");
+    ASSERT_NE(AST, nullptr) << "Failed to parse C++ code";
 
     auto *TU = AST->getASTContext().getTranslationUnitDecl();
 
@@ -1073,22 +958,18 @@ void test_SubscriptOperatorNonIntIndex() {
         }
     }
 
-    ASSERT(opSubscript != nullptr, "operator[] with non-int parameter not found");
+    ASSERT_NE(opSubscript, nullptr) << "operator[] with non-int parameter not found";
 
     // For reference parameters, check if the referenced type is a record type
     QualType paramType = opSubscript->getParamDecl(0)->getType();
     if (paramType->isReferenceType()) {
         paramType = paramType->getPointeeType();
     }
-    ASSERT(paramType->isRecordType(), "Parameter should be class type");
-
-    TEST_PASS("SubscriptOperatorNonIntIndex");
+    EXPECT_TRUE(paramType->isRecordType()) << "Parameter should be class type";
 }
 
 // Test 29: Overloaded operator[] with different parameter types
-void test_OverloadedSubscriptOperator() {
-    TEST_START("OverloadedSubscriptOperator");
-
+TEST_F(SubscriptCallOperatorTest, OverloadedSubscriptOperator) {
     const char *code = R"(
         class MultiArray {
         public:
@@ -1098,7 +979,7 @@ void test_OverloadedSubscriptOperator() {
     )";
 
     std::unique_ptr<ASTUnit> AST = buildAST(code);
-    ASSERT(AST, "Failed to parse C++ code");
+    ASSERT_NE(AST, nullptr) << "Failed to parse C++ code";
 
     auto *TU = AST->getASTContext().getTranslationUnitDecl();
 
@@ -1115,15 +996,11 @@ void test_OverloadedSubscriptOperator() {
         }
     }
 
-    ASSERT(subscriptOpCount == 2, "Expected 2 overloaded operator[] methods");
-
-    TEST_PASS("OverloadedSubscriptOperator");
+    EXPECT_EQ(subscriptOpCount, 2) << "Expected 2 overloaded operator[] methods";
 }
 
 // Test 30: operator() - function call operator with no parameters
-void test_CallOperatorNoParams() {
-    TEST_START("CallOperatorNoParams");
-
+TEST_F(SubscriptCallOperatorTest, CallOperatorNoParams) {
     const char *code = R"(
         class Functor {
         public:
@@ -1132,7 +1009,7 @@ void test_CallOperatorNoParams() {
     )";
 
     std::unique_ptr<ASTUnit> AST = buildAST(code);
-    ASSERT(AST, "Failed to parse C++ code");
+    ASSERT_NE(AST, nullptr) << "Failed to parse C++ code";
 
     auto *TU = AST->getASTContext().getTranslationUnitDecl();
 
@@ -1150,16 +1027,12 @@ void test_CallOperatorNoParams() {
         }
     }
 
-    ASSERT(opCall != nullptr, "operator() not found");
-    ASSERT(opCall->getNumParams() == 0, "operator() should have 0 parameters");
-
-    TEST_PASS("CallOperatorNoParams");
+    ASSERT_NE(opCall, nullptr) << "operator() not found";
+    EXPECT_EQ(opCall->getNumParams(), 0) << "operator() should have 0 parameters";
 }
 
 // Test 31: operator() with single parameter
-void test_CallOperatorSingleParam() {
-    TEST_START("CallOperatorSingleParam");
-
+TEST_F(SubscriptCallOperatorTest, CallOperatorSingleParam) {
     const char *code = R"(
         class UnaryFunction {
         public:
@@ -1168,7 +1041,7 @@ void test_CallOperatorSingleParam() {
     )";
 
     std::unique_ptr<ASTUnit> AST = buildAST(code);
-    ASSERT(AST, "Failed to parse C++ code");
+    ASSERT_NE(AST, nullptr) << "Failed to parse C++ code";
 
     auto *TU = AST->getASTContext().getTranslationUnitDecl();
 
@@ -1186,16 +1059,12 @@ void test_CallOperatorSingleParam() {
         }
     }
 
-    ASSERT(opCall != nullptr, "operator()(int) not found");
-    ASSERT(opCall->getNumParams() == 1, "Expected 1 parameter");
-
-    TEST_PASS("CallOperatorSingleParam");
+    ASSERT_NE(opCall, nullptr) << "operator()(int) not found";
+    EXPECT_EQ(opCall->getNumParams(), 1) << "Expected 1 parameter";
 }
 
 // Test 32: operator() with multiple parameters
-void test_CallOperatorMultipleParams() {
-    TEST_START("CallOperatorMultipleParams");
-
+TEST_F(SubscriptCallOperatorTest, CallOperatorMultipleParams) {
     const char *code = R"(
         class BinaryFunction {
         public:
@@ -1204,7 +1073,7 @@ void test_CallOperatorMultipleParams() {
     )";
 
     std::unique_ptr<ASTUnit> AST = buildAST(code);
-    ASSERT(AST, "Failed to parse C++ code");
+    ASSERT_NE(AST, nullptr) << "Failed to parse C++ code";
 
     auto *TU = AST->getASTContext().getTranslationUnitDecl();
 
@@ -1222,16 +1091,12 @@ void test_CallOperatorMultipleParams() {
         }
     }
 
-    ASSERT(opCall != nullptr, "operator()(int, int) not found");
-    ASSERT(opCall->getNumParams() == 2, "Expected 2 parameters");
-
-    TEST_PASS("CallOperatorMultipleParams");
+    ASSERT_NE(opCall, nullptr) << "operator()(int, int) not found";
+    EXPECT_EQ(opCall->getNumParams(), 2) << "Expected 2 parameters";
 }
 
 // Test 33: Overloaded operator() with different signatures
-void test_OverloadedCallOperator() {
-    TEST_START("OverloadedCallOperator");
-
+TEST_F(SubscriptCallOperatorTest, OverloadedCallOperator) {
     const char *code = R"(
         class PolyFunction {
         public:
@@ -1242,7 +1107,7 @@ void test_OverloadedCallOperator() {
     )";
 
     std::unique_ptr<ASTUnit> AST = buildAST(code);
-    ASSERT(AST, "Failed to parse C++ code");
+    ASSERT_NE(AST, nullptr) << "Failed to parse C++ code";
 
     auto *TU = AST->getASTContext().getTranslationUnitDecl();
 
@@ -1259,15 +1124,11 @@ void test_OverloadedCallOperator() {
         }
     }
 
-    ASSERT(callOpCount == 3, "Expected 3 overloaded operator() methods");
-
-    TEST_PASS("OverloadedCallOperator");
+    EXPECT_EQ(callOpCount, 3) << "Expected 3 overloaded operator() methods";
 }
 
 // Test 34: const operator()
-void test_ConstCallOperator() {
-    TEST_START("ConstCallOperator");
-
+TEST_F(SubscriptCallOperatorTest, ConstCallOperator) {
     const char *code = R"(
         class ConstFunctor {
         public:
@@ -1276,7 +1137,7 @@ void test_ConstCallOperator() {
     )";
 
     std::unique_ptr<ASTUnit> AST = buildAST(code);
-    ASSERT(AST, "Failed to parse C++ code");
+    ASSERT_NE(AST, nullptr) << "Failed to parse C++ code";
 
     auto *TU = AST->getASTContext().getTranslationUnitDecl();
 
@@ -1294,16 +1155,12 @@ void test_ConstCallOperator() {
         }
     }
 
-    ASSERT(opCall != nullptr, "const operator() not found");
-    ASSERT(opCall->isConst(), "operator() should be const");
-
-    TEST_PASS("ConstCallOperator");
+    ASSERT_NE(opCall, nullptr) << "const operator() not found";
+    EXPECT_TRUE(opCall->isConst()) << "operator() should be const";
 }
 
 // Test 35: operator() for lambda-like behavior
-void test_LambdaLikeCallOperator() {
-    TEST_START("LambdaLikeCallOperator");
-
+TEST_F(SubscriptCallOperatorTest, LambdaLikeCallOperator) {
     const char *code = R"(
         class Lambda {
         private:
@@ -1315,7 +1172,7 @@ void test_LambdaLikeCallOperator() {
     )";
 
     std::unique_ptr<ASTUnit> AST = buildAST(code);
-    ASSERT(AST, "Failed to parse C++ code");
+    ASSERT_NE(AST, nullptr) << "Failed to parse C++ code";
 
     auto *TU = AST->getASTContext().getTranslationUnitDecl();
 
@@ -1333,16 +1190,12 @@ void test_LambdaLikeCallOperator() {
         }
     }
 
-    ASSERT(opCall != nullptr, "Lambda operator() not found");
-    ASSERT(opCall->hasBody(), "Lambda operator() should have body");
-
-    TEST_PASS("LambdaLikeCallOperator");
+    ASSERT_NE(opCall, nullptr) << "Lambda operator() not found";
+    EXPECT_TRUE(opCall->hasBody()) << "Lambda operator() should have body";
 }
 
 // Test 36: operator() returning reference
-void test_CallOperatorReturningReference() {
-    TEST_START("CallOperatorReturningReference");
-
+TEST_F(SubscriptCallOperatorTest, CallOperatorReturningReference) {
     const char *code = R"(
         class RefReturner {
         public:
@@ -1352,7 +1205,7 @@ void test_CallOperatorReturningReference() {
     )";
 
     std::unique_ptr<ASTUnit> AST = buildAST(code);
-    ASSERT(AST, "Failed to parse C++ code");
+    ASSERT_NE(AST, nullptr) << "Failed to parse C++ code";
 
     auto *TU = AST->getASTContext().getTranslationUnitDecl();
 
@@ -1370,16 +1223,12 @@ void test_CallOperatorReturningReference() {
         }
     }
 
-    ASSERT(opCall != nullptr, "operator() returning reference not found");
-    ASSERT(opCall->getReturnType()->isReferenceType(), "Return type should be reference");
-
-    TEST_PASS("CallOperatorReturningReference");
+    ASSERT_NE(opCall, nullptr) << "operator() returning reference not found";
+    EXPECT_TRUE(opCall->getReturnType()->isReferenceType()) << "Return type should be reference";
 }
 
 // Test 37: Both operator[] and operator() in same class
-void test_BothSubscriptAndCallOperators() {
-    TEST_START("BothSubscriptAndCallOperators");
-
+TEST_F(SubscriptCallOperatorTest, BothSubscriptAndCallOperators) {
     const char *code = R"(
         class DualOperator {
         public:
@@ -1389,7 +1238,7 @@ void test_BothSubscriptAndCallOperators() {
     )";
 
     std::unique_ptr<ASTUnit> AST = buildAST(code);
-    ASSERT(AST, "Failed to parse C++ code");
+    ASSERT_NE(AST, nullptr) << "Failed to parse C++ code";
 
     auto *TU = AST->getASTContext().getTranslationUnitDecl();
 
@@ -1412,20 +1261,18 @@ void test_BothSubscriptAndCallOperators() {
         }
     }
 
-    ASSERT(opSubscript != nullptr, "operator[] not found");
-    ASSERT(opCall != nullptr, "operator() not found");
-
-    TEST_PASS("BothSubscriptAndCallOperators");
+    ASSERT_NE(opSubscript, nullptr) << "operator[] not found";
+    ASSERT_NE(opCall, nullptr) << "operator() not found";
 }
 
 // ============================================================================
 // SPECIAL OPERATORS (12 tests)
 // ============================================================================
 
-// Test 38: operator-> (arrow operator)
-void test_ArrowOperator() {
-    TEST_START("ArrowOperator");
+class SpecialOperatorTest : public OperatorOverloadingTestBase {};
 
+// Test 38: operator-> (arrow operator)
+TEST_F(SpecialOperatorTest, ArrowOperator) {
     const char *code = R"(
         class Inner {
         public:
@@ -1439,7 +1286,7 @@ void test_ArrowOperator() {
     )";
 
     std::unique_ptr<ASTUnit> AST = buildAST(code);
-    ASSERT(AST, "Failed to parse C++ code");
+    ASSERT_NE(AST, nullptr) << "Failed to parse C++ code";
 
     auto *TU = AST->getASTContext().getTranslationUnitDecl();
 
@@ -1457,16 +1304,12 @@ void test_ArrowOperator() {
         }
     }
 
-    ASSERT(opArrow != nullptr, "operator-> not found");
-    ASSERT(opArrow->getReturnType()->isPointerType(), "operator-> should return pointer");
-
-    TEST_PASS("ArrowOperator");
+    ASSERT_NE(opArrow, nullptr) << "operator-> not found";
+    EXPECT_TRUE(opArrow->getReturnType()->isPointerType()) << "operator-> should return pointer";
 }
 
 // Test 39: const operator->
-void test_ConstArrowOperator() {
-    TEST_START("ConstArrowOperator");
-
+TEST_F(SpecialOperatorTest, ConstArrowOperator) {
     const char *code = R"(
         class Data {
         public:
@@ -1480,7 +1323,7 @@ void test_ConstArrowOperator() {
     )";
 
     std::unique_ptr<ASTUnit> AST = buildAST(code);
-    ASSERT(AST, "Failed to parse C++ code");
+    ASSERT_NE(AST, nullptr) << "Failed to parse C++ code";
 
     auto *TU = AST->getASTContext().getTranslationUnitDecl();
 
@@ -1498,16 +1341,12 @@ void test_ConstArrowOperator() {
         }
     }
 
-    ASSERT(opArrow != nullptr, "const operator-> not found");
-    ASSERT(opArrow->isConst(), "operator-> should be const");
-
-    TEST_PASS("ConstArrowOperator");
+    ASSERT_NE(opArrow, nullptr) << "const operator-> not found";
+    EXPECT_TRUE(opArrow->isConst()) << "operator-> should be const";
 }
 
 // Test 40: Unary operator* (dereference)
-void test_DereferenceOperator() {
-    TEST_START("DereferenceOperator");
-
+TEST_F(SpecialOperatorTest, DereferenceOperator) {
     const char *code = R"(
         class Value {
         public:
@@ -1521,7 +1360,7 @@ void test_DereferenceOperator() {
     )";
 
     std::unique_ptr<ASTUnit> AST = buildAST(code);
-    ASSERT(AST, "Failed to parse C++ code");
+    ASSERT_NE(AST, nullptr) << "Failed to parse C++ code";
 
     auto *TU = AST->getASTContext().getTranslationUnitDecl();
 
@@ -1539,16 +1378,12 @@ void test_DereferenceOperator() {
         }
     }
 
-    ASSERT(opDeref != nullptr, "Unary operator* not found");
-    ASSERT(opDeref->getReturnType()->isReferenceType(), "operator* should return reference");
-
-    TEST_PASS("DereferenceOperator");
+    ASSERT_NE(opDeref, nullptr) << "Unary operator* not found";
+    EXPECT_TRUE(opDeref->getReturnType()->isReferenceType()) << "operator* should return reference";
 }
 
 // Test 41: const operator*
-void test_ConstDereferenceOperator() {
-    TEST_START("ConstDereferenceOperator");
-
+TEST_F(SpecialOperatorTest, ConstDereferenceOperator) {
     const char *code = R"(
         class Element {
         public:
@@ -1562,7 +1397,7 @@ void test_ConstDereferenceOperator() {
     )";
 
     std::unique_ptr<ASTUnit> AST = buildAST(code);
-    ASSERT(AST, "Failed to parse C++ code");
+    ASSERT_NE(AST, nullptr) << "Failed to parse C++ code";
 
     auto *TU = AST->getASTContext().getTranslationUnitDecl();
 
@@ -1580,16 +1415,12 @@ void test_ConstDereferenceOperator() {
         }
     }
 
-    ASSERT(opDeref != nullptr, "const operator* not found");
-    ASSERT(opDeref->isConst(), "operator* should be const");
-
-    TEST_PASS("ConstDereferenceOperator");
+    ASSERT_NE(opDeref, nullptr) << "const operator* not found";
+    EXPECT_TRUE(opDeref->isConst()) << "operator* should be const";
 }
 
 // Test 42: Both operator-> and operator* in smart pointer
-void test_SmartPointerOperators() {
-    TEST_START("SmartPointerOperators");
-
+TEST_F(SpecialOperatorTest, SmartPointerOperators) {
     const char *code = R"(
         class Object {
         public:
@@ -1604,7 +1435,7 @@ void test_SmartPointerOperators() {
     )";
 
     std::unique_ptr<ASTUnit> AST = buildAST(code);
-    ASSERT(AST, "Failed to parse C++ code");
+    ASSERT_NE(AST, nullptr) << "Failed to parse C++ code";
 
     auto *TU = AST->getASTContext().getTranslationUnitDecl();
 
@@ -1627,16 +1458,12 @@ void test_SmartPointerOperators() {
         }
     }
 
-    ASSERT(opArrow != nullptr, "operator-> not found");
-    ASSERT(opDeref != nullptr, "operator* not found");
-
-    TEST_PASS("SmartPointerOperators");
+    ASSERT_NE(opArrow, nullptr) << "operator-> not found";
+    ASSERT_NE(opDeref, nullptr) << "operator* not found";
 }
 
 // Test 43: operator& (address-of)
-void test_AddressOfOperator() {
-    TEST_START("AddressOfOperator");
-
+TEST_F(SpecialOperatorTest, AddressOfOperator) {
     const char *code = R"(
         class AddressWrapper {
         public:
@@ -1646,7 +1473,7 @@ void test_AddressOfOperator() {
     )";
 
     std::unique_ptr<ASTUnit> AST = buildAST(code);
-    ASSERT(AST, "Failed to parse C++ code");
+    ASSERT_NE(AST, nullptr) << "Failed to parse C++ code";
 
     auto *TU = AST->getASTContext().getTranslationUnitDecl();
 
@@ -1664,15 +1491,11 @@ void test_AddressOfOperator() {
         }
     }
 
-    ASSERT(opAddress != nullptr, "operator& not found");
-
-    TEST_PASS("AddressOfOperator");
+    ASSERT_NE(opAddress, nullptr) << "operator& not found";
 }
 
 // Test 44: operator, (comma operator)
-void test_CommaOperator() {
-    TEST_START("CommaOperator");
-
+TEST_F(SpecialOperatorTest, CommaOperator) {
     const char *code = R"(
         class Sequence {
         public:
@@ -1682,7 +1505,7 @@ void test_CommaOperator() {
     )";
 
     std::unique_ptr<ASTUnit> AST = buildAST(code);
-    ASSERT(AST, "Failed to parse C++ code");
+    ASSERT_NE(AST, nullptr) << "Failed to parse C++ code";
 
     auto *TU = AST->getASTContext().getTranslationUnitDecl();
 
@@ -1700,15 +1523,11 @@ void test_CommaOperator() {
         }
     }
 
-    ASSERT(opComma != nullptr, "operator, not found");
-
-    TEST_PASS("CommaOperator");
+    ASSERT_NE(opComma, nullptr) << "operator, not found";
 }
 
 // Test 45: Bitwise operators (~, &, |, ^)
-void test_BitwiseOperators() {
-    TEST_START("BitwiseOperators");
-
+TEST_F(SpecialOperatorTest, BitwiseOperators) {
     const char *code = R"(
         class Bits {
         public:
@@ -1721,7 +1540,7 @@ void test_BitwiseOperators() {
     )";
 
     std::unique_ptr<ASTUnit> AST = buildAST(code);
-    ASSERT(AST, "Failed to parse C++ code");
+    ASSERT_NE(AST, nullptr) << "Failed to parse C++ code";
 
     auto *TU = AST->getASTContext().getTranslationUnitDecl();
 
@@ -1741,15 +1560,11 @@ void test_BitwiseOperators() {
         }
     }
 
-    ASSERT(bitwiseOpCount == 4, "Expected 4 bitwise operators");
-
-    TEST_PASS("BitwiseOperators");
+    EXPECT_EQ(bitwiseOpCount, 4) << "Expected 4 bitwise operators";
 }
 
 // Test 46: Shift operators (<<, >>)
-void test_ShiftOperators() {
-    TEST_START("ShiftOperators");
-
+TEST_F(SpecialOperatorTest, ShiftOperators) {
     const char *code = R"(
         class ShiftValue {
         public:
@@ -1760,7 +1575,7 @@ void test_ShiftOperators() {
     )";
 
     std::unique_ptr<ASTUnit> AST = buildAST(code);
-    ASSERT(AST, "Failed to parse C++ code");
+    ASSERT_NE(AST, nullptr) << "Failed to parse C++ code";
 
     auto *TU = AST->getASTContext().getTranslationUnitDecl();
 
@@ -1783,16 +1598,12 @@ void test_ShiftOperators() {
         }
     }
 
-    ASSERT(opLeftShift != nullptr, "operator<< not found");
-    ASSERT(opRightShift != nullptr, "operator>> not found");
-
-    TEST_PASS("ShiftOperators");
+    ASSERT_NE(opLeftShift, nullptr) << "operator<< not found";
+    ASSERT_NE(opRightShift, nullptr) << "operator>> not found";
 }
 
 // Test 47: Logical operators (&&, ||, !)
-void test_LogicalOperators() {
-    TEST_START("LogicalOperators");
-
+TEST_F(SpecialOperatorTest, LogicalOperators) {
     const char *code = R"(
         class Bool {
         public:
@@ -1804,7 +1615,7 @@ void test_LogicalOperators() {
     )";
 
     std::unique_ptr<ASTUnit> AST = buildAST(code);
-    ASSERT(AST, "Failed to parse C++ code");
+    ASSERT_NE(AST, nullptr) << "Failed to parse C++ code";
 
     auto *TU = AST->getASTContext().getTranslationUnitDecl();
 
@@ -1824,15 +1635,11 @@ void test_LogicalOperators() {
         }
     }
 
-    ASSERT(logicalOpCount == 3, "Expected 3 logical operators");
-
-    TEST_PASS("LogicalOperators");
+    EXPECT_EQ(logicalOpCount, 3) << "Expected 3 logical operators";
 }
 
 // Test 48: Assignment operator (operator=)
-void test_AssignmentOperator() {
-    TEST_START("AssignmentOperator");
-
+TEST_F(SpecialOperatorTest, AssignmentOperator) {
     const char *code = R"(
         class Assignable {
         public:
@@ -1842,7 +1649,7 @@ void test_AssignmentOperator() {
     )";
 
     std::unique_ptr<ASTUnit> AST = buildAST(code);
-    ASSERT(AST, "Failed to parse C++ code");
+    ASSERT_NE(AST, nullptr) << "Failed to parse C++ code";
 
     auto *TU = AST->getASTContext().getTranslationUnitDecl();
 
@@ -1860,16 +1667,12 @@ void test_AssignmentOperator() {
         }
     }
 
-    ASSERT(opAssign != nullptr, "operator= not found");
-    ASSERT(opAssign->getReturnType()->isReferenceType(), "operator= should return reference");
-
-    TEST_PASS("AssignmentOperator");
+    ASSERT_NE(opAssign, nullptr) << "operator= not found";
+    EXPECT_TRUE(opAssign->getReturnType()->isReferenceType()) << "operator= should return reference";
 }
 
 // Test 49: Move assignment operator (operator= with rvalue reference)
-void test_MoveAssignmentOperator() {
-    TEST_START("MoveAssignmentOperator");
-
+TEST_F(SpecialOperatorTest, MoveAssignmentOperator) {
     const char *code = R"(
         class Movable {
         public:
@@ -1879,7 +1682,7 @@ void test_MoveAssignmentOperator() {
     )";
 
     std::unique_ptr<ASTUnit> AST = buildAST(code);
-    ASSERT(AST, "Failed to parse C++ code");
+    ASSERT_NE(AST, nullptr) << "Failed to parse C++ code";
 
     auto *TU = AST->getASTContext().getTranslationUnitDecl();
 
@@ -1902,19 +1705,17 @@ void test_MoveAssignmentOperator() {
         }
     }
 
-    ASSERT(opMoveAssign != nullptr, "Move operator= not found");
-
-    TEST_PASS("MoveAssignmentOperator");
+    ASSERT_NE(opMoveAssign, nullptr) << "Move operator= not found";
 }
 
 // ============================================================================
 // CONVERSION OPERATORS (10 tests)
 // ============================================================================
 
-// Test 50: Implicit conversion operator (operator int)
-void test_ImplicitConversionOperator() {
-    TEST_START("ImplicitConversionOperator");
+class ConversionOperatorTest : public OperatorOverloadingTestBase {};
 
+// Test 50: Implicit conversion operator (operator int)
+TEST_F(ConversionOperatorTest, ImplicitConversionOperator) {
     const char *code = R"(
         class Wrapper {
         public:
@@ -1924,7 +1725,7 @@ void test_ImplicitConversionOperator() {
     )";
 
     std::unique_ptr<ASTUnit> AST = buildAST(code);
-    ASSERT(AST, "Failed to parse C++ code");
+    ASSERT_NE(AST, nullptr) << "Failed to parse C++ code";
 
     auto *TU = AST->getASTContext().getTranslationUnitDecl();
 
@@ -1942,16 +1743,12 @@ void test_ImplicitConversionOperator() {
         }
     }
 
-    ASSERT(convOp != nullptr, "Conversion operator not found");
-    ASSERT(!convOp->isExplicit(), "Should be implicit conversion");
-
-    TEST_PASS("ImplicitConversionOperator");
+    ASSERT_NE(convOp, nullptr) << "Conversion operator not found";
+    EXPECT_FALSE(convOp->isExplicit()) << "Should be implicit conversion";
 }
 
 // Test 51: Explicit conversion operator
-void test_ExplicitConversionOperator() {
-    TEST_START("ExplicitConversionOperator");
-
+TEST_F(ConversionOperatorTest, ExplicitConversionOperator) {
     const char *code = R"(
         class SafeWrapper {
         public:
@@ -1961,7 +1758,7 @@ void test_ExplicitConversionOperator() {
     )";
 
     std::unique_ptr<ASTUnit> AST = buildAST(code);
-    ASSERT(AST, "Failed to parse C++ code");
+    ASSERT_NE(AST, nullptr) << "Failed to parse C++ code";
 
     auto *TU = AST->getASTContext().getTranslationUnitDecl();
 
@@ -1979,16 +1776,12 @@ void test_ExplicitConversionOperator() {
         }
     }
 
-    ASSERT(convOp != nullptr, "Explicit conversion operator not found");
-    ASSERT(convOp->isExplicit(), "Conversion operator should be explicit");
-
-    TEST_PASS("ExplicitConversionOperator");
+    ASSERT_NE(convOp, nullptr) << "Explicit conversion operator not found";
+    EXPECT_TRUE(convOp->isExplicit()) << "Conversion operator should be explicit";
 }
 
 // Test 52: Conversion to bool
-void test_ConversionToBool() {
-    TEST_START("ConversionToBool");
-
+TEST_F(ConversionOperatorTest, ConversionToBool) {
     const char *code = R"(
         class BoolConvertible {
         public:
@@ -1998,7 +1791,7 @@ void test_ConversionToBool() {
     )";
 
     std::unique_ptr<ASTUnit> AST = buildAST(code);
-    ASSERT(AST, "Failed to parse C++ code");
+    ASSERT_NE(AST, nullptr) << "Failed to parse C++ code";
 
     auto *TU = AST->getASTContext().getTranslationUnitDecl();
 
@@ -2016,16 +1809,12 @@ void test_ConversionToBool() {
         }
     }
 
-    ASSERT(convOp != nullptr, "Conversion to bool not found");
-    ASSERT(convOp->getConversionType()->isBooleanType(), "Should convert to bool");
-
-    TEST_PASS("ConversionToBool");
+    ASSERT_NE(convOp, nullptr) << "Conversion to bool not found";
+    EXPECT_TRUE(convOp->getConversionType()->isBooleanType()) << "Should convert to bool";
 }
 
 // Test 53: Conversion to pointer type
-void test_ConversionToPointer() {
-    TEST_START("ConversionToPointer");
-
+TEST_F(ConversionOperatorTest, ConversionToPointer) {
     const char *code = R"(
         class PointerWrapper {
         public:
@@ -2035,7 +1824,7 @@ void test_ConversionToPointer() {
     )";
 
     std::unique_ptr<ASTUnit> AST = buildAST(code);
-    ASSERT(AST, "Failed to parse C++ code");
+    ASSERT_NE(AST, nullptr) << "Failed to parse C++ code";
 
     auto *TU = AST->getASTContext().getTranslationUnitDecl();
 
@@ -2053,16 +1842,12 @@ void test_ConversionToPointer() {
         }
     }
 
-    ASSERT(convOp != nullptr, "Conversion to pointer not found");
-    ASSERT(convOp->getConversionType()->isPointerType(), "Should convert to pointer");
-
-    TEST_PASS("ConversionToPointer");
+    ASSERT_NE(convOp, nullptr) << "Conversion to pointer not found";
+    EXPECT_TRUE(convOp->getConversionType()->isPointerType()) << "Should convert to pointer";
 }
 
 // Test 54: Conversion to reference type
-void test_ConversionToReference() {
-    TEST_START("ConversionToReference");
-
+TEST_F(ConversionOperatorTest, ConversionToReference) {
     const char *code = R"(
         class RefWrapper {
         public:
@@ -2072,7 +1857,7 @@ void test_ConversionToReference() {
     )";
 
     std::unique_ptr<ASTUnit> AST = buildAST(code);
-    ASSERT(AST, "Failed to parse C++ code");
+    ASSERT_NE(AST, nullptr) << "Failed to parse C++ code";
 
     auto *TU = AST->getASTContext().getTranslationUnitDecl();
 
@@ -2090,16 +1875,12 @@ void test_ConversionToReference() {
         }
     }
 
-    ASSERT(convOp != nullptr, "Conversion to reference not found");
-    ASSERT(convOp->getConversionType()->isReferenceType(), "Should convert to reference");
-
-    TEST_PASS("ConversionToReference");
+    ASSERT_NE(convOp, nullptr) << "Conversion to reference not found";
+    EXPECT_TRUE(convOp->getConversionType()->isReferenceType()) << "Should convert to reference";
 }
 
 // Test 55: Conversion to user-defined type
-void test_ConversionToUserType() {
-    TEST_START("ConversionToUserType");
-
+TEST_F(ConversionOperatorTest, ConversionToUserType) {
     const char *code = R"(
         class Target {
         public:
@@ -2113,7 +1894,7 @@ void test_ConversionToUserType() {
     )";
 
     std::unique_ptr<ASTUnit> AST = buildAST(code);
-    ASSERT(AST, "Failed to parse C++ code");
+    ASSERT_NE(AST, nullptr) << "Failed to parse C++ code";
 
     auto *TU = AST->getASTContext().getTranslationUnitDecl();
 
@@ -2131,16 +1912,12 @@ void test_ConversionToUserType() {
         }
     }
 
-    ASSERT(convOp != nullptr, "Conversion to user-defined type not found");
-    ASSERT(convOp->getConversionType()->isRecordType(), "Should convert to class type");
-
-    TEST_PASS("ConversionToUserType");
+    ASSERT_NE(convOp, nullptr) << "Conversion to user-defined type not found";
+    EXPECT_TRUE(convOp->getConversionType()->isRecordType()) << "Should convert to class type";
 }
 
 // Test 56: Multiple conversion operators
-void test_MultipleConversionOperators() {
-    TEST_START("MultipleConversionOperators");
-
+TEST_F(ConversionOperatorTest, MultipleConversionOperators) {
     const char *code = R"(
         class MultiConvert {
         public:
@@ -2152,7 +1929,7 @@ void test_MultipleConversionOperators() {
     )";
 
     std::unique_ptr<ASTUnit> AST = buildAST(code);
-    ASSERT(AST, "Failed to parse C++ code");
+    ASSERT_NE(AST, nullptr) << "Failed to parse C++ code";
 
     auto *TU = AST->getASTContext().getTranslationUnitDecl();
 
@@ -2169,15 +1946,11 @@ void test_MultipleConversionOperators() {
         }
     }
 
-    ASSERT(convOpCount == 3, "Expected 3 conversion operators");
-
-    TEST_PASS("MultipleConversionOperators");
+    EXPECT_EQ(convOpCount, 3) << "Expected 3 conversion operators";
 }
 
 // Test 57: Conversion with const correctness
-void test_ConversionConstCorrectness() {
-    TEST_START("ConversionConstCorrectness");
-
+TEST_F(ConversionOperatorTest, ConversionConstCorrectness) {
     const char *code = R"(
         class ConstConvert {
         public:
@@ -2187,7 +1960,7 @@ void test_ConversionConstCorrectness() {
     )";
 
     std::unique_ptr<ASTUnit> AST = buildAST(code);
-    ASSERT(AST, "Failed to parse C++ code");
+    ASSERT_NE(AST, nullptr) << "Failed to parse C++ code";
 
     auto *TU = AST->getASTContext().getTranslationUnitDecl();
 
@@ -2205,16 +1978,12 @@ void test_ConversionConstCorrectness() {
         }
     }
 
-    ASSERT(convOp != nullptr, "Const conversion operator not found");
-    ASSERT(convOp->isConst(), "Conversion operator should be const");
-
-    TEST_PASS("ConversionConstCorrectness");
+    ASSERT_NE(convOp, nullptr) << "Const conversion operator not found";
+    EXPECT_TRUE(convOp->isConst()) << "Conversion operator should be const";
 }
 
 // Test 58: Conversion to const type
-void test_ConversionToConstType() {
-    TEST_START("ConversionToConstType");
-
+TEST_F(ConversionOperatorTest, ConversionToConstType) {
     const char *code = R"(
         class ConstTypeConvert {
         public:
@@ -2224,7 +1993,7 @@ void test_ConversionToConstType() {
     )";
 
     std::unique_ptr<ASTUnit> AST = buildAST(code);
-    ASSERT(AST, "Failed to parse C++ code");
+    ASSERT_NE(AST, nullptr) << "Failed to parse C++ code";
 
     auto *TU = AST->getASTContext().getTranslationUnitDecl();
 
@@ -2242,18 +2011,14 @@ void test_ConversionToConstType() {
         }
     }
 
-    ASSERT(convOp != nullptr, "Conversion to const type not found");
+    ASSERT_NE(convOp, nullptr) << "Conversion to const type not found";
     QualType convType = convOp->getConversionType();
-    ASSERT(convType->isPointerType() && convType->getPointeeType().isConstQualified(),
-           "Should convert to const pointer");
-
-    TEST_PASS("ConversionToConstType");
+    EXPECT_TRUE(convType->isPointerType() && convType->getPointeeType().isConstQualified())
+        << "Should convert to const pointer";
 }
 
 // Test 59: Conversion operator with body
-void test_ConversionOperatorWithBody() {
-    TEST_START("ConversionOperatorWithBody");
-
+TEST_F(ConversionOperatorTest, ConversionOperatorWithBody) {
     const char *code = R"(
         class ComputedConversion {
         public:
@@ -2263,7 +2028,7 @@ void test_ConversionOperatorWithBody() {
     )";
 
     std::unique_ptr<ASTUnit> AST = buildAST(code);
-    ASSERT(AST, "Failed to parse C++ code");
+    ASSERT_NE(AST, nullptr) << "Failed to parse C++ code";
 
     auto *TU = AST->getASTContext().getTranslationUnitDecl();
 
@@ -2281,20 +2046,18 @@ void test_ConversionOperatorWithBody() {
         }
     }
 
-    ASSERT(convOp != nullptr, "Conversion operator with body not found");
-    ASSERT(convOp->hasBody(), "Conversion operator should have body");
-
-    TEST_PASS("ConversionOperatorWithBody");
+    ASSERT_NE(convOp, nullptr) << "Conversion operator with body not found";
+    EXPECT_TRUE(convOp->hasBody()) << "Conversion operator should have body";
 }
 
 // ============================================================================
 // STREAM OPERATORS (3 tests)
 // ============================================================================
 
-// Test 60: operator<< for output stream
-void test_OutputStreamOperator() {
-    TEST_START("OutputStreamOperator");
+class StreamOperatorTest : public OperatorOverloadingTestBase {};
 
+// Test 60: operator<< for output stream
+TEST_F(StreamOperatorTest, OutputStreamOperator) {
     const char *code = R"(
         class OStream {
         public:
@@ -2303,7 +2066,7 @@ void test_OutputStreamOperator() {
     )";
 
     std::unique_ptr<ASTUnit> AST = buildAST(code);
-    ASSERT(AST, "Failed to parse C++ code");
+    ASSERT_NE(AST, nullptr) << "Failed to parse C++ code";
 
     auto *TU = AST->getASTContext().getTranslationUnitDecl();
 
@@ -2321,16 +2084,12 @@ void test_OutputStreamOperator() {
         }
     }
 
-    ASSERT(opOutput != nullptr, "operator<< not found");
-    ASSERT(opOutput->getReturnType()->isReferenceType(), "operator<< should return reference");
-
-    TEST_PASS("OutputStreamOperator");
+    ASSERT_NE(opOutput, nullptr) << "operator<< not found";
+    EXPECT_TRUE(opOutput->getReturnType()->isReferenceType()) << "operator<< should return reference";
 }
 
 // Test 61: operator>> for input stream
-void test_InputStreamOperator() {
-    TEST_START("InputStreamOperator");
-
+TEST_F(StreamOperatorTest, InputStreamOperator) {
     const char *code = R"(
         class IStream {
         public:
@@ -2339,7 +2098,7 @@ void test_InputStreamOperator() {
     )";
 
     std::unique_ptr<ASTUnit> AST = buildAST(code);
-    ASSERT(AST, "Failed to parse C++ code");
+    ASSERT_NE(AST, nullptr) << "Failed to parse C++ code";
 
     auto *TU = AST->getASTContext().getTranslationUnitDecl();
 
@@ -2357,15 +2116,11 @@ void test_InputStreamOperator() {
         }
     }
 
-    ASSERT(opInput != nullptr, "operator>> not found");
-
-    TEST_PASS("InputStreamOperator");
+    ASSERT_NE(opInput, nullptr) << "operator>> not found";
 }
 
 // Test 62: Friend stream operators
-void test_FriendStreamOperators() {
-    TEST_START("FriendStreamOperators");
-
+TEST_F(StreamOperatorTest, FriendStreamOperators) {
     const char *code = R"(
         class OStream {
         public:
@@ -2380,7 +2135,7 @@ void test_FriendStreamOperators() {
     )";
 
     std::unique_ptr<ASTUnit> AST = buildAST(code);
-    ASSERT(AST, "Failed to parse C++ code");
+    ASSERT_NE(AST, nullptr) << "Failed to parse C++ code";
 
     auto *TU = AST->getASTContext().getTranslationUnitDecl();
 
@@ -2394,109 +2149,6 @@ void test_FriendStreamOperators() {
         }
     }
 
-    ASSERT(friendOp != nullptr, "Friend operator<< not found");
-    ASSERT(friendOp->getNumParams() == 2, "Friend operator<< should have 2 parameters");
-
-    TEST_PASS("FriendStreamOperators");
-}
-
-// ============================================================================
-// MAIN TEST RUNNER
-// ============================================================================
-
-int main() {
-    std::cout << "===============================================" << std::endl;
-    std::cout << "C++ Operator Overloading Detection Test Suite" << std::endl;
-    std::cout << "Stream 4: Comprehensive Operator Tests (62 tests)" << std::endl;
-    std::cout << "===============================================" << std::endl;
-    std::cout << std::endl;
-
-    std::cout << "--- ARITHMETIC OPERATORS (15 tests) ---" << std::endl;
-    test_BinaryPlusOperator();
-    test_BinaryMinusOperator();
-    test_BinaryMultiplyOperator();
-    test_BinaryDivideOperator();
-    test_BinaryModuloOperator();
-    test_UnaryMinusOperator();
-    test_UnaryPlusOperator();
-    test_PrefixIncrementOperator();
-    test_PostfixIncrementOperator();
-    test_PrefixDecrementOperator();
-    test_PostfixDecrementOperator();
-    test_CompoundPlusAssignOperator();
-    test_CompoundMinusAssignOperator();
-    test_CompoundMultiplyAssignOperator();
-    test_CompoundDivideAssignOperator();
-
-    std::cout << std::endl;
-    std::cout << "--- COMPARISON OPERATORS (10 tests) ---" << std::endl;
-    test_EqualityOperator();
-    test_InequalityOperator();
-    test_LessThanOperator();
-    test_GreaterThanOperator();
-    test_LessOrEqualOperator();
-    test_GreaterOrEqualOperator();
-    test_MultipleComparisonOperators();
-    test_ComparisonWithDifferentTypes();
-    test_FriendComparisonOperators();
-    test_ConstCorrectnessComparison();
-
-    std::cout << std::endl;
-    std::cout << "--- SUBSCRIPT & CALL OPERATORS (12 tests) ---" << std::endl;
-    test_SubscriptOperator();
-    test_ConstSubscriptOperator();
-    test_SubscriptOperatorNonIntIndex();
-    test_OverloadedSubscriptOperator();
-    test_CallOperatorNoParams();
-    test_CallOperatorSingleParam();
-    test_CallOperatorMultipleParams();
-    test_OverloadedCallOperator();
-    test_ConstCallOperator();
-    test_LambdaLikeCallOperator();
-    test_CallOperatorReturningReference();
-    test_BothSubscriptAndCallOperators();
-
-    std::cout << std::endl;
-    std::cout << "--- SPECIAL OPERATORS (12 tests) ---" << std::endl;
-    test_ArrowOperator();
-    test_ConstArrowOperator();
-    test_DereferenceOperator();
-    test_ConstDereferenceOperator();
-    test_SmartPointerOperators();
-    test_AddressOfOperator();
-    test_CommaOperator();
-    test_BitwiseOperators();
-    test_ShiftOperators();
-    test_LogicalOperators();
-    test_AssignmentOperator();
-    test_MoveAssignmentOperator();
-
-    std::cout << std::endl;
-    std::cout << "--- CONVERSION OPERATORS (10 tests) ---" << std::endl;
-    test_ImplicitConversionOperator();
-    test_ExplicitConversionOperator();
-    test_ConversionToBool();
-    test_ConversionToPointer();
-    test_ConversionToReference();
-    test_ConversionToUserType();
-    test_MultipleConversionOperators();
-    test_ConversionConstCorrectness();
-    test_ConversionToConstType();
-    test_ConversionOperatorWithBody();
-
-    std::cout << std::endl;
-    std::cout << "--- STREAM OPERATORS (3 tests) ---" << std::endl;
-    test_OutputStreamOperator();
-    test_InputStreamOperator();
-    test_FriendStreamOperators();
-
-    std::cout << std::endl;
-    std::cout << "===============================================" << std::endl;
-    std::cout << "Test Results:" << std::endl;
-    std::cout << "  PASSED: " << tests_passed << std::endl;
-    std::cout << "  FAILED: " << tests_failed << std::endl;
-    std::cout << "  TOTAL:  " << (tests_passed + tests_failed) << std::endl;
-    std::cout << "===============================================" << std::endl;
-
-    return tests_failed > 0 ? 1 : 0;
+    ASSERT_NE(friendOp, nullptr) << "Friend operator<< not found";
+    EXPECT_EQ(friendOp->getNumParams(), 2) << "Friend operator<< should have 2 parameters";
 }

@@ -1,6 +1,6 @@
 #include "CppToCConsumer.h"
-#include "CppToCVisitor.h"
 #include "CNodeBuilder.h"
+#include "CppToCVisitor.h"
 #include "clang/Basic/SourceManager.h"
 #include "llvm/Support/raw_ostream.h"
 #include <algorithm>
@@ -30,4 +30,8 @@ void CppToCConsumer::HandleTranslationUnit(clang::ASTContext &Context) {
   // Create and run visitor to traverse AST
   CppToCVisitor Visitor(Context, Builder);
   Visitor.TraverseDecl(TU);
+
+  // Phase 11 (v2.4.0): Process template instantiations after AST traversal
+  // This generates monomorphized C code for all template instantiations
+  Visitor.processTemplateInstantiations(TU);
 }

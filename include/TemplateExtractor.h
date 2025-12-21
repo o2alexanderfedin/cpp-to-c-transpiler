@@ -57,6 +57,20 @@ public:
     bool VisitFunctionTemplateDecl(clang::FunctionTemplateDecl* D);
     bool VisitFunctionDecl(clang::FunctionDecl* D);
 
+    /**
+     * @brief Generate unique key for class instantiation (public for Phase 11 integration)
+     * @param D ClassTemplateSpecializationDecl
+     * @return Unique string key
+     */
+    std::string getClassInstantiationKey(clang::ClassTemplateSpecializationDecl* D);
+
+    /**
+     * @brief Generate unique key for function instantiation (public for Phase 11 integration)
+     * @param D FunctionDecl
+     * @return Unique string key
+     */
+    std::string getFunctionInstantiationKey(clang::FunctionDecl* D);
+
 private:
     clang::ASTContext& Context;
 
@@ -68,19 +82,6 @@ private:
     std::set<std::string> seenClassInstantiations;
     std::set<std::string> seenFunctionInstantiations;
 
-    /**
-     * @brief Generate unique key for class instantiation
-     * @param D ClassTemplateSpecializationDecl
-     * @return Unique string key
-     */
-    std::string getClassInstantiationKey(clang::ClassTemplateSpecializationDecl* D);
-
-    /**
-     * @brief Generate unique key for function instantiation
-     * @param D FunctionDecl
-     * @return Unique string key
-     */
-    std::string getFunctionInstantiationKey(clang::FunctionDecl* D);
 
     /**
      * @brief Check if function is a template instantiation

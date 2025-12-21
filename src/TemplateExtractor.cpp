@@ -56,12 +56,15 @@ bool TemplateExtractor::VisitClassTemplateSpecializationDecl(ClassTemplateSpecia
         return true;
     }
 
-    // Accept all explicit and implicit instantiations
-    // Skip only if it's completely undeclared AND has no definition
+    // Accept all template specializations that are used in the code
+    // Even TSK_Undeclared specializations are needed when they're used as template arguments
+    // Example: Vector<Pair<int, double>> - both Vector and Pair specializations are needed
     TemplateSpecializationKind TSK = D->getSpecializationKind();
-    if (TSK == TSK_Undeclared && !D->hasDefinition()) {
-        return true;
-    }
+
+    // Only skip forward declarations without any actual usage
+    // If a specialization exists in the specializations list, it's being used somewhere
+    // Note: Removed the TSK_Undeclared check because nested template arguments
+    // create undeclared specializations that are still needed for monomorphization
 
     // Generate unique key for this instantiation
     std::string key = getClassInstantiationKey(D);
@@ -122,6 +125,19 @@ std::string TemplateExtractor::getClassInstantiationKey(ClassTemplateSpecializat
             case TemplateArgument::Expression:
                 key << "expr";
                 break;
+            case TemplateArgument::Pack: {
+                // Handle parameter packs - expand them inline
+                for (unsigned j = 0; j < arg.pack_size(); ++j) {
+                    if (i > 0 || j > 0) key << ",";
+                    const TemplateArgument& packArg = arg.pack_elements()[j];
+                    if (packArg.getKind() == TemplateArgument::Type) {
+                        key << packArg.getAsType().getAsString();
+                    } else {
+                        key << "arg";
+                    }
+                }
+                break;
+            }
             default:
                 key << "arg";
                 break;
@@ -133,11 +149,57 @@ std::string TemplateExtractor::getClassInstantiationKey(ClassTemplateSpecializat
 }
 
 std::string TemplateExtractor::getFunctionInstantiationKey(FunctionDecl* D) {
-    // Generate unique key: functionName(param1Type, param2Type, ...)
+    // Generate unique key: functionName<arg1, arg2, ...>(param1Type, param2Type, ...)
     std::ostringstream key;
 
     // Function name
     key << D->getNameAsString();
+
+    // Template arguments (if this is a template instantiation)
+    if (FunctionTemplateSpecializationInfo* FTSI = D->getTemplateSpecializationInfo()) {
+        const TemplateArgumentList* args = FTSI->TemplateArguments;
+        if (args && args->size() > 0) {
+            key << "<";
+            for (unsigned i = 0; i < args->size(); ++i) {
+                if (i > 0) key << ",";
+
+                const TemplateArgument& arg = args->get(i);
+                switch (arg.getKind()) {
+                    case TemplateArgument::Type:
+                        key << arg.getAsType().getAsString();
+                        break;
+                    case TemplateArgument::Integral: {
+                        llvm::SmallString<16> IntStr;
+                        arg.getAsIntegral().toString(IntStr, 10);
+                        key << IntStr.str().str();
+                        break;
+                    }
+                    case TemplateArgument::Expression:
+                        key << "expr";
+                        break;
+                    case TemplateArgument::Pack: {
+                        // Handle parameter packs
+                        key << "pack(";
+                        for (unsigned j = 0; j < arg.pack_size(); ++j) {
+                            if (j > 0) key << ",";
+                            const TemplateArgument& packArg = arg.pack_elements()[j];
+                            if (packArg.getKind() == TemplateArgument::Type) {
+                                key << packArg.getAsType().getAsString();
+                            } else {
+                                key << "arg";
+                            }
+                        }
+                        key << ")";
+                        break;
+                    }
+                    default:
+                        key << "arg";
+                        break;
+                }
+            }
+            key << ">";
+        }
+    }
 
     // Parameter types
     key << "(";

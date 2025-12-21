@@ -1,30 +1,21 @@
 // Integration Tests for Epic #19 - Header File Generation
 // Story #142: Integration Testing
+// Migrated to Google Test
 
 #include "HeaderSeparator.h"
 #include "IncludeGuardGenerator.h"
 #include "DependencyAnalyzer.h"
 #include "FileOutputManager.h"
 #include "clang/Tooling/Tooling.h"
+#include <gtest/gtest.h>
 #include <iostream>
 #include <fstream>
 #include <cstdio>
 
 using namespace clang;
 
-// Simple test counter
-static int tests_passed = 0;
-static int tests_failed = 0;
-
-#define TEST_START(name) std::cout << "Running " << name << "... ";
-#define TEST_PASS(name) { std::cout << "✓" << std::endl; tests_passed++; }
-#define TEST_FAIL(name, msg) { std::cout << "✗ FAILED: " << msg << std::endl; tests_failed++; }
-#define ASSERT(expr, msg) if (!(expr)) { TEST_FAIL("", msg); return; }
-
 // Test 1: HeaderSeparator + IncludeGuardGenerator integration
-void test_HeaderSeparationWithGuards() {
-    TEST_START("HeaderSeparationWithGuards");
-
+TEST(IntegrationTest, HeaderSeparationWithGuards) {
     const char *Code = R"(
         struct Point {
             int x, y;
@@ -47,20 +38,16 @@ void test_HeaderSeparationWithGuards() {
     std::string guardEnd = guardGen.emitGuardEnd(guardName);
 
     // Verify integration
-    ASSERT(separator.getHeaderDecls().size() == 2,
-           "Expected 2 header declarations (struct + function)");
-    ASSERT(guardBegin.find("#ifndef POINT_H") != std::string::npos,
-           "Expected include guard in output");
-    ASSERT(guardEnd.find("#endif") != std::string::npos,
-           "Expected #endif in output");
-
-    TEST_PASS("HeaderSeparationWithGuards");
+    EXPECT_EQ(separator.getHeaderDecls().size(), 2)
+        << "Expected 2 header declarations (struct + function)";
+    EXPECT_NE(guardBegin.find("#ifndef POINT_H"), std::string::npos)
+        << "Expected include guard in output";
+    EXPECT_NE(guardEnd.find("#endif"), std::string::npos)
+        << "Expected #endif in output";
 }
 
 // Test 2: HeaderSeparator + Forward Declarations integration
-void test_SeparationWithForwardDecls() {
-    TEST_START("SeparationWithForwardDecls");
-
+TEST(IntegrationTest, SeparationWithForwardDecls) {
     const char *Code = R"(
         struct Node {
             int data;
@@ -77,18 +64,14 @@ void test_SeparationWithForwardDecls() {
     // Check forward declarations detected
     auto forwardDecls = separator.getForwardDecls();
 
-    ASSERT(separator.getHeaderDecls().size() == 1,
-           "Expected 1 header declaration");
-    ASSERT(forwardDecls.count("Node") == 1,
-           "Expected forward declaration for Node");
-
-    TEST_PASS("SeparationWithForwardDecls");
+    EXPECT_EQ(separator.getHeaderDecls().size(), 1)
+        << "Expected 1 header declaration";
+    EXPECT_EQ(forwardDecls.count("Node"), 1)
+        << "Expected forward declaration for Node";
 }
 
 // Test 3: DependencyAnalyzer + IncludeGuardGenerator integration
-void test_DependenciesWithGuards() {
-    TEST_START("DependenciesWithGuards");
-
+TEST(IntegrationTest, DependenciesWithGuards) {
     DependencyAnalyzer depAnalyzer("Example.h");
     IncludeGuardGenerator guardGen;
 
@@ -96,18 +79,14 @@ void test_DependenciesWithGuards() {
     std::string includes = depAnalyzer.emitIncludes();
 
     // Verify both work together
-    ASSERT(guardName == "EXAMPLE_H",
-           "Expected correct guard name");
-    ASSERT(includes.find("#include \"Example.h\"") != std::string::npos,
-           "Expected own header in includes");
-
-    TEST_PASS("DependenciesWithGuards");
+    EXPECT_EQ(guardName, "EXAMPLE_H")
+        << "Expected correct guard name";
+    EXPECT_NE(includes.find("#include \"Example.h\""), std::string::npos)
+        << "Expected own header in includes";
 }
 
 // Test 4: FileOutputManager actual file creation
-void test_ActualFileCreation() {
-    TEST_START("ActualFileCreation");
-
+TEST(IntegrationTest, ActualFileCreation) {
     FileOutputManager fileManager;
     fileManager.setInputFilename("TestIntegration.cpp");
 
@@ -130,14 +109,14 @@ void test_ActualFileCreation() {
 
     bool success = fileManager.writeFiles(headerContent, implContent);
 
-    ASSERT(success, "Expected file writing to succeed");
+    ASSERT_TRUE(success) << "Expected file writing to succeed";
 
     // Verify files exist
     std::ifstream headerFile("TestIntegration.h");
     std::ifstream implFile("TestIntegration.c");
 
-    ASSERT(headerFile.good(), "Expected header file to exist");
-    ASSERT(implFile.good(), "Expected impl file to exist");
+    EXPECT_TRUE(headerFile.good()) << "Expected header file to exist";
+    EXPECT_TRUE(implFile.good()) << "Expected impl file to exist";
 
     headerFile.close();
     implFile.close();
@@ -145,14 +124,10 @@ void test_ActualFileCreation() {
     // Cleanup
     std::remove("TestIntegration.h");
     std::remove("TestIntegration.c");
-
-    TEST_PASS("ActualFileCreation");
 }
 
 // Test 5: End-to-end scenario
-void test_EndToEndScenario() {
-    TEST_START("EndToEndScenario");
-
+TEST(IntegrationTest, EndToEndScenario) {
     const char *Code = R"(
         struct Calculator {
             int add(int a, int b);
@@ -184,36 +159,16 @@ void test_EndToEndScenario() {
     fileManager.setInputFilename("Calculator.cpp");
 
     // Verify all components work
-    ASSERT(separator.getHeaderDecls().size() >= 1,
-           "Expected header declarations");
-    ASSERT(separator.getImplDecls().size() >= 1,
-           "Expected impl declarations");
-    ASSERT(guardBegin.find("#ifndef CALCULATOR_H") != std::string::npos,
-           "Expected correct guard");
-    ASSERT(depAnalyzer.getRequiredIncludes().size() == 1,
-           "Expected one include (own header)");
-    ASSERT(fileManager.getHeaderFilename() == "Calculator.h",
-           "Expected correct header filename");
-    ASSERT(fileManager.getImplFilename() == "Calculator.c",
-           "Expected correct impl filename");
-
-    TEST_PASS("EndToEndScenario");
-}
-
-int main() {
-    std::cout << "\n=== Integration Tests (Story #142) ===\n\n";
-
-    // Run all tests
-    test_HeaderSeparationWithGuards();
-    test_SeparationWithForwardDecls();
-    test_DependenciesWithGuards();
-    test_ActualFileCreation();
-    test_EndToEndScenario();
-
-    // Summary
-    std::cout << "\n=== Test Summary ===\n";
-    std::cout << "Passed: " << tests_passed << "\n";
-    std::cout << "Failed: " << tests_failed << "\n";
-
-    return tests_failed > 0 ? 1 : 0;
+    EXPECT_GE(separator.getHeaderDecls().size(), 1)
+        << "Expected header declarations";
+    EXPECT_GE(separator.getImplDecls().size(), 1)
+        << "Expected impl declarations";
+    EXPECT_NE(guardBegin.find("#ifndef CALCULATOR_H"), std::string::npos)
+        << "Expected correct guard";
+    EXPECT_EQ(depAnalyzer.getRequiredIncludes().size(), 1)
+        << "Expected one include (own header)";
+    EXPECT_EQ(fileManager.getHeaderFilename(), "Calculator.h")
+        << "Expected correct header filename";
+    EXPECT_EQ(fileManager.getImplFilename(), "Calculator.c")
+        << "Expected correct impl filename";
 }

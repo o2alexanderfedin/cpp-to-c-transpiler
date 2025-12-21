@@ -33,28 +33,55 @@ if(ENABLE_COVERAGE)
 
     # Add custom target for coverage report generation
     if(LCOV_PATH AND GENHTML_PATH)
+        # Determine parallel job count
+        if(NOT DEFINED PARALLEL_JOBS)
+            if(APPLE)
+                execute_process(COMMAND sysctl -n hw.ncpu OUTPUT_VARIABLE PARALLEL_JOBS OUTPUT_STRIP_TRAILING_WHITESPACE)
+            else()
+                execute_process(COMMAND nproc OUTPUT_VARIABLE PARALLEL_JOBS OUTPUT_STRIP_TRAILING_WHITESPACE)
+            endif()
+            if(NOT PARALLEL_JOBS)
+                set(PARALLEL_JOBS 4)
+            endif()
+        endif()
+
         add_custom_target(coverage
             COMMAND ${CMAKE_COMMAND} -E echo "Generating coverage report..."
 
             # Initialize coverage data
             COMMAND ${LCOV_PATH} --directory . --zerocounters
 
-            # Run tests (this will be filled in by the script)
-            COMMAND ${CMAKE_COMMAND} -E echo "Run tests before generating coverage"
+            # Run ALL tests (Phase 15-04 enhancement)
+            COMMAND ${CMAKE_CTEST_COMMAND} --parallel ${PARALLEL_JOBS}
 
             # Capture coverage data
             COMMAND ${LCOV_PATH} --directory . --capture --output-file coverage.info
 
             # Remove system headers and test files from coverage
-            COMMAND ${LCOV_PATH} --remove coverage.info '/usr/*' '*/tests/*' '*/build/*' --output-file coverage.info.cleaned
+            COMMAND ${LCOV_PATH} --remove coverage.info
+                '/usr/*'
+                '*/tests/*'
+                '*/build/*'
+                '*/examples/*'
+                '*/benchmarks/*'
+                --output-file coverage.info.cleaned
 
             # Generate HTML report
-            COMMAND ${GENHTML_PATH} coverage.info.cleaned --output-directory coverage --demangle-cpp
+            COMMAND ${GENHTML_PATH} coverage.info.cleaned
+                --output-directory coverage
+                --demangle-cpp
+                --title "C++ to C Transpiler Coverage"
+                --legend
+                --show-details
 
-            COMMAND ${CMAKE_COMMAND} -E echo "Coverage report generated in coverage/"
+            # Print summary
+            COMMAND ${LCOV_PATH} --summary coverage.info.cleaned
+
+            COMMAND ${CMAKE_COMMAND} -E echo "Coverage report: ${CMAKE_BINARY_DIR}/coverage/index.html"
 
             WORKING_DIRECTORY ${CMAKE_BINARY_DIR}
-            COMMENT "Generating code coverage report"
+            COMMENT "Generating code coverage report with HTML output"
+            USES_TERMINAL
         )
     endif()
 endif()
@@ -126,6 +153,32 @@ find_package(LLVM REQUIRED CONFIG)
 find_package(Clang REQUIRED CONFIG)
 
 # ============================================================================
+# Google Test Framework (Phase 15-01)
+# ============================================================================
+include(FetchContent)
+FetchContent_Declare(
+  googletest
+  GIT_REPOSITORY https://github.com/google/googletest.git
+  GIT_TAG v1.14.0  # Latest stable release
+)
+# For Windows: Prevent overriding the parent project's compiler/linker settings
+set(gtest_force_shared_crt ON CACHE BOOL "" FORCE)
+FetchContent_MakeAvailable(googletest)
+
+# Enable CTest integration
+enable_testing()
+include(GoogleTest)
+
+# ============================================================================
+# Real-World Test Suites (Phase 15-01: GTest Migration)
+# ============================================================================
+add_subdirectory(tests/real-world/json-parser)
+add_subdirectory(tests/real-world/resource-manager)
+add_subdirectory(tests/real-world/logger)
+add_subdirectory(tests/real-world/string-formatter)
+add_subdirectory(tests/real-world/test-framework)
+
+# ============================================================================
 # Shared Library for Common Code (Build Optimization)
 # ============================================================================
 # Dramatically reduces build time by compiling common sources only once.
@@ -147,6 +200,7 @@ add_library(cpptoc_core STATIC
     src/ACSLAxiomaticBuilder.cpp
     src/ACSLGhostCodeInjector.cpp
     src/ACSLBehaviorAnnotator.cpp
+    src/ACSLMemoryPredicateAnalyzer.cpp
     src/HeaderSeparator.cpp
     src/IncludeGuardGenerator.cpp
     src/DependencyAnalyzer.cpp
@@ -165,6 +219,14 @@ add_library(cpptoc_core STATIC
     src/VirtualCallTranslator.cpp
     src/PureVirtualHandler.cpp
     src/VirtualDestructorHandler.cpp
+    src/TryCatchTransformer.cpp
+    src/ThrowTranslator.cpp
+    src/ExceptionFrameGenerator.cpp
+    src/TemplateExtractor.cpp
+    src/TemplateMonomorphizer.cpp
+    src/TemplateInstantiationTracker.cpp
+    src/TypeidTranslator.cpp
+    src/DynamicCastTranslator.cpp
 )
 
 target_compile_definitions(cpptoc_core PRIVATE ${LLVM_DEFINITIONS})
@@ -346,6 +408,29 @@ target_link_libraries(STLIntegrationTest PRIVATE
     clangBasic
 )
 
+# Phase 11: Template Integration Test (v2.4.0)
+add_executable(TemplateIntegrationTest
+    tests/TemplateIntegrationTest.cpp
+    src/TemplateExtractor.cpp
+    src/TemplateMonomorphizer.cpp
+)
+
+target_compile_definitions(TemplateIntegrationTest PRIVATE ${LLVM_DEFINITIONS})
+
+target_include_directories(TemplateIntegrationTest PRIVATE
+    ${CMAKE_SOURCE_DIR}/include
+    ${LLVM_INCLUDE_DIRS}
+    ${CLANG_INCLUDE_DIRS}
+)
+
+target_link_libraries(TemplateIntegrationTest PRIVATE
+    cpptoc_core
+    clangTooling
+    clangFrontend
+    clangAST
+    clangBasic
+)
+
 # Story #20: Translation Integration Tests
 add_executable(TranslationIntegrationTest
     tests/TranslationIntegrationTest.cpp
@@ -390,7 +475,16 @@ target_link_libraries(CodeGeneratorTest PRIVATE
     clangFrontend
     clangAST
     clangBasic
+GTest::gtest
+    GTest::gtest_main
 )
+
+# Register with CTest
+gtest_discover_tests(CodeGeneratorTest
+    WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
+    PROPERTIES LABELS "unit;phase15-03"
+)
+
 
 # ============================================================================
 # Epic #4: Comprehensive Validation Tests (Stories #24, #25, #26)
@@ -415,7 +509,16 @@ target_link_libraries(ValidationTest PRIVATE
     clangFrontend
     clangAST
     clangBasic
+GTest::gtest
+    GTest::gtest_main
 )
+
+# Register with CTest
+gtest_discover_tests(ValidationTest
+    WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
+    PROPERTIES LABELS "unit;phase15-03"
+)
+
 
 # ============================================================================
 # Epic #19: Header File Generation Tests (Story #137)
@@ -744,6 +847,35 @@ target_link_libraries(InheritanceTest PRIVATE
     clangFrontend
     clangAST
     clangBasic
+)
+
+# Story #50-64: Inheritance Tests (GTest Migration)
+add_executable(InheritanceTest_GTest
+    tests/InheritanceTest_GTest.cpp
+)
+
+target_compile_definitions(InheritanceTest_GTest PRIVATE ${LLVM_DEFINITIONS})
+
+target_include_directories(InheritanceTest_GTest PRIVATE
+    ${CMAKE_SOURCE_DIR}/include
+    ${LLVM_INCLUDE_DIRS}
+    ${CLANG_INCLUDE_DIRS}
+)
+
+target_link_libraries(InheritanceTest_GTest PRIVATE
+    cpptoc_core
+    clangTooling
+    clangFrontend
+    clangAST
+    clangBasic
+    GTest::gtest
+    GTest::gtest_main
+)
+
+# Register with CTest
+gtest_discover_tests(InheritanceTest_GTest
+    WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
+    PROPERTIES LABELS "unit;inheritance;epic6"
 )
 
 # ============================================================================
@@ -1131,6 +1263,29 @@ target_include_directories(ExceptionPerformanceTest PRIVATE
     ${CMAKE_SOURCE_DIR}/runtime
 )
 
+# Phase 12 (v2.5.0): Exception Handling Integration Tests
+add_executable(ExceptionHandlingIntegrationTest
+    tests/ExceptionHandlingIntegrationTest.cpp
+    runtime/exception_runtime.cpp
+)
+
+target_compile_definitions(ExceptionHandlingIntegrationTest PRIVATE ${LLVM_DEFINITIONS})
+
+target_include_directories(ExceptionHandlingIntegrationTest PRIVATE
+    ${CMAKE_SOURCE_DIR}/include
+    ${CMAKE_SOURCE_DIR}/runtime
+    ${LLVM_INCLUDE_DIRS}
+    ${CLANG_INCLUDE_DIRS}
+)
+
+target_link_libraries(ExceptionHandlingIntegrationTest PRIVATE
+    cpptoc_core
+    clangTooling
+    clangFrontend
+    clangAST
+    clangBasic
+)
+
 # ============================================================================
 # Epic #11: RTTI Implementation (Itanium ABI) (Story #83)
 # ============================================================================
@@ -1250,6 +1405,54 @@ target_include_directories(CrossCastTraversalTest PRIVATE
 
 # No Clang/LLVM dependencies - pure C runtime library
 
+# Phase 8: Standalone Function Translation Tests (v2.1.0)
+add_executable(StandaloneFunctionTranslationTest
+    tests/StandaloneFunctionTranslationTest.cpp
+    src/TemplateExtractor.cpp
+    src/TemplateMonomorphizer.cpp
+    src/TemplateInstantiationTracker.cpp
+)
+
+target_compile_definitions(StandaloneFunctionTranslationTest PRIVATE ${LLVM_DEFINITIONS})
+
+target_include_directories(StandaloneFunctionTranslationTest PRIVATE
+    ${CMAKE_SOURCE_DIR}/include
+    ${LLVM_INCLUDE_DIRS}
+    ${CLANG_INCLUDE_DIRS}
+)
+
+target_link_libraries(StandaloneFunctionTranslationTest PRIVATE
+    cpptoc_core
+    clangTooling
+    clangFrontend
+    clangAST
+    clangBasic
+)
+
+# Phase 13: RTTI Integration Tests (v2.6.0)
+add_executable(RTTIIntegrationTest
+    tests/RTTIIntegrationTest.cpp
+    src/TypeidTranslator.cpp
+    src/DynamicCastTranslator.cpp
+    src/TypeInfoGenerator.cpp
+)
+
+target_compile_definitions(RTTIIntegrationTest PRIVATE ${LLVM_DEFINITIONS})
+
+target_include_directories(RTTIIntegrationTest PRIVATE
+    ${CMAKE_SOURCE_DIR}/include
+    ${LLVM_INCLUDE_DIRS}
+    ${CLANG_INCLUDE_DIRS}
+)
+
+target_link_libraries(RTTIIntegrationTest PRIVATE
+    cpptoc_core
+    clangTooling
+    clangFrontend
+    clangAST
+    clangBasic
+)
+
 # Story #89: Virtual Base Detection and Analysis tests (Epic #44)
 add_executable(VirtualBaseDetectionTest
     tests/VirtualBaseDetectionTest.cpp
@@ -1339,118 +1542,162 @@ target_link_libraries(ConstructorSplitterTest PRIVATE
     clangBasic
 )
 
-# Story #102: Coroutine Detection and Frame Structure tests (Epic #46)
-add_executable(CoroutineDetectorTest
-    tests/CoroutineDetectorTest.cpp
+# ============================================================================
+# Epic #46: C++20 Coroutines Support - GTest Migration (Phase 15-01)
+# ============================================================================
+
+# Story #102: Coroutine Detection and Frame Structure tests (GTest)
+add_executable(CoroutineDetectorTest_GTest
+    tests/CoroutineDetectorTest_GTest.cpp
     src/CoroutineDetector.cpp
 )
 
-target_compile_definitions(CoroutineDetectorTest PRIVATE ${LLVM_DEFINITIONS})
+target_compile_definitions(CoroutineDetectorTest_GTest PRIVATE ${LLVM_DEFINITIONS})
 
-target_include_directories(CoroutineDetectorTest PRIVATE
+target_include_directories(CoroutineDetectorTest_GTest PRIVATE
     ${CMAKE_SOURCE_DIR}/include
     ${LLVM_INCLUDE_DIRS}
     ${CLANG_INCLUDE_DIRS}
 )
 
-target_link_libraries(CoroutineDetectorTest PRIVATE
+target_link_libraries(CoroutineDetectorTest_GTest PRIVATE
     cpptoc_core
     clangTooling
     clangFrontend
     clangAST
     clangBasic
+    GTest::gtest
+    GTest::gtest_main
 )
 
-# Story #103: Suspend Point Identification tests (Epic #46)
-add_executable(SuspendPointIdentifierTest
-    tests/SuspendPointIdentifierTest.cpp
+# Register with CTest
+gtest_discover_tests(CoroutineDetectorTest_GTest
+    WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
+    PROPERTIES LABELS "unit;coroutines;epic46"
+)
+
+# Story #103: Suspend Point Identification tests (GTest)
+add_executable(SuspendPointIdentifierTest_GTest
+    tests/SuspendPointIdentifierTest_GTest.cpp
     src/SuspendPointIdentifier.cpp
 )
 
-target_compile_definitions(SuspendPointIdentifierTest PRIVATE ${LLVM_DEFINITIONS})
+target_compile_definitions(SuspendPointIdentifierTest_GTest PRIVATE ${LLVM_DEFINITIONS})
 
-target_include_directories(SuspendPointIdentifierTest PRIVATE
+target_include_directories(SuspendPointIdentifierTest_GTest PRIVATE
     ${CMAKE_SOURCE_DIR}/include
     ${LLVM_INCLUDE_DIRS}
     ${CLANG_INCLUDE_DIRS}
 )
 
-target_link_libraries(SuspendPointIdentifierTest PRIVATE
+target_link_libraries(SuspendPointIdentifierTest_GTest PRIVATE
     cpptoc_core
     clangTooling
     clangFrontend
     clangAST
     clangBasic
+    GTest::gtest
+    GTest::gtest_main
 )
 
-# Story #104: State Machine Transformation tests (Epic #46)
-add_executable(StateMachineTransformerTest
-    tests/StateMachineTransformerTest.cpp
+# Register with CTest
+gtest_discover_tests(SuspendPointIdentifierTest_GTest
+    WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
+    PROPERTIES LABELS "unit;coroutines;epic46"
+)
+
+# Story #104: State Machine Transformation tests (GTest)
+add_executable(StateMachineTransformerTest_GTest
+    tests/StateMachineTransformerTest_GTest.cpp
     src/StateMachineTransformer.cpp
     src/SuspendPointIdentifier.cpp
 )
 
-target_compile_definitions(StateMachineTransformerTest PRIVATE ${LLVM_DEFINITIONS})
+target_compile_definitions(StateMachineTransformerTest_GTest PRIVATE ${LLVM_DEFINITIONS})
 
-target_include_directories(StateMachineTransformerTest PRIVATE
+target_include_directories(StateMachineTransformerTest_GTest PRIVATE
     ${CMAKE_SOURCE_DIR}/include
     ${LLVM_INCLUDE_DIRS}
     ${CLANG_INCLUDE_DIRS}
 )
 
-target_link_libraries(StateMachineTransformerTest PRIVATE
+target_link_libraries(StateMachineTransformerTest_GTest PRIVATE
     cpptoc_core
     clangTooling
     clangFrontend
     clangAST
     clangBasic
     clangLex
+    GTest::gtest
+    GTest::gtest_main
 )
 
-# Story #105: Promise Object Translation tests (Epic #46)
-add_executable(PromiseTranslatorTest
-    tests/PromiseTranslatorTest.cpp
+# Register with CTest
+gtest_discover_tests(StateMachineTransformerTest_GTest
+    WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
+    PROPERTIES LABELS "unit;coroutines;epic46"
+)
+
+# Story #105: Promise Object Translation tests (GTest)
+add_executable(PromiseTranslatorTest_GTest
+    tests/PromiseTranslatorTest_GTest.cpp
     src/PromiseTranslator.cpp
 )
 
-target_compile_definitions(PromiseTranslatorTest PRIVATE ${LLVM_DEFINITIONS})
+target_compile_definitions(PromiseTranslatorTest_GTest PRIVATE ${LLVM_DEFINITIONS})
 
-target_include_directories(PromiseTranslatorTest PRIVATE
+target_include_directories(PromiseTranslatorTest_GTest PRIVATE
     ${CMAKE_SOURCE_DIR}/include
     ${LLVM_INCLUDE_DIRS}
     ${CLANG_INCLUDE_DIRS}
 )
 
-target_link_libraries(PromiseTranslatorTest PRIVATE
+target_link_libraries(PromiseTranslatorTest_GTest PRIVATE
     cpptoc_core
     clangTooling
     clangFrontend
     clangAST
     clangBasic
+    GTest::gtest
+    GTest::gtest_main
 )
 
-# Story #106: Resume and Destroy Function Generation tests (Epic #46)
-add_executable(ResumeDestroyFunctionTest
-    tests/ResumeDestroyFunctionTest.cpp
+# Register with CTest
+gtest_discover_tests(PromiseTranslatorTest_GTest
+    WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
+    PROPERTIES LABELS "unit;coroutines;epic46"
+)
+
+# Story #106: Resume and Destroy Function Generation tests (GTest)
+add_executable(ResumeDestroyFunctionTest_GTest
+    tests/ResumeDestroyFunctionTest_GTest.cpp
     src/StateMachineTransformer.cpp
     src/SuspendPointIdentifier.cpp
 )
 
-target_compile_definitions(ResumeDestroyFunctionTest PRIVATE ${LLVM_DEFINITIONS})
+target_compile_definitions(ResumeDestroyFunctionTest_GTest PRIVATE ${LLVM_DEFINITIONS})
 
-target_include_directories(ResumeDestroyFunctionTest PRIVATE
+target_include_directories(ResumeDestroyFunctionTest_GTest PRIVATE
     ${CMAKE_SOURCE_DIR}/include
     ${LLVM_INCLUDE_DIRS}
     ${CLANG_INCLUDE_DIRS}
 )
 
-target_link_libraries(ResumeDestroyFunctionTest PRIVATE
+target_link_libraries(ResumeDestroyFunctionTest_GTest PRIVATE
     cpptoc_core
     clangTooling
     clangFrontend
     clangAST
     clangBasic
     clangLex
+    GTest::gtest
+    GTest::gtest_main
+)
+
+# Register with CTest
+gtest_discover_tests(ResumeDestroyFunctionTest_GTest
+    WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
+    PROPERTIES LABELS "unit;coroutines;epic46"
 )
 
 # Story #107: Frame Allocation and Coroutine Handle tests (Epic #46)
@@ -1608,6 +1855,14 @@ target_link_libraries(LambdaTranslatorTest PRIVATE
     clangFrontend
     clangAST
     clangBasic
+    GTest::gtest
+    GTest::gtest_main
+)
+
+# Register with CTest
+gtest_discover_tests(LambdaTranslatorTest
+    WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
+    PROPERTIES LABELS "unit;lambdas;stream1"
 )
 
 # ============================================================================
@@ -1615,7 +1870,7 @@ target_link_libraries(LambdaTranslatorTest PRIVATE
 # ============================================================================
 
 add_executable(MoveSemanticTranslatorTest
-    tests/unit/move_semantics/MoveSemanticTranslatorTest.cpp
+    tests/unit/move_semantics/MoveSemanticTranslatorTest_gtest.cpp
 )
 
 target_compile_definitions(MoveSemanticTranslatorTest PRIVATE ${LLVM_DEFINITIONS})
@@ -2137,7 +2392,16 @@ target_link_libraries(ACSLClassAnnotatorTest PRIVATE
     clangFrontend
     clangAST
     clangBasic
+GTest::gtest
+    GTest::gtest_main
 )
+
+# Register with CTest
+gtest_discover_tests(ACSLClassAnnotatorTest
+    WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
+    PROPERTIES LABELS "unit;phase15-03"
+)
+
 
 # Phase 1 (v1.18.0): ACSLStatementAnnotator tests
 add_executable(ACSLStatementAnnotatorTest
@@ -2179,7 +2443,16 @@ target_link_libraries(ACSLTypeInvariantGeneratorTest PRIVATE
     clangFrontend
     clangAST
     clangBasic
+GTest::gtest
+    GTest::gtest_main
 )
+
+# Register with CTest
+gtest_discover_tests(ACSLTypeInvariantGeneratorTest
+    WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
+    PROPERTIES LABELS "unit;phase15-03"
+)
+
 
 # Phase 3 (v1.20.0): ACSLAxiomaticBuilder tests
 add_executable(ACSLAxiomaticBuilderTest
@@ -2200,7 +2473,16 @@ target_link_libraries(ACSLAxiomaticBuilderTest PRIVATE
     clangFrontend
     clangAST
     clangBasic
+GTest::gtest
+    GTest::gtest_main
 )
+
+# Register with CTest
+gtest_discover_tests(ACSLAxiomaticBuilderTest
+    WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
+    PROPERTIES LABELS "unit;phase15-03"
+)
+
 
 # Phase 4 (v1.21.0): ACSLGhostCodeInjector tests
 add_executable(ACSLGhostCodeInjectorTest
@@ -2221,7 +2503,16 @@ target_link_libraries(ACSLGhostCodeInjectorTest PRIVATE
     clangFrontend
     clangAST
     clangBasic
+GTest::gtest
+    GTest::gtest_main
 )
+
+# Register with CTest
+gtest_discover_tests(ACSLGhostCodeInjectorTest
+    WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
+    PROPERTIES LABELS "unit;phase15-03"
+)
+
 
 # Phase 5 (v1.22.0): ACSLBehaviorAnnotator tests
 add_executable(ACSLBehaviorAnnotatorTest
@@ -2242,4 +2533,152 @@ target_link_libraries(ACSLBehaviorAnnotatorTest PRIVATE
     clangFrontend
     clangAST
     clangBasic
+GTest::gtest
+    GTest::gtest_main
+)
+
+# Register with CTest
+gtest_discover_tests(ACSLBehaviorAnnotatorTest
+    WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
+    PROPERTIES LABELS "unit;phase15-03"
+)
+
+
+# Phase 6 (v1.23.0): ACSLMemoryPredicateAnalyzer tests
+add_executable(ACSLMemoryPredicateAnalyzerTest
+    tests/ACSLMemoryPredicateAnalyzerTest.cpp
+)
+
+target_compile_definitions(ACSLMemoryPredicateAnalyzerTest PRIVATE ${LLVM_DEFINITIONS})
+
+target_include_directories(ACSLMemoryPredicateAnalyzerTest PRIVATE
+    ${CMAKE_SOURCE_DIR}/include
+    ${LLVM_INCLUDE_DIRS}
+    ${CLANG_INCLUDE_DIRS}
+)
+
+target_link_libraries(ACSLMemoryPredicateAnalyzerTest PRIVATE
+    cpptoc_core
+    clangTooling
+    clangFrontend
+    clangAST
+    clangBasic
+)
+
+# Phase 9 (v2.2.0): Virtual Method Integration tests
+add_executable(VirtualMethodIntegrationTest
+    tests/VirtualMethodIntegrationTest.cpp
+    src/VirtualMethodAnalyzer.cpp
+    src/VtableGenerator.cpp
+    src/VirtualCallTranslator.cpp
+    src/OverrideResolver.cpp
+)
+
+target_compile_definitions(VirtualMethodIntegrationTest PRIVATE ${LLVM_DEFINITIONS})
+
+target_include_directories(VirtualMethodIntegrationTest PRIVATE
+    ${CMAKE_SOURCE_DIR}/include
+    ${LLVM_INCLUDE_DIRS}
+    ${CLANG_INCLUDE_DIRS}
+)
+
+target_link_libraries(VirtualMethodIntegrationTest PRIVATE
+    cpptoc_core
+    clangTooling
+    clangFrontend
+    clangAST
+    clangBasic
+)
+
+# ============================================================================
+# Phase 7: ACSL Integration & Validation (v2.0.0) - Frama-C Integration Tests
+# ============================================================================
+
+# # Frama-C WP Integration Tests (20+ tests)
+# # Tests that generated ACSL annotations are provable by Frama-C's WP plugin
+# add_executable(FramaCWPTests
+#     tests/integration/FramaCWPTests.cpp
+# )
+#
+# target_compile_definitions(FramaCWPTests PRIVATE ${LLVM_DEFINITIONS})
+#
+# target_include_directories(FramaCWPTests PRIVATE
+#     ${CMAKE_SOURCE_DIR}/include
+#     ${LLVM_INCLUDE_DIRS}
+#     ${CLANG_INCLUDE_DIRS}
+# )
+#
+# target_link_libraries(FramaCWPTests PRIVATE
+#     cpptoc_core
+#     clangTooling
+#     clangFrontend
+#     clangAST
+#     clangBasic
+#     GTest::gtest
+#     GTest::gtest_main
+# )
+#
+# # Frama-C EVA Integration Tests (15+ tests)
+# # Tests that generated ACSL annotations improve EVA's value analysis
+# add_executable(FramaCEVATests
+#     tests/integration/FramaCEVATests.cpp
+# )
+#
+# target_compile_definitions(FramaCEVATests PRIVATE ${LLVM_DEFINITIONS})
+#
+# target_include_directories(FramaCEVATests PRIVATE
+#     ${CMAKE_SOURCE_DIR}/include
+#     ${LLVM_INCLUDE_DIRS}
+#     ${CLANG_INCLUDE_DIRS}
+# )
+#
+# target_link_libraries(FramaCEVATests PRIVATE
+#     cpptoc_core
+#     clangTooling
+#     clangFrontend
+#     clangAST
+#     clangBasic
+#     GTest::gtest
+#     GTest::gtest_main
+# )
+
+# ============================================================================
+# Phase 15-04: Unified Test Execution - Convenience Test Targets
+# ============================================================================
+
+# Test target aliases for convenience
+add_custom_target(test-all
+    COMMAND ${CMAKE_CTEST_COMMAND} --output-on-failure
+    COMMENT "Running all tests"
+    USES_TERMINAL
+)
+
+add_custom_target(test-core
+    COMMAND ${CMAKE_CTEST_COMMAND} -L "core" --output-on-failure
+    COMMENT "Running core unit tests only"
+    USES_TERMINAL
+)
+
+add_custom_target(test-integration
+    COMMAND ${CMAKE_CTEST_COMMAND} -L "integration" --output-on-failure
+    COMMENT "Running integration tests only"
+    USES_TERMINAL
+)
+
+add_custom_target(test-real-world
+    COMMAND ${CMAKE_CTEST_COMMAND} -L "real-world" --output-on-failure
+    COMMENT "Running real-world tests only"
+    USES_TERMINAL
+)
+
+add_custom_target(test-parallel
+    COMMAND ${CMAKE_CTEST_COMMAND} --parallel ${PARALLEL_JOBS}
+    COMMENT "Running tests in parallel"
+    USES_TERMINAL
+)
+
+add_custom_target(test-verbose
+    COMMAND ${CMAKE_CTEST_COMMAND} --output-on-failure --verbose
+    COMMENT "Running tests with verbose output"
+    USES_TERMINAL
 )

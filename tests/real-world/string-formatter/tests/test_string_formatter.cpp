@@ -1,189 +1,316 @@
 #include "StringFormatter.h"
-#include <iostream>
-#include <cassert>
+#include <gtest/gtest.h>
 #include <cmath>
 
 using namespace format;
 
-void test(const std::string& name, bool condition) {
-    if (condition) {
-        std::cout << "[PASS] " << name << std::endl;
-    } else {
-        std::cout << "[FAIL] " << name << std::endl;
-        throw std::runtime_error("Test failed: " + name);
-    }
+// ============================================================================
+// Basic Formatting Tests
+// ============================================================================
+
+TEST(BasicFormattingTest, FormatInteger) {
+    EXPECT_EQ(toString(42), "42");
 }
 
-void testBasicFormatting() {
-    test("Format integer", toString(42) == "42");
-    test("Format double", toString(3.14159).substr(0, 4) == "3.14");
-    test("Format bool true", toString(true) == "true");
-    test("Format bool false", toString(false) == "false");
-    test("Format string", toString(std::string("hello")) == "hello");
-    test("Format c-string", toString("world") == "world");
+TEST(BasicFormattingTest, FormatDouble) {
+    EXPECT_EQ(toString(3.14159).substr(0, 4), "3.14");
 }
 
-void testIntegerFormatting() {
-    // Decimal
-    test("Integer decimal", toString(42) == "42");
-    test("Negative integer", toString(-123) == "-123");
-
-    // Hexadecimal
-    test("Integer hex", formatters::hex(255, false, true) == "0xff");
-    test("Integer HEX uppercase", formatters::hex(255, true, true) == "0XFF");
-    test("Integer hex no prefix", formatters::hex(16, false, false) == "10");
-
-    // Octal
-    test("Integer octal", formatters::oct(64, true) == "0o100");
-    test("Integer octal no prefix", formatters::oct(8, false) == "10");
-
-    // Binary
-    test("Integer binary", formatters::bin(5, true) == "0b101");
-    test("Integer binary no prefix", formatters::bin(7, false) == "111");
+TEST(BasicFormattingTest, FormatBoolTrue) {
+    EXPECT_EQ(toString(true), "true");
 }
 
-void testFloatingPointFormatting() {
-    // Fixed notation
-    test("Float fixed 2 decimals", formatters::fixed(3.14159, 2) == "3.14");
-    test("Float fixed 4 decimals", formatters::fixed(2.71828, 4) == "2.7183");
+TEST(BasicFormattingTest, FormatBoolFalse) {
+    EXPECT_EQ(toString(false), "false");
+}
 
-    // Scientific notation
+TEST(BasicFormattingTest, FormatString) {
+    EXPECT_EQ(toString(std::string("hello")), "hello");
+}
+
+TEST(BasicFormattingTest, FormatCString) {
+    EXPECT_EQ(toString("world"), "world");
+}
+
+// ============================================================================
+// Integer Formatting Tests
+// ============================================================================
+
+TEST(IntegerFormattingTest, IntegerDecimal) {
+    EXPECT_EQ(toString(42), "42");
+}
+
+TEST(IntegerFormattingTest, NegativeInteger) {
+    EXPECT_EQ(toString(-123), "-123");
+}
+
+TEST(IntegerFormattingTest, IntegerHex) {
+    EXPECT_EQ(formatters::hex(255, false, true), "0xff");
+}
+
+TEST(IntegerFormattingTest, IntegerHexUppercase) {
+    EXPECT_EQ(formatters::hex(255, true, true), "0XFF");
+}
+
+TEST(IntegerFormattingTest, IntegerHexNoPrefix) {
+    EXPECT_EQ(formatters::hex(16, false, false), "10");
+}
+
+TEST(IntegerFormattingTest, IntegerOctal) {
+    EXPECT_EQ(formatters::oct(64, true), "0o100");
+}
+
+TEST(IntegerFormattingTest, IntegerOctalNoPrefix) {
+    EXPECT_EQ(formatters::oct(8, false), "10");
+}
+
+TEST(IntegerFormattingTest, IntegerBinary) {
+    EXPECT_EQ(formatters::bin(5, true), "0b101");
+}
+
+TEST(IntegerFormattingTest, IntegerBinaryNoPrefix) {
+    EXPECT_EQ(formatters::bin(7, false), "111");
+}
+
+// ============================================================================
+// Floating Point Formatting Tests
+// ============================================================================
+
+TEST(FloatingPointFormattingTest, FloatFixed2Decimals) {
+    EXPECT_EQ(formatters::fixed(3.14159, 2), "3.14");
+}
+
+TEST(FloatingPointFormattingTest, FloatFixed4Decimals) {
+    EXPECT_EQ(formatters::fixed(2.71828, 4), "2.7183");
+}
+
+TEST(FloatingPointFormattingTest, FloatScientific) {
     auto sci = formatters::scientific(12345.6, 2, false);
-    test("Float scientific", sci.find("e+") != std::string::npos || sci.find("e0") != std::string::npos);
-
-    auto sciUpper = formatters::scientific(12345.6, 2, true);
-    test("Float scientific uppercase", sciUpper.find('E') != std::string::npos);
+    EXPECT_TRUE(sci.find("e+") != std::string::npos || sci.find("e0") != std::string::npos);
 }
 
-void testAlignment() {
+TEST(FloatingPointFormattingTest, FloatScientificUppercase) {
+    auto sciUpper = formatters::scientific(12345.6, 2, true);
+    EXPECT_NE(sciUpper.find('E'), std::string::npos);
+}
+
+// ============================================================================
+// Alignment Tests
+// ============================================================================
+
+TEST(AlignmentTest, LeftAlignment) {
     FormatSpec leftSpec;
     leftSpec.align = Align::Left;
     leftSpec.width = 10;
     leftSpec.fill = '-';
 
     auto left = toString("hi", leftSpec);
-    test("Left alignment", left == "hi--------");
+    EXPECT_EQ(left, "hi--------");
+}
 
+TEST(AlignmentTest, RightAlignment) {
     FormatSpec rightSpec;
     rightSpec.align = Align::Right;
     rightSpec.width = 10;
     rightSpec.fill = '-';
 
     auto right = toString("hi", rightSpec);
-    test("Right alignment", right == "--------hi");
+    EXPECT_EQ(right, "--------hi");
+}
 
+TEST(AlignmentTest, CenterAlignment) {
     FormatSpec centerSpec;
     centerSpec.align = Align::Center;
     centerSpec.width = 10;
     centerSpec.fill = '-';
 
     auto center = toString("hi", centerSpec);
-    test("Center alignment", center == "----hi----");
+    EXPECT_EQ(center, "----hi----");
 }
 
-void testPadding() {
-    test("Pad left", formatters::pad("test", 10, Align::Left) == "test      ");
-    test("Pad right", formatters::pad("test", 10, Align::Right) == "      test");
-    test("Pad center", formatters::pad("test", 10, Align::Center) == "   test   ");
-    test("Pad with char", formatters::pad("x", 5, Align::Right, '*') == "****x");
+// ============================================================================
+// Padding Tests
+// ============================================================================
+
+TEST(PaddingTest, PadLeft) {
+    EXPECT_EQ(formatters::pad("test", 10, Align::Left), "test      ");
 }
 
-void testStringBuilder() {
+TEST(PaddingTest, PadRight) {
+    EXPECT_EQ(formatters::pad("test", 10, Align::Right), "      test");
+}
+
+TEST(PaddingTest, PadCenter) {
+    EXPECT_EQ(formatters::pad("test", 10, Align::Center), "   test   ");
+}
+
+TEST(PaddingTest, PadWithChar) {
+    EXPECT_EQ(formatters::pad("x", 5, Align::Right, '*'), "****x");
+}
+
+// ============================================================================
+// StringBuilder Tests
+// ============================================================================
+
+TEST(StringBuilderTest, StringBuilderBasic) {
     StringBuilder sb;
     sb << "Hello" << " " << "World" << "!";
-    test("StringBuilder basic", sb.str() == "Hello World!");
+    EXPECT_EQ(sb.str(), "Hello World!");
+}
 
+TEST(StringBuilderTest, StringBuilderClear) {
+    StringBuilder sb;
+    sb << "test";
     sb.clear();
-    test("StringBuilder clear", sb.empty());
+    EXPECT_TRUE(sb.empty());
+}
 
+TEST(StringBuilderTest, StringBuilderMixedTypes) {
+    StringBuilder sb;
     sb << 42 << " " << 3.14 << " " << true;
-    test("StringBuilder mixed types", !sb.str().empty());
+    EXPECT_FALSE(sb.str().empty());
+}
 
-    sb.clear();
+TEST(StringBuilderTest, StringBuilderAppend) {
+    StringBuilder sb;
     sb.append("Count: ").append(100);
-    test("StringBuilder append", sb.str().find("100") != std::string::npos);
+    EXPECT_NE(sb.str().find("100"), std::string::npos);
 }
 
-void testFormatString() {
-    test("Format string basic", formatString("Hello, {}!", "World") == "Hello, World!");
-    test("Format string multiple", formatString("{} + {} = {}", 1, 2, 3) == "1 + 2 = 3");
-    test("Format string mixed", formatString("Name: {}, Age: {}, Active: {}",
-                                           "Alice", 30, true).find("Alice") != std::string::npos);
+// ============================================================================
+// Format String Tests
+// ============================================================================
+
+TEST(FormatStringTest, FormatStringBasic) {
+    EXPECT_EQ(formatString("Hello, {}!", "World"), "Hello, World!");
 }
 
-void testFormatStringIndexed() {
-    test("Format indexed", formatString("{1} {0}", "World", "Hello") == "Hello World");
-    test("Format repeated index", formatString("{0} {0} {0}", "echo") == "echo echo echo");
+TEST(FormatStringTest, FormatStringMultiple) {
+    EXPECT_EQ(formatString("{} + {} = {}", 1, 2, 3), "1 + 2 = 3");
 }
 
-void testEscapedBraces() {
-    test("Escaped opening brace", formatString("{{test}}") == "{test}");
-    test("Escaped with placeholder", formatString("{{{}}} = {}", "x", 42) == "{x} = 42");
+TEST(FormatStringTest, FormatStringMixed) {
+    auto result = formatString("Name: {}, Age: {}, Active: {}", "Alice", 30, true);
+    EXPECT_NE(result.find("Alice"), std::string::npos);
 }
 
-void testFormatStream() {
+TEST(FormatStringTest, FormatIndexed) {
+    EXPECT_EQ(formatString("{1} {0}", "World", "Hello"), "Hello World");
+}
+
+TEST(FormatStringTest, FormatRepeatedIndex) {
+    EXPECT_EQ(formatString("{0} {0} {0}", "echo"), "echo echo echo");
+}
+
+TEST(FormatStringTest, EscapedOpeningBrace) {
+    EXPECT_EQ(formatString("{{test}}"), "{test}");
+}
+
+TEST(FormatStringTest, EscapedWithPlaceholder) {
+    EXPECT_EQ(formatString("{{{}}} = {}", "x", 42), "{x} = 42");
+}
+
+// ============================================================================
+// FormatStream Tests
+// ============================================================================
+
+TEST(FormatStreamTest, FormatStreamBasic) {
     FormatStream fs;
     fs << "Result: " << 42 << ", " << 3.14 << ", " << true;
     std::string result = fs.str();
-
-    test("FormatStream basic", result.find("42") != std::string::npos);
-    test("FormatStream implicit conversion", std::string(fs).find("Result") != std::string::npos);
+    EXPECT_NE(result.find("42"), std::string::npos);
 }
 
-void testPointerFormatting() {
+TEST(FormatStreamTest, FormatStreamImplicitConversion) {
+    FormatStream fs;
+    fs << "Result: " << 42;
+    EXPECT_NE(std::string(fs).find("Result"), std::string::npos);
+}
+
+// ============================================================================
+// Pointer Formatting Tests
+// ============================================================================
+
+TEST(PointerFormattingTest, PointerFormatting) {
     int value = 42;
     int* ptr = &value;
 
     std::string formatted = toString(ptr);
-    test("Pointer formatting", formatted.find("0x") == 0);
+    EXPECT_EQ(formatted.find("0x"), 0u);
 }
 
-void testSignDisplay() {
+// ============================================================================
+// Sign Display Tests
+// ============================================================================
+
+TEST(SignDisplayTest, PositiveSign) {
     FormatSpec specWithSign;
     specWithSign.showPos = true;
 
-    test("Positive sign", toString(42, specWithSign).find('+') != std::string::npos);
-    test("Negative sign", toString(-42, specWithSign).find('-') != std::string::npos);
+    EXPECT_NE(toString(42, specWithSign).find('+'), std::string::npos);
 }
 
-void testBasePrefix() {
+TEST(SignDisplayTest, NegativeSign) {
+    FormatSpec specWithSign;
+    specWithSign.showPos = true;
+
+    EXPECT_NE(toString(-42, specWithSign).find('-'), std::string::npos);
+}
+
+// ============================================================================
+// Base Prefix Tests
+// ============================================================================
+
+TEST(BasePrefixTest, HexPrefix) {
     FormatSpec hexSpec;
     hexSpec.base = Base::Hexadecimal;
     hexSpec.showBase = true;
 
-    test("Hex prefix", toString(255, hexSpec).find("0x") != std::string::npos);
+    EXPECT_NE(toString(255, hexSpec).find("0x"), std::string::npos);
+}
 
+TEST(BasePrefixTest, OctalPrefix) {
     FormatSpec octSpec;
     octSpec.base = Base::Octal;
     octSpec.showBase = true;
 
-    test("Octal prefix", toString(64, octSpec).find("0o") != std::string::npos);
+    EXPECT_NE(toString(64, octSpec).find("0o"), std::string::npos);
+}
 
+TEST(BasePrefixTest, BinaryPrefix) {
     FormatSpec binSpec;
     binSpec.base = Base::Binary;
     binSpec.showBase = true;
 
-    test("Binary prefix", toString(5, binSpec).find("0b") != std::string::npos);
+    EXPECT_NE(toString(5, binSpec).find("0b"), std::string::npos);
 }
 
-void testPrecision() {
+// ============================================================================
+// Precision Tests
+// ============================================================================
+
+TEST(PrecisionTest, FloatPrecision) {
     FormatSpec spec;
     spec.precision = 2;
 
     auto result = toString(3.14159, spec);
-    test("Float precision", result.find("3.14") != std::string::npos);
+    EXPECT_NE(result.find("3.14"), std::string::npos);
+}
 
-    // String precision (truncation)
+TEST(PrecisionTest, StringPrecision) {
     FormatSpec strSpec;
     strSpec.precision = 5;
 
-    test("String precision", toString(std::string("Hello, World!"), strSpec) == "Hello");
+    EXPECT_EQ(toString(std::string("Hello, World!"), strSpec), "Hello");
 }
 
-void testComplexFormatting() {
+// ============================================================================
+// Complex Formatting Tests
+// ============================================================================
+
+TEST(ComplexFormattingTest, TableFormatting) {
     StringBuilder sb;
 
-    // Table formatting
     sb << formatters::pad("Name", 20, Align::Left) << " | ";
     sb << formatters::pad("Age", 5, Align::Right) << " | ";
     sb << formatters::pad("Score", 10, Align::Right) << "\n";
@@ -193,73 +320,98 @@ void testComplexFormatting() {
     sb << formatters::pad(formatters::fixed(95.5, 1), 10, Align::Right) << "\n";
 
     std::string table = sb.str();
-    test("Table formatting", table.find("Alice") != std::string::npos);
-    test("Table numbers aligned", table.find("95.5") != std::string::npos);
+    EXPECT_NE(table.find("Alice"), std::string::npos);
 }
 
-void testNumberFormats() {
-    // Test various number formats
-    test("Small integer", toString(0) == "0");
-    test("Large integer", toString(1000000).find("1000000") != std::string::npos);
-    test("Small negative", toString(-1) == "-1");
+TEST(ComplexFormattingTest, TableNumbersAligned) {
+    StringBuilder sb;
 
-    test("Float zero", formatters::fixed(0.0, 2) == "0.00");
-    test("Float negative", formatters::fixed(-1.5, 1).find("-1.5") != std::string::npos);
+    sb << formatters::pad("Name", 20, Align::Left) << " | ";
+    sb << formatters::pad("Age", 5, Align::Right) << " | ";
+    sb << formatters::pad("Score", 10, Align::Right) << "\n";
+
+    sb << formatters::pad("Alice", 20, Align::Left) << " | ";
+    sb << formatters::pad("30", 5, Align::Right) << " | ";
+    sb << formatters::pad(formatters::fixed(95.5, 1), 10, Align::Right) << "\n";
+
+    std::string table = sb.str();
+    EXPECT_NE(table.find("95.5"), std::string::npos);
 }
 
-void testEdgeCases() {
-    // Empty string
-    test("Empty string", toString(std::string("")) == "");
+// ============================================================================
+// Number Format Tests
+// ============================================================================
 
-    // Wide formatting
+TEST(NumberFormatsTest, SmallInteger) {
+    EXPECT_EQ(toString(0), "0");
+}
+
+TEST(NumberFormatsTest, LargeInteger) {
+    EXPECT_NE(toString(1000000).find("1000000"), std::string::npos);
+}
+
+TEST(NumberFormatsTest, SmallNegative) {
+    EXPECT_EQ(toString(-1), "-1");
+}
+
+TEST(NumberFormatsTest, FloatZero) {
+    EXPECT_EQ(formatters::fixed(0.0, 2), "0.00");
+}
+
+TEST(NumberFormatsTest, FloatNegative) {
+    EXPECT_NE(formatters::fixed(-1.5, 1).find("-1.5"), std::string::npos);
+}
+
+// ============================================================================
+// Edge Cases Tests
+// ============================================================================
+
+TEST(EdgeCasesTest, EmptyString) {
+    EXPECT_EQ(toString(std::string("")), "");
+}
+
+TEST(EdgeCasesTest, WideFormatting) {
     FormatSpec wide;
     wide.width = 50;
     wide.align = Align::Center;
 
-    test("Wide formatting", toString("x", wide).length() == 50);
-
-    // No width specified
-    test("No width", toString(42, FormatSpec()) == "42");
+    EXPECT_EQ(toString("x", wide).length(), 50u);
 }
 
-void testMultipleArguments() {
+TEST(EdgeCasesTest, NoWidth) {
+    EXPECT_EQ(toString(42, FormatSpec()), "42");
+}
+
+// ============================================================================
+// Multiple Arguments Tests
+// ============================================================================
+
+TEST(MultipleArgumentsTest, MultipleArgs1) {
     auto result = formatString("Values: {}, {}, {}, {}, {}",
                               1, 2.5, true, "test", 'x');
-
-    test("Multiple args 1", result.find("1") != std::string::npos);
-    test("Multiple args 2.5", result.find("2.5") != std::string::npos);
-    test("Multiple args true", result.find("true") != std::string::npos);
-    test("Multiple args test", result.find("test") != std::string::npos);
-    test("Multiple args x", result.find("x") != std::string::npos);
+    EXPECT_NE(result.find("1"), std::string::npos);
 }
 
-int main() {
-    try {
-        std::cout << "=== String Formatter Tests ===" << std::endl;
+TEST(MultipleArgumentsTest, MultipleArgs2_5) {
+    auto result = formatString("Values: {}, {}, {}, {}, {}",
+                              1, 2.5, true, "test", 'x');
+    EXPECT_NE(result.find("2.5"), std::string::npos);
+}
 
-        testBasicFormatting();
-        testIntegerFormatting();
-        testFloatingPointFormatting();
-        testAlignment();
-        testPadding();
-        testStringBuilder();
-        testFormatString();
-        testFormatStringIndexed();
-        testEscapedBraces();
-        testFormatStream();
-        testPointerFormatting();
-        testSignDisplay();
-        testBasePrefix();
-        testPrecision();
-        testComplexFormatting();
-        testNumberFormats();
-        testEdgeCases();
-        testMultipleArguments();
+TEST(MultipleArgumentsTest, MultipleArgsTrue) {
+    auto result = formatString("Values: {}, {}, {}, {}, {}",
+                              1, 2.5, true, "test", 'x');
+    EXPECT_NE(result.find("true"), std::string::npos);
+}
 
-        std::cout << "\n=== All tests passed! ===" << std::endl;
-        return 0;
-    } catch (const std::exception& e) {
-        std::cerr << "Test failed with exception: " << e.what() << std::endl;
-        return 1;
-    }
+TEST(MultipleArgumentsTest, MultipleArgsTest) {
+    auto result = formatString("Values: {}, {}, {}, {}, {}",
+                              1, 2.5, true, "test", 'x');
+    EXPECT_NE(result.find("test"), std::string::npos);
+}
+
+TEST(MultipleArgumentsTest, MultipleArgsX) {
+    auto result = formatString("Values: {}, {}, {}, {}, {}",
+                              1, 2.5, true, "test", 'x');
+    EXPECT_NE(result.find("x"), std::string::npos);
 }

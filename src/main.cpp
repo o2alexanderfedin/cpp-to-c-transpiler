@@ -74,6 +74,62 @@ static llvm::cl::opt<ACSLOutputModeEnum> ACSLOutput(
     llvm::cl::cat(ToolCategory),
     llvm::cl::init(Inline));
 
+// Phase 6 (v1.23.0): Advanced Memory Predicates
+// Command line option for ACSL memory predicates
+static llvm::cl::opt<bool> ACSLMemoryPredicates(
+    "acsl-memory-predicates",
+    llvm::cl::desc("Generate advanced memory predicates (allocable, freeable, block_length) (requires --generate-acsl)"),
+    llvm::cl::cat(ToolCategory),
+    llvm::cl::init(false));
+
+// Phase 11 (v2.4.0): Template Monomorphization
+// Command line option to enable template monomorphization
+static llvm::cl::opt<bool> TemplateMonomorphization(
+    "template-monomorphization",
+    llvm::cl::desc("Enable template monomorphization (default: on)"),
+    llvm::cl::cat(ToolCategory),
+    llvm::cl::init(true));
+
+// Command line option for template instantiation limit
+static llvm::cl::opt<unsigned int> TemplateInstantiationLimit(
+    "template-instantiation-limit",
+    llvm::cl::desc("Maximum number of template instantiations (default: 1000)"),
+    llvm::cl::value_desc("N"),
+    llvm::cl::cat(ToolCategory),
+    llvm::cl::init(1000));
+
+// Phase 12 (v2.5.0): Exception Handling
+// Command line option to enable exception handling translation
+static llvm::cl::opt<bool> EnableExceptions(
+    "enable-exceptions",
+    llvm::cl::desc("Enable exception handling translation (try-catch-throw to setjmp/longjmp) (default: on)"),
+    llvm::cl::cat(ToolCategory),
+    llvm::cl::init(true));
+
+// Exception handling model enum
+enum ExceptionModelEnum {
+  SJLJ,    // Setjmp/Longjmp model (default)
+  Tables   // Table-based model (future)
+};
+
+// Command line option for exception handling model
+static llvm::cl::opt<ExceptionModelEnum> ExceptionModel(
+    "exception-model",
+    llvm::cl::desc("Exception handling model (default: sjlj)"),
+    llvm::cl::values(
+        clEnumValN(SJLJ, "sjlj", "Setjmp/longjmp model (default)"),
+        clEnumValN(Tables, "tables", "Table-based model (future)")),
+    llvm::cl::cat(ToolCategory),
+    llvm::cl::init(SJLJ));
+
+// Phase 13 (v2.6.0): RTTI Support
+// Command line option to enable RTTI translation
+static llvm::cl::opt<bool> EnableRTTI(
+    "enable-rtti",
+    llvm::cl::desc("Enable RTTI translation (typeid and dynamic_cast) (default: on)"),
+    llvm::cl::cat(ToolCategory),
+    llvm::cl::init(true));
+
 // Global accessor for pragma once setting
 bool shouldUsePragmaOnce() {
   return UsePragmaOnce;
@@ -92,6 +148,36 @@ ACSLLevel getACSLLevel() {
 // Global accessor for ACSL output mode
 ACSLOutputMode getACSLOutputMode() {
   return (ACSLOutput == Inline) ? ACSLOutputMode::Inline : ACSLOutputMode::Separate;
+}
+
+// Global accessor for ACSL memory predicates setting (Phase 6, v1.23.0)
+bool shouldGenerateMemoryPredicates() {
+  return ACSLMemoryPredicates;
+}
+
+// Global accessor for template monomorphization setting (Phase 11, v2.4.0)
+bool shouldMonomorphizeTemplates() {
+  return TemplateMonomorphization;
+}
+
+// Global accessor for template instantiation limit (Phase 11, v2.4.0)
+unsigned int getTemplateInstantiationLimit() {
+  return TemplateInstantiationLimit;
+}
+
+// Global accessor for exception handling setting (Phase 12, v2.5.0)
+bool shouldEnableExceptions() {
+  return EnableExceptions;
+}
+
+// Global accessor for exception model (Phase 12, v2.5.0)
+std::string getExceptionModel() {
+  return (ExceptionModel == SJLJ) ? "sjlj" : "tables";
+}
+
+// Global accessor for RTTI setting (Phase 13, v2.6.0)
+bool shouldEnableRTTI() {
+  return EnableRTTI;
 }
 
 int main(int argc, const char **argv) {

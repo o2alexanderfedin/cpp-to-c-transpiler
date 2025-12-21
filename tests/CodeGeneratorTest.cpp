@@ -1,6 +1,7 @@
 // Story #21: DeclPrinter/StmtPrinter Integration - Unit Tests
 // Following TDD RED-GREEN-REFACTOR cycle
 
+#include <gtest/gtest.h>
 #include "CodeGenerator.h"
 #include "CNodeBuilder.h"
 #include "clang/AST/ASTContext.h"
@@ -9,28 +10,31 @@
 #include "llvm/Support/raw_ostream.h"
 #include <memory>
 #include <string>
-#include <cassert>
 #include <iostream>
 #include <fstream>
 
 using namespace clang;
 using namespace llvm;
 
-// Helper: Create a test ASTContext
-std::unique_ptr<ASTUnit> createTestASTUnit() {
-    std::vector<std::string> Args = {"-std=c99"};
-    std::unique_ptr<ASTUnit> AST = tooling::buildASTFromCodeWithArgs(
-        "void dummy() {}", Args, "test.c"
-    );
-    assert(AST && "Failed to create test ASTUnit");
-    return AST;
-}
+// Test fixture for CodeGenerator tests
+class CodeGeneratorTest : public ::testing::Test {
+protected:
+    // Helper: Create a test ASTUnit
+    std::unique_ptr<ASTUnit> createTestASTUnit() {
+        std::vector<std::string> Args = {"-std=c99"};
+        std::unique_ptr<ASTUnit> AST = tooling::buildASTFromCodeWithArgs(
+            "void dummy() {}", Args, "test.c"
+        );
+        EXPECT_NE(AST, nullptr) << "Failed to create test ASTUnit";
+        return AST;
+    }
+};
 
 // Test 1: Print simple struct declaration
-void testPrintStructDecl() {
-    std::cout << "TEST: PrintStructDecl - ";
-
+TEST_F(CodeGeneratorTest, PrintStructDecl) {
     auto AST = createTestASTUnit();
+    ASSERT_NE(AST, nullptr);
+
     ASTContext &Context = AST->getASTContext();
     CNodeBuilder Builder(Context);
 
@@ -48,25 +52,17 @@ void testPrintStructDecl() {
     OS.flush();
 
     // Verify output contains expected elements
-    bool hasStruct = Output.find("struct") != std::string::npos;
-    bool hasPoint = Output.find("Point") != std::string::npos;
-    bool hasX = Output.find("x") != std::string::npos;
-    bool hasY = Output.find("y") != std::string::npos;
-
-    if (hasStruct && hasPoint && hasX && hasY) {
-        std::cout << "PASS" << std::endl;
-    } else {
-        std::cout << "FAIL" << std::endl;
-        std::cout << "Output: " << Output << std::endl;
-        exit(1);
-    }
+    EXPECT_NE(Output.find("struct"), std::string::npos);
+    EXPECT_NE(Output.find("Point"), std::string::npos);
+    EXPECT_NE(Output.find("x"), std::string::npos);
+    EXPECT_NE(Output.find("y"), std::string::npos);
 }
 
 // Test 2: Print function declaration
-void testPrintFunctionDecl() {
-    std::cout << "TEST: PrintFunctionDecl - ";
-
+TEST_F(CodeGeneratorTest, PrintFunctionDecl) {
     auto AST = createTestASTUnit();
+    ASSERT_NE(AST, nullptr);
+
     ASTContext &Context = AST->getASTContext();
     CNodeBuilder Builder(Context);
 
@@ -85,24 +81,16 @@ void testPrintFunctionDecl() {
     OS.flush();
 
     // Verify output
-    bool hasInt = Output.find("int") != std::string::npos;
-    bool hasName = Output.find("Point_getX") != std::string::npos;
-    bool hasThis = Output.find("this") != std::string::npos;
-
-    if (hasInt && hasName && hasThis) {
-        std::cout << "PASS" << std::endl;
-    } else {
-        std::cout << "FAIL" << std::endl;
-        std::cout << "Output: " << Output << std::endl;
-        exit(1);
-    }
+    EXPECT_NE(Output.find("int"), std::string::npos);
+    EXPECT_NE(Output.find("Point_getX"), std::string::npos);
+    EXPECT_NE(Output.find("this"), std::string::npos);
 }
 
 // Test 3: Print multiple declarations (TranslationUnit)
-void testPrintTranslationUnit() {
-    std::cout << "TEST: PrintTranslationUnit - ";
-
+TEST_F(CodeGeneratorTest, PrintTranslationUnit) {
     auto AST = createTestASTUnit();
+    ASSERT_NE(AST, nullptr);
+
     ASTContext &Context = AST->getASTContext();
     CNodeBuilder Builder(Context);
 
@@ -123,23 +111,15 @@ void testPrintTranslationUnit() {
     OS.flush();
 
     // Verify both declarations present
-    bool hasStruct = Output.find("struct Point") != std::string::npos;
-    bool hasFunc = Output.find("test_func") != std::string::npos;
-
-    if (hasStruct && hasFunc) {
-        std::cout << "PASS" << std::endl;
-    } else {
-        std::cout << "FAIL" << std::endl;
-        std::cout << "Output: " << Output << std::endl;
-        exit(1);
-    }
+    EXPECT_NE(Output.find("struct Point"), std::string::npos);
+    EXPECT_NE(Output.find("test_func"), std::string::npos);
 }
 
 // Test 4: Output to file
-void testOutputToFile() {
-    std::cout << "TEST: OutputToFile - ";
-
+TEST_F(CodeGeneratorTest, OutputToFile) {
     auto AST = createTestASTUnit();
+    ASSERT_NE(AST, nullptr);
+
     ASTContext &Context = AST->getASTContext();
     CNodeBuilder Builder(Context);
 
@@ -152,10 +132,7 @@ void testOutputToFile() {
     std::error_code EC;
     raw_fd_ostream OutFile("/tmp/test_codegen_output.c", EC);
 
-    if (EC) {
-        std::cout << "FAIL - Could not create file: " << EC.message() << std::endl;
-        exit(1);
-    }
+    ASSERT_FALSE(EC) << "Could not create file: " << EC.message();
 
     CodeGenerator Gen(OutFile, Context);
     Gen.printDecl(RD);
@@ -167,15 +144,7 @@ void testOutputToFile() {
     std::string Content((std::istreambuf_iterator<char>(InFile)),
                         std::istreambuf_iterator<char>());
 
-    bool hasContent = Content.find("TestStruct") != std::string::npos;
-
-    if (hasContent) {
-        std::cout << "PASS" << std::endl;
-    } else {
-        std::cout << "FAIL" << std::endl;
-        std::cout << "File content: " << Content << std::endl;
-        exit(1);
-    }
+    EXPECT_NE(Content.find("TestStruct"), std::string::npos);
 }
 
 // ============================================================================
@@ -183,10 +152,10 @@ void testOutputToFile() {
 // ============================================================================
 
 // Test 5: C99 bool type configuration (_Bool not bool)
-void testBoolTypeC99() {
-    std::cout << "TEST: BoolTypeC99 - ";
-
+TEST_F(CodeGeneratorTest, BoolTypeC99) {
     auto AST = createTestASTUnit();
+    ASSERT_NE(AST, nullptr);
+
     ASTContext &Context = AST->getASTContext();
 
     std::string Output;
@@ -196,21 +165,14 @@ void testBoolTypeC99() {
     PrintingPolicy &Policy = Gen.getPrintingPolicy();
 
     // Verify Bool policy is set for C99 (_Bool)
-    bool boolConfigured = Policy.Bool;
-
-    if (boolConfigured) {
-        std::cout << "PASS" << std::endl;
-    } else {
-        std::cout << "FAIL - Bool policy not configured for C99" << std::endl;
-        exit(1);
-    }
+    EXPECT_TRUE(Policy.Bool) << "Bool policy not configured for C99";
 }
 
 // Test 6: Indentation configured
-void testIndentationConfigured() {
-    std::cout << "TEST: IndentationConfigured - ";
-
+TEST_F(CodeGeneratorTest, IndentationConfigured) {
     auto AST = createTestASTUnit();
+    ASSERT_NE(AST, nullptr);
+
     ASTContext &Context = AST->getASTContext();
 
     std::string Output;
@@ -220,22 +182,15 @@ void testIndentationConfigured() {
     PrintingPolicy &Policy = Gen.getPrintingPolicy();
 
     // Verify indentation is configured
-    bool indentOk = Policy.Indentation == 4;
-
-    if (indentOk) {
-        std::cout << "PASS" << std::endl;
-    } else {
-        std::cout << "FAIL - Indentation not configured correctly (expected 4, got "
-                  << Policy.Indentation << ")" << std::endl;
-        exit(1);
-    }
+    EXPECT_EQ(Policy.Indentation, 4) << "Indentation not configured correctly (expected 4, got "
+              << Policy.Indentation << ")";
 }
 
 // Test 7: Struct keyword preserved
-void testStructKeyword() {
-    std::cout << "TEST: StructKeyword - ";
-
+TEST_F(CodeGeneratorTest, StructKeyword) {
     auto AST = createTestASTUnit();
+    ASSERT_NE(AST, nullptr);
+
     ASTContext &Context = AST->getASTContext();
     CNodeBuilder Builder(Context);
 
@@ -250,22 +205,14 @@ void testStructKeyword() {
     OS.flush();
 
     // Verify 'struct' keyword is present
-    bool hasStructKeyword = Output.find("struct") != std::string::npos;
-
-    if (hasStructKeyword) {
-        std::cout << "PASS" << std::endl;
-    } else {
-        std::cout << "FAIL - 'struct' keyword missing" << std::endl;
-        std::cout << "Output: " << Output << std::endl;
-        exit(1);
-    }
+    EXPECT_NE(Output.find("struct"), std::string::npos) << "'struct' keyword missing";
 }
 
 // Test 8: Compile with gcc -std=c99
-void testCompileWithGcc() {
-    std::cout << "TEST: CompileWithGcc - ";
-
+TEST_F(CodeGeneratorTest, CompileWithGcc) {
     auto AST = createTestASTUnit();
+    ASSERT_NE(AST, nullptr);
+
     ASTContext &Context = AST->getASTContext();
     CNodeBuilder Builder(Context);
 
@@ -279,10 +226,7 @@ void testCompileWithGcc() {
     std::error_code EC;
     raw_fd_ostream OutFile("/tmp/test_c99.c", EC);
 
-    if (EC) {
-        std::cout << "FAIL - Could not create file: " << EC.message() << std::endl;
-        exit(1);
-    }
+    ASSERT_FALSE(EC) << "Could not create file: " << EC.message();
 
     CodeGenerator Gen(OutFile, Context);
     Gen.printDecl(RD);
@@ -292,13 +236,10 @@ void testCompileWithGcc() {
     // Try to compile with gcc -std=c99
     int result = system("gcc -std=c99 -c /tmp/test_c99.c -o /tmp/test_c99.o 2>/tmp/test_c99_errors.txt");
 
-    if (result == 0) {
-        std::cout << "PASS" << std::endl;
-    } else {
-        std::cout << "FAIL - Compilation failed" << std::endl;
-        std::cout << "Compiler errors:" << std::endl;
+    EXPECT_EQ(result, 0) << "Compilation failed";
+
+    if (result != 0) {
         system("cat /tmp/test_c99_errors.txt");
-        exit(1);
     }
 }
 
@@ -307,10 +248,10 @@ void testCompileWithGcc() {
 // ============================================================================
 
 // Test 9: Line directive present for valid location
-void testLineDirectivePresent() {
-    std::cout << "TEST: LineDirectivePresent - ";
-
+TEST_F(CodeGeneratorTest, LineDirectivePresent) {
     auto AST = createTestASTUnit();
+    ASSERT_NE(AST, nullptr);
+
     ASTContext &Context = AST->getASTContext();
     CNodeBuilder Builder(Context);
 
@@ -326,22 +267,14 @@ void testLineDirectivePresent() {
 
     // Verify #line directive is present (or gracefully absent for test context)
     // In test context, locations may be invalid, so either #line or direct struct is OK
-    bool hasStruct = Output.find("struct TestStruct") != std::string::npos;
-
-    if (hasStruct) {
-        std::cout << "PASS" << std::endl;
-    } else {
-        std::cout << "FAIL - Output missing" << std::endl;
-        std::cout << "Output: " << Output << std::endl;
-        exit(1);
-    }
+    EXPECT_NE(Output.find("struct TestStruct"), std::string::npos) << "Output missing";
 }
 
 // Test 10: Multiple declarations each get their own context
-void testMultipleDeclarationsWithLines() {
-    std::cout << "TEST: MultipleDeclarationsWithLines - ";
-
+TEST_F(CodeGeneratorTest, MultipleDeclarationsWithLines) {
     auto AST = createTestASTUnit();
+    ASSERT_NE(AST, nullptr);
+
     ASTContext &Context = AST->getASTContext();
     CNodeBuilder Builder(Context);
 
@@ -360,41 +293,6 @@ void testMultipleDeclarationsWithLines() {
     OS.flush();
 
     // Verify both declarations present
-    bool hasStruct = Output.find("struct Point") != std::string::npos;
-    bool hasFunc = Output.find("test_func") != std::string::npos;
-
-    if (hasStruct && hasFunc) {
-        std::cout << "PASS" << std::endl;
-    } else {
-        std::cout << "FAIL" << std::endl;
-        std::cout << "Output: " << Output << std::endl;
-        exit(1);
-    }
-}
-
-int main() {
-    std::cout << "=== Story #21: CodeGenerator Tests ===" << std::endl;
-
-    // Story #21 tests
-    testPrintStructDecl();
-    testPrintFunctionDecl();
-    testPrintTranslationUnit();
-    testOutputToFile();
-
-    std::cout << "\n=== Story #22: PrintingPolicy C99 Tests ===" << std::endl;
-
-    // Story #22 tests
-    testBoolTypeC99();
-    testIndentationConfigured();
-    testStructKeyword();
-    testCompileWithGcc();
-
-    std::cout << "\n=== Story #23: #line Directive Injection Tests ===" << std::endl;
-
-    // Story #23 tests
-    testLineDirectivePresent();
-    testMultipleDeclarationsWithLines();
-
-    std::cout << "\n✓ All tests PASSED - Stories #21, #22, and #23 complete!" << std::endl;
-    return 0;
+    EXPECT_NE(Output.find("struct Point"), std::string::npos);
+    EXPECT_NE(Output.find("test_func"), std::string::npos);
 }

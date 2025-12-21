@@ -189,3 +189,54 @@ std::string NameMangler::mangleFunctionName(FunctionDecl *FD) {
 
     return mangledName;
 }
+
+// ============================================================================
+// Phase 8: Standalone Function Translation (v2.1.0)
+// ============================================================================
+
+std::string NameMangler::mangleStandaloneFunction(FunctionDecl *FD) {
+    // Special case 1: main() function - never mangle
+    if (FD->getName() == "main") {
+        return "main";
+    }
+
+    // Special case 2: extern "C" functions - preserve C linkage
+    if (FD->isExternC()) {
+        return FD->getName().str();
+    }
+
+    // Extract namespace hierarchy for base name
+    std::vector<std::string> namespaces = extractNamespaceHierarchy(FD);
+
+    // Build base name with namespaces
+    std::string baseName;
+    for (const auto &ns : namespaces) {
+        baseName += ns + "_";
+    }
+    baseName += FD->getName().str();
+
+    // Check if base name is unique (no overloading)
+    if (usedNames.find(baseName) == usedNames.end()) {
+        usedNames.insert(baseName);
+        return baseName;
+    }
+
+    // Handle overload: append parameter types
+    // Pattern: functionName_paramType1_paramType2_...
+    std::string mangledName = baseName;
+    for (ParmVarDecl *Param : FD->parameters()) {
+        mangledName += "_" + getSimpleTypeName(Param->getType());
+    }
+
+    // Handle case where even with param types, name collides (multiple overloads)
+    // In this case, append a counter
+    std::string finalName = mangledName;
+    int counter = 1;
+    while (usedNames.find(finalName) != usedNames.end()) {
+        finalName = mangledName + "_" + std::to_string(counter);
+        counter++;
+    }
+
+    usedNames.insert(finalName);
+    return finalName;
+}

@@ -101,14 +101,6 @@ public:
   /// code size. Each feature is wrapped in preprocessor guards to prevent
   /// duplication in multi-file projects.
   std::string generateInlineRuntime() const;
-
-private:
-  /// @brief Read runtime source file and wrap with guards
-  /// @param filename Path to runtime source file
-  /// @param guardName Preprocessor guard macro name
-  /// @return File contents wrapped with include guards
-  std::string readRuntimeFile(const std::string &filename,
-                               const std::string &guardName) const;
 };
 
 #endif // __RUNTIME_MODE_INLINE_H__

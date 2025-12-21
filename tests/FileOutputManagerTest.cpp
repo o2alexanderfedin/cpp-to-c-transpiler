@@ -1,19 +1,13 @@
 // TDD Tests for FileOutputManager - Epic #19 Implementation
 // Story #141: File Output System
+// Simple test counter
 
+#include <gtest/gtest.h>
 #include "FileOutputManager.h"
-#include <iostream>
 #include <fstream>
 #include <cstdio>  // For remove()
 
-// Simple test counter
-static int tests_passed = 0;
-static int tests_failed = 0;
-
-#define TEST_START(name) std::cout << "Running " << name << "... ";
-#define TEST_PASS(name) { std::cout << "✓" << std::endl; tests_passed++; }
-#define TEST_FAIL(name, msg) { std::cout << "✗ FAILED: " << msg << std::endl; tests_failed++; }
-#define ASSERT(expr, msg) if (!(expr)) { TEST_FAIL("", msg); return; }
+using namespace clang;
 
 // Helper to check if file exists
 bool fileExists(const std::string& filename) {
@@ -22,107 +16,60 @@ bool fileExists(const std::string& filename) {
 }
 
 // Test 1: Default filenames from input
-void test_DefaultFilenames() {
-    TEST_START("DefaultFilenames");
 
+TEST(FileOutputManager, DefaultFilenames) {
     FileOutputManager manager;
-    manager.setInputFilename("Point.cpp");
+        manager.setInputFilename("Point.cpp");
 
-    ASSERT(manager.getHeaderFilename() == "Point.h",
-           "Expected 'Point.h' for header");
-    ASSERT(manager.getImplFilename() == "Point.c",
-           "Expected 'Point.c' for implementation");
-
-    TEST_PASS("DefaultFilenames");
+        ASSERT_TRUE(manager.getHeaderFilename() == "Point.h") << "Expected 'Point.h' for header";
+        ASSERT_TRUE(manager.getImplFilename() == "Point.c") << "Expected 'Point.c' for implementation";
 }
 
-// Test 2: Custom header filename
-void test_CustomHeaderFilename() {
-    TEST_START("CustomHeaderFilename");
-
+TEST(FileOutputManager, CustomHeaderFilename) {
     FileOutputManager manager;
-    manager.setInputFilename("MyClass.cpp");
-    manager.setOutputHeader("custom.h");
+        manager.setInputFilename("MyClass.cpp");
+        manager.setOutputHeader("custom.h");
 
-    ASSERT(manager.getHeaderFilename() == "custom.h",
-           "Expected custom header filename");
-    ASSERT(manager.getImplFilename() == "MyClass.c",
-           "Expected default impl filename");
-
-    TEST_PASS("CustomHeaderFilename");
+        ASSERT_TRUE(manager.getHeaderFilename() == "custom.h") << "Expected custom header filename";
+        ASSERT_TRUE(manager.getImplFilename() == "MyClass.c") << "Expected default impl filename";
 }
 
-// Test 3: Custom impl filename
-void test_CustomImplFilename() {
-    TEST_START("CustomImplFilename");
-
+TEST(FileOutputManager, CustomImplFilename) {
     FileOutputManager manager;
-    manager.setInputFilename("Test.cpp");
-    manager.setOutputImpl("custom.c");
+        manager.setInputFilename("Test.cpp");
+        manager.setOutputImpl("custom.c");
 
-    ASSERT(manager.getHeaderFilename() == "Test.h",
-           "Expected default header filename");
-    ASSERT(manager.getImplFilename() == "custom.c",
-           "Expected custom impl filename");
-
-    TEST_PASS("CustomImplFilename");
+        ASSERT_TRUE(manager.getHeaderFilename() == "Test.h") << "Expected default header filename";
+        ASSERT_TRUE(manager.getImplFilename() == "custom.c") << "Expected custom impl filename";
 }
 
-// Test 4: Write to files
-void test_WriteToFiles() {
-    TEST_START("WriteToFiles");
-
+TEST(FileOutputManager, WriteToFiles) {
     FileOutputManager manager;
-    manager.setInputFilename("TestWrite.cpp");
+        manager.setInputFilename("TestWrite.cpp");
 
-    std::string headerContent = "#ifndef TEST_H\n#define TEST_H\n#endif\n";
-    std::string implContent = "#include \"TestWrite.h\"\n";
+        std::string headerContent = "#ifndef TEST_H\n#define TEST_H\n#endif\n";
+        std::string implContent = "#include \"TestWrite.h\"\n";
 
-    bool success = manager.writeFiles(headerContent, implContent);
+        bool success = manager.writeFiles(headerContent, implContent);
 
-    ASSERT(success, "Expected writeFiles to succeed");
-    ASSERT(fileExists("TestWrite.h"), "Expected TestWrite.h to exist");
-    ASSERT(fileExists("TestWrite.c"), "Expected TestWrite.c to exist");
+        ASSERT_TRUE(success) << "Expected writeFiles to succeed";
+        ASSERT_TRUE(fileExists("TestWrite.h")) << "Expected TestWrite.h to exist";
+        ASSERT_TRUE(fileExists("TestWrite.c")) << "Expected TestWrite.c to exist";
 
-    // Cleanup
-    std::remove("TestWrite.h");
-    std::remove("TestWrite.c");
-
-    TEST_PASS("WriteToFiles");
+        // Cleanup
+        std::remove("TestWrite.h");
+        std::remove("TestWrite.c");
 }
 
-// Test 5: Error handling - invalid path
-void test_ErrorHandlingInvalidPath() {
-    TEST_START("ErrorHandlingInvalidPath");
-
+TEST(FileOutputManager, ErrorHandlingInvalidPath) {
     FileOutputManager manager;
-    manager.setInputFilename("Test.cpp");
-    manager.setOutputHeader("/nonexistent/path/test.h");
+        manager.setInputFilename("Test.cpp");
+        manager.setOutputHeader("/nonexistent/path/test.h");
 
-    std::string content = "test";
+        std::string content = "test";
 
-    bool success = manager.writeFiles(content, content);
+        bool success = manager.writeFiles(content, content);
 
-    // Should fail gracefully
-    ASSERT(!success, "Expected writeFiles to fail for invalid path");
-
-    TEST_PASS("ErrorHandlingInvalidPath");
-}
-
-int main() {
-    std::cout << "\n=== FileOutputManager Tests (Story #141) ===\n\n";
-
-    // Run all tests
-    test_DefaultFilenames();
-    test_CustomHeaderFilename();
-    test_CustomImplFilename();
-    test_WriteToFiles();
-    test_ErrorHandlingInvalidPath();
-
-    // Summary
-    std::cout << "\n=== Test Summary ===\n";
-    std::cout << "Passed: " << tests_passed << "\n";
-    std::cout << "Failed: " << tests_failed << "\n";
-
-    return tests_failed > 0 ? 1 : 0;
+        // Should fail gracefully
+        ASSERT_TRUE(!success) << "Expected writeFiles to fail for invalid path";
 }

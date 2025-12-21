@@ -1,6 +1,7 @@
 /**
  * @file STLIntegrationTest.cpp
  * @brief Story #69: STL Container Support and Integration Testing
+ * Migrated to Google Test
  *
  * Tests the complete template pipeline with std::vector<int> to validate:
  * - STL parsing and template extraction
@@ -17,8 +18,8 @@
 #include "NameMangler.h"
 #include "clang/Tooling/Tooling.h"
 #include "clang/Frontend/ASTUnit.h"
+#include <gtest/gtest.h>
 #include <iostream>
-#include <cassert>
 #include <sstream>
 #include <algorithm>
 
@@ -32,13 +33,8 @@ std::unique_ptr<ASTUnit> buildASTFromCode(const std::string& code) {
 
 /**
  * Test 1: Simplified std::vector<int> Template Instantiation Extraction
- *
- * This test uses a simplified mock of std::vector to verify template extraction
- * without depending on the full STL implementation.
  */
-void test_VectorIntTemplateExtraction() {
-    std::cout << "Test 1: std::vector<int> Template Instantiation Extraction\n";
-
+TEST(STLIntegrationTest, VectorIntTemplateExtraction) {
     std::string code = R"(
         namespace std {
             template<typename T>
@@ -52,7 +48,6 @@ void test_VectorIntTemplateExtraction() {
 
                 void push_back(const T& value) {
                     if (size_ >= capacity_) {
-                        // Simplified resize logic
                         capacity_ = capacity_ == 0 ? 1 : capacity_ * 2;
                     }
                     data[size_++] = value;
@@ -77,7 +72,7 @@ void test_VectorIntTemplateExtraction() {
     )";
 
     auto AST = buildASTFromCode(code);
-    assert(AST && "Failed to build AST");
+    ASSERT_NE(AST, nullptr) << "Failed to build AST";
 
     ASTContext& Context = AST->getASTContext();
     TranslationUnitDecl* TU = Context.getTranslationUnitDecl();
@@ -89,7 +84,7 @@ void test_VectorIntTemplateExtraction() {
     auto classInstantiations = extractor.getClassInstantiations();
 
     // Verify std::vector<int> was extracted
-    assert(!classInstantiations.empty() && "Expected std::vector<int> instantiation");
+    ASSERT_FALSE(classInstantiations.empty()) << "Expected std::vector<int> instantiation";
 
     bool foundVectorInt = false;
     for (auto* inst : classInstantiations) {
@@ -100,26 +95,19 @@ void test_VectorIntTemplateExtraction() {
                 QualType argType = args[0].getAsType();
                 if (argType->isIntegerType()) {
                     foundVectorInt = true;
-                    std::cout << "  ✓ Found std::vector<int> instantiation\n";
                     break;
                 }
             }
         }
     }
 
-    assert(foundVectorInt && "Expected std::vector<int> instantiation");
-    std::cout << "  PASSED: std::vector<int> extraction\n\n";
+    EXPECT_TRUE(foundVectorInt) << "Expected std::vector<int> instantiation";
 }
 
 /**
  * Test 2: std::vector<int> Monomorphization to C Code
- *
- * Verifies that std::vector<int> is correctly converted to C struct
- * with mangled name (std_vector_int).
  */
-void test_VectorIntMonomorphization() {
-    std::cout << "Test 2: std::vector<int> Monomorphization to C Code\n";
-
+TEST(STLIntegrationTest, VectorIntMonomorphization) {
     std::string code = R"(
         namespace std {
             template<typename T>
@@ -143,7 +131,7 @@ void test_VectorIntMonomorphization() {
     )";
 
     auto AST = buildASTFromCode(code);
-    assert(AST && "Failed to build AST");
+    ASSERT_NE(AST, nullptr) << "Failed to build AST";
 
     ASTContext& Context = AST->getASTContext();
     TranslationUnitDecl* TU = Context.getTranslationUnitDecl();
@@ -152,7 +140,7 @@ void test_VectorIntMonomorphization() {
     extractor.extractTemplateInstantiations(TU);
 
     auto classInstantiations = extractor.getClassInstantiations();
-    assert(!classInstantiations.empty() && "Expected std::vector<int> instantiation");
+    ASSERT_FALSE(classInstantiations.empty()) << "Expected std::vector<int> instantiation";
 
     // Monomorphize std::vector<int>
     NameMangler mangler(Context);
@@ -166,43 +154,28 @@ void test_VectorIntMonomorphization() {
         }
     }
 
-    assert(vectorInt && "Expected std::vector<int> instantiation");
+    ASSERT_NE(vectorInt, nullptr) << "Expected std::vector<int> instantiation";
 
     std::string cCode = monomorphizer.monomorphizeClass(vectorInt);
 
-    // Verify generated C code contains:
-    // 1. Struct typedef with mangled name
-    assert(cCode.find("typedef struct") != std::string::npos &&
-           "Expected struct typedef in C code");
-
-    // 2. The mangled name should contain "vector" and "int"
-    assert((cCode.find("vector_int") != std::string::npos ||
-            cCode.find("std_vector_int") != std::string::npos) &&
-           "Expected mangled name 'vector_int' or 'std_vector_int'");
-
-    // 3. Struct fields (data, size_, capacity_)
-    assert(cCode.find("int* data") != std::string::npos &&
-           "Expected 'int* data' field");
-    assert(cCode.find("int size_") != std::string::npos &&
-           "Expected 'int size_' field");
-    assert(cCode.find("int capacity_") != std::string::npos &&
-           "Expected 'int capacity_' field");
-
-    std::cout << "  ✓ Generated C struct with mangled name\n";
-    std::cout << "  ✓ Contains expected fields (data, size_, capacity_)\n";
-    std::cout << "  PASSED: std::vector<int> monomorphization\n\n";
-    std::cout << "Generated C Code:\n" << cCode << "\n";
+    // Verify generated C code
+    EXPECT_NE(cCode.find("typedef struct"), std::string::npos)
+        << "Expected struct typedef in C code";
+    EXPECT_TRUE(cCode.find("vector_int") != std::string::npos ||
+                cCode.find("std_vector_int") != std::string::npos)
+        << "Expected mangled name 'vector_int' or 'std_vector_int'";
+    EXPECT_NE(cCode.find("int* data"), std::string::npos)
+        << "Expected 'int* data' field";
+    EXPECT_NE(cCode.find("int size_"), std::string::npos)
+        << "Expected 'int size_' field";
+    EXPECT_NE(cCode.find("int capacity_"), std::string::npos)
+        << "Expected 'int capacity_' field";
 }
 
 /**
- * Test 3: std::vector<int> Method Generation (push_back, size, operator[])
- *
- * Verifies that std::vector<int> methods are correctly converted to C functions
- * with proper name mangling and signatures.
+ * Test 3: std::vector<int> Method Generation
  */
-void test_VectorIntMethodGeneration() {
-    std::cout << "Test 3: std::vector<int> Method Generation\n";
-
+TEST(STLIntegrationTest, VectorIntMethodGeneration) {
     std::string code = R"(
         namespace std {
             template<typename T>
@@ -227,7 +200,7 @@ void test_VectorIntMethodGeneration() {
     )";
 
     auto AST = buildASTFromCode(code);
-    assert(AST && "Failed to build AST");
+    ASSERT_NE(AST, nullptr) << "Failed to build AST";
 
     ASTContext& Context = AST->getASTContext();
     TranslationUnitDecl* TU = Context.getTranslationUnitDecl();
@@ -236,7 +209,7 @@ void test_VectorIntMethodGeneration() {
     extractor.extractTemplateInstantiations(TU);
 
     auto classInstantiations = extractor.getClassInstantiations();
-    assert(!classInstantiations.empty() && "Expected std::vector<int> instantiation");
+    ASSERT_FALSE(classInstantiations.empty()) << "Expected std::vector<int> instantiation";
 
     NameMangler mangler(Context);
     TemplateMonomorphizer monomorphizer(Context, mangler);
@@ -249,43 +222,24 @@ void test_VectorIntMethodGeneration() {
         }
     }
 
-    assert(vectorInt && "Expected std::vector<int> instantiation");
+    ASSERT_NE(vectorInt, nullptr) << "Expected std::vector<int> instantiation";
 
     std::string cCode = monomorphizer.monomorphizeClass(vectorInt);
 
-    // Verify method declarations:
-    // 1. push_back method: void vector_int_push_back(vector_int* this, const int* value)
+    // Verify method declarations
     bool hasPushBack = (cCode.find("push_back") != std::string::npos);
-    std::cout << "  " << (hasPushBack ? "✓" : "✗")
-              << " push_back method " << (hasPushBack ? "found" : "missing") << "\n";
-
-    // 2. size method: int vector_int_size(const vector_int* this)
     bool hasSize = (cCode.find("size") != std::string::npos);
-    std::cout << "  " << (hasSize ? "✓" : "✗")
-              << " size method " << (hasSize ? "found" : "missing") << "\n";
-
-    // 3. operator[] method: int& vector_int_operator[](vector_int* this, int index)
     bool hasOperator = (cCode.find("operator") != std::string::npos ||
                         cCode.find("[") != std::string::npos);
-    std::cout << "  " << (hasOperator ? "✓" : "✗")
-              << " operator[] method " << (hasOperator ? "found" : "missing") << "\n";
 
-    // At least some methods should be present
-    assert((hasPushBack || hasSize || hasOperator) &&
-           "Expected at least one method declaration");
-
-    std::cout << "  PASSED: std::vector<int> method generation\n\n";
-    std::cout << "Generated C Code:\n" << cCode << "\n";
+    EXPECT_TRUE(hasPushBack || hasSize || hasOperator)
+        << "Expected at least one method declaration";
 }
 
 /**
  * Test 4: End-to-End Integration Test
- *
- * Complete pipeline test: parse -> extract -> monomorphize -> verify C code
  */
-void test_EndToEndIntegration() {
-    std::cout << "Test 4: End-to-End Integration Test\n";
-
+TEST(STLIntegrationTest, EndToEndIntegration) {
     std::string code = R"(
         namespace std {
             template<typename T>
@@ -308,7 +262,7 @@ void test_EndToEndIntegration() {
     )";
 
     auto AST = buildASTFromCode(code);
-    assert(AST && "Failed to build AST");
+    ASSERT_NE(AST, nullptr) << "Failed to build AST";
 
     ASTContext& Context = AST->getASTContext();
     TranslationUnitDecl* TU = Context.getTranslationUnitDecl();
@@ -318,8 +272,7 @@ void test_EndToEndIntegration() {
     extractor.extractTemplateInstantiations(TU);
 
     auto classInstantiations = extractor.getClassInstantiations();
-    assert(!classInstantiations.empty() && "Template extraction failed");
-    std::cout << "  ✓ Step 1: Template extraction successful\n";
+    ASSERT_FALSE(classInstantiations.empty()) << "Template extraction failed";
 
     // Step 2: Monomorphize
     NameMangler mangler(Context);
@@ -332,29 +285,20 @@ void test_EndToEndIntegration() {
     }
 
     std::string finalCode = allCode.str();
-    assert(!finalCode.empty() && "Monomorphization failed");
-    std::cout << "  ✓ Step 2: Monomorphization successful\n";
+    ASSERT_FALSE(finalCode.empty()) << "Monomorphization failed";
 
     // Step 3: Verify output
-    assert(finalCode.find("typedef struct") != std::string::npos &&
-           "Expected C struct");
-    assert((finalCode.find("vector_int") != std::string::npos ||
-            finalCode.find("std_vector_int") != std::string::npos) &&
-           "Expected mangled name");
-    std::cout << "  ✓ Step 3: Output verification successful\n";
-
-    std::cout << "  PASSED: End-to-end integration\n\n";
-    std::cout << "Final Generated C Code:\n" << finalCode << "\n";
+    EXPECT_NE(finalCode.find("typedef struct"), std::string::npos)
+        << "Expected C struct";
+    EXPECT_TRUE(finalCode.find("vector_int") != std::string::npos ||
+                finalCode.find("std_vector_int") != std::string::npos)
+        << "Expected mangled name";
 }
 
 /**
  * Test 5: Multiple STL Container Types
- *
- * Tests handling of multiple std::vector instantiations with different types.
  */
-void test_MultipleVectorTypes() {
-    std::cout << "Test 5: Multiple std::vector Types\n";
-
+TEST(STLIntegrationTest, MultipleVectorTypes) {
     std::string code = R"(
         namespace std {
             template<typename T>
@@ -376,7 +320,7 @@ void test_MultipleVectorTypes() {
     )";
 
     auto AST = buildASTFromCode(code);
-    assert(AST && "Failed to build AST");
+    ASSERT_NE(AST, nullptr) << "Failed to build AST";
 
     ASTContext& Context = AST->getASTContext();
     TranslationUnitDecl* TU = Context.getTranslationUnitDecl();
@@ -386,10 +330,6 @@ void test_MultipleVectorTypes() {
 
     auto classInstantiations = extractor.getClassInstantiations();
 
-    // Should extract 3 different vector instantiations
-    std::cout << "  Extracted " << classInstantiations.size()
-              << " template instantiations\n";
-
     // Count vector instantiations
     int vectorCount = 0;
     for (auto* inst : classInstantiations) {
@@ -398,33 +338,5 @@ void test_MultipleVectorTypes() {
         }
     }
 
-    std::cout << "  Found " << vectorCount << " vector instantiations\n";
-    assert(vectorCount >= 1 && "Expected at least one vector instantiation");
-
-    std::cout << "  PASSED: Multiple vector types\n\n";
-}
-
-int main() {
-    std::cout << "========================================\n";
-    std::cout << "Story #69: STL Integration Tests\n";
-    std::cout << "========================================\n\n";
-
-    try {
-        test_VectorIntTemplateExtraction();
-        test_VectorIntMonomorphization();
-        test_VectorIntMethodGeneration();
-        test_EndToEndIntegration();
-        test_MultipleVectorTypes();
-
-        std::cout << "========================================\n";
-        std::cout << "ALL TESTS PASSED!\n";
-        std::cout << "========================================\n";
-        return 0;
-    } catch (const std::exception& e) {
-        std::cerr << "TEST FAILED: " << e.what() << "\n";
-        return 1;
-    } catch (...) {
-        std::cerr << "TEST FAILED: Unknown exception\n";
-        return 1;
-    }
+    EXPECT_GE(vectorCount, 1) << "Expected at least one vector instantiation";
 }

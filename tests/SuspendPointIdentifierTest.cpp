@@ -2,10 +2,10 @@
 // Unit tests for Suspend Point Identification (Story #103)
 // Following TDD: RED phase - tests written first
 
+#include <gtest/gtest.h>
 #include "clang/Tooling/Tooling.h"
 #include "clang/Frontend/ASTUnit.h"
 #include "../include/SuspendPointIdentifier.h"
-#include <iostream>
 #include <cassert>
 
 using namespace clang;
@@ -20,9 +20,6 @@ std::unique_ptr<ASTUnit> buildAST(const char *code) {
     return tooling::buildASTFromCodeWithArgs(code, args, "input.cc");
 }
 
-#define TEST_START(name) std::cout << "Test: " << name << " ... " << std::flush
-#define TEST_PASS(name) std::cout << "PASS" << std::endl
-#define ASSERT(cond, msg) \
     if (!(cond)) { \
         std::cerr << "\nASSERT FAILED: " << msg << std::endl; \
         std::cerr << "  Condition: " #cond << std::endl; \
@@ -40,454 +37,407 @@ FunctionDecl* findFunction(TranslationUnitDecl* TU, const std::string& name) {
     return nullptr;
 }
 
-// Test 1: Identify co_await suspend points
-void test_IdentifyCoAwaitSuspendPoints() {
-    TEST_START("IdentifyCoAwaitSuspendPoints");
+// Test fixture
+class SuspendPointIdentifierTest : public ::testing::Test {
+protected:
+};
 
+TEST_F(SuspendPointIdentifierTest, IdentifyCoAwaitSuspendPoints) {
     const char *code = R"(
-        struct task;
+            struct task;
 
-        namespace std {
-            template<typename Promise = void>
-            struct coroutine_handle {
-                static coroutine_handle from_address(void* addr) noexcept { return {}; }
-            };
-
-            template<typename T, typename... Args>
-            struct coroutine_traits {
-                using promise_type = typename T::promise_type;
-            };
-        }
-
-        struct task {
-            struct promise_type {
-                struct awaiter {
-                    bool await_ready() noexcept { return false; }
-                    template<typename P> void await_suspend(std::coroutine_handle<P>) noexcept {}
-                    void await_resume() noexcept {}
+            namespace std {
+                template<typename Promise = void>
+                struct coroutine_handle {
+                    static coroutine_handle from_address(void* addr) noexcept { return {}; }
                 };
 
-                task get_return_object() { return {}; }
-                awaiter initial_suspend() { return {}; }
-                awaiter final_suspend() noexcept { return {}; }
-                void return_void() {}
-                void unhandled_exception() {}
+                template<typename T, typename... Args>
+                struct coroutine_traits {
+                    using promise_type = typename T::promise_type;
+                };
+            }
+
+            struct task {
+                struct promise_type {
+                    struct awaiter {
+                        bool await_ready() noexcept { return false; }
+                        template<typename P> void await_suspend(std::coroutine_handle<P>) noexcept {}
+                        void await_resume() noexcept {}
+                    };
+
+                    task get_return_object() { return {}; }
+                    awaiter initial_suspend() { return {}; }
+                    awaiter final_suspend() noexcept { return {}; }
+                    void return_void() {}
+                    void unhandled_exception() {}
+                };
             };
-        };
 
-        task async_func() {
-            co_await task::promise_type::awaiter{};
-            co_await task::promise_type::awaiter{};
-        }
-    )";
+            task async_func() {
+                co_await task::promise_type::awaiter{};
+                co_await task::promise_type::awaiter{};
+            }
+        )";
 
-    auto AST = buildAST(code);
-    ASSERT(AST, "Failed to build AST");
+        auto AST = buildAST(code);
+        ASSERT_TRUE(AST) << "Failed to build AST";
 
-    SuspendPointIdentifier identifier(AST->getASTContext());
-    auto *TU = AST->getASTContext().getTranslationUnitDecl();
-    auto *func = findFunction(TU, "async_func");
+        SuspendPointIdentifier identifier(AST->getASTContext());
+        auto *TU = AST->getASTContext().getTranslationUnitDecl();
+        auto *func = findFunction(TU, "async_func");
 
-    ASSERT(func, "Function not found");
+        ASSERT_TRUE(func) << "Function not found";
 
-    auto suspendPoints = identifier.identifySuspendPoints(func);
-    ASSERT(suspendPoints.size() >= 2, "Should identify at least 2 co_await suspend points");
-
-    TEST_PASS("IdentifyCoAwaitSuspendPoints");
+        auto suspendPoints = identifier.identifySuspendPoints(func);
+        ASSERT_TRUE(suspendPoints.size() >= 2) << "Should identify at least 2 co_await suspend points";
 }
 
-// Test 2: Identify co_yield suspend points
-void test_IdentifyCoYieldSuspendPoints() {
-    TEST_START("IdentifyCoYieldSuspendPoints");
-
+TEST_F(SuspendPointIdentifierTest, IdentifyCoYieldSuspendPoints) {
     const char *code = R"(
-        struct generator;
+            struct generator;
 
-        namespace std {
-            template<typename Promise = void>
-            struct coroutine_handle {
-                static coroutine_handle from_address(void* addr) noexcept { return {}; }
-            };
-
-            template<typename T, typename... Args>
-            struct coroutine_traits {
-                using promise_type = typename T::promise_type;
-            };
-        }
-
-        struct generator {
-            struct promise_type {
-                struct awaiter {
-                    bool await_ready_val;
-                    awaiter(bool ready) : await_ready_val(ready) {}
-                    bool await_ready() noexcept { return await_ready_val; }
-                    template<typename P> void await_suspend(std::coroutine_handle<P>) noexcept {}
-                    void await_resume() noexcept {}
+            namespace std {
+                template<typename Promise = void>
+                struct coroutine_handle {
+                    static coroutine_handle from_address(void* addr) noexcept { return {}; }
                 };
 
-                int value;
-                generator get_return_object() { return {}; }
-                awaiter initial_suspend() { return awaiter(true); }
-                awaiter final_suspend() noexcept { return awaiter(true); }
-                awaiter yield_value(int v) { value = v; return awaiter(false); }
-                void return_void() {}
-                void unhandled_exception() {}
+                template<typename T, typename... Args>
+                struct coroutine_traits {
+                    using promise_type = typename T::promise_type;
+                };
+            }
+
+            struct generator {
+                struct promise_type {
+                    struct awaiter {
+                        bool await_ready_val;
+                        awaiter(bool ready) : await_ready_val(ready) {}
+                        bool await_ready() noexcept { return await_ready_val; }
+                        template<typename P> void await_suspend(std::coroutine_handle<P>) noexcept {}
+                        void await_resume() noexcept {}
+                    };
+
+                    int value;
+                    generator get_return_object() { return {}; }
+                    awaiter initial_suspend() { return awaiter(true); }
+                    awaiter final_suspend() noexcept { return awaiter(true); }
+                    awaiter yield_value(int v) { value = v; return awaiter(false); }
+                    void return_void() {}
+                    void unhandled_exception() {}
+                };
             };
-        };
 
-        generator produce_values() {
-            co_yield 1;
-            co_yield 2;
-            co_yield 3;
-        }
-    )";
+            generator produce_values() {
+                co_yield 1;
+                co_yield 2;
+                co_yield 3;
+            }
+        )";
 
-    auto AST = buildAST(code);
-    ASSERT(AST, "Failed to build AST");
+        auto AST = buildAST(code);
+        ASSERT_TRUE(AST) << "Failed to build AST";
 
-    SuspendPointIdentifier identifier(AST->getASTContext());
-    auto *TU = AST->getASTContext().getTranslationUnitDecl();
-    auto *func = findFunction(TU, "produce_values");
+        SuspendPointIdentifier identifier(AST->getASTContext());
+        auto *TU = AST->getASTContext().getTranslationUnitDecl();
+        auto *func = findFunction(TU, "produce_values");
 
-    ASSERT(func, "Function not found");
+        ASSERT_TRUE(func) << "Function not found";
 
-    auto suspendPoints = identifier.identifySuspendPoints(func);
-    ASSERT(suspendPoints.size() >= 3, "Should identify at least 3 co_yield suspend points");
-
-    TEST_PASS("IdentifyCoYieldSuspendPoints");
+        auto suspendPoints = identifier.identifySuspendPoints(func);
+        ASSERT_TRUE(suspendPoints.size() >= 3) << "Should identify at least 3 co_yield suspend points";
 }
 
-// Test 3: Identify co_return suspend points
-void test_IdentifyCoReturnSuspendPoints() {
-    TEST_START("IdentifyCoReturnSuspendPoints");
-
+TEST_F(SuspendPointIdentifierTest, IdentifyCoReturnSuspendPoints) {
     const char *code = R"(
-        struct task;
+            struct task;
 
-        namespace std {
-            template<typename Promise = void>
-            struct coroutine_handle {
-                static coroutine_handle from_address(void* addr) noexcept { return {}; }
-            };
-
-            template<typename T, typename... Args>
-            struct coroutine_traits {
-                using promise_type = typename T::promise_type;
-            };
-        }
-
-        struct task {
-            struct promise_type {
-                struct awaiter {
-                    bool await_ready() noexcept { return false; }
-                    template<typename P> void await_suspend(std::coroutine_handle<P>) noexcept {}
-                    void await_resume() noexcept {}
+            namespace std {
+                template<typename Promise = void>
+                struct coroutine_handle {
+                    static coroutine_handle from_address(void* addr) noexcept { return {}; }
                 };
 
-                task get_return_object() { return {}; }
-                awaiter initial_suspend() { return {}; }
-                awaiter final_suspend() noexcept { return {}; }
-                void return_void() {}
-                void unhandled_exception() {}
+                template<typename T, typename... Args>
+                struct coroutine_traits {
+                    using promise_type = typename T::promise_type;
+                };
+            }
+
+            struct task {
+                struct promise_type {
+                    struct awaiter {
+                        bool await_ready() noexcept { return false; }
+                        template<typename P> void await_suspend(std::coroutine_handle<P>) noexcept {}
+                        void await_resume() noexcept {}
+                    };
+
+                    task get_return_object() { return {}; }
+                    awaiter initial_suspend() { return {}; }
+                    awaiter final_suspend() noexcept { return {}; }
+                    void return_void() {}
+                    void unhandled_exception() {}
+                };
             };
-        };
 
-        task simple_coro() {
-            co_return;
-        }
-    )";
+            task simple_coro() {
+                co_return;
+            }
+        )";
 
-    auto AST = buildAST(code);
-    ASSERT(AST, "Failed to build AST");
+        auto AST = buildAST(code);
+        ASSERT_TRUE(AST) << "Failed to build AST";
 
-    SuspendPointIdentifier identifier(AST->getASTContext());
-    auto *TU = AST->getASTContext().getTranslationUnitDecl();
-    auto *func = findFunction(TU, "simple_coro");
+        SuspendPointIdentifier identifier(AST->getASTContext());
+        auto *TU = AST->getASTContext().getTranslationUnitDecl();
+        auto *func = findFunction(TU, "simple_coro");
 
-    ASSERT(func, "Function not found");
+        ASSERT_TRUE(func) << "Function not found";
 
-    auto suspendPoints = identifier.identifySuspendPoints(func);
-    ASSERT(suspendPoints.size() >= 1, "Should identify at least 1 suspend point (co_return)");
-
-    TEST_PASS("IdentifyCoReturnSuspendPoints");
+        auto suspendPoints = identifier.identifySuspendPoints(func);
+        ASSERT_TRUE(suspendPoints.size() >= 1) << "Should identify at least 1 suspend point (co_return;");
 }
 
-// Test 4: Get suspend point locations with line numbers
-void test_GetSuspendPointLocations() {
-    TEST_START("GetSuspendPointLocations");
-
+TEST_F(SuspendPointIdentifierTest, GetSuspendPointLocations) {
     const char *code = R"(
-        struct generator;
+            struct generator;
 
-        namespace std {
-            template<typename Promise = void>
-            struct coroutine_handle {
-                static coroutine_handle from_address(void* addr) noexcept { return {}; }
-            };
-
-            template<typename T, typename... Args>
-            struct coroutine_traits {
-                using promise_type = typename T::promise_type;
-            };
-        }
-
-        struct generator {
-            struct promise_type {
-                struct awaiter {
-                    bool await_ready_val;
-                    awaiter(bool ready) : await_ready_val(ready) {}
-                    bool await_ready() noexcept { return await_ready_val; }
-                    template<typename P> void await_suspend(std::coroutine_handle<P>) noexcept {}
-                    void await_resume() noexcept {}
+            namespace std {
+                template<typename Promise = void>
+                struct coroutine_handle {
+                    static coroutine_handle from_address(void* addr) noexcept { return {}; }
                 };
 
-                int value;
-                generator get_return_object() { return {}; }
-                awaiter initial_suspend() { return awaiter(true); }
-                awaiter final_suspend() noexcept { return awaiter(true); }
-                awaiter yield_value(int v) { value = v; return awaiter(false); }
-                void return_void() {}
-                void unhandled_exception() {}
+                template<typename T, typename... Args>
+                struct coroutine_traits {
+                    using promise_type = typename T::promise_type;
+                };
+            }
+
+            struct generator {
+                struct promise_type {
+                    struct awaiter {
+                        bool await_ready_val;
+                        awaiter(bool ready) : await_ready_val(ready) {}
+                        bool await_ready() noexcept { return await_ready_val; }
+                        template<typename P> void await_suspend(std::coroutine_handle<P>) noexcept {}
+                        void await_resume() noexcept {}
+                    };
+
+                    int value;
+                    generator get_return_object() { return {}; }
+                    awaiter initial_suspend() { return awaiter(true); }
+                    awaiter final_suspend() noexcept { return awaiter(true); }
+                    awaiter yield_value(int v) { value = v; return awaiter(false); }
+                    void return_void() {}
+                    void unhandled_exception() {}
+                };
             };
-        };
 
-        generator count() {
-            co_yield 1;
-            co_yield 2;
+            generator count() {
+                co_yield 1;
+                co_yield 2;
+            }
+        )";
+
+        auto AST = buildAST(code);
+        ASSERT_TRUE(AST) << "Failed to build AST";
+
+        SuspendPointIdentifier identifier(AST->getASTContext());
+        auto *TU = AST->getASTContext().getTranslationUnitDecl();
+        auto *func = findFunction(TU, "count");
+
+        ASSERT_TRUE(func) << "Function not found";
+
+        auto suspendPoints = identifier.identifySuspendPoints(func);
+        ASSERT_TRUE(!suspendPoints.empty()) << "Should have suspend points";
+
+        // Check that each suspend point has valid location info
+        for (const auto& sp : suspendPoints) {
+            ASSERT_TRUE(sp.line > 0) << "Suspend point should have valid line number";
+            ASSERT_TRUE(!sp.kind.empty()) << "Suspend point should have kind";
         }
-    )";
-
-    auto AST = buildAST(code);
-    ASSERT(AST, "Failed to build AST");
-
-    SuspendPointIdentifier identifier(AST->getASTContext());
-    auto *TU = AST->getASTContext().getTranslationUnitDecl();
-    auto *func = findFunction(TU, "count");
-
-    ASSERT(func, "Function not found");
-
-    auto suspendPoints = identifier.identifySuspendPoints(func);
-    ASSERT(!suspendPoints.empty(), "Should have suspend points");
-
-    // Check that each suspend point has valid location info
-    for (const auto& sp : suspendPoints) {
-        ASSERT(sp.line > 0, "Suspend point should have valid line number");
-        ASSERT(!sp.kind.empty(), "Suspend point should have kind");
-    }
-
-    TEST_PASS("GetSuspendPointLocations");
 }
 
-// Test 5: Classify suspend point types
-void test_ClassifySuspendPointTypes() {
-    TEST_START("ClassifySuspendPointTypes");
-
+TEST_F(SuspendPointIdentifierTest, ClassifySuspendPointTypes) {
     const char *code = R"(
-        struct generator;
+            struct generator;
 
-        namespace std {
-            template<typename Promise = void>
-            struct coroutine_handle {
-                static coroutine_handle from_address(void* addr) noexcept { return {}; }
-            };
-
-            template<typename T, typename... Args>
-            struct coroutine_traits {
-                using promise_type = typename T::promise_type;
-            };
-        }
-
-        struct generator {
-            struct promise_type {
-                struct awaiter {
-                    bool await_ready_val;
-                    awaiter(bool ready) : await_ready_val(ready) {}
-                    bool await_ready() noexcept { return await_ready_val; }
-                    template<typename P> void await_suspend(std::coroutine_handle<P>) noexcept {}
-                    void await_resume() noexcept {}
+            namespace std {
+                template<typename Promise = void>
+                struct coroutine_handle {
+                    static coroutine_handle from_address(void* addr) noexcept { return {}; }
                 };
 
-                int value;
-                generator get_return_object() { return {}; }
-                awaiter initial_suspend() { return awaiter(true); }
-                awaiter final_suspend() noexcept { return awaiter(true); }
-                awaiter yield_value(int v) { value = v; return awaiter(false); }
-                void return_void() {}
-                void unhandled_exception() {}
+                template<typename T, typename... Args>
+                struct coroutine_traits {
+                    using promise_type = typename T::promise_type;
+                };
+            }
+
+            struct generator {
+                struct promise_type {
+                    struct awaiter {
+                        bool await_ready_val;
+                        awaiter(bool ready) : await_ready_val(ready) {}
+                        bool await_ready() noexcept { return await_ready_val; }
+                        template<typename P> void await_suspend(std::coroutine_handle<P>) noexcept {}
+                        void await_resume() noexcept {}
+                    };
+
+                    int value;
+                    generator get_return_object() { return {}; }
+                    awaiter initial_suspend() { return awaiter(true); }
+                    awaiter final_suspend() noexcept { return awaiter(true); }
+                    awaiter yield_value(int v) { value = v; return awaiter(false); }
+                    void return_void() {}
+                    void unhandled_exception() {}
+                };
             };
-        };
 
-        generator mixed() {
-            co_yield 42;
-            co_return;
+            generator mixed() {
+                co_yield 42;
+                co_return;
+            }
+        )";
+
+        auto AST = buildAST(code);
+        ASSERT_TRUE(AST) << "Failed to build AST";
+
+        SuspendPointIdentifier identifier(AST->getASTContext());
+        auto *TU = AST->getASTContext().getTranslationUnitDecl();
+        auto *func = findFunction(TU, "mixed");
+
+        ASSERT_TRUE(func) << "Function not found";
+
+        auto suspendPoints = identifier.identifySuspendPoints(func);
+
+        bool hasYield = false;
+        bool hasReturn = false;
+
+        for (const auto& sp : suspendPoints) {
+            if (sp.kind == "co_yield") hasYield = true;
+            if (sp.kind == "co_return") hasReturn = true;
         }
-    )";
 
-    auto AST = buildAST(code);
-    ASSERT(AST, "Failed to build AST");
-
-    SuspendPointIdentifier identifier(AST->getASTContext());
-    auto *TU = AST->getASTContext().getTranslationUnitDecl();
-    auto *func = findFunction(TU, "mixed");
-
-    ASSERT(func, "Function not found");
-
-    auto suspendPoints = identifier.identifySuspendPoints(func);
-
-    bool hasYield = false;
-    bool hasReturn = false;
-
-    for (const auto& sp : suspendPoints) {
-        if (sp.kind == "co_yield") hasYield = true;
-        if (sp.kind == "co_return") hasReturn = true;
-    }
-
-    ASSERT(hasYield, "Should identify co_yield");
-    ASSERT(hasReturn, "Should identify co_return");
-
-    TEST_PASS("ClassifySuspendPointTypes");
+        ASSERT_TRUE(hasYield) << "Should identify co_yield";
+        ASSERT_TRUE(hasReturn) << "Should identify co_return";
 }
 
-// Test 6: Generate state labels for suspend points
-void test_GenerateStateLabels() {
-    TEST_START("GenerateStateLabels");
-
+TEST_F(SuspendPointIdentifierTest, GenerateStateLabels) {
     const char *code = R"(
-        struct generator;
+            struct generator;
 
-        namespace std {
-            template<typename Promise = void>
-            struct coroutine_handle {
-                static coroutine_handle from_address(void* addr) noexcept { return {}; }
-            };
-
-            template<typename T, typename... Args>
-            struct coroutine_traits {
-                using promise_type = typename T::promise_type;
-            };
-        }
-
-        struct generator {
-            struct promise_type {
-                struct awaiter {
-                    bool await_ready_val;
-                    awaiter(bool ready) : await_ready_val(ready) {}
-                    bool await_ready() noexcept { return await_ready_val; }
-                    template<typename P> void await_suspend(std::coroutine_handle<P>) noexcept {}
-                    void await_resume() noexcept {}
+            namespace std {
+                template<typename Promise = void>
+                struct coroutine_handle {
+                    static coroutine_handle from_address(void* addr) noexcept { return {}; }
                 };
 
-                int value;
-                generator get_return_object() { return {}; }
-                awaiter initial_suspend() { return awaiter(true); }
-                awaiter final_suspend() noexcept { return awaiter(true); }
-                awaiter yield_value(int v) { value = v; return awaiter(false); }
-                void return_void() {}
-                void unhandled_exception() {}
+                template<typename T, typename... Args>
+                struct coroutine_traits {
+                    using promise_type = typename T::promise_type;
+                };
+            }
+
+            struct generator {
+                struct promise_type {
+                    struct awaiter {
+                        bool await_ready_val;
+                        awaiter(bool ready) : await_ready_val(ready) {}
+                        bool await_ready() noexcept { return await_ready_val; }
+                        template<typename P> void await_suspend(std::coroutine_handle<P>) noexcept {}
+                        void await_resume() noexcept {}
+                    };
+
+                    int value;
+                    generator get_return_object() { return {}; }
+                    awaiter initial_suspend() { return awaiter(true); }
+                    awaiter final_suspend() noexcept { return awaiter(true); }
+                    awaiter yield_value(int v) { value = v; return awaiter(false); }
+                    void return_void() {}
+                    void unhandled_exception() {}
+                };
             };
-        };
 
-        generator gen() {
-            co_yield 1;
-            co_yield 2;
-        }
-    )";
+            generator gen() {
+                co_yield 1;
+                co_yield 2;
+            }
+        )";
 
-    auto AST = buildAST(code);
-    ASSERT(AST, "Failed to build AST");
+        auto AST = buildAST(code);
+        ASSERT_TRUE(AST) << "Failed to build AST";
 
-    SuspendPointIdentifier identifier(AST->getASTContext());
-    auto *TU = AST->getASTContext().getTranslationUnitDecl();
-    auto *func = findFunction(TU, "gen");
+        SuspendPointIdentifier identifier(AST->getASTContext());
+        auto *TU = AST->getASTContext().getTranslationUnitDecl();
+        auto *func = findFunction(TU, "gen");
 
-    ASSERT(func, "Function not found");
+        ASSERT_TRUE(func) << "Function not found";
 
-    std::string stateLabels = identifier.generateStateLabels(func);
+        std::string stateLabels = identifier.generateStateLabels(func);
 
-    ASSERT(!stateLabels.empty(), "Should generate state labels");
-    ASSERT(stateLabels.find("STATE_") != std::string::npos, "Should contain STATE_ prefix");
-
-    TEST_PASS("GenerateStateLabels");
+        ASSERT_TRUE(!stateLabels.empty()) << "Should generate state labels";
+        ASSERT_TRUE(stateLabels.find("STATE_") != std::string::npos) << "Should contain STATE_ prefix";
 }
 
-// Test 7: Order suspend points by execution flow
-void test_OrderSuspendPointsByFlow() {
-    TEST_START("OrderSuspendPointsByFlow");
-
+TEST_F(SuspendPointIdentifierTest, OrderSuspendPointsByFlow) {
     const char *code = R"(
-        struct generator;
+            struct generator;
 
-        namespace std {
-            template<typename Promise = void>
-            struct coroutine_handle {
-                static coroutine_handle from_address(void* addr) noexcept { return {}; }
-            };
-
-            template<typename T, typename... Args>
-            struct coroutine_traits {
-                using promise_type = typename T::promise_type;
-            };
-        }
-
-        struct generator {
-            struct promise_type {
-                struct awaiter {
-                    bool await_ready_val;
-                    awaiter(bool ready) : await_ready_val(ready) {}
-                    bool await_ready() noexcept { return await_ready_val; }
-                    template<typename P> void await_suspend(std::coroutine_handle<P>) noexcept {}
-                    void await_resume() noexcept {}
+            namespace std {
+                template<typename Promise = void>
+                struct coroutine_handle {
+                    static coroutine_handle from_address(void* addr) noexcept { return {}; }
                 };
 
-                int value;
-                generator get_return_object() { return {}; }
-                awaiter initial_suspend() { return awaiter(true); }
-                awaiter final_suspend() noexcept { return awaiter(true); }
-                awaiter yield_value(int v) { value = v; return awaiter(false); }
-                void return_void() {}
-                void unhandled_exception() {}
+                template<typename T, typename... Args>
+                struct coroutine_traits {
+                    using promise_type = typename T::promise_type;
+                };
+            }
+
+            struct generator {
+                struct promise_type {
+                    struct awaiter {
+                        bool await_ready_val;
+                        awaiter(bool ready) : await_ready_val(ready) {}
+                        bool await_ready() noexcept { return await_ready_val; }
+                        template<typename P> void await_suspend(std::coroutine_handle<P>) noexcept {}
+                        void await_resume() noexcept {}
+                    };
+
+                    int value;
+                    generator get_return_object() { return {}; }
+                    awaiter initial_suspend() { return awaiter(true); }
+                    awaiter final_suspend() noexcept { return awaiter(true); }
+                    awaiter yield_value(int v) { value = v; return awaiter(false); }
+                    void return_void() {}
+                    void unhandled_exception() {}
+                };
             };
-        };
 
-        generator sequential() {
-            co_yield 1;
-            co_yield 2;
-            co_yield 3;
+            generator sequential() {
+                co_yield 1;
+                co_yield 2;
+                co_yield 3;
+            }
+        )";
+
+        auto AST = buildAST(code);
+        ASSERT_TRUE(AST) << "Failed to build AST";
+
+        SuspendPointIdentifier identifier(AST->getASTContext());
+        auto *TU = AST->getASTContext().getTranslationUnitDecl();
+        auto *func = findFunction(TU, "sequential");
+
+        ASSERT_TRUE(func) << "Function not found";
+
+        auto suspendPoints = identifier.identifySuspendPoints(func);
+
+        // Verify suspend points are ordered by line number
+        for (size_t i = 1; i < suspendPoints.size(); ++i) {
+            ASSERT_TRUE(suspendPoints[i].line >= suspendPoints[i-1].line) << "Suspend points should be ordered by line number";
         }
-    )";
-
-    auto AST = buildAST(code);
-    ASSERT(AST, "Failed to build AST");
-
-    SuspendPointIdentifier identifier(AST->getASTContext());
-    auto *TU = AST->getASTContext().getTranslationUnitDecl();
-    auto *func = findFunction(TU, "sequential");
-
-    ASSERT(func, "Function not found");
-
-    auto suspendPoints = identifier.identifySuspendPoints(func);
-
-    // Verify suspend points are ordered by line number
-    for (size_t i = 1; i < suspendPoints.size(); ++i) {
-        ASSERT(suspendPoints[i].line >= suspendPoints[i-1].line,
-               "Suspend points should be ordered by line number");
-    }
-
-    TEST_PASS("OrderSuspendPointsByFlow");
-}
-
-int main() {
-    std::cout << "=== Suspend Point Identification Tests (Story #103) ===" << std::endl;
-    std::cout << "TDD Phase: RED - All tests should FAIL initially\n" << std::endl;
-
-    test_IdentifyCoAwaitSuspendPoints();
-    test_IdentifyCoYieldSuspendPoints();
-    test_IdentifyCoReturnSuspendPoints();
-    test_GetSuspendPointLocations();
-    test_ClassifySuspendPointTypes();
-    test_GenerateStateLabels();
-    test_OrderSuspendPointsByFlow();
-
-    std::cout << "\n=== All tests passed! ===" << std::endl;
-    return 0;
 }

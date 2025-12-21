@@ -7,23 +7,56 @@
 // - Cyclic references and weak_ptr
 // - Thread-safe reference counting
 //
-// Target: 35-40 tests
+// Migrated to Google Test Framework
+// Total: 40 tests
 
+#include <gtest/gtest.h>
 #include "clang/Tooling/Tooling.h"
-#include <cassert>
-#include <iostream>
 #include <string>
 
 using namespace clang;
 
 // ============================================================================
+// Test Fixtures for Shared Pointer Tests
+// ============================================================================
+
+class SharedPtrTest : public ::testing::Test {
+protected:
+    void SetUp() override {
+        // Common setup if needed
+    }
+
+    void TearDown() override {
+        // Common cleanup if needed
+    }
+
+    // Helper method to build AST from code
+    std::unique_ptr<clang::ASTUnit> buildAST(const char* code) {
+        return tooling::buildASTFromCode(code);
+    }
+};
+
+class WeakPtrTest : public ::testing::Test {
+protected:
+    void SetUp() override {
+        // Common setup if needed
+    }
+
+    void TearDown() override {
+        // Common cleanup if needed
+    }
+
+    // Helper method to build AST from code
+    std::unique_ptr<clang::ASTUnit> buildAST(const char* code) {
+        return tooling::buildASTFromCode(code);
+    }
+};
+
+// ============================================================================
 // Group 1: Basic shared_ptr Creation and Reference Counting (10 tests)
 // ============================================================================
 
-// Test 1: Basic shared_ptr constructor
-void test_shared_ptr_basic_constructor() {
-    std::cout << "Running test_shared_ptr_basic_constructor... ";
-
+TEST_F(SharedPtrTest, BasicConstructor) {
     const char *Code = R"(
         #include <memory>
 
@@ -37,8 +70,8 @@ void test_shared_ptr_basic_constructor() {
         }  // ref_count-- (destruction if count reaches 0)
     )";
 
-    auto AST = tooling::buildASTFromCode(Code);
-    assert(AST && "AST should be built");
+    auto AST = buildAST(Code);
+    ASSERT_NE(AST, nullptr) << "AST should be built";
 
     // Expected C translation:
     // struct Widget_refcounted {
@@ -47,14 +80,9 @@ void test_shared_ptr_basic_constructor() {
     // };
     // struct Widget_refcounted* ptr = Widget_refcounted_new();  // ref_count = 1
     // Widget_refcounted_release(ptr);  // at scope exit
-
-    std::cout << "✓" << std::endl;
 }
 
-// Test 2: shared_ptr copy constructor increments ref count
-void test_shared_ptr_copy_constructor_increments_refcount() {
-    std::cout << "Running test_shared_ptr_copy_constructor_increments_refcount... ";
-
+TEST_F(SharedPtrTest, CopyConstructorIncrementsRefcount) {
     const char *Code = R"(
         #include <memory>
 
@@ -66,22 +94,17 @@ void test_shared_ptr_copy_constructor_increments_refcount() {
         }  // ptr2 destroyed (ref_count = 1), ptr1 destroyed (ref_count = 0, delete object)
     )";
 
-    auto AST = tooling::buildASTFromCode(Code);
-    assert(AST && "AST should be built");
+    auto AST = buildAST(Code);
+    ASSERT_NE(AST, nullptr) << "AST should be built";
 
     // Expected C translation:
     // struct Widget_refcounted* ptr1 = Widget_refcounted_new();  // ref_count = 1
     // struct Widget_refcounted* ptr2 = Widget_refcounted_retain(ptr1);  // ref_count = 2
     // Widget_refcounted_release(ptr2);  // ref_count = 1
     // Widget_refcounted_release(ptr1);  // ref_count = 0, destroy
-
-    std::cout << "✓" << std::endl;
 }
 
-// Test 3: shared_ptr copy assignment increments ref count
-void test_shared_ptr_copy_assignment_increments_refcount() {
-    std::cout << "Running test_shared_ptr_copy_assignment_increments_refcount... ";
-
+TEST_F(SharedPtrTest, CopyAssignmentIncrementsRefcount) {
     const char *Code = R"(
         #include <memory>
 
@@ -94,22 +117,17 @@ void test_shared_ptr_copy_assignment_increments_refcount() {
         }
     )";
 
-    auto AST = tooling::buildASTFromCode(Code);
-    assert(AST && "AST should be built");
+    auto AST = buildAST(Code);
+    ASSERT_NE(AST, nullptr) << "AST should be built";
 
     // Expected C translation:
     // struct Widget_refcounted* ptr1 = Widget_refcounted_new();  // obj1, ref=1
     // struct Widget_refcounted* ptr2 = Widget_refcounted_new();  // obj2, ref=1
     // Widget_refcounted_release(ptr2);  // obj2 ref=0, destroy
     // ptr2 = Widget_refcounted_retain(ptr1);  // obj1 ref=2
-
-    std::cout << "✓" << std::endl;
 }
 
-// Test 4: shared_ptr use_count method
-void test_shared_ptr_use_count_returns_ref_count() {
-    std::cout << "Running test_shared_ptr_use_count_returns_ref_count... ";
-
+TEST_F(SharedPtrTest, UseCountReturnsRefCount) {
     const char *Code = R"(
         #include <memory>
 
@@ -124,22 +142,17 @@ void test_shared_ptr_use_count_returns_ref_count() {
         }
     )";
 
-    auto AST = tooling::buildASTFromCode(Code);
-    assert(AST && "AST should be built");
+    auto AST = buildAST(Code);
+    ASSERT_NE(AST, nullptr) << "AST should be built";
 
     // Expected C translation:
     // struct Widget_refcounted* ptr1 = Widget_refcounted_new();
     // long count1 = ptr1->ref_count;  // 1
     // struct Widget_refcounted* ptr2 = Widget_refcounted_retain(ptr1);
     // long count2 = ptr1->ref_count;  // 2
-
-    std::cout << "✓" << std::endl;
 }
 
-// Test 5: shared_ptr unique method
-void test_shared_ptr_unique_checks_sole_ownership() {
-    std::cout << "Running test_shared_ptr_unique_checks_sole_ownership... ";
-
+TEST_F(SharedPtrTest, UniqueChecksSoleOwnership) {
     const char *Code = R"(
         #include <memory>
 
@@ -154,22 +167,17 @@ void test_shared_ptr_unique_checks_sole_ownership() {
         }
     )";
 
-    auto AST = tooling::buildASTFromCode(Code);
-    assert(AST && "AST should be built");
+    auto AST = buildAST(Code);
+    ASSERT_NE(AST, nullptr) << "AST should be built";
 
     // Expected C translation:
     // struct Widget_refcounted* ptr1 = Widget_refcounted_new();
     // bool is_unique1 = (ptr1->ref_count == 1);  // true
     // struct Widget_refcounted* ptr2 = Widget_refcounted_retain(ptr1);
     // bool is_unique2 = (ptr1->ref_count == 1);  // false
-
-    std::cout << "✓" << std::endl;
 }
 
-// Test 6: shared_ptr reset method
-void test_shared_ptr_reset_releases_ownership() {
-    std::cout << "Running test_shared_ptr_reset_releases_ownership... ";
-
+TEST_F(SharedPtrTest, ResetReleasesOwnership) {
     const char *Code = R"(
         #include <memory>
 
@@ -182,22 +190,17 @@ void test_shared_ptr_reset_releases_ownership() {
         }
     )";
 
-    auto AST = tooling::buildASTFromCode(Code);
-    assert(AST && "AST should be built");
+    auto AST = buildAST(Code);
+    ASSERT_NE(AST, nullptr) << "AST should be built";
 
     // Expected C translation:
     // struct Widget_refcounted* ptr1 = Widget_refcounted_new();  // ref=1
     // struct Widget_refcounted* ptr2 = Widget_refcounted_retain(ptr1);  // ref=2
     // if (ptr1) Widget_refcounted_release(ptr1);  // ref=1
     // ptr1 = NULL;
-
-    std::cout << "✓" << std::endl;
 }
 
-// Test 7: shared_ptr reset with new pointer
-void test_shared_ptr_reset_with_new_pointer() {
-    std::cout << "Running test_shared_ptr_reset_with_new_pointer... ";
-
+TEST_F(SharedPtrTest, ResetWithNewPointer) {
     const char *Code = R"(
         #include <memory>
 
@@ -209,21 +212,16 @@ void test_shared_ptr_reset_with_new_pointer() {
         }
     )";
 
-    auto AST = tooling::buildASTFromCode(Code);
-    assert(AST && "AST should be built");
+    auto AST = buildAST(Code);
+    ASSERT_NE(AST, nullptr) << "AST should be built";
 
     // Expected C translation:
     // struct Widget_refcounted* ptr = Widget_refcounted_new();
     // if (ptr) Widget_refcounted_release(ptr);
     // ptr = Widget_refcounted_new();
-
-    std::cout << "✓" << std::endl;
 }
 
-// Test 8: shared_ptr get method
-void test_shared_ptr_get_returns_raw_pointer() {
-    std::cout << "Running test_shared_ptr_get_returns_raw_pointer... ";
-
+TEST_F(SharedPtrTest, GetReturnsRawPointer) {
     const char *Code = R"(
         #include <memory>
 
@@ -238,20 +236,15 @@ void test_shared_ptr_get_returns_raw_pointer() {
         }
     )";
 
-    auto AST = tooling::buildASTFromCode(Code);
-    assert(AST && "AST should be built");
+    auto AST = buildAST(Code);
+    ASSERT_NE(AST, nullptr) << "AST should be built";
 
     // Expected C translation:
     // struct Widget_refcounted* ptr = Widget_refcounted_new();
     // struct Widget* raw = &ptr->obj;
-
-    std::cout << "✓" << std::endl;
 }
 
-// Test 9: shared_ptr bool conversion
-void test_shared_ptr_bool_conversion() {
-    std::cout << "Running test_shared_ptr_bool_conversion... ";
-
+TEST_F(SharedPtrTest, BoolConversion) {
     const char *Code = R"(
         #include <memory>
 
@@ -265,22 +258,17 @@ void test_shared_ptr_bool_conversion() {
         }
     )";
 
-    auto AST = tooling::buildASTFromCode(Code);
-    assert(AST && "AST should be built");
+    auto AST = buildAST(Code);
+    ASSERT_NE(AST, nullptr) << "AST should be built";
 
     // Expected C translation:
     // struct Widget_refcounted* ptr = Widget_refcounted_new();
     // if (ptr != NULL) {
     //     // Use ptr
     // }
-
-    std::cout << "✓" << std::endl;
 }
 
-// Test 10: shared_ptr dereference operators
-void test_shared_ptr_dereference_operators() {
-    std::cout << "Running test_shared_ptr_dereference_operators... ";
-
+TEST_F(SharedPtrTest, DereferenceOperators) {
     const char *Code = R"(
         #include <memory>
 
@@ -297,25 +285,20 @@ void test_shared_ptr_dereference_operators() {
         }
     )";
 
-    auto AST = tooling::buildASTFromCode(Code);
-    assert(AST && "AST should be built");
+    auto AST = buildAST(Code);
+    ASSERT_NE(AST, nullptr) << "AST should be built";
 
     // Expected C translation:
     // struct Widget_refcounted* ptr = Widget_refcounted_new();
     // ptr->obj.value = 42;
     // Widget_method(&ptr->obj);
-
-    std::cout << "✓" << std::endl;
 }
 
 // ============================================================================
 // Group 2: make_shared Support (5 tests)
 // ============================================================================
 
-// Test 11: make_shared basic usage
-void test_make_shared_basic_usage() {
-    std::cout << "Running test_make_shared_basic_usage... ";
-
+TEST_F(SharedPtrTest, MakeSharedBasicUsage) {
     const char *Code = R"(
         #include <memory>
 
@@ -330,19 +313,14 @@ void test_make_shared_basic_usage() {
         }
     )";
 
-    auto AST = tooling::buildASTFromCode(Code);
-    assert(AST && "AST should be built");
+    auto AST = buildAST(Code);
+    ASSERT_NE(AST, nullptr) << "AST should be built";
 
     // Expected C translation:
     // struct Widget_refcounted* ptr = Widget_refcounted_new_int(42);
-
-    std::cout << "✓" << std::endl;
 }
 
-// Test 12: make_shared with multiple arguments
-void test_make_shared_with_multiple_arguments() {
-    std::cout << "Running test_make_shared_with_multiple_arguments... ";
-
+TEST_F(SharedPtrTest, MakeSharedWithMultipleArguments) {
     const char *Code = R"(
         #include <memory>
 
@@ -357,16 +335,11 @@ void test_make_shared_with_multiple_arguments() {
         }
     )";
 
-    auto AST = tooling::buildASTFromCode(Code);
-    assert(AST && "AST should be built");
-
-    std::cout << "✓" << std::endl;
+    auto AST = buildAST(Code);
+    ASSERT_NE(AST, nullptr) << "AST should be built";
 }
 
-// Test 13: make_shared vs shared_ptr constructor (single allocation)
-void test_make_shared_single_allocation_optimization() {
-    std::cout << "Running test_make_shared_single_allocation_optimization... ";
-
+TEST_F(SharedPtrTest, MakeSharedSingleAllocationOptimization) {
     const char *Code = R"(
         #include <memory>
 
@@ -381,18 +354,13 @@ void test_make_shared_single_allocation_optimization() {
         }
     )";
 
-    auto AST = tooling::buildASTFromCode(Code);
-    assert(AST && "AST should be built");
+    auto AST = buildAST(Code);
+    ASSERT_NE(AST, nullptr) << "AST should be built";
 
     // make_shared is more efficient (single malloc)
-
-    std::cout << "✓" << std::endl;
 }
 
-// Test 14: make_shared with default constructor
-void test_make_shared_with_default_constructor() {
-    std::cout << "Running test_make_shared_with_default_constructor... ";
-
+TEST_F(SharedPtrTest, MakeSharedWithDefaultConstructor) {
     const char *Code = R"(
         #include <memory>
 
@@ -406,16 +374,11 @@ void test_make_shared_with_default_constructor() {
         }
     )";
 
-    auto AST = tooling::buildASTFromCode(Code);
-    assert(AST && "AST should be built");
-
-    std::cout << "✓" << std::endl;
+    auto AST = buildAST(Code);
+    ASSERT_NE(AST, nullptr) << "AST should be built";
 }
 
-// Test 15: make_shared exception safety
-void test_make_shared_exception_safety() {
-    std::cout << "Running test_make_shared_exception_safety... ";
-
+TEST_F(SharedPtrTest, MakeSharedExceptionSafety) {
     const char *Code = R"(
         #include <memory>
 
@@ -432,20 +395,15 @@ void test_make_shared_exception_safety() {
         }
     )";
 
-    auto AST = tooling::buildASTFromCode(Code);
-    assert(AST && "AST should be built");
-
-    std::cout << "✓" << std::endl;
+    auto AST = buildAST(Code);
+    ASSERT_NE(AST, nullptr) << "AST should be built";
 }
 
 // ============================================================================
 // Group 3: weak_ptr and Cyclic References (10 tests)
 // ============================================================================
 
-// Test 16: weak_ptr basic creation from shared_ptr
-void test_weak_ptr_basic_creation_from_shared_ptr() {
-    std::cout << "Running test_weak_ptr_basic_creation_from_shared_ptr... ";
-
+TEST_F(WeakPtrTest, BasicCreationFromSharedPtr) {
     const char *Code = R"(
         #include <memory>
 
@@ -457,21 +415,16 @@ void test_weak_ptr_basic_creation_from_shared_ptr() {
         }
     )";
 
-    auto AST = tooling::buildASTFromCode(Code);
-    assert(AST && "AST should be built");
+    auto AST = buildAST(Code);
+    ASSERT_NE(AST, nullptr) << "AST should be built";
 
     // Expected C translation:
     // struct Widget_refcounted* shared = Widget_refcounted_new();  // ref=1
     // struct Widget_refcounted* weak = shared;  // weak pointer (no ref increment)
     // weak->weak_count++;  // Track weak references separately
-
-    std::cout << "✓" << std::endl;
 }
 
-// Test 17: weak_ptr lock method creates shared_ptr
-void test_weak_ptr_lock_creates_shared_ptr() {
-    std::cout << "Running test_weak_ptr_lock_creates_shared_ptr... ";
-
+TEST_F(WeakPtrTest, LockCreatesSharedPtr) {
     const char *Code = R"(
         #include <memory>
 
@@ -486,8 +439,8 @@ void test_weak_ptr_lock_creates_shared_ptr() {
         }
     )";
 
-    auto AST = tooling::buildASTFromCode(Code);
-    assert(AST && "AST should be built");
+    auto AST = buildAST(Code);
+    ASSERT_NE(AST, nullptr) << "AST should be built";
 
     // Expected C translation:
     // struct Widget_refcounted* shared = Widget_refcounted_new();  // ref=1
@@ -497,14 +450,9 @@ void test_weak_ptr_lock_creates_shared_ptr() {
     // if (weak != NULL && weak->ref_count > 0) {
     //     locked = Widget_refcounted_retain(weak);  // ref=2
     // }
-
-    std::cout << "✓" << std::endl;
 }
 
-// Test 18: weak_ptr lock returns null when shared_ptr destroyed
-void test_weak_ptr_lock_returns_null_when_expired() {
-    std::cout << "Running test_weak_ptr_lock_returns_null_when_expired... ";
-
+TEST_F(WeakPtrTest, LockReturnsNullWhenExpired) {
     const char *Code = R"(
         #include <memory>
 
@@ -521,16 +469,11 @@ void test_weak_ptr_lock_returns_null_when_expired() {
         }
     )";
 
-    auto AST = tooling::buildASTFromCode(Code);
-    assert(AST && "AST should be built");
-
-    std::cout << "✓" << std::endl;
+    auto AST = buildAST(Code);
+    ASSERT_NE(AST, nullptr) << "AST should be built";
 }
 
-// Test 19: weak_ptr expired method
-void test_weak_ptr_expired_checks_validity() {
-    std::cout << "Running test_weak_ptr_expired_checks_validity... ";
-
+TEST_F(WeakPtrTest, ExpiredChecksValidity) {
     const char *Code = R"(
         #include <memory>
 
@@ -547,19 +490,14 @@ void test_weak_ptr_expired_checks_validity() {
         }
     )";
 
-    auto AST = tooling::buildASTFromCode(Code);
-    assert(AST && "AST should be built");
+    auto AST = buildAST(Code);
+    ASSERT_NE(AST, nullptr) << "AST should be built";
 
     // Expected C translation:
     // bool expired = (weak == NULL || weak->ref_count == 0);
-
-    std::cout << "✓" << std::endl;
 }
 
-// Test 20: weak_ptr use_count method
-void test_weak_ptr_use_count_returns_shared_count() {
-    std::cout << "Running test_weak_ptr_use_count_returns_shared_count... ";
-
+TEST_F(WeakPtrTest, UseCountReturnsSharedCount) {
     const char *Code = R"(
         #include <memory>
 
@@ -576,16 +514,11 @@ void test_weak_ptr_use_count_returns_shared_count() {
         }
     )";
 
-    auto AST = tooling::buildASTFromCode(Code);
-    assert(AST && "AST should be built");
-
-    std::cout << "✓" << std::endl;
+    auto AST = buildAST(Code);
+    ASSERT_NE(AST, nullptr) << "AST should be built";
 }
 
-// Test 21: weak_ptr reset method
-void test_weak_ptr_reset_releases_weak_reference() {
-    std::cout << "Running test_weak_ptr_reset_releases_weak_reference... ";
-
+TEST_F(WeakPtrTest, ResetReleasesWeakReference) {
     const char *Code = R"(
         #include <memory>
 
@@ -598,20 +531,15 @@ void test_weak_ptr_reset_releases_weak_reference() {
         }
     )";
 
-    auto AST = tooling::buildASTFromCode(Code);
-    assert(AST && "AST should be built");
+    auto AST = buildAST(Code);
+    ASSERT_NE(AST, nullptr) << "AST should be built";
 
     // Expected C translation:
     // if (weak) weak->weak_count--;
     // weak = NULL;
-
-    std::cout << "✓" << std::endl;
 }
 
-// Test 22: weak_ptr prevents cyclic reference leak
-void test_weak_ptr_breaks_cyclic_reference() {
-    std::cout << "Running test_weak_ptr_breaks_cyclic_reference... ";
-
+TEST_F(WeakPtrTest, BreaksCyclicReference) {
     const char *Code = R"(
         #include <memory>
 
@@ -629,16 +557,11 @@ void test_weak_ptr_breaks_cyclic_reference() {
         }
     )";
 
-    auto AST = tooling::buildASTFromCode(Code);
-    assert(AST && "AST should be built");
-
-    std::cout << "✓" << std::endl;
+    auto AST = buildAST(Code);
+    ASSERT_NE(AST, nullptr) << "AST should be built";
 }
 
-// Test 23: weak_ptr copy constructor
-void test_weak_ptr_copy_constructor() {
-    std::cout << "Running test_weak_ptr_copy_constructor... ";
-
+TEST_F(WeakPtrTest, CopyConstructor) {
     const char *Code = R"(
         #include <memory>
 
@@ -651,16 +574,11 @@ void test_weak_ptr_copy_constructor() {
         }
     )";
 
-    auto AST = tooling::buildASTFromCode(Code);
-    assert(AST && "AST should be built");
-
-    std::cout << "✓" << std::endl;
+    auto AST = buildAST(Code);
+    ASSERT_NE(AST, nullptr) << "AST should be built";
 }
 
-// Test 24: weak_ptr assignment operator
-void test_weak_ptr_assignment_operator() {
-    std::cout << "Running test_weak_ptr_assignment_operator... ";
-
+TEST_F(WeakPtrTest, AssignmentOperator) {
     const char *Code = R"(
         #include <memory>
 
@@ -675,16 +593,11 @@ void test_weak_ptr_assignment_operator() {
         }
     )";
 
-    auto AST = tooling::buildASTFromCode(Code);
-    assert(AST && "AST should be built");
-
-    std::cout << "✓" << std::endl;
+    auto AST = buildAST(Code);
+    ASSERT_NE(AST, nullptr) << "AST should be built";
 }
 
-// Test 25: weak_ptr swap
-void test_weak_ptr_swap() {
-    std::cout << "Running test_weak_ptr_swap... ";
-
+TEST_F(WeakPtrTest, Swap) {
     const char *Code = R"(
         #include <memory>
 
@@ -699,20 +612,15 @@ void test_weak_ptr_swap() {
         }
     )";
 
-    auto AST = tooling::buildASTFromCode(Code);
-    assert(AST && "AST should be built");
-
-    std::cout << "✓" << std::endl;
+    auto AST = buildAST(Code);
+    ASSERT_NE(AST, nullptr) << "AST should be built";
 }
 
 // ============================================================================
 // Group 4: Thread-Safe Reference Counting (5 tests)
 // ============================================================================
 
-// Test 26: shared_ptr atomic reference counting
-void test_shared_ptr_atomic_reference_counting() {
-    std::cout << "Running test_shared_ptr_atomic_reference_counting... ";
-
+TEST_F(SharedPtrTest, AtomicReferenceCounting) {
     const char *Code = R"(
         #include <memory>
 
@@ -724,21 +632,16 @@ void test_shared_ptr_atomic_reference_counting() {
         }
     )";
 
-    auto AST = tooling::buildASTFromCode(Code);
-    assert(AST && "AST should be built");
+    auto AST = buildAST(Code);
+    ASSERT_NE(AST, nullptr) << "AST should be built";
 
     // Expected C translation:
     // Use atomic operations for ref_count:
     // __atomic_fetch_add(&ptr->ref_count, 1, __ATOMIC_ACQ_REL);
     // __atomic_fetch_sub(&ptr->ref_count, 1, __ATOMIC_ACQ_REL);
-
-    std::cout << "✓" << std::endl;
 }
 
-// Test 27: shared_ptr copy in multithreaded context
-void test_shared_ptr_copy_thread_safe() {
-    std::cout << "Running test_shared_ptr_copy_thread_safe... ";
-
+TEST_F(SharedPtrTest, CopyThreadSafe) {
     const char *Code = R"(
         #include <memory>
         #include <thread>
@@ -761,16 +664,11 @@ void test_shared_ptr_copy_thread_safe() {
         }
     )";
 
-    auto AST = tooling::buildASTFromCode(Code);
-    assert(AST && "AST should be built");
-
-    std::cout << "✓" << std::endl;
+    auto AST = buildAST(Code);
+    ASSERT_NE(AST, nullptr) << "AST should be built";
 }
 
-// Test 28: atomic_load for shared_ptr
-void test_atomic_load_shared_ptr() {
-    std::cout << "Running test_atomic_load_shared_ptr... ";
-
+TEST_F(SharedPtrTest, AtomicLoad) {
     const char *Code = R"(
         #include <memory>
         #include <atomic>
@@ -783,16 +681,11 @@ void test_atomic_load_shared_ptr() {
         }
     )";
 
-    auto AST = tooling::buildASTFromCode(Code);
-    assert(AST && "AST should be built");
-
-    std::cout << "✓" << std::endl;
+    auto AST = buildAST(Code);
+    ASSERT_NE(AST, nullptr) << "AST should be built";
 }
 
-// Test 29: atomic_store for shared_ptr
-void test_atomic_store_shared_ptr() {
-    std::cout << "Running test_atomic_store_shared_ptr... ";
-
+TEST_F(SharedPtrTest, AtomicStore) {
     const char *Code = R"(
         #include <memory>
         #include <atomic>
@@ -806,16 +699,11 @@ void test_atomic_store_shared_ptr() {
         }
     )";
 
-    auto AST = tooling::buildASTFromCode(Code);
-    assert(AST && "AST should be built");
-
-    std::cout << "✓" << std::endl;
+    auto AST = buildAST(Code);
+    ASSERT_NE(AST, nullptr) << "AST should be built";
 }
 
-// Test 30: atomic_exchange for shared_ptr
-void test_atomic_exchange_shared_ptr() {
-    std::cout << "Running test_atomic_exchange_shared_ptr... ";
-
+TEST_F(SharedPtrTest, AtomicExchange) {
     const char *Code = R"(
         #include <memory>
         #include <atomic>
@@ -829,20 +717,15 @@ void test_atomic_exchange_shared_ptr() {
         }
     )";
 
-    auto AST = tooling::buildASTFromCode(Code);
-    assert(AST && "AST should be built");
-
-    std::cout << "✓" << std::endl;
+    auto AST = buildAST(Code);
+    ASSERT_NE(AST, nullptr) << "AST should be built";
 }
 
 // ============================================================================
 // Group 5: Advanced Scenarios and Edge Cases (10 tests)
 // ============================================================================
 
-// Test 31: shared_ptr with custom deleter
-void test_shared_ptr_with_custom_deleter() {
-    std::cout << "Running test_shared_ptr_with_custom_deleter... ";
-
+TEST_F(SharedPtrTest, WithCustomDeleter) {
     const char *Code = R"(
         #include <memory>
 
@@ -857,16 +740,11 @@ void test_shared_ptr_with_custom_deleter() {
         }
     )";
 
-    auto AST = tooling::buildASTFromCode(Code);
-    assert(AST && "AST should be built");
-
-    std::cout << "✓" << std::endl;
+    auto AST = buildAST(Code);
+    ASSERT_NE(AST, nullptr) << "AST should be built";
 }
 
-// Test 32: shared_ptr with array deleter
-void test_shared_ptr_with_array_deleter() {
-    std::cout << "Running test_shared_ptr_with_array_deleter... ";
-
+TEST_F(SharedPtrTest, WithArrayDeleter) {
     const char *Code = R"(
         #include <memory>
 
@@ -875,16 +753,11 @@ void test_shared_ptr_with_array_deleter() {
         }
     )";
 
-    auto AST = tooling::buildASTFromCode(Code);
-    assert(AST && "AST should be built");
-
-    std::cout << "✓" << std::endl;
+    auto AST = buildAST(Code);
+    ASSERT_NE(AST, nullptr) << "AST should be built";
 }
 
-// Test 33: shared_ptr aliasing constructor
-void test_shared_ptr_aliasing_constructor() {
-    std::cout << "Running test_shared_ptr_aliasing_constructor... ";
-
+TEST_F(SharedPtrTest, AliasingConstructor) {
     const char *Code = R"(
         #include <memory>
 
@@ -898,18 +771,13 @@ void test_shared_ptr_aliasing_constructor() {
         }
     )";
 
-    auto AST = tooling::buildASTFromCode(Code);
-    assert(AST && "AST should be built");
+    auto AST = buildAST(Code);
+    ASSERT_NE(AST, nullptr) << "AST should be built";
 
     // value_ptr shares ownership with ptr but points to member
-
-    std::cout << "✓" << std::endl;
 }
 
-// Test 34: shared_ptr with polymorphism
-void test_shared_ptr_with_polymorphism() {
-    std::cout << "Running test_shared_ptr_with_polymorphism... ";
-
+TEST_F(SharedPtrTest, WithPolymorphism) {
     const char *Code = R"(
         #include <memory>
 
@@ -925,16 +793,11 @@ void test_shared_ptr_with_polymorphism() {
         }
     )";
 
-    auto AST = tooling::buildASTFromCode(Code);
-    assert(AST && "AST should be built");
-
-    std::cout << "✓" << std::endl;
+    auto AST = buildAST(Code);
+    ASSERT_NE(AST, nullptr) << "AST should be built";
 }
 
-// Test 35: shared_ptr enable_shared_from_this
-void test_shared_ptr_enable_shared_from_this() {
-    std::cout << "Running test_shared_ptr_enable_shared_from_this... ";
-
+TEST_F(SharedPtrTest, EnableSharedFromThis) {
     const char *Code = R"(
         #include <memory>
 
@@ -951,16 +814,11 @@ void test_shared_ptr_enable_shared_from_this() {
         }
     )";
 
-    auto AST = tooling::buildASTFromCode(Code);
-    assert(AST && "AST should be built");
-
-    std::cout << "✓" << std::endl;
+    auto AST = buildAST(Code);
+    ASSERT_NE(AST, nullptr) << "AST should be built";
 }
 
-// Test 36: shared_ptr in container
-void test_shared_ptr_in_container() {
-    std::cout << "Running test_shared_ptr_in_container... ";
-
+TEST_F(SharedPtrTest, InContainer) {
     const char *Code = R"(
         #include <memory>
         #include <vector>
@@ -974,16 +832,11 @@ void test_shared_ptr_in_container() {
         }
     )";
 
-    auto AST = tooling::buildASTFromCode(Code);
-    assert(AST && "AST should be built");
-
-    std::cout << "✓" << std::endl;
+    auto AST = buildAST(Code);
+    ASSERT_NE(AST, nullptr) << "AST should be built";
 }
 
-// Test 37: shared_ptr comparison operators
-void test_shared_ptr_comparison_operators() {
-    std::cout << "Running test_shared_ptr_comparison_operators... ";
-
+TEST_F(SharedPtrTest, ComparisonOperators) {
     const char *Code = R"(
         #include <memory>
 
@@ -1000,16 +853,11 @@ void test_shared_ptr_comparison_operators() {
         }
     )";
 
-    auto AST = tooling::buildASTFromCode(Code);
-    assert(AST && "AST should be built");
-
-    std::cout << "✓" << std::endl;
+    auto AST = buildAST(Code);
+    ASSERT_NE(AST, nullptr) << "AST should be built";
 }
 
-// Test 38: shared_ptr owner_before for strict weak ordering
-void test_shared_ptr_owner_before_strict_weak_ordering() {
-    std::cout << "Running test_shared_ptr_owner_before_strict_weak_ordering... ";
-
+TEST_F(SharedPtrTest, OwnerBeforeStrictWeakOrdering) {
     const char *Code = R"(
         #include <memory>
 
@@ -1022,16 +870,11 @@ void test_shared_ptr_owner_before_strict_weak_ordering() {
         }
     )";
 
-    auto AST = tooling::buildASTFromCode(Code);
-    assert(AST && "AST should be built");
-
-    std::cout << "✓" << std::endl;
+    auto AST = buildAST(Code);
+    ASSERT_NE(AST, nullptr) << "AST should be built";
 }
 
-// Test 39: shared_ptr move constructor (optimization)
-void test_shared_ptr_move_constructor_no_refcount_change() {
-    std::cout << "Running test_shared_ptr_move_constructor_no_refcount_change... ";
-
+TEST_F(SharedPtrTest, MoveConstructorNoRefcountChange) {
     const char *Code = R"(
         #include <memory>
         #include <utility>
@@ -1045,18 +888,13 @@ void test_shared_ptr_move_constructor_no_refcount_change() {
         }
     )";
 
-    auto AST = tooling::buildASTFromCode(Code);
-    assert(AST && "AST should be built");
+    auto AST = buildAST(Code);
+    ASSERT_NE(AST, nullptr) << "AST should be built";
 
     // Move constructor transfers ownership without ref_count change
-
-    std::cout << "✓" << std::endl;
 }
 
-// Test 40: shared_ptr move assignment (optimization)
-void test_shared_ptr_move_assignment_no_refcount_change() {
-    std::cout << "Running test_shared_ptr_move_assignment_no_refcount_change... ";
-
+TEST_F(SharedPtrTest, MoveAssignmentNoRefcountChange) {
     const char *Code = R"(
         #include <memory>
         #include <utility>
@@ -1070,8 +908,8 @@ void test_shared_ptr_move_assignment_no_refcount_change() {
         }
     )";
 
-    auto AST = tooling::buildASTFromCode(Code);
-    assert(AST && "AST should be built");
+    auto AST = buildAST(Code);
+    ASSERT_NE(AST, nullptr) << "AST should be built";
 
     // Expected C translation:
     // struct Widget_refcounted* ptr1 = Widget_refcounted_new();
@@ -1079,68 +917,13 @@ void test_shared_ptr_move_assignment_no_refcount_change() {
     // Widget_refcounted_release(ptr2);  // Destroy old
     // ptr2 = ptr1;  // Transfer (no ref change)
     // ptr1 = NULL;
-
-    std::cout << "✓" << std::endl;
 }
 
 // ============================================================================
 // Main Function
 // ============================================================================
 
-int main() {
-    std::cout << "\n=== SharedPtrTest - Stream 3: Smart Pointers & RAII ===" << std::endl;
-    std::cout << "File 2 of 3: shared_ptr and weak_ptr tests (40 tests)\n" << std::endl;
-
-    // Group 1: Basic shared_ptr Creation and Reference Counting (10 tests)
-    test_shared_ptr_basic_constructor();
-    test_shared_ptr_copy_constructor_increments_refcount();
-    test_shared_ptr_copy_assignment_increments_refcount();
-    test_shared_ptr_use_count_returns_ref_count();
-    test_shared_ptr_unique_checks_sole_ownership();
-    test_shared_ptr_reset_releases_ownership();
-    test_shared_ptr_reset_with_new_pointer();
-    test_shared_ptr_get_returns_raw_pointer();
-    test_shared_ptr_bool_conversion();
-    test_shared_ptr_dereference_operators();
-
-    // Group 2: make_shared Support (5 tests)
-    test_make_shared_basic_usage();
-    test_make_shared_with_multiple_arguments();
-    test_make_shared_single_allocation_optimization();
-    test_make_shared_with_default_constructor();
-    test_make_shared_exception_safety();
-
-    // Group 3: weak_ptr and Cyclic References (10 tests)
-    test_weak_ptr_basic_creation_from_shared_ptr();
-    test_weak_ptr_lock_creates_shared_ptr();
-    test_weak_ptr_lock_returns_null_when_expired();
-    test_weak_ptr_expired_checks_validity();
-    test_weak_ptr_use_count_returns_shared_count();
-    test_weak_ptr_reset_releases_weak_reference();
-    test_weak_ptr_breaks_cyclic_reference();
-    test_weak_ptr_copy_constructor();
-    test_weak_ptr_assignment_operator();
-    test_weak_ptr_swap();
-
-    // Group 4: Thread-Safe Reference Counting (5 tests)
-    test_shared_ptr_atomic_reference_counting();
-    test_shared_ptr_copy_thread_safe();
-    test_atomic_load_shared_ptr();
-    test_atomic_store_shared_ptr();
-    test_atomic_exchange_shared_ptr();
-
-    // Group 5: Advanced Scenarios and Edge Cases (10 tests)
-    test_shared_ptr_with_custom_deleter();
-    test_shared_ptr_with_array_deleter();
-    test_shared_ptr_aliasing_constructor();
-    test_shared_ptr_with_polymorphism();
-    test_shared_ptr_enable_shared_from_this();
-    test_shared_ptr_in_container();
-    test_shared_ptr_comparison_operators();
-    test_shared_ptr_owner_before_strict_weak_ordering();
-    test_shared_ptr_move_constructor_no_refcount_change();
-    test_shared_ptr_move_assignment_no_refcount_change();
-
-    std::cout << "\n=== All 40 shared_ptr and weak_ptr tests passed! ===" << std::endl;
-    return 0;
+int main(int argc, char **argv) {
+    ::testing::InitGoogleTest(&argc, argv);
+    return RUN_ALL_TESTS();
 }

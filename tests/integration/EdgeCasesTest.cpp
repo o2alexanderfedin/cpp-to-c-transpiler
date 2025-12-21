@@ -6,43 +6,34 @@
 #include "clang/AST/DeclTemplate.h"
 #include "clang/Frontend/ASTUnit.h"
 #include "clang/Tooling/Tooling.h"
-#include <iostream>
+#include <gtest/gtest.h>
+#include <memory>
 #include <string>
 #include <vector>
-#include <memory>
 
 using namespace clang;
 
-// Test framework
-static int tests_passed = 0;
-static int tests_failed = 0;
-
-#define TEST_START(name) std::cout << "Running " << name << "... ";
-#define TEST_PASS(name) { std::cout << "✓" << std::endl; tests_passed++; }
-#define TEST_FAIL(name, msg) { std::cout << "✗ FAILED: " << msg << std::endl; tests_failed++; }
-#define ASSERT(expr, msg) if (!(expr)) { TEST_FAIL("", msg); return; }
-
-// Helper: Create AST from code
-std::unique_ptr<ASTUnit> createAST(const std::string &code) {
-    std::vector<std::string> args = {"-std=c++17"};
-    auto AST = clang::tooling::buildASTFromCodeWithArgs(code, args, "test.cpp");
-    return AST;
-}
+// Google Test Fixture
+class EdgeCasesTest : public ::testing::Test {
+protected:
+    std::unique_ptr<ASTUnit> createAST(const std::string &code) {
+        std::vector<std::string> args = {"-std=c++17"};
+        return clang::tooling::buildASTFromCodeWithArgs(code, args, "test.cpp");
+    }
+};
 
 // ============================================================================
 // Category 1: Empty Inputs (8 tests)
 // ============================================================================
 
 // Test 1: Empty class definition
-void test_edge_empty_class() {
-    TEST_START("test_edge_empty_class");
-
+TEST_F(EdgeCasesTest, EmptyClass) {
     const char *code = R"(
         class Empty {};
     )";
 
     auto AST = createAST(code);
-    ASSERT(AST != nullptr, "Failed to parse empty class");
+    ASSERT_TRUE(AST != nullptr) << "Failed to parse empty class";
 
     auto &Ctx = AST->getASTContext();
     auto *TU = Ctx.getTranslationUnitDecl();
@@ -53,26 +44,23 @@ void test_edge_empty_class() {
         if (auto *RD = dyn_cast<CXXRecordDecl>(Decl)) {
             if (RD->getNameAsString() == "Empty") {
                 foundEmptyClass = true;
-                ASSERT(RD->field_begin() == RD->field_end(), "Empty class should have no fields");
-                ASSERT(RD->method_begin() == RD->method_end(), "Empty class should have no methods");
+                ASSERT_TRUE(RD->field_begin() == RD->field_end()) << "Empty class should have no fields";
+                ASSERT_TRUE(RD->method_begin() == RD->method_end()) << "Empty class should have no methods";
             }
         }
     }
 
-    ASSERT(foundEmptyClass, "Empty class not found");
-    TEST_PASS("test_edge_empty_class");
+    ASSERT_TRUE(foundEmptyClass) << "Empty class not found";
 }
 
 // Test 2: Empty struct with no members
-void test_edge_empty_struct() {
-    TEST_START("test_edge_empty_struct");
-
+TEST_F(EdgeCasesTest, EmptyStruct) {
     const char *code = R"(
         struct EmptyStruct {};
     )";
 
     auto AST = createAST(code);
-    ASSERT(AST != nullptr, "Failed to parse empty struct");
+    ASSERT_TRUE(AST != nullptr) << "Failed to parse empty struct";
 
     auto &Ctx = AST->getASTContext();
     auto *TU = Ctx.getTranslationUnitDecl();
@@ -82,25 +70,22 @@ void test_edge_empty_struct() {
         if (auto *RD = dyn_cast<CXXRecordDecl>(Decl)) {
             if (RD->getNameAsString() == "EmptyStruct") {
                 foundStruct = true;
-                ASSERT(RD->field_empty(), "Empty struct should have no fields");
+                ASSERT_TRUE(RD->field_empty()) << "Empty struct should have no fields";
             }
         }
     }
 
-    ASSERT(foundStruct, "Empty struct not found");
-    TEST_PASS("test_edge_empty_struct");
+    ASSERT_TRUE(foundStruct) << "Empty struct not found";
 }
 
 // Test 3: Function with empty body
-void test_edge_empty_function() {
-    TEST_START("test_edge_empty_function");
-
+TEST_F(EdgeCasesTest, EmptyFunction) {
     const char *code = R"(
         void emptyFunction() {}
     )";
 
     auto AST = createAST(code);
-    ASSERT(AST != nullptr, "Failed to parse empty function");
+    ASSERT_TRUE(AST != nullptr) << "Failed to parse empty function";
 
     auto &Ctx = AST->getASTContext();
     auto *TU = Ctx.getTranslationUnitDecl();
@@ -110,30 +95,27 @@ void test_edge_empty_function() {
         if (auto *FD = dyn_cast<FunctionDecl>(Decl)) {
             if (FD->getNameAsString() == "emptyFunction") {
                 foundFunc = true;
-                ASSERT(FD->getNumParams() == 0, "Empty function should have no parameters");
+                ASSERT_EQ(FD->getNumParams(), 0u) << "Empty function should have no parameters";
                 if (auto *Body = FD->getBody()) {
                     if (auto *CS = dyn_cast<CompoundStmt>(Body)) {
-                        ASSERT(CS->body_empty(), "Empty function should have empty body");
+                        ASSERT_TRUE(CS->body_empty()) << "Empty function should have empty body";
                     }
                 }
             }
         }
     }
 
-    ASSERT(foundFunc, "Empty function not found");
-    TEST_PASS("test_edge_empty_function");
+    ASSERT_TRUE(foundFunc) << "Empty function not found";
 }
 
 // Test 4: Empty namespace
-void test_edge_empty_namespace() {
-    TEST_START("test_edge_empty_namespace");
-
+TEST_F(EdgeCasesTest, EmptyNamespace) {
     const char *code = R"(
         namespace EmptyNS {}
     )";
 
     auto AST = createAST(code);
-    ASSERT(AST != nullptr, "Failed to parse empty namespace");
+    ASSERT_TRUE(AST != nullptr) << "Failed to parse empty namespace";
 
     auto &Ctx = AST->getASTContext();
     auto *TU = Ctx.getTranslationUnitDecl();
@@ -148,29 +130,22 @@ void test_edge_empty_namespace() {
         }
     }
 
-    ASSERT(foundNS, "Empty namespace not found");
-    TEST_PASS("test_edge_empty_namespace");
+    ASSERT_TRUE(foundNS) << "Empty namespace not found";
 }
 
 // Test 5: Empty enum
-void test_edge_empty_enum() {
-    TEST_START("test_edge_empty_enum");
-
+TEST_F(EdgeCasesTest, EmptyEnum) {
     const char *code = R"(
         enum EmptyEnum {};
     )";
 
     auto AST = createAST(code);
-    ASSERT(AST != nullptr, "Failed to parse empty enum");
-
+    ASSERT_TRUE(AST != nullptr) << "Failed to parse empty enum";
     // Note: Empty enums are allowed in C++ but unusual
-    TEST_PASS("test_edge_empty_enum");
 }
 
 // Test 6: Class with only empty methods
-void test_edge_class_with_only_empty_methods() {
-    TEST_START("test_edge_class_with_only_empty_methods");
-
+TEST_F(EdgeCasesTest, ClassWithOnlyEmptyMethods) {
     const char *code = R"(
         class OnlyEmpty {
         public:
@@ -180,7 +155,7 @@ void test_edge_class_with_only_empty_methods() {
     )";
 
     auto AST = createAST(code);
-    ASSERT(AST != nullptr, "Failed to parse class with empty methods");
+    ASSERT_TRUE(AST != nullptr) << "Failed to parse class with empty methods";
 
     auto &Ctx = AST->getASTContext();
     auto *TU = Ctx.getTranslationUnitDecl();
@@ -194,26 +169,23 @@ void test_edge_class_with_only_empty_methods() {
                 for (auto *Method : RD->methods()) {
                     methodCount++;
                 }
-                ASSERT(methodCount >= 2, "Should have at least 2 methods");
+                ASSERT_GE(methodCount, 2) << "Should have at least 2 methods";
             }
         }
     }
 
-    ASSERT(foundClass, "Class with empty methods not found");
-    TEST_PASS("test_edge_class_with_only_empty_methods");
+    ASSERT_TRUE(foundClass) << "Class with empty methods not found";
 }
 
 // Test 7: Empty parameter pack
-void test_edge_empty_parameter_pack() {
-    TEST_START("test_edge_empty_parameter_pack");
-
+TEST_F(EdgeCasesTest, EmptyParameterPack) {
     const char *code = R"(
         template<typename... Args>
         void variadicEmpty(Args... args) {}
     )";
 
     auto AST = createAST(code);
-    ASSERT(AST != nullptr, "Failed to parse empty parameter pack");
+    ASSERT_TRUE(AST != nullptr) << "Failed to parse empty parameter pack";
 
     auto &Ctx = AST->getASTContext();
     auto *TU = Ctx.getTranslationUnitDecl();
@@ -226,14 +198,11 @@ void test_edge_empty_parameter_pack() {
         }
     }
 
-    ASSERT(foundTemplate, "Variadic template not found");
-    TEST_PASS("test_edge_empty_parameter_pack");
+    ASSERT_TRUE(foundTemplate) << "Variadic template not found";
 }
 
 // Test 8: Empty initializer list
-void test_edge_empty_initializer_list() {
-    TEST_START("test_edge_empty_initializer_list");
-
+TEST_F(EdgeCasesTest, EmptyInitializerList) {
     const char *code = R"(
         class EmptyInit {
         public:
@@ -244,7 +213,6 @@ void test_edge_empty_initializer_list() {
     // This should fail to parse, which is the expected edge case
     auto AST = createAST(code);
     // Empty initializer list syntax is invalid, AST creation should handle it
-    TEST_PASS("test_edge_empty_initializer_list");
 }
 
 // ============================================================================
@@ -252,9 +220,7 @@ void test_edge_empty_initializer_list() {
 // ============================================================================
 
 // Test 9: Deeply nested classes (5 levels)
-void test_edge_deeply_nested_classes() {
-    TEST_START("test_edge_deeply_nested_classes");
-
+TEST_F(EdgeCasesTest, DeeplyNestedClasses) {
     const char *code = R"(
         class Level1 {
             class Level2 {
@@ -270,14 +236,11 @@ void test_edge_deeply_nested_classes() {
     )";
 
     auto AST = createAST(code);
-    ASSERT(AST != nullptr, "Failed to parse deeply nested classes");
-    TEST_PASS("test_edge_deeply_nested_classes");
+    ASSERT_TRUE(AST != nullptr) << "Failed to parse deeply nested classes";
 }
 
 // Test 10: Deeply nested namespaces
-void test_edge_deeply_nested_namespaces() {
-    TEST_START("test_edge_deeply_nested_namespaces");
-
+TEST_F(EdgeCasesTest, DeeplyNestedNamespaces) {
     const char *code = R"(
         namespace N1 {
             namespace N2 {
@@ -293,14 +256,11 @@ void test_edge_deeply_nested_namespaces() {
     )";
 
     auto AST = createAST(code);
-    ASSERT(AST != nullptr, "Failed to parse deeply nested namespaces");
-    TEST_PASS("test_edge_deeply_nested_namespaces");
+    ASSERT_TRUE(AST != nullptr) << "Failed to parse deeply nested namespaces";
 }
 
 // Test 11: Deeply nested blocks
-void test_edge_deeply_nested_blocks() {
-    TEST_START("test_edge_deeply_nested_blocks");
-
+TEST_F(EdgeCasesTest, DeeplyNestedBlocks) {
     const char *code = R"(
         void nestedBlocks() {
             {
@@ -318,14 +278,11 @@ void test_edge_deeply_nested_blocks() {
     )";
 
     auto AST = createAST(code);
-    ASSERT(AST != nullptr, "Failed to parse deeply nested blocks");
-    TEST_PASS("test_edge_deeply_nested_blocks");
+    ASSERT_TRUE(AST != nullptr) << "Failed to parse deeply nested blocks";
 }
 
 // Test 12: Multiple levels of inheritance (5 levels)
-void test_edge_deep_inheritance_chain() {
-    TEST_START("test_edge_deep_inheritance_chain");
-
+TEST_F(EdgeCasesTest, DeepInheritanceChain) {
     const char *code = R"(
         class Base {};
         class Derived1 : public Base {};
@@ -336,7 +293,7 @@ void test_edge_deep_inheritance_chain() {
     )";
 
     auto AST = createAST(code);
-    ASSERT(AST != nullptr, "Failed to parse deep inheritance chain");
+    ASSERT_TRUE(AST != nullptr) << "Failed to parse deep inheritance chain";
 
     auto &Ctx = AST->getASTContext();
     auto *TU = Ctx.getTranslationUnitDecl();
@@ -350,14 +307,11 @@ void test_edge_deep_inheritance_chain() {
         }
     }
 
-    ASSERT(classCount >= 6, "Should have at least 6 classes in inheritance chain");
-    TEST_PASS("test_edge_deep_inheritance_chain");
+    ASSERT_GE(classCount, 6) << "Should have at least 6 classes in inheritance chain";
 }
 
 // Test 13: Nested template instantiations
-void test_edge_nested_template_instantiations() {
-    TEST_START("test_edge_nested_template_instantiations");
-
+TEST_F(EdgeCasesTest, NestedTemplateInstantiations) {
     const char *code = R"(
         template<typename T>
         struct Wrapper { T value; };
@@ -366,14 +320,11 @@ void test_edge_nested_template_instantiations() {
     )";
 
     auto AST = createAST(code);
-    ASSERT(AST != nullptr, "Failed to parse nested template instantiations");
-    TEST_PASS("test_edge_nested_template_instantiations");
+    ASSERT_TRUE(AST != nullptr) << "Failed to parse nested template instantiations";
 }
 
 // Test 14: Recursive type definitions (pointer to self)
-void test_edge_recursive_type_pointer() {
-    TEST_START("test_edge_recursive_type_pointer");
-
+TEST_F(EdgeCasesTest, RecursiveTypePointer) {
     const char *code = R"(
         struct Node {
             int data;
@@ -382,7 +333,7 @@ void test_edge_recursive_type_pointer() {
     )";
 
     auto AST = createAST(code);
-    ASSERT(AST != nullptr, "Failed to parse recursive type with pointer");
+    ASSERT_TRUE(AST != nullptr) << "Failed to parse recursive type with pointer";
 
     auto &Ctx = AST->getASTContext();
     auto *TU = Ctx.getTranslationUnitDecl();
@@ -396,19 +347,16 @@ void test_edge_recursive_type_pointer() {
                 for (auto *Field : RD->fields()) {
                     fieldCount++;
                 }
-                ASSERT(fieldCount == 2, "Node should have 2 fields");
+                ASSERT_EQ(fieldCount, 2) << "Node should have 2 fields";
             }
         }
     }
 
-    ASSERT(foundNode, "Recursive Node type not found");
-    TEST_PASS("test_edge_recursive_type_pointer");
+    ASSERT_TRUE(foundNode) << "Recursive Node type not found";
 }
 
 // Test 15: Deeply nested function calls
-void test_edge_deeply_nested_function_calls() {
-    TEST_START("test_edge_deeply_nested_function_calls");
-
+TEST_F(EdgeCasesTest, DeeplyNestedFunctionCalls) {
     const char *code = R"(
         int f1(int x) { return x; }
         int f2(int x) { return f1(x); }
@@ -418,14 +366,11 @@ void test_edge_deeply_nested_function_calls() {
     )";
 
     auto AST = createAST(code);
-    ASSERT(AST != nullptr, "Failed to parse deeply nested function calls");
-    TEST_PASS("test_edge_deeply_nested_function_calls");
+    ASSERT_TRUE(AST != nullptr) << "Failed to parse deeply nested function calls";
 }
 
 // Test 16: Maximum template depth (compiler limit testing)
-void test_edge_template_recursion_depth() {
-    TEST_START("test_edge_template_recursion_depth");
-
+TEST_F(EdgeCasesTest, TemplateRecursionDepth) {
     const char *code = R"(
         template<int N>
         struct Factorial {
@@ -442,8 +387,7 @@ void test_edge_template_recursion_depth() {
     )";
 
     auto AST = createAST(code);
-    ASSERT(AST != nullptr, "Failed to parse template recursion");
-    TEST_PASS("test_edge_template_recursion_depth");
+    ASSERT_TRUE(AST != nullptr) << "Failed to parse template recursion";
 }
 
 // ============================================================================
@@ -451,9 +395,7 @@ void test_edge_template_recursion_depth() {
 // ============================================================================
 
 // Test 17: Pointer to pointer to pointer
-void test_edge_triple_pointer() {
-    TEST_START("test_edge_triple_pointer");
-
+TEST_F(EdgeCasesTest, TriplePointer) {
     const char *code = R"(
         void triplePointer(int*** ptr) {
             // Triple indirection
@@ -461,14 +403,11 @@ void test_edge_triple_pointer() {
     )";
 
     auto AST = createAST(code);
-    ASSERT(AST != nullptr, "Failed to parse triple pointer");
-    TEST_PASS("test_edge_triple_pointer");
+    ASSERT_TRUE(AST != nullptr) << "Failed to parse triple pointer";
 }
 
 // Test 18: Array of pointers to arrays
-void test_edge_array_of_pointer_to_arrays() {
-    TEST_START("test_edge_array_of_pointer_to_arrays");
-
+TEST_F(EdgeCasesTest, ArrayOfPointerToArrays) {
     const char *code = R"(
         void complexArray() {
             int (*arr[5])[10];  // Array of 5 pointers to arrays of 10 ints
@@ -476,27 +415,21 @@ void test_edge_array_of_pointer_to_arrays() {
     )";
 
     auto AST = createAST(code);
-    ASSERT(AST != nullptr, "Failed to parse array of pointer to arrays");
-    TEST_PASS("test_edge_array_of_pointer_to_arrays");
+    ASSERT_TRUE(AST != nullptr) << "Failed to parse array of pointer to arrays";
 }
 
 // Test 19: Function pointer with complex signature
-void test_edge_complex_function_pointer() {
-    TEST_START("test_edge_complex_function_pointer");
-
+TEST_F(EdgeCasesTest, ComplexFunctionPointer) {
     const char *code = R"(
         typedef int (*FuncPtr)(double (*)(int, float), void*);
     )";
 
     auto AST = createAST(code);
-    ASSERT(AST != nullptr, "Failed to parse complex function pointer");
-    TEST_PASS("test_edge_complex_function_pointer");
+    ASSERT_TRUE(AST != nullptr) << "Failed to parse complex function pointer";
 }
 
 // Test 20: Const volatile qualified types
-void test_edge_const_volatile_qualifiers() {
-    TEST_START("test_edge_const_volatile_qualifiers");
-
+TEST_F(EdgeCasesTest, ConstVolatileQualifiers) {
     const char *code = R"(
         void qualifiedTypes(const volatile int* const volatile ptr) {
             // Multiple qualifiers
@@ -504,14 +437,11 @@ void test_edge_const_volatile_qualifiers() {
     )";
 
     auto AST = createAST(code);
-    ASSERT(AST != nullptr, "Failed to parse const volatile qualifiers");
-    TEST_PASS("test_edge_const_volatile_qualifiers");
+    ASSERT_TRUE(AST != nullptr) << "Failed to parse const volatile qualifiers";
 }
 
 // Test 21: Reference to pointer
-void test_edge_reference_to_pointer() {
-    TEST_START("test_edge_reference_to_pointer");
-
+TEST_F(EdgeCasesTest, ReferenceToPointer) {
     const char *code = R"(
         void refToPtr(int*& ref) {
             // Reference to pointer
@@ -519,14 +449,11 @@ void test_edge_reference_to_pointer() {
     )";
 
     auto AST = createAST(code);
-    ASSERT(AST != nullptr, "Failed to parse reference to pointer");
-    TEST_PASS("test_edge_reference_to_pointer");
+    ASSERT_TRUE(AST != nullptr) << "Failed to parse reference to pointer";
 }
 
 // Test 22: Rvalue reference to const
-void test_edge_rvalue_ref_to_const() {
-    TEST_START("test_edge_rvalue_ref_to_const");
-
+TEST_F(EdgeCasesTest, RvalueRefToConst) {
     const char *code = R"(
         void rvalueRefConst(const int&& ref) {
             // Rvalue reference to const (unusual but valid)
@@ -534,14 +461,11 @@ void test_edge_rvalue_ref_to_const() {
     )";
 
     auto AST = createAST(code);
-    ASSERT(AST != nullptr, "Failed to parse rvalue reference to const");
-    TEST_PASS("test_edge_rvalue_ref_to_const");
+    ASSERT_TRUE(AST != nullptr) << "Failed to parse rvalue reference to const";
 }
 
 // Test 23: Template with multiple type parameters and defaults
-void test_edge_template_multiple_defaults() {
-    TEST_START("test_edge_template_multiple_defaults");
-
+TEST_F(EdgeCasesTest, TemplateMultipleDefaults) {
     const char *code = R"(
         template<typename T = int, typename U = double, typename V = char>
         struct MultiDefault {
@@ -552,14 +476,11 @@ void test_edge_template_multiple_defaults() {
     )";
 
     auto AST = createAST(code);
-    ASSERT(AST != nullptr, "Failed to parse template with multiple defaults");
-    TEST_PASS("test_edge_template_multiple_defaults");
+    ASSERT_TRUE(AST != nullptr) << "Failed to parse template with multiple defaults";
 }
 
 // Test 24: Bitfield with unusual sizes
-void test_edge_unusual_bitfield_sizes() {
-    TEST_START("test_edge_unusual_bitfield_sizes");
-
+TEST_F(EdgeCasesTest, UnusualBitfieldSizes) {
     const char *code = R"(
         struct BitfieldStruct {
             unsigned int a : 1;   // Single bit
@@ -569,14 +490,11 @@ void test_edge_unusual_bitfield_sizes() {
     )";
 
     auto AST = createAST(code);
-    ASSERT(AST != nullptr, "Failed to parse unusual bitfield sizes");
-    TEST_PASS("test_edge_unusual_bitfield_sizes");
+    ASSERT_TRUE(AST != nullptr) << "Failed to parse unusual bitfield sizes";
 }
 
 // Test 25: Union with complex types
-void test_edge_union_with_complex_types() {
-    TEST_START("test_edge_union_with_complex_types");
-
+TEST_F(EdgeCasesTest, UnionWithComplexTypes) {
     const char *code = R"(
         union ComplexUnion {
             struct {
@@ -588,7 +506,7 @@ void test_edge_union_with_complex_types() {
     )";
 
     auto AST = createAST(code);
-    ASSERT(AST != nullptr, "Failed to parse union with complex types");
+    ASSERT_TRUE(AST != nullptr) << "Failed to parse union with complex types";
 
     auto &Ctx = AST->getASTContext();
     auto *TU = Ctx.getTranslationUnitDecl();
@@ -602,18 +520,15 @@ void test_edge_union_with_complex_types() {
         }
     }
 
-    ASSERT(foundUnion, "Complex union not found");
-    TEST_PASS("test_edge_union_with_complex_types");
+    ASSERT_TRUE(foundUnion) << "Complex union not found";
 }
 
 // ============================================================================
-// Additional Edge Cases (5 tests)
+// Category 4: Additional Edge Cases (6 tests to make 31 total)
 // ============================================================================
 
 // Test 26: Anonymous struct/union
-void test_edge_anonymous_struct() {
-    TEST_START("test_edge_anonymous_struct");
-
+TEST_F(EdgeCasesTest, AnonymousStruct) {
     const char *code = R"(
         struct Outer {
             struct {
@@ -624,14 +539,11 @@ void test_edge_anonymous_struct() {
     )";
 
     auto AST = createAST(code);
-    ASSERT(AST != nullptr, "Failed to parse anonymous struct");
-    TEST_PASS("test_edge_anonymous_struct");
+    ASSERT_TRUE(AST != nullptr) << "Failed to parse anonymous struct";
 }
 
 // Test 27: Zero-sized arrays (flexible array member)
-void test_edge_flexible_array_member() {
-    TEST_START("test_edge_flexible_array_member");
-
+TEST_F(EdgeCasesTest, FlexibleArrayMember) {
     const char *code = R"(
         struct FlexibleArray {
             int count;
@@ -640,27 +552,21 @@ void test_edge_flexible_array_member() {
     )";
 
     auto AST = createAST(code);
-    ASSERT(AST != nullptr, "Failed to parse flexible array member");
-    TEST_PASS("test_edge_flexible_array_member");
+    ASSERT_TRUE(AST != nullptr) << "Failed to parse flexible array member";
 }
 
 // Test 28: Extremely long identifier names
-void test_edge_long_identifier_name() {
-    TEST_START("test_edge_long_identifier_name");
-
+TEST_F(EdgeCasesTest, LongIdentifierName) {
     const char *code = R"(
         void veryLongFunctionNameThatExceedsNormalLengthButIsStillValidInCppStandardAndShouldBeHandledProperly() {}
     )";
 
     auto AST = createAST(code);
-    ASSERT(AST != nullptr, "Failed to parse long identifier name");
-    TEST_PASS("test_edge_long_identifier_name");
+    ASSERT_TRUE(AST != nullptr) << "Failed to parse long identifier name";
 }
 
 // Test 29: Multiple inheritance with common base (diamond problem)
-void test_edge_diamond_inheritance() {
-    TEST_START("test_edge_diamond_inheritance");
-
+TEST_F(EdgeCasesTest, DiamondInheritance) {
     const char *code = R"(
         class Base {};
         class Left : public Base {};
@@ -669,7 +575,7 @@ void test_edge_diamond_inheritance() {
     )";
 
     auto AST = createAST(code);
-    ASSERT(AST != nullptr, "Failed to parse diamond inheritance");
+    ASSERT_TRUE(AST != nullptr) << "Failed to parse diamond inheritance";
 
     auto &Ctx = AST->getASTContext();
     auto *TU = Ctx.getTranslationUnitDecl();
@@ -679,19 +585,16 @@ void test_edge_diamond_inheritance() {
         if (auto *RD = dyn_cast<CXXRecordDecl>(Decl)) {
             if (RD->getNameAsString() == "Diamond") {
                 foundDiamond = true;
-                ASSERT(RD->getNumBases() == 2, "Diamond should have 2 base classes");
+                ASSERT_EQ(RD->getNumBases(), 2u) << "Diamond should have 2 base classes";
             }
         }
     }
 
-    ASSERT(foundDiamond, "Diamond inheritance class not found");
-    TEST_PASS("test_edge_diamond_inheritance");
+    ASSERT_TRUE(foundDiamond) << "Diamond inheritance class not found";
 }
 
 // Test 30: Template specialization with edge case types
-void test_edge_template_specialization_void() {
-    TEST_START("test_edge_template_specialization_void");
-
+TEST_F(EdgeCasesTest, TemplateSpecializationVoid) {
     const char *code = R"(
         template<typename T>
         struct Container {
@@ -705,65 +608,22 @@ void test_edge_template_specialization_void() {
     )";
 
     auto AST = createAST(code);
-    ASSERT(AST != nullptr, "Failed to parse template specialization for void");
-    TEST_PASS("test_edge_template_specialization_void");
+    ASSERT_TRUE(AST != nullptr) << "Failed to parse template specialization for void";
 }
 
-// ============================================================================
-// Main Entry Point
-// ============================================================================
+// Test 31: Nested anonymous unions and structs
+TEST_F(EdgeCasesTest, NestedAnonymousUnionStruct) {
+    const char *code = R"(
+        struct Complex {
+            union {
+                struct {
+                    int a, b;
+                };
+                double d;
+            };
+        };
+    )";
 
-int main() {
-    std::cout << "\n";
-    std::cout << "========================================\n";
-    std::cout << "Stream 6: Edge Cases Test Suite\n";
-    std::cout << "========================================\n\n";
-
-    std::cout << "Category 1: Empty Inputs\n";
-    std::cout << "------------------------\n";
-    test_edge_empty_class();
-    test_edge_empty_struct();
-    test_edge_empty_function();
-    test_edge_empty_namespace();
-    test_edge_empty_enum();
-    test_edge_class_with_only_empty_methods();
-    test_edge_empty_parameter_pack();
-    test_edge_empty_initializer_list();
-
-    std::cout << "\nCategory 2: Maximum Nesting/Recursion\n";
-    std::cout << "--------------------------------------\n";
-    test_edge_deeply_nested_classes();
-    test_edge_deeply_nested_namespaces();
-    test_edge_deeply_nested_blocks();
-    test_edge_deep_inheritance_chain();
-    test_edge_nested_template_instantiations();
-    test_edge_recursive_type_pointer();
-    test_edge_deeply_nested_function_calls();
-    test_edge_template_recursion_depth();
-
-    std::cout << "\nCategory 3: Unusual Type Combinations\n";
-    std::cout << "--------------------------------------\n";
-    test_edge_triple_pointer();
-    test_edge_array_of_pointer_to_arrays();
-    test_edge_complex_function_pointer();
-    test_edge_const_volatile_qualifiers();
-    test_edge_reference_to_pointer();
-    test_edge_rvalue_ref_to_const();
-    test_edge_template_multiple_defaults();
-    test_edge_unusual_bitfield_sizes();
-    test_edge_union_with_complex_types();
-
-    std::cout << "\nCategory 4: Additional Edge Cases\n";
-    std::cout << "-----------------------------------\n";
-    test_edge_anonymous_struct();
-    test_edge_flexible_array_member();
-    test_edge_long_identifier_name();
-    test_edge_diamond_inheritance();
-    test_edge_template_specialization_void();
-
-    std::cout << "\n========================================\n";
-    std::cout << "Results: " << tests_passed << " passed, " << tests_failed << " failed\n";
-    std::cout << "========================================\n";
-
-    return tests_failed > 0 ? 1 : 0;
+    auto AST = createAST(code);
+    ASSERT_TRUE(AST != nullptr) << "Failed to parse nested anonymous union and struct";
 }
