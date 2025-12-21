@@ -4,24 +4,25 @@ project(cpptoc_wasm)
 # Detect Emscripten build
 if(EMSCRIPTEN)
     message(STATUS "Building for WebAssembly with Emscripten")
+    message(STATUS "NOTE: Bindings are PLACEHOLDER implementations")
+    message(STATUS "Full transpiler integration requires Clang LibTooling → WASM (future work)")
 
     # Enable C++ exceptions (required for try/catch)
     set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fexceptions")
 
-    # Common WASM linker flags
-    set(WASM_COMMON_FLAGS
-        "-s MODULARIZE=1"
-        "-s EXPORT_ES6=1"
-        "-s EXPORT_NAME=createCppToC"
-        "-s ALLOW_MEMORY_GROWTH=1"
-        "-s NO_FILESYSTEM=1"
-        "-s NO_EXIT_RUNTIME=1"
-        "-s WASM_ASYNC_COMPILATION=1"
-        "-s EXPORTED_RUNTIME_METHODS=['UTF8ToString','stringToUTF8']"
-        "--bind"
-        "-s EXCEPTION_CATCHING_ALLOWED=['..']"
-        "-fexceptions"
-    )
+    # Common WASM linker flags (as a single string, space-separated)
+    set(WASM_COMMON_FLAGS "\
+-s MODULARIZE=1 \
+-s EXPORT_ES6=1 \
+-s EXPORT_NAME=createCppToC \
+-s ALLOW_MEMORY_GROWTH=1 \
+-s NO_FILESYSTEM=1 \
+-s NO_EXIT_RUNTIME=1 \
+-s WASM_ASYNC_COMPILATION=1 \
+-s EXPORTED_RUNTIME_METHODS=['UTF8ToString','stringToUTF8'] \
+--bind \
+-s EXCEPTION_CATCHING_ALLOWED=['..'] \
+-fexceptions")
 
     # ========================================================================
     # MINIMAL BUILD (Size-optimized for Cloudflare Workers)
@@ -31,24 +32,8 @@ if(EMSCRIPTEN)
     )
 
     target_compile_definitions(cpptoc-wasm-minimal PRIVATE
-        ${LLVM_DEFINITIONS}
         EMSCRIPTEN
         WASM_MINIMAL_BUILD
-    )
-
-    target_include_directories(cpptoc-wasm-minimal PRIVATE
-        ${CMAKE_SOURCE_DIR}/../include
-        ${LLVM_INCLUDE_DIRS}
-        ${CLANG_INCLUDE_DIRS}
-    )
-
-    target_link_libraries(cpptoc-wasm-minimal PRIVATE
-        cpptoc_core
-        clangTooling
-        clangFrontend
-        clangAST
-        clangBasic
-        LLVMSupport
     )
 
     # Minimal build: aggressive size optimization
@@ -76,23 +61,7 @@ if(EMSCRIPTEN)
     )
 
     target_compile_definitions(cpptoc-wasm-full PRIVATE
-        ${LLVM_DEFINITIONS}
         EMSCRIPTEN
-    )
-
-    target_include_directories(cpptoc-wasm-full PRIVATE
-        ${CMAKE_SOURCE_DIR}/../include
-        ${LLVM_INCLUDE_DIRS}
-        ${CLANG_INCLUDE_DIRS}
-    )
-
-    target_link_libraries(cpptoc-wasm-full PRIVATE
-        cpptoc_core
-        clangTooling
-        clangFrontend
-        clangAST
-        clangBasic
-        LLVMSupport
     )
 
     # Full build: performance over size
