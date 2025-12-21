@@ -1,6 +1,7 @@
 // Stories #24, #25, #26: Comprehensive Validation Tests
 // Compilation, Behavioral, and Memory Safety validation in one file
 
+#include <gtest/gtest.h>
 #include "CodeGenerator.h"
 #include "CNodeBuilder.h"
 #include "CppToCVisitor.h"
@@ -16,82 +17,83 @@
 using namespace clang;
 using namespace llvm;
 
-// Helper: Create test ASTContext
-std::unique_ptr<ASTUnit> createTestAST(const std::string &code, const std::string &filename = "test.cpp") {
-    std::vector<std::string> Args = {"-std=c++17"};
-    std::unique_ptr<ASTUnit> AST = tooling::buildASTFromCodeWithArgs(code, Args, filename);
-    if (!AST) {
-        std::cerr << "Failed to create AST" << std::endl;
-        exit(1);
-    }
-    return AST;
-}
-
-// Helper: Compile C code with gcc
-bool compileC(const std::string &cFile, std::string &errors) {
-    std::string cmd = "gcc -std=c99 -Wall -Werror -c " + cFile + " -o /tmp/test.o 2>/tmp/compile_errors.txt";
-    int result = system(cmd.c_str());
-
-    if (result != 0) {
-        std::ifstream errFile("/tmp/compile_errors.txt");
-        errors = std::string((std::istreambuf_iterator<char>(errFile)),
-                             std::istreambuf_iterator<char>());
-        return false;
-    }
-    return true;
-}
-
-// Helper: Compile and run C program
-std::string compileAndRunC(const std::string &cFile) {
-    // Compile
-    std::string cmd = "gcc -std=c99 " + cFile + " -o /tmp/test_c_exe 2>/tmp/compile_errors.txt";
-    int result = system(cmd.c_str());
-    if (result != 0) {
-        return "COMPILE_ERROR";
+// Test fixture for validation tests
+class ValidationTest : public ::testing::Test {
+protected:
+    // Helper: Create test ASTContext
+    std::unique_ptr<ASTUnit> createTestAST(const std::string &code, const std::string &filename = "test.cpp") {
+        std::vector<std::string> Args = {"-std=c++17"};
+        std::unique_ptr<ASTUnit> AST = tooling::buildASTFromCodeWithArgs(code, Args, filename);
+        EXPECT_NE(AST, nullptr) << "Failed to create AST";
+        return AST;
     }
 
-    // Run and capture output
-    system("/tmp/test_c_exe > /tmp/test_c_output.txt 2>&1");
-    std::ifstream outFile("/tmp/test_c_output.txt");
-    return std::string((std::istreambuf_iterator<char>(outFile)),
-                       std::istreambuf_iterator<char>());
-}
+    // Helper: Compile C code with gcc
+    bool compileC(const std::string &cFile, std::string &errors) {
+        std::string cmd = "gcc -std=c99 -Wall -Werror -c " + cFile + " -o /tmp/test.o 2>/tmp/compile_errors.txt";
+        int result = system(cmd.c_str());
 
-// Helper: Check if valgrind is available
-bool isValgrindAvailable() {
-    return system("which valgrind >/dev/null 2>&1") == 0;
-}
-
-// Helper: Check memory safety with valgrind (or skip if unavailable)
-bool checkMemorySafety(const std::string &cFile, bool &skipped) {
-    skipped = false;
-
-    // Check if valgrind is available
-    if (!isValgrindAvailable()) {
-        skipped = true;
-        return true;  // Pass by default if valgrind not available (Phase 1 POC)
+        if (result != 0) {
+            std::ifstream errFile("/tmp/compile_errors.txt");
+            errors = std::string((std::istreambuf_iterator<char>(errFile)),
+                                 std::istreambuf_iterator<char>());
+            return false;
+        }
+        return true;
     }
 
-    // Compile with debug info
-    std::string compileCmd = "gcc -std=c99 -g " + cFile + " -o /tmp/test_mem_exe 2>/dev/null";
-    system(compileCmd.c_str());
+    // Helper: Compile and run C program
+    std::string compileAndRunC(const std::string &cFile) {
+        // Compile
+        std::string cmd = "gcc -std=c99 " + cFile + " -o /tmp/test_c_exe 2>/tmp/compile_errors.txt";
+        int result = system(cmd.c_str());
+        if (result != 0) {
+            return "COMPILE_ERROR";
+        }
 
-    // Run under valgrind
-    std::string valgrindCmd = "valgrind --leak-check=full --error-exitcode=1 /tmp/test_mem_exe >/dev/null 2>&1";
-    int result = system(valgrindCmd.c_str());
+        // Run and capture output
+        system("/tmp/test_c_exe > /tmp/test_c_output.txt 2>&1");
+        std::ifstream outFile("/tmp/test_c_output.txt");
+        return std::string((std::istreambuf_iterator<char>(outFile)),
+                           std::istreambuf_iterator<char>());
+    }
 
-    return result == 0;  // 0 = no leaks, no errors
-}
+    // Helper: Check if valgrind is available
+    bool isValgrindAvailable() {
+        return system("which valgrind >/dev/null 2>&1") == 0;
+    }
+
+    // Helper: Check memory safety with valgrind (or skip if unavailable)
+    bool checkMemorySafety(const std::string &cFile, bool &skipped) {
+        skipped = false;
+
+        // Check if valgrind is available
+        if (!isValgrindAvailable()) {
+            skipped = true;
+            return true;  // Pass by default if valgrind not available (Phase 1 POC)
+        }
+
+        // Compile with debug info
+        std::string compileCmd = "gcc -std=c99 -g " + cFile + " -o /tmp/test_mem_exe 2>/dev/null";
+        system(compileCmd.c_str());
+
+        // Run under valgrind
+        std::string valgrindCmd = "valgrind --leak-check=full --error-exitcode=1 /tmp/test_mem_exe >/dev/null 2>&1";
+        int result = system(valgrindCmd.c_str());
+
+        return result == 0;  // 0 = no leaks, no errors
+    }
+};
 
 // ============================================================================
 // Story #24: Compilation Validation Tests
 // ============================================================================
 
 // Test 1: Empty struct compiles
-void testEmptyStructCompiles() {
-    std::cout << "TEST [#24]: EmptyStructCompiles - ";
-
+TEST_F(ValidationTest, EmptyStructCompiles) {
     auto AST = createTestAST("struct Empty {};", "empty.cpp");
+    ASSERT_NE(AST, nullptr);
+
     ASTContext &Context = AST->getASTContext();
     CNodeBuilder Builder(Context);
 
@@ -109,20 +111,14 @@ void testEmptyStructCompiles() {
     std::string errors;
     bool compiled = compileC("/tmp/test_empty.c", errors);
 
-    if (compiled) {
-        std::cout << "PASS" << std::endl;
-    } else {
-        std::cout << "FAIL" << std::endl;
-        std::cout << "Errors: " << errors << std::endl;
-        exit(1);
-    }
+    ASSERT_TRUE(compiled) << "Compilation failed: " << errors;
 }
 
 // Test 2: Struct with fields compiles
-void testStructWithFieldsCompiles() {
-    std::cout << "TEST [#24]: StructWithFieldsCompiles - ";
-
+TEST_F(ValidationTest, StructWithFieldsCompiles) {
     auto AST = createTestAST("class Point { int x, y; };", "point.cpp");
+    ASSERT_NE(AST, nullptr);
+
     ASTContext &Context = AST->getASTContext();
     CNodeBuilder Builder(Context);
 
@@ -140,20 +136,14 @@ void testStructWithFieldsCompiles() {
     std::string errors;
     bool compiled = compileC("/tmp/test_point.c", errors);
 
-    if (compiled) {
-        std::cout << "PASS" << std::endl;
-    } else {
-        std::cout << "FAIL" << std::endl;
-        std::cout << "Errors: " << errors << std::endl;
-        exit(1);
-    }
+    ASSERT_TRUE(compiled) << "Compilation failed: " << errors;
 }
 
 // Test 3: Function declaration compiles
-void testFunctionDeclCompiles() {
-    std::cout << "TEST [#24]: FunctionDeclCompiles - ";
-
+TEST_F(ValidationTest, FunctionDeclCompiles) {
     auto AST = createTestAST("int test() { return 0; }", "func.cpp");
+    ASSERT_NE(AST, nullptr);
+
     ASTContext &Context = AST->getASTContext();
     CNodeBuilder Builder(Context);
 
@@ -170,20 +160,14 @@ void testFunctionDeclCompiles() {
     std::string errors;
     bool compiled = compileC("/tmp/test_func.c", errors);
 
-    if (compiled) {
-        std::cout << "PASS" << std::endl;
-    } else {
-        std::cout << "FAIL" << std::endl;
-        std::cout << "Errors: " << errors << std::endl;
-        exit(1);
-    }
+    ASSERT_TRUE(compiled) << "Compilation failed: " << errors;
 }
 
 // Test 4: Multiple declarations compile
-void testMultipleDeclarationsCompile() {
-    std::cout << "TEST [#24]: MultipleDeclarationsCompile - ";
-
+TEST_F(ValidationTest, MultipleDeclarationsCompile) {
     auto AST = createTestAST("struct S {}; int f();", "multi.cpp");
+    ASSERT_NE(AST, nullptr);
+
     ASTContext &Context = AST->getASTContext();
     CNodeBuilder Builder(Context);
 
@@ -203,20 +187,14 @@ void testMultipleDeclarationsCompile() {
     std::string errors;
     bool compiled = compileC("/tmp/test_multi.c", errors);
 
-    if (compiled) {
-        std::cout << "PASS" << std::endl;
-    } else {
-        std::cout << "FAIL" << std::endl;
-        std::cout << "Errors: " << errors << std::endl;
-        exit(1);
-    }
+    ASSERT_TRUE(compiled) << "Compilation failed: " << errors;
 }
 
 // Test 5: Complex struct with function compiles
-void testComplexStructCompiles() {
-    std::cout << "TEST [#24]: ComplexStructCompiles - ";
-
+TEST_F(ValidationTest, ComplexStructCompiles) {
     auto AST = createTestAST("class Rectangle { int w, h; int area(); };", "rect.cpp");
+    ASSERT_NE(AST, nullptr);
+
     ASTContext &Context = AST->getASTContext();
     CNodeBuilder Builder(Context);
 
@@ -240,13 +218,7 @@ void testComplexStructCompiles() {
     std::string errors;
     bool compiled = compileC("/tmp/test_rect.c", errors);
 
-    if (compiled) {
-        std::cout << "PASS" << std::endl;
-    } else {
-        std::cout << "FAIL" << std::endl;
-        std::cout << "Errors: " << errors << std::endl;
-        exit(1);
-    }
+    ASSERT_TRUE(compiled) << "Compilation failed: " << errors;
 }
 
 // ============================================================================
@@ -254,9 +226,7 @@ void testComplexStructCompiles() {
 // ============================================================================
 
 // Test 6: Simple program produces output
-void testSimpleProgramOutput() {
-    std::cout << "TEST [#25]: SimpleProgramOutput - ";
-
+TEST_F(ValidationTest, SimpleProgramOutput) {
     // Create simple C program
     std::ofstream cFile("/tmp/test_simple_prog.c");
     cFile << "#include <stdio.h>\n";
@@ -268,18 +238,11 @@ void testSimpleProgramOutput() {
 
     std::string output = compileAndRunC("/tmp/test_simple_prog.c");
 
-    if (output.find("Hello") != std::string::npos) {
-        std::cout << "PASS" << std::endl;
-    } else {
-        std::cout << "FAIL - Expected 'Hello', got: " << output << std::endl;
-        exit(1);
-    }
+    ASSERT_NE(output.find("Hello"), std::string::npos) << "Expected 'Hello', got: " << output;
 }
 
 // Test 7: Struct initialization works
-void testStructInitialization() {
-    std::cout << "TEST [#25]: StructInitialization - ";
-
+TEST_F(ValidationTest, StructInitialization) {
     std::ofstream cFile("/tmp/test_struct_init.c");
     cFile << "#include <stdio.h>\n";
     cFile << "struct Point { int x; int y; };\n";
@@ -292,18 +255,11 @@ void testStructInitialization() {
 
     std::string output = compileAndRunC("/tmp/test_struct_init.c");
 
-    if (output.find("10 20") != std::string::npos) {
-        std::cout << "PASS" << std::endl;
-    } else {
-        std::cout << "FAIL - Expected '10 20', got: " << output << std::endl;
-        exit(1);
-    }
+    ASSERT_NE(output.find("10 20"), std::string::npos) << "Expected '10 20', got: " << output;
 }
 
 // Test 8: Function calls work
-void testFunctionCalls() {
-    std::cout << "TEST [#25]: FunctionCalls - ";
-
+TEST_F(ValidationTest, FunctionCalls) {
     std::ofstream cFile("/tmp/test_func_calls.c");
     cFile << "#include <stdio.h>\n";
     cFile << "int add(int a, int b) { return a + b; }\n";
@@ -316,18 +272,11 @@ void testFunctionCalls() {
 
     std::string output = compileAndRunC("/tmp/test_func_calls.c");
 
-    if (output.find("8") != std::string::npos) {
-        std::cout << "PASS" << std::endl;
-    } else {
-        std::cout << "FAIL - Expected '8', got: " << output << std::endl;
-        exit(1);
-    }
+    ASSERT_NE(output.find("8"), std::string::npos) << "Expected '8', got: " << output;
 }
 
 // Test 9: Multiple function calls work
-void testMultipleFunctionCalls() {
-    std::cout << "TEST [#25]: MultipleFunctionCalls - ";
-
+TEST_F(ValidationTest, MultipleFunctionCalls) {
     std::ofstream cFile("/tmp/test_multi_calls.c");
     cFile << "#include <stdio.h>\n";
     cFile << "int double_val(int x) { return x * 2; }\n";
@@ -340,18 +289,12 @@ void testMultipleFunctionCalls() {
 
     std::string output = compileAndRunC("/tmp/test_multi_calls.c");
 
-    if (output.find("10") != std::string::npos && output.find("20") != std::string::npos) {
-        std::cout << "PASS" << std::endl;
-    } else {
-        std::cout << "FAIL - Expected '10' and '20', got: " << output << std::endl;
-        exit(1);
-    }
+    ASSERT_NE(output.find("10"), std::string::npos) << "Expected '10', got: " << output;
+    ASSERT_NE(output.find("20"), std::string::npos) << "Expected '20', got: " << output;
 }
 
 // Test 10: Struct with functions works
-void testStructWithFunctions() {
-    std::cout << "TEST [#25]: StructWithFunctions - ";
-
+TEST_F(ValidationTest, StructWithFunctions) {
     std::ofstream cFile("/tmp/test_struct_funcs.c");
     cFile << "#include <stdio.h>\n";
     cFile << "struct Counter { int value; };\n";
@@ -365,12 +308,7 @@ void testStructWithFunctions() {
 
     std::string output = compileAndRunC("/tmp/test_struct_funcs.c");
 
-    if (output.find("42") != std::string::npos) {
-        std::cout << "PASS" << std::endl;
-    } else {
-        std::cout << "FAIL - Expected '42', got: " << output << std::endl;
-        exit(1);
-    }
+    ASSERT_NE(output.find("42"), std::string::npos) << "Expected '42', got: " << output;
 }
 
 // ============================================================================
@@ -378,9 +316,7 @@ void testStructWithFunctions() {
 // ============================================================================
 
 // Test 11: Simple program has no leaks
-void testSimpleProgramNoLeaks() {
-    std::cout << "TEST [#26]: SimpleProgramNoLeaks - ";
-
+TEST_F(ValidationTest, SimpleProgramNoLeaks) {
     std::ofstream cFile("/tmp/test_no_leaks_1.c");
     cFile << "int main() { return 0; }\n";
     cFile.close();
@@ -389,19 +325,14 @@ void testSimpleProgramNoLeaks() {
     bool safe = checkMemorySafety("/tmp/test_no_leaks_1.c", skipped);
 
     if (skipped) {
-        std::cout << "PASS (valgrind not available, skipped)" << std::endl;
-    } else if (safe) {
-        std::cout << "PASS" << std::endl;
-    } else {
-        std::cout << "FAIL - Memory issues detected" << std::endl;
-        exit(1);
+        GTEST_SKIP() << "valgrind not available";
     }
+
+    ASSERT_TRUE(safe) << "Memory issues detected";
 }
 
 // Test 12: Stack-allocated struct has no leaks
-void testStackStructNoLeaks() {
-    std::cout << "TEST [#26]: StackStructNoLeaks - ";
-
+TEST_F(ValidationTest, StackStructNoLeaks) {
     std::ofstream cFile("/tmp/test_stack_struct.c");
     cFile << "struct Point { int x; int y; };\n";
     cFile << "int main() {\n";
@@ -414,19 +345,14 @@ void testStackStructNoLeaks() {
     bool safe = checkMemorySafety("/tmp/test_stack_struct.c", skipped);
 
     if (skipped) {
-        std::cout << "PASS (valgrind not available, skipped)" << std::endl;
-    } else if (safe) {
-        std::cout << "PASS" << std::endl;
-    } else {
-        std::cout << "FAIL - Memory issues detected" << std::endl;
-        exit(1);
+        GTEST_SKIP() << "valgrind not available";
     }
+
+    ASSERT_TRUE(safe) << "Memory issues detected";
 }
 
 // Test 13: Multiple stack objects have no leaks
-void testMultipleStackObjectsNoLeaks() {
-    std::cout << "TEST [#26]: MultipleStackObjectsNoLeaks - ";
-
+TEST_F(ValidationTest, MultipleStackObjectsNoLeaks) {
     std::ofstream cFile("/tmp/test_multi_stack.c");
     cFile << "struct Data { int value; };\n";
     cFile << "int main() {\n";
@@ -441,19 +367,14 @@ void testMultipleStackObjectsNoLeaks() {
     bool safe = checkMemorySafety("/tmp/test_multi_stack.c", skipped);
 
     if (skipped) {
-        std::cout << "PASS (valgrind not available, skipped)" << std::endl;
-    } else if (safe) {
-        std::cout << "PASS" << std::endl;
-    } else {
-        std::cout << "FAIL - Memory issues detected" << std::endl;
-        exit(1);
+        GTEST_SKIP() << "valgrind not available";
     }
+
+    ASSERT_TRUE(safe) << "Memory issues detected";
 }
 
 // Test 14: Function with local variables has no leaks
-void testFunctionLocalVarsNoLeaks() {
-    std::cout << "TEST [#26]: FunctionLocalVarsNoLeaks - ";
-
+TEST_F(ValidationTest, FunctionLocalVarsNoLeaks) {
     std::ofstream cFile("/tmp/test_func_locals.c");
     cFile << "void test_func() {\n";
     cFile << "    int x = 10;\n";
@@ -469,19 +390,14 @@ void testFunctionLocalVarsNoLeaks() {
     bool safe = checkMemorySafety("/tmp/test_func_locals.c", skipped);
 
     if (skipped) {
-        std::cout << "PASS (valgrind not available, skipped)" << std::endl;
-    } else if (safe) {
-        std::cout << "PASS" << std::endl;
-    } else {
-        std::cout << "FAIL - Memory issues detected" << std::endl;
-        exit(1);
+        GTEST_SKIP() << "valgrind not available";
     }
+
+    ASSERT_TRUE(safe) << "Memory issues detected";
 }
 
 // Test 15: Complex program with structs and functions has no leaks
-void testComplexProgramNoLeaks() {
-    std::cout << "TEST [#26]: ComplexProgramNoLeaks - ";
-
+TEST_F(ValidationTest, ComplexProgramNoLeaks) {
     std::ofstream cFile("/tmp/test_complex_noleaks.c");
     cFile << "struct Rectangle { int width; int height; };\n";
     cFile << "int Rectangle_area(struct Rectangle *r) {\n";
@@ -498,46 +414,8 @@ void testComplexProgramNoLeaks() {
     bool safe = checkMemorySafety("/tmp/test_complex_noleaks.c", skipped);
 
     if (skipped) {
-        std::cout << "PASS (valgrind not available, skipped)" << std::endl;
-    } else if (safe) {
-        std::cout << "PASS" << std::endl;
-    } else {
-        std::cout << "FAIL - Memory issues detected" << std::endl;
-        exit(1);
+        GTEST_SKIP() << "valgrind not available";
     }
-}
 
-// ============================================================================
-// Main: Run all validation tests
-// ============================================================================
-
-int main() {
-    std::cout << "=== Epic #4: Comprehensive Validation Tests ===" << std::endl;
-
-    std::cout << "\n--- Story #24: Compilation Validation (5 tests) ---" << std::endl;
-    testEmptyStructCompiles();
-    testStructWithFieldsCompiles();
-    testFunctionDeclCompiles();
-    testMultipleDeclarationsCompile();
-    testComplexStructCompiles();
-
-    std::cout << "\n--- Story #25: Behavioral Validation (5 tests) ---" << std::endl;
-    testSimpleProgramOutput();
-    testStructInitialization();
-    testFunctionCalls();
-    testMultipleFunctionCalls();
-    testStructWithFunctions();
-
-    std::cout << "\n--- Story #26: Memory Safety Validation (5 tests) ---" << std::endl;
-    testSimpleProgramNoLeaks();
-    testStackStructNoLeaks();
-    testMultipleStackObjectsNoLeaks();
-    testFunctionLocalVarsNoLeaks();
-    testComplexProgramNoLeaks();
-
-    std::cout << "\n✓ ALL VALIDATION TESTS PASSED!" << std::endl;
-    std::cout << "✓ Epic #4 Complete: 22/22 story points delivered" << std::endl;
-    std::cout << "✓ Phase 1 POC: VALIDATED - C++ to C transpiler works!" << std::endl;
-
-    return 0;
+    ASSERT_TRUE(safe) << "Memory issues detected";
 }

@@ -448,7 +448,16 @@ target_link_libraries(CodeGeneratorTest PRIVATE
     clangFrontend
     clangAST
     clangBasic
+GTest::gtest
+    GTest::gtest_main
 )
+
+# Register with CTest
+gtest_discover_tests(CodeGeneratorTest
+    WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
+    PROPERTIES LABELS "unit;phase15-03"
+)
+
 
 # ============================================================================
 # Epic #4: Comprehensive Validation Tests (Stories #24, #25, #26)
@@ -473,7 +482,16 @@ target_link_libraries(ValidationTest PRIVATE
     clangFrontend
     clangAST
     clangBasic
+GTest::gtest
+    GTest::gtest_main
 )
+
+# Register with CTest
+gtest_discover_tests(ValidationTest
+    WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
+    PROPERTIES LABELS "unit;phase15-03"
+)
+
 
 # ============================================================================
 # Epic #19: Header File Generation Tests (Story #137)
@@ -2347,7 +2365,16 @@ target_link_libraries(ACSLClassAnnotatorTest PRIVATE
     clangFrontend
     clangAST
     clangBasic
+GTest::gtest
+    GTest::gtest_main
 )
+
+# Register with CTest
+gtest_discover_tests(ACSLClassAnnotatorTest
+    WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
+    PROPERTIES LABELS "unit;phase15-03"
+)
+
 
 # Phase 1 (v1.18.0): ACSLStatementAnnotator tests
 add_executable(ACSLStatementAnnotatorTest
@@ -2389,7 +2416,16 @@ target_link_libraries(ACSLTypeInvariantGeneratorTest PRIVATE
     clangFrontend
     clangAST
     clangBasic
+GTest::gtest
+    GTest::gtest_main
 )
+
+# Register with CTest
+gtest_discover_tests(ACSLTypeInvariantGeneratorTest
+    WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
+    PROPERTIES LABELS "unit;phase15-03"
+)
+
 
 # Phase 3 (v1.20.0): ACSLAxiomaticBuilder tests
 add_executable(ACSLAxiomaticBuilderTest
@@ -2410,7 +2446,16 @@ target_link_libraries(ACSLAxiomaticBuilderTest PRIVATE
     clangFrontend
     clangAST
     clangBasic
+GTest::gtest
+    GTest::gtest_main
 )
+
+# Register with CTest
+gtest_discover_tests(ACSLAxiomaticBuilderTest
+    WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
+    PROPERTIES LABELS "unit;phase15-03"
+)
+
 
 # Phase 4 (v1.21.0): ACSLGhostCodeInjector tests
 add_executable(ACSLGhostCodeInjectorTest
@@ -2431,7 +2476,16 @@ target_link_libraries(ACSLGhostCodeInjectorTest PRIVATE
     clangFrontend
     clangAST
     clangBasic
+GTest::gtest
+    GTest::gtest_main
 )
+
+# Register with CTest
+gtest_discover_tests(ACSLGhostCodeInjectorTest
+    WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
+    PROPERTIES LABELS "unit;phase15-03"
+)
+
 
 # Phase 5 (v1.22.0): ACSLBehaviorAnnotator tests
 add_executable(ACSLBehaviorAnnotatorTest
@@ -2452,7 +2506,16 @@ target_link_libraries(ACSLBehaviorAnnotatorTest PRIVATE
     clangFrontend
     clangAST
     clangBasic
+GTest::gtest
+    GTest::gtest_main
 )
+
+# Register with CTest
+gtest_discover_tests(ACSLBehaviorAnnotatorTest
+    WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
+    PROPERTIES LABELS "unit;phase15-03"
+)
+
 
 # Phase 6 (v1.23.0): ACSLMemoryPredicateAnalyzer tests
 add_executable(ACSLMemoryPredicateAnalyzerTest
