@@ -2,6 +2,7 @@
 
 [![Research Status](https://img.shields.io/badge/Research-v2.6.0%20Complete-brightgreen)](https://github.com)
 [![ACSL Support](https://img.shields.io/badge/ACSL-100%25%20Complete-brightgreen)](https://github.com)
+[![Template Support](https://img.shields.io/badge/Templates-Monomorphization-brightgreen)](https://github.com)
 [![RTTI Support](https://img.shields.io/badge/RTTI-100%25%20Complete-brightgreen)](https://github.com)
 [![Confidence](https://img.shields.io/badge/Confidence-98%25-brightgreen)](https://github.com)
 [![Architecture](https://img.shields.io/badge/Architecture-Two--Phase%20Translation-blue)](https://github.com)
@@ -32,7 +33,12 @@ This README provides a quick overview - the documentation site contains the comp
 This project implements a C++ to C transpiler that produces high-quality, human-readable C code suitable for formal verification with tools like Frama-C. The converter handles modern C++ features including:
 
 - ✅ Classes (single/multiple/virtual inheritance)
-- ✅ Templates (full monomorphization via self-bootstrapping)
+- ✅ **Template Monomorphization** (v2.4.0) - Compile-time template instantiation to C
+  - ✅ **Class templates** - Automatic generation of concrete types from templates
+  - ✅ **Function templates** - Type-specific function generation
+  - ✅ **Nested templates** - Templates within templates (e.g., Vector<Pair<int,double>>)
+  - ✅ **Template specializations** - Full and partial specialization support
+  - ✅ **Deduplication** - Single definition for identical instantiations
 - ✅ STL containers (vector, map, set, etc.)
 - ✅ RAII (Resource Acquisition Is Initialization)
 - ✅ Exceptions (PNaCl SJLJ pattern)
