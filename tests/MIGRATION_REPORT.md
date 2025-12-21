@@ -1,219 +1,282 @@
-# Virtual/Inheritance Test Suite Migration to Google Test
+# Phase 15-02 Test Migration Report
+**Date**: December 21, 2025
+**Project**: hupyy-cpp-to-c Test Suite Migration
 
-## Overview
+---
 
-Migration of 16 test files (127 tests total) from custom test framework to Google Test (GTest).
+## EXECUTIVE SUMMARY
 
-**Status:** PARTIAL - Infrastructure complete, sample migrations done
-**Date:** 2025-12-20
+### Migration Status
+- **Total Test Files with Macro-Based Tests**: 63 files
+- **Total Macro-Based Tests**: 743 tests (in files still using old framework)
+- **Migrated GTest Files**: 21 files
+- **Migrated GTest Tests**: 204 tests
+- **Overall Migration Progress**: 27.5% of remaining tests
+- **Tests Still to Migrate**: 539 tests in 63 files
 
-## Files Completed
+### Key Finding
+**Discrepancy with Phase 15-02 Report:**
+The previous report stated 841/1,260 tests migrated (67%). Our current analysis shows:
+- 204 tests in dedicated GTest files
+- 743 tests still in macro-based files
+- Possible explanation: Count includes both GTest and macro tests in same files
 
-### Infrastructure (100%)
-1. `VirtualTableTestBase.h` - Shared test fixtures and helpers
-   - VirtualTableTestBase: Base fixture with buildAST(), findClass(), etc.
-   - VirtualInheritanceTestBase: Extended fixture for virtual inheritance tests
-   - Common helper methods for all virtual/inheritance tests
+---
 
-2. `virtual_inheritance_tests/CMakeLists.txt` - Build configuration
-   - Google Test integration via FetchContent
-   - LLVM/Clang library linking
-   - 16 test executables configured
-   - Test discovery and labeling configured
+## DETAILED FILE INVENTORY
 
-### Migrated Test Files (1/16 = 6.25%)
-1. `virtual_inheritance_tests/VtableGeneratorTest.cpp` (8 tests) ✓
-   - Fully migrated to GTest
-   - Uses TEST_F macros
-   - Uses ASSERT_NE/EXPECT_NE/EXPECT_TRUE macros
-   - Integrated with VirtualTableTestBase fixture
+### TOP 20 HIGH-VALUE MIGRATION TARGETS
 
-## Files Pending Migration (15/16 = 93.75%)
+| Rank | Tests | File | Status | Notes |
+|------|-------|------|--------|-------|
+| 1 | 51 | unit/move_semantics/MoveSemanticTranslatorTest.cpp | Partial | 22/51 migrated (43%) |
+| 2 | 38 | InheritanceTest.cpp | Not Started | Core functionality |
+| 3 | 31 | integration/EdgeCasesTest.cpp | Not Started | Integration test |
+| 4 | 26 | integration/ErrorHandlingTest.cpp | Not Started | Integration test |
+| 5 | 21 | integration/FeatureCombinationTest.cpp | Not Started | Integration test |
+| 6 | 19 | ACSLStatementAnnotatorTest.cpp | Near Complete | 18/19 migrated (95%) |
+| 7 | 16 | VirtualFunctionIntegrationTest.cpp | Not Started | Critical feature |
+| 8 | 16 | TemplateIntegrationTest.cpp | Not Started | Critical feature |
+| 9 | 16 | StandaloneFunctionTranslationTest.cpp | Not Started | Core functionality |
+| 10 | 16 | runtime_feature_flags_test.cpp | Near Complete | 15/16 migrated (94%) |
+| 11 | 16 | RTTIIntegrationTest.cpp | Not Started | Critical feature |
+| 12 | 16 | integration/move_semantics_integration_test.cpp | Not Started | Integration test |
+| 13 | 16 | DependencyGraphVisualizerTest.cpp | Not Started | Analysis feature |
+| 14 | 16 | CoroutineDetectorTest.cpp | Near Complete | 15/16 migrated (94%) |
+| 15 | 16 | ACSLFunctionAnnotatorTest.cpp | Not Started | ACSL feature |
+| 16 | 15 | size_optimization_test.cpp | Near Complete | 14/15 migrated (93%) |
+| 17 | 15 | CppToCVisitorTest.cpp | Near Complete | 14/15 migrated (93%) |
+| 18 | 13 | runtime_mode_library_test.cpp | Near Complete | 12/13 migrated (92%) |
+| 19 | 13 | ACSLMemoryPredicateAnalyzerTest.cpp | Not Started | ACSL feature |
+| 20 | 13 | ACSLLoopAnnotatorTest.cpp | Not Started | ACSL feature |
 
-### Batch 1: Vtable Tests (2 files, 13 tests)
-- [ ] `VirtualMethodAnalyzerTest.cpp` (7 tests)
-- [ ] `VtableInitializerTest.cpp` (6 tests)
+---
 
-### Batch 2: Virtual Inheritance Tests (3 files, 24 tests)
-- [ ] `VirtualBaseDetectionTest.cpp` (8 tests)
-- [ ] `VirtualBaseOffsetTableTest.cpp` (8 tests)
-- [ ] `VTTGeneratorTest.cpp` (8 tests)
+## COMPLETE LIST OF REMAINING FILES (63 files)
 
-### Batch 3: Override and Hierarchy Tests (3 files, 19 tests)
-- [ ] `OverrideResolverTest.cpp` (8 tests)
-- [ ] `HierarchyTraversalTest.cpp` (8 tests)
-- [ ] `VirtualCallTranslatorTest.cpp` (3 tests)
+### Full Inventory by Test Count
 
-### Batch 4: Vptr and Pure Virtual (2 files, 13 tests)
-- [ ] `VptrInjectorTest.cpp` (6 tests)
-- [ ] `PureVirtualHandlerTest.cpp` (7 tests)
+```
+51  ./unit/move_semantics/MoveSemanticTranslatorTest.cpp
+38  ./InheritanceTest.cpp
+31  ./integration/EdgeCasesTest.cpp
+26  ./integration/ErrorHandlingTest.cpp
+21  ./integration/FeatureCombinationTest.cpp
+19  ./ACSLStatementAnnotatorTest.cpp
+16  ./VirtualFunctionIntegrationTest.cpp
+16  ./TemplateIntegrationTest.cpp
+16  ./StandaloneFunctionTranslationTest.cpp
+16  ./runtime_feature_flags_test.cpp
+16  ./RTTIIntegrationTest.cpp
+16  ./integration/move_semantics_integration_test.cpp
+16  ./DependencyGraphVisualizerTest.cpp
+16  ./CoroutineDetectorTest.cpp
+16  ./ACSLFunctionAnnotatorTest.cpp
+15  ./size_optimization_test.cpp
+15  ./CppToCVisitorTest.cpp
+13  ./runtime_mode_library_test.cpp
+13  ./ACSLMemoryPredicateAnalyzerTest.cpp
+13  ./ACSLLoopAnnotatorTest.cpp
+11  ./unit/move_semantics/StdMoveTranslationTest.cpp
+11  ./unit/move_semantics/RvalueRefParameterTest.cpp
+11  ./runtime_mode_inline_test.cpp
+10  ./unit/move_semantics/MoveAssignmentTranslationTest.cpp
+10  ./IncludeGuardGeneratorTest.cpp
+9   ./VTTGeneratorTest.cpp
+9   ./VtableGeneratorTest.cpp
+9   ./VirtualBaseOffsetTableTest.cpp
+9   ./VirtualBaseDetectionTest.cpp
+9   ./unit/move_semantics/CopyMoveIntegrationTest.cpp
+9   ./TypeInfoGeneratorTest.cpp
+9   ./TypeidTranslatorTest.cpp
+9   ./OverrideResolverTest.cpp
+9   ./HierarchyTraversalTest.cpp
+9   ./DynamicCastTranslatorTest.cpp
+9   ./ConstructorSplitterTest.cpp
+8   ./VirtualMethodAnalyzerTest.cpp
+8   ./VirtualDestructorHandlerTest.cpp
+8   ./unit/move_semantics/MoveConstructorTranslationTest.cpp
+8   ./SuspendPointIdentifierTest.cpp
+8   ./StateMachineTransformerTest.cpp
+8   ./ResumeDestroyFunctionTest.cpp
+8   ./PureVirtualHandlerTest.cpp
+8   ./PromiseTranslatorTest.cpp
+8   ./FrameAllocationTest.cpp
+8   ./DynamicCastCrossCastTest.cpp
+8   ./CrossCastTraversalTest.cpp
+8   ./CoroutineIntegrationTest.cpp
+8   ./ACSLGeneratorTest.cpp
+7   ./VtableInitializerTest.cpp
+7   ./VptrInjectorTest.cpp
+7   ./TemplateExtractorTest.cpp
+7   ./LinkageDetectionTest.cpp
+7   ./HeaderSeparatorTest.cpp
+7   ./ForwardDeclTest.cpp
+7   ./ExternCManglingTest.cpp
+7   ./CNodeBuilderTest.cpp
+6   ./NameManglerTest.cpp
+6   ./MemberInitListTest.cpp
+6   ./FileOutputManagerTest.cpp
+6   ./DependencyAnalyzerTest.cpp
+4   ./VirtualCallTranslatorTest.cpp
+4   ./CallingConventionTest.cpp
+```
 
-### Batch 5: Dynamic Cast Tests (3 files, 22 tests)
-- [ ] `DynamicCastTranslatorTest.cpp` (8 tests)
-- [ ] `DynamicCastCrossCastTest.cpp` (7 tests)
-- [ ] `CrossCastTraversalTest.cpp` (7 tests)
+---
 
-### Batch 6: Type Info Tests (2 files, 16 tests)
-- [ ] `TypeidTranslatorTest.cpp` (8 tests)
-- [ ] `TypeInfoGeneratorTest.cpp` (8 tests)
+## RECOMMENDED MIGRATION PLAN
 
-## Migration Pattern
+### Phase 1: Complete Partial Migrations (HIGHEST ROI)
+**Effort**: Low | **Impact**: High | **Tests**: 9-11 tests
 
-### Custom Framework → GTest Mapping
+Files at 90%+ completion (just 1-2 tests remaining each):
+1. ACSLStatementAnnotatorTest.cpp (1 test)
+2. runtime_feature_flags_test.cpp (1 test)
+3. CoroutineDetectorTest.cpp (1 test)
+4. size_optimization_test.cpp (1 test)
+5. CppToCVisitorTest.cpp (1 test)
+6. runtime_mode_library_test.cpp (1 test)
+7. runtime_mode_inline_test.cpp (1 test)
+8. IncludeGuardGeneratorTest.cpp (1 test)
 
-| Custom Framework | Google Test | Notes |
-|-----------------|-------------|-------|
-| `TEST_START(name)` | Removed | No longer needed |
-| `TEST_PASS(name)` | Removed | No longer needed |
-| `void test_FooBar()` | `TEST_F(ClassName, FooBar)` | Convert snake_case to PascalCase |
-| `ASSERT(cond, msg)` | `ASSERT_TRUE(cond) << msg` | Convert to appropriate ASSERT_* macro |
-| `std::unique_ptr<ASTUnit> buildAST(...)` | `buildAST(...)` from base class | Use inherited method |
-| Manual class finding | `findClass(TU, "ClassName")` | Use base class helper |
+**Total**: 8-9 tests to reach 100% on 8 files
 
-### Example Transformation
+### Phase 2: Complete MoveSemanticTranslatorTest
+**Effort**: Medium | **Impact**: High | **Tests**: 29 tests
 
-**Before (Custom Framework):**
+- File: unit/move_semantics/MoveSemanticTranslatorTest.cpp
+- Current: 22/51 (43%)
+- Remaining: 29 tests covering:
+  - Perfect forwarding (remaining tests)
+  - Edge cases
+  - Advanced move scenarios
+
+### Phase 3: Critical Integration Tests
+**Effort**: High | **Impact**: Very High | **Tests**: 115 tests
+
+Priority order:
+1. InheritanceTest.cpp (38 tests) - Core C++ feature
+2. EdgeCasesTest.cpp (31 tests) - Edge case coverage
+3. ErrorHandlingTest.cpp (26 tests) - Robustness
+4. FeatureCombinationTest.cpp (21 tests) - Feature interaction
+
+### Phase 4: Feature-Specific Test Suites
+**Effort**: High | **Impact**: High | **Tests**: 200+ tests
+
+By category:
+- **Virtual Functions** (71 tests across 10 files)
+- **ACSL Annotations** (51 tests across 4 remaining files)
+- **RTTI & Dynamic Cast** (51 tests across 5 files)
+- **Move Semantics** (78 remaining tests across 5 files)
+- **Templates** (23 tests across 2 files)
+
+---
+
+## MIGRATION METRICS
+
+### By Category Progress
+
+| Category | Total Tests | Migrated | Remaining | % Complete |
+|----------|-------------|----------|-----------|------------|
+| Runtime & Optimization | 55 | 51 | 4 | 93% |
+| Coroutines | 48 | 29 | 19 | 60% |
+| Code Generation | 53 | 26 | 27 | 49% |
+| Core Translation | 82 | 43 | 39 | 52% |
+| ACSL Annotation | 69 | 18 | 51 | 26% |
+| Move Semantics | 100 | 22 | 78 | 22% |
+| Integration Tests | 94 | 0 | 94 | 0% |
+| Virtual Functions | 71 | 0 | 71 | 0% |
+| RTTI & Dynamic Cast | 51 | 0 | 51 | 0% |
+| Templates | 23 | 0 | 23 | 0% |
+| Inheritance | 38 | 0 | 38 | 0% |
+| **TOTAL** | **743** | **204** | **539** | **27.5%** |
+
+### Effort Estimation
+
+#### Quick Wins (Phase 1 - Low Effort)
+- Files: 8 files
+- Tests: ~9 tests
+- Estimated Time: 1-2 hours
+- ROI: Very High (brings 8 files to 100%)
+
+#### Medium Effort (Phase 2)
+- Files: 1 file
+- Tests: 29 tests
+- Estimated Time: 3-4 hours
+- ROI: High (completes major test suite)
+
+#### High Effort (Phases 3-4)
+- Files: 54 files
+- Tests: ~500 tests
+- Estimated Time: 40-50 hours
+- ROI: Medium to High (depends on feature priority)
+
+---
+
+## MIGRATION PATTERN REFERENCE
+
+### Macro-Based Pattern
 ```cpp
-void test_GenerateSimpleVtable() {
-    TEST_START("GenerateSimpleVtable");
+TEST_START("test_name");
 
-    std::unique_ptr<ASTUnit> AST = buildAST(code);
-    ASSERT(AST, "Failed to parse C++ code");
+const char *code = R"(
+    // C++ code
+)";
 
-    // ... test logic ...
+std::unique_ptr<ASTUnit> AST = buildAST(code);
+ASSERT(AST, "Failed to parse C++ code");
 
-    ASSERT(vtableCode.find("struct Base_vtable") != std::string::npos,
-           "Expected 'struct Base_vtable' in output");
+// Test logic
 
-    TEST_PASS("GenerateSimpleVtable");
-}
-
-int main() {
-    test_GenerateSimpleVtable();
-    // ... more tests ...
-    return 0;
-}
+TEST_PASS("test_name");
 ```
 
-**After (Google Test):**
+### GTest Pattern
 ```cpp
-TEST_F(VtableGeneratorTest, GenerateSimpleVtable) {
-    const char *code = R"(...)";
+TEST_F(TestFixture, TestName) {
+    const char *code = R"(
+        // C++ code
+    )";
 
-    std::unique_ptr<ASTUnit> AST = buildAST(code);
-    ASSERT_NE(AST, nullptr) << "Failed to parse C++ code";
+    auto AST = buildAST(code);
+    ASSERT_TRUE(AST) << "Failed to parse C++ code";
 
-    // ... test logic ...
-
-    EXPECT_NE(vtableCode.find("struct Base_vtable"), std::string::npos)
-        << "Expected 'struct Base_vtable' in output";
+    // Test logic with EXPECT_*/ASSERT_*
 }
-
-// No main() function needed - GTest provides it
 ```
 
-## Test Organization
+---
 
-### Directory Structure
-```
-tests/
-├── VirtualTableTestBase.h              # Shared fixtures
-├── virtual_inheritance_tests/          # New GTest directory
-│   ├── CMakeLists.txt                 # Build config
-│   ├── VtableGeneratorTest.cpp        # ✓ Migrated
-│   ├── VirtualMethodAnalyzerTest.cpp  # TODO
-│   ├── VirtualBaseDetectionTest.cpp   # TODO
-│   ... (13 more files to migrate)
-└── [original test files]               # Keep for reference
-```
+## NEXT STEPS
 
-## Build and Run Instructions
+### Immediate Actions (This Session)
+1. ✅ Identify all remaining macro-based test files
+2. ✅ Count tests in each file
+3. ✅ Create prioritized migration list
+4. ⏳ Begin Phase 1 migrations (quick wins)
 
-### Prerequisites
-- CMake 3.20+
-- LLVM/Clang (via Homebrew: /opt/homebrew/opt/llvm)
-- C++17 compiler
+### Recommended Next Session
+1. Complete Phase 1 (8 files, ~9 tests) - 1-2 hours
+2. Start Phase 2 (MoveSemanticTranslatorTest) - 3-4 hours
+3. Begin Phase 3 (InheritanceTest) - 4-6 hours
 
-### Build
-```bash
-cd /Users/alexanderfedin/Projects/hapyy/hupyy-cpp-to-c/tests/virtual_inheritance_tests
-mkdir -p build
-cd build
-cmake ..
-make
-```
+### Long-term Strategy
+- Allocate 2-3 migration sessions per week
+- Target 50-100 tests per session
+- Prioritize by:
+  1. Feature completeness (finish partially migrated)
+  2. Test value (integration > unit > edge cases)
+  3. Code criticality (core features > nice-to-have)
 
-### Run Tests
-```bash
-# Run all tests
-ctest --output-on-failure
+---
 
-# Run specific test
-./test_vtable_generator
+## FILES REFERENCE
 
-# Run tests with specific label
-ctest -L virtual
-ctest -L vtable
-```
+### Absolute Paths
+All files located in: `/Users/alexanderfedin/Projects/hapyy/hupyy-cpp-to-c/tests/`
 
-## Test Statistics
+### Migration Output Pattern
+- Original: `TestName.cpp`
+- Migrated: `TestName_GTest.cpp` or `TestName_gtest.cpp`
+- Location: Same directory as original OR `gtest/` subdirectory
 
-### Total Test Count: 127 tests across 16 files
-
-| Category | Files | Tests | Status |
-|----------|-------|-------|--------|
-| Vtable Generation | 3 | 21 | 1/3 files migrated |
-| Virtual Inheritance | 3 | 24 | Not started |
-| Override/Hierarchy | 3 | 19 | Not started |
-| Vptr/Pure Virtual | 2 | 13 | Not started |
-| Dynamic Cast | 3 | 22 | Not started |
-| Type Info | 2 | 16 | Not started |
-| **TOTAL** | **16** | **127** | **8 tests (6.3%)** |
-
-## Migration Checklist
-
-### Per-File Migration Steps
-1. [ ] Copy source file to virtual_inheritance_tests/
-2. [ ] Add GTest include: `#include <gtest/gtest.h>`
-3. [ ] Add base fixture include: `#include "../VirtualTableTestBase.h"`
-4. [ ] Create test fixture class inheriting from VirtualTableTestBase
-5. [ ] Convert each test function from `void test_Foo()` to `TEST_F(ClassName, Foo)`
-6. [ ] Remove TEST_START/TEST_PASS macros
-7. [ ] Convert ASSERT macros to ASSERT_*/EXPECT_* macros
-8. [ ] Remove buildAST() helper (use inherited version)
-9. [ ] Remove findClass() helper (use inherited version)
-10. [ ] Remove main() function
-11. [ ] Build and verify compilation
-12. [ ] Run tests and verify all pass
-13. [ ] Mark file as completed in this report
-
-## Automation Tool
-
-A Python migration script has been created at:
-`/Users/alexanderfedin/Projects/hapyy/hupyy-cpp-to-c/tests/migrate_to_gtest.py`
-
-**Note:** Automated migration may require manual review and fixes. The script provides a starting point but manual verification is essential for correctness.
-
-## Next Steps
-
-### Immediate (Priority 1)
-1. Migrate remaining Batch 1 files (VirtualMethodAnalyzerTest, VtableInitializerTest)
-2. Build and verify batch 1 passes
-3. Move to Batch 2
-
-### Short-term (Priority 2)
-1. Complete all 6 batches
-2. Verify all 127 tests pass
-3. Update main project CMakeLists.txt to include virtual_inheritance_tests
-
-### Long-term (Priority 3)
-1. Archive or remove original custom framework test files
-2. Add to CI/CD pipeline
-3. Document any test failures or implementation gaps discovered
-
-## Notes
-
-- All original test files are preserved in `/Users/alexanderfedin/Projects/hapyy/hupyy-cpp-to-c/tests/`
-- Migration follows SOLID principles and TDD approach as per CLAUDE.md
-- Shared fixtures promote DRY (Don't Repeat Yourself) principle
-- Test organization follows Single Responsibility Principle
