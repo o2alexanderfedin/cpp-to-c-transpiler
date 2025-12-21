@@ -33,28 +33,55 @@ if(ENABLE_COVERAGE)
 
     # Add custom target for coverage report generation
     if(LCOV_PATH AND GENHTML_PATH)
+        # Determine parallel job count
+        if(NOT DEFINED PARALLEL_JOBS)
+            if(APPLE)
+                execute_process(COMMAND sysctl -n hw.ncpu OUTPUT_VARIABLE PARALLEL_JOBS OUTPUT_STRIP_TRAILING_WHITESPACE)
+            else()
+                execute_process(COMMAND nproc OUTPUT_VARIABLE PARALLEL_JOBS OUTPUT_STRIP_TRAILING_WHITESPACE)
+            endif()
+            if(NOT PARALLEL_JOBS)
+                set(PARALLEL_JOBS 4)
+            endif()
+        endif()
+
         add_custom_target(coverage
             COMMAND ${CMAKE_COMMAND} -E echo "Generating coverage report..."
 
             # Initialize coverage data
             COMMAND ${LCOV_PATH} --directory . --zerocounters
 
-            # Run tests (this will be filled in by the script)
-            COMMAND ${CMAKE_COMMAND} -E echo "Run tests before generating coverage"
+            # Run ALL tests (Phase 15-04 enhancement)
+            COMMAND ${CMAKE_CTEST_COMMAND} --parallel ${PARALLEL_JOBS}
 
             # Capture coverage data
             COMMAND ${LCOV_PATH} --directory . --capture --output-file coverage.info
 
             # Remove system headers and test files from coverage
-            COMMAND ${LCOV_PATH} --remove coverage.info '/usr/*' '*/tests/*' '*/build/*' --output-file coverage.info.cleaned
+            COMMAND ${LCOV_PATH} --remove coverage.info
+                '/usr/*'
+                '*/tests/*'
+                '*/build/*'
+                '*/examples/*'
+                '*/benchmarks/*'
+                --output-file coverage.info.cleaned
 
             # Generate HTML report
-            COMMAND ${GENHTML_PATH} coverage.info.cleaned --output-directory coverage --demangle-cpp
+            COMMAND ${GENHTML_PATH} coverage.info.cleaned
+                --output-directory coverage
+                --demangle-cpp
+                --title "C++ to C Transpiler Coverage"
+                --legend
+                --show-details
 
-            COMMAND ${CMAKE_COMMAND} -E echo "Coverage report generated in coverage/"
+            # Print summary
+            COMMAND ${LCOV_PATH} --summary coverage.info.cleaned
+
+            COMMAND ${CMAKE_COMMAND} -E echo "Coverage report: ${CMAKE_BINARY_DIR}/coverage/index.html"
 
             WORKING_DIRECTORY ${CMAKE_BINARY_DIR}
-            COMMENT "Generating code coverage report"
+            COMMENT "Generating code coverage report with HTML output"
+            USES_TERMINAL
         )
     endif()
 endif()
@@ -2614,3 +2641,44 @@ target_link_libraries(VirtualMethodIntegrationTest PRIVATE
 #     GTest::gtest
 #     GTest::gtest_main
 # )
+
+# ============================================================================
+# Phase 15-04: Unified Test Execution - Convenience Test Targets
+# ============================================================================
+
+# Test target aliases for convenience
+add_custom_target(test-all
+    COMMAND ${CMAKE_CTEST_COMMAND} --output-on-failure
+    COMMENT "Running all tests"
+    USES_TERMINAL
+)
+
+add_custom_target(test-core
+    COMMAND ${CMAKE_CTEST_COMMAND} -L "core" --output-on-failure
+    COMMENT "Running core unit tests only"
+    USES_TERMINAL
+)
+
+add_custom_target(test-integration
+    COMMAND ${CMAKE_CTEST_COMMAND} -L "integration" --output-on-failure
+    COMMENT "Running integration tests only"
+    USES_TERMINAL
+)
+
+add_custom_target(test-real-world
+    COMMAND ${CMAKE_CTEST_COMMAND} -L "real-world" --output-on-failure
+    COMMENT "Running real-world tests only"
+    USES_TERMINAL
+)
+
+add_custom_target(test-parallel
+    COMMAND ${CMAKE_CTEST_COMMAND} --parallel ${PARALLEL_JOBS}
+    COMMENT "Running tests in parallel"
+    USES_TERMINAL
+)
+
+add_custom_target(test-verbose
+    COMMAND ${CMAKE_CTEST_COMMAND} --output-on-failure --verbose
+    COMMENT "Running tests with verbose output"
+    USES_TERMINAL
+)

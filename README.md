@@ -378,16 +378,27 @@ The tool currently parses C++ files and reports AST structure:
 
 **Testing:**
 
+The project has **1,980 comprehensive tests** covering all transpiler features.
+
 ```bash
 # Run all tests
-./tests/build_test.sh
-./tests/libtooling_test.sh
-./tests/visitor_test.sh
+./scripts/run-all-tests.sh
 
-# Test with example files
-./build/cpptoc tests/fixtures/simple.cpp --
-./build/cpptoc tests/fixtures/visitor_test.cpp --
+# Generate code coverage
+./scripts/generate-coverage.sh
+
+# Run specific test categories
+cd build && make test-core        # Core unit tests
+cd build && make test-integration # Integration tests
+cd build && make test-real-world  # Real-world tests
 ```
+
+**Test Categories:**
+- **Core Unit Tests**: 1,693 tests for transpiler features
+- **Real-World Integration**: 203 end-to-end tests
+- **Inline-Style Tests**: 84 validation tests
+
+See [docs/testing.md](docs/testing.md) for comprehensive testing guide.
 
 **Future Usage (After Phase 1 POC):**
 
