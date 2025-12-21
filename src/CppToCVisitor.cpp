@@ -20,12 +20,15 @@ extern unsigned int getTemplateInstantiationLimit(); // Phase 11 (v2.4.0)
 extern bool shouldEnableExceptions();                // Phase 12 (v2.5.0)
 extern std::string getExceptionModel();              // Phase 12 (v2.5.0)
 extern bool shouldEnableRTTI();                      // Phase 13 (v2.6.0)
+extern bool shouldEnableEnumTranslation();           // Phase 16 (v2.9.0)
+extern bool shouldEnableRangeForExpansion();         // Phase 16 (v2.9.0)
 
 // Epic #193: ACSL Integration - Constructor Implementation
 CppToCVisitor::CppToCVisitor(ASTContext &Context, CNodeBuilder &Builder)
     : Context(Context), Builder(Builder), Mangler(Context),
       VirtualAnalyzer(Context), VptrInjectorInstance(Context, VirtualAnalyzer),
       MoveCtorTranslator(Context), MoveAssignTranslator(Context),
+      CopyAssignTranslator(Context), StaticMemberTrans(Context),
       RvalueRefParamTrans(Context) {
 
   // Initialize ACSL annotators if --generate-acsl flag is enabled
@@ -90,6 +93,10 @@ CppToCVisitor::CppToCVisitor(ASTContext &Context, CNodeBuilder &Builder)
       std::make_unique<clang::TryCatchTransformer>(m_exceptionFrameGen);
   m_throwTranslator = std::make_unique<clang::ThrowTranslator>();
   llvm::outs() << "Exception handling support initialized (SJLJ model)\n";
+
+  // Phase 10 (v2.3.0): Initialize lambda translation infrastructure
+  m_lambdaTranslator = std::make_unique<clang::LambdaTranslator>(Context, Mangler);
+  llvm::outs() << "Lambda expression support initialized\n";
 
   // Phase 13 (v2.6.0): Initialize RTTI infrastructure
   m_typeidTranslator =
@@ -222,6 +229,103 @@ bool CppToCVisitor::VisitCXXRecordDecl(CXXRecordDecl *D) {
   return true;
 }
 
+// Phase 16 (v2.9.0): Enum Translation
+bool CppToCVisitor::VisitEnumDecl(EnumDecl *D) {
+  // Skip incomplete or invalid declarations
+  if (!D || !D->isCompleteDefinition()) {
+    return true;
+  }
+
+  // Skip forward declarations
+  if (!D->getDefinition()) {
+    return true;
+  }
+
+  std::string enumName = D->getNameAsString();
+  bool isScoped = D->isScoped();
+
+  llvm::outs() << "Translating " << (isScoped ? "scoped" : "unscoped")
+               << " enum: " << enumName << "\n";
+
+  std::string enumCode;
+
+  // Get underlying type (C++11 feature)
+  QualType underlyingType = D->getIntegerType();
+  std::string underlyingTypeStr;
+
+  if (!underlyingType.isNull()) {
+    underlyingTypeStr = underlyingType.getAsString();
+    // Remove any qualifiers for cleaner output
+    underlyingTypeStr = underlyingType.getUnqualifiedType().getAsString();
+  }
+
+  if (isScoped) {
+    // Scoped enum (enum class): Generate prefixed C enum
+    // C doesn't have enum class, so we prefix values with enum name
+    enumCode += "// Scoped enum (enum class) " + enumName + "\n";
+    enumCode += "enum " + enumName + "_enum {\n";
+
+    // Generate enum values with prefix
+    bool first = true;
+    for (auto *enumerator : D->enumerators()) {
+      if (!first) {
+        enumCode += ",\n";
+      }
+      first = false;
+
+      std::string enumValue = enumName + "_" + enumerator->getNameAsString();
+      llvm::APSInt initVal = enumerator->getInitVal();
+
+      llvm::SmallString<32> initValStr;
+      initVal.toString(initValStr, 10);
+      enumCode += "  " + enumValue + " = " + initValStr.str().str();
+    }
+
+    enumCode += "\n};\n";
+
+    // Add typedef for underlying type (if specified)
+    if (!underlyingTypeStr.empty()) {
+      // For scoped enums, create typedef to underlying type
+      enumCode += "typedef " + underlyingTypeStr + " " + enumName + ";\n";
+      llvm::outs() << "  Generated typedef for underlying type: "
+                   << underlyingTypeStr << "\n";
+    } else {
+      // Default underlying type is int
+      enumCode += "typedef int " + enumName + ";\n";
+    }
+
+  } else {
+    // Unscoped enum: Generate C enum directly (no prefix needed)
+    enumCode += "// Unscoped enum " + enumName + "\n";
+    enumCode += "enum " + enumName + " {\n";
+
+    // Generate enum values without prefix
+    bool first = true;
+    for (auto *enumerator : D->enumerators()) {
+      if (!first) {
+        enumCode += ",\n";
+      }
+      first = false;
+
+      std::string enumValue = enumerator->getNameAsString();
+      llvm::APSInt initVal = enumerator->getInitVal();
+
+      llvm::SmallString<32> initValStr2;
+      initVal.toString(initValStr2, 10);
+      enumCode += "  " + enumValue + " = " + initValStr2.str().str();
+    }
+
+    enumCode += "\n};\n";
+  }
+
+  llvm::outs() << "Generated enum code:\n" << enumCode << "\n";
+
+  // TODO: Store enum code for output
+  // This will be integrated with the code generation infrastructure
+
+  return true;
+}
+
 // Story #16: Method-to-Function Conversion
 bool CppToCVisitor::VisitCXXMethodDecl(CXXMethodDecl *MD) {
   // Edge case 1: Skip implicit methods (compiler-generated)
@@ -246,13 +350,15 @@ bool CppToCVisitor::VisitCXXMethodDecl(CXXMethodDecl *MD) {
     return true;
   }
 
-  // Story #134: Handle copy assignment operators (skip for now, similar to
-  // move)
+  // Phase 15 (v2.8.0): Handle copy assignment operators
   if (MD->isCopyAssignmentOperator()) {
     llvm::outs() << "Translating copy assignment operator: "
                  << MD->getQualifiedNameAsString() << "\n";
-    // Copy assignment operators are handled similar to move assignments
-    // TODO: Generate C code for copy assignment
+    std::string cCode = CopyAssignTranslator.generateCopyAssignment(MD);
+    if (!cCode.empty()) {
+      llvm::outs() << "Generated copy assignment C code:\n" << cCode << "\n";
+      // TODO: Store generated function for later output
+    }
     return true;
   }
 
@@ -1542,15 +1648,72 @@ bool CppToCVisitor::VisitDoStmt(DoStmt *DS) {
   return true;
 }
 
-// Visit range-based for statements to track loop nesting
+// Phase 16 (v2.9.0): Visit range-based for statements - expanded implementation
 bool CppToCVisitor::VisitCXXForRangeStmt(CXXForRangeStmt *FRS) {
-  // Don't increment here - we'll do it during traversal
-  // This is just a marker visitor
+  // Note: This is a simplified implementation for Phase 16
+  // Full iterator protocol expansion will be completed in subsequent phases
+
+  if (!FRS) {
+    return true;
+  }
+
+  llvm::outs() << "Visiting range-for statement\n";
+
+  // Get range expression (container or array)
+  Expr *rangeInit = FRS->getRangeInit();
+  if (!rangeInit) {
+    llvm::outs() << "  Warning: No range init expression\n";
+    return true;
+  }
+
+  QualType rangeType = rangeInit->getType();
+  llvm::outs() << "  Range type: " << rangeType.getAsString() << "\n";
+
+  // Get loop variable
+  VarDecl *loopVar = FRS->getLoopVariable();
+  if (loopVar) {
+    llvm::outs() << "  Loop variable: " << loopVar->getNameAsString()
+                 << " (type: " << loopVar->getType().getAsString() << ")\n";
+  }
+
+  // Detect array type for direct indexing
+  if (rangeType->isArrayType()) {
+    llvm::outs() << "  Detected array type - direct indexing strategy\n";
+
+    // Get array element type and size
+    const ArrayType *arrType = rangeType->getAsArrayTypeUnsafe();
+    if (const ConstantArrayType *constArrType =
+            dyn_cast<ConstantArrayType>(arrType)) {
+      llvm::APInt sizeAPInt = constArrType->getSize();
+      uint64_t arraySize = sizeAPInt.getZExtValue();
+      llvm::outs() << "  Array size: " << arraySize << "\n";
+
+      QualType elemType = arrType->getElementType();
+      llvm::outs() << "  Element type: " << elemType.getAsString() << "\n";
+
+      // TODO: Generate traditional for loop with array indexing
+      // for (int i = 0; i < size; i++) {
+      //     ElementType var = arr[i];
+      //     ...
+      // }
+    }
+  } else if (rangeType->isRecordType()) {
+    // Container type (std::vector, std::map, etc.)
+    llvm::outs() << "  Detected container type - iterator protocol strategy\n";
+
+    // TODO: Implement iterator protocol expansion
+    // 1. Generate begin() and end() calls
+    // 2. Expand operator++ and operator* calls
+    // 3. Create traditional for loop structure
+  } else {
+    llvm::outs() << "  Unknown range type for range-for\n";
+  }
 
   // Epic #193: Note - CXXForRangeStmt not yet supported by ACSLLoopAnnotator
   // TODO: Add generateLoopAnnotations(const clang::CXXForRangeStmt *loop)
   // overload to ACSLLoopAnnotator
 
+  // Continue traversing the loop body
   return true;
 }
 
@@ -2464,6 +2627,50 @@ bool CppToCVisitor::VisitCXXTryStmt(CXXTryStmt *S) {
   return false;
 }
 
+// ============================================================================
+// Phase 10: Lambda Expression Translation (v2.3.0)
+// ============================================================================
+
+/**
+ * @brief Visit lambda expressions for translation to C closures
+ *
+ * Single Responsibility: Translate C++ lambda expressions to C function pointers + closures
+ * Dependency Inversion: Delegates to LambdaTranslator
+ *
+ * Examples:
+ * C++: auto lam = [x](int y) { return x + y; };
+ * C:   struct lambda_0_closure { int x; };
+ *      int lambda_0_func(const struct lambda_0_closure *__closure, int y) {
+ *        return __closure->x + y;
+ *      }
+ *
+ * @param E The LambdaExpr AST node
+ * @return true to continue traversal
+ */
+bool CppToCVisitor::VisitLambdaExpr(LambdaExpr *E) {
+  if (!E) {
+    return true;
+  }
+
+  llvm::outs() << "Processing lambda expression at "
+               << E->getBeginLoc().printToString(Context.getSourceManager())
+               << "\n";
+
+  // Translate lambda to C closure + function
+  clang::LambdaTranslation translation = m_lambdaTranslator->translateLambda(E);
+
+  // Output closure struct definition
+  llvm::outs() << "Generated closure struct:\n" << translation.closureStructDef;
+
+  // Output lambda function definition
+  llvm::outs() << "Generated lambda function:\n" << translation.funcDef;
+
+  // Store translation for later use (when lambda is invoked)
+  // The translation is already stored in m_lambdaTranslator
+
+  return true; // Continue traversal
+}
+
 /**
  * @brief Visit C++ throw expressions and translate to cxx_throw runtime calls
  *
@@ -2605,6 +2812,144 @@ bool CppToCVisitor::VisitCXXDynamicCastExpr(CXXDynamicCastExpr *E) {
   llvm::outs() << "Dynamic cast expression translated successfully\n";
 
   // Return true to continue traversal of subexpressions
+  return true;
+}
+
+// ============================================================================
+// Phase 14: Operator Overloading Implementation (v2.7.0)
+// ============================================================================
+
+/**
+ * @brief Visit operator call expressions
+ *
+ * Translates C++ operator overloading to C function calls.
+ * Handles member operators, non-member operators, pre/post increment/decrement,
+ * and operator chaining.
+ *
+ * Examples:
+ * - a + b (member)     → Complex_op_add(&a, &b)
+ * - a + b (non-member) → Vector_op_add(&a, &b)
+ * - ++a                → *Counter_op_inc(&a)
+ * - a++                → Counter_op_post_inc(&a, 0)
+ * - a[5]               → *Array_op_subscript(&a, 5)
+ * - a == b             → Point_op_eq(&a, &b)
+ */
+bool CppToCVisitor::VisitCXXOperatorCallExpr(CXXOperatorCallExpr *E) {
+  if (!E) {
+    return true;
+  }
+
+  // Get the operator function declaration
+  const FunctionDecl *opDecl = E->getDirectCallee();
+  if (!opDecl) {
+    llvm::errs() << "Error: Cannot resolve operator function declaration\n";
+    return true;
+  }
+
+  // Get operator kind
+  OverloadedOperatorKind opKind = E->getOperator();
+
+  llvm::outs() << "Translating operator call: "
+               << getOperatorSpelling(opKind) << "\n";
+
+  // Determine if this is a member operator or non-member operator
+  bool isMemberOperator = isa<CXXMethodDecl>(opDecl);
+  const CXXMethodDecl *methodDecl =
+      isMemberOperator ? cast<CXXMethodDecl>(opDecl) : nullptr;
+
+  // Generate mangled function name
+  std::string funcName;
+  if (isMemberOperator) {
+    funcName = Mangler.mangleOperatorName(
+        const_cast<CXXMethodDecl *>(methodDecl), opKind);
+  } else {
+    // For non-member operators, we need to mangle based on parameter types
+    // Use the same pattern but extract class name from first parameter
+    if (E->getNumArgs() > 0) {
+      QualType firstArgType = E->getArg(0)->getType();
+      // Remove reference if present
+      if (firstArgType->isReferenceType()) {
+        firstArgType = firstArgType->getPointeeType();
+      }
+      if (const RecordType *RT = firstArgType->getAs<RecordType>()) {
+        if (CXXRecordDecl *RD = dyn_cast<CXXRecordDecl>(RT->getDecl())) {
+          std::string className = Mangler.mangleClassName(RD);
+          std::string opSuffix = Mangler.getOperatorSuffix(opKind, false);
+          funcName = className + "_op_" + opSuffix;
+        }
+      }
+    }
+  }
+
+  if (funcName.empty()) {
+    llvm::errs() << "Error: Failed to generate operator function name\n";
+    return true;
+  }
+
+  llvm::outs() << "  Mangled name: " << funcName << "\n";
+
+  // Build parameter list for function call
+  std::vector<std::string> params;
+
+  // For member operators: implicit 'this' is first argument in CXXOperatorCallExpr
+  // For non-member operators: all arguments are explicit
+  // Note: CXXOperatorCallExpr includes 'this' as first argument for member operators
+
+  for (unsigned i = 0; i < E->getNumArgs(); ++i) {
+    Expr *arg = E->getArg(i);
+    std::string argStr;
+
+    // For the object argument (first arg of member operator), pass address
+    // For other arguments, generate expression string
+    if (i == 0 && isMemberOperator) {
+      // Pass address of 'this' object
+      argStr = "&("; // TODO: translate arg expression
+      argStr += ")";
+    } else {
+      // Regular argument - generate expression
+      argStr = ""; // TODO: translate arg expression
+    }
+
+    params.push_back(argStr);
+  }
+
+  // Special handling for post-increment/decrement: add dummy int parameter
+  if ((opKind == OO_PlusPlus || opKind == OO_MinusMinus) && isMemberOperator) {
+    // Check if this is postfix (method has 1 parameter)
+    if (methodDecl && methodDecl->getNumParams() == 1) {
+      params.push_back("0");
+    }
+  }
+
+  // Generate function call expression
+  std::string callExpr = funcName + "(";
+  for (size_t i = 0; i < params.size(); ++i) {
+    if (i > 0)
+      callExpr += ", ";
+    callExpr += params[i];
+  }
+  callExpr += ")";
+
+  // Special handling for operators that return references (need dereference)
+  // This includes: =, +=, -=, *=, /=, %=, &=, |=, ^=, <<=, >>=, ++, --, [], *
+  bool returnsReference = false;
+  if (isMemberOperator && methodDecl) {
+    QualType returnType = methodDecl->getReturnType();
+    returnsReference = returnType->isReferenceType();
+  }
+
+  if (returnsReference &&
+      (opKind == OO_PlusPlus || opKind == OO_MinusMinus) &&
+      methodDecl && methodDecl->getNumParams() == 0) {
+    // Prefix increment/decrement returns reference, need to dereference
+    callExpr = "*(" + callExpr + ")";
+  }
+
+  llvm::outs() << "  Translated to: " << callExpr << "\n";
+
+  // TODO: Store translation in expression map for code generation
+
+  // Return true to continue traversal
   return true;
 }
 

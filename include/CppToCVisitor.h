@@ -9,10 +9,13 @@
 #include "ACSLStatementAnnotator.h"
 #include "ACSLTypeInvariantGenerator.h"
 #include "CNodeBuilder.h"
+#include "CopyAssignmentTranslator.h"
 #include "DynamicCastTranslator.h"
 #include "ExceptionFrameGenerator.h"
+#include "LambdaTranslator.h"
 #include "MoveAssignmentTranslator.h"
 #include "MoveConstructorTranslator.h"
+#include "StaticMemberTranslator.h"
 #include "NameMangler.h"
 #include "OverrideResolver.h"
 #include "RvalueRefParamTranslator.h"
@@ -61,6 +64,12 @@ class CppToCVisitor : public clang::RecursiveASTVisitor<CppToCVisitor> {
   // Story #131: Move assignment operator translation
   MoveAssignmentTranslator MoveAssignTranslator;
 
+  // Phase 15 (v2.8.0): Copy assignment operator translation
+  CopyAssignmentTranslator CopyAssignTranslator;
+
+  // Phase 15 (v2.8.0): Static member translation
+  StaticMemberTranslator StaticMemberTrans;
+
   // Story #133: Rvalue reference parameter translation
   RvalueRefParamTranslator RvalueRefParamTrans;
 
@@ -105,6 +114,9 @@ class CppToCVisitor : public clang::RecursiveASTVisitor<CppToCVisitor> {
   // Phase 13: RTTI infrastructure (v2.6.0)
   std::unique_ptr<TypeidTranslator> m_typeidTranslator;
   std::unique_ptr<DynamicCastTranslator> m_dynamicCastTranslator;
+
+  // Phase 10: Lambda expression translation (v2.3.0)
+  std::unique_ptr<clang::LambdaTranslator> m_lambdaTranslator;
 
   // Current translation context (Story #19)
   clang::ParmVarDecl *currentThisParam = nullptr;
@@ -161,6 +173,9 @@ public:
 
   // Visit C++ class/struct declarations
   bool VisitCXXRecordDecl(clang::CXXRecordDecl *D);
+
+  // Phase 16: Visit enum declarations (v2.9.0)
+  bool VisitEnumDecl(clang::EnumDecl *D);
 
   // Visit C++ member function declarations
   bool VisitCXXMethodDecl(clang::CXXMethodDecl *MD);
@@ -226,9 +241,15 @@ public:
   bool VisitCXXTryStmt(clang::CXXTryStmt *S);
   bool VisitCXXThrowExpr(clang::CXXThrowExpr *E);
 
+  // Phase 10: Lambda expression visitor method (v2.3.0)
+  bool VisitLambdaExpr(clang::LambdaExpr *E);
+
   // Phase 13: RTTI visitor methods (v2.6.0)
   bool VisitCXXTypeidExpr(clang::CXXTypeidExpr *E);
   bool VisitCXXDynamicCastExpr(clang::CXXDynamicCastExpr *E);
+
+  // Phase 14: Operator Overloading visitor method (v2.7.0)
+  bool VisitCXXOperatorCallExpr(clang::CXXOperatorCallExpr *E);
 
   // Retrieve generated C struct by class name (for testing)
   clang::RecordDecl *getCStruct(llvm::StringRef className) const;
