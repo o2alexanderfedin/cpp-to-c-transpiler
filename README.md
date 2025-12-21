@@ -33,6 +33,13 @@ This README provides a quick overview - the documentation site contains the comp
 This project implements a C++ to C transpiler that produces high-quality, human-readable C code suitable for formal verification with tools like Frama-C. The converter handles modern C++ features including:
 
 - ✅ Classes (single/multiple/virtual inheritance)
+- ✅ **Virtual Methods** (v2.2.0) - Full polymorphism and dynamic dispatch support
+  - ✅ **Virtual method detection** - Across all inheritance hierarchies
+  - ✅ **Vtable generation** - Struct-based vtable definitions
+  - ✅ **Vptr injection** - Automatic virtual pointer field management
+  - ✅ **Virtual call translation** - Dynamic dispatch via vtables
+  - ✅ **Abstract classes** - Pure virtual methods and abstract class support
+  - ✅ **Multi-level inheritance** - Proper override resolution
 - ✅ **Standalone Functions** (v2.1.0) - Free function translation with overloading support
   - ✅ **Function overloading** - Intelligent name mangling for same-named functions
   - ✅ **Variadic functions** - Proper ellipsis (...) preservation

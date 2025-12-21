@@ -1,36 +1,37 @@
 #pragma once
 
-#include "clang/AST/RecursiveASTVisitor.h"
-#include "clang/AST/ASTContext.h"
+#include "ACSLAxiomaticBuilder.h"
+#include "ACSLBehaviorAnnotator.h"
+#include "ACSLClassAnnotator.h"
+#include "ACSLFunctionAnnotator.h"
+#include "ACSLGhostCodeInjector.h"
+#include "ACSLLoopAnnotator.h"
+#include "ACSLStatementAnnotator.h"
+#include "ACSLTypeInvariantGenerator.h"
 #include "CNodeBuilder.h"
+#include "DynamicCastTranslator.h"
+#include "ExceptionFrameGenerator.h"
+#include "MoveAssignmentTranslator.h"
+#include "MoveConstructorTranslator.h"
 #include "NameMangler.h"
+#include "OverrideResolver.h"
+#include "RvalueRefParamTranslator.h"
+#include "TemplateExtractor.h"
+#include "TemplateInstantiationTracker.h"
+#include "TemplateMonomorphizer.h"
+#include "ThrowTranslator.h"
+#include "TryCatchTransformer.h"
+#include "TypeidTranslator.h"
+#include "VirtualCallTranslator.h"
 #include "VirtualMethodAnalyzer.h"
 #include "VptrInjector.h"
 #include "VtableGenerator.h"
-#include "VirtualCallTranslator.h"
-#include "OverrideResolver.h"
-#include "MoveConstructorTranslator.h"
-#include "MoveAssignmentTranslator.h"
-#include "RvalueRefParamTranslator.h"
-#include "ACSLFunctionAnnotator.h"
-#include "ACSLLoopAnnotator.h"
-#include "ACSLClassAnnotator.h"
-#include "ACSLStatementAnnotator.h"
-#include "ACSLTypeInvariantGenerator.h"
-#include "ACSLAxiomaticBuilder.h"
-#include "ACSLGhostCodeInjector.h"
-#include "ACSLBehaviorAnnotator.h"
-#include "TemplateExtractor.h"
-#include "TemplateMonomorphizer.h"
-#include "TemplateInstantiationTracker.h"
-#include "TryCatchTransformer.h"
-#include "ThrowTranslator.h"
-#include "ExceptionFrameGenerator.h"
-#include "TypeidTranslator.h"
-#include "DynamicCastTranslator.h"
+#include "VtableInitializer.h"
+#include "clang/AST/ASTContext.h"
+#include "clang/AST/RecursiveASTVisitor.h"
 #include <map>
-#include <string>
 #include <memory>
+#include <string>
 
 // RecursiveASTVisitor that traverses C++ AST nodes
 // Single Responsibility: Visit and identify AST nodes for translation
@@ -42,10 +43,17 @@ class CppToCVisitor : public clang::RecursiveASTVisitor<CppToCVisitor> {
   // Phase 9 (v2.2.0): Virtual method support
   VirtualMethodAnalyzer VirtualAnalyzer;
   VptrInjector VptrInjectorInstance;
-  std::unique_ptr<OverrideResolver> m_overrideResolver;        // Story #170: Override resolution
-  std::unique_ptr<VtableGenerator> m_vtableGenerator;          // Story #168: Vtable generation
-  std::unique_ptr<VirtualCallTranslator> m_virtualCallTrans;   // Story #172: Virtual call translation
-  std::map<std::string, std::string> m_vtableInstances;         // Store generated vtable instances (class -> vtable code)
+  std::unique_ptr<OverrideResolver>
+      m_overrideResolver; // Story #170: Override resolution
+  std::unique_ptr<VtableGenerator>
+      m_vtableGenerator; // Story #168: Vtable generation
+  std::unique_ptr<VtableInitializer>
+      m_vtableInitializer; // Story #171: Vtable initialization
+  std::unique_ptr<VirtualCallTranslator>
+      m_virtualCallTrans; // Story #172: Virtual call translation
+  std::map<std::string, std::string>
+      m_vtableInstances; // Store generated vtable instances (class -> vtable
+                         // code)
 
   // Story #130: Move constructor translation
   MoveConstructorTranslator MoveCtorTranslator;
@@ -67,32 +75,32 @@ class CppToCVisitor : public clang::RecursiveASTVisitor<CppToCVisitor> {
   std::unique_ptr<ACSLBehaviorAnnotator> m_behaviorAnnotator;
 
   // Mapping: C++ class -> C struct (Story #15)
-  std::map<clang::CXXRecordDecl*, clang::RecordDecl*> cppToCMap;
+  std::map<clang::CXXRecordDecl *, clang::RecordDecl *> cppToCMap;
 
   // Mapping: C++ method -> C function (Story #16)
-  std::map<clang::CXXMethodDecl*, clang::FunctionDecl*> methodToCFunc;
+  std::map<clang::CXXMethodDecl *, clang::FunctionDecl *> methodToCFunc;
 
   // Mapping: C++ constructor -> C function (Story #17)
-  std::map<clang::CXXConstructorDecl*, clang::FunctionDecl*> ctorMap;
+  std::map<clang::CXXConstructorDecl *, clang::FunctionDecl *> ctorMap;
 
   // Mapping: C++ destructor -> C function (Story #152 - Epic #5)
-  std::map<clang::CXXDestructorDecl*, clang::FunctionDecl*> dtorMap;
+  std::map<clang::CXXDestructorDecl *, clang::FunctionDecl *> dtorMap;
 
   // Phase 8: Mapping: Standalone functions (by mangled name -> C function)
-  std::map<std::string, clang::FunctionDecl*> standaloneFuncMap;
+  std::map<std::string, clang::FunctionDecl *> standaloneFuncMap;
 
   // Phase 11: Template monomorphization infrastructure (v2.4.0)
   std::unique_ptr<TemplateExtractor> m_templateExtractor;
   std::unique_ptr<TemplateMonomorphizer> m_templateMonomorphizer;
   std::unique_ptr<TemplateInstantiationTracker> m_templateTracker;
-  std::string m_monomorphizedCode;  // Store generated template code
+  std::string m_monomorphizedCode; // Store generated template code
 
   // Phase 12: Exception handling infrastructure (v2.5.0)
   std::unique_ptr<clang::TryCatchTransformer> m_tryCatchTransformer;
   std::unique_ptr<clang::ThrowTranslator> m_throwTranslator;
   std::shared_ptr<ExceptionFrameGenerator> m_exceptionFrameGen;
-  unsigned int m_exceptionFrameCounter = 0;  // Counter for unique frame names
-  unsigned int m_tryBlockCounter = 0;         // Counter for unique action table names
+  unsigned int m_exceptionFrameCounter = 0; // Counter for unique frame names
+  unsigned int m_tryBlockCounter = 0; // Counter for unique action table names
 
   // Phase 13: RTTI infrastructure (v2.6.0)
   std::unique_ptr<TypeidTranslator> m_typeidTranslator;
@@ -103,45 +111,53 @@ class CppToCVisitor : public clang::RecursiveASTVisitor<CppToCVisitor> {
   clang::CXXMethodDecl *currentMethod = nullptr;
 
   // Story #44: Track local objects with destructors for current function
-  std::vector<clang::VarDecl*> currentFunctionObjectsToDestroy;
+  std::vector<clang::VarDecl *> currentFunctionObjectsToDestroy;
 
   // Story #45: Track return statements and their associated scopes
   struct ReturnInfo {
     clang::ReturnStmt *returnStmt;
-    std::vector<clang::VarDecl*> liveObjects;  // Objects live at this return
+    std::vector<clang::VarDecl *> liveObjects; // Objects live at this return
   };
   std::vector<ReturnInfo> currentFunctionReturns;
 
   // Story #46: Track nested scopes and scope-level objects
   struct ScopeInfo {
-    clang::CompoundStmt *stmt;              // The compound statement for this scope
-    std::vector<clang::VarDecl*> objects;   // Objects declared in this scope
-    unsigned int depth;                      // Nesting depth (0 = function body)
+    clang::CompoundStmt *stmt; // The compound statement for this scope
+    std::vector<clang::VarDecl *> objects; // Objects declared in this scope
+    unsigned int depth;                    // Nesting depth (0 = function body)
   };
-  std::vector<ScopeInfo> scopeStack;        // Stack of currently active scopes
+  std::vector<ScopeInfo> scopeStack; // Stack of currently active scopes
 
   // Story #47: Track goto statements and labels for destructor injection
   struct GotoInfo {
-    clang::GotoStmt *gotoStmt;              // The goto statement
-    clang::LabelStmt *targetLabel;          // The target label (matched by name)
-    std::vector<clang::VarDecl*> liveObjects; // Objects live at goto that need destruction
+    clang::GotoStmt *gotoStmt;     // The goto statement
+    clang::LabelStmt *targetLabel; // The target label (matched by name)
+    std::vector<clang::VarDecl *>
+        liveObjects; // Objects live at goto that need destruction
   };
-  std::vector<GotoInfo> currentFunctionGotos; // Goto statements in current function
-  std::map<std::string, clang::LabelStmt*> currentFunctionLabels; // Labels in current function
+  std::vector<GotoInfo>
+      currentFunctionGotos; // Goto statements in current function
+  std::map<std::string, clang::LabelStmt *>
+      currentFunctionLabels; // Labels in current function
 
-  // Story #48: Track break/continue statements in loops for destructor injection
+  // Story #48: Track break/continue statements in loops for destructor
+  // injection
   struct BreakContinueInfo {
-    clang::Stmt *stmt;                      // The break or continue statement
-    bool isBreak;                           // true = break, false = continue
-    std::vector<clang::VarDecl*> liveObjects; // Objects live at break/continue that need destruction
+    clang::Stmt *stmt; // The break or continue statement
+    bool isBreak;      // true = break, false = continue
+    std::vector<clang::VarDecl *>
+        liveObjects; // Objects live at break/continue that need destruction
   };
-  std::vector<BreakContinueInfo> currentFunctionBreaksContinues; // Break/continue statements in current function
+  std::vector<BreakContinueInfo>
+      currentFunctionBreaksContinues; // Break/continue statements in current
+                                      // function
 
   // Story #48: Track loop nesting to know when we're inside a loop
-  unsigned int loopNestingLevel = 0;        // 0 = not in loop, >0 = loop depth
+  unsigned int loopNestingLevel = 0; // 0 = not in loop, >0 = loop depth
 
 public:
-  explicit CppToCVisitor(clang::ASTContext &Context, clang::CNodeBuilder &Builder);
+  explicit CppToCVisitor(clang::ASTContext &Context,
+                         clang::CNodeBuilder &Builder);
 
   // Visit C++ class/struct declarations
   bool VisitCXXRecordDecl(clang::CXXRecordDecl *D);
@@ -165,16 +181,16 @@ public:
   bool VisitCompoundStmt(clang::CompoundStmt *CS);
 
   // Expression translation (Story #19)
-  clang::Expr* translateExpr(clang::Expr *E);
-  clang::Expr* translateDeclRefExpr(clang::DeclRefExpr *DRE);
-  clang::Expr* translateMemberExpr(clang::MemberExpr *ME);
-  clang::Expr* translateCallExpr(clang::CallExpr *CE);
-  clang::Expr* translateBinaryOperator(clang::BinaryOperator *BO);
+  clang::Expr *translateExpr(clang::Expr *E);
+  clang::Expr *translateDeclRefExpr(clang::DeclRefExpr *DRE);
+  clang::Expr *translateMemberExpr(clang::MemberExpr *ME);
+  clang::Expr *translateCallExpr(clang::CallExpr *CE);
+  clang::Expr *translateBinaryOperator(clang::BinaryOperator *BO);
 
   // Statement translation (Story #19)
-  clang::Stmt* translateStmt(clang::Stmt *S);
-  clang::Stmt* translateReturnStmt(clang::ReturnStmt *RS);
-  clang::Stmt* translateCompoundStmt(clang::CompoundStmt *CS);
+  clang::Stmt *translateStmt(clang::Stmt *S);
+  clang::Stmt *translateReturnStmt(clang::ReturnStmt *RS);
+  clang::Stmt *translateCompoundStmt(clang::CompoundStmt *CS);
 
   // Story #45: Return statement visitor for early return detection
   bool VisitReturnStmt(clang::ReturnStmt *RS);
@@ -203,7 +219,8 @@ public:
   // Phase 11: Template monomorphization visitor methods (v2.4.0)
   bool VisitClassTemplateDecl(clang::ClassTemplateDecl *D);
   bool VisitFunctionTemplateDecl(clang::FunctionTemplateDecl *D);
-  bool VisitClassTemplateSpecializationDecl(clang::ClassTemplateSpecializationDecl *D);
+  bool VisitClassTemplateSpecializationDecl(
+      clang::ClassTemplateSpecializationDecl *D);
 
   // Phase 12: Exception handling visitor methods (v2.5.0)
   bool VisitCXXTryStmt(clang::CXXTryStmt *S);
@@ -214,16 +231,16 @@ public:
   bool VisitCXXDynamicCastExpr(clang::CXXDynamicCastExpr *E);
 
   // Retrieve generated C struct by class name (for testing)
-  clang::RecordDecl* getCStruct(llvm::StringRef className) const;
+  clang::RecordDecl *getCStruct(llvm::StringRef className) const;
 
   // Retrieve generated C function by name (for testing)
-  clang::FunctionDecl* getCFunc(llvm::StringRef funcName) const;
+  clang::FunctionDecl *getCFunc(llvm::StringRef funcName) const;
 
   // Retrieve generated C constructor function by name (for testing)
-  clang::FunctionDecl* getCtor(llvm::StringRef funcName) const;
+  clang::FunctionDecl *getCtor(llvm::StringRef funcName) const;
 
   // Retrieve generated C destructor function by name (for testing - Story #152)
-  clang::FunctionDecl* getDtor(llvm::StringRef funcName) const;
+  clang::FunctionDecl *getDtor(llvm::StringRef funcName) const;
 
 private:
   // Epic #5: RAII helper methods
@@ -240,7 +257,7 @@ private:
    * @param VD Variable declaration to destroy
    * @return CallExpr for the destructor call
    */
-  clang::CallExpr* createDestructorCall(clang::VarDecl *VD);
+  clang::CallExpr *createDestructorCall(clang::VarDecl *VD);
 
   /**
    * @brief Inject destructor calls at end of compound statement
@@ -248,7 +265,7 @@ private:
    * @param vars Variables to destroy (in reverse construction order)
    */
   void injectDestructorsAtScopeExit(clang::CompoundStmt *CS,
-                                    const std::vector<clang::VarDecl*> &vars);
+                                    const std::vector<clang::VarDecl *> &vars);
 
   /**
    * @brief Analyze which objects are live at a specific return statement
@@ -260,8 +277,8 @@ private:
    * Determines which objects with destructors are constructed and in scope
    * at the given return statement location.
    */
-  std::vector<clang::VarDecl*> analyzeLiveObjectsAtReturn(
-      clang::ReturnStmt *RS, clang::FunctionDecl *FD);
+  std::vector<clang::VarDecl *>
+  analyzeLiveObjectsAtReturn(clang::ReturnStmt *RS, clang::FunctionDecl *FD);
 
   /**
    * @brief Check if a statement/decl comes before another in control flow
@@ -333,17 +350,17 @@ private:
    * Story #47: Scope analysis for goto jumps
    * Identifies objects constructed before goto that won't be in scope at label.
    */
-  std::vector<clang::VarDecl*> analyzeObjectsForGoto(
-      clang::GotoStmt *gotoStmt,
-      clang::LabelStmt *labelStmt,
-      clang::FunctionDecl *FD);
+  std::vector<clang::VarDecl *>
+  analyzeObjectsForGoto(clang::GotoStmt *gotoStmt, clang::LabelStmt *labelStmt,
+                        clang::FunctionDecl *FD);
 
   // ============================================================================
   // Story #48: Loop Break/Continue Handling Methods
   // ============================================================================
 
   /**
-   * @brief Analyze break/continue statements and determine objects needing destruction
+   * @brief Analyze break/continue statements and determine objects needing
+   * destruction
    * @param FD The function containing break/continue statements
    *
    * Story #48: Break/continue analysis for destructor injection
@@ -353,17 +370,18 @@ private:
   void analyzeBreakContinueStatements(clang::FunctionDecl *FD);
 
   /**
-   * @brief Determine which objects are live at break/continue and need destruction
+   * @brief Determine which objects are live at break/continue and need
+   * destruction
    * @param stmt The break or continue statement
    * @param FD The function containing the statement
    * @return Vector of objects that need destruction before break/continue
    *
    * Story #48: Scope analysis for loop exits
-   * Identifies all loop-local objects that need destruction before exiting loop.
+   * Identifies all loop-local objects that need destruction before exiting
+   * loop.
    */
-  std::vector<clang::VarDecl*> analyzeObjectsForBreakContinue(
-      clang::Stmt *stmt,
-      clang::FunctionDecl *FD);
+  std::vector<clang::VarDecl *>
+  analyzeObjectsForBreakContinue(clang::Stmt *stmt, clang::FunctionDecl *FD);
 
   // Epic #6: Single Inheritance helper methods
 
@@ -376,7 +394,7 @@ private:
    * Open/Closed: Can extend for multiple inheritance without modifying
    */
   void collectBaseClassFields(clang::CXXRecordDecl *D,
-                               std::vector<clang::FieldDecl*> &fields);
+                              std::vector<clang::FieldDecl *> &fields);
 
   /**
    * @brief Create base constructor call statements for derived constructor
@@ -393,8 +411,8 @@ private:
    * source, ensuring proper initialization semantics.
    */
   void emitBaseConstructorCalls(clang::CXXConstructorDecl *CD,
-                                 clang::ParmVarDecl *thisParam,
-                                 std::vector<clang::Stmt*> &stmts);
+                                clang::ParmVarDecl *thisParam,
+                                std::vector<clang::Stmt *> &stmts);
 
   /**
    * @brief Create base destructor call statements for derived destructor
@@ -407,11 +425,12 @@ private:
    *
    * This method identifies the base classes and generates calls to their
    * destructors. Base destructor calls are added AFTER the derived destructor
-   * body, ensuring destruction order is reverse of construction (C++ semantics).
+   * body, ensuring destruction order is reverse of construction (C++
+   * semantics).
    */
   void emitBaseDestructorCalls(clang::CXXDestructorDecl *DD,
-                                clang::ParmVarDecl *thisParam,
-                                std::vector<clang::Stmt*> &stmts);
+                               clang::ParmVarDecl *thisParam,
+                               std::vector<clang::Stmt *> &stmts);
 
   // Story #63: Complete Constructor/Destructor Chaining
 
@@ -428,8 +447,8 @@ private:
    * calls for class-type members, either from explicit init list or default.
    */
   void emitMemberConstructorCalls(clang::CXXConstructorDecl *CD,
-                                   clang::ParmVarDecl *thisParam,
-                                   std::vector<clang::Stmt*> &stmts);
+                                  clang::ParmVarDecl *thisParam,
+                                  std::vector<clang::Stmt *> &stmts);
 
   /**
    * @brief Create member destructor call statements for destructor
@@ -444,8 +463,8 @@ private:
    * destructor calls for class-type members with non-trivial destructors.
    */
   void emitMemberDestructorCalls(clang::CXXRecordDecl *ClassDecl,
-                                  clang::ParmVarDecl *thisParam,
-                                  std::vector<clang::Stmt*> &stmts);
+                                 clang::ParmVarDecl *thisParam,
+                                 std::vector<clang::Stmt *> &stmts);
 
   /**
    * @brief Find initializer for a specific field in constructor init list
@@ -455,9 +474,9 @@ private:
    *
    * Single Responsibility: Lookup helper for member initializers
    */
-  clang::CXXCtorInitializer* findInitializerForField(
-      clang::CXXConstructorDecl *CD,
-      clang::FieldDecl *Field);
+  clang::CXXCtorInitializer *
+  findInitializerForField(clang::CXXConstructorDecl *CD,
+                          clang::FieldDecl *Field);
 
   // Epic #7: Implicit Constructor Generation (Story #62)
 
@@ -484,7 +503,7 @@ private:
    * - Calls default constructors for class-type members
    * - Calls base class default constructor if derived
    */
-  clang::FunctionDecl* generateDefaultConstructor(clang::CXXRecordDecl *D);
+  clang::FunctionDecl *generateDefaultConstructor(clang::CXXRecordDecl *D);
 
   /**
    * @brief Generate copy constructor for a class
@@ -499,7 +518,7 @@ private:
    * - Performs shallow copy for pointer members
    * - Calls base class copy constructor if derived
    */
-  clang::FunctionDecl* generateCopyConstructor(clang::CXXRecordDecl *D);
+  clang::FunctionDecl *generateCopyConstructor(clang::CXXRecordDecl *D);
 
   /**
    * @brief Check if class needs implicit default constructor
@@ -531,7 +550,8 @@ private:
    * @param TU Translation unit declaration
    *
    * Single Responsibility: Orchestrate template extraction and monomorphization
-   * Called after AST traversal to process all discovered template instantiations.
+   * Called after AST traversal to process all discovered template
+   * instantiations.
    */
   void processTemplateInstantiations(clang::TranslationUnitDecl *TU);
 
@@ -554,7 +574,7 @@ private:
    * Inline mode: Sends ACSL to current output stream as comments
    * Separate mode: Writes ACSL to separate .acsl file
    */
-  void emitACSL(const std::string& acsl, ACSLOutputMode mode);
+  void emitACSL(const std::string &acsl, ACSLOutputMode mode);
 
   /**
    * @brief Store ACSL annotations for later output
@@ -563,7 +583,7 @@ private:
    *
    * Used when --acsl-output=separate is specified
    */
-  void storeACSLAnnotation(const std::string& key, const std::string& acsl);
+  void storeACSLAnnotation(const std::string &key, const std::string &acsl);
 
   // Storage for ACSL annotations when using separate output mode
   std::map<std::string, std::string> m_acslAnnotations;

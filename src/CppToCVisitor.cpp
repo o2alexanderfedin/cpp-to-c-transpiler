@@ -63,6 +63,8 @@ CppToCVisitor::CppToCVisitor(ASTContext &Context, CNodeBuilder &Builder)
       std::make_unique<OverrideResolver>(Context, VirtualAnalyzer);
   m_vtableGenerator = std::make_unique<VtableGenerator>(
       Context, VirtualAnalyzer, m_overrideResolver.get());
+  m_vtableInitializer =
+      std::make_unique<VtableInitializer>(Context, VirtualAnalyzer);
   m_virtualCallTrans =
       std::make_unique<VirtualCallTranslator>(Context, VirtualAnalyzer);
   llvm::outs() << "Virtual method support initialized\n";
@@ -378,6 +380,16 @@ bool CppToCVisitor::VisitCXXConstructorDecl(CXXConstructorDecl *CD) {
   // Set translation context for expression translation
   currentThisParam = thisParam;
   currentMethod = CD;
+
+  // Story #171: Inject vptr initialization for polymorphic classes
+  // This must happen FIRST, before base/member initialization
+  if (VirtualAnalyzer.isPolymorphic(Parent)) {
+    Stmt *vptrInit = m_vtableInitializer->generateVptrInit(Parent, thisParam);
+    if (vptrInit) {
+      stmts.push_back(vptrInit);
+      llvm::outs() << "  -> Injected vptr initialization\n";
+    }
+  }
 
   // Story #184: Handle delegating constructors
   if (CD->isDelegatingConstructor()) {
@@ -1716,6 +1728,18 @@ Expr *CppToCVisitor::translateExpr(Expr *E) {
 
   if (DeclRefExpr *DRE = dyn_cast<DeclRefExpr>(E)) {
     return translateDeclRefExpr(DRE);
+  }
+
+  // Story #172: Handle virtual method calls (must be checked BEFORE CallExpr)
+  if (CXXMemberCallExpr *MCE = dyn_cast<CXXMemberCallExpr>(E)) {
+    // Check if this is a virtual call
+    if (m_virtualCallTrans->isVirtualCall(MCE)) {
+      llvm::outs() << "  Translating virtual method call\n";
+      // For now, just pass through - full translation would convert to:
+      // obj->vptr->method(obj, args...)
+      // This requires generating the appropriate vtable access code
+    }
+    // Fall through to translateCallExpr for now
   }
 
   if (CallExpr *CE = dyn_cast<CallExpr>(E)) {
