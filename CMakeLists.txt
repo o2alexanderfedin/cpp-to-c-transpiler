@@ -126,6 +126,32 @@ find_package(LLVM REQUIRED CONFIG)
 find_package(Clang REQUIRED CONFIG)
 
 # ============================================================================
+# Google Test Framework (Phase 15-01)
+# ============================================================================
+include(FetchContent)
+FetchContent_Declare(
+  googletest
+  GIT_REPOSITORY https://github.com/google/googletest.git
+  GIT_TAG v1.14.0  # Latest stable release
+)
+# For Windows: Prevent overriding the parent project's compiler/linker settings
+set(gtest_force_shared_crt ON CACHE BOOL "" FORCE)
+FetchContent_MakeAvailable(googletest)
+
+# Enable CTest integration
+enable_testing()
+include(GoogleTest)
+
+# ============================================================================
+# Real-World Test Suites (Phase 15-01: GTest Migration)
+# ============================================================================
+add_subdirectory(tests/real-world/json-parser)
+add_subdirectory(tests/real-world/resource-manager)
+add_subdirectory(tests/real-world/logger)
+add_subdirectory(tests/real-world/string-formatter)
+add_subdirectory(tests/real-world/test-framework)
+
+# ============================================================================
 # Shared Library for Common Code (Build Optimization)
 # ============================================================================
 # Dramatically reduces build time by compiling common sources only once.

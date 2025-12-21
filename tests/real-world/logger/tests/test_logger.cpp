@@ -1,71 +1,156 @@
 #include "Logger.h"
-#include <iostream>
+#include <gtest/gtest.h>
 #include <fstream>
-#include <cassert>
 #include <cstdio>
 
 using namespace logging;
 
-void test(const std::string& name, bool condition) {
-    if (condition) {
-        std::cout << "[PASS] " << name << std::endl;
-    } else {
-        std::cout << "[FAIL] " << name << std::endl;
-        throw std::runtime_error("Test failed: " + name);
+// ============================================================================
+// Test Fixtures
+// ============================================================================
+
+class ConsoleLoggerTest : public ::testing::Test {
+protected:
+    std::unique_ptr<ConsoleLogger> logger;
+
+    void SetUp() override {
+        logger = std::make_unique<ConsoleLogger>("TestLogger", LogLevel::DEBUG);
     }
+
+    void TearDown() override {
+        logger.reset();
+    }
+};
+
+class FileLoggerTest : public ::testing::Test {
+protected:
+    std::string log_filename = "test_log.txt";
+
+    void SetUp() override {
+        // Clean up any existing log file before each test
+        std::remove(log_filename.c_str());
+    }
+
+    void TearDown() override {
+        // Clean up log file after each test
+        std::remove(log_filename.c_str());
+    }
+};
+
+class MultiLoggerTest : public ::testing::Test {
+protected:
+    std::string filename1 = "multi1.txt";
+    std::string filename2 = "multi2.txt";
+
+    void SetUp() override {
+        // Clean up any existing log files before each test
+        std::remove(filename1.c_str());
+        std::remove(filename2.c_str());
+    }
+
+    void TearDown() override {
+        // Clean up log files after each test
+        std::remove(filename1.c_str());
+        std::remove(filename2.c_str());
+    }
+};
+
+// ============================================================================
+// Console Logger Tests
+// ============================================================================
+
+TEST_F(ConsoleLoggerTest, CreateLogger) {
+    EXPECT_EQ(logger->getName(), "TestLogger");
 }
 
-void testConsoleLogger() {
-    ConsoleLogger logger("TestLogger", LogLevel::DEBUG);
-
-    test("Console logger created", logger.getName() == "TestLogger");
-    test("Console logger level", logger.getLevel() == LogLevel::DEBUG);
-
-    logger.debug("Debug message");
-    logger.info("Info message");
-    logger.warn("Warning message");
-    logger.error("Error message");
-
-    test("Console logger basic logging", true);
+TEST_F(ConsoleLoggerTest, GetLevel) {
+    EXPECT_EQ(logger->getLevel(), LogLevel::DEBUG);
 }
 
-void testFileLogger() {
-    const std::string filename = "test_log.txt";
+TEST_F(ConsoleLoggerTest, BasicLogging) {
+    // These should not throw or crash
+    EXPECT_NO_THROW(logger->debug("Debug message"));
+    EXPECT_NO_THROW(logger->info("Info message"));
+    EXPECT_NO_THROW(logger->warn("Warning message"));
+    EXPECT_NO_THROW(logger->error("Error message"));
+}
 
-    // Remove old log file
-    std::remove(filename.c_str());
+// ============================================================================
+// File Logger Tests
+// ============================================================================
 
+TEST_F(FileLoggerTest, CreateFileLogger) {
+    FileLogger logger("FileTest", log_filename, LogLevel::INFO, false);
+    EXPECT_EQ(logger.getFilename(), log_filename);
+}
+
+TEST_F(FileLoggerTest, LogToFile) {
     {
-        FileLogger logger("FileTest", filename, LogLevel::INFO, false);
-
+        FileLogger logger("FileTest", log_filename, LogLevel::INFO, false);
         logger.info("Test message 1");
         logger.warn("Test message 2");
         logger.error("Test message 3");
-
-        test("File logger created", logger.getFilename() == filename);
     } // RAII: file should be closed here
 
     // Verify file was written
-    std::ifstream file(filename);
-    test("Log file exists", file.good());
+    std::ifstream file(log_filename);
+    ASSERT_TRUE(file.good()) << "Log file should exist";
 
     std::string line;
     int lineCount = 0;
     while (std::getline(file, line)) {
         lineCount++;
-        test("Log line contains timestamp", line.find("[20") != std::string::npos);
-        test("Log line contains level", line.find("[INFO ]") != std::string::npos ||
-                                       line.find("[WARN ]") != std::string::npos ||
-                                       line.find("[ERROR]") != std::string::npos);
     }
 
-    test("Log file has correct number of lines", lineCount == 3);
-
-    file.close();
-    std::remove(filename.c_str());
+    EXPECT_EQ(lineCount, 3) << "Log file should have exactly 3 lines";
 }
 
-void testLogLevels() {
+TEST_F(FileLoggerTest, LogLineContainsTimestamp) {
+    {
+        FileLogger logger("FileTest", log_filename, LogLevel::INFO, false);
+        logger.info("Test message 1");
+    }
+
+    std::ifstream file(log_filename);
+    ASSERT_TRUE(file.good());
+
+    std::string line;
+    std::getline(file, line);
+    EXPECT_NE(line.find("[20"), std::string::npos) << "Log line should contain timestamp";
+}
+
+TEST_F(FileLoggerTest, LogLineContainsLevel) {
+    {
+        FileLogger logger("FileTest", log_filename, LogLevel::INFO, false);
+        logger.info("Test info");
+        logger.warn("Test warn");
+        logger.error("Test error");
+    }
+
+    std::ifstream file(log_filename);
+    ASSERT_TRUE(file.good());
+
+    std::string line;
+    int lineNum = 0;
+    while (std::getline(file, line)) {
+        lineNum++;
+        // Each line should contain timestamp
+        EXPECT_NE(line.find("[20"), std::string::npos)
+            << "Line " << lineNum << " should contain timestamp: " << line;
+
+        // Each line should contain log level
+        bool hasLevel = line.find("[INFO ]") != std::string::npos ||
+                       line.find("[WARN ]") != std::string::npos ||
+                       line.find("[ERROR]") != std::string::npos;
+        EXPECT_TRUE(hasLevel) << "Line " << lineNum << " should contain log level: " << line;
+    }
+}
+
+// ============================================================================
+// Log Level Filtering Tests
+// ============================================================================
+
+TEST_F(FileLoggerTest, LogLevelFiltering) {
     const std::string filename = "test_levels.txt";
     std::remove(filename.c_str());
 
@@ -87,27 +172,37 @@ void testLogLevels() {
         lineCount++;
     }
 
-    test("Log level filtering works", lineCount == 3);
+    EXPECT_EQ(lineCount, 3) << "Only WARN, ERROR, and FATAL should be logged";
 
     file.close();
     std::remove(filename.c_str());
 }
 
-void testMultiLogger() {
-    const std::string filename1 = "multi1.txt";
-    const std::string filename2 = "multi2.txt";
+// ============================================================================
+// Multi Logger Tests
+// ============================================================================
 
-    std::remove(filename1.c_str());
-    std::remove(filename2.c_str());
+TEST_F(MultiLoggerTest, CreateMultiLogger) {
+    MultiLogger multi("MultiTest", LogLevel::INFO);
+    EXPECT_EQ(multi.count(), 0) << "Multi logger should start with no destinations";
+}
 
+TEST_F(MultiLoggerTest, AddLoggers) {
+    MultiLogger multi("MultiTest", LogLevel::INFO);
+
+    multi.addLogger(std::make_unique<FileLogger>("File1", filename1, LogLevel::INFO, false));
+    multi.addLogger(std::make_unique<FileLogger>("File2", filename2, LogLevel::INFO, false));
+    multi.addLogger(std::make_unique<ConsoleLogger>("Console", LogLevel::INFO));
+
+    EXPECT_EQ(multi.count(), 3) << "Multi logger should have 3 destinations";
+}
+
+TEST_F(MultiLoggerTest, LogToMultipleFiles) {
     {
         MultiLogger multi("MultiTest", LogLevel::INFO);
 
         multi.addLogger(std::make_unique<FileLogger>("File1", filename1, LogLevel::INFO, false));
         multi.addLogger(std::make_unique<FileLogger>("File2", filename2, LogLevel::INFO, false));
-        multi.addLogger(std::make_unique<ConsoleLogger>("Console", LogLevel::INFO));
-
-        test("Multi logger has 3 destinations", multi.count() == 3);
 
         multi.info("Test message");
         multi.error("Error message");
@@ -117,23 +212,45 @@ void testMultiLogger() {
     std::ifstream file1(filename1);
     std::ifstream file2(filename2);
 
-    test("Multi logger wrote to file 1", file1.good());
-    test("Multi logger wrote to file 2", file2.good());
+    EXPECT_TRUE(file1.good()) << "Multi logger should write to file 1";
+    EXPECT_TRUE(file2.good()) << "Multi logger should write to file 2";
 
     int count1 = 0, count2 = 0;
     std::string line;
     while (std::getline(file1, line)) count1++;
     while (std::getline(file2, line)) count2++;
 
-    test("Both files have same line count", count1 == count2 && count1 == 2);
-
-    file1.close();
-    file2.close();
-    std::remove(filename1.c_str());
-    std::remove(filename2.c_str());
+    EXPECT_EQ(count1, 2) << "File 1 should have 2 lines";
+    EXPECT_EQ(count2, 2) << "File 2 should have 2 lines";
+    EXPECT_EQ(count1, count2) << "Both files should have same line count";
 }
 
-void testStreamStyle() {
+TEST_F(MultiLoggerTest, MultiLoggerWithConsole) {
+    {
+        MultiLogger multi("MultiTest", LogLevel::INFO);
+
+        multi.addLogger(std::make_unique<FileLogger>("File1", filename1, LogLevel::INFO, false));
+        multi.addLogger(std::make_unique<ConsoleLogger>("Console", LogLevel::INFO));
+
+        EXPECT_NO_THROW(multi.info("Test message"));
+        EXPECT_NO_THROW(multi.error("Error message"));
+    }
+
+    // Verify file was written
+    std::ifstream file1(filename1);
+    EXPECT_TRUE(file1.good()) << "Multi logger should write to file";
+
+    int count = 0;
+    std::string line;
+    while (std::getline(file1, line)) count++;
+    EXPECT_EQ(count, 2) << "File should have 2 lines";
+}
+
+// ============================================================================
+// Stream-Style Logging Tests
+// ============================================================================
+
+TEST_F(FileLoggerTest, StreamStyleLogging) {
     const std::string filename = "stream_test.txt";
     std::remove(filename.c_str());
 
@@ -153,39 +270,77 @@ void testStreamStyle() {
         lineCount++;
     }
 
-    test("Stream-style logging works", lineCount == 3);
+    EXPECT_EQ(lineCount, 3) << "Stream-style logging should write 3 lines";
 
     file.close();
     std::remove(filename.c_str());
 }
 
-void testTemplateLogging() {
-    ConsoleLogger logger("TemplateTest", LogLevel::INFO);
+TEST_F(FileLoggerTest, StreamStyleWithNumbers) {
+    const std::string filename = "stream_numbers.txt";
+    std::remove(filename.c_str());
 
-    // Test template log method with different types
-    logger.log(LogLevel::INFO, 42);
-    logger.log(LogLevel::INFO, 3.14159);
-    logger.log(LogLevel::INFO, "String literal");
-    logger.log(LogLevel::INFO, true);
+    {
+        FileLogger logger("StreamTest", filename, LogLevel::INFO, false);
+        info(logger) << "Number: " << 42;
+    }
 
-    test("Template logging compiles and runs", true);
+    std::ifstream file(filename);
+    ASSERT_TRUE(file.good());
+
+    std::string line;
+    std::getline(file, line);
+    EXPECT_NE(line.find("42"), std::string::npos) << "Stream should log numbers correctly";
+
+    file.close();
+    std::remove(filename.c_str());
 }
 
-int main() {
-    try {
-        std::cout << "=== Logger Tests ===" << std::endl;
+TEST_F(FileLoggerTest, StreamStyleWithFloats) {
+    const std::string filename = "stream_floats.txt";
+    std::remove(filename.c_str());
 
-        testConsoleLogger();
-        testFileLogger();
-        testLogLevels();
-        testMultiLogger();
-        testStreamStyle();
-        testTemplateLogging();
-
-        std::cout << "\n=== All tests passed! ===" << std::endl;
-        return 0;
-    } catch (const std::exception& e) {
-        std::cerr << "Test failed with exception: " << e.what() << std::endl;
-        return 1;
+    {
+        FileLogger logger("StreamTest", filename, LogLevel::INFO, false);
+        info(logger) << "Pi: " << 3.14159;
     }
+
+    std::ifstream file(filename);
+    ASSERT_TRUE(file.good());
+
+    std::string line;
+    std::getline(file, line);
+    EXPECT_NE(line.find("3.14"), std::string::npos) << "Stream should log floats correctly";
+
+    file.close();
+    std::remove(filename.c_str());
+}
+
+// ============================================================================
+// Template Logging Tests
+// ============================================================================
+
+TEST_F(ConsoleLoggerTest, TemplateLoggingInteger) {
+    EXPECT_NO_THROW(logger->log(LogLevel::INFO, 42));
+}
+
+TEST_F(ConsoleLoggerTest, TemplateLoggingDouble) {
+    EXPECT_NO_THROW(logger->log(LogLevel::INFO, 3.14159));
+}
+
+TEST_F(ConsoleLoggerTest, TemplateLoggingString) {
+    EXPECT_NO_THROW(logger->log(LogLevel::INFO, "String literal"));
+}
+
+TEST_F(ConsoleLoggerTest, TemplateLoggingBoolean) {
+    EXPECT_NO_THROW(logger->log(LogLevel::INFO, true));
+}
+
+// ============================================================================
+// Main
+// ============================================================================
+
+int main(int argc, char** argv) {
+    ::testing::InitGoogleTest(&argc, argv);
+    return RUN_ALL_TESTS();
 }
