@@ -14,43 +14,33 @@
  * The C++ to C transpiler must resolve all template metaprogramming constructs
  * to concrete C code.
  *
- * Target: 35-50 high-quality unit tests
+ * Tests: 45 comprehensive unit tests
  */
 
+#include <gtest/gtest.h>
 #include "clang/Tooling/Tooling.h"
 #include "clang/Frontend/ASTUnit.h"
 #include "clang/AST/ASTContext.h"
 #include "clang/AST/RecursiveASTVisitor.h"
-#include <iostream>
-#include <cassert>
 #include <string>
 #include <vector>
 
 using namespace clang;
 
-// Test helper utilities
-std::unique_ptr<ASTUnit> buildAST(const char *code) {
-    std::vector<std::string> args = {"-std=c++17"};
-    return tooling::buildASTFromCodeWithArgs(code, args, "input.cpp");
-}
-
-#define TEST_START(name) std::cout << "Test: " << name << " ... " << std::flush
-#define TEST_PASS() std::cout << "PASS" << std::endl
-#define ASSERT(cond, msg) \
-    if (!(cond)) { \
-        std::cerr << "\nASSERT FAILED: " << msg << std::endl; \
-        std::cerr << "  at line " << __LINE__ << std::endl; \
-        return false; \
+// Test fixture for metaprogramming tests
+class MetaprogrammingTest : public ::testing::Test {
+protected:
+    std::unique_ptr<ASTUnit> buildAST(const char *code) {
+        std::vector<std::string> args = {"-std=c++17"};
+        return tooling::buildASTFromCodeWithArgs(code, args, "input.cpp");
     }
+};
 
 // ============================================================================
 // SECTION 1: Variadic Template Basics (Tests 1-10)
 // ============================================================================
 
-// Test 1: Basic variadic template
-bool test_BasicVariadicTemplate() {
-    TEST_START("basic variadic template");
-
+TEST_F(MetaprogrammingTest, BasicVariadicTemplate) {
     const char* code = R"(
         template<typename... Args>
         struct TypeList {
@@ -65,16 +55,10 @@ bool test_BasicVariadicTemplate() {
     )";
 
     auto AST = buildAST(code);
-    ASSERT(AST, "Failed to parse code");
-
-    TEST_PASS();
-    return true;
+    ASSERT_NE(AST, nullptr) << "Failed to parse code";
 }
 
-// Test 2: Variadic function template
-bool test_VariadicFunctionTemplate() {
-    TEST_START("variadic function template");
-
+TEST_F(MetaprogrammingTest, VariadicFunctionTemplate) {
     const char* code = R"(
         template<typename... Args>
         constexpr size_t count_args(Args... args) {
@@ -89,16 +73,10 @@ bool test_VariadicFunctionTemplate() {
     )";
 
     auto AST = buildAST(code);
-    ASSERT(AST, "Failed to parse code");
-
-    TEST_PASS();
-    return true;
+    ASSERT_NE(AST, nullptr) << "Failed to parse code";
 }
 
-// Test 3: Parameter pack expansion in function call
-bool test_PackExpansionFunctionCall() {
-    TEST_START("parameter pack expansion in function call");
-
+TEST_F(MetaprogrammingTest, PackExpansionFunctionCall) {
     const char* code = R"(
         void sink(int) {}
 
@@ -114,16 +92,10 @@ bool test_PackExpansionFunctionCall() {
     )";
 
     auto AST = buildAST(code);
-    ASSERT(AST, "Failed to parse code");
-
-    TEST_PASS();
-    return true;
+    ASSERT_NE(AST, nullptr) << "Failed to parse code";
 }
 
-// Test 4: Variadic template with forwarding
-bool test_VariadicForwarding() {
-    TEST_START("variadic template with forwarding");
-
+TEST_F(MetaprogrammingTest, VariadicForwarding) {
     const char* code = R"(
         template<typename T>
         T identity(T value) {
@@ -142,16 +114,10 @@ bool test_VariadicForwarding() {
     )";
 
     auto AST = buildAST(code);
-    ASSERT(AST, "Failed to parse code");
-
-    TEST_PASS();
-    return true;
+    ASSERT_NE(AST, nullptr) << "Failed to parse code";
 }
 
-// Test 5: sizeof... operator
-bool test_SizeofOperator() {
-    TEST_START("sizeof... operator");
-
+TEST_F(MetaprogrammingTest, SizeofOperator) {
     const char* code = R"(
         template<typename... Types>
         struct TypeCount {
@@ -170,16 +136,10 @@ bool test_SizeofOperator() {
     )";
 
     auto AST = buildAST(code);
-    ASSERT(AST, "Failed to parse code");
-
-    TEST_PASS();
-    return true;
+    ASSERT_NE(AST, nullptr) << "Failed to parse code";
 }
 
-// Test 6: Variadic template class inheritance
-bool test_VariadicInheritance() {
-    TEST_START("variadic template inheritance");
-
+TEST_F(MetaprogrammingTest, VariadicInheritance) {
     const char* code = R"(
         template<typename T>
         struct Base {
@@ -196,16 +156,10 @@ bool test_VariadicInheritance() {
     )";
 
     auto AST = buildAST(code);
-    ASSERT(AST, "Failed to parse code");
-
-    TEST_PASS();
-    return true;
+    ASSERT_NE(AST, nullptr) << "Failed to parse code";
 }
 
-// Test 7: Pack expansion in braced initializer
-bool test_PackExpansionBracedInit() {
-    TEST_START("pack expansion in braced initializer");
-
+TEST_F(MetaprogrammingTest, PackExpansionBracedInit) {
     const char* code = R"(
         template<typename... Args>
         auto make_tuple(Args... args) {
@@ -219,16 +173,10 @@ bool test_PackExpansionBracedInit() {
     )";
 
     auto AST = buildAST(code);
-    ASSERT(AST, "Failed to parse code");
-
-    TEST_PASS();
-    return true;
+    ASSERT_NE(AST, nullptr) << "Failed to parse code";
 }
 
-// Test 8: Variadic template with non-type parameters
-bool test_VariadicNonTypeParams() {
-    TEST_START("variadic non-type parameters");
-
+TEST_F(MetaprogrammingTest, VariadicNonTypeParams) {
     const char* code = R"(
         template<int... Values>
         struct IntList {
@@ -244,16 +192,10 @@ bool test_VariadicNonTypeParams() {
     )";
 
     auto AST = buildAST(code);
-    ASSERT(AST, "Failed to parse code");
-
-    TEST_PASS();
-    return true;
+    ASSERT_NE(AST, nullptr) << "Failed to parse code";
 }
 
-// Test 9: Variadic template with default arguments
-bool test_VariadicDefaultArgs() {
-    TEST_START("variadic template with default arguments");
-
+TEST_F(MetaprogrammingTest, VariadicDefaultArgs) {
     const char* code = R"(
         template<typename... Args>
         struct Container {
@@ -267,16 +209,10 @@ bool test_VariadicDefaultArgs() {
     )";
 
     auto AST = buildAST(code);
-    ASSERT(AST, "Failed to parse code");
-
-    TEST_PASS();
-    return true;
+    ASSERT_NE(AST, nullptr) << "Failed to parse code";
 }
 
-// Test 10: Mixed variadic and fixed parameters
-bool test_MixedVariadicFixed() {
-    TEST_START("mixed variadic and fixed parameters");
-
+TEST_F(MetaprogrammingTest, MixedVariadicFixed) {
     const char* code = R"(
         template<typename First, typename... Rest>
         struct TypeList {
@@ -291,20 +227,14 @@ bool test_MixedVariadicFixed() {
     )";
 
     auto AST = buildAST(code);
-    ASSERT(AST, "Failed to parse code");
-
-    TEST_PASS();
-    return true;
+    ASSERT_NE(AST, nullptr) << "Failed to parse code";
 }
 
 // ============================================================================
 // SECTION 2: Recursive Template Metaprogramming (Tests 11-20)
 // ============================================================================
 
-// Test 11: Recursive template factorial
-bool test_RecursiveFactorial() {
-    TEST_START("recursive template factorial");
-
+TEST_F(MetaprogrammingTest, RecursiveFactorial) {
     const char* code = R"(
         template<int N>
         struct Factorial {
@@ -323,16 +253,10 @@ bool test_RecursiveFactorial() {
     )";
 
     auto AST = buildAST(code);
-    ASSERT(AST, "Failed to parse code");
-
-    TEST_PASS();
-    return true;
+    ASSERT_NE(AST, nullptr) << "Failed to parse code";
 }
 
-// Test 12: Recursive template fibonacci
-bool test_RecursiveFibonacci() {
-    TEST_START("recursive template fibonacci");
-
+TEST_F(MetaprogrammingTest, RecursiveFibonacci) {
     const char* code = R"(
         template<int N>
         struct Fibonacci {
@@ -356,16 +280,10 @@ bool test_RecursiveFibonacci() {
     )";
 
     auto AST = buildAST(code);
-    ASSERT(AST, "Failed to parse code");
-
-    TEST_PASS();
-    return true;
+    ASSERT_NE(AST, nullptr) << "Failed to parse code";
 }
 
-// Test 13: Recursive type list processing
-bool test_RecursiveTypeList() {
-    TEST_START("recursive type list processing");
-
+TEST_F(MetaprogrammingTest, RecursiveTypeList) {
     const char* code = R"(
         template<typename... Types>
         struct TypeListSize;
@@ -386,16 +304,10 @@ bool test_RecursiveTypeList() {
     )";
 
     auto AST = buildAST(code);
-    ASSERT(AST, "Failed to parse code");
-
-    TEST_PASS();
-    return true;
+    ASSERT_NE(AST, nullptr) << "Failed to parse code";
 }
 
-// Test 14: Recursive template maximum
-bool test_RecursiveMax() {
-    TEST_START("recursive template maximum");
-
+TEST_F(MetaprogrammingTest, RecursiveMax) {
     const char* code = R"(
         template<int A, int B>
         struct Max {
@@ -418,16 +330,10 @@ bool test_RecursiveMax() {
     )";
 
     auto AST = buildAST(code);
-    ASSERT(AST, "Failed to parse code");
-
-    TEST_PASS();
-    return true;
+    ASSERT_NE(AST, nullptr) << "Failed to parse code";
 }
 
-// Test 15: Recursive template power
-bool test_RecursivePower() {
-    TEST_START("recursive template power");
-
+TEST_F(MetaprogrammingTest, RecursivePower) {
     const char* code = R"(
         template<int Base, int Exp>
         struct Power {
@@ -446,16 +352,10 @@ bool test_RecursivePower() {
     )";
 
     auto AST = buildAST(code);
-    ASSERT(AST, "Failed to parse code");
-
-    TEST_PASS();
-    return true;
+    ASSERT_NE(AST, nullptr) << "Failed to parse code";
 }
 
-// Test 16: Recursive template GCD
-bool test_RecursiveGCD() {
-    TEST_START("recursive template GCD");
-
+TEST_F(MetaprogrammingTest, RecursiveGCD) {
     const char* code = R"(
         template<int A, int B>
         struct GCD {
@@ -474,16 +374,10 @@ bool test_RecursiveGCD() {
     )";
 
     auto AST = buildAST(code);
-    ASSERT(AST, "Failed to parse code");
-
-    TEST_PASS();
-    return true;
+    ASSERT_NE(AST, nullptr) << "Failed to parse code";
 }
 
-// Test 17: Compile-time list reversal
-bool test_ListReversal() {
-    TEST_START("compile-time list reversal");
-
+TEST_F(MetaprogrammingTest, ListReversal) {
     const char* code = R"(
         #include <type_traits>
 
@@ -514,16 +408,10 @@ bool test_ListReversal() {
     )";
 
     auto AST = buildAST(code);
-    ASSERT(AST, "Failed to parse code");
-
-    TEST_PASS();
-    return true;
+    ASSERT_NE(AST, nullptr) << "Failed to parse code";
 }
 
-// Test 18: Recursive template list contains
-bool test_RecursiveContains() {
-    TEST_START("recursive template list contains");
-
+TEST_F(MetaprogrammingTest, RecursiveContains) {
     const char* code = R"(
         #include <type_traits>
 
@@ -548,16 +436,10 @@ bool test_RecursiveContains() {
     )";
 
     auto AST = buildAST(code);
-    ASSERT(AST, "Failed to parse code");
-
-    TEST_PASS();
-    return true;
+    ASSERT_NE(AST, nullptr) << "Failed to parse code";
 }
 
-// Test 19: Recursive template index of type
-bool test_RecursiveIndexOf() {
-    TEST_START("recursive template index of type");
-
+TEST_F(MetaprogrammingTest, RecursiveIndexOf) {
     const char* code = R"(
         #include <type_traits>
 
@@ -582,16 +464,10 @@ bool test_RecursiveIndexOf() {
     )";
 
     auto AST = buildAST(code);
-    ASSERT(AST, "Failed to parse code");
-
-    TEST_PASS();
-    return true;
+    ASSERT_NE(AST, nullptr) << "Failed to parse code";
 }
 
-// Test 20: Nested recursive templates
-bool test_NestedRecursion() {
-    TEST_START("nested recursive templates");
-
+TEST_F(MetaprogrammingTest, NestedRecursion) {
     const char* code = R"(
         template<int N>
         struct Outer {
@@ -612,20 +488,14 @@ bool test_NestedRecursion() {
     )";
 
     auto AST = buildAST(code);
-    ASSERT(AST, "Failed to parse code");
-
-    TEST_PASS();
-    return true;
+    ASSERT_NE(AST, nullptr) << "Failed to parse code";
 }
 
 // ============================================================================
 // SECTION 3: constexpr Functions (Tests 21-30)
 // ============================================================================
 
-// Test 21: Basic constexpr function
-bool test_BasicConstexpr() {
-    TEST_START("basic constexpr function");
-
+TEST_F(MetaprogrammingTest, BasicConstexpr) {
     const char* code = R"(
         constexpr int square(int x) {
             return x * x;
@@ -639,16 +509,10 @@ bool test_BasicConstexpr() {
     )";
 
     auto AST = buildAST(code);
-    ASSERT(AST, "Failed to parse code");
-
-    TEST_PASS();
-    return true;
+    ASSERT_NE(AST, nullptr) << "Failed to parse code";
 }
 
-// Test 22: constexpr with conditional
-bool test_ConstexprConditional() {
-    TEST_START("constexpr with conditional");
-
+TEST_F(MetaprogrammingTest, ConstexprConditional) {
     const char* code = R"(
         constexpr int abs(int x) {
             return x < 0 ? -x : x;
@@ -661,16 +525,10 @@ bool test_ConstexprConditional() {
     )";
 
     auto AST = buildAST(code);
-    ASSERT(AST, "Failed to parse code");
-
-    TEST_PASS();
-    return true;
+    ASSERT_NE(AST, nullptr) << "Failed to parse code";
 }
 
-// Test 23: constexpr with recursion
-bool test_ConstexprRecursion() {
-    TEST_START("constexpr with recursion");
-
+TEST_F(MetaprogrammingTest, ConstexprRecursion) {
     const char* code = R"(
         constexpr int factorial(int n) {
             return n <= 1 ? 1 : n * factorial(n - 1);
@@ -683,16 +541,10 @@ bool test_ConstexprRecursion() {
     )";
 
     auto AST = buildAST(code);
-    ASSERT(AST, "Failed to parse code");
-
-    TEST_PASS();
-    return true;
+    ASSERT_NE(AST, nullptr) << "Failed to parse code";
 }
 
-// Test 24: constexpr with loops (C++14)
-bool test_ConstexprLoop() {
-    TEST_START("constexpr with loops");
-
+TEST_F(MetaprogrammingTest, ConstexprLoop) {
     const char* code = R"(
         constexpr int sum_range(int n) {
             int result = 0;
@@ -708,16 +560,10 @@ bool test_ConstexprLoop() {
     )";
 
     auto AST = buildAST(code);
-    ASSERT(AST, "Failed to parse code");
-
-    TEST_PASS();
-    return true;
+    ASSERT_NE(AST, nullptr) << "Failed to parse code";
 }
 
-// Test 25: constexpr with multiple return paths
-bool test_ConstexprMultipleReturns() {
-    TEST_START("constexpr with multiple return paths");
-
+TEST_F(MetaprogrammingTest, ConstexprMultipleReturns) {
     const char* code = R"(
         constexpr int classify(int x) {
             if (x < 0) return -1;
@@ -733,16 +579,10 @@ bool test_ConstexprMultipleReturns() {
     )";
 
     auto AST = buildAST(code);
-    ASSERT(AST, "Failed to parse code");
-
-    TEST_PASS();
-    return true;
+    ASSERT_NE(AST, nullptr) << "Failed to parse code";
 }
 
-// Test 26: constexpr with template
-bool test_ConstexprTemplate() {
-    TEST_START("constexpr with template");
-
+TEST_F(MetaprogrammingTest, ConstexprTemplate) {
     const char* code = R"(
         template<typename T>
         constexpr T max(T a, T b) {
@@ -756,16 +596,10 @@ bool test_ConstexprTemplate() {
     )";
 
     auto AST = buildAST(code);
-    ASSERT(AST, "Failed to parse code");
-
-    TEST_PASS();
-    return true;
+    ASSERT_NE(AST, nullptr) << "Failed to parse code";
 }
 
-// Test 27: constexpr constructor
-bool test_ConstexprConstructor() {
-    TEST_START("constexpr constructor");
-
+TEST_F(MetaprogrammingTest, ConstexprConstructor) {
     const char* code = R"(
         struct Point {
             int x, y;
@@ -782,16 +616,10 @@ bool test_ConstexprConstructor() {
     )";
 
     auto AST = buildAST(code);
-    ASSERT(AST, "Failed to parse code");
-
-    TEST_PASS();
-    return true;
+    ASSERT_NE(AST, nullptr) << "Failed to parse code";
 }
 
-// Test 28: constexpr array operations
-bool test_ConstexprArray() {
-    TEST_START("constexpr array operations");
-
+TEST_F(MetaprogrammingTest, ConstexprArray) {
     const char* code = R"(
         constexpr int sum_array(const int* arr, int size) {
             int sum = 0;
@@ -808,16 +636,10 @@ bool test_ConstexprArray() {
     )";
 
     auto AST = buildAST(code);
-    ASSERT(AST, "Failed to parse code");
-
-    TEST_PASS();
-    return true;
+    ASSERT_NE(AST, nullptr) << "Failed to parse code";
 }
 
-// Test 29: constexpr string operations
-bool test_ConstexprString() {
-    TEST_START("constexpr string operations");
-
+TEST_F(MetaprogrammingTest, ConstexprString) {
     const char* code = R"(
         constexpr int string_length(const char* str) {
             int len = 0;
@@ -834,16 +656,10 @@ bool test_ConstexprString() {
     )";
 
     auto AST = buildAST(code);
-    ASSERT(AST, "Failed to parse code");
-
-    TEST_PASS();
-    return true;
+    ASSERT_NE(AST, nullptr) << "Failed to parse code";
 }
 
-// Test 30: constexpr with complex logic
-bool test_ConstexprComplexLogic() {
-    TEST_START("constexpr with complex logic");
-
+TEST_F(MetaprogrammingTest, ConstexprComplexLogic) {
     const char* code = R"(
         constexpr bool is_prime(int n) {
             if (n <= 1) return false;
@@ -864,20 +680,14 @@ bool test_ConstexprComplexLogic() {
     )";
 
     auto AST = buildAST(code);
-    ASSERT(AST, "Failed to parse code");
-
-    TEST_PASS();
-    return true;
+    ASSERT_NE(AST, nullptr) << "Failed to parse code";
 }
 
 // ============================================================================
 // SECTION 4: Fold Expressions & Advanced Patterns (Tests 31-45)
 // ============================================================================
 
-// Test 31: Fold expression - unary left fold
-bool test_UnaryLeftFold() {
-    TEST_START("unary left fold expression");
-
+TEST_F(MetaprogrammingTest, UnaryLeftFold) {
     const char* code = R"(
         template<typename... Args>
         constexpr auto sum(Args... args) {
@@ -891,16 +701,10 @@ bool test_UnaryLeftFold() {
     )";
 
     auto AST = buildAST(code);
-    ASSERT(AST, "Failed to parse code");
-
-    TEST_PASS();
-    return true;
+    ASSERT_NE(AST, nullptr) << "Failed to parse code";
 }
 
-// Test 32: Fold expression - unary right fold
-bool test_UnaryRightFold() {
-    TEST_START("unary right fold expression");
-
+TEST_F(MetaprogrammingTest, UnaryRightFold) {
     const char* code = R"(
         template<typename... Args>
         constexpr auto multiply(Args... args) {
@@ -913,16 +717,10 @@ bool test_UnaryRightFold() {
     )";
 
     auto AST = buildAST(code);
-    ASSERT(AST, "Failed to parse code");
-
-    TEST_PASS();
-    return true;
+    ASSERT_NE(AST, nullptr) << "Failed to parse code";
 }
 
-// Test 33: Fold expression - binary left fold
-bool test_BinaryLeftFold() {
-    TEST_START("binary left fold expression");
-
+TEST_F(MetaprogrammingTest, BinaryLeftFold) {
     const char* code = R"(
         template<typename... Args>
         constexpr auto sum_with_init(Args... args) {
@@ -936,16 +734,10 @@ bool test_BinaryLeftFold() {
     )";
 
     auto AST = buildAST(code);
-    ASSERT(AST, "Failed to parse code");
-
-    TEST_PASS();
-    return true;
+    ASSERT_NE(AST, nullptr) << "Failed to parse code";
 }
 
-// Test 34: Fold expression - logical AND
-bool test_FoldLogicalAnd() {
-    TEST_START("fold expression logical AND");
-
+TEST_F(MetaprogrammingTest, FoldLogicalAnd) {
     const char* code = R"(
         template<typename... Args>
         constexpr bool all_true(Args... args) {
@@ -959,16 +751,10 @@ bool test_FoldLogicalAnd() {
     )";
 
     auto AST = buildAST(code);
-    ASSERT(AST, "Failed to parse code");
-
-    TEST_PASS();
-    return true;
+    ASSERT_NE(AST, nullptr) << "Failed to parse code";
 }
 
-// Test 35: Fold expression - logical OR
-bool test_FoldLogicalOr() {
-    TEST_START("fold expression logical OR");
-
+TEST_F(MetaprogrammingTest, FoldLogicalOr) {
     const char* code = R"(
         template<typename... Args>
         constexpr bool any_true(Args... args) {
@@ -982,16 +768,10 @@ bool test_FoldLogicalOr() {
     )";
 
     auto AST = buildAST(code);
-    ASSERT(AST, "Failed to parse code");
-
-    TEST_PASS();
-    return true;
+    ASSERT_NE(AST, nullptr) << "Failed to parse code";
 }
 
-// Test 36: Fold expression with function call
-bool test_FoldFunctionCall() {
-    TEST_START("fold expression with function call");
-
+TEST_F(MetaprogrammingTest, FoldFunctionCall) {
     const char* code = R"(
         constexpr int twice(int x) { return x * 2; }
 
@@ -1006,16 +786,10 @@ bool test_FoldFunctionCall() {
     )";
 
     auto AST = buildAST(code);
-    ASSERT(AST, "Failed to parse code");
-
-    TEST_PASS();
-    return true;
+    ASSERT_NE(AST, nullptr) << "Failed to parse code";
 }
 
-// Test 37: Variadic template with perfect forwarding
-bool test_PerfectForwarding() {
-    TEST_START("perfect forwarding with variadic template");
-
+TEST_F(MetaprogrammingTest, PerfectForwarding) {
     const char* code = R"(
         #include <utility>
 
@@ -1032,16 +806,10 @@ bool test_PerfectForwarding() {
     )";
 
     auto AST = buildAST(code);
-    ASSERT(AST, "Failed to parse code");
-
-    TEST_PASS();
-    return true;
+    ASSERT_NE(AST, nullptr) << "Failed to parse code";
 }
 
-// Test 38: Template template parameters
-bool test_TemplateTemplateParams() {
-    TEST_START("template template parameters");
-
+TEST_F(MetaprogrammingTest, TemplateTemplateParams) {
     const char* code = R"(
         template<typename T>
         struct Wrapper {
@@ -1061,16 +829,10 @@ bool test_TemplateTemplateParams() {
     )";
 
     auto AST = buildAST(code);
-    ASSERT(AST, "Failed to parse code");
-
-    TEST_PASS();
-    return true;
+    ASSERT_NE(AST, nullptr) << "Failed to parse code";
 }
 
-// Test 39: Compile-time dispatch based on type
-bool test_CompileTimeDispatch() {
-    TEST_START("compile-time dispatch based on type");
-
+TEST_F(MetaprogrammingTest, CompileTimeDispatch) {
     const char* code = R"(
         #include <type_traits>
 
@@ -1092,16 +854,10 @@ bool test_CompileTimeDispatch() {
     )";
 
     auto AST = buildAST(code);
-    ASSERT(AST, "Failed to parse code");
-
-    TEST_PASS();
-    return true;
+    ASSERT_NE(AST, nullptr) << "Failed to parse code";
 }
 
-// Test 40: if constexpr with template
-bool test_IfConstexpr() {
-    TEST_START("if constexpr with template");
-
+TEST_F(MetaprogrammingTest, IfConstexpr) {
     const char* code = R"(
         #include <type_traits>
 
@@ -1122,16 +878,10 @@ bool test_IfConstexpr() {
     )";
 
     auto AST = buildAST(code);
-    ASSERT(AST, "Failed to parse code");
-
-    TEST_PASS();
-    return true;
+    ASSERT_NE(AST, nullptr) << "Failed to parse code";
 }
 
-// Test 41: Compile-time string hashing
-bool test_CompileTimeHash() {
-    TEST_START("compile-time string hashing");
-
+TEST_F(MetaprogrammingTest, CompileTimeHash) {
     const char* code = R"(
         constexpr unsigned int hash(const char* str) {
             unsigned int h = 5381;
@@ -1149,16 +899,10 @@ bool test_CompileTimeHash() {
     )";
 
     auto AST = buildAST(code);
-    ASSERT(AST, "Failed to parse code");
-
-    TEST_PASS();
-    return true;
+    ASSERT_NE(AST, nullptr) << "Failed to parse code";
 }
 
-// Test 42: Type trait composition with variadic templates
-bool test_TraitComposition() {
-    TEST_START("type trait composition with variadic");
-
+TEST_F(MetaprogrammingTest, TraitComposition) {
     const char* code = R"(
         #include <type_traits>
 
@@ -1174,16 +918,10 @@ bool test_TraitComposition() {
     )";
 
     auto AST = buildAST(code);
-    ASSERT(AST, "Failed to parse code");
-
-    TEST_PASS();
-    return true;
+    ASSERT_NE(AST, nullptr) << "Failed to parse code";
 }
 
-// Test 43: Variadic min/max
-bool test_VariadicMinMax() {
-    TEST_START("variadic min/max");
-
+TEST_F(MetaprogrammingTest, VariadicMinMax) {
     const char* code = R"(
         template<typename T>
         constexpr T min(T a, T b) {
@@ -1201,16 +939,10 @@ bool test_VariadicMinMax() {
     )";
 
     auto AST = buildAST(code);
-    ASSERT(AST, "Failed to parse code");
-
-    TEST_PASS();
-    return true;
+    ASSERT_NE(AST, nullptr) << "Failed to parse code";
 }
 
-// Test 44: Tuple-like compile-time access
-bool test_CompileTimeTupleAccess() {
-    TEST_START("compile-time tuple-like access");
-
+TEST_F(MetaprogrammingTest, CompileTimeTupleAccess) {
     const char* code = R"(
         template<size_t Index, typename... Types>
         struct TypeAt;
@@ -1232,16 +964,10 @@ bool test_CompileTimeTupleAccess() {
     )";
 
     auto AST = buildAST(code);
-    ASSERT(AST, "Failed to parse code");
-
-    TEST_PASS();
-    return true;
+    ASSERT_NE(AST, nullptr) << "Failed to parse code";
 }
 
-// Test 45: Compile-time cartesian product
-bool test_CartesianProduct() {
-    TEST_START("compile-time cartesian product");
-
+TEST_F(MetaprogrammingTest, CartesianProduct) {
     const char* code = R"(
         template<typename... Ts>
         struct TypeList {};
@@ -1265,87 +991,5 @@ bool test_CartesianProduct() {
     )";
 
     auto AST = buildAST(code);
-    ASSERT(AST, "Failed to parse code");
-
-    TEST_PASS();
-    return true;
-}
-
-// ============================================================================
-// Main Test Runner
-// ============================================================================
-
-int main() {
-    std::cout << "========================================" << std::endl;
-    std::cout << "Stream 5: Metaprogramming Test Suite" << std::endl;
-    std::cout << "Target: 45 comprehensive tests" << std::endl;
-    std::cout << "========================================" << std::endl << std::endl;
-
-    int passed = 0;
-    int failed = 0;
-
-    // Section 1: Variadic Template Basics (Tests 1-10)
-    std::cout << "\n=== SECTION 1: Variadic Template Basics ===" << std::endl;
-    if (test_BasicVariadicTemplate()) passed++; else failed++;
-    if (test_VariadicFunctionTemplate()) passed++; else failed++;
-    if (test_PackExpansionFunctionCall()) passed++; else failed++;
-    if (test_VariadicForwarding()) passed++; else failed++;
-    if (test_SizeofOperator()) passed++; else failed++;
-    if (test_VariadicInheritance()) passed++; else failed++;
-    if (test_PackExpansionBracedInit()) passed++; else failed++;
-    if (test_VariadicNonTypeParams()) passed++; else failed++;
-    if (test_VariadicDefaultArgs()) passed++; else failed++;
-    if (test_MixedVariadicFixed()) passed++; else failed++;
-
-    // Section 2: Recursive Template Metaprogramming (Tests 11-20)
-    std::cout << "\n=== SECTION 2: Recursive Metaprogramming ===" << std::endl;
-    if (test_RecursiveFactorial()) passed++; else failed++;
-    if (test_RecursiveFibonacci()) passed++; else failed++;
-    if (test_RecursiveTypeList()) passed++; else failed++;
-    if (test_RecursiveMax()) passed++; else failed++;
-    if (test_RecursivePower()) passed++; else failed++;
-    if (test_RecursiveGCD()) passed++; else failed++;
-    if (test_ListReversal()) passed++; else failed++;
-    if (test_RecursiveContains()) passed++; else failed++;
-    if (test_RecursiveIndexOf()) passed++; else failed++;
-    if (test_NestedRecursion()) passed++; else failed++;
-
-    // Section 3: constexpr Functions (Tests 21-30)
-    std::cout << "\n=== SECTION 3: constexpr Functions ===" << std::endl;
-    if (test_BasicConstexpr()) passed++; else failed++;
-    if (test_ConstexprConditional()) passed++; else failed++;
-    if (test_ConstexprRecursion()) passed++; else failed++;
-    if (test_ConstexprLoop()) passed++; else failed++;
-    if (test_ConstexprMultipleReturns()) passed++; else failed++;
-    if (test_ConstexprTemplate()) passed++; else failed++;
-    if (test_ConstexprConstructor()) passed++; else failed++;
-    if (test_ConstexprArray()) passed++; else failed++;
-    if (test_ConstexprString()) passed++; else failed++;
-    if (test_ConstexprComplexLogic()) passed++; else failed++;
-
-    // Section 4: Fold Expressions & Advanced Patterns (Tests 31-45)
-    std::cout << "\n=== SECTION 4: Fold Expressions & Advanced ===" << std::endl;
-    if (test_UnaryLeftFold()) passed++; else failed++;
-    if (test_UnaryRightFold()) passed++; else failed++;
-    if (test_BinaryLeftFold()) passed++; else failed++;
-    if (test_FoldLogicalAnd()) passed++; else failed++;
-    if (test_FoldLogicalOr()) passed++; else failed++;
-    if (test_FoldFunctionCall()) passed++; else failed++;
-    if (test_PerfectForwarding()) passed++; else failed++;
-    if (test_TemplateTemplateParams()) passed++; else failed++;
-    if (test_CompileTimeDispatch()) passed++; else failed++;
-    if (test_IfConstexpr()) passed++; else failed++;
-    if (test_CompileTimeHash()) passed++; else failed++;
-    if (test_TraitComposition()) passed++; else failed++;
-    if (test_VariadicMinMax()) passed++; else failed++;
-    if (test_CompileTimeTupleAccess()) passed++; else failed++;
-    if (test_CartesianProduct()) passed++; else failed++;
-
-    std::cout << "\n========================================" << std::endl;
-    std::cout << "Test Results:" << std::endl;
-    std::cout << "  Passed: " << passed << " / " << (passed + failed) << std::endl;
-    std::cout << "  Failed: " << failed << " / " << (passed + failed) << std::endl;
-    std::cout << "========================================" << std::endl;
-
-    return (failed == 0) ? 0 : 1;
+    ASSERT_NE(AST, nullptr) << "Failed to parse code";
 }

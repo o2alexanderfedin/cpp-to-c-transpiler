@@ -14,57 +14,46 @@
  * - Type relationships (is_same, is_base_of, is_convertible)
  * - Compile-time trait evaluation
  *
- * Target: 35-40 high-quality unit tests
+ * Tests: 40 comprehensive unit tests
  */
 
+#include <gtest/gtest.h>
 #include "clang/Tooling/Tooling.h"
 #include "clang/Frontend/ASTUnit.h"
 #include "clang/AST/ASTContext.h"
 #include "clang/AST/Type.h"
 #include "clang/AST/Decl.h"
-#include <iostream>
-#include <cassert>
 #include <string>
 #include <vector>
 
 using namespace clang;
 
-// Test helper utilities
-std::unique_ptr<ASTUnit> buildAST(const char *code) {
-    std::vector<std::string> args = {"-std=c++17"};
-    return tooling::buildASTFromCodeWithArgs(code, args, "input.cpp");
-}
-
-#define TEST_START(name) std::cout << "Test: " << name << " ... " << std::flush
-#define TEST_PASS() std::cout << "PASS" << std::endl
-#define ASSERT(cond, msg) \
-    if (!(cond)) { \
-        std::cerr << "\nASSERT FAILED: " << msg << std::endl; \
-        std::cerr << "  at line " << __LINE__ << std::endl; \
-        return false; \
+// Test fixture for type traits tests
+class TypeTraitsTest : public ::testing::Test {
+protected:
+    std::unique_ptr<ASTUnit> buildAST(const char *code) {
+        std::vector<std::string> args = {"-std=c++17"};
+        return tooling::buildASTFromCodeWithArgs(code, args, "input.cpp");
     }
 
-// Helper to find a function by name
-FunctionDecl* findFunction(ASTContext& Context, const std::string& name) {
-    TranslationUnitDecl* TU = Context.getTranslationUnitDecl();
-    for (auto* Decl : TU->decls()) {
-        if (auto* FD = dyn_cast<FunctionDecl>(Decl)) {
-            if (FD->getNameAsString() == name) {
-                return FD;
+    FunctionDecl* findFunction(ASTContext& Context, const std::string& name) {
+        TranslationUnitDecl* TU = Context.getTranslationUnitDecl();
+        for (auto* Decl : TU->decls()) {
+            if (auto* FD = dyn_cast<FunctionDecl>(Decl)) {
+                if (FD->getNameAsString() == name) {
+                    return FD;
+                }
             }
         }
+        return nullptr;
     }
-    return nullptr;
-}
+};
 
 // ============================================================================
 // SECTION 1: Basic Type Traits (Tests 1-10)
 // ============================================================================
 
-// Test 1: is_integral type trait
-bool test_IsIntegral() {
-    TEST_START("is_integral type trait");
-
+TEST_F(TypeTraitsTest, IsIntegralTrait) {
     const char* code = R"(
         #include <type_traits>
 
@@ -82,20 +71,11 @@ bool test_IsIntegral() {
     )";
 
     auto AST = buildAST(code);
-    ASSERT(AST, "Failed to parse code");
-
-    // Verify that code compiles without errors (static_assert would fail if wrong)
-    ASTContext& Context = AST->getASTContext();
-    ASSERT(Context.getDiagnostics().getClient(), "Diagnostics available");
-
-    TEST_PASS();
-    return true;
+    ASSERT_NE(AST, nullptr) << "Failed to parse code";
+    EXPECT_NE(AST->getASTContext().getDiagnostics().getClient(), nullptr);
 }
 
-// Test 2: is_pointer type trait
-bool test_IsPointer() {
-    TEST_START("is_pointer type trait");
-
+TEST_F(TypeTraitsTest, IsPointerTrait) {
     const char* code = R"(
         #include <type_traits>
 
@@ -113,16 +93,10 @@ bool test_IsPointer() {
     )";
 
     auto AST = buildAST(code);
-    ASSERT(AST, "Failed to parse code");
-
-    TEST_PASS();
-    return true;
+    ASSERT_NE(AST, nullptr) << "Failed to parse code";
 }
 
-// Test 3: is_const type trait
-bool test_IsConst() {
-    TEST_START("is_const type trait");
-
+TEST_F(TypeTraitsTest, IsConstTrait) {
     const char* code = R"(
         #include <type_traits>
 
@@ -139,16 +113,10 @@ bool test_IsConst() {
     )";
 
     auto AST = buildAST(code);
-    ASSERT(AST, "Failed to parse code");
-
-    TEST_PASS();
-    return true;
+    ASSERT_NE(AST, nullptr) << "Failed to parse code";
 }
 
-// Test 4: is_reference type trait
-bool test_IsReference() {
-    TEST_START("is_reference type trait");
-
+TEST_F(TypeTraitsTest, IsReferenceTrait) {
     const char* code = R"(
         #include <type_traits>
 
@@ -166,16 +134,10 @@ bool test_IsReference() {
     )";
 
     auto AST = buildAST(code);
-    ASSERT(AST, "Failed to parse code");
-
-    TEST_PASS();
-    return true;
+    ASSERT_NE(AST, nullptr) << "Failed to parse code";
 }
 
-// Test 5: is_floating_point type trait
-bool test_IsFloatingPoint() {
-    TEST_START("is_floating_point type trait");
-
+TEST_F(TypeTraitsTest, IsFloatingPointTrait) {
     const char* code = R"(
         #include <type_traits>
 
@@ -192,16 +154,10 @@ bool test_IsFloatingPoint() {
     )";
 
     auto AST = buildAST(code);
-    ASSERT(AST, "Failed to parse code");
-
-    TEST_PASS();
-    return true;
+    ASSERT_NE(AST, nullptr) << "Failed to parse code";
 }
 
-// Test 6: is_array type trait
-bool test_IsArray() {
-    TEST_START("is_array type trait");
-
+TEST_F(TypeTraitsTest, IsArrayTrait) {
     const char* code = R"(
         #include <type_traits>
 
@@ -219,16 +175,10 @@ bool test_IsArray() {
     )";
 
     auto AST = buildAST(code);
-    ASSERT(AST, "Failed to parse code");
-
-    TEST_PASS();
-    return true;
+    ASSERT_NE(AST, nullptr) << "Failed to parse code";
 }
 
-// Test 7: is_function type trait
-bool test_IsFunction() {
-    TEST_START("is_function type trait");
-
+TEST_F(TypeTraitsTest, IsFunctionTrait) {
     const char* code = R"(
         #include <type_traits>
 
@@ -247,16 +197,10 @@ bool test_IsFunction() {
     )";
 
     auto AST = buildAST(code);
-    ASSERT(AST, "Failed to parse code");
-
-    TEST_PASS();
-    return true;
+    ASSERT_NE(AST, nullptr) << "Failed to parse code";
 }
 
-// Test 8: is_void type trait
-bool test_IsVoid() {
-    TEST_START("is_void type trait");
-
+TEST_F(TypeTraitsTest, IsVoidTrait) {
     const char* code = R"(
         #include <type_traits>
 
@@ -273,16 +217,10 @@ bool test_IsVoid() {
     )";
 
     auto AST = buildAST(code);
-    ASSERT(AST, "Failed to parse code");
-
-    TEST_PASS();
-    return true;
+    ASSERT_NE(AST, nullptr) << "Failed to parse code";
 }
 
-// Test 9: is_class type trait
-bool test_IsClass() {
-    TEST_START("is_class type trait");
-
+TEST_F(TypeTraitsTest, IsClassTrait) {
     const char* code = R"(
         #include <type_traits>
 
@@ -302,16 +240,10 @@ bool test_IsClass() {
     )";
 
     auto AST = buildAST(code);
-    ASSERT(AST, "Failed to parse code");
-
-    TEST_PASS();
-    return true;
+    ASSERT_NE(AST, nullptr) << "Failed to parse code";
 }
 
-// Test 10: is_enum type trait
-bool test_IsEnum() {
-    TEST_START("is_enum type trait");
-
+TEST_F(TypeTraitsTest, IsEnumTrait) {
     const char* code = R"(
         #include <type_traits>
 
@@ -331,20 +263,14 @@ bool test_IsEnum() {
     )";
 
     auto AST = buildAST(code);
-    ASSERT(AST, "Failed to parse code");
-
-    TEST_PASS();
-    return true;
+    ASSERT_NE(AST, nullptr) << "Failed to parse code";
 }
 
 // ============================================================================
 // SECTION 2: Type Transformations (Tests 11-20)
 // ============================================================================
 
-// Test 11: remove_const transformation
-bool test_RemoveConst() {
-    TEST_START("remove_const transformation");
-
+TEST_F(TypeTraitsTest, RemoveConstTransformation) {
     const char* code = R"(
         #include <type_traits>
 
@@ -360,16 +286,10 @@ bool test_RemoveConst() {
     )";
 
     auto AST = buildAST(code);
-    ASSERT(AST, "Failed to parse code");
-
-    TEST_PASS();
-    return true;
+    ASSERT_NE(AST, nullptr) << "Failed to parse code";
 }
 
-// Test 12: add_pointer transformation
-bool test_AddPointer() {
-    TEST_START("add_pointer transformation");
-
+TEST_F(TypeTraitsTest, AddPointerTransformation) {
     const char* code = R"(
         #include <type_traits>
 
@@ -385,16 +305,10 @@ bool test_AddPointer() {
     )";
 
     auto AST = buildAST(code);
-    ASSERT(AST, "Failed to parse code");
-
-    TEST_PASS();
-    return true;
+    ASSERT_NE(AST, nullptr) << "Failed to parse code";
 }
 
-// Test 13: remove_pointer transformation
-bool test_RemovePointer() {
-    TEST_START("remove_pointer transformation");
-
+TEST_F(TypeTraitsTest, RemovePointerTransformation) {
     const char* code = R"(
         #include <type_traits>
 
@@ -412,16 +326,10 @@ bool test_RemovePointer() {
     )";
 
     auto AST = buildAST(code);
-    ASSERT(AST, "Failed to parse code");
-
-    TEST_PASS();
-    return true;
+    ASSERT_NE(AST, nullptr) << "Failed to parse code";
 }
 
-// Test 14: add_const transformation
-bool test_AddConst() {
-    TEST_START("add_const transformation");
-
+TEST_F(TypeTraitsTest, AddConstTransformation) {
     const char* code = R"(
         #include <type_traits>
 
@@ -437,16 +345,10 @@ bool test_AddConst() {
     )";
 
     auto AST = buildAST(code);
-    ASSERT(AST, "Failed to parse code");
-
-    TEST_PASS();
-    return true;
+    ASSERT_NE(AST, nullptr) << "Failed to parse code";
 }
 
-// Test 15: remove_reference transformation
-bool test_RemoveReference() {
-    TEST_START("remove_reference transformation");
-
+TEST_F(TypeTraitsTest, RemoveReferenceTransformation) {
     const char* code = R"(
         #include <type_traits>
 
@@ -464,16 +366,10 @@ bool test_RemoveReference() {
     )";
 
     auto AST = buildAST(code);
-    ASSERT(AST, "Failed to parse code");
-
-    TEST_PASS();
-    return true;
+    ASSERT_NE(AST, nullptr) << "Failed to parse code";
 }
 
-// Test 16: decay transformation
-bool test_Decay() {
-    TEST_START("decay transformation");
-
+TEST_F(TypeTraitsTest, DecayTransformation) {
     const char* code = R"(
         #include <type_traits>
 
@@ -491,16 +387,10 @@ bool test_Decay() {
     )";
 
     auto AST = buildAST(code);
-    ASSERT(AST, "Failed to parse code");
-
-    TEST_PASS();
-    return true;
+    ASSERT_NE(AST, nullptr) << "Failed to parse code";
 }
 
-// Test 17: conditional type transformation
-bool test_Conditional() {
-    TEST_START("conditional type transformation");
-
+TEST_F(TypeTraitsTest, ConditionalTypeTransformation) {
     const char* code = R"(
         #include <type_traits>
 
@@ -516,16 +406,10 @@ bool test_Conditional() {
     )";
 
     auto AST = buildAST(code);
-    ASSERT(AST, "Failed to parse code");
-
-    TEST_PASS();
-    return true;
+    ASSERT_NE(AST, nullptr) << "Failed to parse code";
 }
 
-// Test 18: underlying_type for enums
-bool test_UnderlyingType() {
-    TEST_START("underlying_type transformation");
-
+TEST_F(TypeTraitsTest, UnderlyingTypeForEnums) {
     const char* code = R"(
         #include <type_traits>
 
@@ -541,16 +425,10 @@ bool test_UnderlyingType() {
     )";
 
     auto AST = buildAST(code);
-    ASSERT(AST, "Failed to parse code");
-
-    TEST_PASS();
-    return true;
+    ASSERT_NE(AST, nullptr) << "Failed to parse code";
 }
 
-// Test 19: make_signed transformation
-bool test_MakeSigned() {
-    TEST_START("make_signed transformation");
-
+TEST_F(TypeTraitsTest, MakeSignedTransformation) {
     const char* code = R"(
         #include <type_traits>
 
@@ -566,16 +444,10 @@ bool test_MakeSigned() {
     )";
 
     auto AST = buildAST(code);
-    ASSERT(AST, "Failed to parse code");
-
-    TEST_PASS();
-    return true;
+    ASSERT_NE(AST, nullptr) << "Failed to parse code";
 }
 
-// Test 20: make_unsigned transformation
-bool test_MakeUnsigned() {
-    TEST_START("make_unsigned transformation");
-
+TEST_F(TypeTraitsTest, MakeUnsignedTransformation) {
     const char* code = R"(
         #include <type_traits>
 
@@ -591,20 +463,14 @@ bool test_MakeUnsigned() {
     )";
 
     auto AST = buildAST(code);
-    ASSERT(AST, "Failed to parse code");
-
-    TEST_PASS();
-    return true;
+    ASSERT_NE(AST, nullptr) << "Failed to parse code";
 }
 
 // ============================================================================
 // SECTION 3: SFINAE and enable_if (Tests 21-30)
 // ============================================================================
 
-// Test 21: Basic enable_if usage
-bool test_EnableIfBasic() {
-    TEST_START("enable_if basic usage");
-
+TEST_F(TypeTraitsTest, EnableIfBasicUsage) {
     const char* code = R"(
         #include <type_traits>
 
@@ -621,16 +487,10 @@ bool test_EnableIfBasic() {
     )";
 
     auto AST = buildAST(code);
-    ASSERT(AST, "Failed to parse code");
-
-    TEST_PASS();
-    return true;
+    ASSERT_NE(AST, nullptr) << "Failed to parse code";
 }
 
-// Test 22: enable_if with return type
-bool test_EnableIfReturnType() {
-    TEST_START("enable_if with return type");
-
+TEST_F(TypeTraitsTest, EnableIfWithReturnType) {
     const char* code = R"(
         #include <type_traits>
 
@@ -647,16 +507,10 @@ bool test_EnableIfReturnType() {
     )";
 
     auto AST = buildAST(code);
-    ASSERT(AST, "Failed to parse code");
-
-    TEST_PASS();
-    return true;
+    ASSERT_NE(AST, nullptr) << "Failed to parse code";
 }
 
-// Test 23: enable_if with template parameter
-bool test_EnableIfTemplateParam() {
-    TEST_START("enable_if with template parameter");
-
+TEST_F(TypeTraitsTest, EnableIfWithTemplateParameter) {
     const char* code = R"(
         #include <type_traits>
 
@@ -673,16 +527,10 @@ bool test_EnableIfTemplateParam() {
     )";
 
     auto AST = buildAST(code);
-    ASSERT(AST, "Failed to parse code");
-
-    TEST_PASS();
-    return true;
+    ASSERT_NE(AST, nullptr) << "Failed to parse code";
 }
 
-// Test 24: SFINAE with function overloading
-bool test_SFINAEOverloading() {
-    TEST_START("SFINAE with function overloading");
-
+TEST_F(TypeTraitsTest, SFINAEWithFunctionOverloading) {
     const char* code = R"(
         #include <type_traits>
 
@@ -707,16 +555,10 @@ bool test_SFINAEOverloading() {
     )";
 
     auto AST = buildAST(code);
-    ASSERT(AST, "Failed to parse code");
-
-    TEST_PASS();
-    return true;
+    ASSERT_NE(AST, nullptr) << "Failed to parse code";
 }
 
-// Test 25: enable_if_t (C++14 alias)
-bool test_EnableIfT() {
-    TEST_START("enable_if_t alias");
-
+TEST_F(TypeTraitsTest, EnableIfTAlias) {
     const char* code = R"(
         #include <type_traits>
 
@@ -732,16 +574,10 @@ bool test_EnableIfT() {
     )";
 
     auto AST = buildAST(code);
-    ASSERT(AST, "Failed to parse code");
-
-    TEST_PASS();
-    return true;
+    ASSERT_NE(AST, nullptr) << "Failed to parse code";
 }
 
-// Test 26: SFINAE with class specialization
-bool test_SFINAEClassSpecialization() {
-    TEST_START("SFINAE with class specialization");
-
+TEST_F(TypeTraitsTest, SFINAEWithClassSpecialization) {
     const char* code = R"(
         #include <type_traits>
 
@@ -767,16 +603,10 @@ bool test_SFINAEClassSpecialization() {
     )";
 
     auto AST = buildAST(code);
-    ASSERT(AST, "Failed to parse code");
-
-    TEST_PASS();
-    return true;
+    ASSERT_NE(AST, nullptr) << "Failed to parse code";
 }
 
-// Test 27: Complex SFINAE expression
-bool test_ComplexSFINAE() {
-    TEST_START("complex SFINAE expression");
-
+TEST_F(TypeTraitsTest, ComplexSFINAEExpression) {
     const char* code = R"(
         #include <type_traits>
 
@@ -796,16 +626,10 @@ bool test_ComplexSFINAE() {
     )";
 
     auto AST = buildAST(code);
-    ASSERT(AST, "Failed to parse code");
-
-    TEST_PASS();
-    return true;
+    ASSERT_NE(AST, nullptr) << "Failed to parse code";
 }
 
-// Test 28: SFINAE with multiple conditions
-bool test_SFINAEMultipleConditions() {
-    TEST_START("SFINAE with multiple conditions");
-
+TEST_F(TypeTraitsTest, SFINAEWithMultipleConditions) {
     const char* code = R"(
         #include <type_traits>
 
@@ -826,16 +650,10 @@ bool test_SFINAEMultipleConditions() {
     )";
 
     auto AST = buildAST(code);
-    ASSERT(AST, "Failed to parse code");
-
-    TEST_PASS();
-    return true;
+    ASSERT_NE(AST, nullptr) << "Failed to parse code";
 }
 
-// Test 29: void_t pattern (C++17)
-bool test_VoidT() {
-    TEST_START("void_t pattern");
-
+TEST_F(TypeTraitsTest, VoidTPattern) {
     const char* code = R"(
         #include <type_traits>
 
@@ -855,16 +673,10 @@ bool test_VoidT() {
     )";
 
     auto AST = buildAST(code);
-    ASSERT(AST, "Failed to parse code");
-
-    TEST_PASS();
-    return true;
+    ASSERT_NE(AST, nullptr) << "Failed to parse code";
 }
 
-// Test 30: Nested enable_if
-bool test_NestedEnableIf() {
-    TEST_START("nested enable_if");
-
+TEST_F(TypeTraitsTest, NestedEnableIf) {
     const char* code = R"(
         #include <type_traits>
 
@@ -884,20 +696,14 @@ bool test_NestedEnableIf() {
     )";
 
     auto AST = buildAST(code);
-    ASSERT(AST, "Failed to parse code");
-
-    TEST_PASS();
-    return true;
+    ASSERT_NE(AST, nullptr) << "Failed to parse code";
 }
 
 // ============================================================================
 // SECTION 4: Type Relationships & Compile-time Evaluation (Tests 31-40)
 // ============================================================================
 
-// Test 31: is_same type trait
-bool test_IsSame() {
-    TEST_START("is_same type trait");
-
+TEST_F(TypeTraitsTest, IsSameTrait) {
     const char* code = R"(
         #include <type_traits>
 
@@ -909,16 +715,10 @@ bool test_IsSame() {
     )";
 
     auto AST = buildAST(code);
-    ASSERT(AST, "Failed to parse code");
-
-    TEST_PASS();
-    return true;
+    ASSERT_NE(AST, nullptr) << "Failed to parse code";
 }
 
-// Test 32: is_base_of type trait
-bool test_IsBaseOf() {
-    TEST_START("is_base_of type trait");
-
+TEST_F(TypeTraitsTest, IsBaseOfTrait) {
     const char* code = R"(
         #include <type_traits>
 
@@ -934,16 +734,10 @@ bool test_IsBaseOf() {
     )";
 
     auto AST = buildAST(code);
-    ASSERT(AST, "Failed to parse code");
-
-    TEST_PASS();
-    return true;
+    ASSERT_NE(AST, nullptr) << "Failed to parse code";
 }
 
-// Test 33: is_convertible type trait
-bool test_IsConvertible() {
-    TEST_START("is_convertible type trait");
-
+TEST_F(TypeTraitsTest, IsConvertibleTrait) {
     const char* code = R"(
         #include <type_traits>
 
@@ -961,16 +755,10 @@ bool test_IsConvertible() {
     )";
 
     auto AST = buildAST(code);
-    ASSERT(AST, "Failed to parse code");
-
-    TEST_PASS();
-    return true;
+    ASSERT_NE(AST, nullptr) << "Failed to parse code";
 }
 
-// Test 34: is_constructible type trait
-bool test_IsConstructible() {
-    TEST_START("is_constructible type trait");
-
+TEST_F(TypeTraitsTest, IsConstructibleTrait) {
     const char* code = R"(
         #include <type_traits>
 
@@ -987,16 +775,10 @@ bool test_IsConstructible() {
     )";
 
     auto AST = buildAST(code);
-    ASSERT(AST, "Failed to parse code");
-
-    TEST_PASS();
-    return true;
+    ASSERT_NE(AST, nullptr) << "Failed to parse code";
 }
 
-// Test 35: alignment_of type trait
-bool test_AlignmentOf() {
-    TEST_START("alignment_of type trait");
-
+TEST_F(TypeTraitsTest, AlignmentOfTrait) {
     const char* code = R"(
         #include <type_traits>
 
@@ -1009,16 +791,10 @@ bool test_AlignmentOf() {
     )";
 
     auto AST = buildAST(code);
-    ASSERT(AST, "Failed to parse code");
-
-    TEST_PASS();
-    return true;
+    ASSERT_NE(AST, nullptr) << "Failed to parse code";
 }
 
-// Test 36: rank type trait (array dimensions)
-bool test_Rank() {
-    TEST_START("rank type trait");
-
+TEST_F(TypeTraitsTest, RankTrait) {
     const char* code = R"(
         #include <type_traits>
 
@@ -1030,16 +806,10 @@ bool test_Rank() {
     )";
 
     auto AST = buildAST(code);
-    ASSERT(AST, "Failed to parse code");
-
-    TEST_PASS();
-    return true;
+    ASSERT_NE(AST, nullptr) << "Failed to parse code";
 }
 
-// Test 37: extent type trait (array dimension size)
-bool test_Extent() {
-    TEST_START("extent type trait");
-
+TEST_F(TypeTraitsTest, ExtentTrait) {
     const char* code = R"(
         #include <type_traits>
 
@@ -1051,16 +821,10 @@ bool test_Extent() {
     )";
 
     auto AST = buildAST(code);
-    ASSERT(AST, "Failed to parse code");
-
-    TEST_PASS();
-    return true;
+    ASSERT_NE(AST, nullptr) << "Failed to parse code";
 }
 
-// Test 38: Common type deduction
-bool test_CommonType() {
-    TEST_START("common_type deduction");
-
+TEST_F(TypeTraitsTest, CommonTypeDeduction) {
     const char* code = R"(
         #include <type_traits>
 
@@ -1076,16 +840,10 @@ bool test_CommonType() {
     )";
 
     auto AST = buildAST(code);
-    ASSERT(AST, "Failed to parse code");
-
-    TEST_PASS();
-    return true;
+    ASSERT_NE(AST, nullptr) << "Failed to parse code";
 }
 
-// Test 39: Compile-time type selection
-bool test_CompileTimeTypeSelection() {
-    TEST_START("compile-time type selection");
-
+TEST_F(TypeTraitsTest, CompileTimeTypeSelection) {
     const char* code = R"(
         #include <type_traits>
 
@@ -1107,16 +865,10 @@ bool test_CompileTimeTypeSelection() {
     )";
 
     auto AST = buildAST(code);
-    ASSERT(AST, "Failed to parse code");
-
-    TEST_PASS();
-    return true;
+    ASSERT_NE(AST, nullptr) << "Failed to parse code";
 }
 
-// Test 40: Complex trait composition
-bool test_ComplexTraitComposition() {
-    TEST_START("complex trait composition");
-
+TEST_F(TypeTraitsTest, ComplexTraitComposition) {
     const char* code = R"(
         #include <type_traits>
 
@@ -1135,82 +887,5 @@ bool test_ComplexTraitComposition() {
     )";
 
     auto AST = buildAST(code);
-    ASSERT(AST, "Failed to parse code");
-
-    TEST_PASS();
-    return true;
-}
-
-// ============================================================================
-// Main Test Runner
-// ============================================================================
-
-int main() {
-    std::cout << "========================================" << std::endl;
-    std::cout << "Stream 5: Type Traits Test Suite" << std::endl;
-    std::cout << "Target: 40 comprehensive tests" << std::endl;
-    std::cout << "========================================" << std::endl << std::endl;
-
-    int passed = 0;
-    int failed = 0;
-
-    // Section 1: Basic Type Traits (Tests 1-10)
-    std::cout << "\n=== SECTION 1: Basic Type Traits ===" << std::endl;
-    if (test_IsIntegral()) passed++; else failed++;
-    if (test_IsPointer()) passed++; else failed++;
-    if (test_IsConst()) passed++; else failed++;
-    if (test_IsReference()) passed++; else failed++;
-    if (test_IsFloatingPoint()) passed++; else failed++;
-    if (test_IsArray()) passed++; else failed++;
-    if (test_IsFunction()) passed++; else failed++;
-    if (test_IsVoid()) passed++; else failed++;
-    if (test_IsClass()) passed++; else failed++;
-    if (test_IsEnum()) passed++; else failed++;
-
-    // Section 2: Type Transformations (Tests 11-20)
-    std::cout << "\n=== SECTION 2: Type Transformations ===" << std::endl;
-    if (test_RemoveConst()) passed++; else failed++;
-    if (test_AddPointer()) passed++; else failed++;
-    if (test_RemovePointer()) passed++; else failed++;
-    if (test_AddConst()) passed++; else failed++;
-    if (test_RemoveReference()) passed++; else failed++;
-    if (test_Decay()) passed++; else failed++;
-    if (test_Conditional()) passed++; else failed++;
-    if (test_UnderlyingType()) passed++; else failed++;
-    if (test_MakeSigned()) passed++; else failed++;
-    if (test_MakeUnsigned()) passed++; else failed++;
-
-    // Section 3: SFINAE and enable_if (Tests 21-30)
-    std::cout << "\n=== SECTION 3: SFINAE and enable_if ===" << std::endl;
-    if (test_EnableIfBasic()) passed++; else failed++;
-    if (test_EnableIfReturnType()) passed++; else failed++;
-    if (test_EnableIfTemplateParam()) passed++; else failed++;
-    if (test_SFINAEOverloading()) passed++; else failed++;
-    if (test_EnableIfT()) passed++; else failed++;
-    if (test_SFINAEClassSpecialization()) passed++; else failed++;
-    if (test_ComplexSFINAE()) passed++; else failed++;
-    if (test_SFINAEMultipleConditions()) passed++; else failed++;
-    if (test_VoidT()) passed++; else failed++;
-    if (test_NestedEnableIf()) passed++; else failed++;
-
-    // Section 4: Type Relationships & Compile-time Evaluation (Tests 31-40)
-    std::cout << "\n=== SECTION 4: Type Relationships ===" << std::endl;
-    if (test_IsSame()) passed++; else failed++;
-    if (test_IsBaseOf()) passed++; else failed++;
-    if (test_IsConvertible()) passed++; else failed++;
-    if (test_IsConstructible()) passed++; else failed++;
-    if (test_AlignmentOf()) passed++; else failed++;
-    if (test_Rank()) passed++; else failed++;
-    if (test_Extent()) passed++; else failed++;
-    if (test_CommonType()) passed++; else failed++;
-    if (test_CompileTimeTypeSelection()) passed++; else failed++;
-    if (test_ComplexTraitComposition()) passed++; else failed++;
-
-    std::cout << "\n========================================" << std::endl;
-    std::cout << "Test Results:" << std::endl;
-    std::cout << "  Passed: " << passed << " / " << (passed + failed) << std::endl;
-    std::cout << "  Failed: " << failed << " / " << (passed + failed) << std::endl;
-    std::cout << "========================================" << std::endl;
-
-    return (failed == 0) ? 0 : 1;
+    ASSERT_NE(AST, nullptr) << "Failed to parse code";
 }

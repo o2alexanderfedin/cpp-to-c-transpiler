@@ -7,59 +7,23 @@
 // - Resource cleanup guarantees
 // - Complex RAII scenarios
 //
-// Migrated to Google Test Framework
-// Total: 25 tests
+// Target: 20-30 tests
 
-#include <gtest/gtest.h>
 #include "clang/Tooling/Tooling.h"
+#include <cassert>
+#include <iostream>
 #include <string>
 
 using namespace clang;
 
 // ============================================================================
-// Test Fixtures for RAII Integration Tests
-// ============================================================================
-
-class RaiiFileResourceTest : public ::testing::Test {
-protected:
-    std::unique_ptr<clang::ASTUnit> buildAST(const char* code) {
-        return tooling::buildASTFromCode(code);
-    }
-};
-
-class RaiiLockResourceTest : public ::testing::Test {
-protected:
-    std::unique_ptr<clang::ASTUnit> buildAST(const char* code) {
-        return tooling::buildASTFromCode(code);
-    }
-};
-
-class RaiiExceptionSafetyTest : public ::testing::Test {
-protected:
-    std::unique_ptr<clang::ASTUnit> buildAST(const char* code) {
-        return tooling::buildASTFromCode(code);
-    }
-};
-
-class RaiiComplexScenarioTest : public ::testing::Test {
-protected:
-    std::unique_ptr<clang::ASTUnit> buildAST(const char* code) {
-        return tooling::buildASTFromCode(code);
-    }
-};
-
-class RaiiPerformanceTest : public ::testing::Test {
-protected:
-    std::unique_ptr<clang::ASTUnit> buildAST(const char* code) {
-        return tooling::buildASTFromCode(code);
-    }
-};
-
-// ============================================================================
 // Group 1: Smart Pointers with File Resources (5 tests)
 // ============================================================================
 
-TEST_F(RaiiFileResourceTest, UniquePtrWithFileResource) {
+// Test 1: unique_ptr with FILE* resource
+void test_unique_ptr_with_file_resource() {
+    std::cout << "Running test_unique_ptr_with_file_resource... ";
+
     const char *Code = R"(
         #include <memory>
         #include <cstdio>
@@ -78,11 +42,30 @@ TEST_F(RaiiFileResourceTest, UniquePtrWithFileResource) {
         }
     )";
 
-    auto AST = buildAST(Code);
-    ASSERT_NE(AST, nullptr) << "AST should be built";
+    auto AST = tooling::buildASTFromCode(Code);
+    assert(AST && "AST should be built");
+
+    // Expected C translation:
+    // struct FileHandle { FILE* file; };
+    // void FileHandle_init(struct FileHandle* self, const char* path) {
+    //     self->file = fopen(path, "r");
+    // }
+    // void FileHandle_destroy(struct FileHandle* self) {
+    //     if (self->file) fclose(self->file);
+    // }
+    // void test() {
+    //     struct FileHandle* handle = FileHandle_new("test.txt");
+    //     FileHandle_destroy(handle);  // at scope exit
+    //     free(handle);
+    // }
+
+    std::cout << "✓" << std::endl;
 }
 
-TEST_F(RaiiFileResourceTest, SharedPtrWithFileResource) {
+// Test 2: shared_ptr with FILE* resource (multiple owners)
+void test_shared_ptr_with_file_resource() {
+    std::cout << "Running test_shared_ptr_with_file_resource... ";
+
     const char *Code = R"(
         #include <memory>
         #include <cstdio>
@@ -95,11 +78,16 @@ TEST_F(RaiiFileResourceTest, SharedPtrWithFileResource) {
         }
     )";
 
-    auto AST = buildAST(Code);
-    ASSERT_NE(AST, nullptr) << "AST should be built";
+    auto AST = tooling::buildASTFromCode(Code);
+    assert(AST && "AST should be built");
+
+    std::cout << "✓" << std::endl;
 }
 
-TEST_F(RaiiFileResourceTest, UniquePtrWithRaiiBuffer) {
+// Test 3: unique_ptr with RAII buffer
+void test_unique_ptr_with_raii_buffer() {
+    std::cout << "Running test_unique_ptr_with_raii_buffer... ";
+
     const char *Code = R"(
         #include <memory>
 
@@ -118,11 +106,16 @@ TEST_F(RaiiFileResourceTest, UniquePtrWithRaiiBuffer) {
         }
     )";
 
-    auto AST = buildAST(Code);
-    ASSERT_NE(AST, nullptr) << "AST should be built";
+    auto AST = tooling::buildASTFromCode(Code);
+    assert(AST && "AST should be built");
+
+    std::cout << "✓" << std::endl;
 }
 
-TEST_F(RaiiFileResourceTest, UniquePtrWithMultipleRaiiResources) {
+// Test 4: unique_ptr with multiple RAII resources
+void test_unique_ptr_with_multiple_raii_resources() {
+    std::cout << "Running test_unique_ptr_with_multiple_raii_resources... ";
+
     const char *Code = R"(
         #include <memory>
         #include <cstdio>
@@ -151,11 +144,16 @@ TEST_F(RaiiFileResourceTest, UniquePtrWithMultipleRaiiResources) {
         }
     )";
 
-    auto AST = buildAST(Code);
-    ASSERT_NE(AST, nullptr) << "AST should be built";
+    auto AST = tooling::buildASTFromCode(Code);
+    assert(AST && "AST should be built");
+
+    std::cout << "✓" << std::endl;
 }
 
-TEST_F(RaiiFileResourceTest, SharedPtrWithRaiiEarlyReturn) {
+// Test 5: shared_ptr with RAII and early return
+void test_shared_ptr_with_raii_early_return() {
+    std::cout << "Running test_shared_ptr_with_raii_early_return... ";
+
     const char *Code = R"(
         #include <memory>
 
@@ -174,15 +172,20 @@ TEST_F(RaiiFileResourceTest, SharedPtrWithRaiiEarlyReturn) {
         }
     )";
 
-    auto AST = buildAST(Code);
-    ASSERT_NE(AST, nullptr) << "AST should be built";
+    auto AST = tooling::buildASTFromCode(Code);
+    assert(AST && "AST should be built");
+
+    std::cout << "✓" << std::endl;
 }
 
 // ============================================================================
 // Group 2: Smart Pointers with Lock Resources (5 tests)
 // ============================================================================
 
-TEST_F(RaiiLockResourceTest, UniquePtrWithMutexLock) {
+// Test 6: unique_ptr with mutex lock (RAII)
+void test_unique_ptr_with_mutex_lock() {
+    std::cout << "Running test_unique_ptr_with_mutex_lock... ";
+
     const char *Code = R"(
         #include <memory>
         #include <mutex>
@@ -202,11 +205,16 @@ TEST_F(RaiiLockResourceTest, UniquePtrWithMutexLock) {
         }
     )";
 
-    auto AST = buildAST(Code);
-    ASSERT_NE(AST, nullptr) << "AST should be built";
+    auto AST = tooling::buildASTFromCode(Code);
+    assert(AST && "AST should be built");
+
+    std::cout << "✓" << std::endl;
 }
 
-TEST_F(RaiiLockResourceTest, SharedPtrWithLockGuard) {
+// Test 7: shared_ptr with lock guard
+void test_shared_ptr_with_lock_guard() {
+    std::cout << "Running test_shared_ptr_with_lock_guard... ";
+
     const char *Code = R"(
         #include <memory>
         #include <mutex>
@@ -218,11 +226,16 @@ TEST_F(RaiiLockResourceTest, SharedPtrWithLockGuard) {
         }
     )";
 
-    auto AST = buildAST(Code);
-    ASSERT_NE(AST, nullptr) << "AST should be built";
+    auto AST = tooling::buildASTFromCode(Code);
+    assert(AST && "AST should be built");
+
+    std::cout << "✓" << std::endl;
 }
 
-TEST_F(RaiiLockResourceTest, UniquePtrWithRecursiveLock) {
+// Test 8: unique_ptr with recursive lock
+void test_unique_ptr_with_recursive_lock() {
+    std::cout << "Running test_unique_ptr_with_recursive_lock... ";
+
     const char *Code = R"(
         #include <memory>
         #include <mutex>
@@ -248,11 +261,16 @@ TEST_F(RaiiLockResourceTest, UniquePtrWithRecursiveLock) {
         }
     )";
 
-    auto AST = buildAST(Code);
-    ASSERT_NE(AST, nullptr) << "AST should be built";
+    auto AST = tooling::buildASTFromCode(Code);
+    assert(AST && "AST should be built");
+
+    std::cout << "✓" << std::endl;
 }
 
-TEST_F(RaiiLockResourceTest, UniquePtrWithReadWriteLock) {
+// Test 9: unique_ptr with read-write lock
+void test_unique_ptr_with_read_write_lock() {
+    std::cout << "Running test_unique_ptr_with_read_write_lock... ";
+
     const char *Code = R"(
         #include <memory>
         #include <shared_mutex>
@@ -271,11 +289,16 @@ TEST_F(RaiiLockResourceTest, UniquePtrWithReadWriteLock) {
         }
     )";
 
-    auto AST = buildAST(Code);
-    ASSERT_NE(AST, nullptr) << "AST should be built";
+    auto AST = tooling::buildASTFromCode(Code);
+    assert(AST && "AST should be built");
+
+    std::cout << "✓" << std::endl;
 }
 
-TEST_F(RaiiLockResourceTest, MultipleLocksWithUniquePtr) {
+// Test 10: Multiple locks with unique_ptr (deadlock prevention)
+void test_multiple_locks_with_unique_ptr() {
+    std::cout << "Running test_multiple_locks_with_unique_ptr... ";
+
     const char *Code = R"(
         #include <memory>
         #include <mutex>
@@ -300,15 +323,20 @@ TEST_F(RaiiLockResourceTest, MultipleLocksWithUniquePtr) {
         }
     )";
 
-    auto AST = buildAST(Code);
-    ASSERT_NE(AST, nullptr) << "AST should be built";
+    auto AST = tooling::buildASTFromCode(Code);
+    assert(AST && "AST should be built");
+
+    std::cout << "✓" << std::endl;
 }
 
 // ============================================================================
 // Group 3: Exception Safety with Smart Pointers (6 tests)
 // ============================================================================
 
-TEST_F(RaiiExceptionSafetyTest, UniquePtrExceptionSafetyAutomaticCleanup) {
+// Test 11: unique_ptr exception safety (automatic cleanup)
+void test_unique_ptr_exception_safety_automatic_cleanup() {
+    std::cout << "Running test_unique_ptr_exception_safety_automatic_cleanup... ";
+
     const char *Code = R"(
         #include <memory>
 
@@ -328,11 +356,29 @@ TEST_F(RaiiExceptionSafetyTest, UniquePtrExceptionSafetyAutomaticCleanup) {
         }
     )";
 
-    auto AST = buildAST(Code);
-    ASSERT_NE(AST, nullptr) << "AST should be built";
+    auto AST = tooling::buildASTFromCode(Code);
+    assert(AST && "AST should be built");
+
+    // Expected C translation (with exception handling):
+    // void test() {
+    //     __exception_frame_t frame;
+    //     if (setjmp(frame.jmp_buf) == 0) {
+    //         struct Resource* res = Resource_new();
+    //         may_throw();
+    //         Resource_destroy(res);  // Normal path
+    //     } else {
+    //         Resource_destroy(res);  // Exception path
+    //         // Handle exception
+    //     }
+    // }
+
+    std::cout << "✓" << std::endl;
 }
 
-TEST_F(RaiiExceptionSafetyTest, SharedPtrExceptionSafety) {
+// Test 12: shared_ptr exception safety
+void test_shared_ptr_exception_safety() {
+    std::cout << "Running test_shared_ptr_exception_safety... ";
+
     const char *Code = R"(
         #include <memory>
 
@@ -355,11 +401,16 @@ TEST_F(RaiiExceptionSafetyTest, SharedPtrExceptionSafety) {
         }
     )";
 
-    auto AST = buildAST(Code);
-    ASSERT_NE(AST, nullptr) << "AST should be built";
+    auto AST = tooling::buildASTFromCode(Code);
+    assert(AST && "AST should be built");
+
+    std::cout << "✓" << std::endl;
 }
 
-TEST_F(RaiiExceptionSafetyTest, MakeUniqueExceptionSafetyVsConstructor) {
+// Test 13: make_unique vs unique_ptr constructor exception safety
+void test_make_unique_exception_safety_vs_constructor() {
+    std::cout << "Running test_make_unique_exception_safety_vs_constructor... ";
+
     const char *Code = R"(
         #include <memory>
 
@@ -371,6 +422,12 @@ TEST_F(RaiiExceptionSafetyTest, MakeUniqueExceptionSafetyVsConstructor) {
         void process(std::unique_ptr<Widget> p1, std::unique_ptr<Widget> p2) {}
 
         void test() {
+            // UNSAFE: Potential leak if exception thrown between allocations
+            // process(
+            //     std::unique_ptr<Widget>(new Widget(1)),
+            //     std::unique_ptr<Widget>(new Widget(2))
+            // );
+
             // SAFE: make_unique ensures exception safety
             process(
                 std::make_unique<Widget>(1),
@@ -379,11 +436,16 @@ TEST_F(RaiiExceptionSafetyTest, MakeUniqueExceptionSafetyVsConstructor) {
         }
     )";
 
-    auto AST = buildAST(Code);
-    ASSERT_NE(AST, nullptr) << "AST should be built";
+    auto AST = tooling::buildASTFromCode(Code);
+    assert(AST && "AST should be built");
+
+    std::cout << "✓" << std::endl;
 }
 
-TEST_F(RaiiExceptionSafetyTest, RaiiWithExceptionInConstructor) {
+// Test 14: RAII with exception in constructor
+void test_raii_with_exception_in_constructor() {
+    std::cout << "Running test_raii_with_exception_in_constructor... ";
+
     const char *Code = R"(
         #include <memory>
 
@@ -401,11 +463,16 @@ TEST_F(RaiiExceptionSafetyTest, RaiiWithExceptionInConstructor) {
         }
     )";
 
-    auto AST = buildAST(Code);
-    ASSERT_NE(AST, nullptr) << "AST should be built";
+    auto AST = tooling::buildASTFromCode(Code);
+    assert(AST && "AST should be built");
+
+    std::cout << "✓" << std::endl;
 }
 
-TEST_F(RaiiExceptionSafetyTest, ExceptionWithMultipleRaiiResources) {
+// Test 15: Exception with multiple RAII resources
+void test_exception_with_multiple_raii_resources() {
+    std::cout << "Running test_exception_with_multiple_raii_resources... ";
+
     const char *Code = R"(
         #include <memory>
 
@@ -433,11 +500,16 @@ TEST_F(RaiiExceptionSafetyTest, ExceptionWithMultipleRaiiResources) {
         }
     )";
 
-    auto AST = buildAST(Code);
-    ASSERT_NE(AST, nullptr) << "AST should be built";
+    auto AST = tooling::buildASTFromCode(Code);
+    assert(AST && "AST should be built");
+
+    std::cout << "✓" << std::endl;
 }
 
-TEST_F(RaiiExceptionSafetyTest, ExceptionSafetyWithNestedScopes) {
+// Test 16: Exception safety with nested scopes
+void test_exception_safety_with_nested_scopes() {
+    std::cout << "Running test_exception_safety_with_nested_scopes... ";
+
     const char *Code = R"(
         #include <memory>
 
@@ -462,15 +534,20 @@ TEST_F(RaiiExceptionSafetyTest, ExceptionSafetyWithNestedScopes) {
         }
     )";
 
-    auto AST = buildAST(Code);
-    ASSERT_NE(AST, nullptr) << "AST should be built";
+    auto AST = tooling::buildASTFromCode(Code);
+    assert(AST && "AST should be built");
+
+    std::cout << "✓" << std::endl;
 }
 
 // ============================================================================
 // Group 4: Complex RAII Scenarios (6 tests)
 // ============================================================================
 
-TEST_F(RaiiComplexScenarioTest, SmartPointerWithVirtualInheritanceRaii) {
+// Test 17: Smart pointer with virtual inheritance RAII
+void test_smart_pointer_with_virtual_inheritance_raii() {
+    std::cout << "Running test_smart_pointer_with_virtual_inheritance_raii... ";
+
     const char *Code = R"(
         #include <memory>
 
@@ -493,11 +570,16 @@ TEST_F(RaiiComplexScenarioTest, SmartPointerWithVirtualInheritanceRaii) {
         }
     )";
 
-    auto AST = buildAST(Code);
-    ASSERT_NE(AST, nullptr) << "AST should be built";
+    auto AST = tooling::buildASTFromCode(Code);
+    assert(AST && "AST should be built");
+
+    std::cout << "✓" << std::endl;
 }
 
-TEST_F(RaiiComplexScenarioTest, SmartPointerInMemberInitializationList) {
+// Test 18: Smart pointer in member initialization list
+void test_smart_pointer_in_member_initialization_list() {
+    std::cout << "Running test_smart_pointer_in_member_initialization_list... ";
+
     const char *Code = R"(
         #include <memory>
 
@@ -520,11 +602,16 @@ TEST_F(RaiiComplexScenarioTest, SmartPointerInMemberInitializationList) {
         }  // owner.~Owner() -> res.~unique_ptr() -> Resource.~Resource()
     )";
 
-    auto AST = buildAST(Code);
-    ASSERT_NE(AST, nullptr) << "AST should be built";
+    auto AST = tooling::buildASTFromCode(Code);
+    assert(AST && "AST should be built");
+
+    std::cout << "✓" << std::endl;
 }
 
-TEST_F(RaiiComplexScenarioTest, SmartPointerMoveSemanticsInConstructor) {
+// Test 19: Smart pointer with move semantics in constructor
+void test_smart_pointer_move_semantics_in_constructor() {
+    std::cout << "Running test_smart_pointer_move_semantics_in_constructor... ";
+
     const char *Code = R"(
         #include <memory>
         #include <utility>
@@ -548,11 +635,16 @@ TEST_F(RaiiComplexScenarioTest, SmartPointerMoveSemanticsInConstructor) {
         }  // owner.~Owner() destroys resource
     )";
 
-    auto AST = buildAST(Code);
-    ASSERT_NE(AST, nullptr) << "AST should be built";
+    auto AST = tooling::buildASTFromCode(Code);
+    assert(AST && "AST should be built");
+
+    std::cout << "✓" << std::endl;
 }
 
-TEST_F(RaiiComplexScenarioTest, SmartPointerConditionalCleanup) {
+// Test 20: Smart pointer with conditional cleanup
+void test_smart_pointer_conditional_cleanup() {
+    std::cout << "Running test_smart_pointer_conditional_cleanup... ";
+
     const char *Code = R"(
         #include <memory>
 
@@ -571,11 +663,16 @@ TEST_F(RaiiComplexScenarioTest, SmartPointerConditionalCleanup) {
         }
     )";
 
-    auto AST = buildAST(Code);
-    ASSERT_NE(AST, nullptr) << "AST should be built";
+    auto AST = tooling::buildASTFromCode(Code);
+    assert(AST && "AST should be built");
+
+    std::cout << "✓" << std::endl;
 }
 
-TEST_F(RaiiComplexScenarioTest, SmartPointerFactoryPattern) {
+// Test 21: Smart pointer factory pattern
+void test_smart_pointer_factory_pattern() {
+    std::cout << "Running test_smart_pointer_factory_pattern... ";
+
     const char *Code = R"(
         #include <memory>
 
@@ -601,11 +698,16 @@ TEST_F(RaiiComplexScenarioTest, SmartPointerFactoryPattern) {
         }
     )";
 
-    auto AST = buildAST(Code);
-    ASSERT_NE(AST, nullptr) << "AST should be built";
+    auto AST = tooling::buildASTFromCode(Code);
+    assert(AST && "AST should be built");
+
+    std::cout << "✓" << std::endl;
 }
 
-TEST_F(RaiiComplexScenarioTest, SharedPointerObserverPattern) {
+// Test 22: Shared pointer with observer pattern
+void test_shared_pointer_observer_pattern() {
+    std::cout << "Running test_shared_pointer_observer_pattern... ";
+
     const char *Code = R"(
         #include <memory>
         #include <vector>
@@ -639,15 +741,20 @@ TEST_F(RaiiComplexScenarioTest, SharedPointerObserverPattern) {
         }
     )";
 
-    auto AST = buildAST(Code);
-    ASSERT_NE(AST, nullptr) << "AST should be built";
+    auto AST = tooling::buildASTFromCode(Code);
+    assert(AST && "AST should be built");
+
+    std::cout << "✓" << std::endl;
 }
 
 // ============================================================================
 // Group 5: Performance and Memory Considerations (3 tests)
 // ============================================================================
 
-TEST_F(RaiiPerformanceTest, SmartPointerVsRawPointerOverhead) {
+// Test 23: Smart pointer vs raw pointer performance
+void test_smart_pointer_vs_raw_pointer_overhead() {
+    std::cout << "Running test_smart_pointer_vs_raw_pointer_overhead... ";
+
     const char *Code = R"(
         #include <memory>
 
@@ -669,11 +776,16 @@ TEST_F(RaiiPerformanceTest, SmartPointerVsRawPointerOverhead) {
         }
     )";
 
-    auto AST = buildAST(Code);
-    ASSERT_NE(AST, nullptr) << "AST should be built";
+    auto AST = tooling::buildASTFromCode(Code);
+    assert(AST && "AST should be built");
+
+    std::cout << "✓" << std::endl;
 }
 
-TEST_F(RaiiPerformanceTest, MemoryLayoutWithSmartPointers) {
+// Test 24: Memory layout with smart pointers
+void test_memory_layout_with_smart_pointers() {
+    std::cout << "Running test_memory_layout_with_smart_pointers... ";
+
     const char *Code = R"(
         #include <memory>
 
@@ -690,11 +802,16 @@ TEST_F(RaiiPerformanceTest, MemoryLayoutWithSmartPointers) {
         };
     )";
 
-    auto AST = buildAST(Code);
-    ASSERT_NE(AST, nullptr) << "AST should be built";
+    auto AST = tooling::buildASTFromCode(Code);
+    assert(AST && "AST should be built");
+
+    std::cout << "✓" << std::endl;
 }
 
-TEST_F(RaiiPerformanceTest, SmartPointerCacheLocality) {
+// Test 25: Smart pointer cache locality
+void test_smart_pointer_cache_locality() {
+    std::cout << "Running test_smart_pointer_cache_locality... ";
+
     const char *Code = R"(
         #include <memory>
         #include <vector>
@@ -719,15 +836,55 @@ TEST_F(RaiiPerformanceTest, SmartPointerCacheLocality) {
         }
     )";
 
-    auto AST = buildAST(Code);
-    ASSERT_NE(AST, nullptr) << "AST should be built";
+    auto AST = tooling::buildASTFromCode(Code);
+    assert(AST && "AST should be built");
+
+    std::cout << "✓" << std::endl;
 }
 
 // ============================================================================
 // Main Function
 // ============================================================================
 
-int main(int argc, char **argv) {
-    ::testing::InitGoogleTest(&argc, argv);
-    return RUN_ALL_TESTS();
+int main() {
+    std::cout << "\n=== RaiiIntegrationTest - Stream 3: Smart Pointers & RAII ===" << std::endl;
+    std::cout << "File 3 of 3: RAII Integration tests (25 tests)\n" << std::endl;
+
+    // Group 1: Smart Pointers with File Resources (5 tests)
+    test_unique_ptr_with_file_resource();
+    test_shared_ptr_with_file_resource();
+    test_unique_ptr_with_raii_buffer();
+    test_unique_ptr_with_multiple_raii_resources();
+    test_shared_ptr_with_raii_early_return();
+
+    // Group 2: Smart Pointers with Lock Resources (5 tests)
+    test_unique_ptr_with_mutex_lock();
+    test_shared_ptr_with_lock_guard();
+    test_unique_ptr_with_recursive_lock();
+    test_unique_ptr_with_read_write_lock();
+    test_multiple_locks_with_unique_ptr();
+
+    // Group 3: Exception Safety with Smart Pointers (6 tests)
+    test_unique_ptr_exception_safety_automatic_cleanup();
+    test_shared_ptr_exception_safety();
+    test_make_unique_exception_safety_vs_constructor();
+    test_raii_with_exception_in_constructor();
+    test_exception_with_multiple_raii_resources();
+    test_exception_safety_with_nested_scopes();
+
+    // Group 4: Complex RAII Scenarios (6 tests)
+    test_smart_pointer_with_virtual_inheritance_raii();
+    test_smart_pointer_in_member_initialization_list();
+    test_smart_pointer_move_semantics_in_constructor();
+    test_smart_pointer_conditional_cleanup();
+    test_smart_pointer_factory_pattern();
+    test_shared_pointer_observer_pattern();
+
+    // Group 5: Performance and Memory Considerations (3 tests)
+    test_smart_pointer_vs_raw_pointer_overhead();
+    test_memory_layout_with_smart_pointers();
+    test_smart_pointer_cache_locality();
+
+    std::cout << "\n=== All 25 RAII Integration tests passed! ===" << std::endl;
+    return 0;
 }
