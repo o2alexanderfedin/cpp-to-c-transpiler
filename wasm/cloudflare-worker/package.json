@@ -1,0 +1,16 @@
+{
+  "name": "cpptoc-worker",
+  "version": "1.22.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "wrangler dev",
+    "deploy": "wrangler deploy",
+    "build": "tsc"
+  },
+  "devDependencies": {
+    "wrangler": "^3.90.0",
+    "typescript": "^5.7.0",
+    "@cloudflare/workers-types": "^4.20250114.0"
+  }
+}

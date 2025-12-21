@@ -19,12 +19,12 @@
  * - Dependency Inversion: Uses abstract AST interfaces
  */
 
+#include <gtest/gtest.h>
 #include "clang/Tooling/Tooling.h"
 #include "clang/Frontend/ASTUnit.h"
 #include "../include/DynamicCastTranslator.h"
 #include "../include/TypeInfoGenerator.h"
 #include "../include/VirtualMethodAnalyzer.h"
-#include <iostream>
 #include <cassert>
 #include <sstream>
 
@@ -36,9 +36,6 @@ std::unique_ptr<ASTUnit> buildAST(const char *code) {
 }
 
 // Test helper macros
-#define TEST_START(name) std::cout << "Test: " << name << " ... " << std::flush
-#define TEST_PASS(name) std::cout << "PASS" << std::endl
-#define ASSERT(cond, msg) \
     if (!(cond)) { \
         std::cerr << "\nASSERT FAILED: " << msg << std::endl; \
         return; \
@@ -70,346 +67,274 @@ const CXXDynamicCastExpr* findDynamicCastExpr(ASTContext& Context) {
 /**
  * Test 1: Detect dynamic_cast expression
  */
-void test_DetectDynamicCast() {
-    TEST_START("DetectDynamicCast");
 
+// Test fixture
+class DynamicCastTranslatorTest : public ::testing::Test {
+protected:
+};
+
+TEST_F(DynamicCastTranslatorTest, DetectDynamicCast) {
     const char* code = R"(
-        namespace std { class type_info { public: const char* name() const; }; }
+            namespace std { class type_info { public: const char* name() const; }; }
 
-        class Base {
-        public:
-            virtual ~Base() {}
-        };
+            class Base {
+            public:
+                virtual ~Base() {}
+            };
 
-        class Derived : public Base {
-        public:
-            ~Derived() override {}
-        };
+            class Derived : public Base {
+            public:
+                ~Derived() override {}
+            };
 
-        void test(Base* ptr) {
-            Derived* d = dynamic_cast<Derived*>(ptr);
-        }
-    )";
+            void test(Base* ptr) {
+                Derived* d = dynamic_cast<Derived*>(ptr);
+            }
+        )";
 
-    std::unique_ptr<ASTUnit> AST = buildAST(code);
-    ASSERT(AST != nullptr, "Failed to parse C++ code");
+        std::unique_ptr<ASTUnit> AST = buildAST(code);
+        ASSERT_TRUE(AST != nullptr) << "Failed to parse C++ code";
 
-    ASTContext& Context = AST->getASTContext();
-    VirtualMethodAnalyzer Analyzer(Context);
-    DynamicCastTranslator Translator(Context, Analyzer);
+        ASTContext& Context = AST->getASTContext();
+        VirtualMethodAnalyzer Analyzer(Context);
+        DynamicCastTranslator Translator(Context, Analyzer);
 
-    const CXXDynamicCastExpr* castExpr = findDynamicCastExpr(Context);
-    ASSERT(castExpr != nullptr, "dynamic_cast expression not found");
-
-    TEST_PASS("DetectDynamicCast");
+        const CXXDynamicCastExpr* castExpr = findDynamicCastExpr(Context);
+        ASSERT_TRUE(castExpr != nullptr) << "dynamic_cast expression not found";
 }
 
-/**
- * Test 2: Extract source and target types
- */
-void test_ExtractSourceAndTargetTypes() {
-    TEST_START("ExtractSourceAndTargetTypes");
-
+TEST_F(DynamicCastTranslatorTest, ExtractSourceAndTargetTypes) {
     const char* code = R"(
-        namespace std { class type_info { public: const char* name() const; }; }
+            namespace std { class type_info { public: const char* name() const; }; }
 
-        class Base {
-        public:
-            virtual ~Base() {}
-        };
+            class Base {
+            public:
+                virtual ~Base() {}
+            };
 
-        class Derived : public Base {
-        public:
-            ~Derived() override {}
-        };
+            class Derived : public Base {
+            public:
+                ~Derived() override {}
+            };
 
-        void test(Base* ptr) {
-            Derived* d = dynamic_cast<Derived*>(ptr);
-        }
-    )";
+            void test(Base* ptr) {
+                Derived* d = dynamic_cast<Derived*>(ptr);
+            }
+        )";
 
-    std::unique_ptr<ASTUnit> AST = buildAST(code);
-    ASSERT(AST != nullptr, "Failed to parse C++ code");
+        std::unique_ptr<ASTUnit> AST = buildAST(code);
+        ASSERT_TRUE(AST != nullptr) << "Failed to parse C++ code";
 
-    ASTContext& Context = AST->getASTContext();
-    VirtualMethodAnalyzer Analyzer(Context);
-    DynamicCastTranslator Translator(Context, Analyzer);
+        ASTContext& Context = AST->getASTContext();
+        VirtualMethodAnalyzer Analyzer(Context);
+        DynamicCastTranslator Translator(Context, Analyzer);
 
-    const CXXDynamicCastExpr* castExpr = findDynamicCastExpr(Context);
-    ASSERT(castExpr != nullptr, "dynamic_cast expression not found");
+        const CXXDynamicCastExpr* castExpr = findDynamicCastExpr(Context);
+        ASSERT_TRUE(castExpr != nullptr) << "dynamic_cast expression not found";
 
-    std::string sourceType = Translator.getSourceTypeName(castExpr);
-    std::string targetType = Translator.getTargetTypeName(castExpr);
+        std::string sourceType = Translator.getSourceTypeName(castExpr);
+        std::string targetType = Translator.getTargetTypeName(castExpr);
 
-    ASSERT(sourceType == "Base", "Expected source type 'Base'");
-    ASSERT(targetType == "Derived", "Expected target type 'Derived'");
-
-    TEST_PASS("ExtractSourceAndTargetTypes");
+        ASSERT_TRUE(sourceType == "Base") << "Expected source type 'Base'";
+        ASSERT_TRUE(targetType == "Derived") << "Expected target type 'Derived'";
 }
 
-/**
- * Test 3: Generate cxx_dynamic_cast() call
- */
-void test_GenerateDynamicCastCall() {
-    TEST_START("GenerateDynamicCastCall");
-
+TEST_F(DynamicCastTranslatorTest, GenerateDynamicCastCall) {
     const char* code = R"(
-        namespace std { class type_info { public: const char* name() const; }; }
+            namespace std { class type_info { public: const char* name() const; }; }
 
-        class Base {
-        public:
-            virtual ~Base() {}
-        };
+            class Base {
+            public:
+                virtual ~Base() {}
+            };
 
-        class Derived : public Base {
-        public:
-            ~Derived() override {}
-        };
+            class Derived : public Base {
+            public:
+                ~Derived() override {}
+            };
 
-        void test(Base* ptr) {
-            Derived* d = dynamic_cast<Derived*>(ptr);
-        }
-    )";
+            void test(Base* ptr) {
+                Derived* d = dynamic_cast<Derived*>(ptr);
+            }
+        )";
 
-    std::unique_ptr<ASTUnit> AST = buildAST(code);
-    ASSERT(AST != nullptr, "Failed to parse C++ code");
+        std::unique_ptr<ASTUnit> AST = buildAST(code);
+        ASSERT_TRUE(AST != nullptr) << "Failed to parse C++ code";
 
-    ASTContext& Context = AST->getASTContext();
-    VirtualMethodAnalyzer Analyzer(Context);
-    DynamicCastTranslator Translator(Context, Analyzer);
+        ASTContext& Context = AST->getASTContext();
+        VirtualMethodAnalyzer Analyzer(Context);
+        DynamicCastTranslator Translator(Context, Analyzer);
 
-    const CXXDynamicCastExpr* castExpr = findDynamicCastExpr(Context);
-    ASSERT(castExpr != nullptr, "dynamic_cast expression not found");
+        const CXXDynamicCastExpr* castExpr = findDynamicCastExpr(Context);
+        ASSERT_TRUE(castExpr != nullptr) << "dynamic_cast expression not found";
 
-    std::string translation = Translator.translateDynamicCast(castExpr);
+        std::string translation = Translator.translateDynamicCast(castExpr);
 
-    // Should generate cxx_dynamic_cast call
-    ASSERT(!translation.empty(), "Translation is empty");
-    ASSERT(translation.find("cxx_dynamic_cast") != std::string::npos, "Expected cxx_dynamic_cast call");
-    ASSERT(translation.find("__ti_Base") != std::string::npos, "Expected source type_info __ti_Base");
-    ASSERT(translation.find("__ti_Derived") != std::string::npos, "Expected target type_info __ti_Derived");
-
-    TEST_PASS("GenerateDynamicCastCall");
+        // Should generate cxx_dynamic_cast call
+        ASSERT_TRUE(!translation.empty()) << "Translation is empty";
+        ASSERT_TRUE(translation.find("cxx_dynamic_cast") != std::string::npos) << "Expected cxx_dynamic_cast call";
+        ASSERT_TRUE(translation.find("__ti_Base") != std::string::npos) << "Expected source type_info __ti_Base";
+        ASSERT_TRUE(translation.find("__ti_Derived") != std::string::npos) << "Expected target type_info __ti_Derived";
 }
 
-/**
- * Test 4: NULL pointer handling
- */
-void test_NullPointerHandling() {
-    TEST_START("NullPointerHandling");
-
+TEST_F(DynamicCastTranslatorTest, NullPointerHandling) {
     const char* code = R"(
-        namespace std { class type_info { public: const char* name() const; }; }
+            namespace std { class type_info { public: const char* name() const; }; }
 
-        class Base {
-        public:
-            virtual ~Base() {}
-        };
+            class Base {
+            public:
+                virtual ~Base() {}
+            };
 
-        class Derived : public Base {
-        public:
-            ~Derived() override {}
-        };
+            class Derived : public Base {
+            public:
+                ~Derived() override {}
+            };
 
-        void test() {
-            Base* ptr = nullptr;
-            Derived* d = dynamic_cast<Derived*>(ptr);
-        }
-    )";
+            void test() {
+                Base* ptr = nullptr;
+                Derived* d = dynamic_cast<Derived*>(ptr);
+            }
+        )";
 
-    std::unique_ptr<ASTUnit> AST = buildAST(code);
-    ASSERT(AST != nullptr, "Failed to parse C++ code");
+        std::unique_ptr<ASTUnit> AST = buildAST(code);
+        ASSERT_TRUE(AST != nullptr) << "Failed to parse C++ code";
 
-    ASTContext& Context = AST->getASTContext();
-    VirtualMethodAnalyzer Analyzer(Context);
-    DynamicCastTranslator Translator(Context, Analyzer);
+        ASTContext& Context = AST->getASTContext();
+        VirtualMethodAnalyzer Analyzer(Context);
+        DynamicCastTranslator Translator(Context, Analyzer);
 
-    const CXXDynamicCastExpr* castExpr = findDynamicCastExpr(Context);
-    ASSERT(castExpr != nullptr, "dynamic_cast expression not found");
+        const CXXDynamicCastExpr* castExpr = findDynamicCastExpr(Context);
+        ASSERT_TRUE(castExpr != nullptr) << "dynamic_cast expression not found";
 
-    std::string translation = Translator.translateDynamicCast(castExpr);
+        std::string translation = Translator.translateDynamicCast(castExpr);
 
-    // NULL check should be handled by runtime cxx_dynamic_cast
-    ASSERT(!translation.empty(), "Translation is empty");
-    ASSERT(translation.find("cxx_dynamic_cast") != std::string::npos, "Expected cxx_dynamic_cast call");
-
-    TEST_PASS("NullPointerHandling");
+        // NULL check should be handled by runtime cxx_dynamic_cast
+        ASSERT_TRUE(!translation.empty()) << "Translation is empty";
+        ASSERT_TRUE(translation.find("cxx_dynamic_cast") != std::string::npos) << "Expected cxx_dynamic_cast call";
 }
 
-/**
- * Test 5: Same-type cast optimization
- */
-void test_SameTypeCastOptimization() {
-    TEST_START("SameTypeCastOptimization");
-
+TEST_F(DynamicCastTranslatorTest, SameTypeCastOptimization) {
     const char* code = R"(
-        namespace std { class type_info { public: const char* name() const; }; }
+            namespace std { class type_info { public: const char* name() const; }; }
 
-        class Base {
-        public:
-            virtual ~Base() {}
-        };
+            class Base {
+            public:
+                virtual ~Base() {}
+            };
 
-        void test(Base* ptr) {
-            Base* same = dynamic_cast<Base*>(ptr);
-        }
-    )";
+            void test(Base* ptr) {
+                Base* same = dynamic_cast<Base*>(ptr);
+            }
+        )";
 
-    std::unique_ptr<ASTUnit> AST = buildAST(code);
-    ASSERT(AST != nullptr, "Failed to parse C++ code");
+        std::unique_ptr<ASTUnit> AST = buildAST(code);
+        ASSERT_TRUE(AST != nullptr) << "Failed to parse C++ code";
 
-    ASTContext& Context = AST->getASTContext();
-    VirtualMethodAnalyzer Analyzer(Context);
-    DynamicCastTranslator Translator(Context, Analyzer);
+        ASTContext& Context = AST->getASTContext();
+        VirtualMethodAnalyzer Analyzer(Context);
+        DynamicCastTranslator Translator(Context, Analyzer);
 
-    const CXXDynamicCastExpr* castExpr = findDynamicCastExpr(Context);
-    ASSERT(castExpr != nullptr, "dynamic_cast expression not found");
+        const CXXDynamicCastExpr* castExpr = findDynamicCastExpr(Context);
+        ASSERT_TRUE(castExpr != nullptr) << "dynamic_cast expression not found";
 
-    std::string translation = Translator.translateDynamicCast(castExpr);
+        std::string translation = Translator.translateDynamicCast(castExpr);
 
-    // Same-type optimization can be done at runtime level
-    ASSERT(!translation.empty(), "Translation is empty");
-
-    TEST_PASS("SameTypeCastOptimization");
+        // Same-type optimization can be done at runtime level
+        ASSERT_TRUE(!translation.empty()) << "Translation is empty";
 }
 
-/**
- * Test 6: Failed cast to unrelated type
- */
-void test_FailedCastUnrelatedType() {
-    TEST_START("FailedCastUnrelatedType");
-
+TEST_F(DynamicCastTranslatorTest, FailedCastUnrelatedType) {
     const char* code = R"(
-        namespace std { class type_info { public: const char* name() const; }; }
+            namespace std { class type_info { public: const char* name() const; }; }
 
-        class Base {
-        public:
-            virtual ~Base() {}
-        };
+            class Base {
+            public:
+                virtual ~Base() {}
+            };
 
-        class Other {
-        public:
-            virtual ~Other() {}
-        };
+            class Other {
+            public:
+                virtual ~Other() {}
+            };
 
-        void test(Base* ptr) {
-            Other* o = dynamic_cast<Other*>(ptr);
-        }
-    )";
+            void test(Base* ptr) {
+                Other* o = dynamic_cast<Other*>(ptr);
+            }
+        )";
 
-    std::unique_ptr<ASTUnit> AST = buildAST(code);
-    ASSERT(AST != nullptr, "Failed to parse C++ code");
+        std::unique_ptr<ASTUnit> AST = buildAST(code);
+        ASSERT_TRUE(AST != nullptr) << "Failed to parse C++ code";
 
-    ASTContext& Context = AST->getASTContext();
-    VirtualMethodAnalyzer Analyzer(Context);
-    DynamicCastTranslator Translator(Context, Analyzer);
+        ASTContext& Context = AST->getASTContext();
+        VirtualMethodAnalyzer Analyzer(Context);
+        DynamicCastTranslator Translator(Context, Analyzer);
 
-    const CXXDynamicCastExpr* castExpr = findDynamicCastExpr(Context);
-    ASSERT(castExpr != nullptr, "dynamic_cast expression not found");
+        const CXXDynamicCastExpr* castExpr = findDynamicCastExpr(Context);
+        ASSERT_TRUE(castExpr != nullptr) << "dynamic_cast expression not found";
 
-    std::string translation = Translator.translateDynamicCast(castExpr);
+        std::string translation = Translator.translateDynamicCast(castExpr);
 
-    // Should generate call that returns NULL at runtime for unrelated types
-    ASSERT(!translation.empty(), "Translation is empty");
-    ASSERT(translation.find("cxx_dynamic_cast") != std::string::npos, "Expected cxx_dynamic_cast call");
-    ASSERT(translation.find("__ti_Base") != std::string::npos, "Expected source __ti_Base");
-    ASSERT(translation.find("__ti_Other") != std::string::npos, "Expected target __ti_Other");
-
-    TEST_PASS("FailedCastUnrelatedType");
+        // Should generate call that returns NULL at runtime for unrelated types
+        ASSERT_TRUE(!translation.empty()) << "Translation is empty";
+        ASSERT_TRUE(translation.find("cxx_dynamic_cast") != std::string::npos) << "Expected cxx_dynamic_cast call";
+        ASSERT_TRUE(translation.find("__ti_Base") != std::string::npos) << "Expected source __ti_Base";
+        ASSERT_TRUE(translation.find("__ti_Other") != std::string::npos) << "Expected target __ti_Other";
 }
 
-/**
- * Test 7: Cast with offset parameter
- */
-void test_CastWithOffsetParameter() {
-    TEST_START("CastWithOffsetParameter");
-
+TEST_F(DynamicCastTranslatorTest, CastWithOffsetParameter) {
     const char* code = R"(
-        namespace std { class type_info { public: const char* name() const; }; }
+            namespace std { class type_info { public: const char* name() const; }; }
 
-        class Base {
-        public:
-            virtual ~Base() {}
-        };
+            class Base {
+            public:
+                virtual ~Base() {}
+            };
 
-        class Derived : public Base {
-        public:
-            ~Derived() override {}
-        };
+            class Derived : public Base {
+            public:
+                ~Derived() override {}
+            };
 
-        void test(Base* ptr) {
-            Derived* d = dynamic_cast<Derived*>(ptr);
-        }
-    )";
+            void test(Base* ptr) {
+                Derived* d = dynamic_cast<Derived*>(ptr);
+            }
+        )";
 
-    std::unique_ptr<ASTUnit> AST = buildAST(code);
-    ASSERT(AST != nullptr, "Failed to parse C++ code");
+        std::unique_ptr<ASTUnit> AST = buildAST(code);
+        ASSERT_TRUE(AST != nullptr) << "Failed to parse C++ code";
 
-    ASTContext& Context = AST->getASTContext();
-    VirtualMethodAnalyzer Analyzer(Context);
-    DynamicCastTranslator Translator(Context, Analyzer);
+        ASTContext& Context = AST->getASTContext();
+        VirtualMethodAnalyzer Analyzer(Context);
+        DynamicCastTranslator Translator(Context, Analyzer);
 
-    const CXXDynamicCastExpr* castExpr = findDynamicCastExpr(Context);
-    ASSERT(castExpr != nullptr, "dynamic_cast expression not found");
+        const CXXDynamicCastExpr* castExpr = findDynamicCastExpr(Context);
+        ASSERT_TRUE(castExpr != nullptr) << "dynamic_cast expression not found";
 
-    std::string translation = Translator.translateDynamicCast(castExpr);
+        std::string translation = Translator.translateDynamicCast(castExpr);
 
-    // Should include offset parameter (-1 for runtime check)
-    ASSERT(translation.find("-1") != std::string::npos, "Expected offset parameter -1");
-
-    TEST_PASS("CastWithOffsetParameter");
+        // Should include offset parameter (-1 for runtime check)
+        ASSERT_TRUE(translation.find("-1") != std::string::npos) << "Expected offset parameter -1";
 }
 
-/**
- * Test 8: Null expression handling
- */
-void test_NullExpressionHandling() {
-    TEST_START("NullExpressionHandling");
-
+TEST_F(DynamicCastTranslatorTest, NullExpressionHandling) {
     const char* code = R"(
-        namespace std { class type_info { public: const char* name() const; }; }
+            namespace std { class type_info { public: const char* name() const; }; }
 
-        class Base {
-        public:
-            virtual ~Base() {}
-        };
-    )";
+            class Base {
+            public:
+                virtual ~Base() {}
+            };
+        )";
 
-    std::unique_ptr<ASTUnit> AST = buildAST(code);
-    ASSERT(AST != nullptr, "Failed to parse C++ code");
+        std::unique_ptr<ASTUnit> AST = buildAST(code);
+        ASSERT_TRUE(AST != nullptr) << "Failed to parse C++ code";
 
-    ASTContext& Context = AST->getASTContext();
-    VirtualMethodAnalyzer Analyzer(Context);
-    DynamicCastTranslator Translator(Context, Analyzer);
+        ASTContext& Context = AST->getASTContext();
+        VirtualMethodAnalyzer Analyzer(Context);
+        DynamicCastTranslator Translator(Context, Analyzer);
 
-    // Null dynamic_cast expression should return empty string
-    std::string translation = Translator.translateDynamicCast(nullptr);
-    ASSERT(translation.empty(), "Expected empty string for null expression");
-
-    TEST_PASS("NullExpressionHandling");
-}
-
-/**
- * Main function: runs all tests
- */
-int main() {
-    std::cout << "===============================================" << std::endl;
-    std::cout << "DynamicCastTranslator Tests (Story #85)" << std::endl;
-    std::cout << "===============================================" << std::endl << std::endl;
-
-    test_DetectDynamicCast();
-    test_ExtractSourceAndTargetTypes();
-    test_GenerateDynamicCastCall();
-    test_NullPointerHandling();
-    test_SameTypeCastOptimization();
-    test_FailedCastUnrelatedType();
-    test_CastWithOffsetParameter();
-    test_NullExpressionHandling();
-
-    std::cout << std::endl;
-    std::cout << "===============================================" << std::endl;
-    std::cout << "All tests passed!" << std::endl;
-    std::cout << "===============================================" << std::endl;
-
-    return 0;
+        // Null dynamic_cast expression should return empty string
+        std::string translation = Translator.translateDynamicCast(nullptr);
+        ASSERT_TRUE(translation.empty()) << "Expected empty string for null expression";
 }

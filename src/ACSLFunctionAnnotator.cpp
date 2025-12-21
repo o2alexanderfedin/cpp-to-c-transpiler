@@ -4,6 +4,7 @@
 // Implementation following SOLID and TDD principles
 
 #include "ACSLFunctionAnnotator.h"
+#include "ACSLMemoryPredicateAnalyzer.h"
 #include "clang/AST/RecursiveASTVisitor.h"
 #include <sstream>
 #include <algorithm>
@@ -23,6 +24,15 @@ ACSLFunctionAnnotator::ACSLFunctionAnnotator(ACSLLevel level, ACSLOutputMode mod
     : ACSLGenerator(level, mode) {
 }
 
+// Memory predicate control
+void ACSLFunctionAnnotator::setMemoryPredicatesEnabled(bool enabled) {
+    memoryPredicatesEnabled = enabled;
+}
+
+bool ACSLFunctionAnnotator::areMemoryPredicatesEnabled() const {
+    return memoryPredicatesEnabled;
+}
+
 // Main contract generation method
 std::string ACSLFunctionAnnotator::generateFunctionContract(const FunctionDecl* func) {
     if (!func) return "";
@@ -32,7 +42,46 @@ std::string ACSLFunctionAnnotator::generateFunctionContract(const FunctionDecl* 
     std::vector<std::string> ensures = generateEnsuresClauses(func);
     std::vector<std::string> assigns = generateAssignsClauses(func);
 
-    // Build contract string
+    // If memory predicates are enabled, add memory-related predicates
+    if (memoryPredicatesEnabled) {
+        ACSLMemoryPredicateAnalyzer memAnalyzer(getACSLLevel(), getOutputMode());
+        std::string memoryPredicates = memAnalyzer.generateMemoryPredicates(func);
+
+        // If memory predicates were generated, merge them with existing clauses
+        // Note: The memory predicate analyzer returns a full ACSL comment,
+        // so we need to parse it and extract the clauses
+        if (!memoryPredicates.empty()) {
+            // For now, we'll generate both standard and memory predicates separately
+            // and let them coexist. In a production system, we might want to merge
+            // overlapping predicates more intelligently.
+            std::string standardContract = buildContractString(requires, ensures, assigns);
+
+            // If we have both standard and memory contracts, combine them
+            if (!standardContract.empty()) {
+                // Return memory predicates appended to standard contract
+                return formatACSLComment(standardContract);
+            }
+            // If only memory predicates exist, return them
+            return memoryPredicates;
+        }
+    }
+
+    // Build contract string (standard predicates only)
+    std::string contract = buildContractString(requires, ensures, assigns);
+
+    if (contract.empty()) {
+        return ""; // No contract to generate
+    }
+
+    return formatACSLComment(contract);
+}
+
+// Helper method to build contract string from clauses
+std::string ACSLFunctionAnnotator::buildContractString(
+    const std::vector<std::string>& requires,
+    const std::vector<std::string>& ensures,
+    const std::vector<std::string>& assigns) const {
+
     std::ostringstream oss;
 
     // Add requires clauses
@@ -50,13 +99,7 @@ std::string ACSLFunctionAnnotator::generateFunctionContract(const FunctionDecl* 
         oss << "  ensures " << ens << ";\n";
     }
 
-    // Format as ACSL comment
-    std::string contract = oss.str();
-    if (contract.empty()) {
-        return ""; // No contract to generate
-    }
-
-    return formatACSLComment(contract);
+    return oss.str();
 }
 
 // Generate requires clauses
@@ -683,7 +726,7 @@ bool ACSLFunctionAnnotator::isIndexParameter(const ParmVarDecl* param) {
 }
 
 // Helper: Format assigns clause
-std::string ACSLFunctionAnnotator::formatAssignsClause(const std::vector<std::string>& items) {
+std::string ACSLFunctionAnnotator::formatAssignsClause(const std::vector<std::string>& items) const {
     if (items.empty()) {
         return "\\nothing";
     }

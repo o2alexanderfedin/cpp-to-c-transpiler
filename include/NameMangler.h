@@ -121,6 +121,22 @@ public:
      */
     std::string mangleFunctionName(clang::FunctionDecl *FD);
 
+    /**
+     * @brief Mangle a standalone function with overload support
+     * @param FD Function declaration
+     * @return Mangled name with parameter types if overloaded
+     *
+     * Phase 8: Standalone function translation
+     * Handles overloading by appending parameter types when needed
+     * Pattern: functionName_paramType1_paramType2
+     * Special cases:
+     * - main() is never mangled
+     * - extern "C" functions are not mangled
+     * - First occurrence of name uses simple name
+     * - Subsequent overloads append _paramTypes
+     */
+    std::string mangleStandaloneFunction(clang::FunctionDecl *FD);
+
 private:
     /**
      * @brief Build qualified name from namespace hierarchy

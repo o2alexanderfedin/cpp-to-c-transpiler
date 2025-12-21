@@ -10,13 +10,13 @@
  * - Unit tests pass (6+ test cases)
  */
 
+#include <gtest/gtest.h>
 #include "clang/Tooling/Tooling.h"
 #include "clang/Frontend/ASTUnit.h"
 #include "../include/VirtualMethodAnalyzer.h"
 #include "../include/VtableGenerator.h"
 #include "../include/VptrInjector.h"
 #include "../include/CNodeBuilder.h"
-#include <iostream>
 #include <cassert>
 
 using namespace clang;
@@ -27,9 +27,6 @@ std::unique_ptr<ASTUnit> buildAST(const char *code) {
 }
 
 // Test helper macros
-#define TEST_START(name) std::cout << "Test: " << name << " ... " << std::flush
-#define TEST_PASS(name) std::cout << "PASS" << std::endl
-#define ASSERT(cond, msg) \
     if (!(cond)) { \
         std::cerr << "\nASSERT FAILED: " << msg << std::endl; \
         return; \
@@ -48,301 +45,252 @@ CXXRecordDecl* findClass(TranslationUnitDecl* TU, const std::string& name) {
 }
 
 // Test 1: Inject vptr in polymorphic class
-void test_InjectVptrInPolymorphicClass() {
-    TEST_START("InjectVptrInPolymorphicClass");
 
+// Test fixture
+class VptrInjectorTest : public ::testing::Test {
+protected:
+};
+
+TEST_F(VptrInjectorTest, InjectVptrInPolymorphicClass) {
     const char *code = R"(
-        class Shape {
-        public:
-            virtual void draw();
-        private:
-            double x;
-        };
-    )";
+            class Shape {
+            public:
+                virtual void draw();
+            private:
+                double x;
+            };
+        )";
 
-    std::unique_ptr<ASTUnit> AST = buildAST(code);
-    ASSERT(AST, "Failed to parse C++ code");
+        std::unique_ptr<ASTUnit> AST = buildAST(code);
+        ASSERT_TRUE(AST) << "Failed to parse C++ code";
 
-    auto& Context = AST->getASTContext();
-    CNodeBuilder Builder(Context);
-    VirtualMethodAnalyzer analyzer(Context);
-    VptrInjector injector(Context, analyzer);
+        auto& Context = AST->getASTContext();
+        CNodeBuilder Builder(Context);
+        VirtualMethodAnalyzer analyzer(Context);
+        VptrInjector injector(Context, analyzer);
 
-    auto *TU = Context.getTranslationUnitDecl();
-    auto *Shape = findClass(TU, "Shape");
-    ASSERT(Shape, "Shape class not found");
+        auto *TU = Context.getTranslationUnitDecl();
+        auto *Shape = findClass(TU, "Shape");
+        ASSERT_TRUE(Shape) << "Shape class not found";
 
-    // Test: Class should be polymorphic
-    ASSERT(analyzer.isPolymorphic(Shape), "Shape should be polymorphic");
+        // Test: Class should be polymorphic
+        ASSERT_TRUE(analyzer.isPolymorphic(Shape)) << "Shape should be polymorphic";
 
-    // Inject vptr field
-    std::vector<FieldDecl*> fields;
-    bool injected = injector.injectVptrField(Shape, fields);
-    ASSERT(injected, "Vptr injection should succeed");
+        // Inject vptr field
+        std::vector<FieldDecl*> fields;
+        bool injected = injector.injectVptrField(Shape, fields);
+        ASSERT_TRUE(injected) << "Vptr injection should succeed";
 
-    // Test: Should have exactly 1 field (vptr)
-    ASSERT(fields.size() == 1,
-           "Expected 1 field (vptr), got: " + std::to_string(fields.size()));
+        // Test: Should have exactly 1 field (vptr)
+        ASSERT_TRUE(fields.size() == 1) << "Expected 1 field (vptr;, got: " + std::to_string(fields.size()));
 
-    // Test: First field should be vptr
-    ASSERT(fields[0]->getNameAsString() == "vptr",
-           "First field should be named 'vptr'");
+        // Test: First field should be vptr
+        ASSERT_TRUE(fields[0]->getNameAsString() == "vptr") << "First field should be named 'vptr'";
 
-    // Test: Vptr should be pointer type
-    ASSERT(fields[0]->getType()->isPointerType(),
-           "Vptr should be pointer type");
+        // Test: Vptr should be pointer type
+        ASSERT_TRUE(fields[0]->getType()->isPointerType()) << "Vptr should be pointer type";
 
-    // Test: Vptr pointee should be const-qualified (const struct X_vtable*)
-    auto pointeeType = fields[0]->getType()->getPointeeType();
-    ASSERT(pointeeType.isConstQualified(),
-           "Vptr pointee (vtable struct) should be const-qualified");
-
-    TEST_PASS("InjectVptrInPolymorphicClass");
+        // Test: Vptr pointee should be const-qualified (const struct X_vtable*)
+        auto pointeeType = fields[0]->getType()->getPointeeType();
+        ASSERT_TRUE(pointeeType.isConstQualified()) << "Vptr pointee (vtable struct;should be const-qualified");
 }
 
-// Test 2: Don't inject vptr in non-polymorphic class
-void test_NoVptrInNonPolymorphicClass() {
-    TEST_START("NoVptrInNonPolymorphicClass");
-
+TEST_F(VptrInjectorTest, NoVptrInNonPolymorphicClass) {
     const char *code = R"(
-        class Point {
-        private:
-            double x, y;
-        };
-    )";
+            class Point {
+            private:
+                double x, y;
+            };
+        )";
 
-    std::unique_ptr<ASTUnit> AST = buildAST(code);
-    ASSERT(AST, "Failed to parse C++ code");
+        std::unique_ptr<ASTUnit> AST = buildAST(code);
+        ASSERT_TRUE(AST) << "Failed to parse C++ code";
 
-    auto& Context = AST->getASTContext();
-    CNodeBuilder Builder(Context);
-    VirtualMethodAnalyzer analyzer(Context);
-    VptrInjector injector(Context, analyzer);
+        auto& Context = AST->getASTContext();
+        CNodeBuilder Builder(Context);
+        VirtualMethodAnalyzer analyzer(Context);
+        VptrInjector injector(Context, analyzer);
 
-    auto *TU = Context.getTranslationUnitDecl();
-    auto *Point = findClass(TU, "Point");
-    ASSERT(Point, "Point class not found");
+        auto *TU = Context.getTranslationUnitDecl();
+        auto *Point = findClass(TU, "Point");
+        ASSERT_TRUE(Point) << "Point class not found";
 
-    // Test: Class should NOT be polymorphic
-    ASSERT(!analyzer.isPolymorphic(Point), "Point should not be polymorphic");
+        // Test: Class should NOT be polymorphic
+        ASSERT_TRUE(!analyzer.isPolymorphic(Point)) << "Point should not be polymorphic";
 
-    // Try to inject vptr field
-    std::vector<FieldDecl*> fields;
-    bool injected = injector.injectVptrField(Point, fields);
+        // Try to inject vptr field
+        std::vector<FieldDecl*> fields;
+        bool injected = injector.injectVptrField(Point, fields);
 
-    // Test: Injection should not happen for non-polymorphic class
-    ASSERT(!injected, "Vptr should not be injected in non-polymorphic class");
-    ASSERT(fields.empty(), "Fields should be empty for non-polymorphic class");
-
-    TEST_PASS("NoVptrInNonPolymorphicClass");
+        // Test: Injection should not happen for non-polymorphic class
+        ASSERT_TRUE(!injected) << "Vptr should not be injected in non-polymorphic class";
+        ASSERT_TRUE(fields.empty()) << "Fields should be empty for non-polymorphic class";
 }
 
-// Test 3: Vptr at offset 0 in derived class
-void test_VptrAtOffsetZeroInDerivedClass() {
-    TEST_START("VptrAtOffsetZeroInDerivedClass");
-
+TEST_F(VptrInjectorTest, VptrAtOffsetZeroInDerivedClass) {
     const char *code = R"(
-        class Base {
-        public:
-            virtual void foo();
-        };
+            class Base {
+            public:
+                virtual void foo();
+            };
 
-        class Derived : public Base {
-        private:
-            int value;
-        };
-    )";
+            class Derived : public Base {
+            private:
+                int value;
+            };
+        )";
 
-    std::unique_ptr<ASTUnit> AST = buildAST(code);
-    ASSERT(AST, "Failed to parse C++ code");
+        std::unique_ptr<ASTUnit> AST = buildAST(code);
+        ASSERT_TRUE(AST) << "Failed to parse C++ code";
 
-    auto& Context = AST->getASTContext();
-    CNodeBuilder Builder(Context);
-    VirtualMethodAnalyzer analyzer(Context);
-    VptrInjector injector(Context, analyzer);
+        auto& Context = AST->getASTContext();
+        CNodeBuilder Builder(Context);
+        VirtualMethodAnalyzer analyzer(Context);
+        VptrInjector injector(Context, analyzer);
 
-    auto *TU = Context.getTranslationUnitDecl();
-    auto *Derived = findClass(TU, "Derived");
-    ASSERT(Derived, "Derived class not found");
+        auto *TU = Context.getTranslationUnitDecl();
+        auto *Derived = findClass(TU, "Derived");
+        ASSERT_TRUE(Derived) << "Derived class not found";
 
-    // Test: Derived class should be polymorphic (inherited virtual)
-    ASSERT(analyzer.isPolymorphic(Derived), "Derived should be polymorphic");
+        // Test: Derived class should be polymorphic (inherited virtual)
+        ASSERT_TRUE(analyzer.isPolymorphic(Derived)) << "Derived should be polymorphic";
 
-    // Inject vptr field
-    std::vector<FieldDecl*> fields;
-    bool injected = injector.injectVptrField(Derived, fields);
-    ASSERT(injected, "Vptr injection should succeed in Derived");
+        // Inject vptr field
+        std::vector<FieldDecl*> fields;
+        bool injected = injector.injectVptrField(Derived, fields);
+        ASSERT_TRUE(injected) << "Vptr injection should succeed in Derived";
 
-    // Test: Vptr should be first field (offset 0)
-    ASSERT(fields.size() >= 1, "Should have at least vptr field");
-    ASSERT(fields[0]->getNameAsString() == "vptr",
-           "First field must be vptr for proper memory layout");
-
-    TEST_PASS("VptrAtOffsetZeroInDerivedClass");
+        // Test: Vptr should be first field (offset 0)
+        ASSERT_TRUE(fields.size() >= 1) << "Should have at least vptr field";
+        ASSERT_TRUE(fields[0]->getNameAsString() == "vptr") << "First field must be vptr for proper memory layout";
 }
 
-// Test 4: Vptr type references correct vtable struct
-void test_VptrTypeReferencesVtableStruct() {
-    TEST_START("VptrTypeReferencesVtableStruct");
-
+TEST_F(VptrInjectorTest, VptrTypeReferencesVtableStruct) {
     const char *code = R"(
-        class Shape {
-        public:
-            virtual void draw();
-            virtual double area();
-        };
-    )";
+            class Shape {
+            public:
+                virtual void draw();
+                virtual double area();
+            };
+        )";
 
-    std::unique_ptr<ASTUnit> AST = buildAST(code);
-    ASSERT(AST, "Failed to parse C++ code");
+        std::unique_ptr<ASTUnit> AST = buildAST(code);
+        ASSERT_TRUE(AST) << "Failed to parse C++ code";
 
-    auto& Context = AST->getASTContext();
-    CNodeBuilder Builder(Context);
-    VirtualMethodAnalyzer analyzer(Context);
-    VptrInjector injector(Context, analyzer);
+        auto& Context = AST->getASTContext();
+        CNodeBuilder Builder(Context);
+        VirtualMethodAnalyzer analyzer(Context);
+        VptrInjector injector(Context, analyzer);
 
-    auto *TU = Context.getTranslationUnitDecl();
-    auto *Shape = findClass(TU, "Shape");
-    ASSERT(Shape, "Shape class not found");
+        auto *TU = Context.getTranslationUnitDecl();
+        auto *Shape = findClass(TU, "Shape");
+        ASSERT_TRUE(Shape) << "Shape class not found";
 
-    // Inject vptr field
-    std::vector<FieldDecl*> fields;
-    bool injected = injector.injectVptrField(Shape, fields);
-    ASSERT(injected, "Vptr injection should succeed");
+        // Inject vptr field
+        std::vector<FieldDecl*> fields;
+        bool injected = injector.injectVptrField(Shape, fields);
+        ASSERT_TRUE(injected) << "Vptr injection should succeed";
 
-    // Test: Vptr type should reference Shape_vtable
-    auto vptrType = fields[0]->getType();
-    ASSERT(vptrType->isPointerType(), "Vptr must be pointer type");
+        // Test: Vptr type should reference Shape_vtable
+        auto vptrType = fields[0]->getType();
+        ASSERT_TRUE(vptrType->isPointerType()) << "Vptr must be pointer type";
 
-    auto pointeeType = vptrType->getPointeeType();
-    std::string typeName = pointeeType.getAsString();
+        auto pointeeType = vptrType->getPointeeType();
+        std::string typeName = pointeeType.getAsString();
 
-    // Should be "const struct Shape_vtable"
-    ASSERT(typeName.find("Shape_vtable") != std::string::npos,
-           "Vptr should point to Shape_vtable, got: " + typeName);
-
-    TEST_PASS("VptrTypeReferencesVtableStruct");
+        // Should be "const struct Shape_vtable"
+        ASSERT_TRUE(typeName.find("Shape_vtable") != std::string::npos) << "Vptr should point to Shape_vtable, got: " + typeName;
 }
 
-// Test 5: Multiple polymorphic classes each get their own vptr
-void test_MultiplePolymorphicClassesGetOwnVptr() {
-    TEST_START("MultiplePolymorphicClassesGetOwnVptr");
-
+TEST_F(VptrInjectorTest, MultiplePolymorphicClassesGetOwnVptr) {
     const char *code = R"(
-        class Shape {
-        public:
-            virtual void draw();
-        };
+            class Shape {
+            public:
+                virtual void draw();
+            };
 
-        class Animal {
-        public:
-            virtual void speak();
-        };
-    )";
+            class Animal {
+            public:
+                virtual void speak();
+            };
+        )";
 
-    std::unique_ptr<ASTUnit> AST = buildAST(code);
-    ASSERT(AST, "Failed to parse C++ code");
+        std::unique_ptr<ASTUnit> AST = buildAST(code);
+        ASSERT_TRUE(AST) << "Failed to parse C++ code";
 
-    auto& Context = AST->getASTContext();
-    CNodeBuilder Builder(Context);
-    VirtualMethodAnalyzer analyzer(Context);
-    VptrInjector injector(Context, analyzer);
+        auto& Context = AST->getASTContext();
+        CNodeBuilder Builder(Context);
+        VirtualMethodAnalyzer analyzer(Context);
+        VptrInjector injector(Context, analyzer);
 
-    auto *TU = Context.getTranslationUnitDecl();
-    auto *Shape = findClass(TU, "Shape");
-    auto *Animal = findClass(TU, "Animal");
-    ASSERT(Shape, "Shape class not found");
-    ASSERT(Animal, "Animal class not found");
+        auto *TU = Context.getTranslationUnitDecl();
+        auto *Shape = findClass(TU, "Shape");
+        auto *Animal = findClass(TU, "Animal");
+        ASSERT_TRUE(Shape) << "Shape class not found";
+        ASSERT_TRUE(Animal) << "Animal class not found";
 
-    // Inject vptr in Shape
-    std::vector<FieldDecl*> shapeFields;
-    bool shapeInjected = injector.injectVptrField(Shape, shapeFields);
-    ASSERT(shapeInjected, "Vptr injection should succeed in Shape");
+        // Inject vptr in Shape
+        std::vector<FieldDecl*> shapeFields;
+        bool shapeInjected = injector.injectVptrField(Shape, shapeFields);
+        ASSERT_TRUE(shapeInjected) << "Vptr injection should succeed in Shape";
 
-    // Inject vptr in Animal
-    std::vector<FieldDecl*> animalFields;
-    bool animalInjected = injector.injectVptrField(Animal, animalFields);
-    ASSERT(animalInjected, "Vptr injection should succeed in Animal");
+        // Inject vptr in Animal
+        std::vector<FieldDecl*> animalFields;
+        bool animalInjected = injector.injectVptrField(Animal, animalFields);
+        ASSERT_TRUE(animalInjected) << "Vptr injection should succeed in Animal";
 
-    // Test: Both should have vptr
-    ASSERT(shapeFields.size() >= 1, "Shape should have vptr");
-    ASSERT(animalFields.size() >= 1, "Animal should have vptr");
+        // Test: Both should have vptr
+        ASSERT_TRUE(shapeFields.size() >= 1) << "Shape should have vptr";
+        ASSERT_TRUE(animalFields.size() >= 1) << "Animal should have vptr";
 
-    // Test: Vptrs should point to different vtable types
-    auto shapeVptrType = shapeFields[0]->getType()->getPointeeType().getAsString();
-    auto animalVptrType = animalFields[0]->getType()->getPointeeType().getAsString();
+        // Test: Vptrs should point to different vtable types
+        auto shapeVptrType = shapeFields[0]->getType()->getPointeeType().getAsString();
+        auto animalVptrType = animalFields[0]->getType()->getPointeeType().getAsString();
 
-    ASSERT(shapeVptrType.find("Shape_vtable") != std::string::npos,
-           "Shape vptr should reference Shape_vtable");
-    ASSERT(animalVptrType.find("Animal_vtable") != std::string::npos,
-           "Animal vptr should reference Animal_vtable");
-
-    TEST_PASS("MultiplePolymorphicClassesGetOwnVptr");
+        ASSERT_TRUE(shapeVptrType.find("Shape_vtable") != std::string::npos) << "Shape vptr should reference Shape_vtable";
+        ASSERT_TRUE(animalVptrType.find("Animal_vtable") != std::string::npos) << "Animal vptr should reference Animal_vtable";
 }
 
-// Test 6: Vptr combined with existing member fields
-void test_VptrCombinedWithExistingFields() {
-    TEST_START("VptrCombinedWithExistingFields");
-
+TEST_F(VptrInjectorTest, VptrCombinedWithExistingFields) {
     const char *code = R"(
-        class Circle {
-        public:
-            virtual void draw();
-        private:
-            double radius;
-            int color;
-        };
-    )";
+            class Circle {
+            public:
+                virtual void draw();
+            private:
+                double radius;
+                int color;
+            };
+        )";
 
-    std::unique_ptr<ASTUnit> AST = buildAST(code);
-    ASSERT(AST, "Failed to parse C++ code");
+        std::unique_ptr<ASTUnit> AST = buildAST(code);
+        ASSERT_TRUE(AST) << "Failed to parse C++ code";
 
-    auto& Context = AST->getASTContext();
-    CNodeBuilder Builder(Context);
-    VirtualMethodAnalyzer analyzer(Context);
-    VptrInjector injector(Context, analyzer);
+        auto& Context = AST->getASTContext();
+        CNodeBuilder Builder(Context);
+        VirtualMethodAnalyzer analyzer(Context);
+        VptrInjector injector(Context, analyzer);
 
-    auto *TU = Context.getTranslationUnitDecl();
-    auto *Circle = findClass(TU, "Circle");
-    ASSERT(Circle, "Circle class not found");
+        auto *TU = Context.getTranslationUnitDecl();
+        auto *Circle = findClass(TU, "Circle");
+        ASSERT_TRUE(Circle) << "Circle class not found";
 
-    // Inject vptr and existing fields
-    std::vector<FieldDecl*> fields;
-    injector.injectVptrField(Circle, fields);
+        // Inject vptr and existing fields
+        std::vector<FieldDecl*> fields;
+        injector.injectVptrField(Circle, fields);
 
-    // Add existing fields
-    for (auto *Field : Circle->fields()) {
-        FieldDecl *CField = Builder.fieldDecl(Field->getType(), Field->getName());
-        fields.push_back(CField);
-    }
+        // Add existing fields
+        for (auto *Field : Circle->fields()) {
+            FieldDecl *CField = Builder.fieldDecl(Field->getType(), Field->getName());
+            fields.push_back(CField);
+        }
 
-    // Test: Should have 3 fields: vptr, radius, color
-    ASSERT(fields.size() == 3,
-           "Expected 3 fields (vptr + radius + color), got: " + std::to_string(fields.size()));
+        // Test: Should have 3 fields: vptr, radius, color
+        ASSERT_TRUE(fields.size() == 3) << "Expected 3 fields (vptr + radius + color;, got: " + std::to_string(fields.size()));
 
-    // Test: Vptr must be first
-    ASSERT(fields[0]->getNameAsString() == "vptr",
-           "Vptr must be first field (offset 0)");
+        // Test: Vptr must be first
+        ASSERT_TRUE(fields[0]->getNameAsString() == "vptr") << "Vptr must be first field (offset 0;");
 
-    // Test: Original fields after vptr
-    ASSERT(fields[1]->getNameAsString() == "radius",
-           "Second field should be radius");
-    ASSERT(fields[2]->getNameAsString() == "color",
-           "Third field should be color");
-
-    TEST_PASS("VptrCombinedWithExistingFields");
-}
-
-int main() {
-    std::cout << "=== VptrInjector Tests (Story #169) ===" << std::endl;
-
-    test_InjectVptrInPolymorphicClass();
-    test_NoVptrInNonPolymorphicClass();
-    test_VptrAtOffsetZeroInDerivedClass();
-    test_VptrTypeReferencesVtableStruct();
-    test_MultiplePolymorphicClassesGetOwnVptr();
-    test_VptrCombinedWithExistingFields();
-
-    std::cout << "\n=== All VptrInjector tests passed! ===" << std::endl;
-    return 0;
+        // Test: Original fields after vptr
+        ASSERT_TRUE(fields[1]->getNameAsString() == "radius") << "Second field should be radius";
+        ASSERT_TRUE(fields[2]->getNameAsString() == "color") << "Third field should be color";
 }

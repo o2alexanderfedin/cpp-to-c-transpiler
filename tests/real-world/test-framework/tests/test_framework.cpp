@@ -1,227 +1,222 @@
-#include "TestFramework.h"
+#include <gtest/gtest.h>
 #include <memory>
+#include <vector>
+#include <string>
+#include <stdexcept>
 
-using namespace test;
+// ===================================================================
+// GOOGLE TEST MIGRATION - Test Framework Example Tests
+// ===================================================================
+// This file demonstrates proper Google Test usage and serves as a
+// reference implementation for the team.
+//
+// Migrated from custom TestFramework to Google Test
+// Test count: 9 test suites
+// ===================================================================
 
-// Sample test fixture
-class MathFixture : public TestCase {
+// ===================================================================
+// Test 1: Basic Assertions
+// Demonstrates fundamental GTest assertions
+// ===================================================================
+TEST(BasicAssertionsTest, TrueAssertions) {
+    ASSERT_TRUE(true);
+    ASSERT_TRUE(1 == 1);
+    ASSERT_TRUE(5 > 3);
+}
+
+TEST(BasicAssertionsTest, FalseAssertions) {
+    ASSERT_FALSE(false);
+    ASSERT_FALSE(1 == 2);
+}
+
+TEST(BasicAssertionsTest, EqualityAssertions) {
+    ASSERT_EQ(42, 42);
+    ASSERT_EQ("hello", std::string("hello"));
+    ASSERT_EQ(3.14, 3.14);
+}
+
+TEST(BasicAssertionsTest, InequalityAssertions) {
+    ASSERT_NE(1, 2);
+    ASSERT_NE("foo", std::string("bar"));
+}
+
+TEST(BasicAssertionsTest, ComparisonAssertions) {
+    // Less than
+    ASSERT_LT(1, 2);
+    ASSERT_LT(-5, 0);
+
+    // Greater than
+    ASSERT_GT(10, 5);
+    ASSERT_GT(0, -1);
+}
+
+// ===================================================================
+// Test 2: Pointer Assertions
+// Demonstrates null pointer testing
+// ===================================================================
+TEST(PointerAssertionsTest, NullAndNonNullPointers) {
+    int* nullPtr = nullptr;
+    int value = 42;
+    int* nonNullPtr = &value;
+
+    ASSERT_EQ(nullptr, nullPtr);
+    ASSERT_NE(nullptr, nonNullPtr);
+}
+
+// ===================================================================
+// Test 3: Exception Assertions
+// Demonstrates exception testing with GTest
+// ===================================================================
+TEST(ExceptionAssertionsTest, ThrowsAnyException) {
+    ASSERT_THROW(throw std::runtime_error("test"), std::exception);
+}
+
+TEST(ExceptionAssertionsTest, ThrowsSpecificException) {
+    ASSERT_THROW(
+        throw std::invalid_argument("test"),
+        std::invalid_argument
+    );
+}
+
+TEST(ExceptionAssertionsTest, ThrowsInCodeBlock) {
+    ASSERT_THROW({
+        if (true) {
+            throw std::logic_error("expected");
+        }
+    }, std::logic_error);
+}
+
+// ===================================================================
+// Test 4: Fixture Setup/Teardown
+// Demonstrates GTest test fixture usage
+// ===================================================================
+class MathFixture : public ::testing::Test {
 protected:
     int value;
 
-    void setUp() override {
+    void SetUp() override {
         value = 0;
     }
 
-    void tearDown() override {
+    void TearDown() override {
+        // Verify teardown happens after test
+        // In a real scenario, this would clean up resources
         value = -1;
     }
-
-public:
-    explicit MathFixture(const std::string& name) : TestCase(name) {}
 };
 
-// Test basic assertions
-class BasicAssertionsTest : public TestCase {
-public:
-    BasicAssertionsTest() : TestCase("BasicAssertions") {}
+TEST_F(MathFixture, SetupInitializesValue) {
+    // SetUp should have initialized value to 0
+    ASSERT_EQ(0, value);
 
-    void run() override {
-        // assertTrue
-        ASSERT_TRUE(true);
-        ASSERT_TRUE(1 == 1);
-        ASSERT_TRUE(5 > 3);
+    value = 100;
+    ASSERT_EQ(100, value);
 
-        // assertFalse
-        ASSERT_FALSE(false);
-        ASSERT_FALSE(1 == 2);
+    // TearDown will set it to -1 after this test
+}
 
-        // assertEqual
-        ASSERT_EQ(42, 42);
-        ASSERT_EQ("hello", std::string("hello"));
-        ASSERT_EQ(3.14, 3.14);
+// ===================================================================
+// Test 5: String Comparisons
+// Demonstrates string testing
+// ===================================================================
+TEST(StringTest, StringEquality) {
+    std::string s1 = "hello";
+    std::string s2 = "hello";
+    std::string s3 = "world";
 
-        // assertNotEqual
-        ASSERT_NE(1, 2);
-        ASSERT_NE("foo", std::string("bar"));
+    ASSERT_EQ(s1, s2);
+    ASSERT_NE(s1, s3);
+}
 
-        // assertLess
-        ASSERT_LT(1, 2);
-        ASSERT_LT(-5, 0);
+TEST(StringTest, StringComparison) {
+    std::string s1 = "hello";
+    std::string s3 = "world";
 
-        // assertGreater
-        ASSERT_GT(10, 5);
-        ASSERT_GT(0, -1);
-    }
-};
+    ASSERT_TRUE(s1 < s3);  // "hello" < "world"
+}
 
-// Test pointer assertions
-class PointerAssertionsTest : public TestCase {
-public:
-    PointerAssertionsTest() : TestCase("PointerAssertions") {}
+// ===================================================================
+// Test 6: Arithmetic Operations
+// Demonstrates testing mathematical operations
+// ===================================================================
+TEST(ArithmeticTest, BasicOperations) {
+    int a = 10;
+    int b = 5;
 
-    void run() override {
-        int* nullPtr = nullptr;
-        int value = 42;
-        int* nonNullPtr = &value;
+    ASSERT_EQ(15, a + b);
+    ASSERT_EQ(5, a - b);
+    ASSERT_EQ(50, a * b);
+    ASSERT_EQ(2, a / b);
+    ASSERT_EQ(0, a % b);
+}
 
-        ASSERT_NULL(nullPtr);
-        ASSERT_NOT_NULL(nonNullPtr);
-    }
-};
+// ===================================================================
+// Test 7: Floating Point Comparisons
+// Demonstrates float/double testing
+// ===================================================================
+TEST(FloatTest, FloatingPointComparisons) {
+    double pi = 3.14159;
+    double e = 2.71828;
 
-// Test exception assertions
-class ExceptionAssertionsTest : public TestCase {
-public:
-    ExceptionAssertionsTest() : TestCase("ExceptionAssertions") {}
+    ASSERT_GT(pi, e);
+    ASSERT_LT(e, pi);
+    ASSERT_GT(pi, 3.0);
+    ASSERT_LT(pi, 3.2);
+}
 
-    void run() override {
-        // assertThrows
-        ASSERT_THROW(throw std::runtime_error("test"));
+// ===================================================================
+// Test 8: Boolean Logic
+// Demonstrates boolean testing
+// ===================================================================
+TEST(BooleanTest, BooleanValues) {
+    bool t = true;
+    bool f = false;
 
-        // assertThrowsType
-        ASSERT_THROW_TYPE(
-            throw std::invalid_argument("test"),
-            std::invalid_argument
-        );
+    ASSERT_TRUE(t);
+    ASSERT_FALSE(f);
+}
 
-        // This should pass - function throws exception
-        ASSERT_THROW({
-            if (true) {
-                throw std::logic_error("expected");
-            }
-        });
-    }
-};
+TEST(BooleanTest, LogicalOperations) {
+    bool t = true;
+    bool f = false;
 
-// Test fixture setup/teardown
-class FixtureTest : public MathFixture {
-public:
-    FixtureTest() : MathFixture("FixtureSetupTeardown") {}
+    ASSERT_TRUE(t && t);
+    ASSERT_FALSE(t && f);
+    ASSERT_TRUE(t || f);
+    ASSERT_FALSE(f || f);
+    ASSERT_TRUE(!f);
+    ASSERT_FALSE(!t);
+}
 
-    void run() override {
-        // setUp should have initialized value to 0
-        ASSERT_EQ(value, 0);
+// ===================================================================
+// Test 9: Container Operations
+// Demonstrates STL container testing
+// ===================================================================
+TEST(ContainerTest, VectorOperations) {
+    std::vector<int> vec = {1, 2, 3, 4, 5};
 
-        value = 100;
-        ASSERT_EQ(value, 100);
+    ASSERT_EQ(5, vec.size());
+    ASSERT_FALSE(vec.empty());
+    ASSERT_EQ(1, vec[0]);
+    ASSERT_EQ(5, vec[4]);
+}
 
-        // tearDown will set it to -1 after this test
-    }
-};
+TEST(ContainerTest, VectorModification) {
+    std::vector<int> vec = {1, 2, 3, 4, 5};
 
-// Test string comparisons
-class StringTest : public TestCase {
-public:
-    StringTest() : TestCase("StringComparisons") {}
+    vec.push_back(6);
+    ASSERT_EQ(6, vec.size());
+    ASSERT_EQ(6, vec.back());
+}
 
-    void run() override {
-        std::string s1 = "hello";
-        std::string s2 = "hello";
-        std::string s3 = "world";
-
-        ASSERT_EQ(s1, s2);
-        ASSERT_NE(s1, s3);
-        ASSERT_TRUE(s1 < s3);  // "hello" < "world"
-    }
-};
-
-// Test arithmetic operations
-class ArithmeticTest : public TestCase {
-public:
-    ArithmeticTest() : TestCase("ArithmeticOperations") {}
-
-    void run() override {
-        int a = 10;
-        int b = 5;
-
-        ASSERT_EQ(a + b, 15);
-        ASSERT_EQ(a - b, 5);
-        ASSERT_EQ(a * b, 50);
-        ASSERT_EQ(a / b, 2);
-        ASSERT_EQ(a % b, 0);
-    }
-};
-
-// Test floating point comparisons
-class FloatTest : public TestCase {
-public:
-    FloatTest() : TestCase("FloatingPoint") {}
-
-    void run() override {
-        double pi = 3.14159;
-        double e = 2.71828;
-
-        ASSERT_GT(pi, e);
-        ASSERT_LT(e, pi);
-        ASSERT_GT(pi, 3.0);
-        ASSERT_LT(pi, 3.2);
-    }
-};
-
-// Test boolean logic
-class BooleanTest : public TestCase {
-public:
-    BooleanTest() : TestCase("BooleanLogic") {}
-
-    void run() override {
-        bool t = true;
-        bool f = false;
-
-        ASSERT_TRUE(t);
-        ASSERT_FALSE(f);
-        ASSERT_TRUE(t && t);
-        ASSERT_FALSE(t && f);
-        ASSERT_TRUE(t || f);
-        ASSERT_FALSE(f || f);
-        ASSERT_TRUE(!f);
-        ASSERT_FALSE(!t);
-    }
-};
-
-// Test container operations
-class ContainerTest : public TestCase {
-public:
-    ContainerTest() : TestCase("ContainerOperations") {}
-
-    void run() override {
-        std::vector<int> vec = {1, 2, 3, 4, 5};
-
-        ASSERT_EQ(vec.size(), 5);
-        ASSERT_FALSE(vec.empty());
-        ASSERT_EQ(vec[0], 1);
-        ASSERT_EQ(vec[4], 5);
-
-        vec.push_back(6);
-        ASSERT_EQ(vec.size(), 6);
-        ASSERT_EQ(vec.back(), 6);
-    }
-};
-
-// Main test runner
-int main() {
-    try {
-        // Create test suite
-        auto suite = std::make_unique<TestSuite>("CoreTests");
-
-        // Add tests
-        suite->addTest(std::make_unique<BasicAssertionsTest>());
-        suite->addTest(std::make_unique<PointerAssertionsTest>());
-        suite->addTest(std::make_unique<ExceptionAssertionsTest>());
-        suite->addTest(std::make_unique<FixtureTest>());
-        suite->addTest(std::make_unique<StringTest>());
-        suite->addTest(std::make_unique<ArithmeticTest>());
-        suite->addTest(std::make_unique<FloatTest>());
-        suite->addTest(std::make_unique<BooleanTest>());
-        suite->addTest(std::make_unique<ContainerTest>());
-
-        // Register suite
-        TestRegistry::getInstance().addSuite("CoreTests", std::move(suite));
-
-        // Run all tests
-        return RUN_ALL_TESTS();
-
-    } catch (const std::exception& e) {
-        std::cerr << "Fatal error: " << e.what() << std::endl;
-        return 1;
-    }
+// ===================================================================
+// Main function (optional with gtest_main)
+// ===================================================================
+// Note: Since CMakeLists.txt links GTest::gtest_main, this main()
+// function is optional. However, we include it here to demonstrate
+// that tests can still be run with a custom main if needed.
+// ===================================================================
+int main(int argc, char **argv) {
+    ::testing::InitGoogleTest(&argc, argv);
+    return RUN_ALL_TESTS();
 }

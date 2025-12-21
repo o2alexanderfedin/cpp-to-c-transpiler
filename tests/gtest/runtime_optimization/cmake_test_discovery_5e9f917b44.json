@@ -1,0 +1,72 @@
+{
+  "tests": 12,
+  "name": "AllTests",
+  "testsuites": [
+    {
+      "name": "RuntimeModeLibraryTest",
+      "tests": 12,
+      "testsuite": [
+        {
+          "name": "LibraryModeFlagParsing",
+          "file": "\/Users\/alexanderfedin\/Projects\/hapyy\/hupyy-cpp-to-c\/tests\/gtest\/RuntimeModeLibraryTest_GTest.cpp",
+          "line": 27
+        },
+        {
+          "name": "ExceptionRuntimeCalls",
+          "file": "\/Users\/alexanderfedin\/Projects\/hapyy\/hupyy-cpp-to-c\/tests\/gtest\/RuntimeModeLibraryTest_GTest.cpp",
+          "line": 32
+        },
+        {
+          "name": "RTTIRuntimeCalls",
+          "file": "\/Users\/alexanderfedin\/Projects\/hapyy\/hupyy-cpp-to-c\/tests\/gtest\/RuntimeModeLibraryTest_GTest.cpp",
+          "line": 51
+        },
+        {
+          "name": "LibraryHeaderStructure",
+          "file": "\/Users\/alexanderfedin\/Projects\/hapyy\/hupyy-cpp-to-c\/tests\/gtest\/RuntimeModeLibraryTest_GTest.cpp",
+          "line": 66
+        },
+        {
+          "name": "NoEmbeddedCode",
+          "file": "\/Users\/alexanderfedin\/Projects\/hapyy\/hupyy-cpp-to-c\/tests\/gtest\/RuntimeModeLibraryTest_GTest.cpp",
+          "line": 86
+        },
+        {
+          "name": "LinkFlagsGeneration",
+          "file": "\/Users\/alexanderfedin\/Projects\/hapyy\/hupyy-cpp-to-c\/tests\/gtest\/RuntimeModeLibraryTest_GTest.cpp",
+          "line": 104
+        },
+        {
+          "name": "CMakeConfiguration",
+          "file": "\/Users\/alexanderfedin\/Projects\/hapyy\/hupyy-cpp-to-c\/tests\/gtest\/RuntimeModeLibraryTest_GTest.cpp",
+          "line": 115
+        },
+        {
+          "name": "SizeReductionValidation",
+          "file": "\/Users\/alexanderfedin\/Projects\/hapyy\/hupyy-cpp-to-c\/tests\/gtest\/RuntimeModeLibraryTest_GTest.cpp",
+          "line": 131
+        },
+        {
+          "name": "CompilationSpeedValidation",
+          "file": "\/Users\/alexanderfedin\/Projects\/hapyy\/hupyy-cpp-to-c\/tests\/gtest\/RuntimeModeLibraryTest_GTest.cpp",
+          "line": 149
+        },
+        {
+          "name": "ConditionalFeatureDeclarations",
+          "file": "\/Users\/alexanderfedin\/Projects\/hapyy\/hupyy-cpp-to-c\/tests\/gtest\/RuntimeModeLibraryTest_GTest.cpp",
+          "line": 165
+        },
+        {
+          "name": "LibraryVersioning",
+          "file": "\/Users\/alexanderfedin\/Projects\/hapyy\/hupyy-cpp-to-c\/tests\/gtest\/RuntimeModeLibraryTest_GTest.cpp",
+          "line": 182
+        },
+        {
+          "name": "FullTranspilationLibraryMode",
+          "file": "\/Users\/alexanderfedin\/Projects\/hapyy\/hupyy-cpp-to-c\/tests\/gtest\/RuntimeModeLibraryTest_GTest.cpp",
+          "line": 192
+        }
+      ]
+    }
+  ]
+}

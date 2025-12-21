@@ -1,21 +1,14 @@
 // Integration Tests for Complete C++ to C Translation (Story #20)
 // Tests full end-to-end translation of C++ classes to C structs + functions
+// Migrated to Google Test
 
 #include "CppToCVisitor.h"
 #include "CNodeBuilder.h"
 #include "clang/Tooling/Tooling.h"
+#include <gtest/gtest.h>
 #include <iostream>
 
 using namespace clang;
-
-// Simple test counter
-static int tests_passed = 0;
-static int tests_failed = 0;
-
-#define TEST_START(name) std::cout << "Running " << name << "... ";
-#define TEST_PASS(name) { std::cout << "✓" << std::endl; tests_passed++; }
-#define TEST_FAIL(name, msg) { std::cout << "✗ FAILED: " << msg << std::endl; tests_failed++; }
-#define ASSERT(expr, msg) if (!(expr)) { TEST_FAIL("", msg); return; }
 
 // Helper to create AST from C++ code
 std::unique_ptr<ASTUnit> buildAST(const std::string &code) {
@@ -26,12 +19,10 @@ std::unique_ptr<ASTUnit> buildAST(const std::string &code) {
 // Story #20: Translation Integration Tests
 // ============================================================================
 
-void test_EmptyClass(ASTContext &Ctx) {
-    TEST_START("EmptyClass: Full translation of empty class");
-
+TEST(TranslationIntegrationTest, EmptyClass) {
     const char *cpp = "class Empty {};";
     std::unique_ptr<ASTUnit> AST = buildAST(cpp);
-    ASSERT(AST, "Failed to parse C++ code");
+    ASSERT_NE(AST, nullptr) << "Failed to parse C++ code";
 
     CNodeBuilder builder(AST->getASTContext());
     CppToCVisitor visitor(AST->getASTContext(), builder);
@@ -41,22 +32,18 @@ void test_EmptyClass(ASTContext &Ctx) {
 
     // Validate: struct Empty {}; generated
     RecordDecl *RD = visitor.getCStruct("Empty");
-    ASSERT(RD != nullptr, "Struct not generated");
-    ASSERT(RD->getName() == "Empty", "Struct name mismatch");
+    ASSERT_NE(RD, nullptr) << "Struct not generated";
+    EXPECT_EQ(RD->getName(), "Empty") << "Struct name mismatch";
 
     // Validate: no fields
     int fieldCount = 0;
     for (auto *Field : RD->fields()) {
         fieldCount++;
     }
-    ASSERT(fieldCount == 0, "Empty class should have no fields");
-
-    TEST_PASS("EmptyClass");
+    EXPECT_EQ(fieldCount, 0) << "Empty class should have no fields";
 }
 
-void test_SimpleClassWithMethod(ASTContext &Ctx) {
-    TEST_START("SimpleClassWithMethod: Class with one getter method");
-
+TEST(TranslationIntegrationTest, SimpleClassWithMethod) {
     const char *cpp = R"(
         class Point {
             int x, y;
@@ -65,7 +52,7 @@ void test_SimpleClassWithMethod(ASTContext &Ctx) {
         };
     )";
     std::unique_ptr<ASTUnit> AST = buildAST(cpp);
-    ASSERT(AST, "Failed to parse C++ code");
+    ASSERT_NE(AST, nullptr) << "Failed to parse C++ code";
 
     CNodeBuilder builder(AST->getASTContext());
     CppToCVisitor visitor(AST->getASTContext(), builder);
@@ -74,29 +61,25 @@ void test_SimpleClassWithMethod(ASTContext &Ctx) {
 
     // Validate: struct Point with 2 fields generated
     RecordDecl *RD = visitor.getCStruct("Point");
-    ASSERT(RD != nullptr, "Struct not generated");
+    ASSERT_NE(RD, nullptr) << "Struct not generated";
 
     int fieldCount = 0;
     for (auto *Field : RD->fields()) {
         fieldCount++;
     }
-    ASSERT(fieldCount == 2, "Expected 2 fields");
+    EXPECT_EQ(fieldCount, 2) << "Expected 2 fields";
 
     // Validate: Point_getX function generated
     FunctionDecl *FD = visitor.getCFunc("Point_getX");
-    ASSERT(FD != nullptr, "Method function not generated");
-    ASSERT(FD->getNumParams() == 1, "Expected 1 parameter (this)");
+    ASSERT_NE(FD, nullptr) << "Method function not generated";
+    EXPECT_EQ(FD->getNumParams(), 1) << "Expected 1 parameter (this)";
 
     // Validate: function has body
     Stmt *Body = FD->getBody();
-    ASSERT(Body != nullptr, "Function body not translated");
-
-    TEST_PASS("SimpleClassWithMethod");
+    EXPECT_NE(Body, nullptr) << "Function body not translated";
 }
 
-void test_ConstructorTranslation(ASTContext &Ctx) {
-    TEST_START("ConstructorTranslation: Class with constructor and member initializers");
-
+TEST(TranslationIntegrationTest, ConstructorTranslation) {
     const char *cpp = R"(
         class Point {
             int x, y;
@@ -105,7 +88,7 @@ void test_ConstructorTranslation(ASTContext &Ctx) {
         };
     )";
     std::unique_ptr<ASTUnit> AST = buildAST(cpp);
-    ASSERT(AST, "Failed to parse C++ code");
+    ASSERT_NE(AST, nullptr) << "Failed to parse C++ code";
 
     CNodeBuilder builder(AST->getASTContext());
     CppToCVisitor visitor(AST->getASTContext(), builder);
@@ -114,24 +97,20 @@ void test_ConstructorTranslation(ASTContext &Ctx) {
 
     // Validate: struct generated
     RecordDecl *RD = visitor.getCStruct("Point");
-    ASSERT(RD != nullptr, "Struct not generated");
+    ASSERT_NE(RD, nullptr) << "Struct not generated";
 
     // Validate: constructor function generated
     FunctionDecl *FD = visitor.getCtor("Point__ctor");
-    ASSERT(FD != nullptr, "Constructor function not generated");
-    ASSERT(FD->getNumParams() == 3, "Expected 3 parameters (this + 2 params)");
-    ASSERT(FD->getReturnType()->isVoidType(), "Constructor should return void");
+    ASSERT_NE(FD, nullptr) << "Constructor function not generated";
+    EXPECT_EQ(FD->getNumParams(), 3) << "Expected 3 parameters (this + 2 params)";
+    EXPECT_TRUE(FD->getReturnType()->isVoidType()) << "Constructor should return void";
 
     // Validate: function has body with assignments
     Stmt *Body = FD->getBody();
-    ASSERT(Body != nullptr, "Constructor body not translated");
-
-    TEST_PASS("ConstructorTranslation");
+    EXPECT_NE(Body, nullptr) << "Constructor body not translated";
 }
 
-void test_OverloadedMethods(ASTContext &Ctx) {
-    TEST_START("OverloadedMethods: Class with overloaded methods -> unique C names");
-
+TEST(TranslationIntegrationTest, OverloadedMethods) {
     const char *cpp = R"(
         class Math {
         public:
@@ -140,7 +119,7 @@ void test_OverloadedMethods(ASTContext &Ctx) {
         };
     )";
     std::unique_ptr<ASTUnit> AST = buildAST(cpp);
-    ASSERT(AST, "Failed to parse C++ code");
+    ASSERT_NE(AST, nullptr) << "Failed to parse C++ code";
 
     CNodeBuilder builder(AST->getASTContext());
     CppToCVisitor visitor(AST->getASTContext(), builder);
@@ -149,23 +128,18 @@ void test_OverloadedMethods(ASTContext &Ctx) {
 
     // Validate: struct generated
     RecordDecl *RD = visitor.getCStruct("Math");
-    ASSERT(RD != nullptr, "Struct not generated");
+    ASSERT_NE(RD, nullptr) << "Struct not generated";
 
     // Validate: both add methods have unique names
-    // First one should be Math_add (no suffix needed)
     FunctionDecl *FD1 = visitor.getCFunc("Math_add");
-    ASSERT(FD1 != nullptr, "First add method not generated");
+    EXPECT_NE(FD1, nullptr) << "First add method not generated";
 
     // Second one should have type suffix
     FunctionDecl *FD2 = visitor.getCFunc("Math_add_float_float");
-    ASSERT(FD2 != nullptr, "Second add method not generated with unique name");
-
-    TEST_PASS("OverloadedMethods");
+    EXPECT_NE(FD2, nullptr) << "Second add method not generated with unique name";
 }
 
-void test_ComplexClass(ASTContext &Ctx) {
-    TEST_START("ComplexClass: Rectangle with constructor + 3 methods");
-
+TEST(TranslationIntegrationTest, ComplexClass) {
     const char *cpp = R"(
         class Rectangle {
             int width, height;
@@ -177,7 +151,7 @@ void test_ComplexClass(ASTContext &Ctx) {
         };
     )";
     std::unique_ptr<ASTUnit> AST = buildAST(cpp);
-    ASSERT(AST, "Failed to parse C++ code");
+    ASSERT_NE(AST, nullptr) << "Failed to parse C++ code";
 
     CNodeBuilder builder(AST->getASTContext());
     CppToCVisitor visitor(AST->getASTContext(), builder);
@@ -186,41 +160,37 @@ void test_ComplexClass(ASTContext &Ctx) {
 
     // Validate: struct with 2 fields
     RecordDecl *RD = visitor.getCStruct("Rectangle");
-    ASSERT(RD != nullptr, "Struct not generated");
+    ASSERT_NE(RD, nullptr) << "Struct not generated";
 
     int fieldCount = 0;
     for (auto *Field : RD->fields()) {
         fieldCount++;
     }
-    ASSERT(fieldCount == 2, "Expected 2 fields");
+    EXPECT_EQ(fieldCount, 2) << "Expected 2 fields";
 
     // Validate: constructor generated
     FunctionDecl *Ctor = visitor.getCtor("Rectangle__ctor");
-    ASSERT(Ctor != nullptr, "Constructor not generated");
-    ASSERT(Ctor->getNumParams() == 3, "Expected 3 params (this + 2)");
+    ASSERT_NE(Ctor, nullptr) << "Constructor not generated";
+    EXPECT_EQ(Ctor->getNumParams(), 3) << "Expected 3 params (this + 2)";
 
     // Validate: 3 methods generated
     FunctionDecl *GetWidth = visitor.getCFunc("Rectangle_getWidth");
-    ASSERT(GetWidth != nullptr, "getWidth method not generated");
+    EXPECT_NE(GetWidth, nullptr) << "getWidth method not generated";
 
     FunctionDecl *GetHeight = visitor.getCFunc("Rectangle_getHeight");
-    ASSERT(GetHeight != nullptr, "getHeight method not generated");
+    EXPECT_NE(GetHeight, nullptr) << "getHeight method not generated";
 
     FunctionDecl *Area = visitor.getCFunc("Rectangle_area");
-    ASSERT(Area != nullptr, "area method not generated");
+    EXPECT_NE(Area, nullptr) << "area method not generated";
 
     // Validate: all functions have bodies
-    ASSERT(Ctor->getBody() != nullptr, "Constructor body missing");
-    ASSERT(GetWidth->getBody() != nullptr, "getWidth body missing");
-    ASSERT(GetHeight->getBody() != nullptr, "getHeight body missing");
-    ASSERT(Area->getBody() != nullptr, "area body missing");
-
-    TEST_PASS("ComplexClass");
+    EXPECT_NE(Ctor->getBody(), nullptr) << "Constructor body missing";
+    EXPECT_NE(GetWidth->getBody(), nullptr) << "getWidth body missing";
+    EXPECT_NE(GetHeight->getBody(), nullptr) << "getHeight body missing";
+    EXPECT_NE(Area->getBody(), nullptr) << "area body missing";
 }
 
-void test_MultipleClasses(ASTContext &Ctx) {
-    TEST_START("MultipleClasses: Multiple classes in one translation unit");
-
+TEST(TranslationIntegrationTest, MultipleClasses) {
     const char *cpp = R"(
         class Point {
             int x, y;
@@ -237,7 +207,7 @@ void test_MultipleClasses(ASTContext &Ctx) {
         };
     )";
     std::unique_ptr<ASTUnit> AST = buildAST(cpp);
-    ASSERT(AST, "Failed to parse C++ code");
+    ASSERT_NE(AST, nullptr) << "Failed to parse C++ code";
 
     CNodeBuilder builder(AST->getASTContext());
     CppToCVisitor visitor(AST->getASTContext(), builder);
@@ -246,56 +216,22 @@ void test_MultipleClasses(ASTContext &Ctx) {
 
     // Validate: both structs generated
     RecordDecl *Point = visitor.getCStruct("Point");
-    ASSERT(Point != nullptr, "Point struct not generated");
+    EXPECT_NE(Point, nullptr) << "Point struct not generated";
 
     RecordDecl *Circle = visitor.getCStruct("Circle");
-    ASSERT(Circle != nullptr, "Circle struct not generated");
+    EXPECT_NE(Circle, nullptr) << "Circle struct not generated";
 
     // Validate: both constructors generated
     FunctionDecl *PointCtor = visitor.getCtor("Point__ctor");
-    ASSERT(PointCtor != nullptr, "Point constructor not generated");
+    EXPECT_NE(PointCtor, nullptr) << "Point constructor not generated";
 
     FunctionDecl *CircleCtor = visitor.getCtor("Circle__ctor");
-    ASSERT(CircleCtor != nullptr, "Circle constructor not generated");
+    EXPECT_NE(CircleCtor, nullptr) << "Circle constructor not generated";
 
     // Validate: both methods generated
     FunctionDecl *GetX = visitor.getCFunc("Point_getX");
-    ASSERT(GetX != nullptr, "Point::getX not generated");
+    EXPECT_NE(GetX, nullptr) << "Point::getX not generated";
 
     FunctionDecl *GetRadius = visitor.getCFunc("Circle_getRadius");
-    ASSERT(GetRadius != nullptr, "Circle::getRadius not generated");
-
-    TEST_PASS("MultipleClasses");
-}
-
-int main(int argc, const char **argv) {
-    // Create a simple test AST for context
-    std::unique_ptr<ASTUnit> AST = buildAST("int main() { return 0; }");
-    if (!AST) {
-        std::cerr << "Failed to create test AST" << std::endl;
-        return 1;
-    }
-
-    ASTContext &Ctx = AST->getASTContext();
-
-    std::cout << "=== Story #20: Translation Integration Tests ===" << std::endl;
-    test_EmptyClass(Ctx);
-    test_SimpleClassWithMethod(Ctx);
-    test_ConstructorTranslation(Ctx);
-    test_OverloadedMethods(Ctx);
-    test_ComplexClass(Ctx);
-    test_MultipleClasses(Ctx);
-
-    std::cout << "\n========================================" << std::endl;
-    std::cout << "Tests passed: " << tests_passed << std::endl;
-    std::cout << "Tests failed: " << tests_failed << std::endl;
-
-    if (tests_failed == 0) {
-        std::cout << "\n✓ All integration tests passed!" << std::endl;
-        std::cout << "✓ Epic #3 Complete: Simple Class Translation works end-to-end!" << std::endl;
-        return 0;
-    } else {
-        std::cout << "\n✗ Some tests failed!" << std::endl;
-        return 1;
-    }
+    EXPECT_NE(GetRadius, nullptr) << "Circle::getRadius not generated";
 }
