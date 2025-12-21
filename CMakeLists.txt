@@ -804,6 +804,35 @@ target_link_libraries(InheritanceTest PRIVATE
     clangBasic
 )
 
+# Story #50-64: Inheritance Tests (GTest Migration)
+add_executable(InheritanceTest_GTest
+    tests/InheritanceTest_GTest.cpp
+)
+
+target_compile_definitions(InheritanceTest_GTest PRIVATE ${LLVM_DEFINITIONS})
+
+target_include_directories(InheritanceTest_GTest PRIVATE
+    ${CMAKE_SOURCE_DIR}/include
+    ${LLVM_INCLUDE_DIRS}
+    ${CLANG_INCLUDE_DIRS}
+)
+
+target_link_libraries(InheritanceTest_GTest PRIVATE
+    cpptoc_core
+    clangTooling
+    clangFrontend
+    clangAST
+    clangBasic
+    GTest::gtest
+    GTest::gtest_main
+)
+
+# Register with CTest
+gtest_discover_tests(InheritanceTest_GTest
+    WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
+    PROPERTIES LABELS "unit;inheritance;epic6"
+)
+
 # ============================================================================
 # Epic #41: Virtual Functions + Vtables (Story #167)
 # ============================================================================
@@ -1796,7 +1825,7 @@ gtest_discover_tests(LambdaTranslatorTest
 # ============================================================================
 
 add_executable(MoveSemanticTranslatorTest
-    tests/unit/move_semantics/MoveSemanticTranslatorTest.cpp
+    tests/unit/move_semantics/MoveSemanticTranslatorTest_gtest.cpp
 )
 
 target_compile_definitions(MoveSemanticTranslatorTest PRIVATE ${LLVM_DEFINITIONS})

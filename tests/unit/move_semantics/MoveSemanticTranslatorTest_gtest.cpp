@@ -4,26 +4,20 @@
 #include "clang/AST/RecursiveASTVisitor.h"
 #include "clang/AST/Expr.h"
 #include "clang/AST/ExprCXX.h"
-#include <iostream>
-#include <cassert>
+#include <gtest/gtest.h>
 #include <string>
 #include <vector>
 
 using namespace clang;
 
-// Test helper to build AST from C++ code
-std::unique_ptr<ASTUnit> buildAST(const char *code) {
-    return tooling::buildASTFromCode(code);
-}
-
-// Test helper macros
-#define TEST_START(name) std::cout << "Test: " << name << " ... " << std::flush
-#define TEST_PASS(name) std::cout << "PASS" << std::endl
-#define ASSERT(cond, msg) \
-    if (!(cond)) { \
-        std::cerr << "\nASSERT FAILED: " << msg << std::endl; \
-        return; \
+// Test fixture for Move Semantics tests
+class MoveSemanticTestFixture : public ::testing::Test {
+protected:
+    // Helper to build AST from C++ code
+    std::unique_ptr<ASTUnit> buildAST(const char *code) {
+        return tooling::buildASTFromCode(code);
     }
+};
 
 // Helper visitor to find specific AST nodes
 class MoveSemanticsFinder : public RecursiveASTVisitor<MoveSemanticsFinder> {
@@ -86,9 +80,7 @@ public:
 // Category 1: Rvalue References (8-10 tests)
 // ============================================================================
 
-void test_rvalue_reference_parameter_detection() {
-    TEST_START("rvalue_reference_parameter_detection");
-
+TEST_F(MoveSemanticTestFixture, RvalueReferenceParameterDetection) {
     const char *code = R"(
         void process(int&& value) {
             // Process rvalue reference
@@ -96,22 +88,18 @@ void test_rvalue_reference_parameter_detection() {
     )";
 
     std::unique_ptr<ASTUnit> AST = buildAST(code);
-    ASSERT(AST, "Failed to parse C++ code");
+    ASSERT_TRUE(AST) << "Failed to parse C++ code";
 
     MoveSemanticsFinder finder;
     finder.TraverseDecl(AST->getASTContext().getTranslationUnitDecl());
 
-    ASSERT(finder.rvalueRefs.size() >= 1, "Expected at least one rvalue reference parameter");
+    ASSERT_GE(finder.rvalueRefs.size(), 1) << "Expected at least one rvalue reference parameter";
 
     const auto *param = finder.rvalueRefs[0];
-    ASSERT(param->getType()->isRValueReferenceType(), "Parameter should be rvalue reference type");
-
-    TEST_PASS("rvalue_reference_parameter_detection");
+    ASSERT_TRUE(param->getType()->isRValueReferenceType()) << "Parameter should be rvalue reference type";
 }
 
-void test_rvalue_reference_return_type() {
-    TEST_START("rvalue_reference_return_type");
-
+TEST_F(MoveSemanticTestFixture, RvalueReferenceReturnType) {
     const char *code = R"(
         class Widget {
             int data;
@@ -121,7 +109,7 @@ void test_rvalue_reference_return_type() {
     )";
 
     std::unique_ptr<ASTUnit> AST = buildAST(code);
-    ASSERT(AST, "Failed to parse C++ code");
+    ASSERT_TRUE(AST) << "Failed to parse C++ code";
 
     auto *TU = AST->getASTContext().getTranslationUnitDecl();
     CXXMethodDecl *method = nullptr;
@@ -139,15 +127,11 @@ void test_rvalue_reference_return_type() {
         }
     }
 
-    ASSERT(method != nullptr, "getData method not found");
-    ASSERT(method->getReturnType()->isRValueReferenceType(), "Return type should be rvalue reference");
-
-    TEST_PASS("rvalue_reference_return_type");
+    ASSERT_TRUE(method != nullptr) << "getData method not found";
+    ASSERT_TRUE(method->getReturnType()->isRValueReferenceType()) << "Return type should be rvalue reference";
 }
 
-void test_lvalue_cannot_bind_to_rvalue_reference() {
-    TEST_START("lvalue_cannot_bind_to_rvalue_reference");
-
+TEST_F(MoveSemanticTestFixture, LvalueCannotBindToRvalueReference) {
     // This code would fail to compile with proper C++ semantics
     // The transpiler should detect this constraint
     const char *code = R"(
@@ -161,19 +145,15 @@ void test_lvalue_cannot_bind_to_rvalue_reference() {
     )";
 
     std::unique_ptr<ASTUnit> AST = buildAST(code);
-    ASSERT(AST, "Failed to parse C++ code");
+    ASSERT_TRUE(AST) << "Failed to parse C++ code";
 
     MoveSemanticsFinder finder;
     finder.TraverseDecl(AST->getASTContext().getTranslationUnitDecl());
 
-    ASSERT(finder.rvalueRefs.size() >= 1, "Expected rvalue reference parameter");
-
-    TEST_PASS("lvalue_cannot_bind_to_rvalue_reference");
+    ASSERT_GE(finder.rvalueRefs.size(), 1) << "Expected rvalue reference parameter";
 }
 
-void test_rvalue_reference_variable_declaration() {
-    TEST_START("rvalue_reference_variable_declaration");
-
+TEST_F(MoveSemanticTestFixture, RvalueReferenceVariableDeclaration) {
     const char *code = R"(
         int getTemporary() { return 42; }
 
@@ -183,19 +163,15 @@ void test_rvalue_reference_variable_declaration() {
     )";
 
     std::unique_ptr<ASTUnit> AST = buildAST(code);
-    ASSERT(AST, "Failed to parse C++ code");
+    ASSERT_TRUE(AST) << "Failed to parse C++ code";
 
     MoveSemanticsFinder finder;
     finder.TraverseDecl(AST->getASTContext().getTranslationUnitDecl());
 
-    ASSERT(finder.rvalueRefs.size() >= 1, "Expected rvalue reference variable");
-
-    TEST_PASS("rvalue_reference_variable_declaration");
+    ASSERT_GE(finder.rvalueRefs.size(), 1) << "Expected rvalue reference variable";
 }
 
-void test_reference_collapsing_rvalue_rvalue() {
-    TEST_START("reference_collapsing_rvalue_rvalue");
-
+TEST_F(MoveSemanticTestFixture, ReferenceCollapsingRvalueRvalue) {
     const char *code = R"(
         template<typename T>
         void func(T&& param) {
@@ -208,17 +184,13 @@ void test_reference_collapsing_rvalue_rvalue() {
     )";
 
     std::unique_ptr<ASTUnit> AST = buildAST(code);
-    ASSERT(AST, "Failed to parse C++ code");
+    ASSERT_TRUE(AST) << "Failed to parse C++ code";
 
     // Reference collapsing: && + && -> &&
     // This is tested by verifying template instantiation
-
-    TEST_PASS("reference_collapsing_rvalue_rvalue");
 }
 
-void test_reference_collapsing_lvalue_rvalue() {
-    TEST_START("reference_collapsing_lvalue_rvalue");
-
+TEST_F(MoveSemanticTestFixture, ReferenceCollapsingLvalueRvalue) {
     const char *code = R"(
         template<typename T>
         void func(T&& param) {
@@ -232,17 +204,13 @@ void test_reference_collapsing_lvalue_rvalue() {
     )";
 
     std::unique_ptr<ASTUnit> AST = buildAST(code);
-    ASSERT(AST, "Failed to parse C++ code");
+    ASSERT_TRUE(AST) << "Failed to parse C++ code";
 
     // Reference collapsing: & + && -> &
     // This is tested by verifying template instantiation
-
-    TEST_PASS("reference_collapsing_lvalue_rvalue");
 }
 
-void test_rvalue_reference_member_variable() {
-    TEST_START("rvalue_reference_member_variable");
-
+TEST_F(MoveSemanticTestFixture, RvalueReferenceMemberVariable) {
     const char *code = R"(
         class Container {
             int&& rref;  // Rvalue reference member (rare but legal)
@@ -252,7 +220,7 @@ void test_rvalue_reference_member_variable() {
     )";
 
     std::unique_ptr<ASTUnit> AST = buildAST(code);
-    ASSERT(AST, "Failed to parse C++ code");
+    ASSERT_TRUE(AST) << "Failed to parse C++ code";
 
     auto *TU = AST->getASTContext().getTranslationUnitDecl();
     bool foundRvalueRefMember = false;
@@ -270,14 +238,10 @@ void test_rvalue_reference_member_variable() {
         }
     }
 
-    ASSERT(foundRvalueRefMember, "Expected rvalue reference member variable");
-
-    TEST_PASS("rvalue_reference_member_variable");
+    ASSERT_TRUE(foundRvalueRefMember) << "Expected rvalue reference member variable";
 }
 
-void test_rvalue_reference_temporary_lifetime_extension() {
-    TEST_START("rvalue_reference_temporary_lifetime_extension");
-
+TEST_F(MoveSemanticTestFixture, RvalueReferenceTemporaryLifetimeExtension) {
     const char *code = R"(
         class Widget {
             int value;
@@ -292,20 +256,16 @@ void test_rvalue_reference_temporary_lifetime_extension() {
     )";
 
     std::unique_ptr<ASTUnit> AST = buildAST(code);
-    ASSERT(AST, "Failed to parse C++ code");
+    ASSERT_TRUE(AST) << "Failed to parse C++ code";
 
     MoveSemanticsFinder finder;
     finder.TraverseDecl(AST->getASTContext().getTranslationUnitDecl());
 
     // Verify that rvalue reference extends temporary lifetime
-    ASSERT(finder.rvalueRefs.size() >= 1, "Expected rvalue reference");
-
-    TEST_PASS("rvalue_reference_temporary_lifetime_extension");
+    ASSERT_GE(finder.rvalueRefs.size(), 1) << "Expected rvalue reference";
 }
 
-void test_rvalue_reference_function_overloading() {
-    TEST_START("rvalue_reference_function_overloading");
-
+TEST_F(MoveSemanticTestFixture, RvalueReferenceFunctionOverloading) {
     const char *code = R"(
         void process(int& lvalue) {}
         void process(int&& rvalue) {}
@@ -318,7 +278,7 @@ void test_rvalue_reference_function_overloading() {
     )";
 
     std::unique_ptr<ASTUnit> AST = buildAST(code);
-    ASSERT(AST, "Failed to parse C++ code");
+    ASSERT_TRUE(AST) << "Failed to parse C++ code";
 
     // Count overloaded functions
     auto *TU = AST->getASTContext().getTranslationUnitDecl();
@@ -332,14 +292,10 @@ void test_rvalue_reference_function_overloading() {
         }
     }
 
-    ASSERT(processCount >= 2, "Expected at least 2 overloads of process");
-
-    TEST_PASS("rvalue_reference_function_overloading");
+    ASSERT_GE(processCount, 2) << "Expected at least 2 overloads of process";
 }
 
-void test_rvalue_reference_cast_expression() {
-    TEST_START("rvalue_reference_cast_expression");
-
+TEST_F(MoveSemanticTestFixture, RvalueReferenceCastExpression) {
     const char *code = R"(
         void test() {
             int x = 42;
@@ -348,23 +304,19 @@ void test_rvalue_reference_cast_expression() {
     )";
 
     std::unique_ptr<ASTUnit> AST = buildAST(code);
-    ASSERT(AST, "Failed to parse C++ code");
+    ASSERT_TRUE(AST) << "Failed to parse C++ code";
 
     MoveSemanticsFinder finder;
     finder.TraverseDecl(AST->getASTContext().getTranslationUnitDecl());
 
-    ASSERT(finder.rvalueRefs.size() >= 1, "Expected rvalue reference from cast");
-
-    TEST_PASS("rvalue_reference_cast_expression");
+    ASSERT_GE(finder.rvalueRefs.size(), 1) << "Expected rvalue reference from cast";
 }
 
 // ============================================================================
 // Category 2: Move Constructor & Assignment (10-12 tests)
 // ============================================================================
 
-void test_move_constructor_detection() {
-    TEST_START("move_constructor_detection");
-
+TEST_F(MoveSemanticTestFixture, MoveConstructorDetection) {
     const char *code = R"(
         class Widget {
             int* data;
@@ -376,19 +328,15 @@ void test_move_constructor_detection() {
     )";
 
     std::unique_ptr<ASTUnit> AST = buildAST(code);
-    ASSERT(AST, "Failed to parse C++ code");
+    ASSERT_TRUE(AST) << "Failed to parse C++ code";
 
     MoveSemanticsFinder finder;
     finder.TraverseDecl(AST->getASTContext().getTranslationUnitDecl());
 
-    ASSERT(finder.moveConstructors.size() == 1, "Expected exactly one move constructor");
-
-    TEST_PASS("move_constructor_detection");
+    ASSERT_EQ(finder.moveConstructors.size(), 1) << "Expected exactly one move constructor";
 }
 
-void test_move_assignment_operator_detection() {
-    TEST_START("move_assignment_operator_detection");
-
+TEST_F(MoveSemanticTestFixture, MoveAssignmentOperatorDetection) {
     const char *code = R"(
         class Widget {
             int* data;
@@ -405,18 +353,15 @@ void test_move_assignment_operator_detection() {
     )";
 
     std::unique_ptr<ASTUnit> AST = buildAST(code);
-    ASSERT(AST, "Failed to parse C++ code");
+    ASSERT_TRUE(AST) << "Failed to parse C++ code";
 
     MoveSemanticsFinder finder;
     finder.TraverseDecl(AST->getASTContext().getTranslationUnitDecl());
 
-    ASSERT(finder.moveAssignments.size() == 1, "Expected exactly one move assignment operator");
-
-    TEST_PASS("move_assignment_operator_detection");
+    ASSERT_EQ(finder.moveAssignments.size(), 1) << "Expected exactly one move assignment operator";
 }
 
-void test_compiler_generated_move_constructor() {
-    TEST_START("compiler_generated_move_constructor");
+TEST_F(MoveSemanticTestFixture, CompilerGeneratedMoveConstructor) {
 
     const char *code = R"(
         class Widget {
@@ -431,7 +376,7 @@ void test_compiler_generated_move_constructor() {
     )";
 
     std::unique_ptr<ASTUnit> AST = buildAST(code);
-    ASSERT(AST, "Failed to parse C++ code");
+    ASSERT_TRUE(AST) << "Failed to parse C++ code";
 
     auto *TU = AST->getASTContext().getTranslationUnitDecl();
     CXXRecordDecl *WidgetClass = nullptr;
@@ -445,15 +390,13 @@ void test_compiler_generated_move_constructor() {
         }
     }
 
-    ASSERT(WidgetClass != nullptr, "Widget class not found");
-    ASSERT(WidgetClass->hasDefaultConstructor() || !WidgetClass->needsImplicitDefaultConstructor(),
-           "Widget should have constructor");
+    ASSERT_TRUE(WidgetClass != nullptr) << "Widget class not found";
+    ASSERT_TRUE(WidgetClass->hasDefaultConstructor() || !WidgetClass->needsImplicitDefaultConstructor())
+           << "Widget should have constructor";
 
-    TEST_PASS("compiler_generated_move_constructor");
 }
 
-void test_deleted_move_constructor() {
-    TEST_START("deleted_move_constructor");
+TEST_F(MoveSemanticTestFixture, DeletedMoveConstructor) {
 
     const char *code = R"(
         class NonMovable {
@@ -463,7 +406,7 @@ void test_deleted_move_constructor() {
     )";
 
     std::unique_ptr<ASTUnit> AST = buildAST(code);
-    ASSERT(AST, "Failed to parse C++ code");
+    ASSERT_TRUE(AST) << "Failed to parse C++ code";
 
     auto *TU = AST->getASTContext().getTranslationUnitDecl();
     CXXConstructorDecl *moveConstructor = nullptr;
@@ -481,14 +424,12 @@ void test_deleted_move_constructor() {
         }
     }
 
-    ASSERT(moveConstructor != nullptr, "Move constructor not found");
-    ASSERT(moveConstructor->isDeleted(), "Move constructor should be deleted");
+    ASSERT_TRUE(moveConstructor != nullptr) << "Move constructor not found";
+    ASSERT_TRUE(moveConstructor->isDeleted()) << "Move constructor should be deleted";
 
-    TEST_PASS("deleted_move_constructor");
 }
 
-void test_move_constructor_with_noexcept() {
-    TEST_START("move_constructor_with_noexcept");
+TEST_F(MoveSemanticTestFixture, MoveConstructorWithNoexcept) {
 
     const char *code = R"(
         class Widget {
@@ -501,23 +442,21 @@ void test_move_constructor_with_noexcept() {
     )";
 
     std::unique_ptr<ASTUnit> AST = buildAST(code);
-    ASSERT(AST, "Failed to parse C++ code");
+    ASSERT_TRUE(AST) << "Failed to parse C++ code";
 
     MoveSemanticsFinder finder;
     finder.TraverseDecl(AST->getASTContext().getTranslationUnitDecl());
 
-    ASSERT(finder.moveConstructors.size() == 1, "Expected exactly one move constructor");
+    ASSERT_EQ(finder.moveConstructors.size(), 1) << "Expected exactly one move constructor";
 
     const auto *moveCtor = finder.moveConstructors[0];
     auto exceptionSpec = moveCtor->getExceptionSpecType();
-    ASSERT(exceptionSpec == EST_NoexceptTrue || exceptionSpec == EST_BasicNoexcept,
-           "Move constructor should be noexcept");
+    ASSERT_TRUE(exceptionSpec == EST_NoexceptTrue || exceptionSpec == EST_BasicNoexcept)
+           << "Move constructor should be noexcept";
 
-    TEST_PASS("move_constructor_with_noexcept");
 }
 
-void test_move_assignment_self_assignment_check() {
-    TEST_START("move_assignment_self_assignment_check");
+TEST_F(MoveSemanticTestFixture, MoveAssignmentSelfAssignmentCheck) {
 
     const char *code = R"(
         class Widget {
@@ -535,18 +474,16 @@ void test_move_assignment_self_assignment_check() {
     )";
 
     std::unique_ptr<ASTUnit> AST = buildAST(code);
-    ASSERT(AST, "Failed to parse C++ code");
+    ASSERT_TRUE(AST) << "Failed to parse C++ code";
 
     MoveSemanticsFinder finder;
     finder.TraverseDecl(AST->getASTContext().getTranslationUnitDecl());
 
-    ASSERT(finder.moveAssignments.size() == 1, "Expected exactly one move assignment operator");
+    ASSERT_EQ(finder.moveAssignments.size(), 1) << "Expected exactly one move assignment operator";
 
-    TEST_PASS("move_assignment_self_assignment_check");
 }
 
-void test_memberwise_move_construction() {
-    TEST_START("memberwise_move_construction");
+TEST_F(MoveSemanticTestFixture, MemberwiseMoveConstruction) {
 
     const char *code = R"(
         class Inner {
@@ -565,18 +502,16 @@ void test_memberwise_move_construction() {
     )";
 
     std::unique_ptr<ASTUnit> AST = buildAST(code);
-    ASSERT(AST, "Failed to parse C++ code");
+    ASSERT_TRUE(AST) << "Failed to parse C++ code";
 
     MoveSemanticsFinder finder;
     finder.TraverseDecl(AST->getASTContext().getTranslationUnitDecl());
 
-    ASSERT(finder.moveConstructors.size() >= 1, "Expected at least one move constructor");
+    ASSERT_GE(finder.moveConstructors.size(), 1) << "Expected at least one move constructor";
 
-    TEST_PASS("memberwise_move_construction");
 }
 
-void test_move_constructor_resource_transfer() {
-    TEST_START("move_constructor_resource_transfer");
+TEST_F(MoveSemanticTestFixture, MoveConstructorResourceTransfer) {
 
     const char *code = R"(
         class Resource {
@@ -592,18 +527,16 @@ void test_move_constructor_resource_transfer() {
     )";
 
     std::unique_ptr<ASTUnit> AST = buildAST(code);
-    ASSERT(AST, "Failed to parse C++ code");
+    ASSERT_TRUE(AST) << "Failed to parse C++ code";
 
     MoveSemanticsFinder finder;
     finder.TraverseDecl(AST->getASTContext().getTranslationUnitDecl());
 
-    ASSERT(finder.moveConstructors.size() == 1, "Expected exactly one move constructor");
+    ASSERT_EQ(finder.moveConstructors.size(), 1) << "Expected exactly one move constructor";
 
-    TEST_PASS("move_constructor_resource_transfer");
 }
 
-void test_move_assignment_resource_cleanup() {
-    TEST_START("move_assignment_resource_cleanup");
+TEST_F(MoveSemanticTestFixture, MoveAssignmentResourceCleanup) {
 
     const char *code = R"(
         class Resource {
@@ -621,18 +554,16 @@ void test_move_assignment_resource_cleanup() {
     )";
 
     std::unique_ptr<ASTUnit> AST = buildAST(code);
-    ASSERT(AST, "Failed to parse C++ code");
+    ASSERT_TRUE(AST) << "Failed to parse C++ code";
 
     MoveSemanticsFinder finder;
     finder.TraverseDecl(AST->getASTContext().getTranslationUnitDecl());
 
-    ASSERT(finder.moveAssignments.size() == 1, "Expected exactly one move assignment operator");
+    ASSERT_EQ(finder.moveAssignments.size(), 1) << "Expected exactly one move assignment operator";
 
-    TEST_PASS("move_assignment_resource_cleanup");
 }
 
-void test_move_constructor_with_base_class() {
-    TEST_START("move_constructor_with_base_class");
+TEST_F(MoveSemanticTestFixture, MoveConstructorWithBaseClass) {
 
     const char *code = R"(
         class Base {
@@ -648,18 +579,16 @@ void test_move_constructor_with_base_class() {
     )";
 
     std::unique_ptr<ASTUnit> AST = buildAST(code);
-    ASSERT(AST, "Failed to parse C++ code");
+    ASSERT_TRUE(AST) << "Failed to parse C++ code";
 
     MoveSemanticsFinder finder;
     finder.TraverseDecl(AST->getASTContext().getTranslationUnitDecl());
 
-    ASSERT(finder.moveConstructors.size() >= 2, "Expected move constructors for Base and Derived");
+    ASSERT_GE(finder.moveConstructors.size(), 2) << "Expected move constructors for Base and Derived";
 
-    TEST_PASS("move_constructor_with_base_class");
 }
 
-void test_move_only_type() {
-    TEST_START("move_only_type");
+TEST_F(MoveSemanticTestFixture, MoveOnlyType) {
 
     const char *code = R"(
         class MoveOnly {
@@ -673,7 +602,7 @@ void test_move_only_type() {
     )";
 
     std::unique_ptr<ASTUnit> AST = buildAST(code);
-    ASSERT(AST, "Failed to parse C++ code");
+    ASSERT_TRUE(AST) << "Failed to parse C++ code";
 
     auto *TU = AST->getASTContext().getTranslationUnitDecl();
     CXXRecordDecl *MoveOnlyClass = nullptr;
@@ -687,13 +616,11 @@ void test_move_only_type() {
         }
     }
 
-    ASSERT(MoveOnlyClass != nullptr, "MoveOnly class not found");
+    ASSERT_TRUE(MoveOnlyClass != nullptr) << "MoveOnly class not found";
 
-    TEST_PASS("move_only_type");
 }
 
-void test_move_constructor_exception_safety() {
-    TEST_START("move_constructor_exception_safety");
+TEST_F(MoveSemanticTestFixture, MoveConstructorExceptionSafety) {
 
     const char *code = R"(
         class SafeMove {
@@ -708,22 +635,20 @@ void test_move_constructor_exception_safety() {
     )";
 
     std::unique_ptr<ASTUnit> AST = buildAST(code);
-    ASSERT(AST, "Failed to parse C++ code");
+    ASSERT_TRUE(AST) << "Failed to parse C++ code";
 
     MoveSemanticsFinder finder;
     finder.TraverseDecl(AST->getASTContext().getTranslationUnitDecl());
 
-    ASSERT(finder.moveConstructors.size() == 1, "Expected exactly one move constructor");
+    ASSERT_EQ(finder.moveConstructors.size(), 1) << "Expected exactly one move constructor";
 
-    TEST_PASS("move_constructor_exception_safety");
 }
 
 // ============================================================================
 // Category 3: std::move Usage (10-12 tests)
 // ============================================================================
 
-void test_explicit_std_move_call() {
-    TEST_START("explicit_std_move_call");
+TEST_F(MoveSemanticTestFixture, ExplicitStdMoveCall) {
 
     const char *code = R"(
         #include <utility>
@@ -735,18 +660,16 @@ void test_explicit_std_move_call() {
     )";
 
     std::unique_ptr<ASTUnit> AST = buildAST(code);
-    ASSERT(AST, "Failed to parse C++ code");
+    ASSERT_TRUE(AST) << "Failed to parse C++ code";
 
     MoveSemanticsFinder finder;
     finder.TraverseDecl(AST->getASTContext().getTranslationUnitDecl());
 
-    ASSERT(finder.stdMoveCalls.size() >= 1, "Expected at least one std::move call");
+    ASSERT_GE(finder.stdMoveCalls.size(), 1) << "Expected at least one std::move call";
 
-    TEST_PASS("explicit_std_move_call");
 }
 
-void test_std_move_in_return_statement() {
-    TEST_START("std_move_in_return_statement");
+TEST_F(MoveSemanticTestFixture, StdMoveInReturnStatement) {
 
     const char *code = R"(
         #include <utility>
@@ -762,18 +685,16 @@ void test_std_move_in_return_statement() {
     )";
 
     std::unique_ptr<ASTUnit> AST = buildAST(code);
-    ASSERT(AST, "Failed to parse C++ code");
+    ASSERT_TRUE(AST) << "Failed to parse C++ code";
 
     MoveSemanticsFinder finder;
     finder.TraverseDecl(AST->getASTContext().getTranslationUnitDecl());
 
-    ASSERT(finder.stdMoveCalls.size() >= 1, "Expected std::move in return statement");
+    ASSERT_GE(finder.stdMoveCalls.size(), 1) << "Expected std::move in return statement";
 
-    TEST_PASS("std_move_in_return_statement");
 }
 
-void test_std_move_with_function_argument() {
-    TEST_START("std_move_with_function_argument");
+TEST_F(MoveSemanticTestFixture, StdMoveWithFunctionArgument) {
 
     const char *code = R"(
         #include <utility>
@@ -787,18 +708,16 @@ void test_std_move_with_function_argument() {
     )";
 
     std::unique_ptr<ASTUnit> AST = buildAST(code);
-    ASSERT(AST, "Failed to parse C++ code");
+    ASSERT_TRUE(AST) << "Failed to parse C++ code";
 
     MoveSemanticsFinder finder;
     finder.TraverseDecl(AST->getASTContext().getTranslationUnitDecl());
 
-    ASSERT(finder.stdMoveCalls.size() >= 1, "Expected std::move with function argument");
+    ASSERT_GE(finder.stdMoveCalls.size(), 1) << "Expected std::move with function argument";
 
-    TEST_PASS("std_move_with_function_argument");
 }
 
-void test_std_move_in_constructor_initialization() {
-    TEST_START("std_move_in_constructor_initialization");
+TEST_F(MoveSemanticTestFixture, StdMoveInConstructorInitialization) {
 
     const char *code = R"(
         #include <utility>
@@ -816,18 +735,16 @@ void test_std_move_in_constructor_initialization() {
     )";
 
     std::unique_ptr<ASTUnit> AST = buildAST(code);
-    ASSERT(AST, "Failed to parse C++ code");
+    ASSERT_TRUE(AST) << "Failed to parse C++ code";
 
     MoveSemanticsFinder finder;
     finder.TraverseDecl(AST->getASTContext().getTranslationUnitDecl());
 
-    ASSERT(finder.stdMoveCalls.size() >= 1, "Expected std::move in constructor initialization");
+    ASSERT_GE(finder.stdMoveCalls.size(), 1) << "Expected std::move in constructor initialization";
 
-    TEST_PASS("std_move_in_constructor_initialization");
 }
 
-void test_std_move_with_vector_push_back() {
-    TEST_START("std_move_with_vector_push_back");
+TEST_F(MoveSemanticTestFixture, StdMoveWithVectorPushBack) {
 
     const char *code = R"(
         #include <utility>
@@ -846,18 +763,16 @@ void test_std_move_with_vector_push_back() {
     )";
 
     std::unique_ptr<ASTUnit> AST = buildAST(code);
-    ASSERT(AST, "Failed to parse C++ code");
+    ASSERT_TRUE(AST) << "Failed to parse C++ code";
 
     MoveSemanticsFinder finder;
     finder.TraverseDecl(AST->getASTContext().getTranslationUnitDecl());
 
-    ASSERT(finder.stdMoveCalls.size() >= 1, "Expected std::move with vector::push_back");
+    ASSERT_GE(finder.stdMoveCalls.size(), 1) << "Expected std::move with vector::push_back";
 
-    TEST_PASS("std_move_with_vector_push_back");
 }
 
-void test_std_move_with_unique_ptr() {
-    TEST_START("std_move_with_unique_ptr");
+TEST_F(MoveSemanticTestFixture, StdMoveWithUniquePtr) {
 
     const char *code = R"(
         #include <utility>
@@ -870,18 +785,16 @@ void test_std_move_with_unique_ptr() {
     )";
 
     std::unique_ptr<ASTUnit> AST = buildAST(code);
-    ASSERT(AST, "Failed to parse C++ code");
+    ASSERT_TRUE(AST) << "Failed to parse C++ code";
 
     MoveSemanticsFinder finder;
     finder.TraverseDecl(AST->getASTContext().getTranslationUnitDecl());
 
-    ASSERT(finder.stdMoveCalls.size() >= 1, "Expected std::move with unique_ptr");
+    ASSERT_GE(finder.stdMoveCalls.size(), 1) << "Expected std::move with unique_ptr";
 
-    TEST_PASS("std_move_with_unique_ptr");
 }
 
-void test_std_move_on_const_object() {
-    TEST_START("std_move_on_const_object");
+TEST_F(MoveSemanticTestFixture, StdMoveOnConstObject) {
 
     const char *code = R"(
         #include <utility>
@@ -895,16 +808,14 @@ void test_std_move_on_const_object() {
     )";
 
     std::unique_ptr<ASTUnit> AST = buildAST(code);
-    ASSERT(AST, "Failed to parse C++ code");
+    ASSERT_TRUE(AST) << "Failed to parse C++ code";
 
     // std::move on const is a no-op effectively
     // Transpiler should detect this edge case
 
-    TEST_PASS("std_move_on_const_object");
 }
 
-void test_std_move_chain() {
-    TEST_START("std_move_chain");
+TEST_F(MoveSemanticTestFixture, StdMoveChain) {
 
     const char *code = R"(
         #include <utility>
@@ -923,18 +834,16 @@ void test_std_move_chain() {
     )";
 
     std::unique_ptr<ASTUnit> AST = buildAST(code);
-    ASSERT(AST, "Failed to parse C++ code");
+    ASSERT_TRUE(AST) << "Failed to parse C++ code";
 
     MoveSemanticsFinder finder;
     finder.TraverseDecl(AST->getASTContext().getTranslationUnitDecl());
 
-    ASSERT(finder.stdMoveCalls.size() >= 3, "Expected multiple chained std::move calls");
+    ASSERT_GE(finder.stdMoveCalls.size(), 3) << "Expected multiple chained std::move calls";
 
-    TEST_PASS("std_move_chain");
 }
 
-void test_std_move_unnecessary_on_temporary() {
-    TEST_START("std_move_unnecessary_on_temporary");
+TEST_F(MoveSemanticTestFixture, StdMoveUnnecessaryOnTemporary) {
 
     const char *code = R"(
         #include <utility>
@@ -950,15 +859,13 @@ void test_std_move_unnecessary_on_temporary() {
     )";
 
     std::unique_ptr<ASTUnit> AST = buildAST(code);
-    ASSERT(AST, "Failed to parse C++ code");
+    ASSERT_TRUE(AST) << "Failed to parse C++ code";
 
     // This test verifies that we can detect when std::move is unnecessary
 
-    TEST_PASS("std_move_unnecessary_on_temporary");
 }
 
-void test_std_move_with_member_variable() {
-    TEST_START("std_move_with_member_variable");
+TEST_F(MoveSemanticTestFixture, StdMoveWithMemberVariable) {
 
     const char *code = R"(
         #include <utility>
@@ -975,18 +882,16 @@ void test_std_move_with_member_variable() {
     )";
 
     std::unique_ptr<ASTUnit> AST = buildAST(code);
-    ASSERT(AST, "Failed to parse C++ code");
+    ASSERT_TRUE(AST) << "Failed to parse C++ code";
 
     MoveSemanticsFinder finder;
     finder.TraverseDecl(AST->getASTContext().getTranslationUnitDecl());
 
-    ASSERT(finder.stdMoveCalls.size() >= 1, "Expected std::move on member variable");
+    ASSERT_GE(finder.stdMoveCalls.size(), 1) << "Expected std::move on member variable";
 
-    TEST_PASS("std_move_with_member_variable");
 }
 
-void test_std_move_in_range_based_for_loop() {
-    TEST_START("std_move_in_range_based_for_loop");
+TEST_F(MoveSemanticTestFixture, StdMoveInRangeBasedForLoop) {
 
     const char *code = R"(
         #include <utility>
@@ -1005,18 +910,16 @@ void test_std_move_in_range_based_for_loop() {
     )";
 
     std::unique_ptr<ASTUnit> AST = buildAST(code);
-    ASSERT(AST, "Failed to parse C++ code");
+    ASSERT_TRUE(AST) << "Failed to parse C++ code";
 
     MoveSemanticsFinder finder;
     finder.TraverseDecl(AST->getASTContext().getTranslationUnitDecl());
 
-    ASSERT(finder.stdMoveCalls.size() >= 1, "Expected std::move in range-based for loop");
+    ASSERT_GE(finder.stdMoveCalls.size(), 1) << "Expected std::move in range-based for loop";
 
-    TEST_PASS("std_move_in_range_based_for_loop");
 }
 
-void test_std_move_with_swap() {
-    TEST_START("std_move_with_swap");
+TEST_F(MoveSemanticTestFixture, StdMoveWithSwap) {
 
     const char *code = R"(
         #include <utility>
@@ -1030,22 +933,20 @@ void test_std_move_with_swap() {
     )";
 
     std::unique_ptr<ASTUnit> AST = buildAST(code);
-    ASSERT(AST, "Failed to parse C++ code");
+    ASSERT_TRUE(AST) << "Failed to parse C++ code";
 
     MoveSemanticsFinder finder;
     finder.TraverseDecl(AST->getASTContext().getTranslationUnitDecl());
 
-    ASSERT(finder.stdMoveCalls.size() >= 3, "Expected three std::move calls in swap");
+    ASSERT_GE(finder.stdMoveCalls.size(), 3) << "Expected three std::move calls in swap";
 
-    TEST_PASS("std_move_with_swap");
 }
 
 // ============================================================================
 // Category 4: Perfect Forwarding (8-10 tests)
 // ============================================================================
 
-void test_std_forward_basic_usage() {
-    TEST_START("std_forward_basic_usage");
+TEST_F(MoveSemanticTestFixture, StdForwardBasicUsage) {
 
     const char *code = R"(
         #include <utility>
@@ -1060,15 +961,13 @@ void test_std_forward_basic_usage() {
     )";
 
     std::unique_ptr<ASTUnit> AST = buildAST(code);
-    ASSERT(AST, "Failed to parse C++ code");
+    ASSERT_TRUE(AST) << "Failed to parse C++ code";
 
     // std::forward preserves value category
 
-    TEST_PASS("std_forward_basic_usage");
 }
 
-void test_universal_reference_template_parameter() {
-    TEST_START("universal_reference_template_parameter");
+TEST_F(MoveSemanticTestFixture, UniversalReferenceTemplateParameter) {
 
     const char *code = R"(
         template<typename T>
@@ -1084,18 +983,16 @@ void test_universal_reference_template_parameter() {
     )";
 
     std::unique_ptr<ASTUnit> AST = buildAST(code);
-    ASSERT(AST, "Failed to parse C++ code");
+    ASSERT_TRUE(AST) << "Failed to parse C++ code";
 
     MoveSemanticsFinder finder;
     finder.TraverseDecl(AST->getASTContext().getTranslationUnitDecl());
 
     // Universal references can bind to both lvalues and rvalues
 
-    TEST_PASS("universal_reference_template_parameter");
 }
 
-void test_std_forward_to_constructor() {
-    TEST_START("std_forward_to_constructor");
+TEST_F(MoveSemanticTestFixture, StdForwardToConstructor) {
 
     const char *code = R"(
         #include <utility>
@@ -1113,15 +1010,13 @@ void test_std_forward_to_constructor() {
     )";
 
     std::unique_ptr<ASTUnit> AST = buildAST(code);
-    ASSERT(AST, "Failed to parse C++ code");
+    ASSERT_TRUE(AST) << "Failed to parse C++ code";
 
     // std::forward preserves value category when forwarding to constructor
 
-    TEST_PASS("std_forward_to_constructor");
 }
 
-void test_variadic_template_perfect_forwarding() {
-    TEST_START("variadic_template_perfect_forwarding");
+TEST_F(MoveSemanticTestFixture, VariadicTemplatePerfectForwarding) {
 
     const char *code = R"(
         #include <utility>
@@ -1135,15 +1030,13 @@ void test_variadic_template_perfect_forwarding() {
     )";
 
     std::unique_ptr<ASTUnit> AST = buildAST(code);
-    ASSERT(AST, "Failed to parse C++ code");
+    ASSERT_TRUE(AST) << "Failed to parse C++ code";
 
     // Perfect forwarding with variadic templates
 
-    TEST_PASS("variadic_template_perfect_forwarding");
 }
 
-void test_std_forward_with_emplace() {
-    TEST_START("std_forward_with_emplace");
+TEST_F(MoveSemanticTestFixture, StdForwardWithEmplace) {
 
     const char *code = R"(
         #include <utility>
@@ -1161,15 +1054,13 @@ void test_std_forward_with_emplace() {
     )";
 
     std::unique_ptr<ASTUnit> AST = buildAST(code);
-    ASSERT(AST, "Failed to parse C++ code");
+    ASSERT_TRUE(AST) << "Failed to parse C++ code";
 
     // emplace_back uses perfect forwarding internally
 
-    TEST_PASS("std_forward_with_emplace");
 }
 
-void test_std_forward_preserves_lvalue() {
-    TEST_START("std_forward_preserves_lvalue");
+TEST_F(MoveSemanticTestFixture, StdForwardPreservesLvalue) {
 
     const char *code = R"(
         #include <utility>
@@ -1188,15 +1079,13 @@ void test_std_forward_preserves_lvalue() {
     )";
 
     std::unique_ptr<ASTUnit> AST = buildAST(code);
-    ASSERT(AST, "Failed to parse C++ code");
+    ASSERT_TRUE(AST) << "Failed to parse C++ code";
 
     // std::forward<T&>(x) returns lvalue reference
 
-    TEST_PASS("std_forward_preserves_lvalue");
 }
 
-void test_std_forward_preserves_rvalue() {
-    TEST_START("std_forward_preserves_rvalue");
+TEST_F(MoveSemanticTestFixture, StdForwardPreservesRvalue) {
 
     const char *code = R"(
         #include <utility>
@@ -1214,15 +1103,13 @@ void test_std_forward_preserves_rvalue() {
     )";
 
     std::unique_ptr<ASTUnit> AST = buildAST(code);
-    ASSERT(AST, "Failed to parse C++ code");
+    ASSERT_TRUE(AST) << "Failed to parse C++ code";
 
     // std::forward<T>(x) returns rvalue reference when T is non-reference
 
-    TEST_PASS("std_forward_preserves_rvalue");
 }
 
-void test_make_unique_perfect_forwarding() {
-    TEST_START("make_unique_perfect_forwarding");
+TEST_F(MoveSemanticTestFixture, MakeUniquePerfectForwarding) {
 
     const char *code = R"(
         #include <memory>
@@ -1239,15 +1126,13 @@ void test_make_unique_perfect_forwarding() {
     )";
 
     std::unique_ptr<ASTUnit> AST = buildAST(code);
-    ASSERT(AST, "Failed to parse C++ code");
+    ASSERT_TRUE(AST) << "Failed to parse C++ code";
 
     // make_unique uses perfect forwarding
 
-    TEST_PASS("make_unique_perfect_forwarding");
 }
 
-void test_std_forward_with_multiple_parameters() {
-    TEST_START("std_forward_with_multiple_parameters");
+TEST_F(MoveSemanticTestFixture, StdForwardWithMultipleParameters) {
 
     const char *code = R"(
         #include <utility>
@@ -1266,15 +1151,13 @@ void test_std_forward_with_multiple_parameters() {
     )";
 
     std::unique_ptr<ASTUnit> AST = buildAST(code);
-    ASSERT(AST, "Failed to parse C++ code");
+    ASSERT_TRUE(AST) << "Failed to parse C++ code";
 
     // Multiple parameters forwarded independently
 
-    TEST_PASS("std_forward_with_multiple_parameters");
 }
 
-void test_std_forward_in_lambda() {
-    TEST_START("std_forward_in_lambda");
+TEST_F(MoveSemanticTestFixture, StdForwardInLambda) {
 
     const char *code = R"(
         #include <utility>
@@ -1289,19 +1172,17 @@ void test_std_forward_in_lambda() {
     )";
 
     std::unique_ptr<ASTUnit> AST = buildAST(code);
-    ASSERT(AST, "Failed to parse C++ code");
+    ASSERT_TRUE(AST) << "Failed to parse C++ code";
 
     // Perfect forwarding within lambda
 
-    TEST_PASS("std_forward_in_lambda");
 }
 
 // ============================================================================
 // Category 5: Edge Cases (4-6 tests)
 // ============================================================================
 
-void test_move_from_moved_object() {
-    TEST_START("move_from_moved_object");
+TEST_F(MoveSemanticTestFixture, MoveFromMovedObject) {
 
     const char *code = R"(
         #include <utility>
@@ -1320,19 +1201,17 @@ void test_move_from_moved_object() {
     )";
 
     std::unique_ptr<ASTUnit> AST = buildAST(code);
-    ASSERT(AST, "Failed to parse C++ code");
+    ASSERT_TRUE(AST) << "Failed to parse C++ code";
 
     MoveSemanticsFinder finder;
     finder.TraverseDecl(AST->getASTContext().getTranslationUnitDecl());
 
     // Transpiler should handle moved-from state correctly
-    ASSERT(finder.stdMoveCalls.size() >= 2, "Expected multiple move operations");
+    ASSERT_GE(finder.stdMoveCalls.size(), 2) << "Expected multiple move operations";
 
-    TEST_PASS("move_from_moved_object");
 }
 
-void test_self_move_assignment() {
-    TEST_START("self_move_assignment");
+TEST_F(MoveSemanticTestFixture, SelfMoveAssignment) {
 
     const char *code = R"(
         #include <utility>
@@ -1357,18 +1236,16 @@ void test_self_move_assignment() {
     )";
 
     std::unique_ptr<ASTUnit> AST = buildAST(code);
-    ASSERT(AST, "Failed to parse C++ code");
+    ASSERT_TRUE(AST) << "Failed to parse C++ code";
 
     MoveSemanticsFinder finder;
     finder.TraverseDecl(AST->getASTContext().getTranslationUnitDecl());
 
-    ASSERT(finder.moveAssignments.size() == 1, "Expected move assignment operator");
+    ASSERT_EQ(finder.moveAssignments.size(), 1) << "Expected move assignment operator";
 
-    TEST_PASS("self_move_assignment");
 }
 
-void test_noexcept_guarantee_verification() {
-    TEST_START("noexcept_guarantee_verification");
+TEST_F(MoveSemanticTestFixture, NoexceptGuaranteeVerification) {
 
     const char *code = R"(
         class Widget {
@@ -1382,7 +1259,7 @@ void test_noexcept_guarantee_verification() {
     )";
 
     std::unique_ptr<ASTUnit> AST = buildAST(code);
-    ASSERT(AST, "Failed to parse C++ code");
+    ASSERT_TRUE(AST) << "Failed to parse C++ code";
 
     MoveSemanticsFinder finder;
     finder.TraverseDecl(AST->getASTContext().getTranslationUnitDecl());
@@ -1391,15 +1268,13 @@ void test_noexcept_guarantee_verification() {
     if (!finder.moveConstructors.empty()) {
         const auto *moveCtor = finder.moveConstructors[0];
         auto exceptionSpec = moveCtor->getExceptionSpecType();
-        ASSERT(exceptionSpec == EST_NoexceptTrue || exceptionSpec == EST_BasicNoexcept,
-               "Move constructor should be noexcept");
+        ASSERT_TRUE(exceptionSpec == EST_NoexceptTrue || exceptionSpec == EST_BasicNoexcept)
+               << "Move constructor should be noexcept";
     }
 
-    TEST_PASS("noexcept_guarantee_verification");
 }
 
-void test_move_with_exception_throwing_operation() {
-    TEST_START("move_with_exception_throwing_operation");
+TEST_F(MoveSemanticTestFixture, MoveWithExceptionThrowingOperation) {
 
     const char *code = R"(
         class Widget {
@@ -1413,20 +1288,18 @@ void test_move_with_exception_throwing_operation() {
     )";
 
     std::unique_ptr<ASTUnit> AST = buildAST(code);
-    ASSERT(AST, "Failed to parse C++ code");
+    ASSERT_TRUE(AST) << "Failed to parse C++ code";
 
     MoveSemanticsFinder finder;
     finder.TraverseDecl(AST->getASTContext().getTranslationUnitDecl());
 
-    ASSERT(finder.moveConstructors.size() == 1, "Expected move constructor");
+    ASSERT_EQ(finder.moveConstructors.size(), 1) << "Expected move constructor";
 
     // Transpiler should handle potentially-throwing move operations safely
 
-    TEST_PASS("move_with_exception_throwing_operation");
 }
 
-void test_move_semantics_with_const_member() {
-    TEST_START("move_semantics_with_const_member");
+TEST_F(MoveSemanticTestFixture, MoveSemanticsWithConstMember) {
 
     const char *code = R"(
         class Widget {
@@ -1439,19 +1312,17 @@ void test_move_semantics_with_const_member() {
     )";
 
     std::unique_ptr<ASTUnit> AST = buildAST(code);
-    ASSERT(AST, "Failed to parse C++ code");
+    ASSERT_TRUE(AST) << "Failed to parse C++ code";
 
     MoveSemanticsFinder finder;
     finder.TraverseDecl(AST->getASTContext().getTranslationUnitDecl());
 
     // Const members affect move semantics
-    ASSERT(finder.moveConstructors.size() >= 1, "Expected move constructor");
+    ASSERT_GE(finder.moveConstructors.size(), 1) << "Expected move constructor";
 
-    TEST_PASS("move_semantics_with_const_member");
 }
 
-void test_move_semantics_with_reference_member() {
-    TEST_START("move_semantics_with_reference_member");
+TEST_F(MoveSemanticTestFixture, MoveSemanticsWithReferenceMember) {
 
     const char *code = R"(
         class Widget {
@@ -1464,92 +1335,15 @@ void test_move_semantics_with_reference_member() {
     )";
 
     std::unique_ptr<ASTUnit> AST = buildAST(code);
-    ASSERT(AST, "Failed to parse C++ code");
+    ASSERT_TRUE(AST) << "Failed to parse C++ code";
 
     MoveSemanticsFinder finder;
     finder.TraverseDecl(AST->getASTContext().getTranslationUnitDecl());
 
     // Reference members affect move semantics
-    ASSERT(finder.moveConstructors.size() >= 1, "Expected move constructor");
+    ASSERT_GE(finder.moveConstructors.size(), 1) << "Expected move constructor";
 
-    TEST_PASS("move_semantics_with_reference_member");
 }
 
-// ============================================================================
-// Main Test Runner
-// ============================================================================
-
-int main() {
-    std::cout << "\n=== Move Semantics & Perfect Forwarding Test Suite ===\n\n";
-
-    std::cout << "--- Category 1: Rvalue References (10 tests) ---\n";
-    test_rvalue_reference_parameter_detection();
-    test_rvalue_reference_return_type();
-    test_lvalue_cannot_bind_to_rvalue_reference();
-    test_rvalue_reference_variable_declaration();
-    test_reference_collapsing_rvalue_rvalue();
-    test_reference_collapsing_lvalue_rvalue();
-    test_rvalue_reference_member_variable();
-    test_rvalue_reference_temporary_lifetime_extension();
-    test_rvalue_reference_function_overloading();
-    test_rvalue_reference_cast_expression();
-
-    std::cout << "\n--- Category 2: Move Constructor & Assignment (12 tests) ---\n";
-    test_move_constructor_detection();
-    test_move_assignment_operator_detection();
-    test_compiler_generated_move_constructor();
-    test_deleted_move_constructor();
-    test_move_constructor_with_noexcept();
-    test_move_assignment_self_assignment_check();
-    test_memberwise_move_construction();
-    test_move_constructor_resource_transfer();
-    test_move_assignment_resource_cleanup();
-    test_move_constructor_with_base_class();
-    test_move_only_type();
-    test_move_constructor_exception_safety();
-
-    std::cout << "\n--- Category 3: std::move Usage (12 tests) ---\n";
-    test_explicit_std_move_call();
-    test_std_move_in_return_statement();
-    test_std_move_with_function_argument();
-    test_std_move_in_constructor_initialization();
-    test_std_move_with_vector_push_back();
-    test_std_move_with_unique_ptr();
-    test_std_move_on_const_object();
-    test_std_move_chain();
-    test_std_move_unnecessary_on_temporary();
-    test_std_move_with_member_variable();
-    test_std_move_in_range_based_for_loop();
-    test_std_move_with_swap();
-
-    std::cout << "\n--- Category 4: Perfect Forwarding (10 tests) ---\n";
-    test_std_forward_basic_usage();
-    test_universal_reference_template_parameter();
-    test_std_forward_to_constructor();
-    test_variadic_template_perfect_forwarding();
-    test_std_forward_with_emplace();
-    test_std_forward_preserves_lvalue();
-    test_std_forward_preserves_rvalue();
-    test_make_unique_perfect_forwarding();
-    test_std_forward_with_multiple_parameters();
-    test_std_forward_in_lambda();
-
-    std::cout << "\n--- Category 5: Edge Cases (6 tests) ---\n";
-    test_move_from_moved_object();
-    test_self_move_assignment();
-    test_noexcept_guarantee_verification();
-    test_move_with_exception_throwing_operation();
-    test_move_semantics_with_const_member();
-    test_move_semantics_with_reference_member();
-
-    std::cout << "\n=== All 50 Tests Completed Successfully ===\n";
-    std::cout << "\nTest Coverage Summary:\n";
-    std::cout << "- Rvalue References: 10 tests\n";
-    std::cout << "- Move Constructor & Assignment: 12 tests\n";
-    std::cout << "- std::move Usage: 12 tests\n";
-    std::cout << "- Perfect Forwarding: 10 tests\n";
-    std::cout << "- Edge Cases: 6 tests\n";
-    std::cout << "Total: 50 comprehensive unit tests\n\n";
-
-    return 0;
-}
+// Main entry point for Google Test
+// No explicit main() needed - gtest_main handles it

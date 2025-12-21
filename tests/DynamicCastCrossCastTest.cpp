@@ -21,12 +21,12 @@
  * - Dependency Inversion: Uses abstract AST interfaces
  */
 
+#include <gtest/gtest.h>
 #include "clang/Tooling/Tooling.h"
 #include "clang/Frontend/ASTUnit.h"
 #include "../include/DynamicCastTranslator.h"
 #include "../include/TypeInfoGenerator.h"
 #include "../include/VirtualMethodAnalyzer.h"
-#include <iostream>
 #include <cassert>
 #include <sstream>
 
@@ -38,9 +38,6 @@ std::unique_ptr<ASTUnit> buildAST(const char *code) {
 }
 
 // Test helper macros
-#define TEST_START(name) std::cout << "Test: " << name << " ... " << std::flush
-#define TEST_PASS(name) std::cout << "PASS" << std::endl
-#define ASSERT(cond, msg) \
     if (!(cond)) { \
         std::cerr << "\nASSERT FAILED: " << msg << std::endl; \
         return; \
@@ -79,425 +76,323 @@ const CXXDynamicCastExpr* findDynamicCastExpr(ASTContext& Context) {
  *
  * Test: Base1* -> Base2* should be detected as cross-cast
  */
-void test_DetectCrossCastInDiamond() {
-    TEST_START("DetectCrossCastInDiamond");
 
+// Test fixture
+class DynamicCastCrossCastTest : public ::testing::Test {
+protected:
+};
+
+TEST_F(DynamicCastCrossCastTest, DetectCrossCastInDiamond) {
     const char* code = R"(
-        namespace std { class type_info { public: const char* name() const; }; }
+            namespace std { class type_info { public: const char* name() const; }; }
 
-        class Base1 {
-        public:
-            virtual ~Base1() {}
-        };
+            class Base1 {
+            public:
+                virtual ~Base1() {}
+            };
 
-        class Base2 {
-        public:
-            virtual ~Base2() {}
-        };
+            class Base2 {
+            public:
+                virtual ~Base2() {}
+            };
 
-        class Diamond : public Base1, public Base2 {
-        public:
-            ~Diamond() override {}
-        };
+            class Diamond : public Base1, public Base2 {
+            public:
+                ~Diamond() override {}
+            };
 
-        void test(Base1* ptr) {
-            Base2* b2 = dynamic_cast<Base2*>(ptr);
-        }
-    )";
+            void test(Base1* ptr) {
+                Base2* b2 = dynamic_cast<Base2*>(ptr);
+            }
+        )";
 
-    std::unique_ptr<ASTUnit> AST = buildAST(code);
-    ASSERT(AST != nullptr, "Failed to parse C++ code");
+        std::unique_ptr<ASTUnit> AST = buildAST(code);
+        ASSERT_TRUE(AST != nullptr) << "Failed to parse C++ code";
 
-    ASTContext& Context = AST->getASTContext();
-    VirtualMethodAnalyzer Analyzer(Context);
-    DynamicCastTranslator Translator(Context, Analyzer);
+        ASTContext& Context = AST->getASTContext();
+        VirtualMethodAnalyzer Analyzer(Context);
+        DynamicCastTranslator Translator(Context, Analyzer);
 
-    const CXXDynamicCastExpr* castExpr = findDynamicCastExpr(Context);
-    ASSERT(castExpr != nullptr, "dynamic_cast expression not found");
+        const CXXDynamicCastExpr* castExpr = findDynamicCastExpr(Context);
+        ASSERT_TRUE(castExpr != nullptr) << "dynamic_cast expression not found";
 
-    // Cross-cast should be detected
-    std::string sourceType = Translator.getSourceTypeName(castExpr);
-    std::string targetType = Translator.getTargetTypeName(castExpr);
+        // Cross-cast should be detected
+        std::string sourceType = Translator.getSourceTypeName(castExpr);
+        std::string targetType = Translator.getTargetTypeName(castExpr);
 
-    ASSERT(sourceType == "Base1", "Expected source type 'Base1'");
-    ASSERT(targetType == "Base2", "Expected target type 'Base2'");
-
-    TEST_PASS("DetectCrossCastInDiamond");
+        ASSERT_TRUE(sourceType == "Base1") << "Expected source type 'Base1'";
+        ASSERT_TRUE(targetType == "Base2") << "Expected target type 'Base2'";
 }
 
-/**
- * Test 2: Generate cross-cast runtime call with offset hint
- *
- * Cross-casts require special offset hint (-2) indicating no direct inheritance
- */
-void test_GenerateCrossCastRuntimeCall() {
-    TEST_START("GenerateCrossCastRuntimeCall");
-
+TEST_F(DynamicCastCrossCastTest, GenerateCrossCastRuntimeCall) {
     const char* code = R"(
-        namespace std { class type_info { public: const char* name() const; }; }
+            namespace std { class type_info { public: const char* name() const; }; }
 
-        class Base1 {
-        public:
-            virtual ~Base1() {}
-        };
+            class Base1 {
+            public:
+                virtual ~Base1() {}
+            };
 
-        class Base2 {
-        public:
-            virtual ~Base2() {}
-        };
+            class Base2 {
+            public:
+                virtual ~Base2() {}
+            };
 
-        class Diamond : public Base1, public Base2 {
-        public:
-            ~Diamond() override {}
-        };
+            class Diamond : public Base1, public Base2 {
+            public:
+                ~Diamond() override {}
+            };
 
-        void test(Base1* ptr) {
-            Base2* b2 = dynamic_cast<Base2*>(ptr);
-        }
-    )";
+            void test(Base1* ptr) {
+                Base2* b2 = dynamic_cast<Base2*>(ptr);
+            }
+        )";
 
-    std::unique_ptr<ASTUnit> AST = buildAST(code);
-    ASSERT(AST != nullptr, "Failed to parse C++ code");
+        std::unique_ptr<ASTUnit> AST = buildAST(code);
+        ASSERT_TRUE(AST != nullptr) << "Failed to parse C++ code";
 
-    ASTContext& Context = AST->getASTContext();
-    VirtualMethodAnalyzer Analyzer(Context);
-    DynamicCastTranslator Translator(Context, Analyzer);
+        ASTContext& Context = AST->getASTContext();
+        VirtualMethodAnalyzer Analyzer(Context);
+        DynamicCastTranslator Translator(Context, Analyzer);
 
-    const CXXDynamicCastExpr* castExpr = findDynamicCastExpr(Context);
-    ASSERT(castExpr != nullptr, "dynamic_cast expression not found");
+        const CXXDynamicCastExpr* castExpr = findDynamicCastExpr(Context);
+        ASSERT_TRUE(castExpr != nullptr) << "dynamic_cast expression not found";
 
-    std::string translation = Translator.translateDynamicCast(castExpr);
+        std::string translation = Translator.translateDynamicCast(castExpr);
 
-    // Should generate cxx_dynamic_cast call
-    ASSERT(!translation.empty(), "Translation is empty");
-    ASSERT(translation.find("cxx_dynamic_cast") != std::string::npos,
-           "Expected cxx_dynamic_cast call");
-    ASSERT(translation.find("__ti_Base1") != std::string::npos,
-           "Expected source type_info __ti_Base1");
-    ASSERT(translation.find("__ti_Base2") != std::string::npos,
-           "Expected target type_info __ti_Base2");
-
-    TEST_PASS("GenerateCrossCastRuntimeCall");
+        // Should generate cxx_dynamic_cast call
+        ASSERT_TRUE(!translation.empty()) << "Translation is empty";
+        ASSERT_TRUE(translation.find("cxx_dynamic_cast") != std::string::npos) << "Expected cxx_dynamic_cast call";
+        ASSERT_TRUE(translation.find("__ti_Base1") != std::string::npos) << "Expected source type_info __ti_Base1";
+        ASSERT_TRUE(translation.find("__ti_Base2") != std::string::npos) << "Expected target type_info __ti_Base2";
 }
 
-/**
- * Test 3: Cross-cast with virtual inheritance
- *
- * Hierarchy:
- *      virtual Base
- *         /      \
- *      Left      Right
- *         \      /
- *         Diamond
- *
- * Test: Left* -> Right* should work via virtual base
- */
-void test_CrossCastWithVirtualInheritance() {
-    TEST_START("CrossCastWithVirtualInheritance");
-
+TEST_F(DynamicCastCrossCastTest, CrossCastWithVirtualInheritance) {
     const char* code = R"(
-        namespace std { class type_info { public: const char* name() const; }; }
+            namespace std { class type_info { public: const char* name() const; }; }
 
-        class Base {
-        public:
-            virtual ~Base() {}
-        };
+            class Base {
+            public:
+                virtual ~Base() {}
+            };
 
-        class Left : public virtual Base {
-        public:
-            ~Left() override {}
-        };
+            class Left : public virtual Base {
+            public:
+                ~Left() override {}
+            };
 
-        class Right : public virtual Base {
-        public:
-            ~Right() override {}
-        };
+            class Right : public virtual Base {
+            public:
+                ~Right() override {}
+            };
 
-        class Diamond : public Left, public Right {
-        public:
-            ~Diamond() override {}
-        };
+            class Diamond : public Left, public Right {
+            public:
+                ~Diamond() override {}
+            };
 
-        void test(Left* ptr) {
-            Right* r = dynamic_cast<Right*>(ptr);
-        }
-    )";
+            void test(Left* ptr) {
+                Right* r = dynamic_cast<Right*>(ptr);
+            }
+        )";
 
-    std::unique_ptr<ASTUnit> AST = buildAST(code);
-    ASSERT(AST != nullptr, "Failed to parse C++ code");
+        std::unique_ptr<ASTUnit> AST = buildAST(code);
+        ASSERT_TRUE(AST != nullptr) << "Failed to parse C++ code";
 
-    ASTContext& Context = AST->getASTContext();
-    VirtualMethodAnalyzer Analyzer(Context);
-    DynamicCastTranslator Translator(Context, Analyzer);
+        ASTContext& Context = AST->getASTContext();
+        VirtualMethodAnalyzer Analyzer(Context);
+        DynamicCastTranslator Translator(Context, Analyzer);
 
-    const CXXDynamicCastExpr* castExpr = findDynamicCastExpr(Context);
-    ASSERT(castExpr != nullptr, "dynamic_cast expression not found");
+        const CXXDynamicCastExpr* castExpr = findDynamicCastExpr(Context);
+        ASSERT_TRUE(castExpr != nullptr) << "dynamic_cast expression not found";
 
-    std::string translation = Translator.translateDynamicCast(castExpr);
+        std::string translation = Translator.translateDynamicCast(castExpr);
 
-    // Should generate cxx_dynamic_cast call for cross-cast
-    ASSERT(!translation.empty(), "Translation is empty");
-    ASSERT(translation.find("cxx_dynamic_cast") != std::string::npos,
-           "Expected cxx_dynamic_cast call");
-    ASSERT(translation.find("__ti_Left") != std::string::npos,
-           "Expected source type_info __ti_Left");
-    ASSERT(translation.find("__ti_Right") != std::string::npos,
-           "Expected target type_info __ti_Right");
-
-    TEST_PASS("CrossCastWithVirtualInheritance");
+        // Should generate cxx_dynamic_cast call for cross-cast
+        ASSERT_TRUE(!translation.empty()) << "Translation is empty";
+        ASSERT_TRUE(translation.find("cxx_dynamic_cast") != std::string::npos) << "Expected cxx_dynamic_cast call";
+        ASSERT_TRUE(translation.find("__ti_Left") != std::string::npos) << "Expected source type_info __ti_Left";
+        ASSERT_TRUE(translation.find("__ti_Right") != std::string::npos) << "Expected target type_info __ti_Right";
 }
 
-/**
- * Test 4: Failed cross-cast (no common derived type)
- *
- * Test: Unrelated sibling classes should generate runtime call that returns NULL
- */
-void test_FailedCrossCastNoCommonDerived() {
-    TEST_START("FailedCrossCastNoCommonDerived");
-
+TEST_F(DynamicCastCrossCastTest, FailedCrossCastNoCommonDerived) {
     const char* code = R"(
-        namespace std { class type_info { public: const char* name() const; }; }
+            namespace std { class type_info { public: const char* name() const; }; }
 
-        class Base1 {
-        public:
-            virtual ~Base1() {}
-        };
+            class Base1 {
+            public:
+                virtual ~Base1() {}
+            };
 
-        class Base2 {
-        public:
-            virtual ~Base2() {}
-        };
+            class Base2 {
+            public:
+                virtual ~Base2() {}
+            };
 
-        class Derived1 : public Base1 {
-        public:
-            ~Derived1() override {}
-        };
+            class Derived1 : public Base1 {
+            public:
+                ~Derived1() override {}
+            };
 
-        class Derived2 : public Base2 {
-        public:
-            ~Derived2() override {}
-        };
+            class Derived2 : public Base2 {
+            public:
+                ~Derived2() override {}
+            };
 
-        void test(Derived1* ptr) {
-            // No common derived type - should fail at runtime
-            Derived2* d2 = dynamic_cast<Derived2*>(ptr);
-        }
-    )";
+            void test(Derived1* ptr) {
+                // No common derived type - should fail at runtime
+                Derived2* d2 = dynamic_cast<Derived2*>(ptr);
+            }
+        )";
 
-    std::unique_ptr<ASTUnit> AST = buildAST(code);
-    ASSERT(AST != nullptr, "Failed to parse C++ code");
+        std::unique_ptr<ASTUnit> AST = buildAST(code);
+        ASSERT_TRUE(AST != nullptr) << "Failed to parse C++ code";
 
-    ASTContext& Context = AST->getASTContext();
-    VirtualMethodAnalyzer Analyzer(Context);
-    DynamicCastTranslator Translator(Context, Analyzer);
+        ASTContext& Context = AST->getASTContext();
+        VirtualMethodAnalyzer Analyzer(Context);
+        DynamicCastTranslator Translator(Context, Analyzer);
 
-    const CXXDynamicCastExpr* castExpr = findDynamicCastExpr(Context);
-    ASSERT(castExpr != nullptr, "dynamic_cast expression not found");
+        const CXXDynamicCastExpr* castExpr = findDynamicCastExpr(Context);
+        ASSERT_TRUE(castExpr != nullptr) << "dynamic_cast expression not found";
 
-    std::string translation = Translator.translateDynamicCast(castExpr);
+        std::string translation = Translator.translateDynamicCast(castExpr);
 
-    // Should still generate call (failure happens at runtime)
-    ASSERT(!translation.empty(), "Translation is empty");
-    ASSERT(translation.find("cxx_dynamic_cast") != std::string::npos,
-           "Expected cxx_dynamic_cast call");
-
-    TEST_PASS("FailedCrossCastNoCommonDerived");
+        // Should still generate call (failure happens at runtime)
+        ASSERT_TRUE(!translation.empty()) << "Translation is empty";
+        ASSERT_TRUE(translation.find("cxx_dynamic_cast") != std::string::npos) << "Expected cxx_dynamic_cast call";
 }
 
-/**
- * Test 5: Cross-cast in complex hierarchy
- *
- * Hierarchy:
- *         A
- *        / \
- *       B   C
- *        \ /
- *         D
- *
- * Test: B* -> C* should work via common derived type D
- */
-void test_CrossCastComplexHierarchy() {
-    TEST_START("CrossCastComplexHierarchy");
-
+TEST_F(DynamicCastCrossCastTest, CrossCastComplexHierarchy) {
     const char* code = R"(
-        namespace std { class type_info { public: const char* name() const; }; }
+            namespace std { class type_info { public: const char* name() const; }; }
 
-        class A {
-        public:
-            virtual ~A() {}
-        };
+            class A {
+            public:
+                virtual ~A() {}
+            };
 
-        class B : public A {
-        public:
-            ~B() override {}
-        };
+            class B : public A {
+            public:
+                ~B() override {}
+            };
 
-        class C : public A {
-        public:
-            ~C() override {}
-        };
+            class C : public A {
+            public:
+                ~C() override {}
+            };
 
-        class D : public B, public C {
-        public:
-            ~D() override {}
-        };
+            class D : public B, public C {
+            public:
+                ~D() override {}
+            };
 
-        void test(B* ptr) {
-            C* c = dynamic_cast<C*>(ptr);
-        }
-    )";
+            void test(B* ptr) {
+                C* c = dynamic_cast<C*>(ptr);
+            }
+        )";
 
-    std::unique_ptr<ASTUnit> AST = buildAST(code);
-    ASSERT(AST != nullptr, "Failed to parse C++ code");
+        std::unique_ptr<ASTUnit> AST = buildAST(code);
+        ASSERT_TRUE(AST != nullptr) << "Failed to parse C++ code";
 
-    ASTContext& Context = AST->getASTContext();
-    VirtualMethodAnalyzer Analyzer(Context);
-    DynamicCastTranslator Translator(Context, Analyzer);
+        ASTContext& Context = AST->getASTContext();
+        VirtualMethodAnalyzer Analyzer(Context);
+        DynamicCastTranslator Translator(Context, Analyzer);
 
-    const CXXDynamicCastExpr* castExpr = findDynamicCastExpr(Context);
-    ASSERT(castExpr != nullptr, "dynamic_cast expression not found");
+        const CXXDynamicCastExpr* castExpr = findDynamicCastExpr(Context);
+        ASSERT_TRUE(castExpr != nullptr) << "dynamic_cast expression not found";
 
-    std::string translation = Translator.translateDynamicCast(castExpr);
+        std::string translation = Translator.translateDynamicCast(castExpr);
 
-    // Should generate cross-cast call
-    ASSERT(!translation.empty(), "Translation is empty");
-    ASSERT(translation.find("cxx_dynamic_cast") != std::string::npos,
-           "Expected cxx_dynamic_cast call");
-    ASSERT(translation.find("__ti_B") != std::string::npos,
-           "Expected source type_info __ti_B");
-    ASSERT(translation.find("__ti_C") != std::string::npos,
-           "Expected target type_info __ti_C");
-
-    TEST_PASS("CrossCastComplexHierarchy");
+        // Should generate cross-cast call
+        ASSERT_TRUE(!translation.empty()) << "Translation is empty";
+        ASSERT_TRUE(translation.find("cxx_dynamic_cast") != std::string::npos) << "Expected cxx_dynamic_cast call";
+        ASSERT_TRUE(translation.find("__ti_B") != std::string::npos) << "Expected source type_info __ti_B";
+        ASSERT_TRUE(translation.find("__ti_C") != std::string::npos) << "Expected target type_info __ti_C";
 }
 
-/**
- * Test 6: Cross-cast with offset calculation
- *
- * Test: Verify offset is properly calculated for sibling casts
- */
-void test_CrossCastOffsetCalculation() {
-    TEST_START("CrossCastOffsetCalculation");
-
+TEST_F(DynamicCastCrossCastTest, CrossCastOffsetCalculation) {
     const char* code = R"(
-        namespace std { class type_info { public: const char* name() const; }; }
+            namespace std { class type_info { public: const char* name() const; }; }
 
-        class Base1 {
-        public:
-            int x;
-            virtual ~Base1() {}
-        };
+            class Base1 {
+            public:
+                int x;
+                virtual ~Base1() {}
+            };
 
-        class Base2 {
-        public:
-            int y;
-            virtual ~Base2() {}
-        };
+            class Base2 {
+            public:
+                int y;
+                virtual ~Base2() {}
+            };
 
-        class Diamond : public Base1, public Base2 {
-        public:
-            int z;
-            ~Diamond() override {}
-        };
+            class Diamond : public Base1, public Base2 {
+            public:
+                int z;
+                ~Diamond() override {}
+            };
 
-        void test(Base1* ptr) {
-            // Cast from Base1 to Base2 requires offset adjustment
-            Base2* b2 = dynamic_cast<Base2*>(ptr);
-        }
-    )";
+            void test(Base1* ptr) {
+                // Cast from Base1 to Base2 requires offset adjustment
+                Base2* b2 = dynamic_cast<Base2*>(ptr);
+            }
+        )";
 
-    std::unique_ptr<ASTUnit> AST = buildAST(code);
-    ASSERT(AST != nullptr, "Failed to parse C++ code");
+        std::unique_ptr<ASTUnit> AST = buildAST(code);
+        ASSERT_TRUE(AST != nullptr) << "Failed to parse C++ code";
 
-    ASTContext& Context = AST->getASTContext();
-    VirtualMethodAnalyzer Analyzer(Context);
-    DynamicCastTranslator Translator(Context, Analyzer);
+        ASTContext& Context = AST->getASTContext();
+        VirtualMethodAnalyzer Analyzer(Context);
+        DynamicCastTranslator Translator(Context, Analyzer);
 
-    const CXXDynamicCastExpr* castExpr = findDynamicCastExpr(Context);
-    ASSERT(castExpr != nullptr, "dynamic_cast expression not found");
+        const CXXDynamicCastExpr* castExpr = findDynamicCastExpr(Context);
+        ASSERT_TRUE(castExpr != nullptr) << "dynamic_cast expression not found";
 
-    std::string translation = Translator.translateDynamicCast(castExpr);
+        std::string translation = Translator.translateDynamicCast(castExpr);
 
-    // Should generate call with runtime offset calculation
-    ASSERT(!translation.empty(), "Translation is empty");
-    ASSERT(translation.find("cxx_dynamic_cast") != std::string::npos,
-           "Expected cxx_dynamic_cast call");
-
-    TEST_PASS("CrossCastOffsetCalculation");
+        // Should generate call with runtime offset calculation
+        ASSERT_TRUE(!translation.empty()) << "Translation is empty";
+        ASSERT_TRUE(translation.find("cxx_dynamic_cast") != std::string::npos) << "Expected cxx_dynamic_cast call";
 }
 
-/**
- * Test 7: Bidirectional traversal requirement
- *
- * Cross-cast requires traversing up to common base, then down to target
- */
-void test_BidirectionalTraversal() {
-    TEST_START("BidirectionalTraversal");
-
+TEST_F(DynamicCastCrossCastTest, BidirectionalTraversal) {
     const char* code = R"(
-        namespace std { class type_info { public: const char* name() const; }; }
+            namespace std { class type_info { public: const char* name() const; }; }
 
-        class Base1 {
-        public:
-            virtual ~Base1() {}
-        };
+            class Base1 {
+            public:
+                virtual ~Base1() {}
+            };
 
-        class Base2 {
-        public:
-            virtual ~Base2() {}
-        };
+            class Base2 {
+            public:
+                virtual ~Base2() {}
+            };
 
-        class Diamond : public Base1, public Base2 {
-        public:
-            ~Diamond() override {}
-        };
+            class Diamond : public Base1, public Base2 {
+            public:
+                ~Diamond() override {}
+            };
 
-        void test(Base1* ptr) {
-            // Requires: up to Diamond, then down to Base2
-            Base2* b2 = dynamic_cast<Base2*>(ptr);
-        }
-    )";
+            void test(Base1* ptr) {
+                // Requires: up to Diamond, then down to Base2
+                Base2* b2 = dynamic_cast<Base2*>(ptr);
+            }
+        )";
 
-    std::unique_ptr<ASTUnit> AST = buildAST(code);
-    ASSERT(AST != nullptr, "Failed to parse C++ code");
+        std::unique_ptr<ASTUnit> AST = buildAST(code);
+        ASSERT_TRUE(AST != nullptr) << "Failed to parse C++ code";
 
-    ASTContext& Context = AST->getASTContext();
-    VirtualMethodAnalyzer Analyzer(Context);
-    DynamicCastTranslator Translator(Context, Analyzer);
+        ASTContext& Context = AST->getASTContext();
+        VirtualMethodAnalyzer Analyzer(Context);
+        DynamicCastTranslator Translator(Context, Analyzer);
 
-    const CXXDynamicCastExpr* castExpr = findDynamicCastExpr(Context);
-    ASSERT(castExpr != nullptr, "dynamic_cast expression not found");
+        const CXXDynamicCastExpr* castExpr = findDynamicCastExpr(Context);
+        ASSERT_TRUE(castExpr != nullptr) << "dynamic_cast expression not found";
 
-    std::string translation = Translator.translateDynamicCast(castExpr);
+        std::string translation = Translator.translateDynamicCast(castExpr);
 
-    // Translation should delegate to runtime for bidirectional traversal
-    ASSERT(!translation.empty(), "Translation is empty");
-    ASSERT(translation.find("cxx_dynamic_cast") != std::string::npos,
-           "Expected cxx_dynamic_cast call");
-
-    TEST_PASS("BidirectionalTraversal");
-}
-
-/**
- * Main function: runs all tests
- */
-int main() {
-    std::cout << "===============================================" << std::endl;
-    std::cout << "DynamicCast Cross-Cast Tests (Story #87)" << std::endl;
-    std::cout << "===============================================" << std::endl << std::endl;
-
-    test_DetectCrossCastInDiamond();
-    test_GenerateCrossCastRuntimeCall();
-    test_CrossCastWithVirtualInheritance();
-    test_FailedCrossCastNoCommonDerived();
-    test_CrossCastComplexHierarchy();
-    test_CrossCastOffsetCalculation();
-    test_BidirectionalTraversal();
-
-    std::cout << std::endl;
-    std::cout << "===============================================" << std::endl;
-    std::cout << "All tests passed!" << std::endl;
-    std::cout << "===============================================" << std::endl;
-
-    return 0;
+        // Translation should delegate to runtime for bidirectional traversal
+        ASSERT_TRUE(!translation.empty()) << "Translation is empty";
+        ASSERT_TRUE(translation.find("cxx_dynamic_cast") != std::string::npos) << "Expected cxx_dynamic_cast call";
 }

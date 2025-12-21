@@ -49,6 +49,77 @@ target_link_libraries(test_acsl_statement_annotator
     clangLex
 )
 
+# ACSL Function Annotator Tests (15 tests)
+add_executable(test_acsl_function_annotator
+    ../ACSLFunctionAnnotatorTest_GTest.cpp
+    ${CMAKE_SOURCE_DIR}/../../../src/ACSLFunctionAnnotator.cpp
+    ${CMAKE_SOURCE_DIR}/../../../src/ACSLMemoryPredicateAnalyzer.cpp
+    ${CMAKE_SOURCE_DIR}/../../../src/ACSLGenerator.cpp
+)
+
+target_link_libraries(test_acsl_function_annotator
+    GTest::gtest
+    GTest::gtest_main
+    clangTooling
+    clangFrontend
+    clangBasic
+    clangAST
+    clangLex
+)
+
+# ACSL Memory Predicate Analyzer Tests (12 tests)
+add_executable(test_acsl_memory_predicate_analyzer
+    ../ACSLMemoryPredicateAnalyzerTest_GTest.cpp
+    ${CMAKE_SOURCE_DIR}/../../../src/ACSLMemoryPredicateAnalyzer.cpp
+    ${CMAKE_SOURCE_DIR}/../../../src/ACSLGenerator.cpp
+)
+
+target_link_libraries(test_acsl_memory_predicate_analyzer
+    GTest::gtest
+    GTest::gtest_main
+    clangTooling
+    clangFrontend
+    clangBasic
+    clangAST
+    clangLex
+)
+
+# ACSL Loop Annotator Tests (12 tests)
+add_executable(test_acsl_loop_annotator
+    ../ACSLLoopAnnotatorTest_GTest.cpp
+    ${CMAKE_SOURCE_DIR}/../../../src/ACSLLoopAnnotator.cpp
+    ${CMAKE_SOURCE_DIR}/../../../src/ACSLGenerator.cpp
+)
+
+target_link_libraries(test_acsl_loop_annotator
+    GTest::gtest
+    GTest::gtest_main
+    clangTooling
+    clangFrontend
+    clangBasic
+    clangAST
+    clangLex
+)
+
+# Template Integration Tests (15 tests)
+add_executable(test_template_integration
+    ../TemplateIntegrationTest_GTest.cpp
+    ${CMAKE_SOURCE_DIR}/../../../src/TemplateExtractor.cpp
+    ${CMAKE_SOURCE_DIR}/../../../src/TemplateMonomorphizer.cpp
+    ${CMAKE_SOURCE_DIR}/../../../src/TemplateInstantiationTracker.cpp
+    ${CMAKE_SOURCE_DIR}/../../../src/NameMangler.cpp
+)
+
+target_link_libraries(test_template_integration
+    GTest::gtest
+    GTest::gtest_main
+    clangTooling
+    clangFrontend
+    clangBasic
+    clangAST
+    clangLex
+)
+
 # Enable testing
 enable_testing()
 include(GoogleTest)
@@ -56,4 +127,24 @@ include(GoogleTest)
 gtest_discover_tests(test_acsl_statement_annotator
     WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
     PROPERTIES LABELS "acsl;annotations;phase-1"
+)
+
+gtest_discover_tests(test_acsl_function_annotator
+    WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
+    PROPERTIES LABELS "acsl;annotations;phase-6"
+)
+
+gtest_discover_tests(test_acsl_memory_predicate_analyzer
+    WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
+    PROPERTIES LABELS "acsl;annotations;phase-6"
+)
+
+gtest_discover_tests(test_acsl_loop_annotator
+    WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
+    PROPERTIES LABELS "acsl;annotations;phase-6"
+)
+
+gtest_discover_tests(test_template_integration
+    WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
+    PROPERTIES LABELS "template;phase-11"
 )

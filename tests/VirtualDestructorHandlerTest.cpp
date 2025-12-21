@@ -5,11 +5,11 @@
  * Tests virtual destructor detection, vtable placement, and polymorphic delete.
  */
 
+#include <gtest/gtest.h>
 #include "clang/Tooling/Tooling.h"
 #include "clang/Frontend/ASTUnit.h"
 #include "../include/VirtualMethodAnalyzer.h"
 #include "../include/VirtualDestructorHandler.h"
-#include <iostream>
 #include <vector>
 
 using namespace clang;
@@ -19,354 +19,294 @@ std::unique_ptr<ASTUnit> buildAST(const char *code) {
     return tooling::buildASTFromCodeWithArgs(code, args, "input.cc");
 }
 
-#define TEST_START(name) std::cout << "Test: " << name << " ... " << std::flush
-#define TEST_PASS(name) std::cout << "PASS" << std::endl
-#define ASSERT(cond, msg) \
     if (!(cond)) { \
         std::cerr << "\nASSERT FAILED: " << msg << std::endl; \
         return; \
     }
 
-// Test 1: Detect virtual destructor
-void test_DetectVirtualDestructor() {
-    TEST_START("DetectVirtualDestructor");
+// Test fixture
+class VirtualDestructorHandlerTest : public ::testing::Test {
+protected:
+};
 
+TEST_F(VirtualDestructorHandlerTest, DetectVirtualDestructor) {
     const char *code = R"(
-        class Base {
-        public:
-            virtual ~Base() {}
-        };
-    )";
+            class Base {
+            public:
+                virtual ~Base() {}
+            };
+        )";
 
-    std::unique_ptr<ASTUnit> AST = buildAST(code);
-    ASSERT(AST, "Failed to parse C++ code");
+        std::unique_ptr<ASTUnit> AST = buildAST(code);
+        ASSERT_TRUE(AST) << "Failed to parse C++ code";
 
-    auto& Context = AST->getASTContext();
-    VirtualMethodAnalyzer analyzer(Context);
-    VirtualDestructorHandler handler(Context, analyzer);
+        auto& Context = AST->getASTContext();
+        VirtualMethodAnalyzer analyzer(Context);
+        VirtualDestructorHandler handler(Context, analyzer);
 
-    // Find the Base class
-    CXXRecordDecl* Base = nullptr;
-    for (auto *D : Context.getTranslationUnitDecl()->decls()) {
-        if (auto *RD = dyn_cast<CXXRecordDecl>(D)) {
-            if (RD->getNameAsString() == "Base" && RD->isCompleteDefinition()) {
-                Base = RD;
-                break;
+        // Find the Base class
+        CXXRecordDecl* Base = nullptr;
+        for (auto *D : Context.getTranslationUnitDecl()->decls()) {
+            if (auto *RD = dyn_cast<CXXRecordDecl>(D)) {
+                if (RD->getNameAsString() == "Base" && RD->isCompleteDefinition()) {
+                    Base = RD;
+                    break;
+                }
             }
         }
-    }
 
-    ASSERT(Base, "Base class not found");
+        ASSERT_TRUE(Base) << "Base class not found";
 
-    // Check that destructor is virtual
-    CXXDestructorDecl* Destructor = Base->getDestructor();
-    ASSERT(Destructor, "Destructor not found");
-    ASSERT(handler.isVirtualDestructor(Destructor),
-           "Destructor should be detected as virtual");
-
-    TEST_PASS("DetectVirtualDestructor");
+        // Check that destructor is virtual
+        CXXDestructorDecl* Destructor = Base->getDestructor();
+        ASSERT_TRUE(Destructor) << "Destructor not found";
+        ASSERT_TRUE(handler.isVirtualDestructor(Destructor)) << "Destructor should be detected as virtual";
 }
 
-// Test 2: Non-virtual destructor should not be detected
-void test_NonVirtualDestructorNotDetected() {
-    TEST_START("NonVirtualDestructorNotDetected");
-
+TEST_F(VirtualDestructorHandlerTest, NonVirtualDestructorNotDetected) {
     const char *code = R"(
-        class Simple {
-        public:
-            ~Simple() {}  // Non-virtual
-        };
-    )";
+            class Simple {
+            public:
+                ~Simple() {}  // Non-virtual
+            };
+        )";
 
-    std::unique_ptr<ASTUnit> AST = buildAST(code);
-    ASSERT(AST, "Failed to parse C++ code");
+        std::unique_ptr<ASTUnit> AST = buildAST(code);
+        ASSERT_TRUE(AST) << "Failed to parse C++ code";
 
-    auto& Context = AST->getASTContext();
-    VirtualMethodAnalyzer analyzer(Context);
-    VirtualDestructorHandler handler(Context, analyzer);
+        auto& Context = AST->getASTContext();
+        VirtualMethodAnalyzer analyzer(Context);
+        VirtualDestructorHandler handler(Context, analyzer);
 
-    // Find the Simple class
-    CXXRecordDecl* Simple = nullptr;
-    for (auto *D : Context.getTranslationUnitDecl()->decls()) {
-        if (auto *RD = dyn_cast<CXXRecordDecl>(D)) {
-            if (RD->getNameAsString() == "Simple" && RD->isCompleteDefinition()) {
-                Simple = RD;
-                break;
+        // Find the Simple class
+        CXXRecordDecl* Simple = nullptr;
+        for (auto *D : Context.getTranslationUnitDecl()->decls()) {
+            if (auto *RD = dyn_cast<CXXRecordDecl>(D)) {
+                if (RD->getNameAsString() == "Simple" && RD->isCompleteDefinition()) {
+                    Simple = RD;
+                    break;
+                }
             }
         }
-    }
 
-    ASSERT(Simple, "Simple class not found");
+        ASSERT_TRUE(Simple) << "Simple class not found";
 
-    CXXDestructorDecl* Destructor = Simple->getDestructor();
-    ASSERT(Destructor, "Destructor not found");
-    ASSERT(!handler.isVirtualDestructor(Destructor),
-           "Non-virtual destructor should not be detected as virtual");
-
-    TEST_PASS("NonVirtualDestructorNotDetected");
+        CXXDestructorDecl* Destructor = Simple->getDestructor();
+        ASSERT_TRUE(Destructor) << "Destructor not found";
+        ASSERT_TRUE(!handler.isVirtualDestructor(Destructor)) << "Non-virtual destructor should not be detected as virtual";
 }
 
-// Test 3: Virtual destructor should be included in vtable methods
-void test_VirtualDestructorInVtable() {
-    TEST_START("VirtualDestructorInVtable");
-
+TEST_F(VirtualDestructorHandlerTest, VirtualDestructorInVtable) {
     const char *code = R"(
-        class Base {
-        public:
-            virtual ~Base() {}
-            virtual void method() {}
-        };
-    )";
+            class Base {
+            public:
+                virtual ~Base() {}
+                virtual void method() {}
+            };
+        )";
 
-    std::unique_ptr<ASTUnit> AST = buildAST(code);
-    ASSERT(AST, "Failed to parse C++ code");
+        std::unique_ptr<ASTUnit> AST = buildAST(code);
+        ASSERT_TRUE(AST) << "Failed to parse C++ code";
 
-    auto& Context = AST->getASTContext();
-    VirtualMethodAnalyzer analyzer(Context);
-    VirtualDestructorHandler handler(Context, analyzer);
+        auto& Context = AST->getASTContext();
+        VirtualMethodAnalyzer analyzer(Context);
+        VirtualDestructorHandler handler(Context, analyzer);
 
-    // Find the Base class
-    CXXRecordDecl* Base = nullptr;
-    for (auto *D : Context.getTranslationUnitDecl()->decls()) {
-        if (auto *RD = dyn_cast<CXXRecordDecl>(D)) {
-            if (RD->getNameAsString() == "Base" && RD->isCompleteDefinition()) {
-                Base = RD;
-                break;
+        // Find the Base class
+        CXXRecordDecl* Base = nullptr;
+        for (auto *D : Context.getTranslationUnitDecl()->decls()) {
+            if (auto *RD = dyn_cast<CXXRecordDecl>(D)) {
+                if (RD->getNameAsString() == "Base" && RD->isCompleteDefinition()) {
+                    Base = RD;
+                    break;
+                }
             }
         }
-    }
 
-    ASSERT(Base, "Base class not found");
+        ASSERT_TRUE(Base) << "Base class not found";
 
-    // Check that destructor is included when getting vtable methods
-    bool hasDestructor = handler.hasVirtualDestructor(Base);
-    ASSERT(hasDestructor,
-           "Class with virtual destructor should report hasVirtualDestructor()");
-
-    TEST_PASS("VirtualDestructorInVtable");
+        // Check that destructor is included when getting vtable methods
+        bool hasDestructor = handler.hasVirtualDestructor(Base);
+        ASSERT_TRUE(hasDestructor) << "Class with virtual destructor should report hasVirtualDestructor(;");
 }
 
-// Test 4: Get destructor vtable name
-void test_GetDestructorVtableName() {
-    TEST_START("GetDestructorVtableName");
-
+TEST_F(VirtualDestructorHandlerTest, GetDestructorVtableName) {
     const char *code = R"(
-        class MyClass {
-        public:
-            virtual ~MyClass() {}
-        };
-    )";
+            class MyClass {
+            public:
+                virtual ~MyClass() {}
+            };
+        )";
 
-    std::unique_ptr<ASTUnit> AST = buildAST(code);
-    ASSERT(AST, "Failed to parse C++ code");
+        std::unique_ptr<ASTUnit> AST = buildAST(code);
+        ASSERT_TRUE(AST) << "Failed to parse C++ code";
 
-    auto& Context = AST->getASTContext();
-    VirtualMethodAnalyzer analyzer(Context);
-    VirtualDestructorHandler handler(Context, analyzer);
+        auto& Context = AST->getASTContext();
+        VirtualMethodAnalyzer analyzer(Context);
+        VirtualDestructorHandler handler(Context, analyzer);
 
-    // Find the MyClass class
-    CXXRecordDecl* MyClass = nullptr;
-    for (auto *D : Context.getTranslationUnitDecl()->decls()) {
-        if (auto *RD = dyn_cast<CXXRecordDecl>(D)) {
-            if (RD->getNameAsString() == "MyClass" && RD->isCompleteDefinition()) {
-                MyClass = RD;
-                break;
+        // Find the MyClass class
+        CXXRecordDecl* MyClass = nullptr;
+        for (auto *D : Context.getTranslationUnitDecl()->decls()) {
+            if (auto *RD = dyn_cast<CXXRecordDecl>(D)) {
+                if (RD->getNameAsString() == "MyClass" && RD->isCompleteDefinition()) {
+                    MyClass = RD;
+                    break;
+                }
             }
         }
-    }
 
-    ASSERT(MyClass, "MyClass not found");
+        ASSERT_TRUE(MyClass) << "MyClass not found";
 
-    CXXDestructorDecl* Destructor = MyClass->getDestructor();
-    ASSERT(Destructor, "Destructor not found");
+        CXXDestructorDecl* Destructor = MyClass->getDestructor();
+        ASSERT_TRUE(Destructor) << "Destructor not found";
 
-    std::string vtableName = handler.getDestructorVtableName(Destructor);
-    ASSERT(vtableName == "destructor",
-           "Destructor vtable name should be 'destructor'");
-
-    TEST_PASS("GetDestructorVtableName");
+        std::string vtableName = handler.getDestructorVtableName(Destructor);
+        ASSERT_TRUE(vtableName == "destructor") << "Destructor vtable name should be 'destructor'";
 }
 
-// Test 5: Inherited virtual destructor
-void test_InheritedVirtualDestructor() {
-    TEST_START("InheritedVirtualDestructor");
-
+TEST_F(VirtualDestructorHandlerTest, InheritedVirtualDestructor) {
     const char *code = R"(
-        class Base {
-        public:
-            virtual ~Base() {}
-        };
+            class Base {
+            public:
+                virtual ~Base() {}
+            };
 
-        class Derived : public Base {
-        public:
-            ~Derived() override {}
-        };
-    )";
+            class Derived : public Base {
+            public:
+                ~Derived() override {}
+            };
+        )";
 
-    std::unique_ptr<ASTUnit> AST = buildAST(code);
-    ASSERT(AST, "Failed to parse C++ code");
+        std::unique_ptr<ASTUnit> AST = buildAST(code);
+        ASSERT_TRUE(AST) << "Failed to parse C++ code";
 
-    auto& Context = AST->getASTContext();
-    VirtualMethodAnalyzer analyzer(Context);
-    VirtualDestructorHandler handler(Context, analyzer);
+        auto& Context = AST->getASTContext();
+        VirtualMethodAnalyzer analyzer(Context);
+        VirtualDestructorHandler handler(Context, analyzer);
 
-    // Find both classes
-    CXXRecordDecl* Base = nullptr;
-    CXXRecordDecl* Derived = nullptr;
-    for (auto *D : Context.getTranslationUnitDecl()->decls()) {
-        if (auto *RD = dyn_cast<CXXRecordDecl>(D)) {
-            if (!RD->isCompleteDefinition()) continue;
-            if (RD->getNameAsString() == "Base") {
-                Base = RD;
-            } else if (RD->getNameAsString() == "Derived") {
-                Derived = RD;
+        // Find both classes
+        CXXRecordDecl* Base = nullptr;
+        CXXRecordDecl* Derived = nullptr;
+        for (auto *D : Context.getTranslationUnitDecl()->decls()) {
+            if (auto *RD = dyn_cast<CXXRecordDecl>(D)) {
+                if (!RD->isCompleteDefinition()) continue;
+                if (RD->getNameAsString() == "Base") {
+                    Base = RD;
+                } else if (RD->getNameAsString() == "Derived") {
+                    Derived = RD;
+                }
             }
         }
-    }
 
-    ASSERT(Base, "Base class not found");
-    ASSERT(Derived, "Derived class not found");
+        ASSERT_TRUE(Base) << "Base class not found";
+        ASSERT_TRUE(Derived) << "Derived class not found";
 
-    // Both should have virtual destructors
-    ASSERT(handler.hasVirtualDestructor(Base),
-           "Base should have virtual destructor");
-    ASSERT(handler.hasVirtualDestructor(Derived),
-           "Derived should have virtual destructor (inherited)");
+        // Both should have virtual destructors
+        ASSERT_TRUE(handler.hasVirtualDestructor(Base)) << "Base should have virtual destructor";
+        ASSERT_TRUE(handler.hasVirtualDestructor(Derived)) << "Derived should have virtual destructor (inherited;");
 
-    CXXDestructorDecl* DerivedDestructor = Derived->getDestructor();
-    ASSERT(DerivedDestructor, "Derived destructor not found");
-    ASSERT(handler.isVirtualDestructor(DerivedDestructor),
-           "Derived destructor should be virtual");
-
-    TEST_PASS("InheritedVirtualDestructor");
+        CXXDestructorDecl* DerivedDestructor = Derived->getDestructor();
+        ASSERT_TRUE(DerivedDestructor) << "Derived destructor not found";
+        ASSERT_TRUE(handler.isVirtualDestructor(DerivedDestructor)) << "Derived destructor should be virtual";
 }
 
-// Test 6: Implicit virtual destructor
-void test_ImplicitVirtualDestructor() {
-    TEST_START("ImplicitVirtualDestructor");
-
+TEST_F(VirtualDestructorHandlerTest, ImplicitVirtualDestructor) {
     const char *code = R"(
-        class Base {
-        public:
-            virtual ~Base() {}
-        };
+            class Base {
+            public:
+                virtual ~Base() {}
+            };
 
-        class Derived : public Base {
-            // Implicit destructor (should be virtual due to base)
-        };
-    )";
+            class Derived : public Base {
+                // Implicit destructor (should be virtual due to base)
+            };
+        )";
 
-    std::unique_ptr<ASTUnit> AST = buildAST(code);
-    ASSERT(AST, "Failed to parse C++ code");
+        std::unique_ptr<ASTUnit> AST = buildAST(code);
+        ASSERT_TRUE(AST) << "Failed to parse C++ code";
 
-    auto& Context = AST->getASTContext();
-    VirtualMethodAnalyzer analyzer(Context);
-    VirtualDestructorHandler handler(Context, analyzer);
+        auto& Context = AST->getASTContext();
+        VirtualMethodAnalyzer analyzer(Context);
+        VirtualDestructorHandler handler(Context, analyzer);
 
-    // Find both classes
-    CXXRecordDecl* Base = nullptr;
-    CXXRecordDecl* Derived = nullptr;
-    for (auto *D : Context.getTranslationUnitDecl()->decls()) {
-        if (auto *RD = dyn_cast<CXXRecordDecl>(D)) {
-            if (!RD->isCompleteDefinition()) continue;
-            if (RD->getNameAsString() == "Base") {
-                Base = RD;
-            } else if (RD->getNameAsString() == "Derived") {
-                Derived = RD;
+        // Find both classes
+        CXXRecordDecl* Base = nullptr;
+        CXXRecordDecl* Derived = nullptr;
+        for (auto *D : Context.getTranslationUnitDecl()->decls()) {
+            if (auto *RD = dyn_cast<CXXRecordDecl>(D)) {
+                if (!RD->isCompleteDefinition()) continue;
+                if (RD->getNameAsString() == "Base") {
+                    Base = RD;
+                } else if (RD->getNameAsString() == "Derived") {
+                    Derived = RD;
+                }
             }
         }
-    }
 
-    ASSERT(Base, "Base class not found");
-    ASSERT(Derived, "Derived class not found");
+        ASSERT_TRUE(Base) << "Base class not found";
+        ASSERT_TRUE(Derived) << "Derived class not found";
 
-    // Derived should have virtual destructor even if implicit
-    ASSERT(handler.hasVirtualDestructor(Derived),
-           "Derived with implicit destructor should have virtual destructor");
-
-    TEST_PASS("ImplicitVirtualDestructor");
+        // Derived should have virtual destructor even if implicit
+        ASSERT_TRUE(handler.hasVirtualDestructor(Derived)) << "Derived with implicit destructor should have virtual destructor";
 }
 
-// Test 7: Destructor chaining verification
-void test_DestructorChaining() {
-    TEST_START("DestructorChaining");
-
+TEST_F(VirtualDestructorHandlerTest, DestructorChaining) {
     const char *code = R"(
-        class Base {
-        public:
-            virtual ~Base() {}
-        };
+            class Base {
+            public:
+                virtual ~Base() {}
+            };
 
-        class Middle : public Base {
-        public:
-            ~Middle() override {}
-        };
+            class Middle : public Base {
+            public:
+                ~Middle() override {}
+            };
 
-        class Derived : public Middle {
-        public:
-            ~Derived() override {}
-        };
-    )";
+            class Derived : public Middle {
+            public:
+                ~Derived() override {}
+            };
+        )";
 
-    std::unique_ptr<ASTUnit> AST = buildAST(code);
-    ASSERT(AST, "Failed to parse C++ code");
+        std::unique_ptr<ASTUnit> AST = buildAST(code);
+        ASSERT_TRUE(AST) << "Failed to parse C++ code";
 
-    auto& Context = AST->getASTContext();
-    VirtualMethodAnalyzer analyzer(Context);
-    VirtualDestructorHandler handler(Context, analyzer);
+        auto& Context = AST->getASTContext();
+        VirtualMethodAnalyzer analyzer(Context);
+        VirtualDestructorHandler handler(Context, analyzer);
 
-    // Find all classes
-    CXXRecordDecl* Base = nullptr;
-    CXXRecordDecl* Middle = nullptr;
-    CXXRecordDecl* Derived = nullptr;
-    for (auto *D : Context.getTranslationUnitDecl()->decls()) {
-        if (auto *RD = dyn_cast<CXXRecordDecl>(D)) {
-            if (!RD->isCompleteDefinition()) continue;
-            std::string name = RD->getNameAsString();
-            if (name == "Base") {
-                Base = RD;
-            } else if (name == "Middle") {
-                Middle = RD;
-            } else if (name == "Derived") {
-                Derived = RD;
+        // Find all classes
+        CXXRecordDecl* Base = nullptr;
+        CXXRecordDecl* Middle = nullptr;
+        CXXRecordDecl* Derived = nullptr;
+        for (auto *D : Context.getTranslationUnitDecl()->decls()) {
+            if (auto *RD = dyn_cast<CXXRecordDecl>(D)) {
+                if (!RD->isCompleteDefinition()) continue;
+                std::string name = RD->getNameAsString();
+                if (name == "Base") {
+                    Base = RD;
+                } else if (name == "Middle") {
+                    Middle = RD;
+                } else if (name == "Derived") {
+                    Derived = RD;
+                }
             }
         }
-    }
 
-    ASSERT(Base, "Base class not found");
-    ASSERT(Middle, "Middle class not found");
-    ASSERT(Derived, "Derived class not found");
+        ASSERT_TRUE(Base) << "Base class not found";
+        ASSERT_TRUE(Middle) << "Middle class not found";
+        ASSERT_TRUE(Derived) << "Derived class not found";
 
-    // All should have virtual destructors
-    ASSERT(handler.hasVirtualDestructor(Base),
-           "Base should have virtual destructor");
-    ASSERT(handler.hasVirtualDestructor(Middle),
-           "Middle should have virtual destructor");
-    ASSERT(handler.hasVirtualDestructor(Derived),
-           "Derived should have virtual destructor");
+        // All should have virtual destructors
+        ASSERT_TRUE(handler.hasVirtualDestructor(Base)) << "Base should have virtual destructor";
+        ASSERT_TRUE(handler.hasVirtualDestructor(Middle)) << "Middle should have virtual destructor";
+        ASSERT_TRUE(handler.hasVirtualDestructor(Derived)) << "Derived should have virtual destructor";
 
-    // Check destructor chain exists
-    CXXDestructorDecl* DerivedDestructor = Derived->getDestructor();
-    ASSERT(DerivedDestructor, "Derived destructor not found");
+        // Check destructor chain exists
+        CXXDestructorDecl* DerivedDestructor = Derived->getDestructor();
+        ASSERT_TRUE(DerivedDestructor) << "Derived destructor not found";
 
-    // Verify destructor is properly overriding
-    ASSERT(DerivedDestructor->size_overridden_methods() > 0,
-           "Derived destructor should override base destructors");
-
-    TEST_PASS("DestructorChaining");
-}
-
-int main() {
-    std::cout << "=== VirtualDestructorHandler Tests (Story #174) ===" << std::endl;
-
-    test_DetectVirtualDestructor();
-    test_NonVirtualDestructorNotDetected();
-    test_VirtualDestructorInVtable();
-    test_GetDestructorVtableName();
-    test_InheritedVirtualDestructor();
-    test_ImplicitVirtualDestructor();
-    test_DestructorChaining();
-
-    std::cout << "\n=== All VirtualDestructorHandler tests passed! ===" << std::endl;
-    return 0;
+        // Verify destructor is properly overriding
+        ASSERT_TRUE(DerivedDestructor->size_overridden_methods() > 0) << "Derived destructor should override base destructors";
 }

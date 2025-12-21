@@ -1,0 +1,217 @@
+# CMakeLists.txt Updates for GTest Migrated Integration Tests
+#
+# Add these to the main CMakeLists.txt in the tests/ directory
+#
+# Prerequisites:
+# - find_package(GTest REQUIRED) must be called in parent CMakeLists.txt
+# - GTest must be available via find_package or FetchContent
+
+# ==============================================================================
+# 1. VirtualMethodIntegrationTest (MIGRATED)
+# ==============================================================================
+
+add_executable(VirtualMethodIntegrationTest
+    VirtualMethodIntegrationTest.cpp
+)
+
+target_link_libraries(VirtualMethodIntegrationTest
+    PRIVATE
+        GTest::gtest
+        GTest::gtest_main
+        # Clang/LLVM libraries
+        clangTooling
+        clangBasic
+        clangAST
+        clangFrontend
+        # Project-specific libraries
+        OverrideResolver
+        VirtualCallTranslator
+        VirtualMethodAnalyzer
+        VtableGenerator
+)
+
+target_include_directories(VirtualMethodIntegrationTest
+    PRIVATE
+        ${CMAKE_SOURCE_DIR}/include
+        ${CMAKE_SOURCE_DIR}/src
+)
+
+add_test(
+    NAME VirtualMethodIntegrationTest
+    COMMAND VirtualMethodIntegrationTest
+)
+
+# ==============================================================================
+# 2. ExceptionHandlingIntegrationTest (TO BE MIGRATED)
+# ==============================================================================
+
+add_executable(ExceptionHandlingIntegrationTest
+    ExceptionHandlingIntegrationTest.cpp
+)
+
+target_link_libraries(ExceptionHandlingIntegrationTest
+    PRIVATE
+        GTest::gtest
+        GTest::gtest_main
+        clangTooling
+        clangBasic
+        clangAST
+        clangFrontend
+        CppToCVisitor
+        CNodeBuilder
+        ACSLGenerator
+        # Exception runtime library (if separate)
+        # exception_runtime
+)
+
+target_include_directories(ExceptionHandlingIntegrationTest
+    PRIVATE
+        ${CMAKE_SOURCE_DIR}/include
+        ${CMAKE_SOURCE_DIR}/src
+        ${CMAKE_SOURCE_DIR}/runtime  # For exception runtime headers
+)
+
+add_test(
+    NAME ExceptionHandlingIntegrationTest
+    COMMAND ExceptionHandlingIntegrationTest
+)
+
+# ==============================================================================
+# 3. FeatureInteractionTest (TO BE MIGRATED)
+# ==============================================================================
+
+add_executable(FeatureInteractionTest
+    integration/FeatureInteractionTest.cpp
+)
+
+target_link_libraries(FeatureInteractionTest
+    PRIVATE
+        GTest::gtest
+        GTest::gtest_main
+        clangTooling
+        clangBasic
+        clangAST
+        clangFrontend
+)
+
+target_include_directories(FeatureInteractionTest
+    PRIVATE
+        ${CMAKE_SOURCE_DIR}/include
+)
+
+add_test(
+    NAME FeatureInteractionTest
+    COMMAND FeatureInteractionTest
+)
+
+# ==============================================================================
+# 4. FeatureCombinationTest (TO BE MIGRATED)
+# ==============================================================================
+
+add_executable(FeatureCombinationTest
+    integration/FeatureCombinationTest.cpp
+)
+
+target_link_libraries(FeatureCombinationTest
+    PRIVATE
+        GTest::gtest
+        GTest::gtest_main
+        clangTooling
+        clangBasic
+        clangAST
+        clangFrontend
+)
+
+target_include_directories(FeatureCombinationTest
+    PRIVATE
+        ${CMAKE_SOURCE_DIR}/include
+)
+
+add_test(
+    NAME FeatureCombinationTest
+    COMMAND FeatureCombinationTest
+)
+
+# ==============================================================================
+# 5. EdgeCasesTest (TO BE MIGRATED)
+# ==============================================================================
+
+add_executable(EdgeCasesTest
+    integration/EdgeCasesTest.cpp
+)
+
+target_link_libraries(EdgeCasesTest
+    PRIVATE
+        GTest::gtest
+        GTest::gtest_main
+        clangTooling
+        clangBasic
+        clangAST
+        clangFrontend
+)
+
+target_include_directories(EdgeCasesTest
+    PRIVATE
+        ${CMAKE_SOURCE_DIR}/include
+)
+
+add_test(
+    NAME EdgeCasesTest
+    COMMAND EdgeCasesTest
+)
+
+# ==============================================================================
+# 6. ErrorHandlingTest (TO BE MIGRATED)
+# ==============================================================================
+
+add_executable(ErrorHandlingTest
+    integration/ErrorHandlingTest.cpp
+)
+
+target_link_libraries(ErrorHandlingTest
+    PRIVATE
+        GTest::gtest
+        GTest::gtest_main
+        clangTooling
+        clangBasic
+        clangAST
+        clangFrontend
+)
+
+target_include_directories(ErrorHandlingTest
+    PRIVATE
+        ${CMAKE_SOURCE_DIR}/include
+)
+
+add_test(
+    NAME ErrorHandlingTest
+    COMMAND ErrorHandlingTest
+)
+
+# ==============================================================================
+# Test Suite Target - Run all integration tests
+# ==============================================================================
+
+add_custom_target(integration_tests
+    COMMAND ${CMAKE_CTEST_COMMAND} -R "IntegrationTest|FeatureInteractionTest|FeatureCombinationTest|EdgeCasesTest|ErrorHandlingTest" --output-on-failure
+    DEPENDS
+        VirtualMethodIntegrationTest
+        ExceptionHandlingIntegrationTest
+        FeatureInteractionTest
+        FeatureCombinationTest
+        EdgeCasesTest
+        ErrorHandlingTest
+    COMMENT "Running all integration tests"
+)
+
+# ==============================================================================
+# Notes
+# ==============================================================================
+
+# 1. Adjust library names based on your actual CMake target names
+# 2. Add any additional dependencies required by specific tests
+# 3. Ensure all include paths are correct for your project structure
+# 4. Consider adding compile definitions if needed:
+#    target_compile_definitions(TestName PRIVATE SOME_DEFINE=1)
+# 5. Consider adding compile options if needed:
+#    target_compile_options(TestName PRIVATE -Wall -Wextra)

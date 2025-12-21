@@ -13,38 +13,17 @@
  * Prompt: #031 - extern "C" and Calling Convention Support
  */
 
+#include <gtest/gtest.h>
 #include <clang/AST/ASTContext.h>
 #include <clang/AST/Decl.h>
 #include <clang/AST/Type.h>
 #include <clang/Frontend/ASTUnit.h>
 #include <clang/Tooling/Tooling.h>
-#include <iostream>
 #include <memory>
 #include <string>
 
 using namespace clang;
 
-// ============================================================================
-// Test Macros
-// ============================================================================
-
-#define TEST_START(name) \
-    std::cout << "Running " << name << "... "; \
-    std::cout.flush();
-
-#define TEST_PASS(name) \
-    std::cout << "✓" << std::endl;
-
-#define TEST_PLATFORM_LIMITED(name) \
-    std::cout << "⚠ (platform-limited, defaults to CC_C)" << std::endl;
-
-#define ASSERT(condition, message) \
-    if (!(condition)) { \
-        std::cout << "✗ FAILED: " << message << std::endl; \
-        return; \
-    }
-
-// ============================================================================
 // Helper Functions
 // ============================================================================
 
@@ -81,92 +60,55 @@ CallingConv getCallingConv(FunctionDecl *FD) {
 // ============================================================================
 // Test 1: Default C calling convention (works on all platforms)
 // ============================================================================
-void test_DefaultCConvention() {
-    TEST_START("DefaultCConvention");
 
+// Test fixture
+class CallingConventionTest : public ::testing::Test {
+protected:
+};
+
+TEST_F(CallingConventionTest, DefaultCConvention) {
     const char *code = R"(
-        void normalFunc(int x) {}
-    )";
+            void normalFunc(int x) {}
+        )";
 
-    std::unique_ptr<ASTUnit> AST = buildAST(code);
-    ASSERT(AST, "Failed to parse C++ code");
+        std::unique_ptr<ASTUnit> AST = buildAST(code);
+        ASSERT_TRUE(AST) << "Failed to parse C++ code";
 
-    FunctionDecl *FD = findFunction(AST->getASTContext(), "normalFunc");
-    ASSERT(FD != nullptr, "Function not found");
-    ASSERT(getCallingConv(FD) == CC_C, "Expected CC_C");
-
-    TEST_PASS("DefaultCConvention");
+        FunctionDecl *FD = findFunction(AST->getASTContext(), "normalFunc");
+        ASSERT_TRUE(FD != nullptr) << "Function not found";
+        ASSERT_TRUE(getCallingConv(FD) == CC_C) << "Expected CC_C";
 }
 
-// ============================================================================
-// Test 2: Calling convention query API works
-// ============================================================================
-void test_CallingConvQueryAPI() {
-    TEST_START("CallingConvQueryAPI");
-
+TEST_F(CallingConventionTest, CallingConvQueryAPI) {
     const char *code = R"(
-        void func1(int x) {}
-        void __attribute__((ms_abi)) func2(int x) {}
-    )";
+            void func1(int x) {}
+            void __attribute__((ms_abi)) func2(int x) {}
+        )";
 
-    std::unique_ptr<ASTUnit> AST = buildAST(code);
-    ASSERT(AST, "Failed to parse C++ code");
+        std::unique_ptr<ASTUnit> AST = buildAST(code);
+        ASSERT_TRUE(AST) << "Failed to parse C++ code";
 
-    FunctionDecl *func1 = findFunction(AST->getASTContext(), "func1");
-    ASSERT(func1 != nullptr, "func1 not found");
+        FunctionDecl *func1 = findFunction(AST->getASTContext(), "func1");
+        ASSERT_TRUE(func1 != nullptr) << "func1 not found";
 
-    // Verify we CAN query calling convention
-    CallingConv cc1 = getCallingConv(func1);
-    ASSERT(cc1 == CC_C, "func1 should have CC_C");
-
-    TEST_PASS("CallingConvQueryAPI");
+        // Verify we CAN query calling convention
+        CallingConv cc1 = getCallingConv(func1);
+        ASSERT_TRUE(cc1 == CC_C) << "func1 should have CC_C";
 }
 
-// ============================================================================
-// Test 3: extern "C" preserves calling convention
-// ============================================================================
-void test_ExternCPreservesCallingConv() {
-    TEST_START("ExternCPreservesCallingConv");
-
+TEST_F(CallingConventionTest, ExternCPreservesCallingConv) {
     const char *code = R"(
-        extern "C" void exported(int x) {}
-    )";
+            extern "C" void exported(int x) {}
+        )";
 
-    std::unique_ptr<ASTUnit> AST = buildAST(code);
-    ASSERT(AST, "Failed to parse C++ code");
+        std::unique_ptr<ASTUnit> AST = buildAST(code);
+        ASSERT_TRUE(AST) << "Failed to parse C++ code";
 
-    FunctionDecl *FD = findFunction(AST->getASTContext(), "exported");
-    ASSERT(FD != nullptr, "Function not found");
-    ASSERT(FD->isExternC(), "Should have C linkage");
+        FunctionDecl *FD = findFunction(AST->getASTContext(), "exported");
+        ASSERT_TRUE(FD != nullptr) << "Function not found";
+        ASSERT_TRUE(FD->isExternC()) << "Should have C linkage";
 
-    // extern "C" functions still have calling convention (default CC_C)
-    CallingConv CC = getCallingConv(FD);
-    ASSERT(CC == CC_C, "Expected CC_C for extern C function");
-
-    TEST_PASS("ExternCPreservesCallingConv");
-}
-
-// ============================================================================
-// Main function
-// ============================================================================
-int main() {
-    std::cout << "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━" << std::endl;
-    std::cout << " Milestone #3: Calling Convention API Tests" << std::endl;
-    std::cout << "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━" << std::endl;
-    std::cout << std::endl;
-    std::cout << "NOTE: Platform-specific calling conventions" << std::endl;
-    std::cout << "      are tested but may default to CC_C" << std::endl;
-    std::cout << "      on non-native platforms (expected)." << std::endl;
-    std::cout << std::endl;
-
-    test_DefaultCConvention();
-    test_CallingConvQueryAPI();
-    test_ExternCPreservesCallingConv();
-
-    std::cout << std::endl;
-    std::cout << "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━" << std::endl;
-    std::cout << " All Calling Convention API Tests Complete" << std::endl;
-    std::cout << "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━" << std::endl;
-
-    return 0;
+        // extern "C" functions still have calling convention (default CC_C)
+        CallingConv CC = getCallingConv(FD);
+        ASSERT_TRUE(CC == CC_C) << "Expected CC_C for extern C function";
 }
