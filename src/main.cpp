@@ -74,6 +74,14 @@ static llvm::cl::opt<ACSLOutputModeEnum> ACSLOutput(
     llvm::cl::cat(ToolCategory),
     llvm::cl::init(Inline));
 
+// Phase 6 (v1.23.0): Advanced Memory Predicates
+// Command line option for ACSL memory predicates
+static llvm::cl::opt<bool> ACSLMemoryPredicates(
+    "acsl-memory-predicates",
+    llvm::cl::desc("Generate advanced memory predicates (allocable, freeable, block_length) (requires --generate-acsl)"),
+    llvm::cl::cat(ToolCategory),
+    llvm::cl::init(false));
+
 // Global accessor for pragma once setting
 bool shouldUsePragmaOnce() {
   return UsePragmaOnce;
@@ -92,6 +100,11 @@ ACSLLevel getACSLLevel() {
 // Global accessor for ACSL output mode
 ACSLOutputMode getACSLOutputMode() {
   return (ACSLOutput == Inline) ? ACSLOutputMode::Inline : ACSLOutputMode::Separate;
+}
+
+// Global accessor for ACSL memory predicates setting (Phase 6, v1.23.0)
+bool shouldGenerateMemoryPredicates() {
+  return ACSLMemoryPredicates;
 }
 
 int main(int argc, const char **argv) {

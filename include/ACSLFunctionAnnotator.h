@@ -50,6 +50,14 @@ public:
     /// @param mode Output mode (Inline or Separate)
     ACSLFunctionAnnotator(ACSLLevel level, ACSLOutputMode mode);
 
+    /// @brief Enable/disable memory predicate generation
+    /// @param enabled true to enable memory predicates
+    void setMemoryPredicatesEnabled(bool enabled);
+
+    /// @brief Check if memory predicates are enabled
+    /// @return true if memory predicates are enabled
+    bool areMemoryPredicatesEnabled() const;
+
     /// @brief Generate complete ACSL function contract
     /// @param func Function declaration to annotate
     /// @return Complete ACSL contract as formatted comment block
@@ -154,6 +162,15 @@ protected:
     /// @return true if function appears to allocate memory (new, malloc)
     bool allocatesMemory(const clang::FunctionDecl* func);
 
+    /// @brief Helper: Build contract string from clauses
+    /// @param requires Vector of requires clauses
+    /// @param ensures Vector of ensures clauses
+    /// @param assigns Vector of assigns clauses
+    /// @return Formatted contract string (without comment markers)
+    std::string buildContractString(const std::vector<std::string>& requires,
+                                    const std::vector<std::string>& ensures,
+                                    const std::vector<std::string>& assigns) const;
+
 private:
     /// @brief Helper: Get parameter by name
     /// @param func Function declaration
@@ -185,7 +202,10 @@ private:
     /// @brief Helper: Format assigns clause items into single string
     /// @param items Vector of individual assign locations
     /// @return Formatted assigns clause (e.g., "*ptr, arr[0..n-1]")
-    std::string formatAssignsClause(const std::vector<std::string>& items);
+    std::string formatAssignsClause(const std::vector<std::string>& items) const;
+
+    /// @brief Flag to enable/disable memory predicate generation
+    bool memoryPredicatesEnabled = false;
 };
 
 #endif // ACSL_FUNCTION_ANNOTATOR_H

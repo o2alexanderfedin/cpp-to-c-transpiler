@@ -147,6 +147,7 @@ add_library(cpptoc_core STATIC
     src/ACSLAxiomaticBuilder.cpp
     src/ACSLGhostCodeInjector.cpp
     src/ACSLBehaviorAnnotator.cpp
+    src/ACSLMemoryPredicateAnalyzer.cpp
     src/HeaderSeparator.cpp
     src/IncludeGuardGenerator.cpp
     src/DependencyAnalyzer.cpp
@@ -1250,6 +1251,30 @@ target_include_directories(CrossCastTraversalTest PRIVATE
 
 # No Clang/LLVM dependencies - pure C runtime library
 
+# Phase 13: RTTI Integration Tests (v2.6.0)
+add_executable(RTTIIntegrationTest
+    tests/RTTIIntegrationTest.cpp
+    src/TypeidTranslator.cpp
+    src/DynamicCastTranslator.cpp
+    src/TypeInfoGenerator.cpp
+)
+
+target_compile_definitions(RTTIIntegrationTest PRIVATE ${LLVM_DEFINITIONS})
+
+target_include_directories(RTTIIntegrationTest PRIVATE
+    ${CMAKE_SOURCE_DIR}/include
+    ${LLVM_INCLUDE_DIRS}
+    ${CLANG_INCLUDE_DIRS}
+)
+
+target_link_libraries(RTTIIntegrationTest PRIVATE
+    cpptoc_core
+    clangTooling
+    clangFrontend
+    clangAST
+    clangBasic
+)
+
 # Story #89: Virtual Base Detection and Analysis tests (Epic #44)
 add_executable(VirtualBaseDetectionTest
     tests/VirtualBaseDetectionTest.cpp
@@ -2237,6 +2262,27 @@ target_include_directories(ACSLBehaviorAnnotatorTest PRIVATE
 )
 
 target_link_libraries(ACSLBehaviorAnnotatorTest PRIVATE
+    cpptoc_core
+    clangTooling
+    clangFrontend
+    clangAST
+    clangBasic
+)
+
+# Phase 6 (v1.23.0): ACSLMemoryPredicateAnalyzer tests
+add_executable(ACSLMemoryPredicateAnalyzerTest
+    tests/ACSLMemoryPredicateAnalyzerTest.cpp
+)
+
+target_compile_definitions(ACSLMemoryPredicateAnalyzerTest PRIVATE ${LLVM_DEFINITIONS})
+
+target_include_directories(ACSLMemoryPredicateAnalyzerTest PRIVATE
+    ${CMAKE_SOURCE_DIR}/include
+    ${LLVM_INCLUDE_DIRS}
+    ${CLANG_INCLUDE_DIRS}
+)
+
+target_link_libraries(ACSLMemoryPredicateAnalyzerTest PRIVATE
     cpptoc_core
     clangTooling
     clangFrontend

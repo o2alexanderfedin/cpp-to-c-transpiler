@@ -13,6 +13,7 @@ using namespace clang;
 extern bool shouldGenerateACSL();
 extern ACSLLevel getACSLLevel();
 extern ACSLOutputMode getACSLOutputMode();
+extern bool shouldGenerateMemoryPredicates(); // Phase 6 (v1.23.0)
 
 // Epic #193: ACSL Integration - Constructor Implementation
 CppToCVisitor::CppToCVisitor(ASTContext &Context, CNodeBuilder &Builder)
@@ -41,6 +42,12 @@ CppToCVisitor::CppToCVisitor(ASTContext &Context, CNodeBuilder &Builder)
     m_ghostInjector = std::make_unique<ACSLGhostCodeInjector>(level, mode);
     // Note: ACSLBehaviorAnnotator only accepts level parameter (no mode parameter)
     m_behaviorAnnotator = std::make_unique<ACSLBehaviorAnnotator>(level);
+
+    // Phase 6 (v1.23.0): Configure memory predicates if enabled
+    if (shouldGenerateMemoryPredicates()) {
+      m_functionAnnotator->setMemoryPredicatesEnabled(true);
+      llvm::outs() << "Memory predicates enabled (allocable, freeable, block_length, base_addr)\n";
+    }
   }
 }
 
@@ -2206,6 +2213,64 @@ bool CppToCVisitor::VisitLinkageSpecDecl(clang::LinkageSpecDecl *LS) {
   // Continue visiting child declarations (functions, variables, etc.)
   return true;
 }
+
+// ============================================================================
+// Phase 12: Exception Handling Implementation
+// ============================================================================
+// NOTE: These visitor methods are commented out pending full Phase 12 integration
+// They require additional member variables and includes that are not yet in the header
+
+/* COMMENTED OUT FOR PHASE 13 - NEEDS PHASE 12 COMPLETION
+bool CppToCVisitor::VisitCXXTryStmt(CXXTryStmt *S) {
+  if (!S) {
+    return true;
+  }
+
+  llvm::outs() << "Translating try-catch block...\n";
+
+  // Generate unique frame and action table names
+  std::string frameVarName = "frame_" + std::to_string(exceptionFrameCounter++);
+  std::string actionsTableName = "actions_table_" + std::to_string(tryBlockCounter++);
+
+  // Use TryCatchTransformer to generate complete try-catch code
+  std::string transformedCode = TryCatchTransformerInstance.transformTryCatch(
+    S, frameVarName, actionsTableName);
+
+  // Output the transformed code
+  llvm::outs() << transformedCode;
+
+  llvm::outs() << "Try-catch block translated successfully\n";
+
+  // Return false to prevent default traversal (we handle the try-catch block ourselves)
+  return false;
+}
+
+bool CppToCVisitor::VisitCXXThrowExpr(CXXThrowExpr *E) {
+  if (!E) {
+    return true;
+  }
+
+  llvm::outs() << "Translating throw expression...\n";
+
+  std::string throwCode;
+
+  if (E->getSubExpr()) {
+    // throw expression;
+    throwCode = ThrowTranslatorInstance.generateThrowCode(E);
+  } else {
+    // throw; (re-throw)
+    throwCode = ThrowTranslatorInstance.generateRethrowCode();
+  }
+
+  // Output the throw code
+  llvm::outs() << throwCode;
+
+  llvm::outs() << "Throw expression translated successfully\n";
+
+  // Return true to indicate we've handled this
+  return true;
+}
+END COMMENT */
 
 // ============================================================================
 // Epic #193: ACSL Annotation Generation Implementation
