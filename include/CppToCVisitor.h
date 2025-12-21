@@ -6,6 +6,9 @@
 #include "NameMangler.h"
 #include "VirtualMethodAnalyzer.h"
 #include "VptrInjector.h"
+#include "VtableGenerator.h"
+#include "VirtualCallTranslator.h"
+#include "OverrideResolver.h"
 #include "MoveConstructorTranslator.h"
 #include "MoveAssignmentTranslator.h"
 #include "RvalueRefParamTranslator.h"
@@ -17,6 +20,9 @@
 #include "ACSLAxiomaticBuilder.h"
 #include "ACSLGhostCodeInjector.h"
 #include "ACSLBehaviorAnnotator.h"
+#include "TemplateExtractor.h"
+#include "TemplateMonomorphizer.h"
+#include "TemplateInstantiationTracker.h"
 #include <map>
 #include <string>
 #include <memory>
@@ -28,9 +34,13 @@ class CppToCVisitor : public clang::RecursiveASTVisitor<CppToCVisitor> {
   clang::CNodeBuilder &Builder;
   NameMangler Mangler;
 
-  // Story #169: Virtual function support
+  // Phase 9 (v2.2.0): Virtual method support
   VirtualMethodAnalyzer VirtualAnalyzer;
   VptrInjector VptrInjectorInstance;
+  std::unique_ptr<OverrideResolver> m_overrideResolver;        // Story #170: Override resolution
+  std::unique_ptr<VtableGenerator> m_vtableGenerator;          // Story #168: Vtable generation
+  std::unique_ptr<VirtualCallTranslator> m_virtualCallTrans;   // Story #172: Virtual call translation
+  std::map<std::string, std::string> m_vtableInstances;         // Store generated vtable instances (class -> vtable code)
 
   // Story #130: Move constructor translation
   MoveConstructorTranslator MoveCtorTranslator;
@@ -62,6 +72,15 @@ class CppToCVisitor : public clang::RecursiveASTVisitor<CppToCVisitor> {
 
   // Mapping: C++ destructor -> C function (Story #152 - Epic #5)
   std::map<clang::CXXDestructorDecl*, clang::FunctionDecl*> dtorMap;
+
+  // Phase 8: Mapping: Standalone functions (by mangled name -> C function)
+  std::map<std::string, clang::FunctionDecl*> standaloneFuncMap;
+
+  // Phase 11: Template monomorphization infrastructure (v2.4.0)
+  std::unique_ptr<TemplateExtractor> m_templateExtractor;
+  std::unique_ptr<TemplateMonomorphizer> m_templateMonomorphizer;
+  std::unique_ptr<TemplateInstantiationTracker> m_templateTracker;
+  std::string m_monomorphizedCode;  // Store generated template code
 
   // Current translation context (Story #19)
   clang::ParmVarDecl *currentThisParam = nullptr;
@@ -164,6 +183,11 @@ public:
 
   // Prompt #031: extern "C" and calling convention support
   bool VisitLinkageSpecDecl(clang::LinkageSpecDecl *LS);
+
+  // Phase 11: Template monomorphization visitor methods (v2.4.0)
+  bool VisitClassTemplateDecl(clang::ClassTemplateDecl *D);
+  bool VisitFunctionTemplateDecl(clang::FunctionTemplateDecl *D);
+  bool VisitClassTemplateSpecializationDecl(clang::ClassTemplateSpecializationDecl *D);
 
   // Retrieve generated C struct by class name (for testing)
   clang::RecordDecl* getCStruct(llvm::StringRef className) const;
@@ -473,6 +497,25 @@ private:
    * - Class has at least one constructor (explicit or default)
    */
   bool needsImplicitCopyConstructor(clang::CXXRecordDecl *D) const;
+
+  // ============================================================================
+  // Phase 11: Template Monomorphization Helper Methods (v2.4.0)
+  // ============================================================================
+
+  /**
+   * @brief Process all template instantiations and generate monomorphized code
+   * @param TU Translation unit declaration
+   *
+   * Single Responsibility: Orchestrate template extraction and monomorphization
+   * Called after AST traversal to process all discovered template instantiations.
+   */
+  void processTemplateInstantiations(clang::TranslationUnitDecl *TU);
+
+  /**
+   * @brief Get generated monomorphized template code
+   * @return String containing all monomorphized C code
+   */
+  std::string getMonomorphizedCode() const { return m_monomorphizedCode; }
 
   // ============================================================================
   // Epic #193: ACSL Annotation Generation Helper Methods

@@ -1251,6 +1251,30 @@ target_include_directories(CrossCastTraversalTest PRIVATE
 
 # No Clang/LLVM dependencies - pure C runtime library
 
+# Phase 8: Standalone Function Translation Tests (v2.1.0)
+add_executable(StandaloneFunctionTranslationTest
+    tests/StandaloneFunctionTranslationTest.cpp
+    src/TemplateExtractor.cpp
+    src/TemplateMonomorphizer.cpp
+    src/TemplateInstantiationTracker.cpp
+)
+
+target_compile_definitions(StandaloneFunctionTranslationTest PRIVATE ${LLVM_DEFINITIONS})
+
+target_include_directories(StandaloneFunctionTranslationTest PRIVATE
+    ${CMAKE_SOURCE_DIR}/include
+    ${LLVM_INCLUDE_DIRS}
+    ${CLANG_INCLUDE_DIRS}
+)
+
+target_link_libraries(StandaloneFunctionTranslationTest PRIVATE
+    cpptoc_core
+    clangTooling
+    clangFrontend
+    clangAST
+    clangBasic
+)
+
 # Phase 13: RTTI Integration Tests (v2.6.0)
 add_executable(RTTIIntegrationTest
     tests/RTTIIntegrationTest.cpp
@@ -2283,6 +2307,31 @@ target_include_directories(ACSLMemoryPredicateAnalyzerTest PRIVATE
 )
 
 target_link_libraries(ACSLMemoryPredicateAnalyzerTest PRIVATE
+    cpptoc_core
+    clangTooling
+    clangFrontend
+    clangAST
+    clangBasic
+)
+
+# Phase 9 (v2.2.0): Virtual Method Integration tests
+add_executable(VirtualMethodIntegrationTest
+    tests/VirtualMethodIntegrationTest.cpp
+    src/VirtualMethodAnalyzer.cpp
+    src/VtableGenerator.cpp
+    src/VirtualCallTranslator.cpp
+    src/OverrideResolver.cpp
+)
+
+target_compile_definitions(VirtualMethodIntegrationTest PRIVATE ${LLVM_DEFINITIONS})
+
+target_include_directories(VirtualMethodIntegrationTest PRIVATE
+    ${CMAKE_SOURCE_DIR}/include
+    ${LLVM_INCLUDE_DIRS}
+    ${CLANG_INCLUDE_DIRS}
+)
+
+target_link_libraries(VirtualMethodIntegrationTest PRIVATE
     cpptoc_core
     clangTooling
     clangFrontend

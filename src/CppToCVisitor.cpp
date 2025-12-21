@@ -6,6 +6,7 @@
 #include "clang/Basic/SourceManager.h"
 #include <vector>
 #include <algorithm>
+#include <sstream>
 
 using namespace clang;
 
@@ -14,6 +15,8 @@ extern bool shouldGenerateACSL();
 extern ACSLLevel getACSLLevel();
 extern ACSLOutputMode getACSLOutputMode();
 extern bool shouldGenerateMemoryPredicates(); // Phase 6 (v1.23.0)
+extern bool shouldMonomorphizeTemplates(); // Phase 11 (v2.4.0)
+extern unsigned int getTemplateInstantiationLimit(); // Phase 11 (v2.4.0)
 
 // Epic #193: ACSL Integration - Constructor Implementation
 CppToCVisitor::CppToCVisitor(ASTContext &Context, CNodeBuilder &Builder)
@@ -48,6 +51,23 @@ CppToCVisitor::CppToCVisitor(ASTContext &Context, CNodeBuilder &Builder)
       m_functionAnnotator->setMemoryPredicatesEnabled(true);
       llvm::outs() << "Memory predicates enabled (allocable, freeable, block_length, base_addr)\n";
     }
+  }
+
+  // Phase 9 (v2.2.0): Initialize virtual method infrastructure
+  m_overrideResolver = std::make_unique<OverrideResolver>(Context, VirtualAnalyzer);
+  m_vtableGenerator = std::make_unique<VtableGenerator>(Context, VirtualAnalyzer, m_overrideResolver.get());
+  m_virtualCallTrans = std::make_unique<VirtualCallTranslator>(Context, VirtualAnalyzer);
+  llvm::outs() << "Virtual method support initialized\n";
+
+  // Phase 11 (v2.4.0): Initialize template monomorphization infrastructure
+  // Note: Always initialize these, but only use them if shouldMonomorphizeTemplates() is true
+  m_templateExtractor = std::make_unique<TemplateExtractor>(Context);
+  m_templateMonomorphizer = std::make_unique<TemplateMonomorphizer>(Context, Mangler);
+  m_templateTracker = std::make_unique<TemplateInstantiationTracker>();
+
+  if (shouldMonomorphizeTemplates()) {
+    llvm::outs() << "Template monomorphization enabled (limit: "
+                 << getTemplateInstantiationLimit() << " instantiations)\n";
   }
 }
 
@@ -127,18 +147,53 @@ bool CppToCVisitor::VisitCXXRecordDecl(CXXRecordDecl *D) {
     }
   }
 
+  // Phase 9 (v2.2.0): Generate vtable struct for polymorphic classes
+  if (VirtualAnalyzer.isPolymorphic(D)) {
+    llvm::outs() << "Generating vtable for polymorphic class: "
+                 << D->getNameAsString() << "\n";
+
+    // Generate vtable struct definition
+    std::string vtableStruct = m_vtableGenerator->generateVtableStruct(D);
+    if (!vtableStruct.empty()) {
+      llvm::outs() << "Vtable struct generated:\n" << vtableStruct << "\n";
+
+      // Generate vtable instance (global variable)
+      std::string className = D->getNameAsString();
+      std::ostringstream vtableInstance;
+      vtableInstance << "\n// Vtable instance for " << className << "\n";
+      vtableInstance << "struct " << className << "_vtable " << className << "_vtable_instance = {\n";
+      vtableInstance << "    .type_info = &" << className << "_type_info,  // RTTI type_info (placeholder)\n";
+
+      // Get methods in vtable order
+      auto methods = m_vtableGenerator->getVtableMethodOrder(D);
+
+      // Initialize function pointers
+      for (auto* method : methods) {
+        std::string methodName;
+        if (isa<CXXDestructorDecl>(method)) {
+          methodName = "destructor";
+          vtableInstance << "    ." << methodName << " = " << className << "_destructor,\n";
+        } else {
+          methodName = method->getNameAsString();
+          vtableInstance << "    ." << methodName << " = " << className << "_" << methodName << ",\n";
+        }
+      }
+
+      vtableInstance << "};\n";
+
+      // Store vtable instance code
+      m_vtableInstances[className] = vtableInstance.str();
+
+      llvm::outs() << "Vtable instance generated:\n" << vtableInstance.str() << "\n";
+    }
+  }
+
   return true;
 }
 
 // Story #16: Method-to-Function Conversion
 bool CppToCVisitor::VisitCXXMethodDecl(CXXMethodDecl *MD) {
-  // Edge case 1: Skip virtual methods (Phase 1 POC scope)
-  if (MD->isVirtual()) {
-    llvm::outs() << "Skipping virtual method: " << MD->getQualifiedNameAsString() << "\n";
-    return true;
-  }
-
-  // Edge case 2: Skip implicit methods (compiler-generated)
+  // Edge case 1: Skip implicit methods (compiler-generated)
   if (MD->isImplicit()) {
     return true;
   }
@@ -409,12 +464,19 @@ RecordDecl* CppToCVisitor::getCStruct(llvm::StringRef className) const {
 
 // Retrieve generated C function by name (for testing)
 FunctionDecl* CppToCVisitor::getCFunc(llvm::StringRef funcName) const {
-  // Search through mapping to find function by name
+  // Search through method mapping to find function by name
   for (const auto &entry : methodToCFunc) {
     if (entry.second && entry.second->getName() == funcName) {
       return entry.second;
     }
   }
+
+  // Phase 8: Also search standalone function map
+  auto it = standaloneFuncMap.find(funcName.str());
+  if (it != standaloneFuncMap.end()) {
+    return it->second;
+  }
+
   return nullptr;
 }
 
@@ -625,6 +687,73 @@ bool CppToCVisitor::VisitFunctionDecl(FunctionDecl *FD) {
       emitACSL(fullAnnotation, getACSLOutputMode());
     }
   }
+
+  // ============================================================================
+  // Phase 8: Standalone Function Translation (v2.1.0)
+  // ============================================================================
+  // Translate standalone functions (non-member functions) to C
+  // This enables translation of free functions, main(), function overloading
+
+  // Skip methods - they're handled by VisitCXXMethodDecl
+  if (isa<CXXMethodDecl>(FD)) {
+    return true;  // Already handled
+  }
+
+  // Skip forward declarations (no body)
+  if (!FD->hasBody()) {
+    return true;  // Only translate definitions
+  }
+
+  llvm::outs() << "Translating standalone function: " << FD->getNameAsString() << "\n";
+
+  // Get mangled name (handles overloading, main(), extern "C")
+  std::string mangledName = Mangler.mangleStandaloneFunction(FD);
+
+  llvm::outs() << "  Mangled name: " << mangledName << "\n";
+
+  // Build parameter list for C function
+  llvm::SmallVector<ParmVarDecl*, 4> cParams;
+  for (ParmVarDecl *Param : FD->parameters()) {
+    // Create parameter with same type and name
+    ParmVarDecl *CParam = Builder.param(Param->getType(), Param->getName());
+    cParams.push_back(CParam);
+  }
+
+  // Get function body (will be translated separately if needed)
+  Stmt *body = FD->getBody();
+
+  // Create C function declaration with mangled name
+  FunctionDecl *CFunc = Builder.funcDecl(
+    mangledName,
+    FD->getReturnType(),
+    cParams,
+    body
+  );
+
+  // Preserve linkage and storage class
+  if (FD->getStorageClass() == SC_Static) {
+    CFunc->setStorageClass(SC_Static);
+    llvm::outs() << "  Linkage: static (internal)\n";
+  } else if (FD->getStorageClass() == SC_Extern || FD->isExternC()) {
+    CFunc->setStorageClass(SC_Extern);
+    llvm::outs() << "  Linkage: extern (external)\n";
+  }
+
+  // Preserve inline specifier
+  if (FD->isInlineSpecified()) {
+    CFunc->setInlineSpecified(true);
+    llvm::outs() << "  Inline: yes\n";
+  }
+
+  // Preserve variadic property
+  // Note: Builder.funcDecl already preserves this through function type
+
+  // Store in standalone function map
+  standaloneFuncMap[mangledName] = CFunc;
+
+  llvm::outs() << "  -> C function '" << mangledName << "' created\n";
+  llvm::outs() << "  Parameters: " << cParams.size() << "\n";
+  llvm::outs() << "  Return type: " << CFunc->getReturnType().getAsString() << "\n";
 
   return true;
 }
@@ -2297,4 +2426,175 @@ void CppToCVisitor::storeACSLAnnotation(const std::string& key, const std::strin
   if (!acsl.empty()) {
     m_acslAnnotations[key] = acsl;
   }
+}
+
+// ============================================================================
+// Phase 11: Template Monomorphization Implementation (v2.4.0)
+// ============================================================================
+
+/**
+ * @brief Visit class template declarations
+ *
+ * ClassTemplateDecl is the template itself (e.g., template<typename T> class Stack).
+ * We don't generate code for the template directly. Instead, we let TemplateExtractor
+ * find all specializations during AST traversal.
+ *
+ * This visitor just marks that we've seen a template declaration.
+ */
+bool CppToCVisitor::VisitClassTemplateDecl(ClassTemplateDecl *D) {
+  if (!D || !shouldMonomorphizeTemplates()) {
+    return true;
+  }
+
+  llvm::outs() << "Found class template: " << D->getNameAsString() << "\n";
+  // Don't generate code here - wait for instantiations
+  return true;
+}
+
+/**
+ * @brief Visit function template declarations
+ *
+ * FunctionTemplateDecl is the template itself (e.g., template<typename T> T max(T, T)).
+ * We don't generate code for the template directly. TemplateExtractor will find
+ * all specializations.
+ */
+bool CppToCVisitor::VisitFunctionTemplateDecl(FunctionTemplateDecl *D) {
+  if (!D || !shouldMonomorphizeTemplates()) {
+    return true;
+  }
+
+  llvm::outs() << "Found function template: " << D->getNameAsString() << "\n";
+  // Don't generate code here - wait for instantiations
+  return true;
+}
+
+/**
+ * @brief Visit class template specializations
+ *
+ * ClassTemplateSpecializationDecl represents a specific instantiation
+ * (e.g., Stack<int>, Stack<double>). The TemplateExtractor will collect these
+ * during traversal, and we'll process them in processTemplateInstantiations().
+ */
+bool CppToCVisitor::VisitClassTemplateSpecializationDecl(ClassTemplateSpecializationDecl *D) {
+  if (!D || !shouldMonomorphizeTemplates()) {
+    return true;
+  }
+
+  // Log the specialization (TemplateExtractor handles collection)
+  std::string templateName = D->getSpecializedTemplate()->getNameAsString();
+  llvm::outs() << "Found class template specialization: " << templateName << "<";
+
+  const TemplateArgumentList& args = D->getTemplateArgs();
+  for (unsigned i = 0; i < args.size(); ++i) {
+    if (i > 0) llvm::outs() << ", ";
+    const TemplateArgument& arg = args[i];
+    if (arg.getKind() == TemplateArgument::Type) {
+      llvm::outs() << arg.getAsType().getAsString();
+    } else if (arg.getKind() == TemplateArgument::Integral) {
+      llvm::outs() << arg.getAsIntegral();
+    }
+  }
+  llvm::outs() << ">\n";
+
+  return true;
+}
+
+/**
+ * @brief Process all template instantiations and generate monomorphized C code
+ *
+ * This method is called after the AST traversal is complete. It:
+ * 1. Uses TemplateExtractor to find all instantiations
+ * 2. Deduplicates using TemplateInstantiationTracker
+ * 3. Generates C code using TemplateMonomorphizer
+ * 4. Stores the result in m_monomorphizedCode
+ */
+void CppToCVisitor::processTemplateInstantiations(TranslationUnitDecl *TU) {
+  if (!shouldMonomorphizeTemplates() || !TU) {
+    return;
+  }
+
+  llvm::outs() << "\n========================================\n";
+  llvm::outs() << "Processing Template Instantiations\n";
+  llvm::outs() << "========================================\n\n";
+
+  // Step 1: Extract all template instantiations from the AST
+  m_templateExtractor->extractTemplateInstantiations(TU);
+
+  auto classInsts = m_templateExtractor->getClassInstantiations();
+  auto funcInsts = m_templateExtractor->getFunctionInstantiations();
+
+  llvm::outs() << "Found " << classInsts.size() << " class template instantiation(s)\n";
+  llvm::outs() << "Found " << funcInsts.size() << " function template instantiation(s)\n";
+
+  // Check instantiation limit
+  unsigned int limit = getTemplateInstantiationLimit();
+  unsigned int totalInsts = classInsts.size() + funcInsts.size();
+
+  if (totalInsts > limit) {
+    llvm::errs() << "Error: Template instantiation limit exceeded!\n";
+    llvm::errs() << "  Found: " << totalInsts << " instantiations\n";
+    llvm::errs() << "  Limit: " << limit << "\n";
+    llvm::errs() << "  Use --template-instantiation-limit=<N> to increase the limit\n";
+    return;
+  }
+
+  std::ostringstream codeStream;
+  codeStream << "\n// ============================================================================\n";
+  codeStream << "// Monomorphized Template Code (Phase 11 - v2.4.0)\n";
+  codeStream << "// ============================================================================\n\n";
+
+  // Step 2: Process class template instantiations
+  llvm::outs() << "\nMonomorphizing class templates:\n";
+  for (auto* classInst : classInsts) {
+    // Generate unique key for deduplication
+    std::string key = m_templateExtractor->getClassInstantiationKey(classInst);
+
+    // Check if already processed (deduplication)
+    if (!m_templateTracker->addInstantiation(key)) {
+      llvm::outs() << "  Skipping duplicate: " << key << "\n";
+      continue;
+    }
+
+    llvm::outs() << "  Generating code for: " << key << "\n";
+
+    // Generate monomorphized C code
+    std::string code = m_templateMonomorphizer->monomorphizeClass(classInst);
+    if (!code.empty()) {
+      codeStream << "// Class: " << key << "\n";
+      codeStream << code << "\n";
+    }
+  }
+
+  // Step 3: Process function template instantiations
+  llvm::outs() << "\nMonomorphizing function templates:\n";
+  for (auto* funcInst : funcInsts) {
+    // Generate unique key for deduplication
+    std::string key = m_templateExtractor->getFunctionInstantiationKey(funcInst);
+
+    // Check if already processed (deduplication)
+    if (!m_templateTracker->addInstantiation(key)) {
+      llvm::outs() << "  Skipping duplicate: " << key << "\n";
+      continue;
+    }
+
+    llvm::outs() << "  Generating code for: " << key << "\n";
+
+    // Generate monomorphized C code
+    std::string code = m_templateMonomorphizer->monomorphizeFunction(funcInst);
+    if (!code.empty()) {
+      codeStream << "// Function: " << key << "\n";
+      codeStream << code << "\n";
+    }
+  }
+
+  // Store generated code
+  m_monomorphizedCode = codeStream.str();
+
+  llvm::outs() << "\n========================================\n";
+  llvm::outs() << "Template Monomorphization Complete\n";
+  llvm::outs() << "  Unique instantiations: " << m_templateTracker->getCount() << "\n";
+  llvm::outs() << "========================================\n\n";
+
+  // Output the generated code
+  llvm::outs() << m_monomorphizedCode;
 }
