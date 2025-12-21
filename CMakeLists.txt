@@ -166,6 +166,14 @@ add_library(cpptoc_core STATIC
     src/VirtualCallTranslator.cpp
     src/PureVirtualHandler.cpp
     src/VirtualDestructorHandler.cpp
+    src/TryCatchTransformer.cpp
+    src/ThrowTranslator.cpp
+    src/ExceptionFrameGenerator.cpp
+    src/TemplateExtractor.cpp
+    src/TemplateMonomorphizer.cpp
+    src/TemplateInstantiationTracker.cpp
+    src/TypeidTranslator.cpp
+    src/DynamicCastTranslator.cpp
 )
 
 target_compile_definitions(cpptoc_core PRIVATE ${LLVM_DEFINITIONS})
@@ -1130,6 +1138,29 @@ add_executable(ExceptionPerformanceTest
 
 target_include_directories(ExceptionPerformanceTest PRIVATE
     ${CMAKE_SOURCE_DIR}/runtime
+)
+
+# Phase 12 (v2.5.0): Exception Handling Integration Tests
+add_executable(ExceptionHandlingIntegrationTest
+    tests/ExceptionHandlingIntegrationTest.cpp
+    runtime/exception_runtime.cpp
+)
+
+target_compile_definitions(ExceptionHandlingIntegrationTest PRIVATE ${LLVM_DEFINITIONS})
+
+target_include_directories(ExceptionHandlingIntegrationTest PRIVATE
+    ${CMAKE_SOURCE_DIR}/include
+    ${CMAKE_SOURCE_DIR}/runtime
+    ${LLVM_INCLUDE_DIRS}
+    ${CLANG_INCLUDE_DIRS}
+)
+
+target_link_libraries(ExceptionHandlingIntegrationTest PRIVATE
+    cpptoc_core
+    clangTooling
+    clangFrontend
+    clangAST
+    clangBasic
 )
 
 # ============================================================================
@@ -2337,4 +2368,56 @@ target_link_libraries(VirtualMethodIntegrationTest PRIVATE
     clangFrontend
     clangAST
     clangBasic
+)
+
+# ============================================================================
+# Phase 7: ACSL Integration & Validation (v2.0.0) - Frama-C Integration Tests
+# ============================================================================
+
+# Frama-C WP Integration Tests (20+ tests)
+# Tests that generated ACSL annotations are provable by Frama-C's WP plugin
+add_executable(FramaCWPTests
+    tests/integration/FramaCWPTests.cpp
+)
+
+target_compile_definitions(FramaCWPTests PRIVATE ${LLVM_DEFINITIONS})
+
+target_include_directories(FramaCWPTests PRIVATE
+    ${CMAKE_SOURCE_DIR}/include
+    ${LLVM_INCLUDE_DIRS}
+    ${CLANG_INCLUDE_DIRS}
+)
+
+target_link_libraries(FramaCWPTests PRIVATE
+    cpptoc_core
+    clangTooling
+    clangFrontend
+    clangAST
+    clangBasic
+    GTest::gtest
+    GTest::gtest_main
+)
+
+# Frama-C EVA Integration Tests (15+ tests)
+# Tests that generated ACSL annotations improve EVA's value analysis
+add_executable(FramaCEVATests
+    tests/integration/FramaCEVATests.cpp
+)
+
+target_compile_definitions(FramaCEVATests PRIVATE ${LLVM_DEFINITIONS})
+
+target_include_directories(FramaCEVATests PRIVATE
+    ${CMAKE_SOURCE_DIR}/include
+    ${LLVM_INCLUDE_DIRS}
+    ${CLANG_INCLUDE_DIRS}
+)
+
+target_link_libraries(FramaCEVATests PRIVATE
+    cpptoc_core
+    clangTooling
+    clangFrontend
+    clangAST
+    clangBasic
+    GTest::gtest
+    GTest::gtest_main
 )
