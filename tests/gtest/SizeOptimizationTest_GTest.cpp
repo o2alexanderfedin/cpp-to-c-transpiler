@@ -319,3 +319,18 @@ TEST_F(BuildConfigurationTest, SizeReductionFull) {
   EXPECT_TRUE(hasDataSections) << "Flag -fdata-sections should be present";
   EXPECT_TRUE(hasGC) << "Flag -Wl,--gc-sections should be present";
 }
+
+// Test 13: Disable optimization when not needed
+TEST_F(BuildConfigurationTest, DisableOptimization) {
+  BuildConfiguration config;
+  config.setOptimizationLevel(BuildConfiguration::OptLevel::None);
+
+  vector<string> flags = config.getCompilerFlags();
+
+  bool hasOs = false;
+  for (const auto &flag : flags) {
+    if (flag == "-Os")
+      hasOs = true;
+  }
+  EXPECT_FALSE(hasOs) << "Size optimization flag should not be present when optimization is disabled";
+}

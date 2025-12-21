@@ -418,6 +418,34 @@ void test_ConstructorWithBody(ASTContext &Ctx) {
     TEST_PASS("ConstructorWithBody");
 }
 
+void test_DestructorTranslation(ASTContext &Ctx) {
+    TEST_START("DestructorTranslation: Destructor translation");
+
+    const char *cpp = R"(
+        class Resource {
+            int* data;
+        public:
+            Resource() { data = new int[100]; }
+            ~Resource() { delete[] data; }
+        };
+    )";
+    std::unique_ptr<ASTUnit> AST = buildAST(cpp);
+    ASSERT(AST, "Failed to parse C++ code");
+
+    CNodeBuilder builder(AST->getASTContext());
+    CppToCVisitor visitor(AST->getASTContext(), builder);
+
+    visitor.TraverseDecl(AST->getASTContext().getTranslationUnitDecl());
+
+    // Verify destructor function was generated
+    FunctionDecl *CDtor = visitor.getDtor("Resource__dtor");
+    ASSERT(CDtor != nullptr, "Destructor function not generated");
+    ASSERT(CDtor->getNumParams() == 1, "Expected 1 parameter (this)");
+    ASSERT(CDtor->getReturnType()->isVoidType(), "Destructor should return void");
+
+    TEST_PASS("DestructorTranslation");
+}
+
 int main(int argc, const char **argv) {
     // Create a simple test AST for context
     std::unique_ptr<ASTUnit> AST = buildAST("int main() { return 0; }");
@@ -449,6 +477,7 @@ int main(int argc, const char **argv) {
     test_DefaultConstructor(Ctx);
     test_MemberInitializers(Ctx);
     test_ConstructorWithBody(Ctx);
+    test_DestructorTranslation(Ctx);
 
     std::cout << "\n========================================" << std::endl;
     std::cout << "Tests passed: " << tests_passed << std::endl;

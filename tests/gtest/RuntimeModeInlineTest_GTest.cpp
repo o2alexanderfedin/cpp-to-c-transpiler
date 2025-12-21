@@ -194,3 +194,16 @@ TEST_F(RuntimeModeInlineTest, FullTranspilationInlineMode) {
               runtime.find("void") != string::npos)
       << "Should contain valid C declarations";
 }
+
+// Test 11: Empty feature set - no runtime needed
+TEST_F(RuntimeModeInlineTest, NoFeatureEmptyRuntime) {
+  // Don't mark any features as used
+  string runtime = inlineMode.generateInlineRuntime();
+
+  // With no features, runtime should be minimal or empty
+  // Verify it doesn't contain feature-specific code
+  EXPECT_EQ(runtime.find("__cxx_exception_frame"), string::npos)
+      << "Should NOT include exception runtime when not used";
+  EXPECT_EQ(runtime.find("__cxx_type_info"), string::npos)
+      << "Should NOT include RTTI runtime when not used";
+}

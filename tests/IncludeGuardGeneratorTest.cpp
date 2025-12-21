@@ -176,6 +176,20 @@ void test_ModeToggle() {
     TEST_PASS("ModeToggle");
 }
 
+// Test 10: Filename with path components
+void test_FilenameWithPath() {
+    TEST_START("FilenameWithPath");
+
+    IncludeGuardGenerator generator;
+    std::string guardName = generator.generateGuardName("include/Point.h");
+
+    // Should only use filename, not path
+    ASSERT(guardName == "POINT_H",
+           "Expected 'POINT_H' from path 'include/Point.h', got '" + guardName + "'");
+
+    TEST_PASS("FilenameWithPath");
+}
+
 int main() {
     std::cout << "\n=== IncludeGuardGenerator Tests (Story #138) ===\n\n";
 
@@ -189,6 +203,7 @@ int main() {
     test_PragmaOnceGuardEnd();
     test_TraditionalModeExplicit();
     test_ModeToggle();
+    test_FilenameWithPath();
 
     // Summary
     std::cout << "\n=== Test Summary ===\n";
