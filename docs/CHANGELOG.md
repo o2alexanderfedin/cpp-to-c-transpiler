@@ -1,5 +1,350 @@
 # Research Changelog
 
+## Version 2.6.0 - RTTI Integration (December 21, 2025)
+
+### Phase 13: RTTI (Runtime Type Information)
+
+**Release Status:** PRODUCTION (All tests passing - 15/15)
+
+**Test Coverage:**
+- RTTI Integration Tests: 15/15 passing (100%)
+- All RTTI features verified
+- Polymorphic type information complete
+
+### Executive Summary
+
+Version 2.6.0 completes **Phase 13: RTTI Integration**, bringing Runtime Type Information support to the transpiler. This release enables translation of `typeid` expressions and `dynamic_cast` operators to C, providing runtime type identification and safe downcasting with type checking.
+
+This release enables:
+- **typeid() operator** - Static (compile-time) and polymorphic (runtime vtable lookup) translation
+- **dynamic_cast<>()** - Safe downcasting with runtime type checking and NULL on failure
+- **Type information structs** - Itanium ABI compatible type_info generation
+- **Polymorphism detection** - Automatic detection via VirtualMethodAnalyzer
+- **Multiple inheritance support** - Cross-casting through complex inheritance hierarchies
+- **RTTI runtime library** - cxx_dynamic_cast with hierarchy traversal
+
+### Features
+
+#### Visitor Method Integration
+
+**VisitCXXTypeidExpr** - typeid operator translation
+
+**Implementation:**
+- Checks RTTI enable flag (--enable-rtti)
+- Detects polymorphic vs static typeid expressions
+- Polymorphic: Generates vtable lookup `ptr->vptr->type_info`
+- Static: Generates direct reference `&__ti_ClassName`
+- Integrates TypeidTranslator for code generation
+
+**VisitCXXDynamicCastExpr** - dynamic_cast operator translation
+
+**Implementation:**
+- Validates RTTI enable flag
+- Extracts source and target type information
+- Generates cxx_dynamic_cast() runtime call
+- Passes type_info structs for runtime checking
+- Returns NULL on failed cast (C semantics)
+- Integrates DynamicCastTranslator for code generation
+
+#### RTTI Translation Infrastructure
+
+**TypeidTranslator** - Handles typeid expression translation
+
+**Features:**
+- Polymorphism detection using VirtualMethodAnalyzer
+- Polymorphic typeid: vtable lookup at runtime
+- Static typeid: compile-time constant reference
+- Type extraction from both type and expression operands
+- Class name resolution for type_info naming
+
+**DynamicCastTranslator** - Handles dynamic_cast translation
+
+**Features:**
+- Runtime type checking via cxx_dynamic_cast()
+- Type_info parameter generation
+- Source/target type extraction
+- NULL return on cast failure
+- Offset calculation (-1 for runtime checks)
+
+**TypeInfoGenerator** - Generates type_info structures
+
+**Features:**
+- Itanium ABI compatible type_info structs
+- `__class_type_info` for simple classes
+- `__si_class_type_info` for single inheritance
+- `__vmi_class_type_info` for multiple/virtual inheritance
+- Length-prefixed type names (e.g., "6Animal")
+
+#### RTTI Runtime Library
+
+**rtti_runtime.h/c** - Runtime support functions
+
+**Core Functions:**
+```c
+void* cxx_dynamic_cast(const void *ptr,
+                       const struct __class_type_info *src_type,
+                       const struct __class_type_info *dst_type,
+                       ptrdiff_t offset);
+
+int traverse_hierarchy(const struct __class_type_info *from,
+                       const struct __class_type_info *to);
+
+int cross_cast_traverse(const struct __vmi_class_type_info *mi_class,
+                        const struct __class_type_info *target);
+```
+
+**ACSL Annotations:**
+- Formal verification predicates for type_info validity
+- Memory safety guarantees
+- Type hierarchy traversal correctness
+
+#### CLI Integration
+
+**Command-Line Flag:**
+- `--enable-rtti` (default: on) - Enable/disable RTTI translation
+
+**Help Text:**
+```
+--enable-rtti                Enable RTTI translation (typeid and dynamic_cast)
+                             (default: on)
+```
+
+### Technical Details
+
+**Translation Pattern - Static typeid:**
+```cpp
+// C++ Code
+class Animal {
+public:
+    virtual ~Animal() {}
+};
+
+void test() {
+    const std::type_info& ti = typeid(Animal);
+    std::cout << ti.name() << std::endl;
+}
+
+// Translated C Code
+struct __class_type_info __ti_Animal = {
+    .vtable_ptr = &__vt_class_type_info,
+    .type_name = "6Animal"  // Length-prefixed
+};
+
+void test() {
+    const struct __class_type_info *ti = &__ti_Animal;
+    printf("%s\n", ti->type_name);
+}
+```
+
+**Translation Pattern - Polymorphic typeid:**
+```cpp
+// C++ Code
+class Animal {
+public:
+    virtual ~Animal() {}
+};
+
+class Cat : public Animal {
+public:
+    void speak() override { std::cout << "Meow!\n"; }
+};
+
+void identify(Animal* a) {
+    const std::type_info& ti = typeid(*a);  // Runtime lookup
+    if (ti == typeid(Cat)) {
+        std::cout << "It's a cat!\n";
+    }
+}
+
+// Translated C Code
+void identify(struct Animal *a) {
+    // Polymorphic typeid: lookup from vtable
+    const struct __class_type_info *ti = a->vptr->type_info;
+
+    if (type_info_equal(ti, &__ti_Cat)) {
+        printf("It's a cat!\n");
+    }
+}
+```
+
+**Translation Pattern - dynamic_cast success:**
+```cpp
+// C++ Code
+class Shape {
+public:
+    virtual ~Shape() {}
+    virtual void draw() = 0;
+};
+
+class Circle : public Shape {
+public:
+    void draw() override { std::cout << "Circle\n"; }
+    void bounce() { std::cout << "Bounce!\n"; }
+};
+
+void process(Shape* s) {
+    Circle* c = dynamic_cast<Circle*>(s);
+    if (c != nullptr) {
+        c->bounce();
+    }
+}
+
+// Translated C Code
+void process(struct Shape *s) {
+    struct Circle *c = (struct Circle *)cxx_dynamic_cast(
+        (const void *)s,      // Pointer to object
+        &__ti_Shape,          // Source type
+        &__ti_Circle,         // Target type
+        -1                    // Runtime check required
+    );
+
+    if (c != NULL) {
+        Circle_bounce(c);
+    }
+}
+```
+
+**Translation Pattern - dynamic_cast failure:**
+```cpp
+// C++ Code
+class Vehicle { public: virtual ~Vehicle() {} };
+class Car : public Vehicle {};
+class Boat : public Vehicle {};
+
+void test() {
+    Vehicle* v = new Car();
+    Boat* b = dynamic_cast<Boat*>(v);  // Different hierarchy
+    if (b == nullptr) {
+        std::cout << "Not a boat!\n";
+    }
+}
+
+// Translated C Code
+void test() {
+    struct Vehicle *v = (struct Vehicle *)malloc(sizeof(struct Car));
+
+    // Cross-hierarchy cast returns NULL
+    struct Boat *b = (struct Boat *)cxx_dynamic_cast(
+        (const void *)v,
+        &__ti_Car,
+        &__ti_Boat,
+        -1
+    );
+
+    if (b == NULL) {
+        printf("Not a boat!\n");
+    }
+}
+```
+
+**Performance:**
+- Static typeid: Zero overhead (compile-time constant)
+- Polymorphic typeid: Single vtable dereference
+- dynamic_cast: O(depth) hierarchy traversal
+- Type comparison: Pointer equality (fast)
+
+### Test Coverage
+
+**15 Integration Tests:**
+
+**Category 1: Typeid Basic (3 tests)**
+1. TypidStaticTypeName - Static typeid on non-polymorphic class
+2. TypeidPolymorphicBasic - Polymorphic typeid on derived object
+3. TypeidNullPointer - Typeid on null polymorphic pointer
+
+**Category 2: Typeid Semantics (3 tests)**
+4. TypeidEquality - Typeid equality comparison
+5. TypeidNameFunction - Typeid name() method translation
+6. TypeidInheritanceChain - Typeid in inheritance hierarchy
+
+**Category 3: Dynamic Cast Success (2 tests)**
+7. DynamicCastDowncast - Successful downcast to derived class
+8. DynamicCastUpcast - Upcast to base class
+
+**Category 4: Dynamic Cast Failure (2 tests)**
+9. DynamicCastWrongType - Cast to unrelated type
+10. DynamicCastCrossHierarchy - Cross-cast between unrelated hierarchies
+
+**Category 5: Edge Cases (2 tests)**
+11. DynamicCastNullPtr - dynamic_cast on NULL pointer
+12. DynamicCastSameType - dynamic_cast to same type
+
+**Category 6: Integration (3 tests)**
+13. MultipleInheritanceRTTI - RTTI with multiple inheritance
+14. VirtualMethodsWithRTTI - Virtual methods + RTTI together
+15. PolymorphicContainers - RTTI with collections of polymorphic types
+
+### Dependencies
+
+**Infrastructure Components:**
+- TypeidTranslator - typeid expression translation
+- DynamicCastTranslator - dynamic_cast expression translation
+- TypeInfoGenerator - type_info struct generation
+- VirtualMethodAnalyzer - Polymorphism detection (from Phase 9)
+- rtti_runtime.c - Runtime library implementation
+
+**Phase Dependencies:**
+- **Requires: Phase 9 (Virtual Methods)** - RTTI depends on vtable infrastructure
+
+### SOLID Principles
+
+**Single Responsibility:**
+- TypeidTranslator: Only handles typeid expression translation
+- DynamicCastTranslator: Only handles dynamic_cast translation
+- TypeInfoGenerator: Only handles type_info struct generation
+
+**Open/Closed:**
+- Extensible for new type_info variants (virtual inheritance)
+- Can support additional RTTI operations without modification
+
+**Dependency Inversion:**
+- Visitor methods depend on translator abstractions
+- Translators depend on VirtualMethodAnalyzer interface
+- Runtime depends on standard C conventions
+
+### Documentation
+
+**New Documentation Files:**
+- `docs/RTTI_TRANSLATION.md` - Comprehensive RTTI translation guide
+  - typeid operator examples
+  - dynamic_cast examples
+  - Type_info struct reference
+  - Runtime function reference
+  - Best practices and limitations
+
+**Updated Documentation:**
+- `README.md` - Added RTTI feature description and badge
+- `website/src/pages/features.astro` - Added RTTI section
+- `docs/CHANGELOG.md` - This release notes
+
+### Migration Notes
+
+**For Existing Code:**
+- RTTI is enabled by default (--enable-rtti=on)
+- No code changes required for basic RTTI usage
+- Requires Phase 9 (Virtual Methods) for polymorphic RTTI
+
+**Integration with Other Features:**
+- Works seamlessly with virtual methods (Phase 9)
+- Compatible with exception handling (Phase 12)
+- Supports multiple inheritance hierarchies
+
+**Known Limitations:**
+- RTTI only works with polymorphic classes (classes with virtual methods)
+- typeid on non-polymorphic types returns static type
+- dynamic_cast references (not pointers) not yet supported
+- Cross-casting in virtual inheritance planned for future enhancement
+
+### Next Phase
+
+**Phase 14: Advanced Features** will add:
+- Virtual inheritance support
+- Reference dynamic_cast (throws std::bad_cast)
+- typeid on references
+- Extended type_info operations
+
+---
+
 ## Version 2.5.0 - Exception Handling Integration (December 21, 2025)
 
 ### Phase 12: Exception Handling
