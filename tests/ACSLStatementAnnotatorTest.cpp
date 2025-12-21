@@ -10,6 +10,7 @@
 #include <iostream>
 #include <string>
 #include <memory>
+#include <vector>
 
 using namespace clang;
 
@@ -32,6 +33,12 @@ static int tests_failed = 0;
         return; \
     }
 
+// Store AST units to prevent premature destruction
+// FIX: Heap-use-after-free bug - parseFunctionDecl() was returning FunctionDecl*
+// pointers that became dangling when the ASTUnit was destroyed. This vector keeps
+// all ASTUnits alive until program exit, preventing use-after-free crashes.
+static std::vector<std::unique_ptr<ASTUnit>> persistentASTs;
+
 // Helper: Parse C++ code and return FunctionDecl
 FunctionDecl* parseFunctionDecl(const std::string& code, const std::string& funcName) {
     std::unique_ptr<ASTUnit> AST = tooling::buildASTFromCode(code);
@@ -40,14 +47,19 @@ FunctionDecl* parseFunctionDecl(const std::string& code, const std::string& func
     ASTContext& ctx = AST->getASTContext();
     TranslationUnitDecl* TU = ctx.getTranslationUnitDecl();
 
+    FunctionDecl* result = nullptr;
     for (auto* decl : TU->decls()) {
         if (auto* func = dyn_cast<FunctionDecl>(decl)) {
             if (func->getNameAsString() == funcName) {
-                return func;
+                result = func;
+                break;
             }
         }
     }
-    return nullptr;
+
+    // Keep AST alive until program exit to prevent dangling pointers
+    persistentASTs.push_back(std::move(AST));
+    return result;
 }
 
 // ============================================================================
