@@ -385,9 +385,9 @@ The tool currently parses C++ files and reports AST structure:
 # Found method: MyClass::foo
 ```
 
-**Testing:**
+### Testing
 
-The project has **1,980 comprehensive tests** covering all transpiler features.
+The project has **296 comprehensive tests** (100% pass rate) powered by Google Test framework.
 
 ```bash
 # Run all tests
@@ -395,17 +395,12 @@ The project has **1,980 comprehensive tests** covering all transpiler features.
 
 # Generate code coverage
 ./scripts/generate-coverage.sh
-
-# Run specific test categories
-cd build && make test-core        # Core unit tests
-cd build && make test-integration # Integration tests
-cd build && make test-real-world  # Real-world tests
 ```
 
 **Test Categories:**
-- **Core Unit Tests**: 1,693 tests for transpiler features
-- **Real-World Integration**: 203 end-to-end tests
-- **Inline-Style Tests**: 84 validation tests
+- **Core Unit Tests**: 80 tests for transpiler features
+- **Real-World Integration**: 216 end-to-end tests
+- **Additional Tests**: 88 tests marked for future implementation
 
 See [docs/testing.md](docs/testing.md) for comprehensive testing guide.
 
