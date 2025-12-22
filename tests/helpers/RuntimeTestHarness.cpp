@@ -63,6 +63,19 @@ std::string RuntimeTestHarness::createTempFile(const std::string& content, const
     return file_path;
 }
 
+std::string RuntimeTestHarness::createTempHeaderFile(const std::string& content,
+                                                     const std::string& filename) {
+    // Create header file with specific filename
+    std::string file_path = temp_dir_ + "/" + filename;
+
+    if (!writeFile(file_path, content)) {
+        return "";
+    }
+
+    temp_files_.push_back(file_path);
+    return file_path;
+}
+
 bool RuntimeTestHarness::writeFile(const std::string& file_path, const std::string& content) {
     std::ofstream file(file_path);
     if (!file.is_open()) {

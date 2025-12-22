@@ -600,6 +600,41 @@ gtest_discover_tests(RuntimeIntegrationTest
     PROPERTIES LABELS "integration;phase16-01;runtime"
 )
 
+# ============================================================================
+# Phase 16-02: Header Compatibility Testing
+# ============================================================================
+
+# HeaderCompatibilityTest: C/C++ header integration testing
+add_executable(HeaderCompatibilityTest
+    tests/HeaderCompatibilityTest.cpp
+)
+
+target_compile_definitions(HeaderCompatibilityTest PRIVATE ${LLVM_DEFINITIONS})
+
+target_include_directories(HeaderCompatibilityTest PRIVATE
+    ${CMAKE_SOURCE_DIR}/include
+    ${CMAKE_SOURCE_DIR}/tests/helpers
+    ${LLVM_INCLUDE_DIRS}
+    ${CLANG_INCLUDE_DIRS}
+)
+
+target_link_libraries(HeaderCompatibilityTest PRIVATE
+    cpptoc_core
+    runtime_test_helpers
+    clangTooling
+    clangFrontend
+    clangAST
+    clangBasic
+    GTest::gtest
+    GTest::gtest_main
+)
+
+# Register with CTest
+gtest_discover_tests(HeaderCompatibilityTest
+    WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
+    PROPERTIES LABELS "integration;phase16-02;headers"
+)
+
 
 # ============================================================================
 # Epic #19: Header File Generation Tests (Story #137)

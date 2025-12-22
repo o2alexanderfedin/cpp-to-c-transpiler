@@ -92,6 +92,13 @@ public:
     // Get temporary directory path
     const std::string& getTempDir() const { return temp_dir_; }
 
+    // Create temporary header file with given content
+    // @param content: Header file content
+    // @param filename: Header filename (e.g., "point.h")
+    // @return: Path to created header file
+    std::string createTempHeaderFile(const std::string& content,
+                                     const std::string& filename = "custom.h");
+
 private:
     std::string temp_dir_;
     std::vector<std::string> temp_files_;
