@@ -190,7 +190,8 @@ RuntimeTestHarness::ExecutionResult RuntimeTestHarness::execute(
     std::ostringstream cmd;
     cmd << binary_path;
     for (const auto& arg : args) {
-        cmd << " " << arg;
+        // Quote arguments to prevent shell expansion
+        cmd << " '" << arg << "'";
     }
 
     // Create temporary output files

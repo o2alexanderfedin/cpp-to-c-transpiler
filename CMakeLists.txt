@@ -636,6 +636,38 @@ gtest_discover_tests(HeaderCompatibilityTest
 )
 
 
+# ConsoleAppTest: Command-line arguments and File I/O testing
+add_executable(ConsoleAppTest
+    tests/ConsoleAppTest.cpp
+)
+
+target_compile_definitions(ConsoleAppTest PRIVATE ${LLVM_DEFINITIONS})
+
+target_include_directories(ConsoleAppTest PRIVATE
+    ${CMAKE_SOURCE_DIR}/include
+    ${CMAKE_SOURCE_DIR}/tests/helpers
+    ${LLVM_INCLUDE_DIRS}
+    ${CLANG_INCLUDE_DIRS}
+)
+
+target_link_libraries(ConsoleAppTest PRIVATE
+    cpptoc_core
+    runtime_test_helpers
+    clangTooling
+    clangFrontend
+    clangAST
+    clangBasic
+    GTest::gtest
+    GTest::gtest_main
+)
+
+# Register with CTest
+gtest_discover_tests(ConsoleAppTest
+    WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
+    PROPERTIES LABELS "integration;phase16-03;console"
+)
+
+
 # ============================================================================
 # Epic #19: Header File Generation Tests (Story #137)
 # ============================================================================
