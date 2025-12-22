@@ -2933,33 +2933,34 @@ gtest_discover_tests(ACSLLoopAnnotatorTest
 )
 
 # Story #198: ACSLClassAnnotator tests
-add_executable(ACSLClassAnnotatorTest
-    tests/ACSLClassAnnotatorTest.cpp
-)
-
-target_compile_definitions(ACSLClassAnnotatorTest PRIVATE ${LLVM_DEFINITIONS})
-
-target_include_directories(ACSLClassAnnotatorTest PRIVATE
-    ${CMAKE_SOURCE_DIR}/include
-    ${LLVM_INCLUDE_DIRS}
-    ${CLANG_INCLUDE_DIRS}
-)
-
-target_link_libraries(ACSLClassAnnotatorTest PRIVATE
-    cpptoc_core
-    clangTooling
-    clangFrontend
-    clangAST
-    clangBasic
-GTest::gtest
-    GTest::gtest_main
-)
-
-# Register with CTest
-gtest_discover_tests(ACSLClassAnnotatorTest
-    WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
-    PROPERTIES LABELS "unit;phase15-03"
-)
+# TODO: Uncomment when tests/ACSLClassAnnotatorTest.cpp is created
+# add_executable(ACSLClassAnnotatorTest
+#     tests/ACSLClassAnnotatorTest.cpp
+# )
+#
+# target_compile_definitions(ACSLClassAnnotatorTest PRIVATE ${LLVM_DEFINITIONS})
+#
+# target_include_directories(ACSLClassAnnotatorTest PRIVATE
+#     ${CMAKE_SOURCE_DIR}/include
+#     ${LLVM_INCLUDE_DIRS}
+#     ${CLANG_INCLUDE_DIRS}
+# )
+#
+# target_link_libraries(ACSLClassAnnotatorTest PRIVATE
+#     cpptoc_core
+#     clangTooling
+#     clangFrontend
+#     clangAST
+#     clangBasic
+# GTest::gtest
+#     GTest::gtest_main
+# )
+#
+# # Register with CTest
+# gtest_discover_tests(ACSLClassAnnotatorTest
+#     WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
+#     PROPERTIES LABELS "unit;phase15-03"
+# )
 
 
 # Phase 1 (v1.18.0): ACSLStatementAnnotator tests
@@ -2989,33 +2990,34 @@ gtest_discover_tests(ACSLStatementAnnotatorTest
 )
 
 # Phase 2 (v1.19.0): ACSLTypeInvariantGenerator tests
-add_executable(ACSLTypeInvariantGeneratorTest
-    tests/ACSLTypeInvariantGeneratorTest.cpp
-)
-
-target_compile_definitions(ACSLTypeInvariantGeneratorTest PRIVATE ${LLVM_DEFINITIONS})
-
-target_include_directories(ACSLTypeInvariantGeneratorTest PRIVATE
-    ${CMAKE_SOURCE_DIR}/include
-    ${LLVM_INCLUDE_DIRS}
-    ${CLANG_INCLUDE_DIRS}
-)
-
-target_link_libraries(ACSLTypeInvariantGeneratorTest PRIVATE
-    cpptoc_core
-    clangTooling
-    clangFrontend
-    clangAST
-    clangBasic
-GTest::gtest
-    GTest::gtest_main
-)
-
-# Register with CTest
-gtest_discover_tests(ACSLTypeInvariantGeneratorTest
-    WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
-    PROPERTIES LABELS "unit;phase15-03"
-)
+# TODO: Uncomment when tests/ACSLTypeInvariantGeneratorTest.cpp is created
+# add_executable(ACSLTypeInvariantGeneratorTest
+#     tests/ACSLTypeInvariantGeneratorTest.cpp
+# )
+#
+# target_compile_definitions(ACSLTypeInvariantGeneratorTest PRIVATE ${LLVM_DEFINITIONS})
+#
+# target_include_directories(ACSLTypeInvariantGeneratorTest PRIVATE
+#     ${CMAKE_SOURCE_DIR}/include
+#     ${LLVM_INCLUDE_DIRS}
+#     ${CLANG_INCLUDE_DIRS}
+# )
+#
+# target_link_libraries(ACSLTypeInvariantGeneratorTest PRIVATE
+#     cpptoc_core
+#     clangTooling
+#     clangFrontend
+#     clangAST
+#     clangBasic
+# GTest::gtest
+#     GTest::gtest_main
+# )
+#
+# # Register with CTest
+# gtest_discover_tests(ACSLTypeInvariantGeneratorTest
+#     WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
+#     PROPERTIES LABELS "unit;phase15-03"
+# )
 
 
 # Phase 3 (v1.20.0): ACSLAxiomaticBuilder tests
@@ -3049,63 +3051,65 @@ gtest_discover_tests(ACSLAxiomaticBuilderTest
 
 
 # Phase 4 (v1.21.0): ACSLGhostCodeInjector tests
-add_executable(ACSLGhostCodeInjectorTest
-    tests/ACSLGhostCodeInjectorTest.cpp
-)
-
-target_compile_definitions(ACSLGhostCodeInjectorTest PRIVATE ${LLVM_DEFINITIONS})
-
-target_include_directories(ACSLGhostCodeInjectorTest PRIVATE
-    ${CMAKE_SOURCE_DIR}/include
-    ${LLVM_INCLUDE_DIRS}
-    ${CLANG_INCLUDE_DIRS}
-)
-
-target_link_libraries(ACSLGhostCodeInjectorTest PRIVATE
-    cpptoc_core
-    clangTooling
-    clangFrontend
-    clangAST
-    clangBasic
-GTest::gtest
-    GTest::gtest_main
-)
-
-# Register with CTest
-gtest_discover_tests(ACSLGhostCodeInjectorTest
-    WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
-    PROPERTIES LABELS "unit;phase15-03"
-)
+# TODO: Uncomment when tests/ACSLGhostCodeInjectorTest.cpp is created
+# add_executable(ACSLGhostCodeInjectorTest
+#     tests/ACSLGhostCodeInjectorTest.cpp
+# )
+#
+# target_compile_definitions(ACSLGhostCodeInjectorTest PRIVATE ${LLVM_DEFINITIONS})
+#
+# target_include_directories(ACSLGhostCodeInjectorTest PRIVATE
+#     ${CMAKE_SOURCE_DIR}/include
+#     ${LLVM_INCLUDE_DIRS}
+#     ${CLANG_INCLUDE_DIRS}
+# )
+#
+# target_link_libraries(ACSLGhostCodeInjectorTest PRIVATE
+#     cpptoc_core
+#     clangTooling
+#     clangFrontend
+#     clangAST
+#     clangBasic
+# GTest::gtest
+#     GTest::gtest_main
+# )
+#
+# # Register with CTest
+# gtest_discover_tests(ACSLGhostCodeInjectorTest
+#     WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
+#     PROPERTIES LABELS "unit;phase15-03"
+# )
 
 
 # Phase 5 (v1.22.0): ACSLBehaviorAnnotator tests
-add_executable(ACSLBehaviorAnnotatorTest
-    tests/ACSLBehaviorAnnotatorTest.cpp
-)
-
-target_compile_definitions(ACSLBehaviorAnnotatorTest PRIVATE ${LLVM_DEFINITIONS})
-
-target_include_directories(ACSLBehaviorAnnotatorTest PRIVATE
-    ${CMAKE_SOURCE_DIR}/include
-    ${LLVM_INCLUDE_DIRS}
-    ${CLANG_INCLUDE_DIRS}
-)
-
-target_link_libraries(ACSLBehaviorAnnotatorTest PRIVATE
-    cpptoc_core
-    clangTooling
-    clangFrontend
-    clangAST
-    clangBasic
-GTest::gtest
-    GTest::gtest_main
-)
-
-# Register with CTest
-gtest_discover_tests(ACSLBehaviorAnnotatorTest
-    WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
-    PROPERTIES LABELS "unit;phase15-03"
-)
+# TODO: Uncomment when tests/ACSLBehaviorAnnotatorTest.cpp is created
+# add_executable(ACSLBehaviorAnnotatorTest
+#     tests/ACSLBehaviorAnnotatorTest.cpp
+# )
+#
+# target_compile_definitions(ACSLBehaviorAnnotatorTest PRIVATE ${LLVM_DEFINITIONS})
+#
+# target_include_directories(ACSLBehaviorAnnotatorTest PRIVATE
+#     ${CMAKE_SOURCE_DIR}/include
+#     ${LLVM_INCLUDE_DIRS}
+#     ${CLANG_INCLUDE_DIRS}
+# )
+#
+# target_link_libraries(ACSLBehaviorAnnotatorTest PRIVATE
+#     cpptoc_core
+#     clangTooling
+#     clangFrontend
+#     clangAST
+#     clangBasic
+# GTest::gtest
+#     GTest::gtest_main
+# )
+#
+# # Register with CTest
+# gtest_discover_tests(ACSLBehaviorAnnotatorTest
+#     WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
+#     PROPERTIES LABELS "unit;phase15-03"
+# )
 
 
 # Phase 6 (v1.23.0): ACSLMemoryPredicateAnalyzer tests
