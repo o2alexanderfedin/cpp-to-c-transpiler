@@ -5,37 +5,36 @@
 #include <gtest/gtest.h>
 #include "IncludeGuardGenerator.h"
 
-using namespace clang;
 
-TEST(IncludeGuardGenerator, SimpleFilenameToGuardName) {
+TEST(TEST, IncludeGuardGenerator) {
     IncludeGuardGenerator generator;
         std::string guardName = generator.generateGuardName("Point.h");
 
         ASSERT_TRUE(guardName == "POINT_H") << "Expected 'POINT_H', got '" + guardName + "'";
 }
 
-TEST(IncludeGuardGenerator, CamelCaseFilename) {
+TEST(TEST, IncludeGuardGenerator) {
     IncludeGuardGenerator generator;
         std::string guardName = generator.generateGuardName("MyClass.h");
 
         ASSERT_TRUE(guardName == "MYCLASS_H") << "Expected 'MYCLASS_H', got '" + guardName + "'";
 }
 
-TEST(IncludeGuardGenerator, HyphenatedFilename) {
+TEST(TEST, IncludeGuardGenerator) {
     IncludeGuardGenerator generator;
         std::string guardName = generator.generateGuardName("my-class.h");
 
         ASSERT_TRUE(guardName == "MY_CLASS_H") << "Expected 'MY_CLASS_H', got '" + guardName + "'";
 }
 
-TEST(IncludeGuardGenerator, UnderscoredFilename) {
+TEST(TEST, IncludeGuardGenerator) {
     IncludeGuardGenerator generator;
         std::string guardName = generator.generateGuardName("name_space_class.h");
 
         ASSERT_TRUE(guardName == "NAME_SPACE_CLASS_H") << "Expected 'NAME_SPACE_CLASS_H', got '" + guardName + "'";
 }
 
-TEST(IncludeGuardGenerator, GuardEmission) {
+TEST(TEST, IncludeGuardGenerator) {
     IncludeGuardGenerator generator;
         std::string guardName = "POINT_H";
 
@@ -51,7 +50,7 @@ TEST(IncludeGuardGenerator, GuardEmission) {
         ASSERT_TRUE(guardEnd.find("POINT_H") != std::string::npos) << "Expected 'POINT_H' comment in guard end";
 }
 
-TEST(IncludeGuardGenerator, PragmaOnceGuardBegin) {
+TEST(TEST, IncludeGuardGenerator) {
     IncludeGuardGenerator generator(true); // Enable pragma once mode
         std::string guardName = "POINT_H";
 
@@ -65,7 +64,7 @@ TEST(IncludeGuardGenerator, PragmaOnceGuardBegin) {
         ASSERT_TRUE(guardBegin.find("#define") == std::string::npos) << "Should not contain '#define' in pragma once mode";
 }
 
-TEST(IncludeGuardGenerator, PragmaOnceGuardEnd) {
+TEST(TEST, IncludeGuardGenerator) {
     IncludeGuardGenerator generator(true); // Enable pragma once mode
         std::string guardName = "POINT_H";
 
@@ -75,7 +74,7 @@ TEST(IncludeGuardGenerator, PragmaOnceGuardEnd) {
         ASSERT_TRUE(guardEnd.find("#endif") == std::string::npos) << "Should not contain '#endif' in pragma once mode";
 }
 
-TEST(IncludeGuardGenerator, TraditionalModeExplicit) {
+TEST(TEST, IncludeGuardGenerator) {
     IncludeGuardGenerator generator(false); // Explicitly disable pragma once
         std::string guardName = "TEST_H";
 
@@ -88,7 +87,7 @@ TEST(IncludeGuardGenerator, TraditionalModeExplicit) {
         ASSERT_TRUE(guardEnd.find("#endif") != std::string::npos) << "Expected '#endif' in traditional mode";
 }
 
-TEST(IncludeGuardGenerator, ModeToggle) {
+TEST(TEST, IncludeGuardGenerator) {
     IncludeGuardGenerator generator;
         std::string guardName = "TOGGLE_H";
 
@@ -107,7 +106,7 @@ TEST(IncludeGuardGenerator, ModeToggle) {
         ASSERT_TRUE(guardBegin3.find("#ifndef") != std::string::npos) << "Should use traditional guards after disabling pragma once";
 }
 
-TEST(IncludeGuardGenerator, FilenameWithPath) {
+TEST(TEST, IncludeGuardGenerator) {
     IncludeGuardGenerator generator;
         std::string guardName = generator.generateGuardName("include/Point.h");
 
