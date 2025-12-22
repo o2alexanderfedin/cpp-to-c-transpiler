@@ -10,11 +10,6 @@ std::unique_ptr<ASTUnit> buildAST(const char *code) {
     return tooling::buildASTFromCode(code);
 }
 
-    if (!(cond)) { \
-        std::cerr << "\nASSERT FAILED: " << msg << std::endl; \
-        return; \
-    }
-
 // Test fixture
 class NameManglerTest : public ::testing::Test {
 protected:

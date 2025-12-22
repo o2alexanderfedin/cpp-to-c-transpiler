@@ -22,12 +22,6 @@
 
 using namespace clang;
 
-// Test helper macros
-    if (!(cond)) { \
-        std::cerr << "\nASSERT FAILED: " << msg << std::endl; \
-        return; \
-    }
-
 std::unique_ptr<ASTUnit> buildAST(const char *code) {
     std::vector<std::string> args = {"-std=c++17"};
     return tooling::buildASTFromCodeWithArgs(code, args, "test.cpp");

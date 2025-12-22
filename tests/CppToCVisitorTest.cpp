@@ -23,11 +23,6 @@ protected:
 };
 
 TEST_F(CppToCVisitorTest, EmptyClass) {
-    // Build AST for test
-    const char *code = R"(int main() { return 0; })";
-    std::unique_ptr<ASTUnit> AST = buildAST(code);
-    ASTContext &Ctx = AST->getASTContext();
-
     const char *cpp = "class Empty {};";
         std::unique_ptr<ASTUnit> AST = buildAST(cpp);
         ASSERT_TRUE(AST) << "Failed to parse C++ code";
@@ -45,11 +40,6 @@ TEST_F(CppToCVisitorTest, EmptyClass) {
 }
 
 TEST_F(CppToCVisitorTest, ClassWithFields) {
-    // Build AST for test
-    const char *code = R"(int main() { return 0; })";
-    std::unique_ptr<ASTUnit> AST = buildAST(code);
-    ASTContext &Ctx = AST->getASTContext();
-
     const char *cpp = "class Point { int x, y; };";
         std::unique_ptr<ASTUnit> AST = buildAST(cpp);
         ASSERT_TRUE(AST) << "Failed to parse C++ code";
@@ -70,11 +60,7 @@ TEST_F(CppToCVisitorTest, ClassWithFields) {
         ASSERT_TRUE(fieldCount == 2) << "Expected 2 fields, got different count";
 }
 
-TEST_F(CppToCVisitorTest, MixedAccessSpecifiers:_public/private__>_all_public_in_C) {
-    // Build AST for test
-    const char *code = R"(int main() { return 0; })";
-    std::unique_ptr<ASTUnit> AST = buildAST(code);
-    ASTContext &Ctx = AST->getASTContext();
+TEST_F(CppToCVisitorTest, MixedAccessSpecifiers) {
 
     const char *cpp = R"(
             class Point {
@@ -102,15 +88,10 @@ TEST_F(CppToCVisitorTest, MixedAccessSpecifiers:_public/private__>_all_public_in
         for (auto *Field : CStruct->fields()) {
             fieldCount++;
         }
-        ASSERT_TRUE(fieldCount == 3) << "Expected 3 fields (all access levels;");
+        ASSERT_TRUE(fieldCount == 3) << "Expected 3 fields (all access levels)";
 }
 
-TEST_F(CppToCVisitorTest, ForwardDeclaration:_class_Forward;__>_skip) {
-    // Build AST for test
-    const char *code = R"(int main() { return 0; })";
-    std::unique_ptr<ASTUnit> AST = buildAST(code);
-    ASTContext &Ctx = AST->getASTContext();
-
+TEST_F(CppToCVisitorTest, ForwardDeclaration) {
     const char *cpp = "class Forward;";
         std::unique_ptr<ASTUnit> AST = buildAST(cpp);
         ASSERT_TRUE(AST) << "Failed to parse C++ code";
@@ -125,15 +106,8 @@ TEST_F(CppToCVisitorTest, ForwardDeclaration:_class_Forward;__>_skip) {
         ASSERT_TRUE(CStruct == nullptr) << "Forward declaration should be skipped";
 }
 
-TEST_F(CppToCVisitorTest, SimpleMethod:_int_getX__>_int_Point_getX(struct_Point_*this)) {
-    // Build AST for test
-    const char *code = R"(int main() { return 0; })";
-    std::unique_ptr<ASTUnit> AST = buildAST(code);
-    ASTContext &Ctx = AST->getASTContext();
-
-    -> int Point_getX(struct Point *this)");
-
-        const char *cpp = R"(
+TEST_F(CppToCVisitorTest, SimpleMethod) {
+    const char *cpp = R"(
             class Point {
                 int x;
             public:
@@ -151,19 +125,12 @@ TEST_F(CppToCVisitorTest, SimpleMethod:_int_getX__>_int_Point_getX(struct_Point_
         // Verify C function generated with correct signature
         FunctionDecl *CFunc = visitor.getCFunc("Point_getX");
         ASSERT_TRUE(CFunc != nullptr) << "C function not generated";
-        ASSERT_TRUE(CFunc->getNumParams() == 1) << "Expected 1 parameter (this;");
+        ASSERT_TRUE(CFunc->getNumParams() == 1) << "Expected 1 parameter (this)";
         ASSERT_TRUE(CFunc->getParamDecl(0)->getName() == "this") << "First param should be 'this'";
 }
 
-TEST_F(CppToCVisitorTest, MethodWithParams:_void_setX(int_x)__>_void_Point_setX(struct_Point_*this,_int_x)) {
-    // Build AST for test
-    const char *code = R"(int main() { return 0; })";
-    std::unique_ptr<ASTUnit> AST = buildAST(code);
-    ASTContext &Ctx = AST->getASTContext();
-
-    -> void Point_setX(struct Point *this, int x)");
-
-        const char *cpp = R"(
+TEST_F(CppToCVisitorTest, MethodWithParams) {
+    const char *cpp = R"(
             class Point {
                 int x;
             public:
@@ -185,7 +152,7 @@ TEST_F(CppToCVisitorTest, MethodWithParams:_void_setX(int_x)__>_void_Point_setX(
         ASSERT_TRUE(CFunc->getParamDecl(1)->getName() == "val") << "Second param should be 'val'";
 }
 
-TEST_F(CppToCVisitorTest, SkipVirtual:_virtual_void_foo__>_skip_(no_function_generated)) {
+TEST_F(CppToCVisitorTest, SkipVirtual) {
     // Build AST for test
     const char *code = R"(int main() { return 0; })";
     std::unique_ptr<ASTUnit> AST = buildAST(code);
@@ -212,7 +179,7 @@ TEST_F(CppToCVisitorTest, SkipVirtual:_virtual_void_foo__>_skip_(no_function_gen
         ASSERT_TRUE(CFunc == nullptr) << "Virtual method should be skipped";
 }
 
-TEST_F(CppToCVisitorTest, ImplicitThisRead:_return_x;__>_return_this_>x;) {
+TEST_F(CppToCVisitorTest, ImplicitthisreadReturnXReturnThisX) {
     // Build AST for test
     const char *code = R"(int main() { return 0; })";
     std::unique_ptr<ASTUnit> AST = buildAST(code);
@@ -242,7 +209,7 @@ TEST_F(CppToCVisitorTest, ImplicitThisRead:_return_x;__>_return_this_>x;) {
         ASSERT_TRUE(Body != nullptr) << "Function body not translated";
 }
 
-TEST_F(CppToCVisitorTest, ImplicitThisWrite:_x_=_val;__>_this_>x_=_val;) {
+TEST_F(CppToCVisitorTest, ImplicitthiswriteX=ValThisX=Val) {
     // Build AST for test
     const char *code = R"(int main() { return 0; })";
     std::unique_ptr<ASTUnit> AST = buildAST(code);
@@ -272,7 +239,7 @@ TEST_F(CppToCVisitorTest, ImplicitThisWrite:_x_=_val;__>_this_>x_=_val;) {
         ASSERT_TRUE(Body != nullptr) << "Function body not translated";
 }
 
-TEST_F(CppToCVisitorTest, ExplicitMemberAccess:_obj.x_preserved_in_translation) {
+TEST_F(CppToCVisitorTest, ExplicitmemberaccessObj.xPreservedInTranslation) {
     // Build AST for test
     const char *code = R"(int main() { return 0; })";
     std::unique_ptr<ASTUnit> AST = buildAST(code);
@@ -301,7 +268,7 @@ TEST_F(CppToCVisitorTest, ExplicitMemberAccess:_obj.x_preserved_in_translation) 
         ASSERT_TRUE(Body != nullptr) << "Function body not translated";
 }
 
-TEST_F(CppToCVisitorTest, MultipleFieldAccess:_return_width_*_height;) {
+TEST_F(CppToCVisitorTest, MultiplefieldaccessReturnWidthHeight) {
     // Build AST for test
     const char *code = R"(int main() { return 0; })";
     std::unique_ptr<ASTUnit> AST = buildAST(code);
@@ -331,7 +298,7 @@ TEST_F(CppToCVisitorTest, MultipleFieldAccess:_return_width_*_height;) {
         ASSERT_TRUE(Body != nullptr) << "Function body not translated";
 }
 
-TEST_F(CppToCVisitorTest, DefaultConstructor:_Point_{}__>_void_Point__ctor(struct_Point_*this)_{}) {
+TEST_F(CppToCVisitorTest, DefaultconstructorPointVoidPointCtorStructPointThis)_{}) {
     // Build AST for test
     const char *code = R"(int main() { return 0; })";
     std::unique_ptr<ASTUnit> AST = buildAST(code);
@@ -361,7 +328,7 @@ TEST_F(CppToCVisitorTest, DefaultConstructor:_Point_{}__>_void_Point__ctor(struc
         ASSERT_TRUE(CFunc->getReturnType()->isVoidType()) << "Constructor should return void";
 }
 
-TEST_F(CppToCVisitorTest, MemberInitializers:_Point(int_x,_int_y)_:_x(x),_y(y)_{}) {
+TEST_F(CppToCVisitorTest, MemberinitializersPointIntXIntY)_:_x(x),_y(y)_{}) {
     // Build AST for test
     const char *code = R"(int main() { return 0; })";
     std::unique_ptr<ASTUnit> AST = buildAST(code);
@@ -394,7 +361,7 @@ TEST_F(CppToCVisitorTest, MemberInitializers:_Point(int_x,_int_y)_:_x(x),_y(y)_{
         ASSERT_TRUE(Body != nullptr) << "Constructor body not translated";
 }
 
-TEST_F(CppToCVisitorTest, ConstructorWithBody:_Constructor_with_statements_in_body) {
+TEST_F(CppToCVisitorTest, ConstructorwithbodyConstructorWithStatementsInBody) {
     // Build AST for test
     const char *code = R"(int main() { return 0; })";
     std::unique_ptr<ASTUnit> AST = buildAST(code);
@@ -426,7 +393,7 @@ TEST_F(CppToCVisitorTest, ConstructorWithBody:_Constructor_with_statements_in_bo
         ASSERT_TRUE(Body != nullptr) << "Constructor body not translated";
 }
 
-TEST_F(CppToCVisitorTest, DestructorTranslation:_Destructor_translation) {
+TEST_F(CppToCVisitorTest, DestructortranslationDestructorTranslation) {
     // Build AST for test
     const char *code = R"(int main() { return 0; })";
     std::unique_ptr<ASTUnit> AST = buildAST(code);
