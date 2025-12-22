@@ -22,7 +22,7 @@ class CppToCVisitorTest : public ::testing::Test {
 protected:
 };
 
-TEST_F(CppToCVisitorTest, EmptyClass:_class_Empty_{}__>_struct_Empty_{}) {
+TEST_F(CppToCVisitorTest, EmptyClass) {
     // Build AST for test
     const char *code = R"(int main() { return 0; })";
     std::unique_ptr<ASTUnit> AST = buildAST(code);
@@ -44,7 +44,7 @@ TEST_F(CppToCVisitorTest, EmptyClass:_class_Empty_{}__>_struct_Empty_{}) {
         ASSERT_TRUE(CStruct->getName() == "Empty") << "Struct name mismatch";
 }
 
-TEST_F(CppToCVisitorTest, ClassWithFields:_class_Point_{_int_x,_y;_}) {
+TEST_F(CppToCVisitorTest, ClassWithFields) {
     // Build AST for test
     const char *code = R"(int main() { return 0; })";
     std::unique_ptr<ASTUnit> AST = buildAST(code);

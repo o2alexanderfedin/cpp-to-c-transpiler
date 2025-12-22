@@ -170,6 +170,11 @@ enable_testing()
 include(GoogleTest)
 
 # ============================================================================
+# Test Helpers (Phase 16-01: Runtime Integration Testing)
+# ============================================================================
+add_subdirectory(tests/helpers)
+
+# ============================================================================
 # Real-World Test Suites (Phase 15-01: GTest Migration)
 # ============================================================================
 add_subdirectory(tests/real-world/json-parser)
@@ -227,6 +232,7 @@ add_library(cpptoc_core STATIC
     src/TemplateInstantiationTracker.cpp
     src/TypeidTranslator.cpp
     src/DynamicCastTranslator.cpp
+    src/RuntimeConfig.cpp
 )
 
 target_compile_definitions(cpptoc_core PRIVATE ${LLVM_DEFINITIONS})
@@ -290,12 +296,17 @@ target_include_directories(CppToCVisitorTest PRIVATE
     ${CLANG_INCLUDE_DIRS}
 )
 
-target_link_libraries(CppToCVisitorTest PRIVATE
-    cpptoc_core
+target_link_libraries(CppToCVisitorTest PRIVATE cpptoc_core
     clangTooling
     clangFrontend
     clangAST
     clangBasic
+    GTest::gtest
+    GTest::gtest_main)
+
+# Register with CTest
+gtest_discover_tests(CppToCVisitorTest
+    WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
 )
 
 # Story #18: NameMangler tests
@@ -311,12 +322,17 @@ target_include_directories(NameManglerTest PRIVATE
     ${CLANG_INCLUDE_DIRS}
 )
 
-target_link_libraries(NameManglerTest PRIVATE
-    cpptoc_core
+target_link_libraries(NameManglerTest PRIVATE cpptoc_core
     clangTooling
     clangFrontend
     clangAST
     clangBasic
+    GTest::gtest
+    GTest::gtest_main)
+
+# Register with CTest
+gtest_discover_tests(NameManglerTest
+    WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
 )
 
 # Story #66: Overload Resolution via Parameter Type Encoding tests
@@ -332,12 +348,17 @@ target_include_directories(OverloadResolutionTest PRIVATE
     ${CLANG_INCLUDE_DIRS}
 )
 
-target_link_libraries(OverloadResolutionTest PRIVATE
-    cpptoc_core
+target_link_libraries(OverloadResolutionTest PRIVATE cpptoc_core
     clangTooling
     clangFrontend
     clangAST
     clangBasic
+    GTest::gtest
+    GTest::gtest_main)
+
+# Register with CTest
+gtest_discover_tests(OverloadResolutionTest
+    WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
 )
 
 # Story #67: Template Instantiation Extraction tests
@@ -354,12 +375,17 @@ target_include_directories(TemplateExtractorTest PRIVATE
     ${CLANG_INCLUDE_DIRS}
 )
 
-target_link_libraries(TemplateExtractorTest PRIVATE
-    cpptoc_core
+target_link_libraries(TemplateExtractorTest PRIVATE cpptoc_core
     clangTooling
     clangFrontend
     clangAST
     clangBasic
+    GTest::gtest
+    GTest::gtest_main)
+
+# Register with CTest
+gtest_discover_tests(TemplateExtractorTest
+    WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
 )
 
 # Story #68: Template Monomorphization and Code Generation tests
@@ -377,12 +403,17 @@ target_include_directories(MonomorphizationTest PRIVATE
     ${CLANG_INCLUDE_DIRS}
 )
 
-target_link_libraries(MonomorphizationTest PRIVATE
-    cpptoc_core
+target_link_libraries(MonomorphizationTest PRIVATE cpptoc_core
     clangTooling
     clangFrontend
     clangAST
     clangBasic
+    GTest::gtest
+    GTest::gtest_main)
+
+# Register with CTest
+gtest_discover_tests(MonomorphizationTest
+    WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
 )
 
 # Story #69: STL Container Support and Integration Testing
@@ -400,12 +431,17 @@ target_include_directories(STLIntegrationTest PRIVATE
     ${CLANG_INCLUDE_DIRS}
 )
 
-target_link_libraries(STLIntegrationTest PRIVATE
-    cpptoc_core
+target_link_libraries(STLIntegrationTest PRIVATE cpptoc_core
     clangTooling
     clangFrontend
     clangAST
     clangBasic
+    GTest::gtest
+    GTest::gtest_main)
+
+# Register with CTest
+gtest_discover_tests(STLIntegrationTest
+    WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
 )
 
 # Phase 11: Template Integration Test (v2.4.0)
@@ -423,12 +459,17 @@ target_include_directories(TemplateIntegrationTest PRIVATE
     ${CLANG_INCLUDE_DIRS}
 )
 
-target_link_libraries(TemplateIntegrationTest PRIVATE
-    cpptoc_core
+target_link_libraries(TemplateIntegrationTest PRIVATE cpptoc_core
     clangTooling
     clangFrontend
     clangAST
     clangBasic
+    GTest::gtest
+    GTest::gtest_main)
+
+# Register with CTest
+gtest_discover_tests(TemplateIntegrationTest
+    WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
 )
 
 # Story #20: Translation Integration Tests
@@ -444,12 +485,17 @@ target_include_directories(TranslationIntegrationTest PRIVATE
     ${CLANG_INCLUDE_DIRS}
 )
 
-target_link_libraries(TranslationIntegrationTest PRIVATE
-    cpptoc_core
+target_link_libraries(TranslationIntegrationTest PRIVATE cpptoc_core
     clangTooling
     clangFrontend
     clangAST
     clangBasic
+    GTest::gtest
+    GTest::gtest_main)
+
+# Register with CTest
+gtest_discover_tests(TranslationIntegrationTest
+    WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
 )
 
 # ============================================================================
@@ -519,6 +565,108 @@ gtest_discover_tests(ValidationTest
     PROPERTIES LABELS "unit;phase15-03"
 )
 
+# ============================================================================
+# Phase 16-01: Runtime Integration Testing
+# ============================================================================
+
+# RuntimeIntegrationTest: Systematic compile/execute testing framework
+add_executable(RuntimeIntegrationTest
+    tests/RuntimeIntegrationTest.cpp
+)
+
+target_compile_definitions(RuntimeIntegrationTest PRIVATE ${LLVM_DEFINITIONS})
+
+target_include_directories(RuntimeIntegrationTest PRIVATE
+    ${CMAKE_SOURCE_DIR}/include
+    ${CMAKE_SOURCE_DIR}/tests/helpers
+    ${LLVM_INCLUDE_DIRS}
+    ${CLANG_INCLUDE_DIRS}
+)
+
+target_link_libraries(RuntimeIntegrationTest PRIVATE
+    cpptoc_core
+    runtime_test_helpers
+    clangTooling
+    clangFrontend
+    clangAST
+    clangBasic
+    GTest::gtest
+    GTest::gtest_main
+)
+
+# Register with CTest
+gtest_discover_tests(RuntimeIntegrationTest
+    WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
+    PROPERTIES LABELS "integration;phase16-01;runtime"
+)
+
+# ============================================================================
+# Phase 16-02: Header Compatibility Testing
+# ============================================================================
+
+# HeaderCompatibilityTest: C/C++ header integration testing
+add_executable(HeaderCompatibilityTest
+    tests/HeaderCompatibilityTest.cpp
+)
+
+target_compile_definitions(HeaderCompatibilityTest PRIVATE ${LLVM_DEFINITIONS})
+
+target_include_directories(HeaderCompatibilityTest PRIVATE
+    ${CMAKE_SOURCE_DIR}/include
+    ${CMAKE_SOURCE_DIR}/tests/helpers
+    ${LLVM_INCLUDE_DIRS}
+    ${CLANG_INCLUDE_DIRS}
+)
+
+target_link_libraries(HeaderCompatibilityTest PRIVATE
+    cpptoc_core
+    runtime_test_helpers
+    clangTooling
+    clangFrontend
+    clangAST
+    clangBasic
+    GTest::gtest
+    GTest::gtest_main
+)
+
+# Register with CTest
+gtest_discover_tests(HeaderCompatibilityTest
+    WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
+    PROPERTIES LABELS "integration;phase16-02;headers"
+)
+
+
+# ConsoleAppTest: Command-line arguments and File I/O testing
+add_executable(ConsoleAppTest
+    tests/ConsoleAppTest.cpp
+)
+
+target_compile_definitions(ConsoleAppTest PRIVATE ${LLVM_DEFINITIONS})
+
+target_include_directories(ConsoleAppTest PRIVATE
+    ${CMAKE_SOURCE_DIR}/include
+    ${CMAKE_SOURCE_DIR}/tests/helpers
+    ${LLVM_INCLUDE_DIRS}
+    ${CLANG_INCLUDE_DIRS}
+)
+
+target_link_libraries(ConsoleAppTest PRIVATE
+    cpptoc_core
+    runtime_test_helpers
+    clangTooling
+    clangFrontend
+    clangAST
+    clangBasic
+    GTest::gtest
+    GTest::gtest_main
+)
+
+# Register with CTest
+gtest_discover_tests(ConsoleAppTest
+    WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
+    PROPERTIES LABELS "integration;phase16-03;console"
+)
+
 
 # ============================================================================
 # Epic #19: Header File Generation Tests (Story #137)
@@ -537,12 +685,17 @@ target_include_directories(HeaderSeparatorTest PRIVATE
     ${CLANG_INCLUDE_DIRS}
 )
 
-target_link_libraries(HeaderSeparatorTest PRIVATE
-    cpptoc_core
+target_link_libraries(HeaderSeparatorTest PRIVATE cpptoc_core
     clangTooling
     clangFrontend
     clangAST
     clangBasic
+    GTest::gtest
+    GTest::gtest_main)
+
+# Register with CTest
+gtest_discover_tests(HeaderSeparatorTest
+    WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
 )
 
 # Story #138: Include Guard Generation tests
@@ -558,12 +711,17 @@ target_include_directories(IncludeGuardGeneratorTest PRIVATE
     ${CLANG_INCLUDE_DIRS}
 )
 
-target_link_libraries(IncludeGuardGeneratorTest PRIVATE
-    cpptoc_core
+target_link_libraries(IncludeGuardGeneratorTest PRIVATE cpptoc_core
     clangTooling
     clangFrontend
     clangAST
     clangBasic
+    GTest::gtest
+    GTest::gtest_main)
+
+# Register with CTest
+gtest_discover_tests(IncludeGuardGeneratorTest
+    WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
 )
 
 # Story #139: Forward Declaration Support tests
@@ -579,12 +737,17 @@ target_include_directories(ForwardDeclTest PRIVATE
     ${CLANG_INCLUDE_DIRS}
 )
 
-target_link_libraries(ForwardDeclTest PRIVATE
-    cpptoc_core
+target_link_libraries(ForwardDeclTest PRIVATE cpptoc_core
     clangTooling
     clangFrontend
     clangAST
     clangBasic
+    GTest::gtest
+    GTest::gtest_main)
+
+# Register with CTest
+gtest_discover_tests(ForwardDeclTest
+    WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
 )
 
 # Story #140: Dependency Tracking tests
@@ -600,12 +763,17 @@ target_include_directories(DependencyAnalyzerTest PRIVATE
     ${CLANG_INCLUDE_DIRS}
 )
 
-target_link_libraries(DependencyAnalyzerTest PRIVATE
-    cpptoc_core
+target_link_libraries(DependencyAnalyzerTest PRIVATE cpptoc_core
     clangTooling
     clangFrontend
     clangAST
     clangBasic
+    GTest::gtest
+    GTest::gtest_main)
+
+# Register with CTest
+gtest_discover_tests(DependencyAnalyzerTest
+    WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
 )
 
 # Dependency Graph Visualizer tests
@@ -621,12 +789,17 @@ target_include_directories(DependencyGraphVisualizerTest PRIVATE
     ${CLANG_INCLUDE_DIRS}
 )
 
-target_link_libraries(DependencyGraphVisualizerTest PRIVATE
-    cpptoc_core
+target_link_libraries(DependencyGraphVisualizerTest PRIVATE cpptoc_core
     clangTooling
     clangFrontend
     clangAST
     clangBasic
+    GTest::gtest
+    GTest::gtest_main)
+
+# Register with CTest
+gtest_discover_tests(DependencyGraphVisualizerTest
+    WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
 )
 
 # Story #141: File Output System tests
@@ -642,12 +815,17 @@ target_include_directories(FileOutputManagerTest PRIVATE
     ${CLANG_INCLUDE_DIRS}
 )
 
-target_link_libraries(FileOutputManagerTest PRIVATE
-    cpptoc_core
+target_link_libraries(FileOutputManagerTest PRIVATE cpptoc_core
     clangTooling
     clangFrontend
     clangAST
     clangBasic
+    GTest::gtest
+    GTest::gtest_main)
+
+# Register with CTest
+gtest_discover_tests(FileOutputManagerTest
+    WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
 )
 
 # Story #142: Integration Testing
@@ -663,12 +841,17 @@ target_include_directories(IntegrationTest PRIVATE
     ${CLANG_INCLUDE_DIRS}
 )
 
-target_link_libraries(IntegrationTest PRIVATE
-    cpptoc_core
+target_link_libraries(IntegrationTest PRIVATE cpptoc_core
     clangTooling
     clangFrontend
     clangAST
     clangBasic
+    GTest::gtest
+    GTest::gtest_main)
+
+# Register with CTest
+gtest_discover_tests(IntegrationTest
+    WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
 )
 
 # ============================================================================
@@ -688,13 +871,18 @@ target_include_directories(CFGAnalysisTest PRIVATE
     ${CLANG_INCLUDE_DIRS}
 )
 
-target_link_libraries(CFGAnalysisTest PRIVATE
-    cpptoc_core
+target_link_libraries(CFGAnalysisTest PRIVATE cpptoc_core
     clangTooling
     clangFrontend
     clangAnalysis
     clangAST
     clangBasic
+    GTest::gtest
+    GTest::gtest_main)
+
+# Register with CTest
+gtest_discover_tests(CFGAnalysisTest
+    WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
 )
 
 # Story #152: Destructor Injection at Function Exit tests
@@ -710,13 +898,18 @@ target_include_directories(FunctionExitDestructorTest PRIVATE
     ${CLANG_INCLUDE_DIRS}
 )
 
-target_link_libraries(FunctionExitDestructorTest PRIVATE
-    cpptoc_core
+target_link_libraries(FunctionExitDestructorTest PRIVATE cpptoc_core
     clangTooling
     clangFrontend
     clangAnalysis
     clangAST
     clangBasic
+    GTest::gtest
+    GTest::gtest_main)
+
+# Register with CTest
+gtest_discover_tests(FunctionExitDestructorTest
+    WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
 )
 
 # Story #153: Destructor Injection at Early Returns tests
@@ -732,12 +925,17 @@ target_include_directories(EarlyReturnDestructorTest PRIVATE
     ${CLANG_INCLUDE_DIRS}
 )
 
-target_link_libraries(EarlyReturnDestructorTest PRIVATE
-    cpptoc_core
+target_link_libraries(EarlyReturnDestructorTest PRIVATE cpptoc_core
     clangTooling
     clangFrontend
     clangAST
     clangBasic
+    GTest::gtest
+    GTest::gtest_main)
+
+# Register with CTest
+gtest_discover_tests(EarlyReturnDestructorTest
+    WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
 )
 
 # Story #46: Nested Scope Destruction tests (Epic #5)
@@ -753,12 +951,17 @@ target_include_directories(NestedScopeDestructorTest PRIVATE
     ${CLANG_INCLUDE_DIRS}
 )
 
-target_link_libraries(NestedScopeDestructorTest PRIVATE
-    cpptoc_core
+target_link_libraries(NestedScopeDestructorTest PRIVATE cpptoc_core
     clangTooling
     clangFrontend
     clangAST
     clangBasic
+    GTest::gtest
+    GTest::gtest_main)
+
+# Register with CTest
+gtest_discover_tests(NestedScopeDestructorTest
+    WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
 )
 
 # Story #155: Goto Statement Handling tests
@@ -774,12 +977,17 @@ target_include_directories(GotoDestructorTest PRIVATE
     ${CLANG_INCLUDE_DIRS}
 )
 
-target_link_libraries(GotoDestructorTest PRIVATE
-    cpptoc_core
+target_link_libraries(GotoDestructorTest PRIVATE cpptoc_core
     clangTooling
     clangFrontend
     clangAST
     clangBasic
+    GTest::gtest
+    GTest::gtest_main)
+
+# Register with CTest
+gtest_discover_tests(GotoDestructorTest
+    WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
 )
 
 # Story #156: Loop Break/Continue Handling tests
@@ -795,12 +1003,17 @@ target_include_directories(LoopDestructorTest PRIVATE
     ${CLANG_INCLUDE_DIRS}
 )
 
-target_link_libraries(LoopDestructorTest PRIVATE
-    cpptoc_core
+target_link_libraries(LoopDestructorTest PRIVATE cpptoc_core
     clangTooling
     clangFrontend
     clangAST
     clangBasic
+    GTest::gtest
+    GTest::gtest_main)
+
+# Register with CTest
+gtest_discover_tests(LoopDestructorTest
+    WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
 )
 
 # Story #157: Integration Testing & Validation
@@ -816,12 +1029,17 @@ target_include_directories(RAIIIntegrationTest PRIVATE
     ${CLANG_INCLUDE_DIRS}
 )
 
-target_link_libraries(RAIIIntegrationTest PRIVATE
-    cpptoc_core
+target_link_libraries(RAIIIntegrationTest PRIVATE cpptoc_core
     clangTooling
     clangFrontend
     clangAST
     clangBasic
+    GTest::gtest
+    GTest::gtest_main)
+
+# Register with CTest
+gtest_discover_tests(RAIIIntegrationTest
+    WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
 )
 
 # ============================================================================
@@ -841,13 +1059,13 @@ target_include_directories(InheritanceTest PRIVATE
     ${CLANG_INCLUDE_DIRS}
 )
 
-target_link_libraries(InheritanceTest PRIVATE
-    cpptoc_core
+target_link_libraries(InheritanceTest PRIVATE cpptoc_core
     clangTooling
     clangFrontend
     clangAST
     clangBasic
-)
+    GTest::gtest
+    GTest::gtest_main)
 
 # Story #50-64: Inheritance Tests (GTest Migration)
 add_executable(InheritanceTest_GTest
@@ -895,12 +1113,17 @@ target_include_directories(VirtualMethodAnalyzerTest PRIVATE
     ${CLANG_INCLUDE_DIRS}
 )
 
-target_link_libraries(VirtualMethodAnalyzerTest PRIVATE
-    cpptoc_core
+target_link_libraries(VirtualMethodAnalyzerTest PRIVATE cpptoc_core
     clangTooling
     clangFrontend
     clangAST
     clangBasic
+    GTest::gtest
+    GTest::gtest_main)
+
+# Register with CTest
+gtest_discover_tests(VirtualMethodAnalyzerTest
+    WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
 )
 
 # Story #168: Vtable Struct Generation tests
@@ -916,12 +1139,17 @@ target_include_directories(VtableGeneratorTest PRIVATE
     ${CLANG_INCLUDE_DIRS}
 )
 
-target_link_libraries(VtableGeneratorTest PRIVATE
-    cpptoc_core
+target_link_libraries(VtableGeneratorTest PRIVATE cpptoc_core
     clangTooling
     clangFrontend
     clangAST
     clangBasic
+    GTest::gtest
+    GTest::gtest_main)
+
+# Register with CTest
+gtest_discover_tests(VtableGeneratorTest
+    WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
 )
 
 # Story #169: Vptr Field Injection in Class Layout tests
@@ -937,12 +1165,17 @@ target_include_directories(VptrInjectorTest PRIVATE
     ${CLANG_INCLUDE_DIRS}
 )
 
-target_link_libraries(VptrInjectorTest PRIVATE
-    cpptoc_core
+target_link_libraries(VptrInjectorTest PRIVATE cpptoc_core
     clangTooling
     clangFrontend
     clangAST
     clangBasic
+    GTest::gtest
+    GTest::gtest_main)
+
+# Register with CTest
+gtest_discover_tests(VptrInjectorTest
+    WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
 )
 
 # Story #170: Virtual Function Override Resolution tests
@@ -958,12 +1191,17 @@ target_include_directories(OverrideResolverTest PRIVATE
     ${CLANG_INCLUDE_DIRS}
 )
 
-target_link_libraries(OverrideResolverTest PRIVATE
-    cpptoc_core
+target_link_libraries(OverrideResolverTest PRIVATE cpptoc_core
     clangTooling
     clangFrontend
     clangAST
     clangBasic
+    GTest::gtest
+    GTest::gtest_main)
+
+# Register with CTest
+gtest_discover_tests(OverrideResolverTest
+    WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
 )
 
 # Story #171: Vtable Initialization in Constructors tests
@@ -979,12 +1217,17 @@ target_include_directories(VtableInitializerTest PRIVATE
     ${CLANG_INCLUDE_DIRS}
 )
 
-target_link_libraries(VtableInitializerTest PRIVATE
-    cpptoc_core
+target_link_libraries(VtableInitializerTest PRIVATE cpptoc_core
     clangTooling
     clangFrontend
     clangAST
     clangBasic
+    GTest::gtest
+    GTest::gtest_main)
+
+# Register with CTest
+gtest_discover_tests(VtableInitializerTest
+    WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
 )
 
 # Story #172: Virtual Call Translation to Vtable Dispatch tests
@@ -1000,12 +1243,17 @@ target_include_directories(VirtualCallTranslatorTest PRIVATE
     ${CLANG_INCLUDE_DIRS}
 )
 
-target_link_libraries(VirtualCallTranslatorTest PRIVATE
-    cpptoc_core
+target_link_libraries(VirtualCallTranslatorTest PRIVATE cpptoc_core
     clangTooling
     clangFrontend
     clangAST
     clangBasic
+    GTest::gtest
+    GTest::gtest_main)
+
+# Register with CTest
+gtest_discover_tests(VirtualCallTranslatorTest
+    WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
 )
 
 # Story #173: Pure Virtual Function Support tests
@@ -1021,12 +1269,17 @@ target_include_directories(PureVirtualHandlerTest PRIVATE
     ${CLANG_INCLUDE_DIRS}
 )
 
-target_link_libraries(PureVirtualHandlerTest PRIVATE
-    cpptoc_core
+target_link_libraries(PureVirtualHandlerTest PRIVATE cpptoc_core
     clangTooling
     clangFrontend
     clangAST
     clangBasic
+    GTest::gtest
+    GTest::gtest_main)
+
+# Register with CTest
+gtest_discover_tests(PureVirtualHandlerTest
+    WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
 )
 
 # Story #174: Virtual Destructor Handling tests
@@ -1042,12 +1295,17 @@ target_include_directories(VirtualDestructorHandlerTest PRIVATE
     ${CLANG_INCLUDE_DIRS}
 )
 
-target_link_libraries(VirtualDestructorHandlerTest PRIVATE
-    cpptoc_core
+target_link_libraries(VirtualDestructorHandlerTest PRIVATE cpptoc_core
     clangTooling
     clangFrontend
     clangAST
     clangBasic
+    GTest::gtest
+    GTest::gtest_main)
+
+# Register with CTest
+gtest_discover_tests(VirtualDestructorHandlerTest
+    WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
 )
 
 # Story #175: Comprehensive Virtual Function Integration Tests
@@ -1063,12 +1321,17 @@ target_include_directories(VirtualFunctionIntegrationTest PRIVATE
     ${CLANG_INCLUDE_DIRS}
 )
 
-target_link_libraries(VirtualFunctionIntegrationTest PRIVATE
-    cpptoc_core
+target_link_libraries(VirtualFunctionIntegrationTest PRIVATE cpptoc_core
     clangTooling
     clangFrontend
     clangAST
     clangBasic
+    GTest::gtest
+    GTest::gtest_main)
+
+# Register with CTest
+gtest_discover_tests(VirtualFunctionIntegrationTest
+    WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
 )
 
 # ============================================================================
@@ -1088,12 +1351,17 @@ target_include_directories(MemberInitListTest PRIVATE
     ${CLANG_INCLUDE_DIRS}
 )
 
-target_link_libraries(MemberInitListTest PRIVATE
-    cpptoc_core
+target_link_libraries(MemberInitListTest PRIVATE cpptoc_core
     clangTooling
     clangFrontend
     clangAST
     clangBasic
+    GTest::gtest
+    GTest::gtest_main)
+
+# Register with CTest
+gtest_discover_tests(MemberInitListTest
+    WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
 )
 
 # ============================================================================
@@ -1114,12 +1382,17 @@ target_include_directories(ExceptionFrameTest PRIVATE
     ${CLANG_INCLUDE_DIRS}
 )
 
-target_link_libraries(ExceptionFrameTest PRIVATE
-    cpptoc_core
+target_link_libraries(ExceptionFrameTest PRIVATE cpptoc_core
     clangTooling
     clangFrontend
     clangAST
     clangBasic
+    GTest::gtest
+    GTest::gtest_main)
+
+# Register with CTest
+gtest_discover_tests(ExceptionFrameTest
+    WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
 )
 
 # Story #77: Action Table Generation from CFG Analysis tests
@@ -1136,12 +1409,17 @@ target_include_directories(ActionTableGeneratorTest PRIVATE
     ${CLANG_INCLUDE_DIRS}
 )
 
-target_link_libraries(ActionTableGeneratorTest PRIVATE
-    cpptoc_core
+target_link_libraries(ActionTableGeneratorTest PRIVATE cpptoc_core
     clangTooling
     clangFrontend
     clangAST
     clangBasic
+    GTest::gtest
+    GTest::gtest_main)
+
+# Register with CTest
+gtest_discover_tests(ActionTableGeneratorTest
+    WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
 )
 
 # Story #78: setjmp/longjmp Injection for Try-Catch Blocks tests
@@ -1159,12 +1437,17 @@ target_include_directories(TryCatchTransformerTest PRIVATE
     ${CLANG_INCLUDE_DIRS}
 )
 
-target_link_libraries(TryCatchTransformerTest PRIVATE
-    cpptoc_core
+target_link_libraries(TryCatchTransformerTest PRIVATE cpptoc_core
     clangTooling
     clangFrontend
     clangAST
     clangBasic
+    GTest::gtest
+    GTest::gtest_main)
+
+# Register with CTest
+gtest_discover_tests(TryCatchTransformerTest
+    WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
 )
 
 # Story #79: Throw Expression Translation tests
@@ -1181,12 +1464,17 @@ target_include_directories(ThrowTranslatorTest PRIVATE
     ${CLANG_INCLUDE_DIRS}
 )
 
-target_link_libraries(ThrowTranslatorTest PRIVATE
-    cpptoc_core
+target_link_libraries(ThrowTranslatorTest PRIVATE cpptoc_core
     clangTooling
     clangFrontend
     clangAST
     clangBasic
+    GTest::gtest
+    GTest::gtest_main)
+
+# Register with CTest
+gtest_discover_tests(ThrowTranslatorTest
+    WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
 )
 
 # Story #80: Catch Handler Type Matching tests
@@ -1204,12 +1492,17 @@ target_include_directories(CatchHandlerTypeMatchingTest PRIVATE
     ${CLANG_INCLUDE_DIRS}
 )
 
-target_link_libraries(CatchHandlerTypeMatchingTest PRIVATE
-    cpptoc_core
+target_link_libraries(CatchHandlerTypeMatchingTest PRIVATE cpptoc_core
     clangTooling
     clangFrontend
     clangAST
     clangBasic
+    GTest::gtest
+    GTest::gtest_main)
+
+# Register with CTest
+gtest_discover_tests(CatchHandlerTypeMatchingTest
+    WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
 )
 
 # Story #81: Exception Runtime Library tests
@@ -1220,6 +1513,16 @@ add_executable(ExceptionRuntimeTest
 
 target_include_directories(ExceptionRuntimeTest PRIVATE
     ${CMAKE_SOURCE_DIR}/runtime
+)
+
+target_link_libraries(ExceptionRuntimeTest PRIVATE
+    GTest::gtest
+    GTest::gtest_main
+)
+
+# Register with CTest
+gtest_discover_tests(ExceptionRuntimeTest
+    WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
 )
 
 # Set C11 standard for thread-local storage
@@ -1238,6 +1541,16 @@ target_include_directories(ExceptionIntegrationTest PRIVATE
     ${CMAKE_SOURCE_DIR}/runtime
 )
 
+target_link_libraries(ExceptionIntegrationTest PRIVATE
+    GTest::gtest
+    GTest::gtest_main
+)
+
+# Register with CTest
+gtest_discover_tests(ExceptionIntegrationTest
+    WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
+)
+
 # Story #82: Exception Thread Safety Tests
 add_executable(ExceptionThreadSafetyTest
     tests/ExceptionThreadSafetyTest.cpp
@@ -1250,8 +1563,14 @@ target_include_directories(ExceptionThreadSafetyTest PRIVATE
 
 # Link pthread for thread safety tests
 find_package(Threads REQUIRED)
-target_link_libraries(ExceptionThreadSafetyTest PRIVATE
-    cpptoc_core Threads::Threads)
+target_link_libraries(ExceptionThreadSafetyTest PRIVATE cpptoc_core Threads::Threads
+    GTest::gtest
+    GTest::gtest_main)
+
+# Register with CTest
+gtest_discover_tests(ExceptionThreadSafetyTest
+    WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
+)
 
 # Story #82: Exception Performance Benchmarks
 add_executable(ExceptionPerformanceTest
@@ -1261,6 +1580,16 @@ add_executable(ExceptionPerformanceTest
 
 target_include_directories(ExceptionPerformanceTest PRIVATE
     ${CMAKE_SOURCE_DIR}/runtime
+)
+
+target_link_libraries(ExceptionPerformanceTest PRIVATE
+    GTest::gtest
+    GTest::gtest_main
+)
+
+# Register with CTest
+gtest_discover_tests(ExceptionPerformanceTest
+    WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
 )
 
 # Phase 12 (v2.5.0): Exception Handling Integration Tests
@@ -1278,12 +1607,17 @@ target_include_directories(ExceptionHandlingIntegrationTest PRIVATE
     ${CLANG_INCLUDE_DIRS}
 )
 
-target_link_libraries(ExceptionHandlingIntegrationTest PRIVATE
-    cpptoc_core
+target_link_libraries(ExceptionHandlingIntegrationTest PRIVATE cpptoc_core
     clangTooling
     clangFrontend
     clangAST
     clangBasic
+    GTest::gtest
+    GTest::gtest_main)
+
+# Register with CTest
+gtest_discover_tests(ExceptionHandlingIntegrationTest
+    WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
 )
 
 # ============================================================================
@@ -1304,12 +1638,17 @@ target_include_directories(TypeInfoGeneratorTest PRIVATE
     ${CLANG_INCLUDE_DIRS}
 )
 
-target_link_libraries(TypeInfoGeneratorTest PRIVATE
-    cpptoc_core
+target_link_libraries(TypeInfoGeneratorTest PRIVATE cpptoc_core
     clangTooling
     clangFrontend
     clangAST
     clangBasic
+    GTest::gtest
+    GTest::gtest_main)
+
+# Register with CTest
+gtest_discover_tests(TypeInfoGeneratorTest
+    WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
 )
 
 # Story #84: typeid Operator Translation tests
@@ -1327,12 +1666,17 @@ target_include_directories(TypeidTranslatorTest PRIVATE
     ${CLANG_INCLUDE_DIRS}
 )
 
-target_link_libraries(TypeidTranslatorTest PRIVATE
-    cpptoc_core
+target_link_libraries(TypeidTranslatorTest PRIVATE cpptoc_core
     clangTooling
     clangFrontend
     clangAST
     clangBasic
+    GTest::gtest
+    GTest::gtest_main)
+
+# Register with CTest
+gtest_discover_tests(TypeidTranslatorTest
+    WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
 )
 
 # Story #85: dynamic_cast Downcast Support tests
@@ -1350,12 +1694,17 @@ target_include_directories(DynamicCastTranslatorTest PRIVATE
     ${CLANG_INCLUDE_DIRS}
 )
 
-target_link_libraries(DynamicCastTranslatorTest PRIVATE
-    cpptoc_core
+target_link_libraries(DynamicCastTranslatorTest PRIVATE cpptoc_core
     clangTooling
     clangFrontend
     clangAST
     clangBasic
+    GTest::gtest
+    GTest::gtest_main)
+
+# Register with CTest
+gtest_discover_tests(DynamicCastTranslatorTest
+    WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
 )
 
 # Story #86: Hierarchy Traversal Algorithm tests
@@ -1366,6 +1715,15 @@ add_executable(HierarchyTraversalTest
 
 target_include_directories(HierarchyTraversalTest PRIVATE
     ${CMAKE_SOURCE_DIR}/runtime
+)
+
+target_link_libraries(HierarchyTraversalTest PRIVATE
+    GTest::gtest
+    GTest::gtest_main
+)
+
+gtest_discover_tests(HierarchyTraversalTest
+    WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
 )
 
 # No Clang/LLVM dependencies - pure C runtime library
@@ -1385,12 +1743,17 @@ target_include_directories(DynamicCastCrossCastTest PRIVATE
     ${CLANG_INCLUDE_DIRS}
 )
 
-target_link_libraries(DynamicCastCrossCastTest PRIVATE
-    cpptoc_core
+target_link_libraries(DynamicCastCrossCastTest PRIVATE cpptoc_core
     clangTooling
     clangFrontend
     clangAST
     clangBasic
+    GTest::gtest
+    GTest::gtest_main)
+
+# Register with CTest
+gtest_discover_tests(DynamicCastCrossCastTest
+    WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
 )
 
 # Story #87: Cross-Cast Hierarchy Traversal tests
@@ -1401,6 +1764,15 @@ add_executable(CrossCastTraversalTest
 
 target_include_directories(CrossCastTraversalTest PRIVATE
     ${CMAKE_SOURCE_DIR}/runtime
+)
+
+target_link_libraries(CrossCastTraversalTest PRIVATE
+    GTest::gtest
+    GTest::gtest_main
+)
+
+gtest_discover_tests(CrossCastTraversalTest
+    WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
 )
 
 # No Clang/LLVM dependencies - pure C runtime library
@@ -1421,12 +1793,17 @@ target_include_directories(StandaloneFunctionTranslationTest PRIVATE
     ${CLANG_INCLUDE_DIRS}
 )
 
-target_link_libraries(StandaloneFunctionTranslationTest PRIVATE
-    cpptoc_core
+target_link_libraries(StandaloneFunctionTranslationTest PRIVATE cpptoc_core
     clangTooling
     clangFrontend
     clangAST
     clangBasic
+    GTest::gtest
+    GTest::gtest_main)
+
+# Register with CTest
+gtest_discover_tests(StandaloneFunctionTranslationTest
+    WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
 )
 
 # Phase 13: RTTI Integration Tests (v2.6.0)
@@ -1445,12 +1822,17 @@ target_include_directories(RTTIIntegrationTest PRIVATE
     ${CLANG_INCLUDE_DIRS}
 )
 
-target_link_libraries(RTTIIntegrationTest PRIVATE
-    cpptoc_core
+target_link_libraries(RTTIIntegrationTest PRIVATE cpptoc_core
     clangTooling
     clangFrontend
     clangAST
     clangBasic
+    GTest::gtest
+    GTest::gtest_main)
+
+# Register with CTest
+gtest_discover_tests(RTTIIntegrationTest
+    WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
 )
 
 # Story #89: Virtual Base Detection and Analysis tests (Epic #44)
@@ -1466,13 +1848,18 @@ target_include_directories(VirtualBaseDetectionTest PRIVATE
     ${CLANG_INCLUDE_DIRS}
 )
 
-target_link_libraries(VirtualBaseDetectionTest PRIVATE
-    cpptoc_core
+target_link_libraries(VirtualBaseDetectionTest PRIVATE cpptoc_core
     clangTooling
     clangFrontend
     clangAST
     clangBasic
     clangASTMatchers
+    GTest::gtest
+    GTest::gtest_main)
+
+# Register with CTest
+gtest_discover_tests(VirtualBaseDetectionTest
+    WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
 )
 
 # Story #90: Virtual Base Offset Table Generation tests (Epic #44)
@@ -1488,13 +1875,18 @@ target_include_directories(VirtualBaseOffsetTableTest PRIVATE
     ${CLANG_INCLUDE_DIRS}
 )
 
-target_link_libraries(VirtualBaseOffsetTableTest PRIVATE
-    cpptoc_core
+target_link_libraries(VirtualBaseOffsetTableTest PRIVATE cpptoc_core
     clangTooling
     clangFrontend
     clangAST
     clangBasic
     clangASTMatchers
+    GTest::gtest
+    GTest::gtest_main)
+
+# Register with CTest
+gtest_discover_tests(VirtualBaseOffsetTableTest
+    WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
 )
 
 # Story #91: VTT (Virtual Table Tables) Generation tests (Epic #44)
@@ -1511,13 +1903,18 @@ target_include_directories(VTTGeneratorTest PRIVATE
     ${CLANG_INCLUDE_DIRS}
 )
 
-target_link_libraries(VTTGeneratorTest PRIVATE
-    cpptoc_core
+target_link_libraries(VTTGeneratorTest PRIVATE cpptoc_core
     clangTooling
     clangFrontend
     clangAST
     clangBasic
     clangASTMatchers
+    GTest::gtest
+    GTest::gtest_main)
+
+# Register with CTest
+gtest_discover_tests(VTTGeneratorTest
+    WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
 )
 
 # Story #92: Constructor Splitting (C1/C2 Variants) tests (Epic #44)
@@ -1534,12 +1931,17 @@ target_include_directories(ConstructorSplitterTest PRIVATE
     ${CLANG_INCLUDE_DIRS}
 )
 
-target_link_libraries(ConstructorSplitterTest PRIVATE
-    cpptoc_core
+target_link_libraries(ConstructorSplitterTest PRIVATE cpptoc_core
     clangTooling
     clangFrontend
     clangAST
     clangBasic
+    GTest::gtest
+    GTest::gtest_main)
+
+# Register with CTest
+gtest_discover_tests(ConstructorSplitterTest
+    WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
 )
 
 # ============================================================================
@@ -1714,12 +2116,17 @@ target_include_directories(FrameAllocationTest PRIVATE
     ${CLANG_INCLUDE_DIRS}
 )
 
-target_link_libraries(FrameAllocationTest PRIVATE
-    cpptoc_core
+target_link_libraries(FrameAllocationTest PRIVATE cpptoc_core
     clangTooling
     clangFrontend
     clangAST
     clangBasic
+    GTest::gtest
+    GTest::gtest_main)
+
+# Register with CTest
+gtest_discover_tests(FrameAllocationTest
+    WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
 )
 
 # Story #108: Integration Testing tests (Epic #46)
@@ -1740,13 +2147,18 @@ target_include_directories(CoroutineIntegrationTest PRIVATE
     ${CLANG_INCLUDE_DIRS}
 )
 
-target_link_libraries(CoroutineIntegrationTest PRIVATE
-    cpptoc_core
+target_link_libraries(CoroutineIntegrationTest PRIVATE cpptoc_core
     clangTooling
     clangFrontend
     clangAST
     clangBasic
     clangLex
+    GTest::gtest
+    GTest::gtest_main)
+
+# Register with CTest
+gtest_discover_tests(CoroutineIntegrationTest
+    WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
 )
 
 # ============================================================================
@@ -1767,12 +2179,17 @@ target_include_directories(RuntimeModeInlineTest PRIVATE
     ${CLANG_INCLUDE_DIRS}
 )
 
-target_link_libraries(RuntimeModeInlineTest PRIVATE
-    cpptoc_core
+target_link_libraries(RuntimeModeInlineTest PRIVATE cpptoc_core
     clangTooling
     clangFrontend
     clangAST
     clangBasic
+    GTest::gtest
+    GTest::gtest_main)
+
+# Register with CTest
+gtest_discover_tests(RuntimeModeInlineTest
+    WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
 )
 
 # Story #117: Library Runtime Mode tests
@@ -1785,6 +2202,15 @@ target_include_directories(RuntimeModeLibraryTest PRIVATE
     ${CMAKE_SOURCE_DIR}/include
 )
 
+target_link_libraries(RuntimeModeLibraryTest PRIVATE
+    GTest::gtest
+    GTest::gtest_main
+)
+
+gtest_discover_tests(RuntimeModeLibraryTest
+    WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
+)
+
 # Story #118: Runtime Feature Flags tests
 add_executable(RuntimeFeatureFlagsTest
     tests/runtime_feature_flags_test.cpp
@@ -1793,6 +2219,15 @@ add_executable(RuntimeFeatureFlagsTest
 
 target_include_directories(RuntimeFeatureFlagsTest PRIVATE
     ${CMAKE_SOURCE_DIR}/include
+)
+
+target_link_libraries(RuntimeFeatureFlagsTest PRIVATE
+    GTest::gtest
+    GTest::gtest_main
+)
+
+gtest_discover_tests(RuntimeFeatureFlagsTest
+    WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
 )
 
 # Story #119: Size Optimization with LTO/PGO Support tests
@@ -1804,6 +2239,15 @@ add_executable(SizeOptimizationTest
 
 target_include_directories(SizeOptimizationTest PRIVATE
     ${CMAKE_SOURCE_DIR}/include
+)
+
+target_link_libraries(SizeOptimizationTest PRIVATE
+    GTest::gtest
+    GTest::gtest_main
+)
+
+gtest_discover_tests(SizeOptimizationTest
+    WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
 )
 
 # ============================================================================
@@ -1824,12 +2268,17 @@ target_include_directories(OperatorOverloadingTest PRIVATE
     ${CLANG_INCLUDE_DIRS}
 )
 
-target_link_libraries(OperatorOverloadingTest PRIVATE
-    cpptoc_core
+target_link_libraries(OperatorOverloadingTest PRIVATE cpptoc_core
     clangTooling
     clangFrontend
     clangAST
     clangBasic
+    GTest::gtest
+    GTest::gtest_main)
+
+# Register with CTest
+gtest_discover_tests(OperatorOverloadingTest
+    WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
 )
 
 # ============================================================================
@@ -1881,12 +2330,17 @@ target_include_directories(MoveSemanticTranslatorTest PRIVATE
     ${CLANG_INCLUDE_DIRS}
 )
 
-target_link_libraries(MoveSemanticTranslatorTest PRIVATE
-    cpptoc_core
+target_link_libraries(MoveSemanticTranslatorTest PRIVATE cpptoc_core
     clangTooling
     clangFrontend
     clangAST
     clangBasic
+    GTest::gtest
+    GTest::gtest_main)
+
+# Register with CTest
+gtest_discover_tests(MoveSemanticTranslatorTest
+    WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
 )
 
 # Story #130: Move Constructor Detection and Translation tests
@@ -1903,12 +2357,17 @@ target_include_directories(MoveConstructorTranslationTest PRIVATE
     ${CLANG_INCLUDE_DIRS}
 )
 
-target_link_libraries(MoveConstructorTranslationTest PRIVATE
-    cpptoc_core
+target_link_libraries(MoveConstructorTranslationTest PRIVATE cpptoc_core
     clangTooling
     clangFrontend
     clangAST
     clangBasic
+    GTest::gtest
+    GTest::gtest_main)
+
+# Register with CTest
+gtest_discover_tests(MoveConstructorTranslationTest
+    WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
 )
 
 # Story #131: Move Assignment Operator Detection and Translation tests
@@ -1925,12 +2384,17 @@ target_include_directories(MoveAssignmentTranslationTest PRIVATE
     ${CLANG_INCLUDE_DIRS}
 )
 
-target_link_libraries(MoveAssignmentTranslationTest PRIVATE
-    cpptoc_core
+target_link_libraries(MoveAssignmentTranslationTest PRIVATE cpptoc_core
     clangTooling
     clangFrontend
     clangAST
     clangBasic
+    GTest::gtest
+    GTest::gtest_main)
+
+# Register with CTest
+gtest_discover_tests(MoveAssignmentTranslationTest
+    WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
 )
 
 # Story #132: std::move() Call Detection and Translation tests
@@ -1947,12 +2411,17 @@ target_include_directories(StdMoveTranslationTest PRIVATE
     ${CLANG_INCLUDE_DIRS}
 )
 
-target_link_libraries(StdMoveTranslationTest PRIVATE
-    cpptoc_core
+target_link_libraries(StdMoveTranslationTest PRIVATE cpptoc_core
     clangTooling
     clangFrontend
     clangAST
     clangBasic
+    GTest::gtest
+    GTest::gtest_main)
+
+# Register with CTest
+gtest_discover_tests(StdMoveTranslationTest
+    WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
 )
 
 # Story #133: Rvalue Reference Parameter Handling tests
@@ -1969,12 +2438,17 @@ target_include_directories(RvalueRefParameterTest PRIVATE
     ${CLANG_INCLUDE_DIRS}
 )
 
-target_link_libraries(RvalueRefParameterTest PRIVATE
-    cpptoc_core
+target_link_libraries(RvalueRefParameterTest PRIVATE cpptoc_core
     clangTooling
     clangFrontend
     clangAST
     clangBasic
+    GTest::gtest
+    GTest::gtest_main)
+
+# Register with CTest
+gtest_discover_tests(RvalueRefParameterTest
+    WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
 )
 
 # Story #134: Integration with Copy Semantics tests
@@ -1990,12 +2464,17 @@ target_include_directories(CopyMoveIntegrationTest PRIVATE
     ${CLANG_INCLUDE_DIRS}
 )
 
-target_link_libraries(CopyMoveIntegrationTest PRIVATE
-    cpptoc_core
+target_link_libraries(CopyMoveIntegrationTest PRIVATE cpptoc_core
     clangTooling
     clangFrontend
     clangAST
     clangBasic
+    GTest::gtest
+    GTest::gtest_main)
+
+# Register with CTest
+gtest_discover_tests(CopyMoveIntegrationTest
+    WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
 )
 
 # ============================================================================
@@ -2015,12 +2494,17 @@ target_include_directories(TypeTraitsTest PRIVATE
     ${CLANG_INCLUDE_DIRS}
 )
 
-target_link_libraries(TypeTraitsTest PRIVATE
-    cpptoc_core
+target_link_libraries(TypeTraitsTest PRIVATE cpptoc_core
     clangTooling
     clangFrontend
     clangAST
     clangBasic
+    GTest::gtest
+    GTest::gtest_main)
+
+# Register with CTest
+gtest_discover_tests(TypeTraitsTest
+    WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
 )
 
 # MetaprogrammingTest - 45 tests for variadic templates, constexpr, and recursive metaprogramming
@@ -2036,12 +2520,17 @@ target_include_directories(MetaprogrammingTest PRIVATE
     ${CLANG_INCLUDE_DIRS}
 )
 
-target_link_libraries(MetaprogrammingTest PRIVATE
-    cpptoc_core
+target_link_libraries(MetaprogrammingTest PRIVATE cpptoc_core
     clangTooling
     clangFrontend
     clangAST
     clangBasic
+    GTest::gtest
+    GTest::gtest_main)
+
+# Register with CTest
+gtest_discover_tests(MetaprogrammingTest
+    WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
 )
 
 # ============================================================================
@@ -2061,12 +2550,17 @@ target_include_directories(EdgeCasesTest PRIVATE
     ${CLANG_INCLUDE_DIRS}
 )
 
-target_link_libraries(EdgeCasesTest PRIVATE
-    cpptoc_core
+target_link_libraries(EdgeCasesTest PRIVATE cpptoc_core
     clangTooling
     clangFrontend
     clangAST
     clangBasic
+    GTest::gtest
+    GTest::gtest_main)
+
+# Register with CTest
+gtest_discover_tests(EdgeCasesTest
+    WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
 )
 
 # ErrorHandlingTest - 25 tests for error handling
@@ -2082,12 +2576,17 @@ target_include_directories(ErrorHandlingTest PRIVATE
     ${CLANG_INCLUDE_DIRS}
 )
 
-target_link_libraries(ErrorHandlingTest PRIVATE
-    cpptoc_core
+target_link_libraries(ErrorHandlingTest PRIVATE cpptoc_core
     clangTooling
     clangFrontend
     clangAST
     clangBasic
+    GTest::gtest
+    GTest::gtest_main)
+
+# Register with CTest
+gtest_discover_tests(ErrorHandlingTest
+    WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
 )
 
 # FeatureInteractionTest - 30 tests for feature interactions
@@ -2103,12 +2602,17 @@ target_include_directories(FeatureInteractionTest PRIVATE
     ${CLANG_INCLUDE_DIRS}
 )
 
-target_link_libraries(FeatureInteractionTest PRIVATE
-    cpptoc_core
+target_link_libraries(FeatureInteractionTest PRIVATE cpptoc_core
     clangTooling
     clangFrontend
     clangAST
     clangBasic
+    GTest::gtest
+    GTest::gtest_main)
+
+# Register with CTest
+gtest_discover_tests(FeatureInteractionTest
+    WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
 )
 
 # FeatureCombinationTest - 20 tests for complex feature combinations
@@ -2126,12 +2630,17 @@ target_include_directories(FeatureCombinationTest PRIVATE
     ${CLANG_INCLUDE_DIRS}
 )
 
-target_link_libraries(FeatureCombinationTest PRIVATE
-    cpptoc_core
+target_link_libraries(FeatureCombinationTest PRIVATE cpptoc_core
     clangTooling
     clangFrontend
     clangAST
     clangBasic
+    GTest::gtest
+    GTest::gtest_main)
+
+# Register with CTest
+gtest_discover_tests(FeatureCombinationTest
+    WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
 )
 
 # MoveSemanticIntegrationTest - Story #135 - Move Semantics Integration Testing
@@ -2148,12 +2657,17 @@ target_include_directories(MoveSemanticIntegrationTest PRIVATE
     ${CLANG_INCLUDE_DIRS}
 )
 
-target_link_libraries(MoveSemanticIntegrationTest PRIVATE
-    cpptoc_core
+target_link_libraries(MoveSemanticIntegrationTest PRIVATE cpptoc_core
     clangTooling
     clangFrontend
     clangAST
     clangBasic
+    GTest::gtest
+    GTest::gtest_main)
+
+# Register with CTest
+gtest_discover_tests(MoveSemanticIntegrationTest
+    WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
 )
 
 # ============================================================================
@@ -2174,12 +2688,17 @@ target_include_directories(UniquePtrTest PRIVATE
     ${CLANG_INCLUDE_DIRS}
 )
 
-target_link_libraries(UniquePtrTest PRIVATE
-    cpptoc_core
+target_link_libraries(UniquePtrTest PRIVATE cpptoc_core
     clangTooling
     clangFrontend
     clangAST
     clangBasic
+    GTest::gtest
+    GTest::gtest_main)
+
+# Register with CTest
+gtest_discover_tests(UniquePtrTest
+    WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
 )
 
 # File 2: SharedPtrTest.cpp (40 tests)
@@ -2196,12 +2715,17 @@ target_include_directories(SharedPtrTest PRIVATE
     ${CLANG_INCLUDE_DIRS}
 )
 
-target_link_libraries(SharedPtrTest PRIVATE
-    cpptoc_core
+target_link_libraries(SharedPtrTest PRIVATE cpptoc_core
     clangTooling
     clangFrontend
     clangAST
     clangBasic
+    GTest::gtest
+    GTest::gtest_main)
+
+# Register with CTest
+gtest_discover_tests(SharedPtrTest
+    WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
 )
 
 # File 3: RaiiIntegrationTest.cpp (25 tests)
@@ -2218,12 +2742,17 @@ target_include_directories(SmartPointerRaiiIntegrationTest PRIVATE
     ${CLANG_INCLUDE_DIRS}
 )
 
-target_link_libraries(SmartPointerRaiiIntegrationTest PRIVATE
-    cpptoc_core
+target_link_libraries(SmartPointerRaiiIntegrationTest PRIVATE cpptoc_core
     clangTooling
     clangFrontend
     clangAST
     clangBasic
+    GTest::gtest
+    GTest::gtest_main)
+
+# Register with CTest
+gtest_discover_tests(SmartPointerRaiiIntegrationTest
+    WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
 )
 
 # ============================================================================
@@ -2243,13 +2772,18 @@ target_include_directories(LinkageDetectionTest PRIVATE
     ${CLANG_INCLUDE_DIRS}
 )
 
-target_link_libraries(LinkageDetectionTest PRIVATE
-    cpptoc_core
+target_link_libraries(LinkageDetectionTest PRIVATE cpptoc_core
     clangTooling
     clangFrontend
     clangAST
     clangBasic
     clangASTMatchers
+    GTest::gtest
+    GTest::gtest_main)
+
+# Register with CTest
+gtest_discover_tests(LinkageDetectionTest
+    WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
 )
 
 # Milestone 2: Name Mangling Suppression tests
@@ -2265,13 +2799,18 @@ target_include_directories(ExternCManglingTest PRIVATE
     ${CLANG_INCLUDE_DIRS}
 )
 
-target_link_libraries(ExternCManglingTest PRIVATE
-    cpptoc_core
+target_link_libraries(ExternCManglingTest PRIVATE cpptoc_core
     clangTooling
     clangFrontend
     clangAST
     clangBasic
     clangASTMatchers
+    GTest::gtest
+    GTest::gtest_main)
+
+# Register with CTest
+gtest_discover_tests(ExternCManglingTest
+    WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
 )
 
 # Milestone 3: Calling Convention Detection tests
@@ -2287,13 +2826,18 @@ target_include_directories(CallingConventionTest PRIVATE
     ${CLANG_INCLUDE_DIRS}
 )
 
-target_link_libraries(CallingConventionTest PRIVATE
-    cpptoc_core
+target_link_libraries(CallingConventionTest PRIVATE cpptoc_core
     clangTooling
     clangFrontend
     clangAST
     clangBasic
     clangASTMatchers
+    GTest::gtest
+    GTest::gtest_main)
+
+# Register with CTest
+gtest_discover_tests(CallingConventionTest
+    WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
 )
 
 # Build runtime library subdirectory
@@ -2323,12 +2867,17 @@ target_include_directories(ACSLGeneratorTest PRIVATE
     ${CLANG_INCLUDE_DIRS}
 )
 
-target_link_libraries(ACSLGeneratorTest PRIVATE
-    cpptoc_core
+target_link_libraries(ACSLGeneratorTest PRIVATE cpptoc_core
     clangTooling
     clangFrontend
     clangAST
     clangBasic
+    GTest::gtest
+    GTest::gtest_main)
+
+# Register with CTest
+gtest_discover_tests(ACSLGeneratorTest
+    WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
 )
 
 # Story #196: ACSLFunctionAnnotator tests
@@ -2344,12 +2893,17 @@ target_include_directories(ACSLFunctionAnnotatorTest PRIVATE
     ${CLANG_INCLUDE_DIRS}
 )
 
-target_link_libraries(ACSLFunctionAnnotatorTest PRIVATE
-    cpptoc_core
+target_link_libraries(ACSLFunctionAnnotatorTest PRIVATE cpptoc_core
     clangTooling
     clangFrontend
     clangAST
     clangBasic
+    GTest::gtest
+    GTest::gtest_main)
+
+# Register with CTest
+gtest_discover_tests(ACSLFunctionAnnotatorTest
+    WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
 )
 
 # Story #197: ACSLLoopAnnotator tests
@@ -2365,12 +2919,17 @@ target_include_directories(ACSLLoopAnnotatorTest PRIVATE
     ${CLANG_INCLUDE_DIRS}
 )
 
-target_link_libraries(ACSLLoopAnnotatorTest PRIVATE
-    cpptoc_core
+target_link_libraries(ACSLLoopAnnotatorTest PRIVATE cpptoc_core
     clangTooling
     clangFrontend
     clangAST
     clangBasic
+    GTest::gtest
+    GTest::gtest_main)
+
+# Register with CTest
+gtest_discover_tests(ACSLLoopAnnotatorTest
+    WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
 )
 
 # Story #198: ACSLClassAnnotator tests
@@ -2416,12 +2975,17 @@ target_include_directories(ACSLStatementAnnotatorTest PRIVATE
     ${CLANG_INCLUDE_DIRS}
 )
 
-target_link_libraries(ACSLStatementAnnotatorTest PRIVATE
-    cpptoc_core
+target_link_libraries(ACSLStatementAnnotatorTest PRIVATE cpptoc_core
     clangTooling
     clangFrontend
     clangAST
     clangBasic
+    GTest::gtest
+    GTest::gtest_main)
+
+# Register with CTest
+gtest_discover_tests(ACSLStatementAnnotatorTest
+    WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
 )
 
 # Phase 2 (v1.19.0): ACSLTypeInvariantGenerator tests
@@ -2557,12 +3121,17 @@ target_include_directories(ACSLMemoryPredicateAnalyzerTest PRIVATE
     ${CLANG_INCLUDE_DIRS}
 )
 
-target_link_libraries(ACSLMemoryPredicateAnalyzerTest PRIVATE
-    cpptoc_core
+target_link_libraries(ACSLMemoryPredicateAnalyzerTest PRIVATE cpptoc_core
     clangTooling
     clangFrontend
     clangAST
     clangBasic
+    GTest::gtest
+    GTest::gtest_main)
+
+# Register with CTest
+gtest_discover_tests(ACSLMemoryPredicateAnalyzerTest
+    WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
 )
 
 # Phase 9 (v2.2.0): Virtual Method Integration tests
@@ -2582,12 +3151,17 @@ target_include_directories(VirtualMethodIntegrationTest PRIVATE
     ${CLANG_INCLUDE_DIRS}
 )
 
-target_link_libraries(VirtualMethodIntegrationTest PRIVATE
-    cpptoc_core
+target_link_libraries(VirtualMethodIntegrationTest PRIVATE cpptoc_core
     clangTooling
     clangFrontend
     clangAST
     clangBasic
+    GTest::gtest
+    GTest::gtest_main)
+
+# Register with CTest
+gtest_discover_tests(VirtualMethodIntegrationTest
+    WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
 )
 
 # ============================================================================
@@ -2608,14 +3182,18 @@ target_link_libraries(VirtualMethodIntegrationTest PRIVATE
 #     ${CLANG_INCLUDE_DIRS}
 # )
 #
-# target_link_libraries(FramaCWPTests PRIVATE
-#     cpptoc_core
+# target_link_libraries(FramaCWPTests PRIVATE #     cpptoc_core
 #     clangTooling
 #     clangFrontend
 #     clangAST
 #     clangBasic
 #     GTest::gtest
 #     GTest::gtest_main
+#)
+
+# # Register with CTest
+# gtest_discover_tests(FramaCWPTests
+#     WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
 # )
 #
 # # Frama-C EVA Integration Tests (15+ tests)
@@ -2632,14 +3210,18 @@ target_link_libraries(VirtualMethodIntegrationTest PRIVATE
 #     ${CLANG_INCLUDE_DIRS}
 # )
 #
-# target_link_libraries(FramaCEVATests PRIVATE
-#     cpptoc_core
+# target_link_libraries(FramaCEVATests PRIVATE #     cpptoc_core
 #     clangTooling
 #     clangFrontend
 #     clangAST
 #     clangBasic
 #     GTest::gtest
 #     GTest::gtest_main
+#)
+
+# # Register with CTest
+# gtest_discover_tests(FramaCEVATests
+#     WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
 # )
 
 # ============================================================================

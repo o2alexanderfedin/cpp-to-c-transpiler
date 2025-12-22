@@ -9,9 +9,8 @@
 #include "RuntimeModeLibrary.h"
 #include <string>
 
-using namespace clang;
 
-TEST(runtime_mode_library_test, Library mode flag parsing) {
+TEST(RuntimeModeLibraryTest, LibraryModeFlagParsing) {
     // Test that RuntimeModeLibrary can be instantiated
         RuntimeModeLibrary libraryMode;
 
@@ -19,7 +18,7 @@ TEST(runtime_mode_library_test, Library mode flag parsing) {
         ASSERT_TRUE(libraryMode.isLibraryMode()) << "Should be in library mode by default";
 }
 
-TEST(runtime_mode_library_test, Exception runtime call generation) {
+TEST(RuntimeModeLibraryTest, ExceptionRuntimeCallGeneration) {
     RuntimeModeLibrary libraryMode;
 
         // Mark exception feature as used
@@ -36,7 +35,7 @@ TEST(runtime_mode_library_test, Exception runtime call generation) {
         ASSERT_TRUE(headerCode.find("extern") != std::string::npos) << "Should use extern keyword for declarations";
 }
 
-TEST(runtime_mode_library_test, RTTI runtime call generation) {
+TEST(RuntimeModeLibraryTest, RTTIRuntimeCallGeneration) {
     RuntimeModeLibrary libraryMode;
 
         // Mark RTTI feature as used
@@ -50,7 +49,7 @@ TEST(runtime_mode_library_test, RTTI runtime call generation) {
         ASSERT_TRUE(headerCode.find("__cxx_type_info") != std::string::npos) << "Should declare type_info structure";
 }
 
-TEST(runtime_mode_library_test, Library header structure) {
+TEST(RuntimeModeLibraryTest, VirtualInheritanceRuntimeCallGeneration) {
     RuntimeModeLibrary libraryMode;
         libraryMode.markFeatureUsed(RuntimeFeature::Exceptions);
 
@@ -66,7 +65,7 @@ TEST(runtime_mode_library_test, Library header structure) {
                headerCode.find("extern \"C\"") != std::string::npos) << "Should have C++ compatibility";
 }
 
-TEST(runtime_mode_library_test, No embedded runtime code) {
+TEST(RuntimeModeLibraryTest, GenerateLibraryHeader) {
     RuntimeModeLibrary libraryMode;
         libraryMode.markFeatureUsed(RuntimeFeature::Exceptions);
 
@@ -82,7 +81,7 @@ TEST(runtime_mode_library_test, No embedded runtime code) {
         ASSERT_TRUE(generatedCode.find("void __cxx_throw") != std::string::npos) << "Should declare runtime functions";
 }
 
-TEST(runtime_mode_library_test, Link flags generation) {
+TEST(RuntimeModeLibraryTest, NoFunctionDefinitionsInLibraryMode) {
     RuntimeModeLibrary libraryMode;
 
         // Get linker flags for library mode
@@ -93,7 +92,7 @@ TEST(runtime_mode_library_test, Link flags generation) {
                linkFlags.find("cpptoc_runtime") != std::string::npos) << "Should reference runtime library";
 }
 
-TEST(runtime_mode_library_test, CMake configuration generation) {
+TEST(RuntimeModeLibraryTest, LinkerFlagsForLibraryMode) {
     RuntimeModeLibrary libraryMode;
 
         // Get CMake configuration for runtime library
@@ -108,7 +107,7 @@ TEST(runtime_mode_library_test, CMake configuration generation) {
                cmakeCode.find("runtime/") != std::string::npos) << "Should reference runtime sources";
 }
 
-TEST(runtime_mode_library_test, Size reduction validation) {
+TEST(RuntimeModeLibraryTest, CMakeConfigurationGeneration) {
     RuntimeModeLibrary libraryMode;
 
         // Simulate 100-file project scenario
@@ -127,7 +126,7 @@ TEST(runtime_mode_library_test, Size reduction validation) {
         ASSERT_TRUE(reduction >= 98.5) << "Should achieve at least 98.5% size reduction for large projects";
 }
 
-TEST(runtime_mode_library_test, Compilation speed validation) {
+TEST(RuntimeModeLibraryTest, SizeReductionForLargeProjects) {
     RuntimeModeLibrary libraryMode;
 
         // Simulate compilation time difference
@@ -144,7 +143,7 @@ TEST(runtime_mode_library_test, Compilation speed validation) {
         ASSERT_TRUE(improvement >= 27.0) << "Should achieve 27% compilation speed improvement";
 }
 
-TEST(runtime_mode_library_test, Conditional feature declarations) {
+TEST(RuntimeModeLibraryTest, CompilationSpeedImprovement) {
     RuntimeModeLibrary libraryMode;
 
         // Mark only exception runtime as used
@@ -160,7 +159,7 @@ TEST(runtime_mode_library_test, Conditional feature declarations) {
         ASSERT_TRUE(headerCode.find("__cxx_dynamic_cast") == std::string::npos) << "Should NOT declare RTTI when not used";
 }
 
-TEST(runtime_mode_library_test, Library versioning) {
+TEST(RuntimeModeLibraryTest, SelectiveFeaturesDeclaration) {
     RuntimeModeLibrary libraryMode;
 
         // Get library version information
@@ -171,7 +170,7 @@ TEST(runtime_mode_library_test, Library versioning) {
         ASSERT_TRUE(version.find(".") != std::string::npos) << "Should have version format";
 }
 
-TEST(runtime_mode_library_test, Full transpilation with library mode) {
+TEST(RuntimeModeLibraryTest, RuntimeLibraryVersion) {
     // Note: In real usage, this would transpile C++ code with exception handling
         // For this test, we just verify the library mode interface works correctly
 

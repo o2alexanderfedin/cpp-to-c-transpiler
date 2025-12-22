@@ -1,0 +1,92 @@
+{
+  "tests": 16,
+  "name": "AllTests",
+  "testsuites": [
+    {
+      "name": "MoveSemanticIntegrationTestFixture",
+      "tests": 16,
+      "testsuite": [
+        {
+          "name": "UniquePtrOwnershipTransfer",
+          "file": "\/Users\/alexanderfedin\/Projects\/hapyy\/hupyy-cpp-to-c\/tests\/integration\/MoveSemanticIntegrationTest.cpp",
+          "line": 44
+        },
+        {
+          "name": "VectorMoveConstruction",
+          "file": "\/Users\/alexanderfedin\/Projects\/hapyy\/hupyy-cpp-to-c\/tests\/integration\/MoveSemanticIntegrationTest.cpp",
+          "line": 95
+        },
+        {
+          "name": "VectorMoveAssignment",
+          "file": "\/Users\/alexanderfedin\/Projects\/hapyy\/hupyy-cpp-to-c\/tests\/integration\/MoveSemanticIntegrationTest.cpp",
+          "line": 135
+        },
+        {
+          "name": "CustomMoveOnlyFileHandle",
+          "file": "\/Users\/alexanderfedin\/Projects\/hapyy\/hupyy-cpp-to-c\/tests\/integration\/MoveSemanticIntegrationTest.cpp",
+          "line": 177
+        },
+        {
+          "name": "CustomMoveOnlySocket",
+          "file": "\/Users\/alexanderfedin\/Projects\/hapyy\/hupyy-cpp-to-c\/tests\/integration\/MoveSemanticIntegrationTest.cpp",
+          "line": 227
+        },
+        {
+          "name": "ReturnValueOptimization",
+          "file": "\/Users\/alexanderfedin\/Projects\/hapyy\/hupyy-cpp-to-c\/tests\/integration\/MoveSemanticIntegrationTest.cpp",
+          "line": 281
+        },
+        {
+          "name": "MemberwiseMoves",
+          "file": "\/Users\/alexanderfedin\/Projects\/hapyy\/hupyy-cpp-to-c\/tests\/integration\/MoveSemanticIntegrationTest.cpp",
+          "line": 326
+        },
+        {
+          "name": "ComplexHierarchyWithMoves",
+          "file": "\/Users\/alexanderfedin\/Projects\/hapyy\/hupyy-cpp-to-c\/tests\/integration\/MoveSemanticIntegrationTest.cpp",
+          "line": 403
+        },
+        {
+          "name": "InheritanceBaseClassMove",
+          "file": "\/Users\/alexanderfedin\/Projects\/hapyy\/hupyy-cpp-to-c\/tests\/integration\/MoveSemanticIntegrationTest.cpp",
+          "line": 475
+        },
+        {
+          "name": "MoveOnlyTypesNoCopy",
+          "file": "\/Users\/alexanderfedin\/Projects\/hapyy\/hupyy-cpp-to-c\/tests\/integration\/MoveSemanticIntegrationTest.cpp",
+          "line": 522
+        },
+        {
+          "name": "RvalueReferenceParameters",
+          "file": "\/Users\/alexanderfedin\/Projects\/hapyy\/hupyy-cpp-to-c\/tests\/integration\/MoveSemanticIntegrationTest.cpp",
+          "line": 559
+        },
+        {
+          "name": "PerfectForwarding",
+          "file": "\/Users\/alexanderfedin\/Projects\/hapyy\/hupyy-cpp-to-c\/tests\/integration\/MoveSemanticIntegrationTest.cpp",
+          "line": 604
+        },
+        {
+          "name": "MoveElisionRVO",
+          "file": "\/Users\/alexanderfedin\/Projects\/hapyy\/hupyy-cpp-to-c\/tests\/integration\/MoveSemanticIntegrationTest.cpp",
+          "line": 646
+        },
+        {
+          "name": "ConditionalMoveCopy",
+          "file": "\/Users\/alexanderfedin\/Projects\/hapyy\/hupyy-cpp-to-c\/tests\/integration\/MoveSemanticIntegrationTest.cpp",
+          "line": 687
+        },
+        {
+          "name": "MoveExceptionSafety",
+          "file": "\/Users\/alexanderfedin\/Projects\/hapyy\/hupyy-cpp-to-c\/tests\/integration\/MoveSemanticIntegrationTest.cpp",
+          "line": 721
+        },
+        {
+          "name": "MultiLevelPointerMove",
+          "file": "\/Users\/alexanderfedin\/Projects\/hapyy\/hupyy-cpp-to-c\/tests\/integration\/MoveSemanticIntegrationTest.cpp",
+          "line": 766
+        }
+      ]
+    }
+  ]
+}

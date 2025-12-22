@@ -6,9 +6,8 @@
 #include "DependencyAnalyzer.h"
 #include <vector>
 
-using namespace clang;
 
-TEST(DependencyAnalyzer, IncludesOwnHeaderOnly) {
+TEST(TEST, DependencyAnalyzer) {
     DependencyAnalyzer analyzer("Point.h");
 
         auto includes = analyzer.getRequiredIncludes();
@@ -18,7 +17,7 @@ TEST(DependencyAnalyzer, IncludesOwnHeaderOnly) {
         ASSERT_TRUE(includes[0] == "Point.h") << "Expected 'Point.h' in includes";
 }
 
-TEST(DependencyAnalyzer, IncludeOrderOwnHeaderFirst) {
+TEST(TEST, DependencyAnalyzer) {
     DependencyAnalyzer analyzer("MyClass.h");
 
         // Future: add runtime library dependencies
@@ -31,7 +30,7 @@ TEST(DependencyAnalyzer, IncludeOrderOwnHeaderFirst) {
         ASSERT_TRUE(includes[0] == "MyClass.h") << "Expected own header 'MyClass.h' to be first";
 }
 
-TEST(DependencyAnalyzer, GenerateIncludeDirectives) {
+TEST(TEST, DependencyAnalyzer) {
     DependencyAnalyzer analyzer("Test.h");
 
         std::string includeDirectives = analyzer.emitIncludes();
@@ -40,7 +39,7 @@ TEST(DependencyAnalyzer, GenerateIncludeDirectives) {
         ASSERT_TRUE(includeDirectives.find("#include \"Test.h\"") != std::string::npos) << "Expected '#include \"Test.h\"' in output";
 }
 
-TEST(DependencyAnalyzer, NoDuplicateIncludes) {
+TEST(TEST, DependencyAnalyzer) {
     DependencyAnalyzer analyzer("Foo.h");
 
         // Get includes multiple times
@@ -52,7 +51,7 @@ TEST(DependencyAnalyzer, NoDuplicateIncludes) {
         ASSERT_TRUE(includes1[0] == includes2[0]) << "Includes should be identical";
 }
 
-TEST(DependencyAnalyzer, ExtensibleForRuntimeDeps) {
+TEST(TEST, DependencyAnalyzer) {
     DependencyAnalyzer analyzer("Example.h");
 
         // Verify we have the method to add runtime deps (future-proofing)

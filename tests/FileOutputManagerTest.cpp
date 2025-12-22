@@ -7,7 +7,6 @@
 #include <fstream>
 #include <cstdio>  // For remove()
 
-using namespace clang;
 
 // Helper to check if file exists
 bool fileExists(const std::string& filename) {
@@ -17,7 +16,7 @@ bool fileExists(const std::string& filename) {
 
 // Test 1: Default filenames from input
 
-TEST(FileOutputManager, DefaultFilenames) {
+TEST(TEST, FileOutputManager) {
     FileOutputManager manager;
         manager.setInputFilename("Point.cpp");
 
@@ -25,7 +24,7 @@ TEST(FileOutputManager, DefaultFilenames) {
         ASSERT_TRUE(manager.getImplFilename() == "Point.c") << "Expected 'Point.c' for implementation";
 }
 
-TEST(FileOutputManager, CustomHeaderFilename) {
+TEST(TEST, FileOutputManager) {
     FileOutputManager manager;
         manager.setInputFilename("MyClass.cpp");
         manager.setOutputHeader("custom.h");
@@ -34,7 +33,7 @@ TEST(FileOutputManager, CustomHeaderFilename) {
         ASSERT_TRUE(manager.getImplFilename() == "MyClass.c") << "Expected default impl filename";
 }
 
-TEST(FileOutputManager, CustomImplFilename) {
+TEST(TEST, FileOutputManager) {
     FileOutputManager manager;
         manager.setInputFilename("Test.cpp");
         manager.setOutputImpl("custom.c");
@@ -43,7 +42,7 @@ TEST(FileOutputManager, CustomImplFilename) {
         ASSERT_TRUE(manager.getImplFilename() == "custom.c") << "Expected custom impl filename";
 }
 
-TEST(FileOutputManager, WriteToFiles) {
+TEST(TEST, FileOutputManager) {
     FileOutputManager manager;
         manager.setInputFilename("TestWrite.cpp");
 
@@ -61,7 +60,7 @@ TEST(FileOutputManager, WriteToFiles) {
         std::remove("TestWrite.c");
 }
 
-TEST(FileOutputManager, ErrorHandlingInvalidPath) {
+TEST(TEST, FileOutputManager) {
     FileOutputManager manager;
         manager.setInputFilename("Test.cpp");
         manager.setOutputHeader("/nonexistent/path/test.h");

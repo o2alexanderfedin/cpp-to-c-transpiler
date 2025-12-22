@@ -1,0 +1,218 @@
+{
+  "tests": 40,
+  "name": "AllTests",
+  "testsuites": [
+    {
+      "name": "SharedPtrTest",
+      "tests": 30,
+      "testsuite": [
+        {
+          "name": "BasicConstructor",
+          "file": "\/Users\/alexanderfedin\/Projects\/hapyy\/hupyy-cpp-to-c\/tests\/unit\/smart_pointers\/SharedPtrTest.cpp",
+          "line": 59
+        },
+        {
+          "name": "CopyConstructorIncrementsRefcount",
+          "file": "\/Users\/alexanderfedin\/Projects\/hapyy\/hupyy-cpp-to-c\/tests\/unit\/smart_pointers\/SharedPtrTest.cpp",
+          "line": 85
+        },
+        {
+          "name": "CopyAssignmentIncrementsRefcount",
+          "file": "\/Users\/alexanderfedin\/Projects\/hapyy\/hupyy-cpp-to-c\/tests\/unit\/smart_pointers\/SharedPtrTest.cpp",
+          "line": 107
+        },
+        {
+          "name": "UseCountReturnsRefCount",
+          "file": "\/Users\/alexanderfedin\/Projects\/hapyy\/hupyy-cpp-to-c\/tests\/unit\/smart_pointers\/SharedPtrTest.cpp",
+          "line": 130
+        },
+        {
+          "name": "UniqueChecksSoleOwnership",
+          "file": "\/Users\/alexanderfedin\/Projects\/hapyy\/hupyy-cpp-to-c\/tests\/unit\/smart_pointers\/SharedPtrTest.cpp",
+          "line": 155
+        },
+        {
+          "name": "ResetReleasesOwnership",
+          "file": "\/Users\/alexanderfedin\/Projects\/hapyy\/hupyy-cpp-to-c\/tests\/unit\/smart_pointers\/SharedPtrTest.cpp",
+          "line": 180
+        },
+        {
+          "name": "ResetWithNewPointer",
+          "file": "\/Users\/alexanderfedin\/Projects\/hapyy\/hupyy-cpp-to-c\/tests\/unit\/smart_pointers\/SharedPtrTest.cpp",
+          "line": 203
+        },
+        {
+          "name": "GetReturnsRawPointer",
+          "file": "\/Users\/alexanderfedin\/Projects\/hapyy\/hupyy-cpp-to-c\/tests\/unit\/smart_pointers\/SharedPtrTest.cpp",
+          "line": 224
+        },
+        {
+          "name": "BoolConversion",
+          "file": "\/Users\/alexanderfedin\/Projects\/hapyy\/hupyy-cpp-to-c\/tests\/unit\/smart_pointers\/SharedPtrTest.cpp",
+          "line": 247
+        },
+        {
+          "name": "DereferenceOperators",
+          "file": "\/Users\/alexanderfedin\/Projects\/hapyy\/hupyy-cpp-to-c\/tests\/unit\/smart_pointers\/SharedPtrTest.cpp",
+          "line": 271
+        },
+        {
+          "name": "MakeSharedBasicUsage",
+          "file": "\/Users\/alexanderfedin\/Projects\/hapyy\/hupyy-cpp-to-c\/tests\/unit\/smart_pointers\/SharedPtrTest.cpp",
+          "line": 301
+        },
+        {
+          "name": "MakeSharedWithMultipleArguments",
+          "file": "\/Users\/alexanderfedin\/Projects\/hapyy\/hupyy-cpp-to-c\/tests\/unit\/smart_pointers\/SharedPtrTest.cpp",
+          "line": 323
+        },
+        {
+          "name": "MakeSharedSingleAllocationOptimization",
+          "file": "\/Users\/alexanderfedin\/Projects\/hapyy\/hupyy-cpp-to-c\/tests\/unit\/smart_pointers\/SharedPtrTest.cpp",
+          "line": 342
+        },
+        {
+          "name": "MakeSharedWithDefaultConstructor",
+          "file": "\/Users\/alexanderfedin\/Projects\/hapyy\/hupyy-cpp-to-c\/tests\/unit\/smart_pointers\/SharedPtrTest.cpp",
+          "line": 363
+        },
+        {
+          "name": "MakeSharedExceptionSafety",
+          "file": "\/Users\/alexanderfedin\/Projects\/hapyy\/hupyy-cpp-to-c\/tests\/unit\/smart_pointers\/SharedPtrTest.cpp",
+          "line": 381
+        },
+        {
+          "name": "AtomicReferenceCounting",
+          "file": "\/Users\/alexanderfedin\/Projects\/hapyy\/hupyy-cpp-to-c\/tests\/unit\/smart_pointers\/SharedPtrTest.cpp",
+          "line": 623
+        },
+        {
+          "name": "CopyThreadSafe",
+          "file": "\/Users\/alexanderfedin\/Projects\/hapyy\/hupyy-cpp-to-c\/tests\/unit\/smart_pointers\/SharedPtrTest.cpp",
+          "line": 644
+        },
+        {
+          "name": "AtomicLoad",
+          "file": "\/Users\/alexanderfedin\/Projects\/hapyy\/hupyy-cpp-to-c\/tests\/unit\/smart_pointers\/SharedPtrTest.cpp",
+          "line": 671
+        },
+        {
+          "name": "AtomicStore",
+          "file": "\/Users\/alexanderfedin\/Projects\/hapyy\/hupyy-cpp-to-c\/tests\/unit\/smart_pointers\/SharedPtrTest.cpp",
+          "line": 688
+        },
+        {
+          "name": "AtomicExchange",
+          "file": "\/Users\/alexanderfedin\/Projects\/hapyy\/hupyy-cpp-to-c\/tests\/unit\/smart_pointers\/SharedPtrTest.cpp",
+          "line": 706
+        },
+        {
+          "name": "WithCustomDeleter",
+          "file": "\/Users\/alexanderfedin\/Projects\/hapyy\/hupyy-cpp-to-c\/tests\/unit\/smart_pointers\/SharedPtrTest.cpp",
+          "line": 728
+        },
+        {
+          "name": "WithArrayDeleter",
+          "file": "\/Users\/alexanderfedin\/Projects\/hapyy\/hupyy-cpp-to-c\/tests\/unit\/smart_pointers\/SharedPtrTest.cpp",
+          "line": 747
+        },
+        {
+          "name": "AliasingConstructor",
+          "file": "\/Users\/alexanderfedin\/Projects\/hapyy\/hupyy-cpp-to-c\/tests\/unit\/smart_pointers\/SharedPtrTest.cpp",
+          "line": 760
+        },
+        {
+          "name": "WithPolymorphism",
+          "file": "\/Users\/alexanderfedin\/Projects\/hapyy\/hupyy-cpp-to-c\/tests\/unit\/smart_pointers\/SharedPtrTest.cpp",
+          "line": 780
+        },
+        {
+          "name": "EnableSharedFromThis",
+          "file": "\/Users\/alexanderfedin\/Projects\/hapyy\/hupyy-cpp-to-c\/tests\/unit\/smart_pointers\/SharedPtrTest.cpp",
+          "line": 800
+        },
+        {
+          "name": "InContainer",
+          "file": "\/Users\/alexanderfedin\/Projects\/hapyy\/hupyy-cpp-to-c\/tests\/unit\/smart_pointers\/SharedPtrTest.cpp",
+          "line": 821
+        },
+        {
+          "name": "ComparisonOperators",
+          "file": "\/Users\/alexanderfedin\/Projects\/hapyy\/hupyy-cpp-to-c\/tests\/unit\/smart_pointers\/SharedPtrTest.cpp",
+          "line": 839
+        },
+        {
+          "name": "OwnerBeforeStrictWeakOrdering",
+          "file": "\/Users\/alexanderfedin\/Projects\/hapyy\/hupyy-cpp-to-c\/tests\/unit\/smart_pointers\/SharedPtrTest.cpp",
+          "line": 860
+        },
+        {
+          "name": "MoveConstructorNoRefcountChange",
+          "file": "\/Users\/alexanderfedin\/Projects\/hapyy\/hupyy-cpp-to-c\/tests\/unit\/smart_pointers\/SharedPtrTest.cpp",
+          "line": 877
+        },
+        {
+          "name": "MoveAssignmentNoRefcountChange",
+          "file": "\/Users\/alexanderfedin\/Projects\/hapyy\/hupyy-cpp-to-c\/tests\/unit\/smart_pointers\/SharedPtrTest.cpp",
+          "line": 897
+        }
+      ]
+    },
+    {
+      "name": "WeakPtrTest",
+      "tests": 10,
+      "testsuite": [
+        {
+          "name": "BasicCreationFromSharedPtr",
+          "file": "\/Users\/alexanderfedin\/Projects\/hapyy\/hupyy-cpp-to-c\/tests\/unit\/smart_pointers\/SharedPtrTest.cpp",
+          "line": 406
+        },
+        {
+          "name": "LockCreatesSharedPtr",
+          "file": "\/Users\/alexanderfedin\/Projects\/hapyy\/hupyy-cpp-to-c\/tests\/unit\/smart_pointers\/SharedPtrTest.cpp",
+          "line": 427
+        },
+        {
+          "name": "LockReturnsNullWhenExpired",
+          "file": "\/Users\/alexanderfedin\/Projects\/hapyy\/hupyy-cpp-to-c\/tests\/unit\/smart_pointers\/SharedPtrTest.cpp",
+          "line": 455
+        },
+        {
+          "name": "ExpiredChecksValidity",
+          "file": "\/Users\/alexanderfedin\/Projects\/hapyy\/hupyy-cpp-to-c\/tests\/unit\/smart_pointers\/SharedPtrTest.cpp",
+          "line": 476
+        },
+        {
+          "name": "UseCountReturnsSharedCount",
+          "file": "\/Users\/alexanderfedin\/Projects\/hapyy\/hupyy-cpp-to-c\/tests\/unit\/smart_pointers\/SharedPtrTest.cpp",
+          "line": 500
+        },
+        {
+          "name": "ResetReleasesWeakReference",
+          "file": "\/Users\/alexanderfedin\/Projects\/hapyy\/hupyy-cpp-to-c\/tests\/unit\/smart_pointers\/SharedPtrTest.cpp",
+          "line": 521
+        },
+        {
+          "name": "BreaksCyclicReference",
+          "file": "\/Users\/alexanderfedin\/Projects\/hapyy\/hupyy-cpp-to-c\/tests\/unit\/smart_pointers\/SharedPtrTest.cpp",
+          "line": 542
+        },
+        {
+          "name": "CopyConstructor",
+          "file": "\/Users\/alexanderfedin\/Projects\/hapyy\/hupyy-cpp-to-c\/tests\/unit\/smart_pointers\/SharedPtrTest.cpp",
+          "line": 564
+        },
+        {
+          "name": "AssignmentOperator",
+          "file": "\/Users\/alexanderfedin\/Projects\/hapyy\/hupyy-cpp-to-c\/tests\/unit\/smart_pointers\/SharedPtrTest.cpp",
+          "line": 581
+        },
+        {
+          "name": "Swap",
+          "file": "\/Users\/alexanderfedin\/Projects\/hapyy\/hupyy-cpp-to-c\/tests\/unit\/smart_pointers\/SharedPtrTest.cpp",
+          "line": 600
+        }
+      ]
+    }
+  ]
+}

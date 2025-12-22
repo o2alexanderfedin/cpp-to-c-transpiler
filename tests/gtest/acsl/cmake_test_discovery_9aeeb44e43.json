@@ -1,0 +1,72 @@
+{
+  "tests": 12,
+  "name": "AllTests",
+  "testsuites": [
+    {
+      "name": "ACSLMemoryPredicateAnalyzerTest",
+      "tests": 12,
+      "testsuite": [
+        {
+          "name": "AllocablePrecondition",
+          "file": "\/Users\/alexanderfedin\/Projects\/hapyy\/hupyy-cpp-to-c\/tests\/gtest\/ACSLMemoryPredicateAnalyzerTest_GTest.cpp",
+          "line": 60
+        },
+        {
+          "name": "FreeablePrecondition",
+          "file": "\/Users\/alexanderfedin\/Projects\/hapyy\/hupyy-cpp-to-c\/tests\/gtest\/ACSLMemoryPredicateAnalyzerTest_GTest.cpp",
+          "line": 80
+        },
+        {
+          "name": "BlockLengthPostcondition",
+          "file": "\/Users\/alexanderfedin\/Projects\/hapyy\/hupyy-cpp-to-c\/tests\/gtest\/ACSLMemoryPredicateAnalyzerTest_GTest.cpp",
+          "line": 100
+        },
+        {
+          "name": "BaseAddressComputation",
+          "file": "\/Users\/alexanderfedin\/Projects\/hapyy\/hupyy-cpp-to-c\/tests\/gtest\/ACSLMemoryPredicateAnalyzerTest_GTest.cpp",
+          "line": 120
+        },
+        {
+          "name": "PointerArithmeticSafety",
+          "file": "\/Users\/alexanderfedin\/Projects\/hapyy\/hupyy-cpp-to-c\/tests\/gtest\/ACSLMemoryPredicateAnalyzerTest_GTest.cpp",
+          "line": 139
+        },
+        {
+          "name": "CustomAllocator",
+          "file": "\/Users\/alexanderfedin\/Projects\/hapyy\/hupyy-cpp-to-c\/tests\/gtest\/ACSLMemoryPredicateAnalyzerTest_GTest.cpp",
+          "line": 158
+        },
+        {
+          "name": "PartialAllocation",
+          "file": "\/Users\/alexanderfedin\/Projects\/hapyy\/hupyy-cpp-to-c\/tests\/gtest\/ACSLMemoryPredicateAnalyzerTest_GTest.cpp",
+          "line": 180
+        },
+        {
+          "name": "ReallocTracking",
+          "file": "\/Users\/alexanderfedin\/Projects\/hapyy\/hupyy-cpp-to-c\/tests\/gtest\/ACSLMemoryPredicateAnalyzerTest_GTest.cpp",
+          "line": 202
+        },
+        {
+          "name": "DoubleFreeDetection",
+          "file": "\/Users\/alexanderfedin\/Projects\/hapyy\/hupyy-cpp-to-c\/tests\/gtest\/ACSLMemoryPredicateAnalyzerTest_GTest.cpp",
+          "line": 222
+        },
+        {
+          "name": "UseAfterFreeDetection",
+          "file": "\/Users\/alexanderfedin\/Projects\/hapyy\/hupyy-cpp-to-c\/tests\/gtest\/ACSLMemoryPredicateAnalyzerTest_GTest.cpp",
+          "line": 245
+        },
+        {
+          "name": "FreshMemoryAllocation",
+          "file": "\/Users\/alexanderfedin\/Projects\/hapyy\/hupyy-cpp-to-c\/tests\/gtest\/ACSLMemoryPredicateAnalyzerTest_GTest.cpp",
+          "line": 266
+        },
+        {
+          "name": "NoMemoryPredicates",
+          "file": "\/Users\/alexanderfedin\/Projects\/hapyy\/hupyy-cpp-to-c\/tests\/gtest\/ACSLMemoryPredicateAnalyzerTest_GTest.cpp",
+          "line": 287
+        }
+      ]
+    }
+  ]
+}

@@ -26,7 +26,6 @@
 #include <cstddef>
 #include <cstring>
 
-using namespace clang;
 
 // Test helper macros
   if (!(cond)) {                                                               \
@@ -83,7 +82,7 @@ const void *__vt_vmi_class_type_info = (const void *)0x3000;
  * Test: Derived* -> Base* should succeed
  */
 
-TEST(HierarchyTraversal, SingleInheritanceDirectBase) {
+TEST(TEST, HierarchyTraversal) {
     // Setup type_info structures
       const struct __class_type_info ti_Base = {.vtable_ptr = __vt_class_type_info,
                                                 .type_name = "4Base"};
@@ -105,7 +104,7 @@ TEST(HierarchyTraversal, SingleInheritanceDirectBase) {
       ASSERT_TRUE(result == ptr) << "Direct base should return original pointer";
 }
 
-TEST(HierarchyTraversal, SingleInheritanceMultiLevel) {
+TEST(TEST, HierarchyTraversal) {
     // Setup type_info structures
       const struct __class_type_info ti_Base = {.vtable_ptr = __vt_class_type_info,
                                                 .type_name = "4Base"};
@@ -132,7 +131,7 @@ TEST(HierarchyTraversal, SingleInheritanceMultiLevel) {
       ASSERT_TRUE(result == ptr) << "Multi-level traversal should find Base";
 }
 
-TEST(HierarchyTraversal, SingleInheritanceNotFound) {
+TEST(TEST, HierarchyTraversal) {
     // Setup type_info structures
       const struct __class_type_info ti_Base = {.vtable_ptr = __vt_class_type_info,
                                                 .type_name = "4Base"};
@@ -157,7 +156,7 @@ TEST(HierarchyTraversal, SingleInheritanceNotFound) {
       ASSERT_TRUE(result == nullptr) << "Unrelated type should return NULL";
 }
 
-TEST(HierarchyTraversal, NullPointerHandling) {
+TEST(TEST, HierarchyTraversal) {
     const struct __class_type_info ti_Base = {.vtable_ptr = __vt_class_type_info,
                                                 .type_name = "4Base"};
 
@@ -174,7 +173,7 @@ TEST(HierarchyTraversal, NullPointerHandling) {
       ASSERT_TRUE(result == nullptr) << "NULL pointer should return NULL";
 }
 
-TEST(HierarchyTraversal, SameTypeOptimization) {
+TEST(TEST, HierarchyTraversal) {
     const struct __class_type_info ti_Base = {.vtable_ptr = __vt_class_type_info,
                                                 .type_name = "4Base"};
 

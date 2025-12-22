@@ -1,0 +1,62 @@
+{
+  "tests": 10,
+  "name": "AllTests",
+  "testsuites": [
+    {
+      "name": "ACSLClassAnnotatorTest",
+      "tests": 10,
+      "testsuite": [
+        {
+          "name": "SimpleClassPrimitiveMembers",
+          "file": "\/Users\/alexanderfedin\/Projects\/hapyy\/hupyy-cpp-to-c\/tests\/gtest\/ACSLClassAnnotatorTest_GTest.cpp",
+          "line": 95
+        },
+        {
+          "name": "ClassWithPointerMembers",
+          "file": "\/Users\/alexanderfedin\/Projects\/hapyy\/hupyy-cpp-to-c\/tests\/gtest\/ACSLClassAnnotatorTest_GTest.cpp",
+          "line": 120
+        },
+        {
+          "name": "StackClassWithArrayMembers",
+          "file": "\/Users\/alexanderfedin\/Projects\/hapyy\/hupyy-cpp-to-c\/tests\/gtest\/ACSLClassAnnotatorTest_GTest.cpp",
+          "line": 143
+        },
+        {
+          "name": "ClassWithVirtualMethods",
+          "file": "\/Users\/alexanderfedin\/Projects\/hapyy\/hupyy-cpp-to-c\/tests\/gtest\/ACSLClassAnnotatorTest_GTest.cpp",
+          "line": 172
+        },
+        {
+          "name": "ConstructorInvariantInjection",
+          "file": "\/Users\/alexanderfedin\/Projects\/hapyy\/hupyy-cpp-to-c\/tests\/gtest\/ACSLClassAnnotatorTest_GTest.cpp",
+          "line": 199
+        },
+        {
+          "name": "MethodInvariantInjection",
+          "file": "\/Users\/alexanderfedin\/Projects\/hapyy\/hupyy-cpp-to-c\/tests\/gtest\/ACSLClassAnnotatorTest_GTest.cpp",
+          "line": 226
+        },
+        {
+          "name": "DestructorInvariantInjection",
+          "file": "\/Users\/alexanderfedin\/Projects\/hapyy\/hupyy-cpp-to-c\/tests\/gtest\/ACSLClassAnnotatorTest_GTest.cpp",
+          "line": 256
+        },
+        {
+          "name": "MemberConstraintGeneration",
+          "file": "\/Users\/alexanderfedin\/Projects\/hapyy\/hupyy-cpp-to-c\/tests\/gtest\/ACSLClassAnnotatorTest_GTest.cpp",
+          "line": 287
+        },
+        {
+          "name": "FullACSLLevelIntegration",
+          "file": "\/Users\/alexanderfedin\/Projects\/hapyy\/hupyy-cpp-to-c\/tests\/gtest\/ACSLClassAnnotatorTest_GTest.cpp",
+          "line": 314
+        },
+        {
+          "name": "EmptyClass",
+          "file": "\/Users\/alexanderfedin\/Projects\/hapyy\/hupyy-cpp-to-c\/tests\/gtest\/ACSLClassAnnotatorTest_GTest.cpp",
+          "line": 344
+        }
+      ]
+    }
+  ]
+}
