@@ -29,6 +29,11 @@ if(EMSCRIPTEN)
     # ========================================================================
     add_executable(cpptoc-wasm-minimal
         bindings/minimal.cpp
+        bindings/TranspilerAPIStub.cpp
+    )
+
+    target_include_directories(cpptoc-wasm-minimal PRIVATE
+        ${CMAKE_CURRENT_SOURCE_DIR}/../include
     )
 
     target_compile_definitions(cpptoc-wasm-minimal PRIVATE
@@ -58,6 +63,11 @@ if(EMSCRIPTEN)
     # ========================================================================
     add_executable(cpptoc-wasm-full
         bindings/full.cpp
+        bindings/TranspilerAPIStub.cpp
+    )
+
+    target_include_directories(cpptoc-wasm-full PRIVATE
+        ${CMAKE_CURRENT_SOURCE_DIR}/../include
     )
 
     target_compile_definitions(cpptoc-wasm-full PRIVATE

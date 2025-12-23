@@ -39,6 +39,7 @@ struct TranspileOptions {
 struct TranspileResult {
     bool success = false;
     std::string c;
+    std::string h;
     std::string acsl;
     std::vector<Diagnostic> diagnostics;
 };
@@ -78,6 +79,7 @@ public:
             // Map library result to WASM result
             result.success = libResult.success;
             result.c = libResult.c;
+            result.h = libResult.h;
             result.acsl = libResult.acsl;
 
             // Map diagnostics
@@ -139,6 +141,7 @@ EMSCRIPTEN_BINDINGS(cpptoc_full) {
     value_object<TranspileResult>("TranspileResult")
         .field("success", &TranspileResult::success)
         .field("c", &TranspileResult::c)
+        .field("h", &TranspileResult::h)
         .field("acsl", &TranspileResult::acsl)
         .field("diagnostics", &TranspileResult::diagnostics);
 
