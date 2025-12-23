@@ -8,7 +8,7 @@
 
 ## Overview
 
-Two parallel workstreams to transform the transpiler:
+Three parallel workstreams to transform the transpiler:
 
 **Workstream A: ACSL Annotation Completion (v1.17.0 → v2.0.0)**
 - Phases 1-7: Complete Frama-C ACSL 1.17+ compatibility
@@ -17,6 +17,10 @@ Two parallel workstreams to transform the transpiler:
 **Workstream B: Core C++ Feature Implementation (v2.1.0 → v3.0.0)**
 - Phases 8-17: Implement 25 unsupported C++ features identified in analysis
 - Status: All phases ⏳ PLANNED | Can run in parallel with ACSL work
+
+**Workstream C: Validation & Utilities**
+- Phase 30: Transpile real-world test projects for validation
+- Status: Phase 30 ⏳ PLANNED | Independent utility phase
 
 ## Phase Strategy
 
@@ -791,6 +795,45 @@ Two parallel workstreams to transform the transpiler:
 - Example gallery with verified code (ACSL) and real programs (features)
 - Integration guide for Frama-C users (ACSL)
 - Migration guide from v1.17.0 to v3.0.0
+
+---
+
+# WORKSTREAM C: VALIDATION & UTILITIES
+
+## Phase 30: Transpile Real-World Test Projects ⏳ PLANNED
+
+**Goal**: Create comprehensive transpiled C versions of all real-world test projects for validation and demonstration
+
+**Version**: Utility (no version bump)
+
+### Deliverables
+- Transpilation script: `scripts/transpile-real-world.sh`
+- Transpiled projects in: `tests/real-world/transpiled/<project>/`
+  - json-parser (transpiled C code)
+  - logger (transpiled C code)
+  - resource-manager (transpiled C code)
+  - string-formatter (transpiled C code)
+  - test-framework (transpiled C code)
+- CMakeLists.txt for each transpiled project
+- Comprehensive documentation and validation reports
+
+### Technical Approach
+- Use `build_working/transpiler-api-cli` to transpile all source files
+- Maintain directory structure (src/, include/, tests/)
+- Parse JSON output to extract transpiled .c and .h files
+- Create build configuration for C99 compilation
+- Validate transpiled code compiles
+- Document success rates and limitations
+
+### Success Criteria
+- All 5 projects transpiled (50+ files)
+- Transpilation success rate >= 90%
+- At least 3 out of 5 projects compile successfully
+- Complete documentation and reports
+
+### Dependencies
+- Requires transpiler-api-cli built and functional
+- Runtime library available
 
 ---
 
