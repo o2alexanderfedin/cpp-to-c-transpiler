@@ -3367,6 +3367,35 @@ gtest_discover_tests(TranspilerAPI_HeaderSeparation_Test
     WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
 )
 
+# TranspilerAPI Mutual Struct References Test
+add_executable(TranspilerAPI_MutualStructReferences_Test
+    tests/TranspilerAPI_MutualStructReferences_Test.cpp
+)
+
+target_compile_definitions(TranspilerAPI_MutualStructReferences_Test PRIVATE ${LLVM_DEFINITIONS})
+
+target_include_directories(TranspilerAPI_MutualStructReferences_Test PRIVATE
+    ${CMAKE_SOURCE_DIR}/include
+    ${LLVM_INCLUDE_DIRS}
+    ${CLANG_INCLUDE_DIRS}
+)
+
+target_link_libraries(TranspilerAPI_MutualStructReferences_Test PRIVATE
+    cpptoc_core
+    clangTooling
+    clangFrontend
+    clangAST
+    clangBasic
+    GTest::gtest
+    GTest::gtest_main
+    GTest::gmock
+)
+
+# Register with CTest
+gtest_discover_tests(TranspilerAPI_MutualStructReferences_Test
+    WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
+)
+
 # ============================================================================
 # Phase 15-04: Unified Test Execution - Convenience Test Targets
 # ============================================================================

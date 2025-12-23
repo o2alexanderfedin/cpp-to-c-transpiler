@@ -63,7 +63,7 @@ PrintingPolicy CodeGenerator::createC99Policy(ASTContext &Ctx) {
     // Formatting preferences for readable C code
     Policy.SuppressTagKeyword = false;  // Keep 'struct' keyword
     Policy.SuppressSpecifiers = false;  // Keep type specifiers
-    Policy.IncludeTagDefinition = true;  // Print full struct definitions
+    Policy.IncludeTagDefinition = false;  // DON'T expand struct definitions in types (Phase 28 fix)
     Policy.Indentation = 4;  // 4-space indentation (standard C style)
 
     // DRY: Reuse Clang's well-tested policy defaults for everything else
