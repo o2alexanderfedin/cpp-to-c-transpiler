@@ -6,6 +6,8 @@
 #include "CNodeBuilder.h"
 #include "CppToCVisitor.h"
 #include "CodeGenerator.h"
+#include "HeaderSeparator.h"
+#include "IncludeGuardGenerator.h"
 #include "clang/Frontend/FrontendAction.h"
 #include "clang/Frontend/CompilerInstance.h"
 #include "clang/Tooling/Tooling.h"
@@ -98,12 +100,14 @@ class TranspilerConsumer : public clang::ASTConsumer {
     clang::ASTContext &Context;
     llvm::raw_string_ostream &CStream;
     llvm::raw_string_ostream &HStream;
+    std::string Filename;
 
 public:
     TranspilerConsumer(clang::ASTContext &Context,
                       llvm::raw_string_ostream &CStream,
-                      llvm::raw_string_ostream &HStream)
-        : Context(Context), CStream(CStream), HStream(HStream) {}
+                      llvm::raw_string_ostream &HStream,
+                      const std::string &Filename)
+        : Context(Context), CStream(CStream), HStream(HStream), Filename(Filename) {}
 
     void HandleTranslationUnit(clang::ASTContext &Context) override {
         // Create CNodeBuilder for C AST construction
@@ -117,10 +121,44 @@ public:
         // Process template instantiations (Phase 11)
         Visitor.processTemplateInstantiations(TU);
 
-        // Generate C code output using CodeGenerator
-        // For now, output to C stream (we'll separate .h/.c in future iterations)
+        // Separate declarations into header and implementation (Phase 28)
+        HeaderSeparator separator;
+        separator.analyzeTranslationUnit(TU);
+
+        // Generate include guards for header
+        IncludeGuardGenerator guardGen(g_currentOptions ? g_currentOptions->usePragmaOnce : false);
+        std::string guardName = guardGen.generateGuardName(Filename + ".h");
+
+        // Write header file (.h)
+        HStream << guardGen.emitGuardBegin(guardName);
+        HStream << "\n";
+
+        // Forward declarations
+        const auto& forwardDecls = separator.getForwardDecls();
+        if (!forwardDecls.empty()) {
+            HStream << "// Forward declarations\n";
+            for (const auto& fwd : forwardDecls) {
+                HStream << "struct " << fwd << ";\n";
+            }
+            HStream << "\n";
+        }
+
+        // Header declarations (structs, function prototypes)
+        CodeGenerator HGen(HStream, Context);
+        for (clang::Decl* decl : separator.getHeaderDecls()) {
+            HGen.printDecl(decl, /*declarationOnly=*/true);
+        }
+
+        HStream << guardGen.emitGuardEnd(guardName);
+
+        // Write implementation file (.c)
+        CStream << "#include \"" << Filename << ".h\"\n\n";
+
+        // Implementation (function bodies)
         CodeGenerator CGen(CStream, Context);
-        CGen.printTranslationUnit(TU);
+        for (clang::Decl* decl : separator.getImplDecls()) {
+            CGen.printDecl(decl, /*declarationOnly=*/false);
+        }
 
         // Flush streams to ensure all output is captured
         CStream.flush();
@@ -142,7 +180,7 @@ public:
         clang::CompilerInstance &CI,
         llvm::StringRef file) override {
         return std::make_unique<TranspilerConsumer>(
-            CI.getASTContext(), CStream, HStream);
+            CI.getASTContext(), CStream, HStream, file.str());
     }
 };
 

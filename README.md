@@ -494,6 +494,79 @@ if (result.success) {
 - **Sandboxed Environments**: Security-critical contexts without disk I/O
 - **Embedded Systems**: Transpilation in resource-constrained environments
 
+## Header/Implementation Separation (Phase 28-01)
+
+The transpiler generates separate .h and .c files with proper separation of declarations and implementations.
+
+### .h File (Header)
+
+- Include guards (`#ifndef` / `#define` / `#endif` or `#pragma once`)
+- Forward declarations (for struct pointers)
+- Struct/class definitions
+- Function declarations (signatures only)
+
+### .c File (Implementation)
+
+- `#include "header.h"`
+- Function implementations (full bodies)
+
+### Example
+
+**Input C++:**
+```cpp
+struct Point {
+    int x, y;
+};
+
+int distance(Point p1, Point p2) {
+    return abs(p1.x - p2.x) + abs(p1.y - p2.y);
+}
+```
+
+**Output .h:**
+```c
+#ifndef POINT_H
+#define POINT_H
+
+struct Point {
+    int x;
+    int y;
+};
+
+int distance(struct Point p1, struct Point p2);
+
+#endif // POINT_H
+```
+
+**Output .c:**
+```c
+#include "point.h"
+
+int distance(struct Point p1, struct Point p2) {
+    return abs(p1.x - p2.x) + abs(p1.y - p2.y);
+}
+```
+
+### Options
+
+```cpp
+cpptoc::TranspileOptions opts;
+opts.usePragmaOnce = true;  // Use #pragma once instead of guards
+```
+
+### Library API Access
+
+```cpp
+#include "TranspilerAPI.h"
+
+auto result = cpptoc::transpile(cppSource, "myfile.cpp");
+
+if (result.success) {
+    std::cout << "Header:\n" << result.h << "\n";
+    std::cout << "Implementation:\n" << result.c << "\n";
+}
+```
+
 ## Website Submodule
 
 The presentation website is maintained as a separate repository: [cpp-to-c-website](https://github.com/o2alexanderfedin/cpp-to-c-website)

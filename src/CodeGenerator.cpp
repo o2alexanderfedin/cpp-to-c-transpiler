@@ -72,25 +72,39 @@ PrintingPolicy CodeGenerator::createC99Policy(ASTContext &Ctx) {
 
 // Print a declaration using Clang's DeclPrinter
 // Dependency Inversion: Depends on Clang's abstract Decl interface
-void CodeGenerator::printDecl(Decl *D) {
+void CodeGenerator::printDecl(Decl *D, bool declarationOnly) {
     if (!D) return;
 
-    // Use Clang's built-in DeclPrinter (via Decl::print)
-    // KISS: Don't reinvent the wheel - Clang's printer is battle-tested
-    D->print(OS, Policy);
-
-    // C requires semicolon after certain declarations
-    // Check if this is a tag declaration (struct/union/enum) or function declaration without body
-    if (isa<RecordDecl>(D) || isa<EnumDecl>(D)) {
-        OS << ";";
-    } else if (auto *FD = dyn_cast<FunctionDecl>(D)) {
-        // Function declarations without bodies need semicolon
-        if (!FD->hasBody()) {
-            OS << ";";
+    if (auto *FD = dyn_cast<FunctionDecl>(D)) {
+        if (declarationOnly) {
+            // Print function signature only (for header)
+            printFunctionSignature(FD);
+            OS << ";\n";
+        } else {
+            // Print full function (for implementation)
+            // Use Clang's built-in DeclPrinter (via Decl::print)
+            D->print(OS, Policy);
+            OS << "\n";
         }
-    }
+    } else if (isa<RecordDecl>(D) || isa<EnumDecl>(D)) {
+        // Struct/enum definitions always complete (same for header and impl)
+        D->print(OS, Policy);
+        OS << ";\n";
+    } else {
+        // Other declarations
+        D->print(OS, Policy);
 
-    OS << "\n";
+        // C requires semicolon after certain declarations
+        if (isa<RecordDecl>(D) || isa<EnumDecl>(D)) {
+            OS << ";";
+        } else if (auto *FD = dyn_cast<FunctionDecl>(D)) {
+            // Function declarations without bodies need semicolon
+            if (!FD->hasBody()) {
+                OS << ";";
+            }
+        }
+        OS << "\n";
+    }
 }
 
 // Print a statement using Clang's StmtPrinter
@@ -154,4 +168,34 @@ void CodeGenerator::printTranslationUnitWithLineDirectives(TranslationUnitDecl *
             printDeclWithLineDirective(D);
         }
     }
+}
+
+// Phase 28: Print function signature without body (for header files)
+void CodeGenerator::printFunctionSignature(FunctionDecl *FD) {
+    if (!FD) return;
+
+    // Return type
+    FD->getReturnType().print(OS, Policy);
+    OS << " ";
+
+    // Function name
+    OS << FD->getNameAsString();
+
+    // Parameters
+    OS << "(";
+    for (unsigned i = 0; i < FD->getNumParams(); ++i) {
+        if (i > 0) OS << ", ";
+        ParmVarDecl *Param = FD->getParamDecl(i);
+
+        // Create a copy of the policy with SuppressTagKeyword disabled
+        // This prevents printing full struct definitions in parameter types
+        PrintingPolicy ParamPolicy = Policy;
+        ParamPolicy.IncludeTagDefinition = false;  // Don't include full struct definition
+
+        Param->getType().print(OS, ParamPolicy);
+        if (!Param->getNameAsString().empty()) {
+            OS << " " << Param->getNameAsString();
+        }
+    }
+    OS << ")";
 }

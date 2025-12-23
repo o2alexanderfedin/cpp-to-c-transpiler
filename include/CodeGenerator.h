@@ -24,7 +24,10 @@ public:
 
     // Print a single declaration (struct, function, variable)
     // Uses Decl::print() internally
-    void printDecl(clang::Decl *D);
+    // Phase 28: Added declarationOnly parameter for header/impl separation
+    /// @param D Declaration to print
+    /// @param declarationOnly If true, print signature only (for .h files)
+    void printDecl(clang::Decl *D, bool declarationOnly = false);
 
     // Story #23: Print declaration with #line directive for source mapping
     void printDeclWithLineDirective(clang::Decl *D);
@@ -46,4 +49,9 @@ public:
 private:
     // Story #22: Create C99-compliant PrintingPolicy
     static clang::PrintingPolicy createC99Policy(clang::ASTContext &Ctx);
+
+    // Phase 28: Print function signature without body (for header files)
+    /// @brief Print function signature without body
+    /// @param FD Function declaration
+    void printFunctionSignature(clang::FunctionDecl *FD);
 };
