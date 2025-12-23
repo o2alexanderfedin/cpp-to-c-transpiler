@@ -281,6 +281,32 @@ target_link_libraries(cpptoc PRIVATE
 )
 
 # ============================================================================
+# API CLI Wrapper (for Node.js API server)
+# ============================================================================
+
+# Simple CLI wrapper that uses TranspilerAPI and outputs JSON
+add_executable(transpiler-api-cli
+    src/transpiler-api-cli.cpp
+)
+
+target_compile_definitions(transpiler-api-cli PRIVATE ${LLVM_DEFINITIONS})
+
+target_include_directories(transpiler-api-cli PRIVATE
+    ${CMAKE_SOURCE_DIR}/include
+    ${LLVM_INCLUDE_DIRS}
+    ${CLANG_INCLUDE_DIRS}
+)
+
+target_link_libraries(transpiler-api-cli PRIVATE
+    cpptoc_core
+    clangTooling
+    clangFrontend
+    clangAST
+    clangBasic
+    LLVMSupport
+)
+
+# ============================================================================
 # Test Executables (Epic #2 and Epic #3)
 # ============================================================================
 
@@ -3274,6 +3300,39 @@ gtest_discover_tests(VirtualMethodIntegrationTest
 # gtest_discover_tests(FramaCEVATests
 #     WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
 # )
+
+# ============================================================================
+# Phase 27-01: Virtual File System Support Tests
+# ============================================================================
+
+# TranspilerAPI Virtual Files Test
+add_executable(TranspilerAPI_VirtualFiles_Test
+    tests/TranspilerAPI_VirtualFiles_Test.cpp
+)
+
+target_compile_definitions(TranspilerAPI_VirtualFiles_Test PRIVATE ${LLVM_DEFINITIONS})
+
+target_include_directories(TranspilerAPI_VirtualFiles_Test PRIVATE
+    ${CMAKE_SOURCE_DIR}/include
+    ${LLVM_INCLUDE_DIRS}
+    ${CLANG_INCLUDE_DIRS}
+)
+
+target_link_libraries(TranspilerAPI_VirtualFiles_Test PRIVATE
+    cpptoc_core
+    clangTooling
+    clangFrontend
+    clangAST
+    clangBasic
+    GTest::gtest
+    GTest::gtest_main
+    GTest::gmock
+)
+
+# Register with CTest
+gtest_discover_tests(TranspilerAPI_VirtualFiles_Test
+    WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
+)
 
 # ============================================================================
 # Phase 15-04: Unified Test Execution - Convenience Test Targets

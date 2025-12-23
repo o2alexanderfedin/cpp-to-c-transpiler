@@ -216,13 +216,22 @@ TranspileResult transpile(
         // Create custom action factory that captures output
         TranspilerActionFactory factory(cStream, hStream);
 
-        // Run the transpiler using Clang's tooling API
+        // Build FileContentMappings from virtual files
+        clang::tooling::FileContentMappings virtualMappedFiles;
+        for (const auto& [path, content] : options.virtualFiles) {
+            virtualMappedFiles.push_back({path, content});
+        }
+
+        // Run the transpiler using Clang's tooling API with virtual files support
         // This parses the C++ code, builds AST, and runs our visitor
         bool success = clang::tooling::runToolOnCodeWithArgs(
             factory.create(),
             cppSource,
             args,
-            filename
+            filename,
+            "cpptoc-transpiler",  // tool name
+            std::make_shared<clang::PCHContainerOperations>(),
+            virtualMappedFiles  // virtual files
         );
 
         // Flush streams to ensure all output is captured

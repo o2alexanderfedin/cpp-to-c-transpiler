@@ -71,6 +71,13 @@ struct TranspileOptions {
 
     /// @brief Dependency visualization options
     bool generateDependencyGraph = false; ///< Generate dependency graph in DOT format
+
+    /// @brief Virtual files for in-memory compilation
+    /// @details Each pair represents (file_path, file_content).
+    ///          Used to provide header files without filesystem access.
+    ///          Example: {"/usr/include/stdio.h", "... header content ..."}
+    /// @note Paths should be absolute and match -I include directories
+    std::vector<std::pair<std::string, std::string>> virtualFiles;
 };
 
 /// @brief Diagnostic message from transpilation

@@ -447,6 +447,53 @@ frama-c -cpp-extra-args="-I./runtime" output.c
 - `--visualize-deps` - Generate dependency graph visualization (saved as deps.dot)
 - `--dump-deps=<filename>` - Generate dependency graph in DOT format to specified file
 
+## Virtual File System Support (Phase 27-01)
+
+The transpiler supports in-memory header files via Virtual File System (VFS), enabling browser-based and embedded usage without filesystem access.
+
+### Library API Usage
+
+```cpp
+#include "TranspilerAPI.h"
+
+cpptoc::TranspileOptions opts;
+
+// Provide header files as in-memory strings
+opts.virtualFiles = {
+    {"/virtual/myheader.h", "#define MACRO 42\nint helper();"}
+};
+
+std::string cpp = R"(
+    #include "/virtual/myheader.h"
+    int x = MACRO;
+)";
+
+auto result = cpptoc::transpile(cpp, "test.cpp", opts);
+
+if (result.success) {
+    std::cout << result.c << std::endl;  // Output: int x = 42;
+} else {
+    for (const auto& diag : result.diagnostics) {
+        std::cerr << diag.message << std::endl;
+    }
+}
+```
+
+### How It Works
+
+- Virtual files are provided as `(path, content)` pairs in `TranspileOptions::virtualFiles`
+- Clang resolves `#include` directives through the VFS on-demand
+- Supports nested includes (virtual files can include other virtual files)
+- Files are NOT pre-loaded into memory - loaded only when `#include` is processed
+- Graceful error handling for missing files (standard Clang diagnostics)
+
+### Use Cases
+
+- **WASM Integration**: Browser-based transpilation without filesystem access
+- **Testing**: Unit tests with inline header content
+- **Sandboxed Environments**: Security-critical contexts without disk I/O
+- **Embedded Systems**: Transpilation in resource-constrained environments
+
 ## Website Submodule
 
 The presentation website is maintained as a separate repository: [cpp-to-c-website](https://github.com/o2alexanderfedin/cpp-to-c-website)
