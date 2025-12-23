@@ -2,10 +2,7 @@
 #include <string>
 #include <vector>
 #include <sstream>
-
-// NOTE: Full Clang/LLVM integration pending
-// This is a PLACEHOLDER implementation for build system validation
-// Actual transpiler logic requires refactoring main.cpp to library API
+#include "TranspilerAPI.h"
 
 using namespace emscripten;
 
@@ -26,12 +23,17 @@ struct ACSLOptions {
     bool axiomatics = false;
     bool ghostCode = false;
     bool behaviors = false;
+    bool memoryPredicates = false;
 };
 
 struct TranspileOptions {
     ACSLOptions acsl;
     std::string target = "c99"; // c89, c99, c11, c17
     bool optimize = false;
+    bool monomorphizeTemplates = true;
+    bool enableExceptions = true;
+    std::string exceptionModel = "sjlj";
+    bool enableRTTI = true;
 };
 
 struct TranspileResult {
@@ -51,27 +53,42 @@ public:
         TranspileResult result;
 
         try {
-            // PLACEHOLDER IMPLEMENTATION
-            // TODO: Integrate actual transpiler logic from main.cpp
-            // This requires:
-            // 1. Refactoring main.cpp to export transpile() function
-            // 2. Building Clang LibTooling to WASM (challenging, see research docs)
-            // 3. Handling file I/O in memory-only WASM environment
+            // Map WASM options to library options
+            cpptoc::TranspileOptions libOpts;
 
-            result.success = true;
-            result.c = "/* Transpiled C code (placeholder) */\n"
-                      "/* Input C++ length: " + std::to_string(cppCode.length()) + " bytes */\n"
-                      "/* Target: " + options.target + " */\n"
-                      "/* Full transpilation requires Clang LibTooling integration */\n";
-            result.acsl = "";
+            // ACSL configuration
+            libOpts.acsl.statements = options.acsl.statements;
+            libOpts.acsl.typeInvariants = options.acsl.typeInvariants;
+            libOpts.acsl.axiomatics = options.acsl.axiomatics;
+            libOpts.acsl.ghostCode = options.acsl.ghostCode;
+            libOpts.acsl.behaviors = options.acsl.behaviors;
+            libOpts.acsl.memoryPredicates = options.acsl.memoryPredicates;
 
-            // Add info diagnostic
-            Diagnostic info;
-            info.line = 0;
-            info.column = 0;
-            info.message = "Placeholder transpiler - actual implementation pending";
-            info.severity = "note";
-            result.diagnostics.push_back(info);
+            // Other options
+            libOpts.target = options.target;
+            libOpts.optimize = options.optimize;
+            libOpts.monomorphizeTemplates = options.monomorphizeTemplates;
+            libOpts.enableExceptions = options.enableExceptions;
+            libOpts.exceptionModel = options.exceptionModel;
+            libOpts.enableRTTI = options.enableRTTI;
+
+            // Call the real transpiler API
+            cpptoc::TranspileResult libResult = cpptoc::transpile(cppCode, "input.cpp", libOpts);
+
+            // Map library result to WASM result
+            result.success = libResult.success;
+            result.c = libResult.c;
+            result.acsl = libResult.acsl;
+
+            // Map diagnostics
+            for (const auto& libDiag : libResult.diagnostics) {
+                Diagnostic wasmDiag;
+                wasmDiag.line = libDiag.line;
+                wasmDiag.column = libDiag.column;
+                wasmDiag.message = libDiag.message;
+                wasmDiag.severity = libDiag.severity;
+                result.diagnostics.push_back(wasmDiag);
+            }
 
         } catch (const std::exception& e) {
             Diagnostic diag;
@@ -87,7 +104,7 @@ public:
     }
 
     std::string getVersion() const {
-        return "1.22.0-minimal-placeholder";
+        return "1.22.0-minimal";
     }
 };
 
@@ -101,12 +118,17 @@ EMSCRIPTEN_BINDINGS(cpptoc_minimal) {
         .field("typeInvariants", &ACSLOptions::typeInvariants)
         .field("axiomatics", &ACSLOptions::axiomatics)
         .field("ghostCode", &ACSLOptions::ghostCode)
-        .field("behaviors", &ACSLOptions::behaviors);
+        .field("behaviors", &ACSLOptions::behaviors)
+        .field("memoryPredicates", &ACSLOptions::memoryPredicates);
 
     value_object<TranspileOptions>("TranspileOptions")
         .field("acsl", &TranspileOptions::acsl)
         .field("target", &TranspileOptions::target)
-        .field("optimize", &TranspileOptions::optimize);
+        .field("optimize", &TranspileOptions::optimize)
+        .field("monomorphizeTemplates", &TranspileOptions::monomorphizeTemplates)
+        .field("enableExceptions", &TranspileOptions::enableExceptions)
+        .field("exceptionModel", &TranspileOptions::exceptionModel)
+        .field("enableRTTI", &TranspileOptions::enableRTTI);
 
     value_object<Diagnostic>("Diagnostic")
         .field("line", &Diagnostic::line)

@@ -192,6 +192,7 @@ add_subdirectory(tests/real-world/test-framework)
 # ============================================================================
 
 add_library(cpptoc_core STATIC
+    src/TranspilerAPI.cpp
     src/CppToCVisitor.cpp
     src/CFGAnalyzer.cpp
     src/NameMangler.cpp
@@ -282,6 +283,52 @@ target_link_libraries(cpptoc PRIVATE
 # ============================================================================
 # Test Executables (Epic #2 and Epic #3)
 # ============================================================================
+
+# TranspilerAPI test executable
+add_executable(test_transpiler_api
+    test_transpiler_api.cpp
+    src/TranspilerAPI.cpp
+)
+
+target_compile_definitions(test_transpiler_api PRIVATE ${LLVM_DEFINITIONS})
+
+target_include_directories(test_transpiler_api PRIVATE
+    ${CMAKE_SOURCE_DIR}/include
+    ${LLVM_INCLUDE_DIRS}
+    ${CLANG_INCLUDE_DIRS}
+)
+
+target_link_libraries(test_transpiler_api PRIVATE
+    cpptoc_core
+    clangTooling
+    clangFrontend
+    clangAST
+    clangBasic
+    LLVMSupport
+)
+
+# Complex TranspilerAPI test executable
+add_executable(test_transpiler_complex
+    test_transpiler_complex.cpp
+    src/TranspilerAPI.cpp
+)
+
+target_compile_definitions(test_transpiler_complex PRIVATE ${LLVM_DEFINITIONS})
+
+target_include_directories(test_transpiler_complex PRIVATE
+    ${CMAKE_SOURCE_DIR}/include
+    ${LLVM_INCLUDE_DIRS}
+    ${CLANG_INCLUDE_DIRS}
+)
+
+target_link_libraries(test_transpiler_complex PRIVATE
+    cpptoc_core
+    clangTooling
+    clangFrontend
+    clangAST
+    clangBasic
+    LLVMSupport
+)
 
 # Story #15: CppToCVisitor tests
 add_executable(CppToCVisitorTest
