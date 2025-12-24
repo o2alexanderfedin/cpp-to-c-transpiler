@@ -112,6 +112,10 @@ CppToCVisitor::CppToCVisitor(ASTContext &Context, CNodeBuilder &Builder)
   m_assumeHandler = std::make_unique<AssumeAttributeHandler>(Builder, AssumeStrategy::Comment);
   llvm::outs() << "[[assume]] attribute support initialized (C++23)\n";
 
+  // Phase 4: Initialize deducing this translator (C++23 P0847R7)
+  m_deducingThisTrans = std::make_unique<DeducingThisTranslator>(Builder);
+  llvm::outs() << "Deducing this / explicit object parameter support initialized (C++23 P0847R7)\n";
+
   // Phase 32 (v3.0.0): Initialize C TranslationUnit for output generation
   C_TranslationUnit = TranslationUnitDecl::Create(Context);
   llvm::outs() << "C TranslationUnit created for output generation\n";
@@ -268,6 +272,20 @@ bool CppToCVisitor::VisitCXXMethodDecl(CXXMethodDecl *MD) {
 
   // Edge case 3: Skip constructors/destructors (handled separately)
   if (isa<CXXConstructorDecl>(MD) || isa<CXXDestructorDecl>(MD)) {
+    return true;
+  }
+
+  // Phase 4: Handle explicit object parameters (deducing this, C++23 P0847R7)
+  if (MD->isExplicitObjectMemberFunction()) {
+    llvm::outs() << "Translating explicit object member function: "
+                 << MD->getQualifiedNameAsString() << "\n";
+    auto C_Funcs = m_deducingThisTrans->transformMethod(MD, Context, C_TranslationUnit);
+    if (!C_Funcs.empty()) {
+      llvm::outs() << "  -> Generated " << C_Funcs.size() << " overload(s):\n";
+      for (auto* C_Func : C_Funcs) {
+        llvm::outs() << "     " << C_Func->getNameAsString() << "\n";
+      }
+    }
     return true;
   }
 

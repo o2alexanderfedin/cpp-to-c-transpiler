@@ -10,6 +10,7 @@
 #include "ACSLTypeInvariantGenerator.h"
 #include "AssumeAttributeHandler.h"
 #include "CNodeBuilder.h"
+#include "DeducingThisTranslator.h"
 #include "DynamicCastTranslator.h"
 #include "ExceptionFrameGenerator.h"
 #include "MoveAssignmentTranslator.h"
@@ -123,6 +124,9 @@ class CppToCVisitor : public clang::RecursiveASTVisitor<CppToCVisitor> {
 
   // Phase 3: [[assume]] attribute handling (C++23)
   std::unique_ptr<AssumeAttributeHandler> m_assumeHandler;
+
+  // Phase 4: Deducing this / explicit object parameter support (C++23 P0847R7)
+  std::unique_ptr<DeducingThisTranslator> m_deducingThisTrans;
 
   // Current translation context (Story #19)
   clang::ParmVarDecl *currentThisParam = nullptr;

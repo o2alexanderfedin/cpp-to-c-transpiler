@@ -237,6 +237,7 @@ add_library(cpptoc_core STATIC
     src/MultidimSubscriptTranslator.cpp
     src/StaticOperatorTranslator.cpp
     src/AssumeAttributeHandler.cpp
+    src/DeducingThisTranslator.cpp
     src/RuntimeConfig.cpp
 )
 
@@ -1888,6 +1889,32 @@ target_link_libraries(AssumeAttributeHandlerTest PRIVATE cpptoc_core
 
 # Register with CTest
 gtest_discover_tests(AssumeAttributeHandlerTest
+    WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
+)
+
+# Phase 4: Deducing This / Explicit Object Parameter tests (C++23 P0847R7)
+add_executable(DeducingThisTranslatorTest
+    tests/DeducingThisTranslatorTest.cpp
+)
+
+target_compile_definitions(DeducingThisTranslatorTest PRIVATE ${LLVM_DEFINITIONS})
+
+target_include_directories(DeducingThisTranslatorTest PRIVATE
+    ${CMAKE_SOURCE_DIR}/include
+    ${LLVM_INCLUDE_DIRS}
+    ${CLANG_INCLUDE_DIRS}
+)
+
+target_link_libraries(DeducingThisTranslatorTest PRIVATE cpptoc_core
+    clangTooling
+    clangFrontend
+    clangAST
+    clangBasic
+    GTest::gtest
+    GTest::gtest_main)
+
+# Register with CTest
+gtest_discover_tests(DeducingThisTranslatorTest
     WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
 )
 
