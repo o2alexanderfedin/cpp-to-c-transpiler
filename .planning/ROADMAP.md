@@ -711,6 +711,20 @@ Three parallel workstreams to transform the transpiler:
 | 16 | v2.9.0 | Enums + Range-For | 12+ | ⏳ PLANNED | Enums + range loops work |
 | 17 | v3.0.0 | Feature Integration | 50+ | ⏳ PLANNED | All features work together |
 
+### Validation Workstream
+
+| Phase | Version | Component | Tests | Status | Release Criteria |
+|-------|---------|-----------|-------|--------|------------------|
+| 30 | - | Real-World Transpilation | 5+ | ⏳ IN PROGRESS | Real projects transpile correctly |
+
+### Architecture Enhancement Workstream
+
+| Phase | Version | Component | Tests | Status | Release Criteria |
+|-------|---------|-----------|-------|--------|------------------|
+| 31-02 | v2.2.0 | COM-Style Vtable (Virtual) | 5+ | ⏳ PLANNED | Virtual methods type-safe |
+| 31-03 | v2.3.0 | COM-Style All Methods | 5+ | ⏳ PLANNED | All methods type-safe |
+| 31-04 | v2.4.0 | Cleanup & Optimization | - | ⏳ PLANNED | Code clean, optimized |
+
 **Feature Tests**: 171+ new tests
 
 **Combined Total**: 117 (ACSL) + 171 (Features) + 37 (existing) = **325+ tests**
@@ -800,9 +814,94 @@ Three parallel workstreams to transform the transpiler:
 
 # WORKSTREAM C: VALIDATION & UTILITIES
 
-## Phase 30: Transpile Real-World Test Projects ⏳ PLANNED
+## Phase 30: Transpile Real-World Test Projects ⏳ IN PROGRESS
 
 **Goal**: Create comprehensive transpiled C versions of all real-world test projects for validation and demonstration
+
+**Version**: Utility (no version bump)
+
+**Status**: Phase 30-02 complete (pointer recursion fix), Phase 30-01 planned
+
+---
+
+# WORKSTREAM D: ARCHITECTURE ENHANCEMENTS
+
+## Phase 31: COM-Style Vtable Architecture ⏳ PLANNED
+
+**Goal**: Implement COM/DCOM-style strongly-typed virtual method tables with explicit static declarations for compile-time type safety
+
+**Research**: Complete - See `.planning/phases/31-com-vmt-architecture/31-01-FINDINGS.md`
+
+**Recommendation**: ADOPT (hybrid approach) - Strong type safety with zero runtime cost
+
+### Phase 31-02: COM-Style for Virtual Methods (v2.2.0) ⏳ PLANNED
+
+**Goal**: Add static function declarations for all virtual methods
+
+**Deliverables**:
+- `VtableGenerator::generateStaticDeclarations()` method
+- Static declarations in generated headers
+- ComStyleVtableTest suite (5+ tests)
+- Documentation: VTABLE_IMPLEMENTATION.md
+
+**Benefits**:
+- ✅ Compile-time type safety (catches signature mismatches)
+- ✅ Better debugging (function names in stack traces)
+- ✅ Zero runtime overhead
+- ✅ Self-documenting code
+
+**Effort**: ~4-6 hours
+
+**Dependencies**: None (independent phase)
+
+---
+
+### Phase 31-03: Extend to All Methods (v2.3.0) ⏳ PLANNED
+
+**Goal**: Extend COM-style pattern from virtual methods to ALL methods
+
+**Deliverables**:
+- `CppToCVisitor::generateAllMethodDeclarations()` method
+- MethodSignatureHelper shared utility (DRY)
+- ComStyleAllMethodsTest suite (5+ tests)
+- Documentation: METHOD_GENERATION.md
+
+**Benefits**:
+- ✅ Universal type safety (all methods verified)
+- ✅ Consistent code style
+- ✅ Simplified generator (one pattern for everything)
+
+**Effort**: ~2-3 hours
+
+**Dependencies**: Requires Phase 31-02 complete
+
+---
+
+### Phase 31-04: Cleanup & Optimization (v2.4.0) ⏳ PLANNED
+
+**Goal**: Remove legacy code, optimize performance, finalize COM-style as standard
+
+**Deliverables**:
+- Remove legacy vtable generation code paths
+- Optimize signature generation (~25% faster)
+- Comprehensive inline documentation
+- Performance benchmarks
+- Updated architecture docs
+
+**Benefits**:
+- ✅ Clean, maintainable codebase
+- ✅ Better performance
+- ✅ Complete documentation
+
+**Effort**: ~1-2 hours
+
+**Dependencies**: Requires Phase 31-02 and 31-03 complete
+
+**Completes**: Phase 31 series (COM-Style Vtable Architecture)
+
+---
+
+## Phase 30 (continued): Transpile Real-World Test Projects ⏳ PLANNED
 
 **Version**: Utility (no version bump)
 
