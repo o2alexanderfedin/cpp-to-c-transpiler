@@ -1,0 +1,60 @@
+A/B Testing Summary Report
+Generated: Wed Dec 24 13:28:00 PST 2025
+
+Project Root: /Users/alexanderfedin/Projects/hapyy/hupyy-cpp-to-c
+Transpiler: /Users/alexanderfedin/Projects/hapyy/hupyy-cpp-to-c/build_working/cpptoc
+
+===============================================================================
+EXECUTION STATISTICS
+===============================================================================
+
+Total Categories:                        1
+Categories Processed:             1
+
+===============================================================================
+C++23 BUILD RESULTS
+===============================================================================
+
+Successful Builds:                0
+Failed Builds:                    1
+
+===============================================================================
+TRANSPILATION RESULTS
+===============================================================================
+
+Successful Transpilations:        0
+Failed Transpilations:            0
+
+===============================================================================
+C BUILD RESULTS
+===============================================================================
+
+Successful Builds:                0
+Failed Builds:                    0
+
+===============================================================================
+OUTPUT COMPARISON RESULTS
+===============================================================================
+
+Outputs Matching:                 0
+Outputs Differing:                0
+Execution Errors:                 0
+
+===============================================================================
+RESULT ARTIFACTS
+===============================================================================
+
+Results Directory:                /Users/alexanderfedin/Projects/hapyy/hupyy-cpp-to-c/tests/real-world/cpp23-validation/ab-test/results
+Logs Directory:                   /Users/alexanderfedin/Projects/hapyy/hupyy-cpp-to-c/tests/real-world/cpp23-validation/ab-test/logs
+Transpiled Code:                  /Users/alexanderfedin/Projects/hapyy/hupyy-cpp-to-c/tests/real-world/cpp23-validation/ab-test/../transpiled
+
+Key Files:
+  - *.cpp.out:       C++23 test output
+  - *.c.out:         C test output
+  - *.comparison.txt:Diff between outputs
+  - *.build.log:     Build logs
+  - *.transpile.log: Transpilation logs
+
+===============================================================================
+END OF REPORT
+===============================================================================

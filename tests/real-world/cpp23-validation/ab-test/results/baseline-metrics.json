@@ -1,0 +1,218 @@
+{
+  "metadata": {
+    "generated_at": "2025-12-24T13:39:00.820635",
+    "phase": "33.5",
+    "description": "Baseline C++23 feature support metrics",
+    "transpiler_version": "v2.3.0-17-g5512744"
+  },
+  "overall": {
+    "total_tests": 130,
+    "total_categories": 9,
+    "cpp_build_success_rate": 0.0,
+    "transpile_success_rate": 0.0,
+    "c_build_success_rate": 0.0,
+    "output_match_rate": 0.0,
+    "overall_pass_rate": 0.0
+  },
+  "by_category": {
+    "attributes-P2180": {
+      "total_tests": 13,
+      "cpp_build_success": 0,
+      "cpp_build_failed": 0,
+      "transpile_success": 0,
+      "transpile_failed": 0,
+      "c_build_success": 0,
+      "c_build_failed": 0,
+      "output_match": 0,
+      "output_mismatch": 0,
+      "pass_rate": 0.0
+    },
+    "auto-deduction-P0849": {
+      "total_tests": 22,
+      "cpp_build_success": 0,
+      "cpp_build_failed": 0,
+      "transpile_success": 0,
+      "transpile_failed": 0,
+      "c_build_success": 0,
+      "c_build_failed": 0,
+      "output_match": 0,
+      "output_mismatch": 0,
+      "pass_rate": 0.0
+    },
+    "class-template-deduction-inherited": {
+      "total_tests": 10,
+      "cpp_build_success": 0,
+      "cpp_build_failed": 0,
+      "transpile_success": 0,
+      "transpile_failed": 0,
+      "c_build_success": 0,
+      "c_build_failed": 0,
+      "output_match": 0,
+      "output_mismatch": 0,
+      "pass_rate": 0.0
+    },
+    "constexpr-enhancements": {
+      "total_tests": 19,
+      "cpp_build_success": 0,
+      "cpp_build_failed": 0,
+      "transpile_success": 0,
+      "transpile_failed": 0,
+      "c_build_success": 0,
+      "c_build_failed": 0,
+      "output_match": 0,
+      "output_mismatch": 0,
+      "pass_rate": 0.0
+    },
+    "if-consteval-P1938": {
+      "total_tests": 13,
+      "cpp_build_success": 0,
+      "cpp_build_failed": 0,
+      "transpile_success": 0,
+      "transpile_failed": 0,
+      "c_build_success": 0,
+      "c_build_failed": 0,
+      "output_match": 0,
+      "output_mismatch": 0,
+      "pass_rate": 0.0
+    },
+    "miscellaneous": {
+      "total_tests": 19,
+      "cpp_build_success": 0,
+      "cpp_build_failed": 0,
+      "transpile_success": 0,
+      "transpile_failed": 0,
+      "c_build_success": 0,
+      "c_build_failed": 0,
+      "output_match": 0,
+      "output_mismatch": 0,
+      "pass_rate": 0.0
+    },
+    "multidim-subscript-P2128": {
+      "total_tests": 16,
+      "cpp_build_success": 0,
+      "cpp_build_failed": 0,
+      "transpile_success": 0,
+      "transpile_failed": 0,
+      "c_build_success": 0,
+      "c_build_failed": 0,
+      "output_match": 0,
+      "output_mismatch": 0,
+      "pass_rate": 0.0
+    },
+    "ranges-P2678": {
+      "total_tests": 10,
+      "cpp_build_success": 0,
+      "cpp_build_failed": 0,
+      "transpile_success": 0,
+      "transpile_failed": 0,
+      "c_build_success": 0,
+      "c_build_failed": 0,
+      "output_match": 0,
+      "output_mismatch": 0,
+      "pass_rate": 0.0
+    },
+    "static-operators-P1169": {
+      "total_tests": 8,
+      "cpp_build_success": 0,
+      "cpp_build_failed": 0,
+      "transpile_success": 0,
+      "transpile_failed": 0,
+      "c_build_success": 0,
+      "c_build_failed": 0,
+      "output_match": 0,
+      "output_mismatch": 0,
+      "pass_rate": 0.0
+    }
+  },
+  "feature_proposals": {
+    "if-consteval-P1938": {
+      "proposal": "P1938R3",
+      "description": "if consteval",
+      "total_tests": 13,
+      "pass_rate": 0.0,
+      "status": "unsupported"
+    },
+    "multidim-subscript-P2128": {
+      "proposal": "P2128R6",
+      "description": "Multidimensional subscript operator",
+      "total_tests": 16,
+      "pass_rate": 0.0,
+      "status": "unsupported"
+    },
+    "static-operators-P1169": {
+      "proposal": "P1169R4",
+      "description": "Static operator() and operator[]",
+      "total_tests": 8,
+      "pass_rate": 0.0,
+      "status": "unsupported"
+    },
+    "auto-deduction-P0849": {
+      "proposal": "P0849R8",
+      "description": "auto(x) and auto{x}",
+      "total_tests": 22,
+      "pass_rate": 0.0,
+      "status": "partial"
+    },
+    "constexpr-enhancements": {
+      "proposal": "Various",
+      "description": "C++23 constexpr enhancements",
+      "total_tests": 19,
+      "pass_rate": 0.0,
+      "status": "unsupported"
+    },
+    "class-template-deduction-inherited": {
+      "proposal": "P2582R1",
+      "description": "CTAD with inherited constructors",
+      "total_tests": 10,
+      "pass_rate": 0.0,
+      "status": "partial"
+    },
+    "attributes-P2180": {
+      "proposal": "P2180R0",
+      "description": "C++23 attributes",
+      "total_tests": 13,
+      "pass_rate": 0.0,
+      "status": "untested"
+    },
+    "ranges-P2678": {
+      "proposal": "P2678R0",
+      "description": "Ranges enhancements",
+      "total_tests": 10,
+      "pass_rate": 0.0,
+      "status": "unsupported"
+    },
+    "miscellaneous": {
+      "proposal": "Various",
+      "description": "Miscellaneous C++23 features",
+      "total_tests": 19,
+      "pass_rate": 0.0,
+      "status": "mixed"
+    }
+  },
+  "cpp_standard_support": {
+    "cpp98_03": {
+      "estimate": "85-90%",
+      "note": "Core features well-supported"
+    },
+    "cpp11": {
+      "estimate": "70-75%",
+      "note": "Most features work, some gaps"
+    },
+    "cpp14": {
+      "estimate": "60-65%",
+      "note": "Partial support"
+    },
+    "cpp17": {
+      "estimate": "40-45%",
+      "note": "Limited support"
+    },
+    "cpp20": {
+      "estimate": "15-20%",
+      "note": "Minimal support"
+    },
+    "cpp23": {
+      "actual": "0.0%",
+      "note": "Baseline established"
+    }
+  }
+}
