@@ -3,6 +3,13 @@
  * @brief Implementation of TemplateMonomorphizer class
  *
  * Story #68: Template Monomorphization and Code Generation
+ * Phase 32.1: Refactored to AST-based generation (from string generation)
+ *
+ * Design Principles:
+ * - SOLID: Single Responsibility (monomorphization only)
+ * - KISS: Simple AST node creation using CNodeBuilder patterns
+ * - DRY: Reuse CNodeBuilder methods instead of manual AST construction
+ * - YAGNI: Only implement what's needed for template monomorphization
  */
 
 #include "TemplateMonomorphizer.h"
@@ -11,12 +18,22 @@
 
 using namespace clang;
 
-TemplateMonomorphizer::TemplateMonomorphizer(ASTContext& Context, NameMangler& Mangler)
-    : Context(Context), Mangler(Mangler) {
+// ============================================================================
+// Constructor
+// ============================================================================
+
+TemplateMonomorphizer::TemplateMonomorphizer(ASTContext& Context,
+                                            NameMangler& Mangler,
+                                            CNodeBuilder& Builder)
+    : Context(Context), Mangler(Mangler), Builder(Builder) {
 }
 
-std::string TemplateMonomorphizer::monomorphizeClass(ClassTemplateSpecializationDecl* D) {
-    if (!D) return "";
+// ============================================================================
+// Public API: AST Generation Methods (Phase 32.1)
+// ============================================================================
+
+RecordDecl* TemplateMonomorphizer::monomorphizeClass(ClassTemplateSpecializationDecl* D) {
+    if (!D) return nullptr;
 
     // Generate mangled name for this instantiation
     std::string mangledName = generateMangledName(
@@ -24,8 +41,20 @@ std::string TemplateMonomorphizer::monomorphizeClass(ClassTemplateSpecialization
         D->getTemplateArgs()
     );
 
-    // Generate struct definition
-    std::string result = generateStruct(D, mangledName);
+    // Create C struct using CNodeBuilder
+    RecordDecl* CStruct = createStruct(D, mangledName);
+
+    return CStruct;
+}
+
+std::vector<FunctionDecl*> TemplateMonomorphizer::monomorphizeClassMethods(
+    ClassTemplateSpecializationDecl* D,
+    RecordDecl* CStruct) {
+
+    if (!D || !CStruct) return {};
+
+    std::vector<FunctionDecl*> methods;
+    std::string mangledName = CStruct->getNameAsString();
 
     // Generate method declarations
     for (auto* Decl : D->decls()) {
@@ -33,54 +62,160 @@ std::string TemplateMonomorphizer::monomorphizeClass(ClassTemplateSpecialization
             // Skip compiler-generated methods
             if (Method->isImplicit()) continue;
 
-            result += generateMethod(Method, mangledName, D->getTemplateArgs());
-        }
-    }
+            FunctionDecl* CMethod = createMethodFunction(
+                Method,
+                mangledName,
+                D->getTemplateArgs()
+            );
 
-    return result;
-}
-
-std::string TemplateMonomorphizer::monomorphizeFunction(FunctionDecl* D) {
-    if (!D) return "";
-
-    // Get function template specialization info
-    FunctionTemplateSpecializationInfo* FTSI = D->getTemplateSpecializationInfo();
-    if (!FTSI) return "";
-
-    std::ostringstream code;
-
-    // Return type
-    QualType returnType = D->getReturnType();
-    code << typeToString(returnType) << " ";
-
-    // Function name with template args
-    code << D->getNameAsString();
-
-    // Add template argument suffix
-    const TemplateArgumentList* TemplateArgs = FTSI->TemplateArguments;
-    if (TemplateArgs && TemplateArgs->size() > 0) {
-        code << "_";
-        for (unsigned i = 0; i < TemplateArgs->size(); ++i) {
-            const TemplateArgument& arg = TemplateArgs->get(i);
-            if (arg.getKind() == TemplateArgument::Type) {
-                QualType argType = arg.getAsType();
-                code << typeToString(argType);
-                if (i + 1 < TemplateArgs->size()) code << "_";
+            if (CMethod) {
+                methods.push_back(CMethod);
             }
         }
     }
 
-    // Parameters
-    code << "(";
-    for (unsigned i = 0; i < D->getNumParams(); ++i) {
-        if (i > 0) code << ", ";
-        ParmVarDecl* param = D->getParamDecl(i);
-        code << typeToString(param->getType()) << " " << param->getNameAsString();
-    }
-    code << ");\n";
-
-    return code.str();
+    return methods;
 }
+
+FunctionDecl* TemplateMonomorphizer::monomorphizeFunction(FunctionDecl* D) {
+    if (!D) return nullptr;
+
+    // Get function template specialization info
+    FunctionTemplateSpecializationInfo* FTSI = D->getTemplateSpecializationInfo();
+    if (!FTSI) return nullptr;
+
+    // Generate mangled function name with template arguments
+    const TemplateArgumentList* TemplateArgs = FTSI->TemplateArguments;
+    std::string mangledName = generateMangledName(
+        D->getNameAsString(),
+        *TemplateArgs
+    );
+
+    // Build parameter list
+    llvm::SmallVector<ParmVarDecl*, 4> params;
+    for (unsigned i = 0; i < D->getNumParams(); ++i) {
+        ParmVarDecl* OrigParam = D->getParamDecl(i);
+
+        // Types are already substituted by Clang during instantiation
+        QualType paramType = OrigParam->getType();
+        std::string paramName = OrigParam->getNameAsString();
+
+        // Create C parameter using CNodeBuilder
+        ParmVarDecl* CParam = Builder.param(paramType, paramName);
+        params.push_back(CParam);
+    }
+
+    // Return type (already substituted by Clang)
+    QualType returnType = D->getReturnType();
+
+    // Create C function declaration using CNodeBuilder
+    FunctionDecl* CFunc = Builder.funcDecl(
+        mangledName,
+        returnType,
+        params,
+        nullptr  // No body for now - body translation handled elsewhere
+    );
+
+    return CFunc;
+}
+
+// ============================================================================
+// Private Helper: AST Creation Methods (Phase 32.1)
+// ============================================================================
+
+RecordDecl* TemplateMonomorphizer::createStruct(ClassTemplateSpecializationDecl* D,
+                                                const std::string& MangledName) {
+    if (!D) return nullptr;
+
+    // Build field list (following CppToCVisitor::VisitCXXRecordDecl pattern)
+    std::vector<FieldDecl*> fields;
+
+    // Generate fields from template class
+    for (auto* Field : D->fields()) {
+        // Field type is already substituted by Clang during instantiation
+        QualType fieldType = Field->getType();
+        std::string fieldName = Field->getNameAsString();
+
+        // Create C field using CNodeBuilder
+        FieldDecl* CField = Builder.fieldDecl(fieldType, fieldName);
+        fields.push_back(CField);
+    }
+
+    // Create C struct using CNodeBuilder
+    // Note: CNodeBuilder.structDecl automatically:
+    // 1. Calls startDefinition()
+    // 2. Adds fields with proper parent context
+    // 3. Calls completeDefinition()
+    // 4. Adds to TranslationUnitDecl
+    RecordDecl* CStruct = Builder.structDecl(MangledName, fields);
+
+    return CStruct;
+}
+
+FunctionDecl* TemplateMonomorphizer::createMethodFunction(
+    CXXMethodDecl* Method,
+    const std::string& ClassName,
+    const TemplateArgumentList& TemplateArgs) {
+
+    if (!Method) return nullptr;
+
+    // Build mangled method name: ClassName_methodName
+    std::string methodName = ClassName + "_" + Method->getNameAsString();
+
+    // Build parameter list with 'this' pointer
+    llvm::SmallVector<ParmVarDecl*, 8> params;
+
+    // First parameter: 'this' pointer (ClassName*)
+    QualType thisType = Context.getPointerType(
+        Context.getRecordType(
+            RecordDecl::Create(
+                Context,
+#if LLVM_VERSION_MAJOR >= 16
+                TagTypeKind::Struct,
+#else
+                TTK_Struct,
+#endif
+                Context.getTranslationUnitDecl(),
+                SourceLocation(),
+                SourceLocation(),
+                &Context.Idents.get(ClassName)
+            )
+        )
+    );
+
+    ParmVarDecl* thisParam = Builder.param(thisType, "this");
+    params.push_back(thisParam);
+
+    // Add original method parameters
+    for (unsigned i = 0; i < Method->getNumParams(); ++i) {
+        ParmVarDecl* OrigParam = Method->getParamDecl(i);
+
+        // Parameter type is already substituted by Clang during instantiation
+        QualType paramType = OrigParam->getType();
+        std::string paramName = OrigParam->getNameAsString();
+
+        // Create C parameter using CNodeBuilder
+        ParmVarDecl* CParam = Builder.param(paramType, paramName);
+        params.push_back(CParam);
+    }
+
+    // Return type (already substituted by Clang)
+    QualType returnType = Method->getReturnType();
+
+    // Create C function declaration using CNodeBuilder
+    FunctionDecl* CFunc = Builder.funcDecl(
+        methodName,
+        returnType,
+        params,
+        nullptr  // No body for now - body translation handled elsewhere
+    );
+
+    return CFunc;
+}
+
+// ============================================================================
+// Private Helper: Type Substitution (unchanged - future enhancement hook)
+// ============================================================================
 
 QualType TemplateMonomorphizer::substituteType(QualType Type,
                                                const TemplateArgumentList& TemplateArgs) {
@@ -89,105 +224,9 @@ QualType TemplateMonomorphizer::substituteType(QualType Type,
     return Type;
 }
 
-std::string TemplateMonomorphizer::generateStruct(ClassTemplateSpecializationDecl* D,
-                                                 const std::string& MangledName) {
-    std::ostringstream code;
-
-    code << "typedef struct " << MangledName << " {\n";
-
-    // Generate fields
-    for (auto* Field : D->fields()) {
-        code << "    ";
-
-        // Field type (already substituted by Clang)
-        QualType fieldType = Field->getType();
-
-        // Handle arrays - get element type first
-        if (fieldType->isConstantArrayType()) {
-            const ConstantArrayType* arrayType = Context.getAsConstantArrayType(fieldType);
-            if (arrayType) {
-                // Get element type (e.g., int from int[10])
-                QualType elementType = arrayType->getElementType();
-                code << typeToString(elementType);
-                code << " " << Field->getNameAsString();
-                code << "[" << arrayType->getSize().getZExtValue() << "]";
-            }
-        } else {
-            // Non-array types
-            code << typeToString(fieldType);
-            code << " " << Field->getNameAsString();
-        }
-
-        code << ";\n";
-    }
-
-    code << "} " << MangledName << ";\n\n";
-
-    return code.str();
-}
-
-std::string TemplateMonomorphizer::generateMethod(CXXMethodDecl* Method,
-                                                 const std::string& ClassName,
-                                                 const TemplateArgumentList& TemplateArgs) {
-    std::ostringstream code;
-
-    // Return type (already substituted by Clang)
-    QualType returnType = Method->getReturnType();
-    code << typeToString(returnType) << " ";
-
-    // Method name: ClassName_methodName
-    code << ClassName << "_" << Method->getNameAsString();
-
-    // Parameters (with 'this' pointer)
-    code << "(" << ClassName << "* this";
-
-    for (unsigned i = 0; i < Method->getNumParams(); ++i) {
-        code << ", ";
-        ParmVarDecl* param = Method->getParamDecl(i);
-
-        // Parameter type (already substituted by Clang)
-        QualType paramType = param->getType();
-        code << typeToString(paramType);
-
-        code << " " << param->getNameAsString();
-    }
-
-    code << ");\n";
-
-    return code.str();
-}
-
-std::string TemplateMonomorphizer::typeToString(QualType Type) {
-    // Handle references as pointers in C
-    if (Type->isReferenceType()) {
-        QualType pointeeType = Type->getPointeeType();
-        return typeToString(pointeeType) + "*";
-    }
-
-    // Get canonical type string
-    std::string typeStr = Type.getAsString();
-
-    // Clean up type string for C
-    // Remove "class " prefix
-    size_t classPos = typeStr.find("class ");
-    if (classPos != std::string::npos) {
-        typeStr.erase(classPos, 6);
-    }
-
-    // Remove "struct " prefix
-    size_t structPos = typeStr.find("struct ");
-    if (structPos != std::string::npos) {
-        typeStr.erase(structPos, 7);
-    }
-
-    // Normalize pointer spacing: "int *" -> "int*", "int **" -> "int**"
-    size_t pos = 0;
-    while ((pos = typeStr.find(" *", pos)) != std::string::npos) {
-        typeStr.erase(pos, 1);  // Remove the space before *
-    }
-
-    return typeStr;
-}
+// ============================================================================
+// Private Helper: Name Mangling (unchanged - keep existing logic)
+// ============================================================================
 
 std::string TemplateMonomorphizer::typeToIdentifierString(QualType Type) {
     // Convert type to valid C identifier component (no *, <, >, ::, etc.)
@@ -294,3 +333,139 @@ std::string TemplateMonomorphizer::generateMangledName(const std::string& BaseNa
 
     return name.str();
 }
+
+// ============================================================================
+// DEPRECATED: Old String Generation Methods (Phase 32.0 - kept for reference)
+// ============================================================================
+// These methods are deprecated in favor of AST generation above.
+// Kept temporarily for backwards compatibility and reference.
+// TODO: Remove after full migration to AST-based approach is verified.
+// ============================================================================
+
+// DEPRECATED: Use monomorphizeClass() + monomorphizeClassMethods() instead
+#if 0
+std::string TemplateMonomorphizer::monomorphizeClass_OLD(ClassTemplateSpecializationDecl* D) {
+    if (!D) return "";
+
+    // Generate mangled name for this instantiation
+    std::string mangledName = generateMangledName(
+        D->getSpecializedTemplate()->getNameAsString(),
+        D->getTemplateArgs()
+    );
+
+    // Generate struct definition
+    std::string result = generateStruct(D, mangledName);
+
+    // Generate method declarations
+    for (auto* Decl : D->decls()) {
+        if (auto* Method = dyn_cast<CXXMethodDecl>(Decl)) {
+            // Skip compiler-generated methods
+            if (Method->isImplicit()) continue;
+
+            result += generateMethod(Method, mangledName, D->getTemplateArgs());
+        }
+    }
+
+    return result;
+}
+
+std::string TemplateMonomorphizer::generateStruct(ClassTemplateSpecializationDecl* D,
+                                                 const std::string& MangledName) {
+    std::ostringstream code;
+
+    code << "typedef struct " << MangledName << " {\n";
+
+    // Generate fields
+    for (auto* Field : D->fields()) {
+        code << "    ";
+
+        // Field type (already substituted by Clang)
+        QualType fieldType = Field->getType();
+
+        // Handle arrays - get element type first
+        if (fieldType->isConstantArrayType()) {
+            const ConstantArrayType* arrayType = Context.getAsConstantArrayType(fieldType);
+            if (arrayType) {
+                // Get element type (e.g., int from int[10])
+                QualType elementType = arrayType->getElementType();
+                code << typeToString(elementType);
+                code << " " << Field->getNameAsString();
+                code << "[" << arrayType->getSize().getZExtValue() << "]";
+            }
+        } else {
+            // Non-array types
+            code << typeToString(fieldType);
+            code << " " << Field->getNameAsString();
+        }
+
+        code << ";\n";
+    }
+
+    code << "} " << MangledName << ";\n\n";
+
+    return code.str();
+}
+
+std::string TemplateMonomorphizer::generateMethod(CXXMethodDecl* Method,
+                                                 const std::string& ClassName,
+                                                 const TemplateArgumentList& TemplateArgs) {
+    std::ostringstream code;
+
+    // Return type (already substituted by Clang)
+    QualType returnType = Method->getReturnType();
+    code << typeToString(returnType) << " ";
+
+    // Method name: ClassName_methodName
+    code << ClassName << "_" << Method->getNameAsString();
+
+    // Parameters (with 'this' pointer)
+    code << "(" << ClassName << "* this";
+
+    for (unsigned i = 0; i < Method->getNumParams(); ++i) {
+        code << ", ";
+        ParmVarDecl* param = Method->getParamDecl(i);
+
+        // Parameter type (already substituted by Clang)
+        QualType paramType = param->getType();
+        code << typeToString(paramType);
+
+        code << " " << param->getNameAsString();
+    }
+
+    code << ");\n";
+
+    return code.str();
+}
+
+std::string TemplateMonomorphizer::typeToString(QualType Type) {
+    // Handle references as pointers in C
+    if (Type->isReferenceType()) {
+        QualType pointeeType = Type->getPointeeType();
+        return typeToString(pointeeType) + "*";
+    }
+
+    // Get canonical type string
+    std::string typeStr = Type.getAsString();
+
+    // Clean up type string for C
+    // Remove "class " prefix
+    size_t classPos = typeStr.find("class ");
+    if (classPos != std::string::npos) {
+        typeStr.erase(classPos, 6);
+    }
+
+    // Remove "struct " prefix
+    size_t structPos = typeStr.find("struct ");
+    if (structPos != std::string::npos) {
+        typeStr.erase(structPos, 7);
+    }
+
+    // Normalize pointer spacing: "int *" -> "int*", "int **" -> "int**"
+    size_t pos = 0;
+    while ((pos = typeStr.find(" *", pos)) != std::string::npos) {
+        typeStr.erase(pos, 1);  // Remove the space before *
+    }
+
+    return typeStr;
+}
+#endif

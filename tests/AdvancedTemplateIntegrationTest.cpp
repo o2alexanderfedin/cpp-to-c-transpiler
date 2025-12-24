@@ -27,6 +27,7 @@
 #include "../include/TemplateExtractor.h"
 #include "../include/TemplateMonomorphizer.h"
 #include "../include/NameMangler.h"
+#include "../include/CNodeBuilder.h"
 #include <cassert>
 #include <memory>
 #include <string>
@@ -143,19 +144,21 @@ TEST_F(AdvancedTemplateIntegrationTest, TemplateClassWithArrayMembers) {
 
     // Verify Container instantiations
     NameMangler mangler(AST->getASTContext());
-    TemplateMonomorphizer mono(AST->getASTContext(), mangler);
+    CNodeBuilder builder(AST->getASTContext());
+    TemplateMonomorphizer mono(AST->getASTContext(), mangler, builder);
 
     bool foundContainer = false;
     for (auto* inst : classInsts) {
-        std::string code = mono.monomorphizeClass(inst);
+        RecordDecl* CStruct = mono.monomorphizeClass(inst);
         std::string name = inst->getNameAsString();
 
         if (contains(name, "Container")) {
-            // Verify generated code is not empty
-            ASSERT_TRUE(!code.empty()) << "Monomorphized code should not be empty";
+            // Verify generated AST is not null
+            ASSERT_NE(CStruct, nullptr) << "Monomorphized struct should not be null";
 
-            // Verify generated code is C, not C++
-            validateCOutput(code, "TemplateClassWithArrayMembers");
+            // Verify struct has fields
+            ASSERT_NE(CStruct->field_begin(), CStruct->field_end())
+                << "Container struct should have fields";
 
             foundContainer = true;
         }
@@ -219,21 +222,22 @@ TEST_F(AdvancedTemplateIntegrationTest, TemplateFunctionOverloading) {
 
     // Verify template function instantiations
     NameMangler mangler(AST->getASTContext());
-    TemplateMonomorphizer mono(AST->getASTContext(), mangler);
+    CNodeBuilder builder(AST->getASTContext());
+    TemplateMonomorphizer mono(AST->getASTContext(), mangler, builder);
 
     bool foundProcess = false;
     bool foundProcessPointer = false;
 
     for (auto* inst : funcInsts) {
-        std::string code = mono.monomorphizeFunction(inst);
+        FunctionDecl* CFunc = mono.monomorphizeFunction(inst);
         std::string name = inst->getNameAsString();
 
         if (contains(name, "process")) {
             foundProcess = true;
-            ASSERT_TRUE(!code.empty()) << "Template function code should not be empty";
+            ASSERT_NE(CFunc, nullptr) << "Template function should not be null";
 
-            // Verify generated code is C, not C++
-            validateCOutput(code, "TemplateFunctionOverloading");
+            // Verify function has parameters
+            ASSERT_GT(CFunc->getNumParams(), 0u) << "Function should have parameters";
         }
 
         if (contains(name, "Pointer")) {
@@ -297,13 +301,14 @@ TEST_F(AdvancedTemplateIntegrationTest, AutoTypeDeduction) {
 
     // Verify auto types are correctly deduced and translated
     NameMangler mangler(AST->getASTContext());
-    TemplateMonomorphizer mono(AST->getASTContext(), mangler);
+    CNodeBuilder builder(AST->getASTContext());
+    TemplateMonomorphizer mono(AST->getASTContext(), mangler, builder);
 
     bool foundMultiply = false;
     bool foundGetMax = false;
 
     for (auto* inst : funcInsts) {
-        std::string code = mono.monomorphizeFunction(inst);
+        FunctionDecl* CFunc = mono.monomorphizeFunction(inst);
         std::string name = inst->getNameAsString();
 
         if (contains(name, "multiply")) {
@@ -315,10 +320,7 @@ TEST_F(AdvancedTemplateIntegrationTest, AutoTypeDeduction) {
         }
 
         // Verify that function was monomorphized
-        ASSERT_TRUE(!code.empty()) << "Auto function should generate code";
-
-        // Verify generated code is C, not C++
-        validateCOutput(code, "AutoTypeDeduction");
+        ASSERT_NE(CFunc, nullptr) << "Auto function should generate AST node";
     }
 
     ASSERT_TRUE(foundMultiply) << "Should find multiply instantiations";
@@ -422,7 +424,8 @@ TEST_F(AdvancedTemplateIntegrationTest, MultiFileTemplateProject) {
 
     // Verify correct instantiations
     NameMangler mangler(AST->getASTContext());
-    TemplateMonomorphizer mono(AST->getASTContext(), mangler);
+    CNodeBuilder builder(AST->getASTContext());
+    TemplateMonomorphizer mono(AST->getASTContext(), mangler, builder);
 
     bool foundIntContainer = false;
     bool foundDoubleContainer = false;
@@ -430,14 +433,15 @@ TEST_F(AdvancedTemplateIntegrationTest, MultiFileTemplateProject) {
 
     for (auto* inst : classInsts) {
         std::string name = inst->getNameAsString();
-        std::string code = mono.monomorphizeClass(inst);
+        RecordDecl* CStruct = mono.monomorphizeClass(inst);
 
         if (contains(name, "SimpleContainer")) {
             foundIntContainer = true;  // Simplified - found at least one
-            ASSERT_TRUE(!code.empty()) << "SimpleContainer code should not be empty";
+            ASSERT_NE(CStruct, nullptr) << "SimpleContainer struct should not be null";
 
-            // Verify generated code is C, not C++
-            validateCOutput(code, "MultiFileTemplateProject");
+            // Verify struct has fields
+            ASSERT_NE(CStruct->field_begin(), CStruct->field_end())
+                << "SimpleContainer should have fields";
         }
     }
 
@@ -515,22 +519,21 @@ TEST_F(AdvancedTemplateIntegrationTest, MultipleTypeParameters) {
 
     // Verify multi-parameter templates are correctly handled
     NameMangler mangler(AST->getASTContext());
-    TemplateMonomorphizer mono(AST->getASTContext(), mangler);
+    CNodeBuilder builder(AST->getASTContext());
+    TemplateMonomorphizer mono(AST->getASTContext(), mangler, builder);
 
     for (auto* inst : classInsts) {
-        std::string code = mono.monomorphizeClass(inst);
-        ASSERT_TRUE(!code.empty()) << "Multi-parameter template class should generate code";
+        RecordDecl* CStruct = mono.monomorphizeClass(inst);
+        ASSERT_NE(CStruct, nullptr) << "Multi-parameter template class should generate AST node";
 
-        // Verify generated code is C, not C++
-        validateCOutput(code, "MultipleTypeParameters");
+        // Verify struct has fields
+        ASSERT_NE(CStruct->field_begin(), CStruct->field_end())
+            << "Pair struct should have fields";
     }
 
     for (auto* inst : funcInsts) {
-        std::string code = mono.monomorphizeFunction(inst);
-        ASSERT_TRUE(!code.empty()) << "Multi-parameter template function should generate code";
-
-        // Verify generated code is C, not C++
-        validateCOutput(code, "MultipleTypeParameters");
+        FunctionDecl* CFunc = mono.monomorphizeFunction(inst);
+        ASSERT_NE(CFunc, nullptr) << "Multi-parameter template function should generate AST node";
     }
 }
 
@@ -594,22 +597,20 @@ TEST_F(AdvancedTemplateIntegrationTest, NestedTemplatesWithAuto) {
 
     // Verify nested templates are correctly handled
     NameMangler mangler(AST->getASTContext());
-    TemplateMonomorphizer mono(AST->getASTContext(), mangler);
+    CNodeBuilder builder(AST->getASTContext());
+    TemplateMonomorphizer mono(AST->getASTContext(), mangler, builder);
 
     for (auto* inst : classInsts) {
-        std::string code = mono.monomorphizeClass(inst);
-        ASSERT_TRUE(!code.empty()) << "Nested template class should generate code";
+        RecordDecl* CStruct = mono.monomorphizeClass(inst);
+        ASSERT_NE(CStruct, nullptr) << "Nested template class should generate AST node";
 
-        // Verify generated code is C, not C++
-        validateCOutput(code, "NestedTemplatesWithAuto");
+        // Verify struct exists
+        ASSERT_NE(CStruct->getNameAsString(), "") << "Struct should have a name";
     }
 
     for (auto* inst : funcInsts) {
-        std::string code = mono.monomorphizeFunction(inst);
-        ASSERT_TRUE(!code.empty()) << "Nested template function should generate code";
-
-        // Verify generated code is C, not C++
-        validateCOutput(code, "NestedTemplatesWithAuto");
+        FunctionDecl* CFunc = mono.monomorphizeFunction(inst);
+        ASSERT_NE(CFunc, nullptr) << "Nested template function should generate AST node";
     }
 }
 

@@ -77,7 +77,7 @@ CppToCVisitor::CppToCVisitor(ASTContext &Context, CNodeBuilder &Builder)
   // shouldMonomorphizeTemplates() is true
   m_templateExtractor = std::make_unique<TemplateExtractor>(Context);
   m_templateMonomorphizer =
-      std::make_unique<TemplateMonomorphizer>(Context, Mangler);
+      std::make_unique<TemplateMonomorphizer>(Context, Mangler, Builder);
   m_templateTracker = std::make_unique<TemplateInstantiationTracker>();
 
   if (shouldMonomorphizeTemplates()) {
@@ -2873,14 +2873,8 @@ void CppToCVisitor::processTemplateInstantiations(TranslationUnitDecl *TU) {
     return;
   }
 
-  std::ostringstream codeStream;
-  codeStream << "\n// "
-                "=============================================================="
-                "==============\n";
-  codeStream << "// Monomorphized Template Code (Phase 11 - v2.4.0)\n";
-  codeStream << "// "
-                "=============================================================="
-                "==============\n\n";
+  // Phase 32.1: AST-based template monomorphization
+  // Generate C AST nodes and add them to C_TranslationUnit
 
   // Step 2: Process class template instantiations
   llvm::outs() << "\nMonomorphizing class templates:\n";
@@ -2894,13 +2888,19 @@ void CppToCVisitor::processTemplateInstantiations(TranslationUnitDecl *TU) {
       continue;
     }
 
-    llvm::outs() << "  Generating code for: " << key << "\n";
+    llvm::outs() << "  Generating AST for: " << key << "\n";
 
-    // Generate monomorphized C code
-    std::string code = m_templateMonomorphizer->monomorphizeClass(classInst);
-    if (!code.empty()) {
-      codeStream << "// Class: " << key << "\n";
-      codeStream << code << "\n";
+    // Generate monomorphized C struct AST node
+    RecordDecl* CStruct = m_templateMonomorphizer->monomorphizeClass(classInst);
+    if (CStruct) {
+      // Add to C TranslationUnit (CNodeBuilder already does this)
+      llvm::outs() << "    -> Created struct: " << CStruct->getNameAsString() << "\n";
+
+      // Generate method functions
+      std::vector<FunctionDecl*> methods =
+          m_templateMonomorphizer->monomorphizeClassMethods(classInst, CStruct);
+
+      llvm::outs() << "    -> Created " << methods.size() << " method function(s)\n";
     }
   }
 
@@ -2917,18 +2917,15 @@ void CppToCVisitor::processTemplateInstantiations(TranslationUnitDecl *TU) {
       continue;
     }
 
-    llvm::outs() << "  Generating code for: " << key << "\n";
+    llvm::outs() << "  Generating AST for: " << key << "\n";
 
-    // Generate monomorphized C code
-    std::string code = m_templateMonomorphizer->monomorphizeFunction(funcInst);
-    if (!code.empty()) {
-      codeStream << "// Function: " << key << "\n";
-      codeStream << code << "\n";
+    // Generate monomorphized C function AST node
+    FunctionDecl* CFunc = m_templateMonomorphizer->monomorphizeFunction(funcInst);
+    if (CFunc) {
+      // Add to C TranslationUnit (CNodeBuilder already does this)
+      llvm::outs() << "    -> Created function: " << CFunc->getNameAsString() << "\n";
     }
   }
-
-  // Store generated code
-  m_monomorphizedCode = codeStream.str();
 
   llvm::outs() << "\n========================================\n";
   llvm::outs() << "Template Monomorphization Complete\n";
@@ -2936,8 +2933,8 @@ void CppToCVisitor::processTemplateInstantiations(TranslationUnitDecl *TU) {
                << "\n";
   llvm::outs() << "========================================\n\n";
 
-  // Output the generated code
-  llvm::outs() << m_monomorphizedCode;
+  // Phase 32.1: AST nodes are already added to C_TranslationUnit by CNodeBuilder
+  // No need to output string-based code anymore
 }
 
 // ============================================================================
