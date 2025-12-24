@@ -19,6 +19,7 @@ cmake_install.cmake
 install_manifest.txt
 CTestTestfile.cmake
 _deps
+cmake_test_discovery_*.json
 
 # Clang/LLVM
 *.ast
@@ -55,6 +56,8 @@ bin/
 lib/
 dist/
 *.dSYM/
+build_working_new/
+emsdk/
 
 # Dependency management
 compile_commands.json
@@ -84,6 +87,7 @@ valgrind-*.log
 # Profiling
 *.prof
 *.profdata
+*.profraw
 
 # Documentation generation
 docs/build/
