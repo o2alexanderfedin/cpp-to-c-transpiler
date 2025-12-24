@@ -1,6 +1,7 @@
 #include "CppToCVisitor.h"
 #include "CFGAnalyzer.h"
 #include "MethodSignatureHelper.h"
+#include "clang/AST/Attr.h"
 #include "clang/AST/Expr.h"
 #include "clang/AST/ExprCXX.h"
 #include "clang/Basic/SourceManager.h"
@@ -106,6 +107,10 @@ CppToCVisitor::CppToCVisitor(ASTContext &Context, CNodeBuilder &Builder)
   // Phase 2: Initialize static operator translator (C++23)
   m_staticOperatorTrans = std::make_unique<StaticOperatorTranslator>(Builder);
   llvm::outs() << "Static operator() and operator[] support initialized (C++23)\n";
+
+  // Phase 3: Initialize assume attribute handler (C++23)
+  m_assumeHandler = std::make_unique<AssumeAttributeHandler>(Builder, AssumeStrategy::Comment);
+  llvm::outs() << "[[assume]] attribute support initialized (C++23)\n";
 
   // Phase 32 (v3.0.0): Initialize C TranslationUnit for output generation
   C_TranslationUnit = TranslationUnitDecl::Create(Context);
@@ -3081,4 +3086,38 @@ std::string CppToCVisitor::generateAllMethodDeclarations(CXXRecordDecl *RD) {
                << " method declarations\n";
 
   return decls.str();
+}
+
+// Phase 3: [[assume]] Attribute Handler (C++23 P1774R8)
+bool CppToCVisitor::VisitAttributedStmt(AttributedStmt *S) {
+  // Only process statements from main file
+  if (!Context.getSourceManager().isInMainFile(S->getBeginLoc())) {
+    return true;
+  }
+
+  // Check if this is an assume attribute
+  bool hasAssumeAttr = false;
+  for (const auto *Attr : S->getAttrs()) {
+    if (isa<CXXAssumeAttr>(Attr)) {
+      hasAssumeAttr = true;
+      break;
+    }
+  }
+
+  if (!hasAssumeAttr) {
+    // Not an assume attribute, continue traversal
+    return true;
+  }
+
+  // Handle the assume attribute
+  Stmt *TransformedStmt = m_assumeHandler->handle(S, Context);
+
+  if (TransformedStmt && TransformedStmt != S) {
+    // The attribute was successfully transformed
+    // In a full implementation, we would replace S with TransformedStmt
+    // in the C AST. For now, we just log the transformation.
+    llvm::outs() << "  [Phase 3] Transformed [[assume]] attribute\n";
+  }
+
+  return true;
 }

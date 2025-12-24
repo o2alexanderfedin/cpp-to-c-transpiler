@@ -236,6 +236,7 @@ add_library(cpptoc_core STATIC
     src/DynamicCastTranslator.cpp
     src/MultidimSubscriptTranslator.cpp
     src/StaticOperatorTranslator.cpp
+    src/AssumeAttributeHandler.cpp
     src/RuntimeConfig.cpp
 )
 
@@ -1861,6 +1862,32 @@ target_link_libraries(StaticOperatorTranslatorTest PRIVATE cpptoc_core
 
 # Register with CTest
 gtest_discover_tests(StaticOperatorTranslatorTest
+    WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
+)
+
+# Phase 3: Assume Attribute Handler tests (C++23)
+add_executable(AssumeAttributeHandlerTest
+    tests/AssumeAttributeHandlerTest.cpp
+)
+
+target_compile_definitions(AssumeAttributeHandlerTest PRIVATE ${LLVM_DEFINITIONS})
+
+target_include_directories(AssumeAttributeHandlerTest PRIVATE
+    ${CMAKE_SOURCE_DIR}/include
+    ${LLVM_INCLUDE_DIRS}
+    ${CLANG_INCLUDE_DIRS}
+)
+
+target_link_libraries(AssumeAttributeHandlerTest PRIVATE cpptoc_core
+    clangTooling
+    clangFrontend
+    clangAST
+    clangBasic
+    GTest::gtest
+    GTest::gtest_main)
+
+# Register with CTest
+gtest_discover_tests(AssumeAttributeHandlerTest
     WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
 )
 

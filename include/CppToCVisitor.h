@@ -8,6 +8,7 @@
 #include "ACSLLoopAnnotator.h"
 #include "ACSLStatementAnnotator.h"
 #include "ACSLTypeInvariantGenerator.h"
+#include "AssumeAttributeHandler.h"
 #include "CNodeBuilder.h"
 #include "DynamicCastTranslator.h"
 #include "ExceptionFrameGenerator.h"
@@ -119,6 +120,9 @@ class CppToCVisitor : public clang::RecursiveASTVisitor<CppToCVisitor> {
 
   // Phase 2: Static operator() and operator[] support (C++23)
   std::unique_ptr<StaticOperatorTranslator> m_staticOperatorTrans;
+
+  // Phase 3: [[assume]] attribute handling (C++23)
+  std::unique_ptr<AssumeAttributeHandler> m_assumeHandler;
 
   // Current translation context (Story #19)
   clang::ParmVarDecl *currentThisParam = nullptr;
@@ -246,6 +250,9 @@ public:
 
   // Phase 1: Multidimensional subscript operator visitor (C++23)
   bool VisitCXXOperatorCallExpr(clang::CXXOperatorCallExpr *E);
+
+  // Phase 3: [[assume]] attribute visitor (C++23)
+  bool VisitAttributedStmt(clang::AttributedStmt *S);
 
   // Retrieve generated C struct by class name (for testing)
   clang::RecordDecl *getCStruct(llvm::StringRef className) const;
