@@ -587,4 +587,19 @@ private:
 
   // Storage for ACSL annotations when using separate output mode
   std::map<std::string, std::string> m_acslAnnotations;
+
+  // ============================================================================
+  // Phase 31-03: COM-Style Static Declarations for All Methods
+  // ============================================================================
+
+  /**
+   * @brief Generate static declarations for ALL methods (virtual and non-virtual)
+   * @param RD The class declaration
+   * @return C code for static function declarations
+   *
+   * Generates static function declarations for all methods in a class,
+   * providing compile-time type safety for all method signatures.
+   * This includes constructors, destructors, and all regular methods.
+   */
+  std::string generateAllMethodDeclarations(clang::CXXRecordDecl* RD);
 };

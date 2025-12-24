@@ -147,96 +147,79 @@ TEST_F(CppToCVisitorTest, MethodWithParams) {
 
         FunctionDecl *CFunc = visitor.getCFunc("Point_setX");
         ASSERT_TRUE(CFunc != nullptr) << "C function not generated";
-        ASSERT_TRUE(CFunc->getNumParams() == 2) << "Expected 2 parameters (this + val;");
+        ASSERT_TRUE(CFunc->getNumParams() == 2) << "Expected 2 parameters (this + val)";
         ASSERT_TRUE(CFunc->getParamDecl(0)->getName() == "this") << "First param should be 'this'";
         ASSERT_TRUE(CFunc->getParamDecl(1)->getName() == "val") << "Second param should be 'val'";
 }
 
 TEST_F(CppToCVisitorTest, SkipVirtual) {
-    // Build AST for test
-    const char *code = R"(int main() { return 0; })";
-    std::unique_ptr<ASTUnit> AST = buildAST(code);
-    ASTContext &Ctx = AST->getASTContext();
+    const char *cpp = R"(
+        class Base {
+        public:
+            virtual void foo() {}
+        };
+    )";
+    std::unique_ptr<ASTUnit> AST = buildAST(cpp);
+    ASSERT_TRUE(AST) << "Failed to parse C++ code";
 
-    -> skip (no function generated)");
+    CNodeBuilder builder(AST->getASTContext());
+    CppToCVisitor visitor(AST->getASTContext(), builder);
 
-        const char *cpp = R"(
-            class Base {
-            public:
-                virtual void foo() {}
-            };
-        )";
-        std::unique_ptr<ASTUnit> AST = buildAST(cpp);
-        ASSERT_TRUE(AST) << "Failed to parse C++ code";
+    visitor.TraverseDecl(AST->getASTContext().getTranslationUnitDecl());
 
-        CNodeBuilder builder(AST->getASTContext());
-        CppToCVisitor visitor(AST->getASTContext(), builder);
-
-        visitor.TraverseDecl(AST->getASTContext().getTranslationUnitDecl());
-
-        // Virtual methods should be skipped in Phase 1
-        FunctionDecl *CFunc = visitor.getCFunc("Base_foo");
-        ASSERT_TRUE(CFunc == nullptr) << "Virtual method should be skipped";
+    // Virtual methods should be skipped in Phase 1
+    FunctionDecl *CFunc = visitor.getCFunc("Base_foo");
+    ASSERT_TRUE(CFunc == nullptr) << "Virtual method should be skipped";
 }
 
-TEST_F(CppToCVisitorTest, ImplicitthisreadReturnXReturnThisX) {
-    // Build AST for test
-    const char *code = R"(int main() { return 0; })";
-    std::unique_ptr<ASTUnit> AST = buildAST(code);
-    ASTContext &Ctx = AST->getASTContext();
-
+TEST_F(CppToCVisitorTest, ImplicitThisReadReturnX) {
     const char *cpp = R"(
-            class Point {
-                int x;
-            public:
-                int getX() { return x; }
-            };
-        )";
-        std::unique_ptr<ASTUnit> AST = buildAST(cpp);
-        ASSERT_TRUE(AST) << "Failed to parse C++ code";
+        class Point {
+            int x;
+        public:
+            int getX() { return x; }
+        };
+    )";
+    std::unique_ptr<ASTUnit> AST = buildAST(cpp);
+    ASSERT_TRUE(AST) << "Failed to parse C++ code";
 
-        CNodeBuilder builder(AST->getASTContext());
-        CppToCVisitor visitor(AST->getASTContext(), builder);
+    CNodeBuilder builder(AST->getASTContext());
+    CppToCVisitor visitor(AST->getASTContext(), builder);
 
-        visitor.TraverseDecl(AST->getASTContext().getTranslationUnitDecl());
+    visitor.TraverseDecl(AST->getASTContext().getTranslationUnitDecl());
 
-        // Verify function was generated
-        FunctionDecl *CFunc = visitor.getCFunc("Point_getX");
-        ASSERT_TRUE(CFunc != nullptr) << "C function not generated";
+    // Verify function was generated
+    FunctionDecl *CFunc = visitor.getCFunc("Point_getX");
+    ASSERT_TRUE(CFunc != nullptr) << "C function not generated";
 
-        // Verify function has body
-        Stmt *Body = CFunc->getBody();
-        ASSERT_TRUE(Body != nullptr) << "Function body not translated";
+    // Verify function has body
+    Stmt *Body = CFunc->getBody();
+    ASSERT_TRUE(Body != nullptr) << "Function body not translated";
 }
 
-TEST_F(CppToCVisitorTest, ImplicitthiswriteX=ValThisX=Val) {
-    // Build AST for test
-    const char *code = R"(int main() { return 0; })";
-    std::unique_ptr<ASTUnit> AST = buildAST(code);
-    ASTContext &Ctx = AST->getASTContext();
-
+TEST_F(CppToCVisitorTest, ImplicitThisWrite) {
     const char *cpp = R"(
-            class Point {
-                int x;
-            public:
-                void setX(int val) { x = val; }
-            };
-        )";
-        std::unique_ptr<ASTUnit> AST = buildAST(cpp);
-        ASSERT_TRUE(AST) << "Failed to parse C++ code";
+        class Point {
+            int x;
+        public:
+            void setX(int val) { x = val; }
+        };
+    )";
+    std::unique_ptr<ASTUnit> AST = buildAST(cpp);
+    ASSERT_TRUE(AST) << "Failed to parse C++ code";
 
-        CNodeBuilder builder(AST->getASTContext());
-        CppToCVisitor visitor(AST->getASTContext(), builder);
+    CNodeBuilder builder(AST->getASTContext());
+    CppToCVisitor visitor(AST->getASTContext(), builder);
 
-        visitor.TraverseDecl(AST->getASTContext().getTranslationUnitDecl());
+    visitor.TraverseDecl(AST->getASTContext().getTranslationUnitDecl());
 
-        // Verify function was generated
-        FunctionDecl *CFunc = visitor.getCFunc("Point_setX");
-        ASSERT_TRUE(CFunc != nullptr) << "C function not generated";
+    // Verify function was generated
+    FunctionDecl *CFunc = visitor.getCFunc("Point_setX");
+    ASSERT_TRUE(CFunc != nullptr) << "C function not generated";
 
-        // Verify function has body with translated assignment
-        Stmt *Body = CFunc->getBody();
-        ASSERT_TRUE(Body != nullptr) << "Function body not translated";
+    // Verify function has body with translated assignment
+    Stmt *Body = CFunc->getBody();
+    ASSERT_TRUE(Body != nullptr) << "Function body not translated";
 }
 
 TEST_F(CppToCVisitorTest, ExplicitmemberaccessObj.xPreservedInTranslation) {

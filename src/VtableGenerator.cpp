@@ -4,6 +4,7 @@
  */
 
 #include "../include/VtableGenerator.h"
+#include "../include/MethodSignatureHelper.h"
 #include "../include/OverrideResolver.h"
 #include "../include/VirtualInheritanceAnalyzer.h"
 #include "clang/AST/DeclCXX.h"
@@ -73,45 +74,8 @@ std::string VtableGenerator::generateStaticDeclarations(const CXXRecordDecl* Rec
 
 std::string VtableGenerator::getMethodSignature(const CXXMethodDecl* Method,
                                                  const std::string& ClassName) {
-    std::ostringstream sig;
-
-    // static keyword
-    sig << "static ";
-
-    // Return type
-    QualType returnType = Method->getReturnType();
-    sig << getTypeString(returnType) << " ";
-
-    // Function name (use name mangling for C function name)
-    if (isa<CXXDestructorDecl>(Method)) {
-        // Destructor: use __dtor suffix to match vtable field naming
-        sig << ClassName << "__dtor";
-    } else {
-        // Regular method: ClassName_methodName
-        sig << ClassName << "_" << Method->getNameAsString();
-        // TODO: Handle overloaded methods with parameter-based mangling if needed
-    }
-
-    // Parameters: always starts with 'this' pointer
-    sig << "(struct " << ClassName << " *this";
-
-    // Add method parameters
-    for (unsigned i = 0; i < Method->getNumParams(); ++i) {
-        const ParmVarDecl* param = Method->getParamDecl(i);
-        sig << ", ";
-        sig << getTypeString(param->getType());
-
-        // Add parameter name if available
-        if (!param->getName().empty()) {
-            sig << " " << param->getNameAsString();
-        } else {
-            sig << " arg" << i;
-        }
-    }
-
-    sig << ")";
-
-    return sig.str();
+    // Phase 31-03: Delegate to MethodSignatureHelper (DRY principle)
+    return MethodSignatureHelper::generateSignature(Method, ClassName);
 }
 
 std::vector<CXXMethodDecl*> VtableGenerator::getVtableMethodOrder(const CXXRecordDecl* Record) {
@@ -211,48 +175,8 @@ std::string VtableGenerator::generateFunctionPointer(const CXXMethodDecl* Method
 }
 
 std::string VtableGenerator::getTypeString(QualType Type) {
-    // Handle const qualifier
-    std::string typeStr;
-
-    if (Type.isConstQualified()) {
-        typeStr = "const ";
-    }
-
-    // Get base type
-    const clang::Type* T = Type.getTypePtr();
-
-    if (T->isVoidType()) {
-        typeStr += "void";
-    } else if (T->isBooleanType()) {
-        typeStr += "int"; // C doesn't have bool, use int
-    } else if (T->isIntegerType()) {
-        if (T->isSignedIntegerType()) {
-            typeStr += "int";
-        } else {
-            typeStr += "unsigned int";
-        }
-    } else if (T->isFloatingType()) {
-        if (T->isSpecificBuiltinType(BuiltinType::Float)) {
-            typeStr += "float";
-        } else {
-            typeStr += "double";
-        }
-    } else if (T->isPointerType()) {
-        QualType pointeeType = T->getPointeeType();
-        typeStr += getTypeString(pointeeType) + " *";
-    } else if (T->isReferenceType()) {
-        QualType refType = T->getPointeeType();
-        typeStr += getTypeString(refType) + " *"; // References become pointers in C
-    } else if (const RecordType* RT = T->getAs<RecordType>()) {
-        // Class/struct type
-        RecordDecl* RD = RT->getDecl();
-        typeStr += "struct " + RD->getNameAsString();
-    } else {
-        // Fallback for unknown types
-        typeStr += "void";
-    }
-
-    return typeStr;
+    // Phase 31-03: Delegate to MethodSignatureHelper (DRY principle)
+    return MethodSignatureHelper::getTypeString(Type);
 }
 
 // ============================================================================

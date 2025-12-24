@@ -7,10 +7,11 @@ The C++ to C transpiler implements virtual method tables (vtables) following the
 ### Key Features
 
 - **Itanium C++ ABI Compliance**: Compatible with standard C++ implementations
-- **COM-Style Static Declarations**: Compile-time type safety (Phase 31-02)
+- **COM-Style Static Declarations**: Compile-time type safety for all methods (Phase 31-03)
 - **Type Information**: RTTI support via type_info pointers
 - **Virtual Base Support**: Offset tables for virtual inheritance
 - **Zero Runtime Overhead**: Static declarations have no performance cost
+- **Universal Type Safety**: All methods (virtual and non-virtual) use static declarations
 
 ## COM-Style Static Declarations
 
@@ -328,6 +329,8 @@ Minimal compile-time impact:
 ## See Also
 
 - `include/VtableGenerator.h` - Vtable generator interface
+- `include/MethodSignatureHelper.h` - Shared signature generation (Phase 31-03)
 - `src/VtableGenerator.cpp` - Implementation
 - `tests/ComStyleVtableTest.cpp` - Test suite
+- `docs/METHOD_GENERATION.md` - Method generation pattern (all methods)
 - `docs/TESTING.md` - Testing procedures

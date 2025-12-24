@@ -220,6 +220,7 @@ add_library(cpptoc_core STATIC
     src/StdMoveTranslator.cpp
     src/RvalueRefParamTranslator.cpp
     src/VtableGenerator.cpp
+    src/MethodSignatureHelper.cpp
     src/OverrideResolver.cpp
     src/VtableInitializer.cpp
     src/VirtualCallTranslator.cpp

@@ -861,22 +861,23 @@ Three parallel workstreams to transform the transpiler:
 
 ---
 
-### Phase 31-03: Extend to All Methods (v2.3.0) ⏳ PLANNED
+### Phase 31-03: Extend to All Methods (v2.3.0) ✅ COMPLETE
 
 **Goal**: Extend COM-style pattern from virtual methods to ALL methods
 
 **Deliverables**:
-- `CppToCVisitor::generateAllMethodDeclarations()` method
-- MethodSignatureHelper shared utility (DRY)
-- ComStyleAllMethodsTest suite (5+ tests)
-- Documentation: METHOD_GENERATION.md
+- ✅ `CppToCVisitor::generateAllMethodDeclarations()` method
+- ✅ MethodSignatureHelper shared utility (DRY)
+- ✅ ComStyleAllMethodsTest suite (8 tests)
+- ✅ Documentation: METHOD_GENERATION.md
 
 **Benefits**:
 - ✅ Universal type safety (all methods verified)
 - ✅ Consistent code style
 - ✅ Simplified generator (one pattern for everything)
 
-**Effort**: ~2-3 hours
+**Completed**: 2025-12-23
+**Summary**: `.planning/phases/31-com-vmt-architecture/31-03-SUMMARY.md`
 
 **Dependencies**: Requires Phase 31-02 complete
 

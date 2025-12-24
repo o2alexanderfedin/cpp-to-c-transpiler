@@ -1,5 +1,6 @@
 #include "CppToCVisitor.h"
 #include "CFGAnalyzer.h"
+#include "MethodSignatureHelper.h"
 #include "clang/AST/Expr.h"
 #include "clang/AST/ExprCXX.h"
 #include "clang/Basic/SourceManager.h"
@@ -173,16 +174,16 @@ bool CppToCVisitor::VisitCXXRecordDecl(CXXRecordDecl *D) {
     }
   }
 
+  // Phase 31-03: Generate COM-style static declarations for ALL methods
+  std::string allMethodDecls = generateAllMethodDeclarations(D);
+  if (!allMethodDecls.empty()) {
+    llvm::outs() << "\n" << allMethodDecls << "\n";
+  }
+
   // Phase 9 (v2.2.0): Generate vtable struct for polymorphic classes
   if (VirtualAnalyzer.isPolymorphic(D)) {
     llvm::outs() << "Generating vtable for polymorphic class: "
                  << D->getNameAsString() << "\n";
-
-    // Phase 31-02: Generate COM-style static declarations for virtual methods
-    std::string staticDecls = m_vtableGenerator->generateStaticDeclarations(D);
-    if (!staticDecls.empty()) {
-      llvm::outs() << "\n" << staticDecls << "\n";
-    }
 
     // Generate vtable struct definition
     std::string vtableStruct = m_vtableGenerator->generateVtableStruct(D);
@@ -2842,4 +2843,63 @@ void CppToCVisitor::processTemplateInstantiations(TranslationUnitDecl *TU) {
 
   // Output the generated code
   llvm::outs() << m_monomorphizedCode;
+}
+
+// ============================================================================
+// Phase 31-03: COM-Style Static Declarations for All Methods
+// ============================================================================
+
+std::string CppToCVisitor::generateAllMethodDeclarations(CXXRecordDecl* RD) {
+    if (!RD) {
+        return "";
+    }
+
+    std::ostringstream decls;
+    std::string className = RD->getNameAsString();
+
+    // Add comment header
+    decls << "// Static declarations for all " << className << " methods\n";
+
+    int ctorCount = 0;
+    int dtorCount = 0;
+    int methodCount = 0;
+
+    // Constructors
+    for (auto* ctor : RD->ctors()) {
+        // Skip compiler-generated implicit constructors
+        if (!ctor->isImplicit()) {
+            decls << MethodSignatureHelper::generateSignature(ctor, className) << ";\n";
+            ctorCount++;
+        }
+    }
+
+    // Destructor
+    if (CXXDestructorDecl* dtor = RD->getDestructor()) {
+        // Skip compiler-generated implicit destructor
+        if (!dtor->isImplicit()) {
+            decls << MethodSignatureHelper::generateSignature(dtor, className) << ";\n";
+            dtorCount++;
+        }
+    }
+
+    // All methods (virtual and non-virtual)
+    for (auto* method : RD->methods()) {
+        // Skip implicit methods (compiler-generated)
+        if (method->isImplicit()) {
+            continue;
+        }
+
+        // Skip constructors and destructors (already handled above)
+        if (isa<CXXConstructorDecl>(method) || isa<CXXDestructorDecl>(method)) {
+            continue;
+        }
+
+        decls << MethodSignatureHelper::generateSignature(method, className) << ";\n";
+        methodCount++;
+    }
+
+    llvm::outs() << "  [Phase 31-03] Generated " << ctorCount << " constructor, "
+                 << dtorCount << " destructor, " << methodCount << " method declarations\n";
+
+    return decls.str();
 }
