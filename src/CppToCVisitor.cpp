@@ -102,6 +102,11 @@ CppToCVisitor::CppToCVisitor(ASTContext &Context, CNodeBuilder &Builder)
 
 // Story #15 + Story #50: Class-to-Struct Conversion with Base Class Embedding
 bool CppToCVisitor::VisitCXXRecordDecl(CXXRecordDecl *D) {
+  // Edge case 0: Skip declarations from included headers (not in main file)
+  if (!Context.getSourceManager().isInMainFile(D->getLocation())) {
+    return true;
+  }
+
   // Edge case 1: Forward declarations - skip
   if (!D->isCompleteDefinition())
     return true;
@@ -231,6 +236,11 @@ bool CppToCVisitor::VisitCXXRecordDecl(CXXRecordDecl *D) {
 
 // Story #16: Method-to-Function Conversion
 bool CppToCVisitor::VisitCXXMethodDecl(CXXMethodDecl *MD) {
+  // Edge case 0: Skip declarations from included headers (not in main file)
+  if (!Context.getSourceManager().isInMainFile(MD->getLocation())) {
+    return true;
+  }
+
   // Edge case 1: Skip implicit methods (compiler-generated)
   if (MD->isImplicit()) {
     return true;
@@ -330,6 +340,11 @@ bool CppToCVisitor::VisitCXXMethodDecl(CXXMethodDecl *MD) {
 
 // Story #17: Constructor Translation
 bool CppToCVisitor::VisitCXXConstructorDecl(CXXConstructorDecl *CD) {
+  // Edge case 0: Skip declarations from included headers (not in main file)
+  if (!Context.getSourceManager().isInMainFile(CD->getLocation())) {
+    return true;
+  }
+
   // Edge case: Skip implicit constructors (compiler-generated)
   if (CD->isImplicit()) {
     return true;
@@ -558,6 +573,11 @@ FunctionDecl *CppToCVisitor::getDtor(llvm::StringRef funcName) const {
 
 // Visit C++ destructor declarations
 bool CppToCVisitor::VisitCXXDestructorDecl(CXXDestructorDecl *DD) {
+  // Edge case 0: Skip declarations from included headers (not in main file)
+  if (!Context.getSourceManager().isInMainFile(DD->getLocation())) {
+    return true;
+  }
+
   // Edge case: Skip implicit destructors (compiler-generated)
   if (DD->isImplicit() || DD->isTrivial()) {
     return true;
@@ -637,6 +657,11 @@ bool CppToCVisitor::VisitCXXDestructorDecl(CXXDestructorDecl *DD) {
 
 // Visit function declarations for destructor injection
 bool CppToCVisitor::VisitFunctionDecl(FunctionDecl *FD) {
+  // Edge case 0: Skip declarations from included headers (not in main file)
+  if (!Context.getSourceManager().isInMainFile(FD->getLocation())) {
+    return true;
+  }
+
   // Skip if this is a C++ method (handled by VisitCXXMethodDecl)
   if (isa<CXXMethodDecl>(FD)) {
     return true;
@@ -2680,6 +2705,11 @@ bool CppToCVisitor::VisitClassTemplateDecl(ClassTemplateDecl *D) {
     return true;
   }
 
+  // Edge case 0: Skip declarations from included headers (not in main file)
+  if (!Context.getSourceManager().isInMainFile(D->getLocation())) {
+    return true;
+  }
+
   llvm::outs() << "Found class template: " << D->getNameAsString() << "\n";
   // Don't generate code here - wait for instantiations
   return true;
@@ -2694,6 +2724,11 @@ bool CppToCVisitor::VisitClassTemplateDecl(ClassTemplateDecl *D) {
  */
 bool CppToCVisitor::VisitFunctionTemplateDecl(FunctionTemplateDecl *D) {
   if (!D || !shouldMonomorphizeTemplates()) {
+    return true;
+  }
+
+  // Edge case 0: Skip declarations from included headers (not in main file)
+  if (!Context.getSourceManager().isInMainFile(D->getLocation())) {
     return true;
   }
 
@@ -2712,6 +2747,11 @@ bool CppToCVisitor::VisitFunctionTemplateDecl(FunctionTemplateDecl *D) {
 bool CppToCVisitor::VisitClassTemplateSpecializationDecl(
     ClassTemplateSpecializationDecl *D) {
   if (!D || !shouldMonomorphizeTemplates()) {
+    return true;
+  }
+
+  // Edge case 0: Skip declarations from included headers (not in main file)
+  if (!Context.getSourceManager().isInMainFile(D->getLocation())) {
     return true;
   }
 
@@ -2849,57 +2889,61 @@ void CppToCVisitor::processTemplateInstantiations(TranslationUnitDecl *TU) {
 // Phase 31-03: COM-Style Static Declarations for All Methods
 // ============================================================================
 
-std::string CppToCVisitor::generateAllMethodDeclarations(CXXRecordDecl* RD) {
-    if (!RD) {
-        return "";
+std::string CppToCVisitor::generateAllMethodDeclarations(CXXRecordDecl *RD) {
+  if (!RD) {
+    return "";
+  }
+
+  std::ostringstream decls;
+  std::string className = RD->getNameAsString();
+
+  // Add comment header
+  decls << "// Static declarations for all " << className << " methods\n";
+
+  int ctorCount = 0;
+  int dtorCount = 0;
+  int methodCount = 0;
+
+  // Constructors
+  for (auto *ctor : RD->ctors()) {
+    // Skip compiler-generated implicit constructors
+    if (!ctor->isImplicit()) {
+      decls << MethodSignatureHelper::generateSignature(ctor, className)
+            << ";\n";
+      ctorCount++;
+    }
+  }
+
+  // Destructor
+  if (CXXDestructorDecl *dtor = RD->getDestructor()) {
+    // Skip compiler-generated implicit destructor
+    if (!dtor->isImplicit()) {
+      decls << MethodSignatureHelper::generateSignature(dtor, className)
+            << ";\n";
+      dtorCount++;
+    }
+  }
+
+  // All methods (virtual and non-virtual)
+  for (auto *method : RD->methods()) {
+    // Skip implicit methods (compiler-generated)
+    if (method->isImplicit()) {
+      continue;
     }
 
-    std::ostringstream decls;
-    std::string className = RD->getNameAsString();
-
-    // Add comment header
-    decls << "// Static declarations for all " << className << " methods\n";
-
-    int ctorCount = 0;
-    int dtorCount = 0;
-    int methodCount = 0;
-
-    // Constructors
-    for (auto* ctor : RD->ctors()) {
-        // Skip compiler-generated implicit constructors
-        if (!ctor->isImplicit()) {
-            decls << MethodSignatureHelper::generateSignature(ctor, className) << ";\n";
-            ctorCount++;
-        }
+    // Skip constructors and destructors (already handled above)
+    if (isa<CXXConstructorDecl>(method) || isa<CXXDestructorDecl>(method)) {
+      continue;
     }
 
-    // Destructor
-    if (CXXDestructorDecl* dtor = RD->getDestructor()) {
-        // Skip compiler-generated implicit destructor
-        if (!dtor->isImplicit()) {
-            decls << MethodSignatureHelper::generateSignature(dtor, className) << ";\n";
-            dtorCount++;
-        }
-    }
+    decls << MethodSignatureHelper::generateSignature(method, className)
+          << ";\n";
+    methodCount++;
+  }
 
-    // All methods (virtual and non-virtual)
-    for (auto* method : RD->methods()) {
-        // Skip implicit methods (compiler-generated)
-        if (method->isImplicit()) {
-            continue;
-        }
+  llvm::outs() << "  [Phase 31-03] Generated " << ctorCount << " constructor, "
+               << dtorCount << " destructor, " << methodCount
+               << " method declarations\n";
 
-        // Skip constructors and destructors (already handled above)
-        if (isa<CXXConstructorDecl>(method) || isa<CXXDestructorDecl>(method)) {
-            continue;
-        }
-
-        decls << MethodSignatureHelper::generateSignature(method, className) << ";\n";
-        methodCount++;
-    }
-
-    llvm::outs() << "  [Phase 31-03] Generated " << ctorCount << " constructor, "
-                 << dtorCount << " destructor, " << methodCount << " method declarations\n";
-
-    return decls.str();
+  return decls.str();
 }
