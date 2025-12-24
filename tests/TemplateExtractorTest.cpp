@@ -159,8 +159,8 @@ TEST_F(TemplateExtractorTest, NestedTemplateInstantiation) {
         auto instantiations = extractor.getClassInstantiations();
 
         // Should find both Inner<int> and Outer<Inner<int>>
-        ASSERT_TRUE(instantiations.size() == 2) << "Expected 2 instantiations (Inner<int> and Outer<Inner<int>>;, got: " +
-               std::to_string(instantiations.size()));
+        ASSERT_TRUE(instantiations.size() == 2)
+            << "Expected 2 instantiations (Inner<int> and Outer<Inner<int>>), got: " + std::to_string(instantiations.size());
 
         bool foundInner = false;
         bool foundOuter = false;
@@ -201,8 +201,8 @@ TEST_F(TemplateExtractorTest, ImplicitTemplateInstantiation) {
 
         auto classInstantiations = extractor.getClassInstantiations();
 
-        ASSERT_TRUE(classInstantiations.size() >= 1) << "Expected at least 1 class instantiation (Box<int>;, got: " +
-               std::to_string(classInstantiations.size()));
+        ASSERT_TRUE(classInstantiations.size() >= 1)
+            << "Expected at least 1 class instantiation (Box<int>), got: " + std::to_string(classInstantiations.size());
 
         // Verify Box<int> was found
         bool foundBox = false;
