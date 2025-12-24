@@ -238,6 +238,7 @@ add_library(cpptoc_core STATIC
     src/StaticOperatorTranslator.cpp
     src/AssumeAttributeHandler.cpp
     src/DeducingThisTranslator.cpp
+    src/ConstevalIfTranslator.cpp
     src/RuntimeConfig.cpp
 )
 
@@ -1915,6 +1916,31 @@ target_link_libraries(DeducingThisTranslatorTest PRIVATE cpptoc_core
 
 # Register with CTest
 gtest_discover_tests(DeducingThisTranslatorTest
+    WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
+)
+
+# Phase 5: if consteval support tests (C++23 P1938R3)
+add_executable(ConstevalIfTranslatorTest
+    tests/ConstevalIfTranslatorTest.cpp
+)
+
+target_compile_definitions(ConstevalIfTranslatorTest PRIVATE ${LLVM_DEFINITIONS})
+
+target_include_directories(ConstevalIfTranslatorTest PRIVATE
+    ${CMAKE_SOURCE_DIR}/include
+    ${LLVM_INCLUDE_DIRS}
+    ${CLANG_INCLUDE_DIRS}
+)
+
+target_link_libraries(ConstevalIfTranslatorTest PRIVATE cpptoc_core
+    clangTooling
+    clangFrontend
+    clangAST
+    clangBasic
+    GTest::gtest_main)
+
+# Register with CTest
+gtest_discover_tests(ConstevalIfTranslatorTest
     WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
 )
 

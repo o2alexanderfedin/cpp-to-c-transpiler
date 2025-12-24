@@ -116,6 +116,10 @@ CppToCVisitor::CppToCVisitor(ASTContext &Context, CNodeBuilder &Builder)
   m_deducingThisTrans = std::make_unique<DeducingThisTranslator>(Builder);
   llvm::outs() << "Deducing this / explicit object parameter support initialized (C++23 P0847R7)\n";
 
+  // Phase 5: Initialize if consteval translator (C++23 P1938R3)
+  m_constevalIfTrans = std::make_unique<clang::ConstevalIfTranslator>(Builder, clang::ConstevalStrategy::Runtime);
+  llvm::outs() << "if consteval support initialized (C++23 P1938R3) - Runtime strategy\n";
+
   // Phase 32 (v3.0.0): Initialize C TranslationUnit for output generation
   C_TranslationUnit = TranslationUnitDecl::Create(Context);
   llvm::outs() << "C TranslationUnit created for output generation\n";
@@ -3135,6 +3139,39 @@ bool CppToCVisitor::VisitAttributedStmt(AttributedStmt *S) {
     // In a full implementation, we would replace S with TransformedStmt
     // in the C AST. For now, we just log the transformation.
     llvm::outs() << "  [Phase 3] Transformed [[assume]] attribute\n";
+  }
+
+  return true;
+}
+
+// Phase 5: if consteval visitor (C++23 P1938R3)
+bool CppToCVisitor::VisitIfStmt(IfStmt *S) {
+  // Only process statements from main file
+  if (!Context.getSourceManager().isInMainFile(S->getBeginLoc())) {
+    return true;
+  }
+
+  // Check if this is an 'if consteval' statement
+  if (!S->isConsteval()) {
+    // Regular if statement, not if consteval - continue normal traversal
+    return true;
+  }
+
+  // This is an 'if consteval' statement - transform it
+  llvm::outs() << "  [Phase 5] Processing if consteval at "
+               << S->getBeginLoc().printToString(Context.getSourceManager()) << "\n";
+
+  // Transform the consteval-if to C
+  Stmt *TransformedStmt = m_constevalIfTrans->transform(S, Context);
+
+  if (TransformedStmt) {
+    // Successfully transformed
+    // In a full implementation, we would replace S with TransformedStmt
+    // in the C AST. For now, we log the transformation.
+    llvm::outs() << "  [Phase 5] Transformed if consteval to runtime branch\n";
+  } else {
+    // No transformation (e.g., no else branch and runtime strategy)
+    llvm::outs() << "  [Phase 5] if consteval has no runtime branch - emitting null statement\n";
   }
 
   return true;

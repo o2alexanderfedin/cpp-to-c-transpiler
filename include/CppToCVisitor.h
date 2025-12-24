@@ -10,6 +10,7 @@
 #include "ACSLTypeInvariantGenerator.h"
 #include "AssumeAttributeHandler.h"
 #include "CNodeBuilder.h"
+#include "ConstevalIfTranslator.h"
 #include "DeducingThisTranslator.h"
 #include "DynamicCastTranslator.h"
 #include "ExceptionFrameGenerator.h"
@@ -127,6 +128,9 @@ class CppToCVisitor : public clang::RecursiveASTVisitor<CppToCVisitor> {
 
   // Phase 4: Deducing this / explicit object parameter support (C++23 P0847R7)
   std::unique_ptr<DeducingThisTranslator> m_deducingThisTrans;
+
+  // Phase 5: if consteval support (C++23 P1938R3)
+  std::unique_ptr<clang::ConstevalIfTranslator> m_constevalIfTrans;
 
   // Current translation context (Story #19)
   clang::ParmVarDecl *currentThisParam = nullptr;
@@ -257,6 +261,9 @@ public:
 
   // Phase 3: [[assume]] attribute visitor (C++23)
   bool VisitAttributedStmt(clang::AttributedStmt *S);
+
+  // Phase 5: if consteval visitor (C++23 P1938R3)
+  bool VisitIfStmt(clang::IfStmt *S);
 
   // Retrieve generated C struct by class name (for testing)
   clang::RecordDecl *getCStruct(llvm::StringRef className) const;
