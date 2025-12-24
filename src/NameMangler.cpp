@@ -89,9 +89,12 @@ std::string NameMangler::getSimpleTypeName(QualType T) {
     else if (T->isFloatingType()) {
         result += "float";
     }
-    // Handle pointer types
+    // Handle pointer types - recursively encode pointee type (like Itanium C++ ABI)
+    // This preserves type information and fixes overload resolution
+    // Example: int* → "int_ptr", char* → "char_ptr" (not just "ptr")
     else if (T->isPointerType()) {
-        result += "ptr";
+        QualType pointee = T->getPointeeType();
+        result += getSimpleTypeName(pointee) + "_ptr";  // Recursive encoding!
     }
     // Handle record types (struct/class)
     else if (T->isRecordType()) {

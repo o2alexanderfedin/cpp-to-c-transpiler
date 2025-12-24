@@ -637,6 +637,13 @@ bool CppToCVisitor::VisitFunctionDecl(FunctionDecl *FD) {
     return true;
   }
 
+  // FIX: Skip functions we generated ourselves to prevent infinite recursion
+  // (following Frama-Clang's pattern of marking synthetic functions)
+  if (generatedFunctions.count(FD) > 0) {
+    llvm::outs() << "  -> Skipping generated function to prevent recursion\n";
+    return true;
+  }
+
   // Story #152: Analyze function for RAII objects and inject destructors
   llvm::outs() << "Analyzing function for RAII: " << FD->getNameAsString()
                << "\n";
@@ -752,24 +759,9 @@ bool CppToCVisitor::VisitFunctionDecl(FunctionDecl *FD) {
 
   llvm::outs() << "  Mangled name: " << mangledName << "\n";
 
-  // FIX: Prevent infinite pointer recursion
-  // Count "_ptr" occurrences in mangled name - if too many, skip
-  size_t ptrCount = 0;
-  size_t pos = 0;
-  while ((pos = mangledName.find("_ptr", pos)) != std::string::npos) {
-    ptrCount++;
-    pos += 4;
-  }
-
-  const size_t MAX_POINTER_DEPTH = 2; // Allow max 2 pointer levels
-  if (ptrCount > MAX_POINTER_DEPTH) {
-    llvm::outs() << "  -> Skipping: too many pointer levels (" << ptrCount << ")\n";
-    return true;
-  }
-
-  // Also check if function already translated
+  // Check if function already translated (deduplication)
   if (standaloneFuncMap.count(mangledName) > 0) {
-    llvm::outs() << "  -> Already translated, skipping to prevent recursion\n";
+    llvm::outs() << "  -> Already translated, skipping\n";
     return true;
   }
 
@@ -816,6 +808,9 @@ bool CppToCVisitor::VisitFunctionDecl(FunctionDecl *FD) {
 
   // Store in standalone function map
   standaloneFuncMap[mangledName] = CFunc;
+
+  // Mark as generated to prevent re-processing
+  generatedFunctions.insert(CFunc);
 
   llvm::outs() << "  -> C function '" << mangledName << "' created\n";
   llvm::outs() << "  Parameters: " << cParams.size() << "\n";

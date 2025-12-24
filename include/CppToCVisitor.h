@@ -89,6 +89,9 @@ class CppToCVisitor : public clang::RecursiveASTVisitor<CppToCVisitor> {
   // Phase 8: Mapping: Standalone functions (by mangled name -> C function)
   std::map<std::string, clang::FunctionDecl *> standaloneFuncMap;
 
+  // Track generated functions to prevent re-processing (fix for pointer recursion bug)
+  std::set<clang::FunctionDecl *> generatedFunctions;
+
   // Phase 11: Template monomorphization infrastructure (v2.4.0)
   std::unique_ptr<TemplateExtractor> m_templateExtractor;
   std::unique_ptr<TemplateMonomorphizer> m_templateMonomorphizer;
