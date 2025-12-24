@@ -226,8 +226,13 @@ std::string NameMangler::mangleStandaloneFunction(FunctionDecl *FD) {
 
     // Handle overload: append parameter types
     // Pattern: functionName_paramType1_paramType2_...
+    // Note: Skip 'this' parameter (implicit in C++ methods) for cleaner names
     std::string mangledName = baseName;
     for (ParmVarDecl *Param : FD->parameters()) {
+        // Skip 'this' parameter - it's implicit in C++ and shouldn't affect overload resolution
+        if (Param->getName() == "this") {
+            continue;
+        }
         mangledName += "_" + getSimpleTypeName(Param->getType());
     }
 

@@ -282,12 +282,32 @@ $ ./build_working/transpiler-api-cli test-minimal-pointer.cpp 2>&1 | grep "Mangl
 ## Next Steps
 
 1. ✅ Research complete - root cause identified
-2. ⏭️ Implement Fix 2 (track generated functions)
-3. ⏭️ Implement Fix 1 (improve type encoding)
-4. ⏭️ Remove depth limit workaround (commit 56d11ed)
-5. ⏭️ Add regression tests
-6. ⏭️ Validate with real-world code
-7. ⏭️ Document design in comments
+2. ✅ Implement Fix 2 (track generated functions) - Commit 0371afa
+3. ✅ Implement Fix 1 (improve type encoding) - Commit 0371afa
+4. ✅ Remove depth limit workaround (commit 56d11ed) - Commit 0371afa
+5. ✅ Optimization: Skip 'this' parameter in mangling - Current commit
+   - Mark method-generated functions to prevent re-processing
+   - Skip 'this' parameter in standalone function mangling
+   - Results: `Simple::getValue()` → `Simple_getValue` (not `Simple_getValue_Simple_ptr`)
+6. ⏭️ Add regression tests
+7. ⏭️ Validate with real-world code
+8. ⏭️ Document design in comments
+
+## Optimization: 'this' Parameter Skipping
+
+After implementing the core fixes, we added an optimization to make mangled names cleaner:
+
+**Problem**: Even with re-processing prevented, generated method functions would be named with `_ptr` suffix for the implicit `this` parameter if they were ever processed as standalone functions.
+
+**Solution**:
+1. Mark method-generated functions immediately in `VisitCXXMethodDecl` (prevents any re-processing)
+2. Skip parameters named "this" in `mangleStandaloneFunction()` (cleaner names)
+
+**Results**:
+- Before: `Simple::getValue()` → `Simple_getValue` AND `Simple_getValue_Simple_ptr` (duplicate!)
+- After: `Simple::getValue()` → `Simple_getValue` only
+- Overloads still work: `Test::foo(int)` → `Test_foo_int` (skips `this`, includes `int`)
+- Output size: 138 lines (was millions before fixes)
 
 ## Sources
 

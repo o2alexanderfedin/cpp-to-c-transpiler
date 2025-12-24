@@ -312,6 +312,9 @@ bool CppToCVisitor::VisitCXXMethodDecl(CXXMethodDecl *MD) {
   // Store mapping
   methodToCFunc[MD] = CFunc;
 
+  // Mark as generated to prevent re-processing as standalone function
+  generatedFunctions.insert(CFunc);
+
   llvm::outs() << "  -> " << funcName << " with " << params.size()
                << " parameters\n";
 
