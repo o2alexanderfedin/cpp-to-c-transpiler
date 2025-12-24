@@ -386,6 +386,138 @@ The tool currently parses C++ files and reports AST structure:
 # Found method: MyClass::foo
 ```
 
+## Multi-File Transpilation
+
+The transpiler supports processing multiple C++ files in a single invocation, with automatic header/implementation separation for each file.
+
+### Basic Multi-File Usage
+
+```bash
+# Transpile multiple files
+./build/cpptoc file1.cpp file2.cpp file3.cpp --
+
+# With output directory
+./build/cpptoc Point.cpp Circle.cpp --output-dir ./generated
+
+# With include paths
+./build/cpptoc main.cpp utils.cpp -- -I./include -I./third_party
+```
+
+### Output File Naming Convention
+
+Each input file generates two output files:
+
+```
+Input:  Point.cpp       →  Output:  Point.h + Point.c
+Input:  Circle.cpp      →  Output:  Circle.h + Circle.c
+Input:  MyClass.cpp     →  Output:  MyClass.h + MyClass.c
+```
+
+The base name (without extension) is preserved, and files are placed in:
+- Current directory (default)
+- Specified output directory via `--output-dir`
+
+### Output Directory Options
+
+```bash
+# Relative path
+./build/cpptoc input.cpp --output-dir ./build/generated
+
+# Absolute path
+./build/cpptoc input.cpp --output-dir /tmp/transpiled
+
+# Create directory if it doesn't exist (automatic)
+./build/cpptoc input.cpp --output-dir ./new_dir
+```
+
+### Cross-File Dependencies
+
+Files are transpiled independently, each producing its own `.h` and `.c` files:
+
+```bash
+# math.cpp and utils.cpp are transpiled separately
+./build/cpptoc math.cpp utils.cpp --output-dir ./output
+
+# Results in:
+# output/math.h
+# output/math.c
+# output/utils.h
+# output/utils.c
+```
+
+To use functions/classes from other files, use standard C include syntax in the generated code:
+
+```c
+// In utils.c (generated)
+#include "utils.h"
+#include "math.h"  // If utils depends on math
+```
+
+### Include Directories
+
+Specify header search paths using `-I` flags after the `--` separator:
+
+```bash
+# Single include directory
+./build/cpptoc main.cpp -- -I./include
+
+# Multiple include directories (searched in order)
+./build/cpptoc main.cpp -- -I./include -I./third_party -I/usr/local/include
+
+# With C++ standard
+./build/cpptoc main.cpp -- -I./include -std=c++20
+```
+
+Include paths enable standard C++ include syntax:
+
+```cpp
+#include <myheader.h>      // Searches in -I directories
+#include "localheader.h"   // Searches current dir, then -I directories
+```
+
+### Compilation Database Support
+
+The transpiler works with compilation databases (via CommonOptionsParser):
+
+```bash
+# Use compile_commands.json from build directory
+./build/cpptoc main.cpp -- -p ./build
+
+# Generate compile_commands.json with CMake
+cmake -B build -DCMAKE_EXPORT_COMPILE_COMMANDS=ON
+./build/cpptoc main.cpp -- -p ./build
+```
+
+### Best Practices
+
+1. **Organize Files**: Keep related files in the same directory
+2. **Use Output Directory**: Separate generated files from source
+3. **Include Paths**: Use `-I` flags for header dependencies
+4. **One Module Per File**: Each `.cpp` should be a self-contained module
+5. **Header Guards**: Generated headers include guards automatically
+
+### Common Issues and Troubleshooting
+
+**Issue: Header not found**
+```bash
+# Solution: Add include directory
+./build/cpptoc main.cpp -- -I./path/to/headers
+```
+
+**Issue: Files generated in wrong location**
+```bash
+# Solution: Use --output-dir
+./build/cpptoc main.cpp --output-dir ./desired/path
+```
+
+**Issue: Cross-file struct dependencies**
+```bash
+# Each file is transpiled independently
+# Use forward declarations or include generated headers
+```
+
+For more details, see [docs/MULTI_FILE_TRANSPILATION.md](docs/MULTI_FILE_TRANSPILATION.md).
+
 ### Testing
 
 The project has **296 comprehensive tests** (100% pass rate) powered by Google Test framework.

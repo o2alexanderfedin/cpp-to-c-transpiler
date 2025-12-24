@@ -233,7 +233,41 @@ opam install frama-c
 
 ## Usage and Features
 
-### Q10: What C++ features are supported?
+### Q10: Can I transpile multiple files at once?
+
+**A:** Yes! The transpiler fully supports processing multiple C++ files in a single invocation.
+
+**Basic Example:**
+```bash
+# Transpile multiple files
+./build/cpptoc file1.cpp file2.cpp file3.cpp --
+
+# With output directory
+./build/cpptoc src/*.cpp --output-dir ./generated
+
+# With include paths
+./build/cpptoc main.cpp utils.cpp -- -I./include
+```
+
+**Output:** Each input file generates separate `.h` and `.c` files:
+```
+Input:  Point.cpp    →  Output:  Point.h + Point.c
+Input:  Circle.cpp   →  Output:  Circle.h + Circle.c
+Input:  main.cpp     →  Output:  main.h + main.c
+```
+
+**Key Features:**
+- Independent processing (each file gets its own AST)
+- Automatic header/implementation separation
+- Output directory control with `--output-dir`
+- Include path support via `-I` flags
+- Works with compilation databases
+
+**See Also:** [Multi-File Transpilation Guide](MULTI_FILE_TRANSPILATION.md)
+
+---
+
+### Q11: What C++ features are supported?
 
 **A:** Full C++20 support (roadmap):
 

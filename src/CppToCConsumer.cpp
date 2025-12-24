@@ -1,9 +1,15 @@
 #include "CppToCConsumer.h"
 #include "CNodeBuilder.h"
 #include "CppToCVisitor.h"
+#include "CodeGenerator.h"
+#include "FileOutputManager.h"
 #include "clang/Basic/SourceManager.h"
 #include "llvm/Support/raw_ostream.h"
 #include <algorithm>
+#include <sstream>
+
+// External accessor for output directory (defined in main.cpp)
+extern std::string getOutputDir();
 
 void CppToCConsumer::HandleTranslationUnit(clang::ASTContext &Context) {
   // Get source manager and main file information
@@ -34,4 +40,74 @@ void CppToCConsumer::HandleTranslationUnit(clang::ASTContext &Context) {
   // Phase 11 (v2.4.0): Process template instantiations after AST traversal
   // This generates monomorphized C code for all template instantiations
   Visitor.processTemplateInstantiations(TU);
+
+  // Generate C code using CodeGenerator
+  // Use string streams to collect header and implementation output
+  std::string headerContent;
+  std::string implContent;
+  llvm::raw_string_ostream headerOS(headerContent);
+  llvm::raw_string_ostream implOS(implContent);
+
+  CodeGenerator headerGen(headerOS, Context);
+  CodeGenerator implGen(implOS, Context);
+
+  // Generate header file (.h) - declarations only
+  headerOS << "// Generated from: " << InputFilename << "\n";
+  headerOS << "// Header file\n\n";
+  for (auto *D : TU->decls()) {
+    if (!D->isImplicit()) {
+      headerGen.printDecl(D, true);  // declarationOnly=true for headers
+    }
+  }
+
+  // Generate implementation file (.c) - full definitions
+  implOS << "// Generated from: " << InputFilename << "\n";
+  implOS << "// Implementation file\n\n";
+
+  // Include the corresponding header
+  // Extract base name for #include
+  size_t lastSlash = InputFilename.find_last_of("/\\");
+  size_t lastDot = InputFilename.find_last_of('.');
+  std::string baseName;
+  if (lastSlash != std::string::npos) {
+    baseName = InputFilename.substr(lastSlash + 1);
+  } else {
+    baseName = InputFilename;
+  }
+  if (lastDot != std::string::npos && lastDot > lastSlash) {
+    size_t dotPos = baseName.find_last_of('.');
+    if (dotPos != std::string::npos) {
+      baseName = baseName.substr(0, dotPos);
+    }
+  }
+  implOS << "#include \"" << baseName << ".h\"\n\n";
+
+  for (auto *D : TU->decls()) {
+    if (!D->isImplicit()) {
+      implGen.printDecl(D, false);  // declarationOnly=false for implementation
+    }
+  }
+
+  // Flush the streams
+  headerOS.flush();
+  implOS.flush();
+
+  // Use FileOutputManager to write files
+  FileOutputManager outputMgr;
+  outputMgr.setInputFilename(InputFilename);
+
+  // Set output directory if specified
+  std::string outputDir = getOutputDir();
+  if (!outputDir.empty()) {
+    outputMgr.setOutputDir(outputDir);
+  }
+
+  // Write the files
+  if (outputMgr.writeFiles(headerContent, implContent)) {
+    llvm::outs() << "Generated files:\n";
+    llvm::outs() << "  " << outputMgr.getHeaderFilename() << "\n";
+    llvm::outs() << "  " << outputMgr.getImplFilename() << "\n";
+  } else {
+    llvm::errs() << "Error: Failed to write output files\n";
+  }
 }

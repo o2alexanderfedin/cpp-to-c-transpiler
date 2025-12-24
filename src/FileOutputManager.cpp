@@ -6,6 +6,10 @@ void FileOutputManager::setInputFilename(const std::string& filename) {
     inputFilename = filename;
 }
 
+void FileOutputManager::setOutputDir(const std::string& dir) {
+    outputDir = dir;
+}
+
 void FileOutputManager::setOutputHeader(const std::string& filename) {
     outputHeader = filename;
 }
@@ -39,22 +43,41 @@ std::string FileOutputManager::getBaseName() const {
     return filename;
 }
 
+std::string FileOutputManager::getFullPath(const std::string& filename) const {
+    // If output directory is set, prepend it to the filename
+    if (!outputDir.empty()) {
+        // Ensure proper path separator
+        if (outputDir.back() == '/' || outputDir.back() == '\\') {
+            return outputDir + filename;
+        } else {
+            return outputDir + "/" + filename;
+        }
+    }
+    return filename;
+}
+
 std::string FileOutputManager::getHeaderFilename() const {
     // Return custom header if set, otherwise default
+    std::string baseFilename;
     if (!outputHeader.empty()) {
-        return outputHeader;
+        baseFilename = outputHeader;
+    } else {
+        baseFilename = getBaseName() + ".h";
     }
 
-    return getBaseName() + ".h";
+    return getFullPath(baseFilename);
 }
 
 std::string FileOutputManager::getImplFilename() const {
     // Return custom impl if set, otherwise default
+    std::string baseFilename;
     if (!outputImpl.empty()) {
-        return outputImpl;
+        baseFilename = outputImpl;
+    } else {
+        baseFilename = getBaseName() + ".c";
     }
 
-    return getBaseName() + ".c";
+    return getFullPath(baseFilename);
 }
 
 bool FileOutputManager::writeFile(const std::string& filename,

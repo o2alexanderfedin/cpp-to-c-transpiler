@@ -3424,6 +3424,34 @@ gtest_discover_tests(TranspilerAPI_MutualStructReferences_Test
 )
 
 # ============================================================================
+# Phase 30: Multi-File Transpilation Integration Tests
+# ============================================================================
+
+# MultiFileTranspilationTest - CLI-based multi-file transpilation tests
+add_executable(MultiFileTranspilationTest
+    tests/MultiFileTranspilationTest.cpp
+)
+
+target_compile_definitions(MultiFileTranspilationTest PRIVATE ${LLVM_DEFINITIONS})
+
+target_include_directories(MultiFileTranspilationTest PRIVATE
+    ${CMAKE_SOURCE_DIR}/include
+    ${LLVM_INCLUDE_DIRS}
+    ${CLANG_INCLUDE_DIRS}
+)
+
+target_link_libraries(MultiFileTranspilationTest PRIVATE
+    GTest::gtest
+    GTest::gtest_main
+    GTest::gmock
+)
+
+# Register with CTest
+gtest_discover_tests(MultiFileTranspilationTest
+    WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
+)
+
+# ============================================================================
 # Phase 15-04: Unified Test Execution - Convenience Test Targets
 # ============================================================================
 

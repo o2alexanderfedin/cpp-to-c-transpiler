@@ -20,6 +20,13 @@ static llvm::cl::opt<bool> UsePragmaOnce(
     llvm::cl::cat(ToolCategory),
     llvm::cl::init(false));
 
+// Command line option for output directory
+static llvm::cl::opt<std::string> OutputDir(
+    "output-dir",
+    llvm::cl::desc("Output directory for generated .c and .h files (default: current directory)"),
+    llvm::cl::value_desc("directory"),
+    llvm::cl::cat(ToolCategory));
+
 // Command line option for dependency visualization
 static llvm::cl::opt<std::string> DumpDeps(
     "dump-deps",
@@ -133,6 +140,11 @@ static llvm::cl::opt<bool> EnableRTTI(
 // Global accessor for pragma once setting
 bool shouldUsePragmaOnce() {
   return UsePragmaOnce;
+}
+
+// Global accessor for output directory setting
+std::string getOutputDir() {
+  return OutputDir;
 }
 
 // Global accessor for ACSL generation setting

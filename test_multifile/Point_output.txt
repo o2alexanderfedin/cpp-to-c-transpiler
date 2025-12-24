@@ -1,0 +1,129 @@
+Parsed file: /Users/alexanderfedin/Projects/hapyy/hupyy-cpp-to-c/test_multifile/Point.cpp
+Translation unit has 96 top-level declarations
+Virtual method support initialized
+Template monomorphization enabled (limit: 1000 instantiations)
+Exception handling support initialized (SJLJ model)
+RTTI support initialized (typeid and dynamic_cast)
+Translating class: Point
+  -> struct Point with 2 fields
+  Generating implicit copy constructor
+  Generated copy constructor: Point__ctor_copy
+  [Phase 31-03] Generated 1 constructor, 0 destructor, 4 method declarations
+
+// Static declarations for all Point methods
+static void Point__ctor_2(struct Point *this, int x, int y);
+static int Point_getX(const struct Point *this);
+static int Point_getY(const struct Point *this);
+static void Point_setX(struct Point *this, int x);
+static void Point_setY(struct Point *this, int y);
+
+Translating constructor: Point::Point
+  -> Point__ctor with 3 parameters, 0 statements
+Found variable: x
+Found variable: y
+Translating method: Point::getX
+  [Scope] Entering scope at depth 0
+  [Scope] Exiting scope at depth 0 with 0 objects
+  -> Point_getX with body translated
+  -> Point_getX with 1 parameters
+Translating method: Point::getY
+  [Scope] Entering scope at depth 0
+  [Scope] Exiting scope at depth 0 with 0 objects
+  -> Point_getY with body translated
+  -> Point_getY with 1 parameters
+Translating method: Point::setX
+  [Scope] Entering scope at depth 0
+  Translating member access: x
+  [Scope] Exiting scope at depth 0 with 0 objects
+  -> Point_setX with body translated
+  -> Point_setX with 2 parameters
+Found variable: x
+Translating method: Point::setY
+  [Scope] Entering scope at depth 0
+  Translating member access: y
+  [Scope] Exiting scope at depth 0 with 0 objects
+  -> Point_setY with body translated
+  -> Point_setY with 2 parameters
+Found variable: y
+Translating constructor: Point::Point
+  -> Point__ctor_2 with 3 parameters, 2 statements
+Found variable: x
+Found variable: y
+Translating method: Point::getX
+  [Scope] Entering scope at depth 0
+  [Scope] Exiting scope at depth 0 with 0 objects
+  -> Point_getX with body translated
+  -> Point_getX with 1 parameters
+Translating method: Point::getY
+  [Scope] Entering scope at depth 0
+  [Scope] Exiting scope at depth 0 with 0 objects
+  -> Point_getY with body translated
+  -> Point_getY with 1 parameters
+Translating method: Point::setX
+  [Scope] Entering scope at depth 0
+  Translating member access: x
+  [Scope] Exiting scope at depth 0 with 0 objects
+  -> Point_setX_int with body translated
+  -> Point_setX_int with 2 parameters
+Found variable: newX
+Translating method: Point::setY
+  [Scope] Entering scope at depth 0
+  Translating member access: y
+  [Scope] Exiting scope at depth 0 with 0 objects
+  -> Point_setY_int with body translated
+  -> Point_setY_int with 2 parameters
+Found variable: newY
+Analyzing function for RAII: Point__ctor_copy
+  Found 0 local variables
+Translating standalone function: Point__ctor_copy
+  Mangled name: Point__ctor_copy
+  -> C function 'Point__ctor_copy' created
+  Parameters: 2
+  Return type: void
+Analyzing function for RAII: Point__ctor
+  Found 0 local variables
+Translating standalone function: Point__ctor
+  Mangled name: Point__ctor_int_int
+  -> C function 'Point__ctor_int_int' created
+  Parameters: 3
+  Return type: void
+  -> Skipping generated function to prevent recursion
+  -> Skipping generated function to prevent recursion
+  -> Skipping generated function to prevent recursion
+  -> Skipping generated function to prevent recursion
+Analyzing function for RAII: Point__ctor_2
+  Found 0 local variables
+Translating standalone function: Point__ctor_2
+  Mangled name: Point__ctor_2_int_int
+  -> C function 'Point__ctor_2_int_int' created
+  Parameters: 3
+  Return type: void
+  -> Skipping generated function to prevent recursion
+  -> Skipping generated function to prevent recursion
+  -> Skipping generated function to prevent recursion
+  -> Skipping generated function to prevent recursion
+  -> Skipping generated function to prevent recursion
+  -> Skipping generated function to prevent recursion
+  -> Skipping generated function to prevent recursion
+
+========================================
+Processing Template Instantiations
+========================================
+
+Found 0 class template instantiation(s)
+Found 0 function template instantiation(s)
+
+Monomorphizing class templates:
+
+Monomorphizing function templates:
+
+========================================
+Template Monomorphization Complete
+  Unique instantiations: 0
+========================================
+
+
+// ============================================================================
+// Monomorphized Template Code (Phase 11 - v2.4.0)
+// ============================================================================
+
