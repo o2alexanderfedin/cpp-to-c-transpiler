@@ -189,6 +189,77 @@ std::string TemplateMonomorphizer::typeToString(QualType Type) {
     return typeStr;
 }
 
+std::string TemplateMonomorphizer::typeToIdentifierString(QualType Type) {
+    // Convert type to valid C identifier component (no *, <, >, ::, etc.)
+
+    // Handle references as pointers in C
+    if (Type->isReferenceType()) {
+        QualType pointeeType = Type->getPointeeType();
+        return typeToIdentifierString(pointeeType) + "_ref";
+    }
+
+    // Handle pointer types recursively
+    if (Type->isPointerType()) {
+        QualType pointeeType = Type->getPointeeType();
+        return typeToIdentifierString(pointeeType) + "_ptr";
+    }
+
+    // Get canonical type
+    QualType canonicalType = Type.getCanonicalType();
+
+    // Handle builtin types
+    if (const BuiltinType* BT = canonicalType->getAs<BuiltinType>()) {
+        switch (BT->getKind()) {
+            case BuiltinType::Void: return "void";
+            case BuiltinType::Bool: return "bool";
+            case BuiltinType::Char_S:
+            case BuiltinType::Char_U: return "char";
+            case BuiltinType::SChar: return "schar";
+            case BuiltinType::UChar: return "uchar";
+            case BuiltinType::Short: return "short";
+            case BuiltinType::UShort: return "ushort";
+            case BuiltinType::Int: return "int";
+            case BuiltinType::UInt: return "uint";
+            case BuiltinType::Long: return "long";
+            case BuiltinType::ULong: return "ulong";
+            case BuiltinType::LongLong: return "llong";
+            case BuiltinType::ULongLong: return "ullong";
+            case BuiltinType::Float: return "float";
+            case BuiltinType::Double: return "double";
+            case BuiltinType::LongDouble: return "ldouble";
+            default: break;
+        }
+    }
+
+    // For record types (struct/class), use the simple name
+    if (const RecordType* RT = canonicalType->getAs<RecordType>()) {
+        RecordDecl* RD = RT->getDecl();
+        return RD->getNameAsString();
+    }
+
+    // Fallback: get type string and sanitize it
+    std::string typeStr = canonicalType.getAsString();
+
+    // Remove "class " and "struct " prefixes
+    size_t classPos = typeStr.find("class ");
+    if (classPos != std::string::npos) {
+        typeStr.erase(classPos, 6);
+    }
+    size_t structPos = typeStr.find("struct ");
+    if (structPos != std::string::npos) {
+        typeStr.erase(structPos, 7);
+    }
+
+    // Replace invalid identifier characters with underscores
+    for (char& c : typeStr) {
+        if (!std::isalnum(c) && c != '_') {
+            c = '_';
+        }
+    }
+
+    return typeStr;
+}
+
 std::string TemplateMonomorphizer::generateMangledName(const std::string& BaseName,
                                                       const TemplateArgumentList& TemplateArgs) {
     std::ostringstream name;
@@ -202,7 +273,8 @@ std::string TemplateMonomorphizer::generateMangledName(const std::string& BaseNa
         switch (arg.getKind()) {
             case TemplateArgument::Type: {
                 QualType argType = arg.getAsType();
-                name << typeToString(argType);
+                // Use typeToIdentifierString instead of typeToString for valid C identifiers
+                name << typeToIdentifierString(argType);
                 break;
             }
             case TemplateArgument::Integral: {

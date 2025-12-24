@@ -87,10 +87,21 @@ private:
     std::string typeToString(clang::QualType Type);
 
     /**
+     * @brief Convert QualType to valid C identifier component
+     * @param Type Clang QualType
+     * @return Valid C identifier string (no *, <, >, ::, etc.)
+     *
+     * Converts types to valid identifier parts for use in mangled names.
+     * Pointer types use "_ptr" suffix (e.g., "int*" -> "int_ptr")
+     * Reference types use "_ref" suffix (e.g., "int&" -> "int_ref")
+     */
+    std::string typeToIdentifierString(clang::QualType Type);
+
+    /**
      * @brief Generate mangled name for template instantiation
      * @param BaseName Template base name
      * @param TemplateArgs Template arguments
-     * @return Mangled name (e.g., Stack_int, Array_double_20)
+     * @return Mangled name (e.g., Stack_int, Array_double_20, Container_int_ptr)
      */
     std::string generateMangledName(const std::string& BaseName,
                                    const clang::TemplateArgumentList& TemplateArgs);
