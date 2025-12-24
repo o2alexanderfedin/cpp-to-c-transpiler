@@ -103,6 +103,10 @@ CppToCVisitor::CppToCVisitor(ASTContext &Context, CNodeBuilder &Builder)
   m_multidimSubscriptTrans = std::make_unique<MultidimSubscriptTranslator>(Builder);
   llvm::outs() << "Multidimensional subscript operator support initialized (C++23)\n";
 
+  // Phase 2: Initialize static operator translator (C++23)
+  m_staticOperatorTrans = std::make_unique<StaticOperatorTranslator>(Builder);
+  llvm::outs() << "Static operator() and operator[] support initialized (C++23)\n";
+
   // Phase 32 (v3.0.0): Initialize C TranslationUnit for output generation
   C_TranslationUnit = TranslationUnitDecl::Create(Context);
   llvm::outs() << "C TranslationUnit created for output generation\n";
@@ -260,6 +264,21 @@ bool CppToCVisitor::VisitCXXMethodDecl(CXXMethodDecl *MD) {
   // Edge case 3: Skip constructors/destructors (handled separately)
   if (isa<CXXConstructorDecl>(MD) || isa<CXXDestructorDecl>(MD)) {
     return true;
+  }
+
+  // Phase 2: Handle static operator() and operator[] (C++23)
+  if (MD->isStatic() && MD->isOverloadedOperator()) {
+    auto Op = MD->getOverloadedOperator();
+    if (Op == OO_Call || Op == OO_Subscript) {
+      llvm::outs() << "Translating static operator: "
+                   << MD->getQualifiedNameAsString() << "\n";
+      auto* C_Func = m_staticOperatorTrans->transformMethod(MD, Context, C_TranslationUnit);
+      if (C_Func) {
+        // Function already added to C_TranslationUnit by translator
+        llvm::outs() << "  -> " << C_Func->getNameAsString() << "\n";
+      }
+      return true;
+    }
   }
 
   // Edge case 4: Skip virtual methods (handled by vtable infrastructure)
@@ -2709,7 +2728,28 @@ bool CppToCVisitor::VisitCXXOperatorCallExpr(CXXOperatorCallExpr *E) {
     return true;
   }
 
-  // Check if this is a multidimensional subscript operator
+  // Get the method declaration
+  auto* MethodDecl = dyn_cast_or_null<CXXMethodDecl>(E->getCalleeDecl());
+  if (!MethodDecl) {
+    return true;
+  }
+
+  // Phase 2: Handle static operator() and operator[] call sites (C++23)
+  if (MethodDecl->isStatic() &&
+      (E->getOperator() == OO_Call || E->getOperator() == OO_Subscript)) {
+    llvm::outs() << "  -> Translating static operator call\n";
+
+    auto* C_Call = m_staticOperatorTrans->transformCall(E, Context);
+    if (C_Call) {
+      // Translation successful
+      // Note: AST replacement would happen here in a full implementation
+      // For now, we've generated the call expression
+      llvm::outs() << "     Generated static operator call\n";
+    }
+    return true;
+  }
+
+  // Phase 1: Check if this is a multidimensional subscript operator
   if (E->getOperator() == OO_Subscript && E->getNumArgs() >= 3) {
     // This is a multidimensional subscript (object + 2+ indices)
     llvm::outs() << "  -> Translating multidimensional subscript operator ["

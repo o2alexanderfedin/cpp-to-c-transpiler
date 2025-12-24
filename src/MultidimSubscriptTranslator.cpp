@@ -24,6 +24,13 @@ CallExpr* MultidimSubscriptTranslator::transform(CXXOperatorCallExpr* E,
         return nullptr;
     }
 
+    // Phase 2: Delegate static operators to StaticOperatorTranslator
+    // This check ensures separation of concerns between Phase 1 and Phase 2
+    const CXXMethodDecl* Method = dyn_cast_or_null<CXXMethodDecl>(E->getCalleeDecl());
+    if (Method && Method->isStatic()) {
+        return nullptr; // Let StaticOperatorTranslator handle static operators
+    }
+
     // Validate that this is a multidimensional subscript
     // operator[](obj, idx1, idx2, ...) has obj as arg[0], indices as arg[1+]
     // Need at least 3 args total (obj + 2 indices) for multidimensional

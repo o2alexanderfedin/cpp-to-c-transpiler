@@ -15,6 +15,7 @@
 #include "MoveConstructorTranslator.h"
 #include "MultidimSubscriptTranslator.h"
 #include "NameMangler.h"
+#include "StaticOperatorTranslator.h"
 #include "OverrideResolver.h"
 #include "RvalueRefParamTranslator.h"
 #include "TemplateExtractor.h"
@@ -115,6 +116,9 @@ class CppToCVisitor : public clang::RecursiveASTVisitor<CppToCVisitor> {
 
   // Phase 1: Multidimensional subscript operator support (C++23)
   std::unique_ptr<MultidimSubscriptTranslator> m_multidimSubscriptTrans;
+
+  // Phase 2: Static operator() and operator[] support (C++23)
+  std::unique_ptr<StaticOperatorTranslator> m_staticOperatorTrans;
 
   // Current translation context (Story #19)
   clang::ParmVarDecl *currentThisParam = nullptr;
