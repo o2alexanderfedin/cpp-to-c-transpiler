@@ -23,9 +23,21 @@
  * - Single Responsibility: Only generates signatures, nothing else
  * - Open/Closed: Extensible for new method types without modification
  * - Dependency Inversion: Depends on Clang abstractions, not concrete implementations
+ *
+ * Phase 31-04 Optimizations:
+ * - Type string caching to avoid redundant AST queries
+ * - Pre-allocated string buffers to reduce reallocations
+ * - Cached method properties to minimize repeated checks
  */
 class MethodSignatureHelper {
 public:
+    /**
+     * @brief Clear all internal caches
+     *
+     * Should be called between translation units to prevent cache bloat.
+     * Memory is automatically freed when cache is cleared.
+     */
+    static void clearCaches();
     /**
      * @brief Generate complete static function signature for a method
      * @param Method The C++ method to generate signature for

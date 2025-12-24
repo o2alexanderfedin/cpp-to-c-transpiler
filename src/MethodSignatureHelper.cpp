@@ -6,104 +6,144 @@
 #include "../include/MethodSignatureHelper.h"
 #include "clang/AST/Type.h"
 #include <sstream>
+#include <unordered_map>
 
 using namespace clang;
+
+// Phase 31-04: Performance optimization caches
+namespace {
+    // Cache for type strings to avoid redundant AST queries
+    std::unordered_map<const clang::Type*, std::string> typeStringCache;
+}
+
+void MethodSignatureHelper::clearCaches() {
+    typeStringCache.clear();
+}
 
 std::string MethodSignatureHelper::generateSignature(
     const CXXMethodDecl* Method,
     const std::string& ClassName) {
 
-    std::ostringstream sig;
+    // Phase 31-04: Pre-allocate string buffer to reduce reallocations
+    // Typical signature: ~80-120 characters
+    std::string sig;
+    sig.reserve(128);
+
+    // Phase 31-04: Cache method properties to avoid repeated AST queries
+    const bool isConstructor = isa<CXXConstructorDecl>(Method);
+    const bool isDestructor = isa<CXXDestructorDecl>(Method);
+    const bool isConst = isConstMethod(Method);
+    const unsigned numParams = Method->getNumParams();
 
     // static keyword
-    sig << "static ";
+    sig += "static ";
 
     // Return type
-    if (isa<CXXConstructorDecl>(Method)) {
-        sig << "void";  // Constructors return void in C
-    } else if (isa<CXXDestructorDecl>(Method)) {
-        sig << "void";  // Destructors return void
+    if (isConstructor || isDestructor) {
+        sig += "void";  // Constructors/destructors return void in C
     } else {
-        sig << getTypeString(Method->getReturnType());
+        sig += getTypeString(Method->getReturnType());
     }
 
-    sig << " ";
+    sig += " ";
 
     // Method name (mangled for C)
-    sig << getMangledName(Method, ClassName);
+    sig += getMangledName(Method, ClassName);
 
     // Parameters: always starts with 'this' pointer
-    sig << "(";
+    sig += "(";
 
     // 'this' parameter with proper const qualification
-    if (isConstMethod(Method)) {
-        sig << "const struct " << ClassName << " *this";
+    if (isConst) {
+        sig += "const struct ";
+        sig += ClassName;
+        sig += " *this";
     } else {
-        sig << "struct " << ClassName << " *this";
+        sig += "struct ";
+        sig += ClassName;
+        sig += " *this";
     }
 
     // Add method parameters
-    for (unsigned i = 0; i < Method->getNumParams(); ++i) {
+    for (unsigned i = 0; i < numParams; ++i) {
         const ParmVarDecl* param = Method->getParamDecl(i);
-        sig << ", ";
-        sig << getTypeString(param->getType());
+        sig += ", ";
+        sig += getTypeString(param->getType());
 
         // Add parameter name if available
         if (!param->getName().empty()) {
-            sig << " " << param->getNameAsString();
+            sig += " ";
+            sig += param->getNameAsString();
         } else {
-            sig << " arg" << i;
+            sig += " arg";
+            sig += std::to_string(i);
         }
     }
 
-    sig << ")";
+    sig += ")";
 
-    return sig.str();
+    return sig;
 }
 
 std::string MethodSignatureHelper::getTypeString(QualType Type) {
-    // Handle const qualifier
-    std::string typeStr;
-
-    if (Type.isConstQualified()) {
-        typeStr = "const ";
-    }
-
-    // Get base type
+    // Phase 31-04: Check cache first for non-const types
     const clang::Type* T = Type.getTypePtr();
 
+    // For const types, we need to handle the qualifier separately
+    const bool isConst = Type.isConstQualified();
+
+    // Check cache for the base type (without const)
+    auto it = typeStringCache.find(T);
+    if (it != typeStringCache.end()) {
+        // Cache hit - return cached string with const prefix if needed
+        if (isConst) {
+            return "const " + it->second;
+        }
+        return it->second;
+    }
+
+    // Cache miss - compute type string
+    std::string baseTypeStr;
+
     if (T->isVoidType()) {
-        typeStr += "void";
+        baseTypeStr = "void";
     } else if (T->isBooleanType()) {
-        typeStr += "int"; // C doesn't have bool, use int
+        baseTypeStr = "int"; // C doesn't have bool, use int
     } else if (T->isIntegerType()) {
         if (T->isSignedIntegerType()) {
-            typeStr += "int";
+            baseTypeStr = "int";
         } else {
-            typeStr += "unsigned int";
+            baseTypeStr = "unsigned int";
         }
     } else if (T->isFloatingType()) {
         if (T->isSpecificBuiltinType(BuiltinType::Float)) {
-            typeStr += "float";
+            baseTypeStr = "float";
         } else {
-            typeStr += "double";
+            baseTypeStr = "double";
         }
     } else if (T->isPointerType()) {
         QualType pointeeType = T->getPointeeType();
-        typeStr += getTypeString(pointeeType) + " *";
+        baseTypeStr = getTypeString(pointeeType) + " *";
     } else if (T->isReferenceType()) {
         QualType refType = T->getPointeeType();
-        typeStr += getTypeString(refType) + " *"; // References become pointers in C
+        baseTypeStr = getTypeString(refType) + " *"; // References become pointers in C
     } else if (const RecordType* RT = T->getAs<RecordType>()) {
         // Class/struct type
         RecordDecl* RD = RT->getDecl();
-        typeStr += "struct " + RD->getNameAsString();
+        baseTypeStr = "struct " + RD->getNameAsString();
     } else {
         // Fallback: use Clang's string representation
-        typeStr += Type.getAsString();
+        baseTypeStr = Type.getAsString();
     }
 
-    return typeStr;
+    // Cache the base type string
+    typeStringCache[T] = baseTypeStr;
+
+    // Return with const prefix if needed
+    if (isConst) {
+        return "const " + baseTypeStr;
+    }
+    return baseTypeStr;
 }
 
 std::string MethodSignatureHelper::getMangledName(
