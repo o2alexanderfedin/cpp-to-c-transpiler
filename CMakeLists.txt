@@ -239,6 +239,8 @@ add_library(cpptoc_core STATIC
     src/AssumeAttributeHandler.cpp
     src/DeducingThisTranslator.cpp
     src/ConstevalIfTranslator.cpp
+    src/AutoDecayCopyTranslator.cpp
+    src/ConstexprEnhancementHandler.cpp
     src/RuntimeConfig.cpp
 )
 
@@ -1941,6 +1943,53 @@ target_link_libraries(ConstevalIfTranslatorTest PRIVATE cpptoc_core
 
 # Register with CTest
 gtest_discover_tests(ConstevalIfTranslatorTest
+    WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
+)
+
+# Phase 6: auto(x) decay-copy and constexpr enhancement tests (C++23 P0849R8)
+add_executable(AutoDecayCopyTranslatorTest
+    tests/AutoDecayCopyTranslatorTest.cpp
+)
+
+target_compile_definitions(AutoDecayCopyTranslatorTest PRIVATE ${LLVM_DEFINITIONS})
+
+target_include_directories(AutoDecayCopyTranslatorTest PRIVATE
+    ${CMAKE_SOURCE_DIR}/include
+    ${LLVM_INCLUDE_DIRS}
+    ${CLANG_INCLUDE_DIRS}
+)
+
+target_link_libraries(AutoDecayCopyTranslatorTest PRIVATE cpptoc_core
+    clangTooling
+    clangFrontend
+    clangAST
+    clangBasic
+    GTest::gtest_main)
+
+gtest_discover_tests(AutoDecayCopyTranslatorTest
+    WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
+)
+
+add_executable(ConstexprEnhancementTest
+    tests/ConstexprEnhancementTest.cpp
+)
+
+target_compile_definitions(ConstexprEnhancementTest PRIVATE ${LLVM_DEFINITIONS})
+
+target_include_directories(ConstexprEnhancementTest PRIVATE
+    ${CMAKE_SOURCE_DIR}/include
+    ${LLVM_INCLUDE_DIRS}
+    ${CLANG_INCLUDE_DIRS}
+)
+
+target_link_libraries(ConstexprEnhancementTest PRIVATE cpptoc_core
+    clangTooling
+    clangFrontend
+    clangAST
+    clangBasic
+    GTest::gtest_main)
+
+gtest_discover_tests(ConstexprEnhancementTest
     WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
 )
 

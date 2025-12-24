@@ -9,8 +9,10 @@
 #include "ACSLStatementAnnotator.h"
 #include "ACSLTypeInvariantGenerator.h"
 #include "AssumeAttributeHandler.h"
+#include "AutoDecayCopyTranslator.h"
 #include "CNodeBuilder.h"
 #include "ConstevalIfTranslator.h"
+#include "ConstexprEnhancementHandler.h"
 #include "DeducingThisTranslator.h"
 #include "DynamicCastTranslator.h"
 #include "ExceptionFrameGenerator.h"
@@ -131,6 +133,10 @@ class CppToCVisitor : public clang::RecursiveASTVisitor<CppToCVisitor> {
 
   // Phase 5: if consteval support (C++23 P1938R3)
   std::unique_ptr<clang::ConstevalIfTranslator> m_constevalIfTrans;
+
+  // Phase 6: auto(x) decay-copy and partial constexpr support (C++23 P0849R8)
+  std::unique_ptr<AutoDecayCopyTranslator> m_autoDecayTrans;
+  std::unique_ptr<ConstexprEnhancementHandler> m_constexprHandler;
 
   // Current translation context (Story #19)
   clang::ParmVarDecl *currentThisParam = nullptr;
@@ -264,6 +270,9 @@ public:
 
   // Phase 5: if consteval visitor (C++23 P1938R3)
   bool VisitIfStmt(clang::IfStmt *S);
+
+  // Phase 6: auto(x) decay-copy visitor (C++23 P0849R8)
+  bool VisitCXXFunctionalCastExpr(clang::CXXFunctionalCastExpr *E);
 
   // Retrieve generated C struct by class name (for testing)
   clang::RecordDecl *getCStruct(llvm::StringRef className) const;

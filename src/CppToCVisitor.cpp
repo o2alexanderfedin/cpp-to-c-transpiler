@@ -120,6 +120,11 @@ CppToCVisitor::CppToCVisitor(ASTContext &Context, CNodeBuilder &Builder)
   m_constevalIfTrans = std::make_unique<clang::ConstevalIfTranslator>(Builder, clang::ConstevalStrategy::Runtime);
   llvm::outs() << "if consteval support initialized (C++23 P1938R3) - Runtime strategy\n";
 
+  // Phase 6: Initialize auto(x) decay-copy and constexpr handlers (C++23 P0849R8)
+  m_autoDecayTrans = std::make_unique<AutoDecayCopyTranslator>(Builder);
+  m_constexprHandler = std::make_unique<ConstexprEnhancementHandler>(Builder);
+  llvm::outs() << "auto(x) decay-copy and partial constexpr support initialized (C++23 P0849R8)\n";
+
   // Phase 32 (v3.0.0): Initialize C TranslationUnit for output generation
   C_TranslationUnit = TranslationUnitDecl::Create(Context);
   llvm::outs() << "C TranslationUnit created for output generation\n";
@@ -738,6 +743,12 @@ bool CppToCVisitor::VisitFunctionDecl(FunctionDecl *FD) {
   // Skip if this is a C++ method (handled by VisitCXXMethodDecl)
   if (isa<CXXMethodDecl>(FD)) {
     return true;
+  }
+
+  // Phase 6: Handle constexpr functions (C++23 enhancements)
+  if (FD->isConstexpr()) {
+    m_constexprHandler->handleConstexprFunction(FD, Context);
+    // Continue processing (handler determines strategy internally)
   }
 
   // Skip if no body
@@ -3172,6 +3183,41 @@ bool CppToCVisitor::VisitIfStmt(IfStmt *S) {
   } else {
     // No transformation (e.g., no else branch and runtime strategy)
     llvm::outs() << "  [Phase 5] if consteval has no runtime branch - emitting null statement\n";
+  }
+
+  return true;
+}
+
+// Phase 6: auto(x) decay-copy visitor (C++23 P0849R8)
+bool CppToCVisitor::VisitCXXFunctionalCastExpr(CXXFunctionalCastExpr *E) {
+  // Only process expressions from main file
+  if (!Context.getSourceManager().isInMainFile(E->getBeginLoc())) {
+    return true;
+  }
+
+  // Check if this is auto(x) or auto{x}
+  QualType TypeAsWritten = E->getTypeAsWritten();
+  const Type* TypePtr = TypeAsWritten.getTypePtr();
+  if (!TypePtr || !isa<AutoType>(TypePtr)) {
+    // Not auto(x), continue normal traversal
+    return true;
+  }
+
+  // This is an auto(x) or auto{x} expression - transform it
+  llvm::outs() << "  [Phase 6] Processing auto(x) at "
+               << E->getBeginLoc().printToString(Context.getSourceManager()) << "\n";
+
+  // Transform the auto(x) to C
+  Expr *TransformedExpr = m_autoDecayTrans->transform(E, Context);
+
+  if (TransformedExpr) {
+    // Successfully transformed
+    // In a full implementation, we would replace E with TransformedExpr
+    // in the C AST. For now, we log the transformation.
+    llvm::outs() << "  [Phase 6] Transformed auto(x) with type decay\n";
+  } else {
+    // Transformation failed or not applicable
+    llvm::outs() << "  [Phase 6] auto(x) transformation skipped\n";
   }
 
   return true;
