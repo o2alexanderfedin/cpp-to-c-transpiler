@@ -99,6 +99,10 @@ CppToCVisitor::CppToCVisitor(ASTContext &Context, CNodeBuilder &Builder)
       std::make_unique<DynamicCastTranslator>(Context, VirtualAnalyzer);
   llvm::outs() << "RTTI support initialized (typeid and dynamic_cast)\n";
 
+  // Phase 1: Initialize multidimensional subscript operator translator (C++23)
+  m_multidimSubscriptTrans = std::make_unique<MultidimSubscriptTranslator>(Builder);
+  llvm::outs() << "Multidimensional subscript operator support initialized (C++23)\n";
+
   // Phase 32 (v3.0.0): Initialize C TranslationUnit for output generation
   C_TranslationUnit = TranslationUnitDecl::Create(Context);
   llvm::outs() << "C TranslationUnit created for output generation\n";
@@ -2683,6 +2687,45 @@ bool CppToCVisitor::VisitCXXTypeidExpr(CXXTypeidExpr *E) {
  * @param E The CXXDynamicCastExpr AST node
  * @return true to continue traversal
  */
+/**
+ * @brief Visit C++23 multidimensional subscript operator calls
+ *
+ * Detects and translates multidimensional subscript operators (operator[](T1, T2, ...))
+ * to equivalent C function calls.
+ *
+ * C++23: m[i, j] = 42;
+ * C:     *Matrix__subscript_2d(&m, i, j) = 42;
+ *
+ * @param E The CXXOperatorCallExpr AST node
+ * @return true to continue traversal
+ */
+bool CppToCVisitor::VisitCXXOperatorCallExpr(CXXOperatorCallExpr *E) {
+  if (!E) {
+    return true;
+  }
+
+  // Skip declarations from headers
+  if (!Context.getSourceManager().isInMainFile(E->getBeginLoc())) {
+    return true;
+  }
+
+  // Check if this is a multidimensional subscript operator
+  if (E->getOperator() == OO_Subscript && E->getNumArgs() >= 3) {
+    // This is a multidimensional subscript (object + 2+ indices)
+    llvm::outs() << "  -> Translating multidimensional subscript operator ["
+                 << (E->getNumArgs() - 1) << "D]\n";
+
+    auto* C_Call = m_multidimSubscriptTrans->transform(E, Context, C_TranslationUnit);
+    if (C_Call) {
+      // Translation successful
+      // Note: AST replacement would happen here in a full implementation
+      // For now, we've generated the function declaration in C_TranslationUnit
+    }
+  }
+
+  return true;
+}
+
 bool CppToCVisitor::VisitCXXDynamicCastExpr(CXXDynamicCastExpr *E) {
   if (!E) {
     return true;

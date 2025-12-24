@@ -13,6 +13,7 @@
 #include "ExceptionFrameGenerator.h"
 #include "MoveAssignmentTranslator.h"
 #include "MoveConstructorTranslator.h"
+#include "MultidimSubscriptTranslator.h"
 #include "NameMangler.h"
 #include "OverrideResolver.h"
 #include "RvalueRefParamTranslator.h"
@@ -111,6 +112,9 @@ class CppToCVisitor : public clang::RecursiveASTVisitor<CppToCVisitor> {
   // Phase 13: RTTI infrastructure (v2.6.0)
   std::unique_ptr<TypeidTranslator> m_typeidTranslator;
   std::unique_ptr<DynamicCastTranslator> m_dynamicCastTranslator;
+
+  // Phase 1: Multidimensional subscript operator support (C++23)
+  std::unique_ptr<MultidimSubscriptTranslator> m_multidimSubscriptTrans;
 
   // Current translation context (Story #19)
   clang::ParmVarDecl *currentThisParam = nullptr;
@@ -235,6 +239,9 @@ public:
   // Phase 13: RTTI visitor methods (v2.6.0)
   bool VisitCXXTypeidExpr(clang::CXXTypeidExpr *E);
   bool VisitCXXDynamicCastExpr(clang::CXXDynamicCastExpr *E);
+
+  // Phase 1: Multidimensional subscript operator visitor (C++23)
+  bool VisitCXXOperatorCallExpr(clang::CXXOperatorCallExpr *E);
 
   // Retrieve generated C struct by class name (for testing)
   clang::RecordDecl *getCStruct(llvm::StringRef className) const;
