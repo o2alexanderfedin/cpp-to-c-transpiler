@@ -41,6 +41,20 @@ void CppToCConsumer::HandleTranslationUnit(clang::ASTContext &Context) {
   // This generates monomorphized C code for all template instantiations
   Visitor.processTemplateInstantiations(TU);
 
+  // Phase 32 (v3.0.0): Get C TranslationUnit for output generation
+  // This fixes the bug where C++ AST was being printed instead of C AST
+  clang::TranslationUnitDecl* C_TU = Visitor.getCTranslationUnit();
+
+  // Validate that C TranslationUnit has declarations
+  auto CTU_DeclCount = std::distance(C_TU->decls().begin(), C_TU->decls().end());
+  llvm::outs() << "C TranslationUnit has " << CTU_DeclCount
+               << " generated declarations\n";
+
+  if (CTU_DeclCount == 0) {
+    llvm::errs() << "Warning: No C AST nodes generated. "
+                 << "Input may contain unsupported C++ features.\n";
+  }
+
   // Generate C code using CodeGenerator
   // Use string streams to collect header and implementation output
   std::string headerContent;
@@ -54,7 +68,7 @@ void CppToCConsumer::HandleTranslationUnit(clang::ASTContext &Context) {
   // Generate header file (.h) - declarations only
   headerOS << "// Generated from: " << InputFilename << "\n";
   headerOS << "// Header file\n\n";
-  for (auto *D : TU->decls()) {
+  for (auto *D : C_TU->decls()) {  // Use C_TU instead of TU
     if (!D->isImplicit()) {
       headerGen.printDecl(D, true);  // declarationOnly=true for headers
     }
@@ -82,7 +96,7 @@ void CppToCConsumer::HandleTranslationUnit(clang::ASTContext &Context) {
   }
   implOS << "#include \"" << baseName << ".h\"\n\n";
 
-  for (auto *D : TU->decls()) {
+  for (auto *D : C_TU->decls()) {  // Use C_TU instead of TU
     if (!D->isImplicit()) {
       implGen.printDecl(D, false);  // declarationOnly=false for implementation
     }
@@ -100,6 +114,11 @@ void CppToCConsumer::HandleTranslationUnit(clang::ASTContext &Context) {
   std::string outputDir = getOutputDir();
   if (!outputDir.empty()) {
     outputMgr.setOutputDir(outputDir);
+  }
+
+  // Set source directory for structure preservation if specified
+  if (!SourceDir.empty()) {
+    outputMgr.setSourceDir(SourceDir);
   }
 
   // Write the files

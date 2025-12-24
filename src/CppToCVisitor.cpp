@@ -98,6 +98,10 @@ CppToCVisitor::CppToCVisitor(ASTContext &Context, CNodeBuilder &Builder)
   m_dynamicCastTranslator =
       std::make_unique<DynamicCastTranslator>(Context, VirtualAnalyzer);
   llvm::outs() << "RTTI support initialized (typeid and dynamic_cast)\n";
+
+  // Phase 32 (v3.0.0): Initialize C TranslationUnit for output generation
+  C_TranslationUnit = TranslationUnitDecl::Create(Context);
+  llvm::outs() << "C TranslationUnit created for output generation\n";
 }
 
 // Story #15 + Story #50: Class-to-Struct Conversion with Base Class Embedding
@@ -145,6 +149,9 @@ bool CppToCVisitor::VisitCXXRecordDecl(CXXRecordDecl *D) {
 
   // Store mapping for method translation
   cppToCMap[D] = CStruct;
+
+  // Phase 32: Add to C TranslationUnit for output generation
+  C_TranslationUnit->addDecl(CStruct);
 
   llvm::outs() << "  -> struct " << CStruct->getName() << " with "
                << fields.size() << " fields\n";
@@ -251,6 +258,13 @@ bool CppToCVisitor::VisitCXXMethodDecl(CXXMethodDecl *MD) {
     return true;
   }
 
+  // Edge case 4: Skip virtual methods (handled by vtable infrastructure)
+  if (MD->isVirtual()) {
+    llvm::outs() << "Skipping virtual method (handled by vtable): "
+                 << MD->getQualifiedNameAsString() << "\n";
+    return true;
+  }
+
   // Story #131: Handle move assignment operators
   if (MoveAssignTranslator.isMoveAssignmentOperator(MD)) {
     llvm::outs() << "Translating move assignment operator: "
@@ -328,6 +342,9 @@ bool CppToCVisitor::VisitCXXMethodDecl(CXXMethodDecl *MD) {
 
   // Store mapping
   methodToCFunc[MD] = CFunc;
+
+  // Phase 32: Add to C TranslationUnit for output generation
+  C_TranslationUnit->addDecl(CFunc);
 
   // Mark as generated to prevent re-processing as standalone function
   generatedFunctions.insert(CFunc);
@@ -504,6 +521,9 @@ bool CppToCVisitor::VisitCXXConstructorDecl(CXXConstructorDecl *CD) {
   // Store mapping
   ctorMap[CD] = CFunc;
 
+  // Phase 32: Add to C TranslationUnit for output generation
+  C_TranslationUnit->addDecl(CFunc);
+
   llvm::outs() << "  -> " << funcName << " with " << params.size()
                << " parameters, " << stmts.size() << " statements\n";
 
@@ -649,6 +669,9 @@ bool CppToCVisitor::VisitCXXDestructorDecl(CXXDestructorDecl *DD) {
 
   // Store mapping
   dtorMap[DD] = CFunc;
+
+  // Phase 32: Add to C TranslationUnit for output generation
+  C_TranslationUnit->addDecl(CFunc);
 
   llvm::outs() << "  -> " << funcName << " created\n";
 
@@ -843,6 +866,9 @@ bool CppToCVisitor::VisitFunctionDecl(FunctionDecl *FD) {
 
   // Store in standalone function map
   standaloneFuncMap[mangledName] = CFunc;
+
+  // Phase 32: Add to C TranslationUnit for output generation
+  C_TranslationUnit->addDecl(CFunc);
 
   // Mark as generated to prevent re-processing
   generatedFunctions.insert(CFunc);
@@ -1836,12 +1862,27 @@ Expr *CppToCVisitor::translateMemberExpr(MemberExpr *ME) {
   // Translate base recursively
   Expr *TranslatedBase = translateExpr(Base);
 
-  // Determine if we need -> or . based on base type
-  if (Base->getType()->isPointerType()) {
-    return Builder.arrowMember(TranslatedBase, Member->getName());
-  } else {
-    return Builder.member(TranslatedBase, Member->getName());
+  // If translation failed, return original expression
+  if (!TranslatedBase) {
+    llvm::outs() << "  WARNING: Failed to translate base expression, returning original\n";
+    return ME;
   }
+
+  // Determine if we need -> or . based on base type
+  Expr *Result = nullptr;
+  if (Base->getType()->isPointerType()) {
+    Result = Builder.arrowMember(TranslatedBase, Member->getName());
+  } else {
+    Result = Builder.member(TranslatedBase, Member->getName());
+  }
+
+  // If member access creation failed, return original expression
+  if (!Result) {
+    llvm::outs() << "  WARNING: Failed to create member access, returning original\n";
+    return ME;
+  }
+
+  return Result;
 }
 
 // Translate CallExpr - handles function calls
@@ -1849,9 +1890,17 @@ Expr *CppToCVisitor::translateCallExpr(CallExpr *CE) {
   // Translate callee and arguments
   Expr *Callee = translateExpr(CE->getCallee());
 
+  // If callee translation failed, return original expression
+  if (!Callee) {
+    llvm::outs() << "  WARNING: Failed to translate callee, returning original CallExpr\n";
+    return CE;
+  }
+
   std::vector<Expr *> args;
   for (Expr *Arg : CE->arguments()) {
-    args.push_back(translateExpr(Arg));
+    Expr *TranslatedArg = translateExpr(Arg);
+    // If any argument translation fails, use the original
+    args.push_back(TranslatedArg ? TranslatedArg : Arg);
   }
 
   // Reconstruct call expression with translated parts
@@ -2132,6 +2181,9 @@ void CppToCVisitor::generateImplicitConstructors(CXXRecordDecl *D) {
       // CXXConstructorDecl)
       ctorMap[reinterpret_cast<CXXConstructorDecl *>(DefaultCtor)] =
           DefaultCtor;
+
+      // Phase 32: Add to C TranslationUnit for output generation
+      C_TranslationUnit->addDecl(DefaultCtor);
     }
   }
 
@@ -2144,6 +2196,9 @@ void CppToCVisitor::generateImplicitConstructors(CXXRecordDecl *D) {
       // Use the FunctionDecl pointer cast as key (implicit ctors don't have
       // CXXConstructorDecl)
       ctorMap[reinterpret_cast<CXXConstructorDecl *>(CopyCtor)] = CopyCtor;
+
+      // Phase 32: Add to C TranslationUnit for output generation
+      C_TranslationUnit->addDecl(CopyCtor);
     }
   }
 }

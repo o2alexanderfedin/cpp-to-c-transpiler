@@ -98,6 +98,9 @@ class CppToCVisitor : public clang::RecursiveASTVisitor<CppToCVisitor> {
   std::unique_ptr<TemplateInstantiationTracker> m_templateTracker;
   std::string m_monomorphizedCode; // Store generated template code
 
+  // Phase 32: C TranslationUnit for generated C code
+  clang::TranslationUnitDecl* C_TranslationUnit;
+
   // Phase 12: Exception handling infrastructure (v2.5.0)
   std::unique_ptr<clang::TryCatchTransformer> m_tryCatchTransformer;
   std::unique_ptr<clang::ThrowTranslator> m_throwTranslator;
@@ -261,6 +264,19 @@ public:
    * @return String containing all monomorphized C code
    */
   std::string getMonomorphizedCode() const { return m_monomorphizedCode; }
+
+  /**
+   * @brief Get the C TranslationUnit containing generated C AST nodes
+   * @return Pointer to C TranslationUnitDecl
+   *
+   * Phase 32: Fix transpiler architecture - use C AST for output generation.
+   * This method returns the C TranslationUnit that contains all generated C
+   * AST nodes (structs, functions, etc.) which should be used for code
+   * generation instead of the original C++ AST.
+   */
+  clang::TranslationUnitDecl* getCTranslationUnit() const {
+    return C_TranslationUnit;
+  }
 
 private:
   // Epic #5: RAII helper methods
