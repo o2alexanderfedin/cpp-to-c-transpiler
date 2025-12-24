@@ -752,6 +752,27 @@ bool CppToCVisitor::VisitFunctionDecl(FunctionDecl *FD) {
 
   llvm::outs() << "  Mangled name: " << mangledName << "\n";
 
+  // FIX: Prevent infinite pointer recursion
+  // Count "_ptr" occurrences in mangled name - if too many, skip
+  size_t ptrCount = 0;
+  size_t pos = 0;
+  while ((pos = mangledName.find("_ptr", pos)) != std::string::npos) {
+    ptrCount++;
+    pos += 4;
+  }
+
+  const size_t MAX_POINTER_DEPTH = 2; // Allow max 2 pointer levels
+  if (ptrCount > MAX_POINTER_DEPTH) {
+    llvm::outs() << "  -> Skipping: too many pointer levels (" << ptrCount << ")\n";
+    return true;
+  }
+
+  // Also check if function already translated
+  if (standaloneFuncMap.count(mangledName) > 0) {
+    llvm::outs() << "  -> Already translated, skipping to prevent recursion\n";
+    return true;
+  }
+
   // Build parameter list for C function
   llvm::SmallVector<ParmVarDecl *, 4> cParams;
   for (ParmVarDecl *Param : FD->parameters()) {
