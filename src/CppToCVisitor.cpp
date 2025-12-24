@@ -178,6 +178,12 @@ bool CppToCVisitor::VisitCXXRecordDecl(CXXRecordDecl *D) {
     llvm::outs() << "Generating vtable for polymorphic class: "
                  << D->getNameAsString() << "\n";
 
+    // Phase 31-02: Generate COM-style static declarations for virtual methods
+    std::string staticDecls = m_vtableGenerator->generateStaticDeclarations(D);
+    if (!staticDecls.empty()) {
+      llvm::outs() << "\n" << staticDecls << "\n";
+    }
+
     // Generate vtable struct definition
     std::string vtableStruct = m_vtableGenerator->generateVtableStruct(D);
     if (!vtableStruct.empty()) {

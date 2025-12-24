@@ -237,6 +237,7 @@ Frama-C Verification
 6. **[rtti.md](docs/features/rtti.md)** - Itanium ABI patterns (938 lines)
 7. **[virtual-inheritance.md](docs/features/virtual-inheritance.md)** - VTT generation (997 lines)
 8. **[coroutines.md](docs/features/coroutines.md)** - State machine transformation (1,321 lines)
+9. **[VTABLE_IMPLEMENTATION.md](docs/VTABLE_IMPLEMENTATION.md)** - COM-style vtables with compile-time type safety (Phase 31-02)
 
 ### Architecture Documentation
 

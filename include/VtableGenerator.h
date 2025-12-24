@@ -55,6 +55,23 @@ public:
     std::string generateVtableStruct(const clang::CXXRecordDecl* Record);
 
     /**
+     * @brief Generate COM-style static declarations for virtual methods
+     * @param Record Class to generate declarations for
+     * @return C code for static function declarations, or empty string if not polymorphic
+     *
+     * Generates static function declarations for all virtual methods in a class.
+     * This provides compile-time type safety by ensuring function signatures match
+     * vtable function pointer types exactly.
+     *
+     * Example output:
+     *   // Static declarations for Shape virtual methods
+     *   static void Shape__dtor(struct Shape *this);
+     *   static int Shape_getArea(struct Shape *this);
+     *   static void Shape_draw(struct Shape *this);
+     */
+    std::string generateStaticDeclarations(const clang::CXXRecordDecl* Record);
+
+    /**
      * @brief Get ordered list of methods for vtable
      * @param Record Class to analyze
      * @return Vector of methods in vtable order (destructor first, then virtual methods)
@@ -98,6 +115,14 @@ private:
      * @return C function pointer declaration
      */
     std::string generateFunctionPointer(const clang::CXXMethodDecl* Method, const std::string& ClassName);
+
+    /**
+     * @brief Generate static function signature for a method
+     * @param Method Method to generate signature for
+     * @param ClassName Name of the class (for 'this' parameter and function naming)
+     * @return C function signature (e.g., "static int ClassName_methodName(struct ClassName *this, int param)")
+     */
+    std::string getMethodSignature(const clang::CXXMethodDecl* Method, const std::string& ClassName);
 
     /**
      * @brief Get C type string from Clang QualType

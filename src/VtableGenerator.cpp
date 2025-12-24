@@ -47,6 +47,73 @@ std::string VtableGenerator::generateVtableStruct(const CXXRecordDecl* Record) {
     return code.str();
 }
 
+// ============================================================================
+// Phase 31-02: COM-Style Static Declarations for Virtual Methods
+// ============================================================================
+
+std::string VtableGenerator::generateStaticDeclarations(const CXXRecordDecl* Record) {
+    if (!Record || !Analyzer.isPolymorphic(Record)) {
+        return ""; // Not polymorphic, no declarations needed
+    }
+
+    std::ostringstream decls;
+    std::string className = Record->getNameAsString();
+    auto methods = getVtableMethodOrder(Record);
+
+    // Add comment header
+    decls << "// Static declarations for " << className << " virtual methods\n";
+
+    // Generate declaration for each virtual method
+    for (auto* method : methods) {
+        decls << getMethodSignature(method, className) << ";\n";
+    }
+
+    return decls.str();
+}
+
+std::string VtableGenerator::getMethodSignature(const CXXMethodDecl* Method,
+                                                 const std::string& ClassName) {
+    std::ostringstream sig;
+
+    // static keyword
+    sig << "static ";
+
+    // Return type
+    QualType returnType = Method->getReturnType();
+    sig << getTypeString(returnType) << " ";
+
+    // Function name (use name mangling for C function name)
+    if (isa<CXXDestructorDecl>(Method)) {
+        // Destructor: use __dtor suffix to match vtable field naming
+        sig << ClassName << "__dtor";
+    } else {
+        // Regular method: ClassName_methodName
+        sig << ClassName << "_" << Method->getNameAsString();
+        // TODO: Handle overloaded methods with parameter-based mangling if needed
+    }
+
+    // Parameters: always starts with 'this' pointer
+    sig << "(struct " << ClassName << " *this";
+
+    // Add method parameters
+    for (unsigned i = 0; i < Method->getNumParams(); ++i) {
+        const ParmVarDecl* param = Method->getParamDecl(i);
+        sig << ", ";
+        sig << getTypeString(param->getType());
+
+        // Add parameter name if available
+        if (!param->getName().empty()) {
+            sig << " " << param->getNameAsString();
+        } else {
+            sig << " arg" << i;
+        }
+    }
+
+    sig << ")";
+
+    return sig.str();
+}
+
 std::vector<CXXMethodDecl*> VtableGenerator::getVtableMethodOrder(const CXXRecordDecl* Record) {
     if (!Record) {
         return {};

@@ -1225,6 +1225,32 @@ gtest_discover_tests(VtableGeneratorTest
     WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
 )
 
+# Phase 31-02: COM-Style Static Declarations for Virtual Methods tests
+add_executable(ComStyleVtableTest
+    tests/ComStyleVtableTest.cpp
+)
+
+target_compile_definitions(ComStyleVtableTest PRIVATE ${LLVM_DEFINITIONS})
+
+target_include_directories(ComStyleVtableTest PRIVATE
+    ${CMAKE_SOURCE_DIR}/include
+    ${LLVM_INCLUDE_DIRS}
+    ${CLANG_INCLUDE_DIRS}
+)
+
+target_link_libraries(ComStyleVtableTest PRIVATE cpptoc_core
+    clangTooling
+    clangFrontend
+    clangAST
+    clangBasic
+    GTest::gtest
+    GTest::gtest_main)
+
+# Register with CTest
+gtest_discover_tests(ComStyleVtableTest
+    WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
+)
+
 # Story #169: Vptr Field Injection in Class Layout tests
 add_executable(VptrInjectorTest
     tests/VptrInjectorTest.cpp
