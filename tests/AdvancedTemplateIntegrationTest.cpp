@@ -28,10 +28,12 @@
 #include "../include/TemplateMonomorphizer.h"
 #include "../include/NameMangler.h"
 #include "../include/CNodeBuilder.h"
+#include "../include/CodeGenerator.h"
 #include <cassert>
 #include <memory>
 #include <string>
 #include <vector>
+#include <sstream>
 
 using namespace clang;
 
@@ -44,6 +46,16 @@ std::unique_ptr<ASTUnit> buildASTFromCodeWithArgs(const char *code) {
 // Helper function to check if string contains substring
 bool contains(const std::string& haystack, const std::string& needle) {
     return haystack.find(needle) != std::string::npos;
+}
+
+// Helper function to emit C code from AST declaration
+std::string emitCCode(Decl* D, ASTContext& Context) {
+    std::string code;
+    llvm::raw_string_ostream OS(code);
+    CodeGenerator generator(OS, Context);
+    generator.printDecl(D);
+    OS.flush();
+    return code;
 }
 
 // Helper function to validate that generated code is C, not C++
@@ -160,6 +172,11 @@ TEST_F(AdvancedTemplateIntegrationTest, TemplateClassWithArrayMembers) {
             ASSERT_NE(CStruct->field_begin(), CStruct->field_end())
                 << "Container struct should have fields";
 
+            // A/B Test: Verify generated C code is valid C, not C++
+            std::string code = emitCCode(CStruct, AST->getASTContext());
+            ASSERT_FALSE(code.empty()) << "Monomorphized code should not be empty";
+            validateCOutput(code, "TemplateClassWithArrayMembers");
+
             foundContainer = true;
         }
     }
@@ -238,6 +255,11 @@ TEST_F(AdvancedTemplateIntegrationTest, TemplateFunctionOverloading) {
 
             // Verify function has parameters
             ASSERT_GT(CFunc->getNumParams(), 0u) << "Function should have parameters";
+
+            // A/B Test: Verify generated C code is valid C, not C++
+            std::string code = emitCCode(CFunc, AST->getASTContext());
+            ASSERT_FALSE(code.empty()) << "Template function code should not be empty";
+            validateCOutput(code, "TemplateFunctionOverloading");
         }
 
         if (contains(name, "Pointer")) {
@@ -321,6 +343,10 @@ TEST_F(AdvancedTemplateIntegrationTest, AutoTypeDeduction) {
 
         // Verify that function was monomorphized
         ASSERT_NE(CFunc, nullptr) << "Auto function should generate AST node";
+
+        // A/B Test: Verify generated C code is valid C, not C++
+        std::string code = emitCCode(CFunc, AST->getASTContext());
+        validateCOutput(code, "AutoTypeDeduction");
     }
 
     ASSERT_TRUE(foundMultiply) << "Should find multiply instantiations";
@@ -442,6 +468,10 @@ TEST_F(AdvancedTemplateIntegrationTest, MultiFileTemplateProject) {
             // Verify struct has fields
             ASSERT_NE(CStruct->field_begin(), CStruct->field_end())
                 << "SimpleContainer should have fields";
+
+            // A/B Test: Verify generated C code is valid C, not C++
+            std::string code = emitCCode(CStruct, AST->getASTContext());
+            validateCOutput(code, "MultiFileTemplateProject");
         }
     }
 
@@ -529,11 +559,19 @@ TEST_F(AdvancedTemplateIntegrationTest, MultipleTypeParameters) {
         // Verify struct has fields
         ASSERT_NE(CStruct->field_begin(), CStruct->field_end())
             << "Pair struct should have fields";
+
+        // A/B Test: Verify generated C code is valid C, not C++
+        std::string code = emitCCode(CStruct, AST->getASTContext());
+        validateCOutput(code, "MultipleTypeParameters");
     }
 
     for (auto* inst : funcInsts) {
         FunctionDecl* CFunc = mono.monomorphizeFunction(inst);
         ASSERT_NE(CFunc, nullptr) << "Multi-parameter template function should generate AST node";
+
+        // A/B Test: Verify generated C code is valid C, not C++
+        std::string code = emitCCode(CFunc, AST->getASTContext());
+        validateCOutput(code, "MultipleTypeParameters");
     }
 }
 
@@ -606,11 +644,19 @@ TEST_F(AdvancedTemplateIntegrationTest, NestedTemplatesWithAuto) {
 
         // Verify struct exists
         ASSERT_NE(CStruct->getNameAsString(), "") << "Struct should have a name";
+
+        // A/B Test: Verify generated C code is valid C, not C++
+        std::string code = emitCCode(CStruct, AST->getASTContext());
+        validateCOutput(code, "NestedTemplatesWithAuto");
     }
 
     for (auto* inst : funcInsts) {
         FunctionDecl* CFunc = mono.monomorphizeFunction(inst);
         ASSERT_NE(CFunc, nullptr) << "Nested template function should generate AST node";
+
+        // A/B Test: Verify generated C code is valid C, not C++
+        std::string code = emitCCode(CFunc, AST->getASTContext());
+        validateCOutput(code, "NestedTemplatesWithAuto");
     }
 }
 

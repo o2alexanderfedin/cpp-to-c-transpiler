@@ -100,6 +100,9 @@ FunctionDecl* TemplateMonomorphizer::monomorphizeFunction(FunctionDecl* D) {
         QualType paramType = OrigParam->getType();
         std::string paramName = OrigParam->getNameAsString();
 
+        // BUG FIX: Convert C++ types to C types
+        paramType = convertToCType(paramType);
+
         // Create C parameter using CNodeBuilder
         ParmVarDecl* CParam = Builder.param(paramType, paramName);
         params.push_back(CParam);
@@ -107,6 +110,9 @@ FunctionDecl* TemplateMonomorphizer::monomorphizeFunction(FunctionDecl* D) {
 
     // Return type (already substituted by Clang)
     QualType returnType = D->getReturnType();
+
+    // BUG FIX: Convert C++ types to C types
+    returnType = convertToCType(returnType);
 
     // Create C function declaration using CNodeBuilder
     FunctionDecl* CFunc = Builder.funcDecl(
@@ -117,6 +123,73 @@ FunctionDecl* TemplateMonomorphizer::monomorphizeFunction(FunctionDecl* D) {
     );
 
     return CFunc;
+}
+
+// ============================================================================
+// Private Helper: Type Conversion (Phase 32.2 - Bug Fix)
+// ============================================================================
+
+QualType TemplateMonomorphizer::convertToCType(QualType Type) {
+    // Handle RecordType (struct/class)
+    if (const RecordType* RT = Type->getAs<RecordType>()) {
+        RecordDecl* RD = RT->getDecl();
+
+        // If it's a CXXRecordDecl (C++ class/struct), create a C struct type
+        if (isa<CXXRecordDecl>(RD)) {
+            // Create a new RecordDecl with TTK_Struct for C output
+            std::string name = RD->getNameAsString();
+            IdentifierInfo& II = Context.Idents.get(name);
+
+            RecordDecl* CRecord = RecordDecl::Create(
+                Context,
+#if LLVM_VERSION_MAJOR >= 16
+                TagTypeKind::Struct,
+#else
+                TTK_Struct,
+#endif
+                Context.getTranslationUnitDecl(),
+                SourceLocation(),
+                SourceLocation(),
+                &II
+            );
+
+            // Return the new C struct type
+            return Context.getRecordType(CRecord);
+        }
+    }
+
+    // Handle PointerType (e.g., Wrapper<int>*)
+    if (const PointerType* PT = Type->getAs<PointerType>()) {
+        QualType PointeeType = convertToCType(PT->getPointeeType());
+        return Context.getPointerType(PointeeType);
+    }
+
+    // Handle ReferenceType (e.g., Wrapper<int>&)
+    if (const ReferenceType* RefT = Type->getAs<ReferenceType>()) {
+        QualType PointeeType = convertToCType(RefT->getPointeeType());
+        if (const LValueReferenceType* LRef = dyn_cast<LValueReferenceType>(RefT)) {
+            return Context.getLValueReferenceType(PointeeType);
+        } else if (const RValueReferenceType* RRef = dyn_cast<RValueReferenceType>(RefT)) {
+            return Context.getRValueReferenceType(PointeeType);
+        }
+    }
+
+    // Handle ArrayType
+    if (const ArrayType* AT = Type->getAsArrayTypeUnsafe()) {
+        QualType ElementType = convertToCType(AT->getElementType());
+        if (const ConstantArrayType* CAT = dyn_cast<ConstantArrayType>(AT)) {
+            return Context.getConstantArrayType(
+                ElementType,
+                CAT->getSize(),
+                CAT->getSizeExpr(),
+                CAT->getSizeModifier(),
+                CAT->getIndexTypeCVRQualifiers()
+            );
+        }
+    }
+
+    // For other types, return as-is
+    return Type;
 }
 
 // ============================================================================
@@ -135,6 +208,11 @@ RecordDecl* TemplateMonomorphizer::createStruct(ClassTemplateSpecializationDecl*
         // Field type is already substituted by Clang during instantiation
         QualType fieldType = Field->getType();
         std::string fieldName = Field->getNameAsString();
+
+        // BUG FIX: Convert C++ class template types to C struct types
+        // If field type is a RecordType pointing to ClassTemplateSpecializationDecl,
+        // replace with a C struct type so it prints as "struct" not "class"
+        fieldType = convertToCType(fieldType);
 
         // Create C field using CNodeBuilder
         FieldDecl* CField = Builder.fieldDecl(fieldType, fieldName);
@@ -194,6 +272,9 @@ FunctionDecl* TemplateMonomorphizer::createMethodFunction(
         QualType paramType = OrigParam->getType();
         std::string paramName = OrigParam->getNameAsString();
 
+        // BUG FIX: Convert C++ types to C types
+        paramType = convertToCType(paramType);
+
         // Create C parameter using CNodeBuilder
         ParmVarDecl* CParam = Builder.param(paramType, paramName);
         params.push_back(CParam);
@@ -201,6 +282,9 @@ FunctionDecl* TemplateMonomorphizer::createMethodFunction(
 
     // Return type (already substituted by Clang)
     QualType returnType = Method->getReturnType();
+
+    // BUG FIX: Convert C++ types to C types
+    returnType = convertToCType(returnType);
 
     // Create C function declaration using CNodeBuilder
     FunctionDecl* CFunc = Builder.funcDecl(

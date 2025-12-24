@@ -79,6 +79,16 @@ private:
                                    const clang::TemplateArgumentList& TemplateArgs);
 
     /**
+     * @brief Convert C++ types to C types (Phase 32.2 - Bug Fix)
+     * @param Type QualType that may contain C++ CXXRecordDecl
+     * @return QualType with CXXRecordDecl replaced by RecordDecl (TTK_Struct)
+     *
+     * Ensures generated C code uses "struct" keyword instead of "class".
+     * Recursively handles pointers, references, and arrays.
+     */
+    clang::QualType convertToCType(clang::QualType Type);
+
+    /**
      * @brief Create C struct declaration from template class
      * @param D ClassTemplateSpecializationDecl
      * @param MangledName Mangled struct name
