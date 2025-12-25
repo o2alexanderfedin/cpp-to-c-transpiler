@@ -4,6 +4,7 @@
 #include <gtest/gtest.h>
 #include "CppToCVisitor.h"
 #include "CNodeBuilder.h"
+#include "FileOriginTracker.h"
 #include "clang/Tooling/Tooling.h"
 
 using namespace clang;
@@ -28,7 +29,12 @@ TEST_F(CppToCVisitorTest, EmptyClass) {
         ASSERT_TRUE(AST) << "Failed to parse C++ code";
 
         CNodeBuilder builder(AST->getASTContext());
-        CppToCVisitor visitor(AST->getASTContext(), builder);
+        cpptoc::FileOriginTracker tracker(AST->getASTContext().getSourceManager());
+        // For test code built in-memory, treat all files as user code
+        tracker.addUserHeaderPath("<stdin>");
+        tracker.addUserHeaderPath("input.cc");
+        tracker.addUserHeaderPath(".");
+        CppToCVisitor visitor(AST->getASTContext(), builder, tracker);
 
         // Run visitor on AST
         visitor.TraverseDecl(AST->getASTContext().getTranslationUnitDecl());
@@ -45,7 +51,12 @@ TEST_F(CppToCVisitorTest, ClassWithFields) {
         ASSERT_TRUE(AST) << "Failed to parse C++ code";
 
         CNodeBuilder builder(AST->getASTContext());
-        CppToCVisitor visitor(AST->getASTContext(), builder);
+        cpptoc::FileOriginTracker tracker(AST->getASTContext().getSourceManager());
+        // For test code built in-memory, treat all files as user code
+        tracker.addUserHeaderPath("<stdin>");
+        tracker.addUserHeaderPath("input.cc");
+        tracker.addUserHeaderPath(".");
+        CppToCVisitor visitor(AST->getASTContext(), builder, tracker);
 
         visitor.TraverseDecl(AST->getASTContext().getTranslationUnitDecl());
 
@@ -76,7 +87,12 @@ TEST_F(CppToCVisitorTest, MixedAccessSpecifiers) {
         ASSERT_TRUE(AST) << "Failed to parse C++ code";
 
         CNodeBuilder builder(AST->getASTContext());
-        CppToCVisitor visitor(AST->getASTContext(), builder);
+        cpptoc::FileOriginTracker tracker(AST->getASTContext().getSourceManager());
+        // For test code built in-memory, treat all files as user code
+        tracker.addUserHeaderPath("<stdin>");
+        tracker.addUserHeaderPath("input.cc");
+        tracker.addUserHeaderPath(".");
+        CppToCVisitor visitor(AST->getASTContext(), builder, tracker);
 
         visitor.TraverseDecl(AST->getASTContext().getTranslationUnitDecl());
 
@@ -97,7 +113,12 @@ TEST_F(CppToCVisitorTest, ForwardDeclaration) {
         ASSERT_TRUE(AST) << "Failed to parse C++ code";
 
         CNodeBuilder builder(AST->getASTContext());
-        CppToCVisitor visitor(AST->getASTContext(), builder);
+        cpptoc::FileOriginTracker tracker(AST->getASTContext().getSourceManager());
+        // For test code built in-memory, treat all files as user code
+        tracker.addUserHeaderPath("<stdin>");
+        tracker.addUserHeaderPath("input.cc");
+        tracker.addUserHeaderPath(".");
+        CppToCVisitor visitor(AST->getASTContext(), builder, tracker);
 
         visitor.TraverseDecl(AST->getASTContext().getTranslationUnitDecl());
 
@@ -118,7 +139,12 @@ TEST_F(CppToCVisitorTest, SimpleMethod) {
         ASSERT_TRUE(AST) << "Failed to parse C++ code";
 
         CNodeBuilder builder(AST->getASTContext());
-        CppToCVisitor visitor(AST->getASTContext(), builder);
+        cpptoc::FileOriginTracker tracker(AST->getASTContext().getSourceManager());
+        // For test code built in-memory, treat all files as user code
+        tracker.addUserHeaderPath("<stdin>");
+        tracker.addUserHeaderPath("input.cc");
+        tracker.addUserHeaderPath(".");
+        CppToCVisitor visitor(AST->getASTContext(), builder, tracker);
 
         visitor.TraverseDecl(AST->getASTContext().getTranslationUnitDecl());
 
@@ -141,7 +167,12 @@ TEST_F(CppToCVisitorTest, MethodWithParams) {
         ASSERT_TRUE(AST) << "Failed to parse C++ code";
 
         CNodeBuilder builder(AST->getASTContext());
-        CppToCVisitor visitor(AST->getASTContext(), builder);
+        cpptoc::FileOriginTracker tracker(AST->getASTContext().getSourceManager());
+        // For test code built in-memory, treat all files as user code
+        tracker.addUserHeaderPath("<stdin>");
+        tracker.addUserHeaderPath("input.cc");
+        tracker.addUserHeaderPath(".");
+        CppToCVisitor visitor(AST->getASTContext(), builder, tracker);
 
         visitor.TraverseDecl(AST->getASTContext().getTranslationUnitDecl());
 
@@ -163,7 +194,12 @@ TEST_F(CppToCVisitorTest, SkipVirtual) {
     ASSERT_TRUE(AST) << "Failed to parse C++ code";
 
     CNodeBuilder builder(AST->getASTContext());
-    CppToCVisitor visitor(AST->getASTContext(), builder);
+    cpptoc::FileOriginTracker tracker(AST->getASTContext().getSourceManager());
+    // For test code built in-memory, treat all files as user code
+    tracker.addUserHeaderPath("<stdin>");
+    tracker.addUserHeaderPath("input.cc");
+    tracker.addUserHeaderPath(".");
+    CppToCVisitor visitor(AST->getASTContext(), builder, tracker);
 
     visitor.TraverseDecl(AST->getASTContext().getTranslationUnitDecl());
 
@@ -184,7 +220,12 @@ TEST_F(CppToCVisitorTest, ImplicitThisReadReturnX) {
     ASSERT_TRUE(AST) << "Failed to parse C++ code";
 
     CNodeBuilder builder(AST->getASTContext());
-    CppToCVisitor visitor(AST->getASTContext(), builder);
+    cpptoc::FileOriginTracker tracker(AST->getASTContext().getSourceManager());
+    // For test code built in-memory, treat all files as user code
+    tracker.addUserHeaderPath("<stdin>");
+    tracker.addUserHeaderPath("input.cc");
+    tracker.addUserHeaderPath(".");
+    CppToCVisitor visitor(AST->getASTContext(), builder, tracker);
 
     visitor.TraverseDecl(AST->getASTContext().getTranslationUnitDecl());
 
@@ -209,7 +250,12 @@ TEST_F(CppToCVisitorTest, ImplicitThisWrite) {
     ASSERT_TRUE(AST) << "Failed to parse C++ code";
 
     CNodeBuilder builder(AST->getASTContext());
-    CppToCVisitor visitor(AST->getASTContext(), builder);
+    cpptoc::FileOriginTracker tracker(AST->getASTContext().getSourceManager());
+    // For test code built in-memory, treat all files as user code
+    tracker.addUserHeaderPath("<stdin>");
+    tracker.addUserHeaderPath("input.cc");
+    tracker.addUserHeaderPath(".");
+    CppToCVisitor visitor(AST->getASTContext(), builder, tracker);
 
     visitor.TraverseDecl(AST->getASTContext().getTranslationUnitDecl());
 
@@ -235,7 +281,12 @@ TEST_F(CppToCVisitorTest, ExplicitMemberAccessObjXPreservedInTranslation) {
         ASSERT_TRUE(AST) << "Failed to parse C++ code";
 
         CNodeBuilder builder(AST->getASTContext());
-        CppToCVisitor visitor(AST->getASTContext(), builder);
+        cpptoc::FileOriginTracker tracker(AST->getASTContext().getSourceManager());
+        // For test code built in-memory, treat all files as user code
+        tracker.addUserHeaderPath("<stdin>");
+        tracker.addUserHeaderPath("input.cc");
+        tracker.addUserHeaderPath(".");
+        CppToCVisitor visitor(AST->getASTContext(), builder, tracker);
 
         visitor.TraverseDecl(AST->getASTContext().getTranslationUnitDecl());
 
@@ -260,7 +311,12 @@ TEST_F(CppToCVisitorTest, MultipleFieldAccessReturnWidthHeight) {
         ASSERT_TRUE(AST) << "Failed to parse C++ code";
 
         CNodeBuilder builder(AST->getASTContext());
-        CppToCVisitor visitor(AST->getASTContext(), builder);
+        cpptoc::FileOriginTracker tracker(AST->getASTContext().getSourceManager());
+        // For test code built in-memory, treat all files as user code
+        tracker.addUserHeaderPath("<stdin>");
+        tracker.addUserHeaderPath("input.cc");
+        tracker.addUserHeaderPath(".");
+        CppToCVisitor visitor(AST->getASTContext(), builder, tracker);
 
         visitor.TraverseDecl(AST->getASTContext().getTranslationUnitDecl());
 
@@ -285,7 +341,12 @@ TEST_F(CppToCVisitorTest, DefaultConstructorPointVoidPointCtorStructPointThis) {
         ASSERT_TRUE(AST) << "Failed to parse C++ code";
 
         CNodeBuilder builder(AST->getASTContext());
-        CppToCVisitor visitor(AST->getASTContext(), builder);
+        cpptoc::FileOriginTracker tracker(AST->getASTContext().getSourceManager());
+        // For test code built in-memory, treat all files as user code
+        tracker.addUserHeaderPath("<stdin>");
+        tracker.addUserHeaderPath("input.cc");
+        tracker.addUserHeaderPath(".");
+        CppToCVisitor visitor(AST->getASTContext(), builder, tracker);
 
         visitor.TraverseDecl(AST->getASTContext().getTranslationUnitDecl());
 
@@ -308,7 +369,12 @@ TEST_F(CppToCVisitorTest, MemberInitializersPointIntXIntY) {
         ASSERT_TRUE(AST) << "Failed to parse C++ code";
 
         CNodeBuilder builder(AST->getASTContext());
-        CppToCVisitor visitor(AST->getASTContext(), builder);
+        cpptoc::FileOriginTracker tracker(AST->getASTContext().getSourceManager());
+        // For test code built in-memory, treat all files as user code
+        tracker.addUserHeaderPath("<stdin>");
+        tracker.addUserHeaderPath("input.cc");
+        tracker.addUserHeaderPath(".");
+        CppToCVisitor visitor(AST->getASTContext(), builder, tracker);
 
         visitor.TraverseDecl(AST->getASTContext().getTranslationUnitDecl());
 
@@ -337,7 +403,12 @@ TEST_F(CppToCVisitorTest, ConstructorWithBodyConstructorWithStatementsInBody) {
         ASSERT_TRUE(AST) << "Failed to parse C++ code";
 
         CNodeBuilder builder(AST->getASTContext());
-        CppToCVisitor visitor(AST->getASTContext(), builder);
+        cpptoc::FileOriginTracker tracker(AST->getASTContext().getSourceManager());
+        // For test code built in-memory, treat all files as user code
+        tracker.addUserHeaderPath("<stdin>");
+        tracker.addUserHeaderPath("input.cc");
+        tracker.addUserHeaderPath(".");
+        CppToCVisitor visitor(AST->getASTContext(), builder, tracker);
 
         visitor.TraverseDecl(AST->getASTContext().getTranslationUnitDecl());
 
@@ -364,7 +435,12 @@ TEST_F(CppToCVisitorTest, DestructorTranslationDestructorTranslation) {
         ASSERT_TRUE(AST) << "Failed to parse C++ code";
 
         CNodeBuilder builder(AST->getASTContext());
-        CppToCVisitor visitor(AST->getASTContext(), builder);
+        cpptoc::FileOriginTracker tracker(AST->getASTContext().getSourceManager());
+        // For test code built in-memory, treat all files as user code
+        tracker.addUserHeaderPath("<stdin>");
+        tracker.addUserHeaderPath("input.cc");
+        tracker.addUserHeaderPath(".");
+        CppToCVisitor visitor(AST->getASTContext(), builder, tracker);
 
         visitor.TraverseDecl(AST->getASTContext().getTranslationUnitDecl());
 

@@ -113,8 +113,14 @@ public:
         // Create CNodeBuilder for C AST construction
         clang::CNodeBuilder Builder(Context);
 
+        // Phase 34 (v2.5.0): Create FileOriginTracker for multi-file support
+        cpptoc::FileOriginTracker tracker(Context.getSourceManager());
+        tracker.addUserHeaderPath(".");
+        tracker.addUserHeaderPath("include/");
+        tracker.addUserHeaderPath("src/");
+
         // Create and run visitor to traverse AST
-        CppToCVisitor Visitor(Context, Builder);
+        CppToCVisitor Visitor(Context, Builder, tracker);
         auto *TU = Context.getTranslationUnitDecl();
         Visitor.TraverseDecl(TU);
 

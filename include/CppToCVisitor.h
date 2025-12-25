@@ -16,6 +16,7 @@
 #include "DeducingThisTranslator.h"
 #include "DynamicCastTranslator.h"
 #include "ExceptionFrameGenerator.h"
+#include "FileOriginTracker.h"
 #include "MoveAssignmentTranslator.h"
 #include "MoveConstructorTranslator.h"
 #include "MultidimSubscriptTranslator.h"
@@ -46,6 +47,9 @@ class CppToCVisitor : public clang::RecursiveASTVisitor<CppToCVisitor> {
   clang::ASTContext &Context;
   clang::CNodeBuilder &Builder;
   NameMangler Mangler;
+
+  // Phase 34 (v2.5.0): File origin tracking for multi-file transpilation
+  cpptoc::FileOriginTracker &fileOriginTracker;
 
   // Phase 9 (v2.2.0): Virtual method support
   VirtualMethodAnalyzer VirtualAnalyzer;
@@ -189,7 +193,8 @@ class CppToCVisitor : public clang::RecursiveASTVisitor<CppToCVisitor> {
 
 public:
   explicit CppToCVisitor(clang::ASTContext &Context,
-                         clang::CNodeBuilder &Builder);
+                         clang::CNodeBuilder &Builder,
+                         cpptoc::FileOriginTracker &tracker);
 
   // Visit C++ class/struct declarations
   bool VisitCXXRecordDecl(clang::CXXRecordDecl *D);

@@ -21,6 +21,14 @@ void CppToCConsumer::HandleTranslationUnit(clang::ASTContext &Context) {
     llvm::outs() << "Parsed file: " << FileEntry->getName() << "\n";
   }
 
+  // Phase 34 (v2.5.0): Configure user header paths for multi-file transpilation
+  // Auto-detect common project header directories
+  fileOriginTracker.addUserHeaderPath(".");
+  fileOriginTracker.addUserHeaderPath("include/");
+  fileOriginTracker.addUserHeaderPath("src/");
+  fileOriginTracker.addUserHeaderPath("tests/");
+  llvm::outs() << "FileOriginTracker configured with user header paths\n";
+
   // Count top-level declarations in translation unit
   // Using std::distance for more idiomatic C++ (DRY principle)
   auto *TU = Context.getTranslationUnitDecl();
@@ -34,7 +42,8 @@ void CppToCConsumer::HandleTranslationUnit(clang::ASTContext &Context) {
   clang::CNodeBuilder Builder(Context);
 
   // Create and run visitor to traverse AST
-  CppToCVisitor Visitor(Context, Builder);
+  // Phase 34: Pass FileOriginTracker to visitor for multi-file support
+  CppToCVisitor Visitor(Context, Builder, fileOriginTracker);
   Visitor.TraverseDecl(TU);
 
   // Phase 11 (v2.4.0): Process template instantiations after AST traversal

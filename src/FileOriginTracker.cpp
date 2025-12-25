@@ -106,17 +106,24 @@ FileOriginTracker::getFileCategory(const clang::Decl *D) const {
     return FileCategory::SystemHeader; // Safe default: skip
   }
 
+  // Check if already recorded
   auto it = declToFile.find(D);
-  if (it == declToFile.end()) {
+  if (it != declToFile.end()) {
+    auto catIt = fileCategories.find(it->second);
+    if (catIt != fileCategories.end()) {
+      return catIt->second;
+    }
+  }
+
+  // Not recorded yet - compute category on-the-fly
+  // This allows shouldTranspile() to work without requiring recordDeclaration()
+  std::string filepath = getFilePath(D);
+  if (filepath.empty()) {
     return FileCategory::SystemHeader; // Safe default: skip
   }
 
-  auto catIt = fileCategories.find(it->second);
-  if (catIt != fileCategories.end()) {
-    return catIt->second;
-  }
-
-  return FileCategory::SystemHeader; // Safe default: skip
+  // Classify the file (will cache in fileCategories)
+  return classifyFile(filepath);
 }
 
 std::set<std::string> FileOriginTracker::getUserHeaderFiles() const {

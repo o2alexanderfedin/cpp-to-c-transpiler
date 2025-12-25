@@ -24,8 +24,10 @@ extern std::string getExceptionModel();              // Phase 12 (v2.5.0)
 extern bool shouldEnableRTTI();                      // Phase 13 (v2.6.0)
 
 // Epic #193: ACSL Integration - Constructor Implementation
-CppToCVisitor::CppToCVisitor(ASTContext &Context, CNodeBuilder &Builder)
+CppToCVisitor::CppToCVisitor(ASTContext &Context, CNodeBuilder &Builder,
+                             cpptoc::FileOriginTracker &tracker)
     : Context(Context), Builder(Builder), Mangler(Context),
+      fileOriginTracker(tracker),
       VirtualAnalyzer(Context), VptrInjectorInstance(Context, VirtualAnalyzer),
       MoveCtorTranslator(Context), MoveAssignTranslator(Context),
       RvalueRefParamTrans(Context) {
@@ -132,8 +134,8 @@ CppToCVisitor::CppToCVisitor(ASTContext &Context, CNodeBuilder &Builder)
 
 // Story #15 + Story #50: Class-to-Struct Conversion with Base Class Embedding
 bool CppToCVisitor::VisitCXXRecordDecl(CXXRecordDecl *D) {
-  // Edge case 0: Skip declarations from included headers (not in main file)
-  if (!Context.getSourceManager().isInMainFile(D->getLocation())) {
+  // Phase 34 (v2.5.0): Skip declarations from non-transpilable files (system headers, etc.)
+  if (!fileOriginTracker.shouldTranspile(D)) {
     return true;
   }
 
@@ -269,8 +271,8 @@ bool CppToCVisitor::VisitCXXRecordDecl(CXXRecordDecl *D) {
 
 // Story #16: Method-to-Function Conversion
 bool CppToCVisitor::VisitCXXMethodDecl(CXXMethodDecl *MD) {
-  // Edge case 0: Skip declarations from included headers (not in main file)
-  if (!Context.getSourceManager().isInMainFile(MD->getLocation())) {
+  // Phase 34 (v2.5.0): Skip declarations from non-transpilable files
+  if (!fileOriginTracker.shouldTranspile(MD)) {
     return true;
   }
 
@@ -412,8 +414,8 @@ bool CppToCVisitor::VisitCXXMethodDecl(CXXMethodDecl *MD) {
 
 // Story #17: Constructor Translation
 bool CppToCVisitor::VisitCXXConstructorDecl(CXXConstructorDecl *CD) {
-  // Edge case 0: Skip declarations from included headers (not in main file)
-  if (!Context.getSourceManager().isInMainFile(CD->getLocation())) {
+  // Phase 34 (v2.5.0): Skip declarations from non-transpilable files
+  if (!fileOriginTracker.shouldTranspile(CD)) {
     return true;
   }
 
@@ -648,8 +650,8 @@ FunctionDecl *CppToCVisitor::getDtor(llvm::StringRef funcName) const {
 
 // Visit C++ destructor declarations
 bool CppToCVisitor::VisitCXXDestructorDecl(CXXDestructorDecl *DD) {
-  // Edge case 0: Skip declarations from included headers (not in main file)
-  if (!Context.getSourceManager().isInMainFile(DD->getLocation())) {
+  // Phase 34 (v2.5.0): Skip declarations from non-transpilable files
+  if (!fileOriginTracker.shouldTranspile(DD)) {
     return true;
   }
 
@@ -735,8 +737,8 @@ bool CppToCVisitor::VisitCXXDestructorDecl(CXXDestructorDecl *DD) {
 
 // Visit function declarations for destructor injection
 bool CppToCVisitor::VisitFunctionDecl(FunctionDecl *FD) {
-  // Edge case 0: Skip declarations from included headers (not in main file)
-  if (!Context.getSourceManager().isInMainFile(FD->getLocation())) {
+  // Phase 34 (v2.5.0): Skip declarations from non-transpilable files
+  if (!fileOriginTracker.shouldTranspile(FD)) {
     return true;
   }
 
@@ -2761,8 +2763,10 @@ bool CppToCVisitor::VisitCXXOperatorCallExpr(CXXOperatorCallExpr *E) {
     return true;
   }
 
-  // Skip declarations from headers
+  // Phase 34 (v2.5.0): Skip expressions from non-transpilable files
+  // For expressions, we check the source location against SourceManager
   if (!Context.getSourceManager().isInMainFile(E->getBeginLoc())) {
+    // TODO: Enhance FileOriginTracker to support SourceLocation directly
     return true;
   }
 
@@ -2881,8 +2885,8 @@ bool CppToCVisitor::VisitClassTemplateDecl(ClassTemplateDecl *D) {
     return true;
   }
 
-  // Edge case 0: Skip declarations from included headers (not in main file)
-  if (!Context.getSourceManager().isInMainFile(D->getLocation())) {
+  // Phase 34 (v2.5.0): Skip declarations from non-transpilable files
+  if (!fileOriginTracker.shouldTranspile(D)) {
     return true;
   }
 
@@ -2903,8 +2907,8 @@ bool CppToCVisitor::VisitFunctionTemplateDecl(FunctionTemplateDecl *D) {
     return true;
   }
 
-  // Edge case 0: Skip declarations from included headers (not in main file)
-  if (!Context.getSourceManager().isInMainFile(D->getLocation())) {
+  // Phase 34 (v2.5.0): Skip declarations from non-transpilable files
+  if (!fileOriginTracker.shouldTranspile(D)) {
     return true;
   }
 
@@ -2926,8 +2930,8 @@ bool CppToCVisitor::VisitClassTemplateSpecializationDecl(
     return true;
   }
 
-  // Edge case 0: Skip declarations from included headers (not in main file)
-  if (!Context.getSourceManager().isInMainFile(D->getLocation())) {
+  // Phase 34 (v2.5.0): Skip declarations from non-transpilable files
+  if (!fileOriginTracker.shouldTranspile(D)) {
     return true;
   }
 
@@ -3123,8 +3127,10 @@ std::string CppToCVisitor::generateAllMethodDeclarations(CXXRecordDecl *RD) {
 
 // Phase 3: [[assume]] Attribute Handler (C++23 P1774R8)
 bool CppToCVisitor::VisitAttributedStmt(AttributedStmt *S) {
-  // Only process statements from main file
+  // Phase 34 (v2.5.0): Skip statements from non-transpilable files
+  // For statements, we check the source location against SourceManager
   if (!Context.getSourceManager().isInMainFile(S->getBeginLoc())) {
+    // TODO: Enhance FileOriginTracker to support SourceLocation directly
     return true;
   }
 
@@ -3157,8 +3163,10 @@ bool CppToCVisitor::VisitAttributedStmt(AttributedStmt *S) {
 
 // Phase 5: if consteval visitor (C++23 P1938R3)
 bool CppToCVisitor::VisitIfStmt(IfStmt *S) {
-  // Only process statements from main file
+  // Phase 34 (v2.5.0): Skip statements from non-transpilable files
+  // For statements, we check the source location against SourceManager
   if (!Context.getSourceManager().isInMainFile(S->getBeginLoc())) {
+    // TODO: Enhance FileOriginTracker to support SourceLocation directly
     return true;
   }
 
@@ -3190,8 +3198,10 @@ bool CppToCVisitor::VisitIfStmt(IfStmt *S) {
 
 // Phase 6: auto(x) decay-copy visitor (C++23 P0849R8)
 bool CppToCVisitor::VisitCXXFunctionalCastExpr(CXXFunctionalCastExpr *E) {
-  // Only process expressions from main file
+  // Phase 34 (v2.5.0): Skip expressions from non-transpilable files
+  // For expressions, we check the source location against SourceManager
   if (!Context.getSourceManager().isInMainFile(E->getBeginLoc())) {
+    // TODO: Enhance FileOriginTracker to support SourceLocation directly
     return true;
   }
 
