@@ -1,0 +1,8 @@
+{
+  "transpiler_args": [
+    "--extra-arg=-Iinclude",
+    "--extra-arg=-isystem/Library/Developer/CommandLineTools/SDKs/MacOSX.sdk/usr/include/c++/v1",
+    "--extra-arg=-isystem/Library/Developer/CommandLineTools/usr/lib/clang/17/include"
+  ],
+  "description": "Simple Parser requires include path for ExpressionEvaluator.h, Tokenizer.h, and Token.h plus C++ standard library"
+}

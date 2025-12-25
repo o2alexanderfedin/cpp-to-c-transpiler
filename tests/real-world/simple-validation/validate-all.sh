@@ -82,7 +82,20 @@ test_project() {
     # Phase 34's transpiler requires --source-dir and auto-discovers files
     local transpiler="/Users/alexanderfedin/Projects/hapyy/hupyy-cpp-to-c/build_working/cpptoc"
     local project_root=$(pwd)
-    if $transpiler --source-dir "$project_root" --output-dir transpiled/ >> "../$RESULTS_FILE" 2>&1; then
+
+    # Check for per-project configuration
+    local extra_args=""
+    if [ -f ".cpptoc.json" ]; then
+        # Extract transpiler_args from JSON (simple grep-based parsing)
+        # Match both "--extra-arg=..." and "--extra-arg=-isystem..." formats
+        local config_args=$(grep -A 20 '"transpiler_args"' .cpptoc.json | grep -E '"\-\-extra-arg=' | sed 's/.*"\(--extra-arg=[^"]*\)".*/\1/' | tr '\n' ' ')
+        if [ -n "$config_args" ]; then
+            extra_args="$config_args"
+            echo "    [Config] Using project-specific args" | tee -a "../$RESULTS_FILE"
+        fi
+    fi
+
+    if $transpiler --source-dir "$project_root" --output-dir transpiled/ $extra_args >> "../$RESULTS_FILE" 2>&1; then
         echo "    ✓ Transpilation successful" | tee -a "../$RESULTS_FILE"
     else
         echo -e "    ${RED}✗ Transpilation failed${NC}" | tee -a "../$RESULTS_FILE"

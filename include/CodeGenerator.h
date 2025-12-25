@@ -80,4 +80,10 @@ private:
     /// @param ED Enum declaration to print
     /// BUG FIX: Prints "typedef enum { ... } Name;" instead of "enum Name : int { ... };"
     void printEnumDecl(clang::EnumDecl *ED);
+
+    // Bug #24: Print struct with 'struct' prefixes for field types
+    /// @brief Print struct declaration with 'struct' prefixes for field types
+    /// @param RD Record declaration to print
+    /// BUG FIX #24: Prints "struct Foo { struct Bar *field; }" instead of "struct Foo { Bar *field; }"
+    void printStructDecl(clang::RecordDecl *RD);
 };

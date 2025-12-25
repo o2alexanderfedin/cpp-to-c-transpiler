@@ -102,10 +102,11 @@ void CodeGenerator::printDecl(Decl *D, bool declarationOnly) {
             printEnumDecl(ED);
         }
         // When declarationOnly=false, skip enum definitions (already in header)
-    } else if (isa<RecordDecl>(D)) {
+    } else if (auto *RD = dyn_cast<RecordDecl>(D)) {
+        // Bug #24: Use custom printer for struct to add 'struct' prefixes
         // Struct definitions should only be in header files
         if (declarationOnly) {
-            D->print(OS, Policy);
+            printStructDecl(RD);
             OS << ";\n";
         }
         // When declarationOnly=false, skip struct definitions (already in header)
@@ -236,6 +237,27 @@ void CodeGenerator::printEnumDecl(EnumDecl *ED) {
     }
 
     OS << "\n} " << ED->getNameAsString() << ";\n";
+}
+
+// Bug #24: Print struct with 'struct' prefix for field types
+void CodeGenerator::printStructDecl(RecordDecl *RD) {
+    if (!RD) return;
+
+    // Print struct declaration
+    OS << "struct " << RD->getNameAsString() << " {\n";
+
+    // Print fields with proper 'struct' prefixes
+    for (auto *Field : RD->fields()) {
+        OS << "\t";
+
+        // Get field type and add 'struct' prefix for class/struct types
+        QualType FieldType = Field->getType();
+        printCType(FieldType);
+
+        OS << " " << Field->getNameAsString() << ";\n";
+    }
+
+    OS << "}";
 }
 
 // Story #23: Print declaration with #line directive for source mapping

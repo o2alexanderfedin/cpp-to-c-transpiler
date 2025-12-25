@@ -853,6 +853,7 @@ Expression Evaluator Tests:
 Validation: PASS
     ✓ C++ execution successful (exit code: 0)
   [3/5] Transpiling to C...
+    [Config] Using project-specific args: --extra-arg=-Iinclude 
 Error while trying to load a compilation database:
 Could not auto-detect compilation database for file "__dummy_for_discovery__.cpp"
 No compilation database found in /Users/alexanderfedin/Projects/hapyy/hupyy-cpp-to-c/tests/real-world/simple-validation/04-simple-parser or any parent directory
@@ -860,20 +861,14 @@ fixed-compilation-database: Error while opening fixed database: No such file or 
 json-compilation-database: Error while opening JSON database: No such file or directory
 Running without flags.
 [1/3] Processing file /Users/alexanderfedin/Projects/hapyy/hupyy-cpp-to-c/tests/real-world/simple-validation/04-simple-parser/main.cpp.
-/Users/alexanderfedin/Projects/hapyy/hupyy-cpp-to-c/tests/real-world/simple-validation/04-simple-parser/main.cpp:1:10: fatal error: 'ExpressionEvaluator.h' file not found
-    1 | #include "ExpressionEvaluator.h"
-      |          ^~~~~~~~~~~~~~~~~~~~~~~
-1 error generated.
-Error while processing /Users/alexanderfedin/Projects/hapyy/hupyy-cpp-to-c/tests/real-world/simple-validation/04-simple-parser/main.cpp.
-[2/3] Processing file /Users/alexanderfedin/Projects/hapyy/hupyy-cpp-to-c/tests/real-world/simple-validation/04-simple-parser/src/Tokenizer.cpp.
-/Users/alexanderfedin/Projects/hapyy/hupyy-cpp-to-c/tests/real-world/simple-validation/04-simple-parser/src/Tokenizer.cpp:1:10: fatal error: 'Tokenizer.h' file not found
-    1 | #include "Tokenizer.h"
-      |          ^~~~~~~~~~~~~
+/Users/alexanderfedin/Projects/hapyy/hupyy-cpp-to-c/tests/real-world/simple-validation/04-simple-parser/main.cpp:2:10: fatal error: 'cstdio' file not found
+    2 | #include <cstdio>
+      |          ^~~~~~~~
 Auto-discovering C++ source files in: /Users/alexanderfedin/Projects/hapyy/hupyy-cpp-to-c/tests/real-world/simple-validation/04-simple-parser
 Discovered 3 file(s) for transpilation
 Parsed file: /Users/alexanderfedin/Projects/hapyy/hupyy-cpp-to-c/tests/real-world/simple-validation/04-simple-parser/main.cpp
 FileOriginTracker configured with user header paths
-Translation unit has 91 top-level declarations
+Translation unit has 95 top-level declarations
 Virtual method support initialized
 Template monomorphization enabled (limit: 1000 instantiations)
 Exception handling support initialized (SJLJ model)
@@ -885,18 +880,89 @@ Deducing this / explicit object parameter support initialized (C++23 P0847R7)
 if consteval support initialized (C++23 P1938R3) - Runtime strategy
 auto(x) decay-copy and partial constexpr support initialized (C++23 P0849R8)
 C TranslationUnit created for output generation
+Translating enum: TokenType
+  Enumerator: Number = 0
+  Enumerator: Plus = 1
+  Enumerator: Minus = 2
+  Enumerator: Multiply = 3
+  Enumerator: Divide = 4
+  Enumerator: EndOfInput = 5
+  -> C enum TokenType with 6 values
+Translating class: Token
+  -> struct Token with 2 fields
+  Generating implicit copy constructor
+  Generated copy constructor: Token__ctor_copy
+  [Phase 31-03] Generated 1 constructor, 0 destructor, 0 method declarations
+
+// Static declarations for all Token methods
+static void Token__ctor_2(struct Token *this, TokenType t, int v);
+
+Translating constructor: Token::Token
+  -> Token__ctor with 3 parameters, 2 statements
+Found variable: t
+Found variable: v
+Translating class: Tokenizer
+  -> struct Tokenizer with 2 fields
+  Generating implicit copy constructor
+  Generated copy constructor: Tokenizer__ctor_copy
+  [Phase 31-03] Generated 1 constructor, 0 destructor, 4 method declarations
+
+// Static declarations for all Tokenizer methods
+static void Tokenizer__ctor_1(struct Tokenizer *this, const int * input);
+static void Tokenizer_skipWhitespace(struct Tokenizer *this);
+static int Tokenizer_parseNumber(struct Tokenizer *this);
+static struct Token Tokenizer_nextToken(struct Tokenizer *this);
+static int Tokenizer_hasMore(const struct Tokenizer *this);
+
+Found variable: input
+Translating class: ExpressionEvaluator
+  -> struct ExpressionEvaluator with 2 fields
+  Generating implicit copy constructor
+    Calling member copy constructor: Token__ctor_copy for field currentToken
+  Generated copy constructor: ExpressionEvaluator__ctor_copy
+  [Phase 31-03] Generated 1 constructor, 1 destructor, 4 method declarations
+
+// Static declarations for all ExpressionEvaluator methods
+static void ExpressionEvaluator__ctor(struct ExpressionEvaluator *this);
+static void ExpressionEvaluator__dtor(struct ExpressionEvaluator *this);
+static void ExpressionEvaluator_advance(struct ExpressionEvaluator *this);
+static int ExpressionEvaluator_parseTerm(struct ExpressionEvaluator *this);
+static int ExpressionEvaluator_parseFactor(struct ExpressionEvaluator *this);
+static int ExpressionEvaluator_evaluate(struct ExpressionEvaluator *this, const int * expression);
+
+Translating destructor: ~ExpressionEvaluator
+  -> ExpressionEvaluator__dtor with 0 statements
+  -> ExpressionEvaluator__dtor created
+Found variable: expression
 Analyzing function for RAII: main
   Found 12 local variables
+  Variable 'eval' has destructor
+  Will inject destructors for 1 objects
 Translating standalone function: main
   Mangled name: main
   [Scope] Entering scope at depth 0
+  [Scope] Tracked object 'eval' in scope depth 0
   [Translating DeclStmt]
     Variable: eval
+      Is a struct/class type
+      Is a C++ class: ExpressionEvaluator
+      Found C struct: ExpressionEvaluator
+      Creating C variable declaration
+      Has constructor expression
+      WARNING: C constructor not found in ctorMap!
   [Bug #8] Skipping statement containing RecoveryExpr
   [Translating DeclStmt]
     Variable: expr1
   [Translating DeclStmt]
     Variable: result1
+  Warning1 error generated.
+Error while processing /Users/alexanderfedin/Projects/hapyy/hupyy-cpp-to-c/tests/real-world/simple-validation/04-simple-parser/main.cpp.
+[2/3] Processing file /Users/alexanderfedin/Projects/hapyy/hupyy-cpp-to-c/tests/real-world/simple-validation/04-simple-parser/src/Tokenizer.cpp.
+/Users/alexanderfedin/Projects/hapyy/hupyy-cpp-to-c/tests/real-world/simple-validation/04-simple-parser/src/Tokenizer.cpp:2:10: fatal error: 'cctype' file not found
+    2 | #include <cctype>
+      |          ^~~~~~~~
+: Method not in methodToCFunc map, generating call anyway: ExpressionEvaluator::evaluate
+  Generated function name: ExpressionEvaluator_evaluate
   [Bug #8] Skipping statement containing RecoveryExpr
   [Translating DeclStmt]
     Variable: expr2
@@ -921,7 +987,10 @@ Translating standalone function: main
   [Translating DeclStmt]
     Variable: passed
   [Bug #8] Skipping statement containing RecoveryExpr
-  [Scope] Exiting scope at depth 0 with 0 objects
+  [Scope] Exiting scope at depth 0 with 1 objects
+  [Scope] Injecting 1 destructor(s) at end of scope depth 0
+    -> eval destructor injected at scope exit
+  [Legacy] Function-level destruction already handled by scope tracking
   -> C function 'main' created
   Parameters: 0
   Return type: int
@@ -937,11 +1006,7 @@ Found variable: result4
 Found variable: expr5
 Found variable: result5
 Found variable: passed
-Found variable: result1
-Found variable: result2
-Found variable: result3
-Found variable: result4
-Found variable: result5
+  Detected return statement for early return analysis
 Found variable: eval
 Found variable: expr1
 Found variable: result1
@@ -954,6 +1019,7 @@ Found variable: result4
 Found variable: expr5
 Found variable: result5
 Found variable: passed
+  Detected return statement for early return analysis
 
 ========================================
 Processing Template Instantiations
@@ -971,58 +1037,13 @@ Template Monomorphization Complete
   Unique instantiations: 0
 ========================================
 
-C TranslationUnit has 1 generated declarations
+C TranslationUnit has 11 generated declarations
 Generated files:
   transpiled/main.h
   transpiled/main.c
 Parsed file: /Users/alexanderfedin/Projects/hapyy/hupyy-cpp-to-c/tests/real-world/simple-validation/04-simple-parser/src/Tokenizer.cpp
 FileOriginTracker configured with user header paths
-Translation unit has 90 top-level declarations
-Virtual method support initialized
-Template monomorphization enabled (limit: 1000 instantiations)
-Exception handling support initialized (SJLJ model)
-RTTI support initialized (typeid and dynamic_cast)
-Multidimensional subscript operator support initialized (C++23)
-Static operator() and operator[] support initialized (C++23)
-[[assume]] attribute support initialized (C++23)
-Deducing this / explicit object parameter suppWarning: No C AST nodes generated. Input may contain unsupported C++ features.
-1 error generated.
-Error while processing /Users/alexanderfedin/Projects/hapyy/hupyy-cpp-to-c/tests/real-world/simple-validation/04-simple-parser/src/Tokenizer.cpp.
-[3/3] Processing file /Users/alexanderfedin/Projects/hapyy/hupyy-cpp-to-c/tests/real-world/simple-validation/04-simple-parser/src/ExpressionEvaluator.cpp.
-/Users/alexanderfedin/Projects/hapyy/hupyy-cpp-to-c/tests/real-world/simple-validation/04-simple-parser/src/ExpressionEvaluator.cpp:1:10: fatal error: 'ExpressionEvaluator.h' file not found
-    1 | #include "ExpressionEvaluator.h"
-      |          ^~~~~~~~~~~~~~~~~~~~~~~
-Warning: No C AST nodes generated. Input may contain unsupported C++ features.
-1 error generated.
-Error while processing /Users/alexanderfedin/Projects/hapyy/hupyy-cpp-to-c/tests/real-world/simple-validation/04-simple-parser/src/ExpressionEvaluator.cpp.
-ort initialized (C++23 P0847R7)
-if consteval support initialized (C++23 P1938R3) - Runtime strategy
-auto(x) decay-copy and partial constexpr support initialized (C++23 P0849R8)
-C TranslationUnit created for output generation
-
-========================================
-Processing Template Instantiations
-========================================
-
-Found 0 class template instantiation(s)
-Found 0 function template instantiation(s)
-
-Monomorphizing class templates:
-
-Monomorphizing function templates:
-
-========================================
-Template Monomorphization Complete
-  Unique instantiations: 0
-========================================
-
-C TranslationUnit has 0 generated declarations
-Generated files:
-  transpiled/src/Tokenizer.h
-  transpiled/src/Tokenizer.c
-Parsed file: /Users/alexanderfedin/Projects/hapyy/hupyy-cpp-to-c/tests/real-world/simple-validation/04-simple-parser/src/ExpressionEvaluator.cpp
-FileOriginTracker configured with user header paths
-Translation unit has 90 top-level declarations
+Translation unit has 98 top-level declarations
 Virtual method support initialized
 Template monomorphization enabled (limit: 1000 instantiations)
 Exception handling support initialized (SJLJ model)
@@ -1034,6 +1055,88 @@ Deducing this / explicit object parameter support initialized (C++23 P0847R7)
 if consteval support initialized (C++23 P1938R3) - Runtime strategy
 auto(x) decay-copy and partial constexpr support initialized (C++23 P0849R8)
 C TranslationUnit created for output generation
+Translating enum: TokenType
+  Enumerator: Number = 0
+  Enumerator: Plus = 1
+  Enumerator: Minus = 2
+  Enumerator: Multiply = 3
+  Enumerator: Divide = 4
+  Enumerator: EndOfInput = 5
+  -> C enum TokenType with 6 values
+Translating class: Token
+  -> struct Token with 2 fields
+  Generating implicit copy constructor
+  Generated copy constructor: Token__ctor_copy
+  [Phase 31-03] Generated 1 constructor, 0 destructor, 0 method declarations
+
+// Static declarations for all Token methods
+static void Token__ctor_2(struct Token *this, TokenType t, int v);
+
+Translating constructor: Token::Token
+  -> Token__ctor with 3 parameters, 2 statements
+Found variable: t
+Found variable: v
+Translating class: Tokenizer
+  -> struct Tokenizer with 2 fields
+  Generating implicit copy constructor
+  Generated copy constructor: Tokenizer__ctor_copy
+  [Phase 31-03] Generated 1 cons1 error generated.
+Error while processing /Users/alexanderfedin/Projects/hapyy/hupyy-cpp-to-c/tests/real-world/simple-validation/04-simple-parser/src/Tokenizer.cpp.
+[3/3] Processing file /Users/alexanderfedin/Projects/hapyy/hupyy-cpp-to-c/tests/real-world/simple-validation/04-simple-parser/src/ExpressionEvaluator.cpp.
+tructor, 0 destructor, 4 method declarations
+
+// Static declarations for all Tokenizer methods
+static void Tokenizer__ctor_1(struct Tokenizer *this, const int * input);
+static void Tokenizer_skipWhitespace(struct Tokenizer *this);
+static int Tokenizer_parseNumber(struct Tokenizer *this);
+static struct Token Tokenizer_nextToken(struct Tokenizer *this);
+static int Tokenizer_hasMore(const struct Tokenizer *this);
+
+Translating method: Tokenizer::skipWhitespace
+  [Scope] Entering scope at depth 0
+  [Scope] Exiting scope at depth 0 with 0 objects
+  -> Tokenizer_skipWhitespace with body translated
+  -> Tokenizer_skipWhitespace with 1 parameters
+Translating method: Tokenizer::parseNumber
+  [Scope] Entering scope at depth 0
+  [Translating DeclStmt]
+    Variable: value
+  [Bug #8] Skipping statement containing RecoveryExpr
+  [Scope] Exiting scope at depth 0 with 0 objects
+  -> Tokenizer_parseNumber with body translated
+  -> Tokenizer_parseNumber with 1 parameters
+Found variable: input
+Translating method: Tokenizer::nextToken
+  [Scope] Entering scope at depth 0
+  Warning: Method not in methodToCFunc map, generating call anyway: Tokenizer::skipWhitespace
+  Generated function name: Tokenizer_skipWhitespace
+  [Bug #8] Skipping statement containing RecoveryExpr
+  [Translating DeclStmt]
+    Variable: current
+  [Scope] Exiting scope at depth 0 with 0 objects
+  -> Tokenizer_nextToken with body translated
+  -> Tokenizer_nextToken with 1 parameters
+Translating method: Tokenizer::hasMore
+  [Scope] Entering scope at depth 0
+  [Translating DeclStmt]
+    Variable: pos
+  [Scope] Exiting scope at depth 0 with 0 objects
+  -> Tokenizer_hasMore with body translated
+  -> Tokenizer_hasMore with 1 parameters
+Translating constructor: Tokenizer::Tokenizer
+  -> Tokenizer__ctor with 2 parameters, 2 statements
+Found variable: input
+  -> Already translated, skipping redefinition of Tokenizer::skipWhitespace
+  -> Already translated, skipping redefinition of Tokenizer::parseNumber
+Found variable: value
+  -> Already translated, skipping redefinition of Tokenizer::nextToken
+Found variable: value
+Found variable: current
+  -> Already translated, skipping redefinition of Tokenizer::hasMore
+Found variable: pos
+Found variable: value
+Found variable: current
+Found variable: pos
 
 ========================================
 Processing Template Instantiations
@@ -1051,7 +1154,148 @@ Template Monomorphization Complete
   Unique instantiations: 0
 ========================================
 
-C TranslationUnit has 0 generated declarations
+C TranslationUnit has 12 generated declarations
+Generated files:
+  transpiled/src/Tokenizer.h
+  transpiled/src/Tokenizer.c
+Parsed file: /Users/alexanderfedin/Projects/hapyy/hupyy-cpp-to-c/tests/real-world/simple-validation/04-simple-parser/src/ExpressionEvaluator.cpp
+FileOriginTracker configured with user header paths
+Translation unit has 113 top-level declarations
+Virtual method support initialized
+Template monomorphization enabled (limit: 1000 instantiations)
+Exception handling support initialized (SJLJ model)
+RTTI support initialized (typeid and dynamic_cast)
+Multidimensional subscript operator support initialized (C++23)
+Static operator() and operator[] support initialized (C++23)
+[[assume]] attribute support initialized (C++23)
+Deducing this / explicit object parameter support initialized (C++23 P0847R7)
+if consteval support initialized (C++23 P1938R3) - Runtime strategy
+auto(x) decay-copy and partial constexpr support initialized (C++23 P0849R8)
+C TranslationUnit created for output generation
+Translating enum: TokenType
+  Enumerator: Number = 0
+  Enumerator: Plus = 1
+  Enumerator: Minus = 2
+  Enumerator: Multiply = 3
+  Enumerator: Divide = 4
+  Enumerator: EndOfInput = 5
+  -> C enum TokenType with 6 values
+Translating class: Token
+  -> struct Token with 2 fields
+  Generating implicit copy constructor
+  Generated copy constructor: Token__ctor_copy
+  [Phase 31-03] Generated 1 constructor, 0 destructor, 0 method declarations
+
+// Static declarations for all Token methods
+static void Token__ctor_2(struct Token *this, TokenType t, int v);
+
+Translating constructor: Token::Token
+  -> Token__ctor with 3 parameters, 2 statements
+Found variable: t
+Found variable: v
+Translating class: Tokenizer
+  -> struct Tokenizer with 2 fields
+  Generating implicit copy constructor
+  Generated copy constructor: Tokenizer__ctor_copy
+  [Phase 31-03] Generated 1 constructor, 0 destructor, 4 method declarations
+
+// Static declarations for all Tokenizer methods
+static void Tokenizer__ctor_1(struct Tokenizer *this, const int * input);
+static void Tokenizer_skipWhitespace(struct Tokenizer *this);
+static int Tokenizer_parseNumber(struct Tokenizer *this);
+static struct Token Tokenizer_nextToken(struct Tokenizer *this);
+static int Tokenizer_hasMore(const struct Tokenizer *this);
+
+Found variable: input
+Translating class: ExpressionEvaluator
+  -> struct ExpressionEvaluator with 2 fields
+  Generating implicit copy constructor
+    Calling member copy constructor: Token__ctor_copy for field currentToken
+  Generated copy constructor: ExpressionEvaluator__ctor_copy
+  [Phase 31-03] Generated 1 constructor, 1 destructor, 4 method declarations
+
+// Static declarations for all ExpressionEvaluator methods
+static void ExpressionEvaluator__ctor(struct ExpressionEvaluator *this);
+static void ExpressionEvaluator__dtor(struct ExpressionEvaluator *this);
+static void ExpressionEvaluator_advance(struct ExpressionEvaluator *this);
+static int ExpressionEvaluator_parseTerm(struct ExpressionEvaluator *this);
+static int ExpressionEvaluator_parseFactor(struct ExpressionEvaluator *this);
+static int ExpressionEvaluator_evaluate(struct ExpressionEvaluator *this, const int * expression);
+
+Translating method: ExpressionEvaluator::advance
+  [Scope] Entering scope at depth 0
+  [Scope] Exiting scope at depth 0 with 0 objects
+  -> ExpressionEvaluator_advance with body translated
+  -> ExpressionEvaluator_advance with 1 parameters
+Translating method: ExpressionEvaluator::parseTerm
+  [Scope] Entering scope at depth 0
+  [Translating DeclStmt]
+    Variable: left
+  Warning: Method not in methodToCFunc map, generating call anyway: ExpressionEvaluator::parseFactor
+  Generated function name: ExpressionEvaluator_parseFactor
+  [Scope] Exiting scope at depth 0 with 0 objects
+  -> ExpressionEvaluator_parseTerm with body translated
+  -> ExpressionEvaluator_parseTerm with 1 parameters
+Translating method: ExpressionEvaluator::parseFactor
+  [Scope] Entering scope at depth 0
+  [Scope] Exiting scope at depth 0 with 0 objects
+  -> ExpressionEvaluator_parseFactor with body translated
+  -> ExpressionEvaluator_parseFactor with 1 parameters
+Translating destructor: ~ExpressionEvaluator
+  -> ExpressionEvaluator__dtor with 1 statements
+  -> ExpressionEvaluator__dtor created
+Translating method: ExpressionEvaluator::evaluate
+  [Scope] Entering scope at depth 0
+  Warning: Method not in methodToCFunc map, generating call anyway: ExpressionEvaluator::advance
+  Generated function name: ExpressionEvaluator_advance
+  [Translating DeclStmt]
+    Variable: result
+  Warning: Method not in methodToCFunc map, generating call anyway: ExpressionEvaluator::parseTerm
+  Generated function name: ExpressionEvaluator_parseTerm
+  [Scope] Exiting scope at depth 0 with 0 objects
+  -> ExpressionEvaluator_evaluate with body translated
+  -> ExpressionEvaluator_evaluate with 2 parameters
+Found variable: expression
+Translating constructor: ExpressionEvaluator::ExpressionEvaluator
+  -> ExpressionEvaluator__ctor with 1 parameters, 2 statements
+  -> Already translated, skipping redefinition of ~ExpressionEvaluator
+  -> Already translated, skipping redefinition of ExpressionEvaluator::advance
+  -> Already translated, skipping redefinition of ExpressionEvaluator::parseFactor
+Found variable: value
+  -> Already translated, skipping redefinition of ExpressionEvaluator::parseTerm
+Found variable: left
+Found variable: op
+Found variable: right
+  -> Already translated, skipping redefinition of ExpressionEvaluator::evaluate
+Found variable: expression
+Found variable: result
+Found variable: op
+Found variable: right
+Found variable: left
+Found variable: op
+Found variable: right
+Found variable: value
+Found variable: result
+Found variable: op
+Found variable: right
+
+========================================
+Processing Template Instantiations
+========================================
+
+Found 0 class template instantiation(s)
+Found 0 function template instantiation(s)
+
+Monomorphizing class templates:
+
+Monomorphizing function templates:
+
+========================================
+Template Monomorphization Complete
+  Unique instantiations: 0
+========================================
+
+C TranslationUnit has 17 generated declarations
 Generated files:
   transpiled/src/ExpressionEvaluator.h
   transpiled/src/ExpressionEvaluator.c
@@ -1059,9 +1303,150 @@ Generated files:
 Transpilation completed successfully. Generated 3 file pair(s).
     ✓ Transpilation successful
   [4/5] Building transpiled C version...
-    ✓ C build successful
-  [5/5] Running transpiled C version...
-    [0;31m✗ C execution failed[0m
+In file included from ./main.c:4:
+./main.h:31:9: error: must use 'struct' tag to refer to type 'Tokenizer'
+   31 |         Tokenizer *tokenizer;
+      |         ^
+      |         struct 
+./main.h:32:9: error: must use 'struct' tag to refer to type 'Token'
+   32 |         Token currentToken;
+      |         ^
+      |         struct 
+2 errors generated.
+In file included from ./src/ExpressionEvaluator.c:4:
+./src/ExpressionEvaluator.h:31:9: error: must use 'struct' tag to refer to type 'Tokenizer'
+   31 |         Tokenizer *tokenizer;
+      |         ^
+      |         struct 
+./src/ExpressionEvaluator.h:32:9: error: must use 'struct' tag to refer to type 'Token'
+   32 |         Token currentToken;
+      |         ^
+      |         struct 
+./src/ExpressionEvaluator.c:27:40: error: no member named 'nextToken' in 'struct Tokenizer'
+   27 |         this->currentToken = this->tokenizer->nextToken();
+      |                              ~~~~~~~~~~~~~~~  ^
+./src/ExpressionEvaluator.c:34:36: error: unexpected type name 'TokenType': expected expression
+   34 |         while (this->currentToken.type == TokenType::Multiply || this->currentToken.type == TokenType::Divide)
+      |                                           ^
+./src/ExpressionEvaluator.c:34:45: error: expected ')'
+   34 |         while (this->currentToken.type == TokenType::Multiply || this->currentToken.type == TokenType::Divide)
+      |                                                    ^
+./src/ExpressionEvaluator.c:34:8: note: to match this '('
+   34 |         while (this->currentToken.type == TokenType::Multiply || this->currentToken.type == TokenType::Divide)
+      |               ^
+./src/ExpressionEvaluator.c:37:23: error: no member named 'advance' in 'struct ExpressionEvaluator'
+   37 |                 this->advance();
+      |                 ~~~~  ^
+./src/ExpressionEvaluator.c:38:35: error: no member named 'parseFactor' in 'struct ExpressionEvaluator'
+   38 |                 int right = this->parseFactor();
+      |                             ~~~~  ^
+./src/ExpressionEvaluator.c:39:27: error: unexpected type name 'TokenType': expected expression
+   39 |                 if (op == TokenType::Multiply) {
+      |                           ^
+./src/ExpressionEvaluator.c:39:36: error: expected ')'
+   39 |                 if (op == TokenType::Multiply) {
+      |                                    ^
+./src/ExpressionEvaluator.c:39:20: note: to match this '('
+   39 |                 if (op == TokenType::Multiply) {
+      |                    ^
+./src/ExpressionEvaluator.c:51:33: error: unexpected type name 'TokenType': expected expression
+   51 |         if (this->currentToken.type == TokenType::Number) {
+      |                                        ^
+./src/ExpressionEvaluator.c:51:42: error: expected ')'
+   51 |         if (this->currentToken.type == TokenType::Number) {
+      |                                                 ^
+./src/ExpressionEvaluator.c:51:5: note: to match this '('
+   51 |         if (this->currentToken.type == TokenType::Number) {
+      |            ^
+./src/ExpressionEvaluator.c:53:15: error: no member named 'advance' in 'struct ExpressionEvaluator'
+   53 |         this->advance();
+      |         ~~~~  ^
+./src/ExpressionEvaluator.c:62:25: error: use of undeclared identifier 'nullptr'
+   62 |         if (this->tokenizer != nullptr) {
+      |                                ^
+./src/ExpressionEvaluator.c:63:9: error: use of undeclared identifier 'delete'
+   63 |         delete this->tokenizer;
+      |         ^
+./src/ExpressionEvaluator.c:71:25: error: use of undeclared identifier 'nullptr'
+   71 |         if (this->tokenizer != nullptr) {
+      |                                ^
+./src/ExpressionEvaluator.c:72:9: error: use of undeclared identifier 'delete'
+   72 |         delete this->tokenizer;
+      |         ^
+./src/ExpressionEvaluator.c:75:23: error: expected ';' after expression
+   75 |         this->tokenizer = new Tokenizer(expression);
+      |                              ^
+      |                              ;
+./src/ExpressionEvaluator.c:75:20: error: use of undeclared identifier 'new'
+   75 |         this->tokenizer = new Tokenizer(expression);
+      |                           ^
+./src/ExpressionEvaluator.c:75:24: error: call to undeclared function 'Tokenizer'; ISO C99 and later do not support implicit function declarations [-Wimplicit-function-declaration]
+   75 |         this->tokenizer = new Tokenizer(expression);
+      |                               ^
+fatal error: too many errors emitted, stopping now [-ferror-limit=]
+20 errors generated.
+./src/Tokenizer.c:40:16: error: call to undeclared function 'Token'; ISO C99 and later do not support implicit function declarations [-Wimplicit-function-declaration]
+   40 |         return Token(TokenType::EndOfInput);
+      |                ^
+./src/Tokenizer.c:40:22: error: unexpected type name 'TokenType': expected expression
+   40 |         return Token(TokenType::EndOfInput);
+      |                      ^
+./src/Tokenizer.c:40:31: error: expected ')'
+   40 |         return Token(TokenType::EndOfInput);
+      |                               ^
+./src/Tokenizer.c:40:21: note: to match this '('
+   40 |         return Token(TokenType::EndOfInput);
+      |                     ^
+./src/Tokenizer.c:47:16: error: call to undeclared function 'Token'; ISO C99 and later do not support implicit function declarations [-Wimplicit-function-declaration]
+   47 |         return Token(TokenType::Plus);
+      |                ^
+./src/Tokenizer.c:47:22: error: unexpected type name 'TokenType': expected expression
+   47 |         return Token(TokenType::Plus);
+      |                      ^
+./src/Tokenizer.c:47:31: error: expected ')'
+   47 |         return Token(TokenType::Plus);
+      |                               ^
+./src/Tokenizer.c:47:21: note: to match this '('
+   47 |         return Token(TokenType::Plus);
+      |                     ^
+./src/Tokenizer.c:49:22: error: unexpected type name 'TokenType': expected expression
+   49 |         return Token(TokenType::Minus);
+      |                      ^
+./src/Tokenizer.c:49:31: error: expected ')'
+   49 |         return Token(TokenType::Minus);
+      |                               ^
+./src/Tokenizer.c:49:21: note: to match this '('
+   49 |         return Token(TokenType::Minus);
+      |                     ^
+./src/Tokenizer.c:51:22: error: unexpected type name 'TokenType': expected expression
+   51 |         return Token(TokenType::Multiply);
+      |                      ^
+./src/Tokenizer.c:51:31: error: expected ')'
+   51 |         return Token(TokenType::Multiply);
+      |                               ^
+./src/Tokenizer.c:51:21: note: to match this '('
+   51 |         return Token(TokenType::Multiply);
+      |                     ^
+./src/Tokenizer.c:53:22: error: unexpected type name 'TokenType': expected expression
+   53 |         return Token(TokenType::Divide);
+      |                      ^
+./src/Tokenizer.c:53:31: error: expected ')'
+   53 |         return Token(TokenType::Divide);
+      |                               ^
+./src/Tokenizer.c:53:21: note: to match this '('
+   53 |         return Token(TokenType::Divide);
+      |                     ^
+./src/Tokenizer.c:55:22: error: unexpected type name 'TokenType': expected expression
+   55 |         return Token(TokenType::EndOfInput);
+      |                      ^
+./src/Tokenizer.c:55:31: error: expected ')'
+   55 |         return Token(TokenType::EndOfInput);
+      |                               ^
+./src/Tokenizer.c:55:21: note: to match this '('
+   55 |         return Token(TokenType::EndOfInput);
+      |                     ^
+14 errors generated.
+    [0;31m✗ C build failed[0m
 [0;31m❌ FAIL: Simple Parser[0m
 
 [1;33mTesting Game Logic...[0m
@@ -1085,6 +1470,7 @@ Game Logic Tests:
 Validation: PASS
     ✓ C++ execution successful (exit code: 0)
   [3/5] Transpiling to C...
+    [Config] Using project-specific args: --extra-arg=-Iinclude 
 Error while trying to load a compilation database:
 Could not auto-detect compilation database for file "__dummy_for_discovery__.cpp"
 No compilation database found in /Users/alexanderfedin/Projects/hapyy/hupyy-cpp-to-c/tests/real-world/simple-validation/05-game-logic or any parent directory
@@ -1092,20 +1478,14 @@ fixed-compilation-database: Error while opening fixed database: No such file or 
 json-compilation-database: Error while opening JSON database: No such file or directory
 Running without flags.
 [1/5] Processing file /Users/alexanderfedin/Projects/hapyy/hupyy-cpp-to-c/tests/real-world/simple-validation/05-game-logic/main.cpp.
-/Users/alexanderfedin/Projects/hapyy/hupyy-cpp-to-c/tests/real-world/simple-validation/05-game-logic/main.cpp:1:10: fatal error: 'Player.h' file not found
-    1 | #include "Player.h"
-      |          ^~~~~~~~~~
-1 error generated.
-Error while processing /Users/alexanderfedin/Projects/hapyy/hupyy-cpp-to-c/tests/real-world/simple-validation/05-game-logic/main.cpp.
-[2/5] Processing file /Users/alexanderfedin/Projects/hapyy/hupyy-cpp-to-c/tests/real-world/simple-validation/05-game-logic/src/Player.cpp.
-/Users/alexanderfedin/Projects/hapyy/hupyy-cpp-to-c/tests/real-world/simple-validation/05-game-logic/src/Player.cpp:1:10: fatal error: 'Player.h' file not found
-    1 | #include "Player.h"
-      |          ^~~~~~~~~~
+/Users/alexanderfedin/Projects/hapyy/hupyy-cpp-to-c/tests/real-world/simple-validation/05-game-logic/main.cpp:4:10: fatal error: 'cstdio' file not found
+    4 | #include <cstdio>
+      |          ^~~~~~~~
 Auto-discovering C++ source files in: /Users/alexanderfedin/Projects/hapyy/hupyy-cpp-to-c/tests/real-world/simple-validation/05-game-logic
 Discovered 5 file(s) for transpilation
 Parsed file: /Users/alexanderfedin/Projects/hapyy/hupyy-cpp-to-c/tests/real-world/simple-validation/05-game-logic/main.cpp
 FileOriginTracker configured with user header paths
-Translation unit has 91 top-level declarations
+Translation unit has 95 top-level declarations
 Virtual method support initialized
 Template monomorphization enabled (limit: 1000 instantiations)
 Exception handling support initialized (SJLJ model)
@@ -1117,45 +1497,207 @@ Deducing this / explicit object parameter support initialized (C++23 P0847R7)
 if consteval support initialized (C++23 P1938R3) - Runtime strategy
 auto(x) decay-copy and partial constexpr support initialized (C++23 P0849R8)
 C TranslationUnit created for output generation
+Translating class: Entity
+  -> struct Entity with 5 fields
+  Generating implicit copy constructor
+  Generated copy constructor: Entity__ctor_copy
+  [Phase 31-03] Generated 1 constructor, 1 destructor, 6 method declarations
+
+// Static declarations for all Entity methods
+static void Entity__ctor_4(struct Entity *this, float x, float y, float width, float height);
+static void Entity__dtor(struct Entity *this);
+static float Entity_getX(const struct Entity *this);
+static float Entity_getY(const struct Entity *this);
+static float Entity_getWidth(const struct Entity *this);
+static float Entity_getHeight(const struct Entity *this);
+static void Entity_setPosition(struct Entity *this, float newX, float newY);
+static void Entity_update(struct Entity *this, float deltaTime);
+
+Generating vtable for polymorphic class: Entity
+Vtable struct generated:
+struct Entity_vtable {
+    const struct __class_type_info *type_info;  /**< RTTI type_info pointer (Itanium ABI vtable[-1]) */
+    void (*destructor)(struct Entity *this);
+    void (*update)(struct Entity *this, float deltaTime);
+};
+
+Vtable instance generated:
+
+// Vtable instance for Entity
+struct Entity_vtable Entity_vtable_instance = {
+    .type_info = &Entity_type_info,  // RTTI type_info (placeholder)
+    .destructor = Entity_destructor,
+    .update = Entity_update,
+};
+
+Found variable: x
+Found variable: y
+Found variable: width
+Found variable: height
+Translating destructor: ~Entity
+  -> Entity__dtor with 0 statements
+  -> Entity__dtor created
+Found variable: newX
+Found variable: newY
+Found variable: deltaTime
+Translating class: Player
+  -> struct Player with 7 fields
+  Generating implicit copy constructor
+    TODO: Call base copy constructor: Entity__ctor_copy
+  Generated copy constructor: Player__ctor_copy
+  [Phase 31-03] Generated 1 constructor, 1 destructor, 5 method declarations
+
+// Static declarations for all Player methods
+static void Player__ctor_2(struct Player *this, float x, float y);
+static void Player__dtor(struct Player *this);
+static int Player_getHealth(const struct Player *this);
+static int Player_getScore(const struct Player *this);
+static void Player_takeDamage(struct Player *this, int damage);
+static void Player_addScore(struct Player *this, int points);
+static void Player_update(struct Player *this, float deltaTime);
+
+Generating vtable for polymorphic class: Player
+Vtable struct generated:
+struct Player_vtable {
+    const struct __class_type_info *type_info;  /**< RTTI type_info pointer (Itanium ABI vtable[-1]) */
+    void (*destructor)(struct Player *this);
+    void (*update)(struct Player *this, float deltaTime);
+};
+
+Vtable instance generated:
+
+// Vtable instance for Player
+struct Player_vtable Player_vtable_instance = {
+    .type_info = &Player_type_info,  // RTTI type_info (placeholder)
+    .destructor = Player_destructor,
+    .update = Player_update,
+};
+
+Found variable: x
+Found variable: y
+Translating destructor: ~Player
+  Emitting base destructor call for: Entity
+  -> Added base destructor call to Entity__dtor
+  -> Player__dtor with 1 statements
+  -> Player__dtor created
+Found variable: damage
+Found variable: points
+Found variable: deltaTime
+Translating class: Enemy
+  -> struct Enemy with 7 fields
+  Generating implicit copy constructor
+    TODO: Call base copy constructor: Entity__ctor_copy
+  Generated copy constructor: Enemy__ctor_copy
+  [Phase 31-03] Generated 1 constructor, 1 destructor, 2 method declarations
+
+// Static declarations for all Enemy methods
+static void Enemy__ctor_2(struct Enemy *this, float x, float y);
+static void Enemy__dtor(struct Enemy *this);
+static int Enemy_getDamage(const struct Enemy *this);
+static void Enemy_update(struct Enemy *this, float deltaTime);
+
+Generating vtable for polymorphic class: Enemy
+Vtable struct generated:
+struct Enemy_vtable {
+    const struct __class_type_info *type_info;  /**< RTTI type_info pointer (Itanium ABI vtable[-1]) */
+    void (*destructor)(struct Enemy *this);
+    void (*update)(struct Enemy *this, float deltaTime);
+};
+
+Vtable instance generated:
+
+// Vtable instance for Enemy
+struct Enemy_vtable Enemy_vtable_instance = {
+    .type_info = &Enemy_type_info,  // RTTI type_info (placeholder)
+    .destructor = Enemy_destructor,
+    .update = Enemy_update,
+};
+
+Found variable: x
+Found variable: y
+Translating destructor: ~Enemy
+  Emitting base destructor call for: Entity
+  -> Added base destructor call to Entity__dtor
+  -> Enemy__dtor with 1 statements
+  -> Enemy__dtor created
+Found variable: deltaTime
+Translating class: CollisionDetector
+  -> struct CollisionDetector with 0 fields
+  Generating implicit default constructor
+  Generated default constructor: CollisionDetector__ctor_default
+  Generating implicit copy constructor
+  Generated copy constructor: CollisionDetector__ctor_copy
+  [Phase 31-03] Generated 0 constructor, 0 destructor, 2 method declarations
+
+// Static declarations for all CollisionDetector methods
+static int CollisionDetector_checkCollision(struct CollisionDetector *this, const struct Entity * a, const struct Entity * b);
+static int CollisionDetector_pointInside(struct CollisionDetector *this, float px, float py, const struct Entity * entity);
+
+Found variable: a
+Found variable: b
+Found variable: px
+Found variable: py
+Found variable: entity
 Analyzing function for RAII: main
   Found 6 local variables
+  Variable 'player' has destructor
+  Variable 'enemy' has destructor
+  Will inject destructors for 2 objects
 Translating standalone function: main
   Mangled name: main
   [Scope] Entering scope at depth 0
   [Bug #8] Skipping statement containing RecoveryExpr
+  [Scope] Tracked object 'player' in scope depth 0
   [Translating DeclStmt]
     Variable: player
-  Warning: RecoveryExpr encountered (parsing error)
-  Skipping RecoveryExpr (cannot reconstruct)
-    Initializer contains RecoveryExpr, creating variable without initializer
+      Is a struct/class type
+      Is a C++ class: Player
+      Found C struct: Player
+      Creating C variable declaration
+      Has constructor expression
+      WARNING: C constructor not found in ctorMap!
+  [Scope] Tracked object 'enemy' in scope depth 0
   [Translating DeclStmt]
     Variable: enemy
-  Warning: RecoveryExpr encountered (parsing error)
-  Skipping RecoveryExpr (cannot reconstruct)
-    Initializer contains RecoveryExpr, creating variable without initializer
+      Is a struct/class type
+      Is a C++ class: Enemy
+      Found C struct: Enemy
+      Creating C variable declaration
+      Has constructor expression
+      WARNING: C constructor not found in ctorMap!
   [Bug #8] Skipping statement containing RecoveryExpr
   [Bug #8] Skipping statement containing RecoveryExpr
   [Translating DeclStmt]
     Variable: colliding1
   [Bug #8] Skipping statement containing RecoveryExpr
-  [Bug #8] Skipping statement containing RecoveryExpr
+  Warning: Method not in methodToCFunc map, generating call anyway: Entity::setPosition
+  Generated function name: Entity_setPosition
   [Translating DeclStmt]
     Variable: colliding2
   [Bug #8] Skipping statement containing RecoveryExpr
   [Bug #8] Skipping statement containing RecoveryExpr
+  Warning: Method not in methodToCFunc map, generating call anyway: Player::takeDamage
+  Generated function name: Player_takeDamage
+  Warning: Method not in methodToCFunc map, generating call anyway: Enemy::getDamage
+  Generated function name: Enemy_getDamage
   [Bug #8] Skipping statement containing RecoveryExpr
-  [Bug #8] Skipping statement containing RecoveryExpr
-  [Bug #8] Skipping statement containing RecoveryExpr
-  [Bug #8] Skipping statement containing RecoveryExpr
+  Warning: Method not in methodToCFunc map, generating call anyway: Player::addScore
+  Generated function name: Player_addScore
+  [Bug #1 error generated.
+Error while processing /Users/alexanderfedin/Projects/hapyy/hupyy-cpp-to-c/tests/real-world/simple-validation/05-game-logic/main.cpp.
+[2/5] Processing file /Users/alexanderfedin/Projects/hapyy/hupyy-cpp-to-c/tests/real-world/simple-validation/05-game-logic/src/Player.cpp.
+8] Skipping statement containing RecoveryExpr
   [Translating DeclStmt]
     Variable: inside
   [Bug #8] Skipping statement containing RecoveryExpr
   [Translating DeclStmt]
     Variable: passed
   [Bug #8] Skipping statement containing RecoveryExpr
-  [Bug #8] Skipping statement containing RecoveryExpr
-  [Bug #8] Skipping statement containing RecoveryExpr
-  [Scope] Exiting scope at depth 0 with 0 objects
+  [Scope] Exiting scope at depth 0 with 2 objects
+  [Scope] Injecting 2 destructor(s) at end of scope depth 0
+    -> enemy destructor injected at scope exit
+    -> player destructor injected at scope exit
+  [Legacy] Function-level destruction already handled by scope tracking
   -> C function 'main' created
   Parameters: 0
   Return type: int
@@ -1165,14 +1707,14 @@ Found variable: colliding1
 Found variable: colliding2
 Found variable: inside
 Found variable: passed
-Found variable: player
-Found variable: enemy
+  Detected return statement for early return analysis
 Found variable: player
 Found variable: enemy
 Found variable: colliding1
 Found variable: colliding2
 Found variable: inside
 Found variable: passed
+  Detected return statement for early return analysis
 
 ========================================
 Processing Template Instantiations
@@ -1190,45 +1732,148 @@ Template Monomorphization Complete
   Unique instantiations: 0
 ========================================
 
-C TranslationUnit has 1 generated declarations
+C TranslationUnit has 17 generated declarations
 Generated files:
   transpiled/main.h
   transpiled/main.c
 Parsed file: /Users/alexanderfedin/Projects/hapyy/hupyy-cpp-to-c/tests/real-world/simple-validation/05-game-logic/src/Player.cpp
 FileOriginTracker configured with user header paths
-Translation unit has 90 top-level declarations
+Translation unit has 112 top-level declarations
 Virtual method support initialized
 Template monomorphization enabled (limit: 1000 instantiations)
 Exception handling support initialized (SJLJ model)
 RTTI support initialized (typeid and dynamic_cast)
-Multidimensional subscript operator support initializWarning: No C AST nodes generated. Input may contain unsupported C++ features.
-1 error generated.
-Error while processing /Users/alexanderfedin/Projects/hapyy/hupyy-cpp-to-c/tests/real-world/simple-validation/05-game-logic/src/Player.cpp.
-[3/5] Processing file /Users/alexanderfedin/Projects/hapyy/hupyy-cpp-to-c/tests/real-world/simple-validation/05-game-logic/src/Entity.cpp.
-/Users/alexanderfedin/Projects/hapyy/hupyy-cpp-to-c/tests/real-world/simple-validation/05-game-logic/src/Entity.cpp:1:10: fatal error: 'Entity.h' file not found
-    1 | #include "Entity.h"
-      |          ^~~~~~~~~~
-Warning: No C AST nodes generated. Input may contain unsupported C++ features.
-1 error generated.
-Error while processing /Users/alexanderfedin/Projects/hapyy/hupyy-cpp-to-c/tests/real-world/simple-validation/05-game-logic/src/Entity.cpp.
-[4/5] Processing file /Users/alexanderfedin/Projects/hapyy/hupyy-cpp-to-c/tests/real-world/simple-validation/05-game-logic/src/CollisionDetector.cpp.
-/Users/alexanderfedin/Projects/hapyy/hupyy-cpp-to-c/tests/real-world/simple-validation/05-game-logic/src/CollisionDetector.cpp:1:10: fatal error: 'CollisionDetector.h' file not found
-    1 | #include "CollisionDetector.h"
-      |          ^~~~~~~~~~~~~~~~~~~~~
-Warning: No C AST nodes generated. Input may contain unsupported C++ features.
-1 error generated.
-Error while processing /Users/alexanderfedin/Projects/hapyy/hupyy-cpp-to-c/tests/real-world/simple-validation/05-game-logic/src/CollisionDetector.cpp.
-[5/5] Processing file /Users/alexanderfedin/Projects/hapyy/hupyy-cpp-to-c/tests/real-world/simple-validation/05-game-logic/src/Enemy.cpp.
-/Users/alexanderfedin/Projects/hapyy/hupyy-cpp-to-c/tests/real-world/simple-validation/05-game-logic/src/Enemy.cpp:1:10: fatal error: 'Enemy.h' file not found
-    1 | #include "Enemy.h"
-      |          ^~~~~~~~~
-ed (C++23)
+Multidimensional subscript operator support initialized (C++23)
 Static operator() and operator[] support initialized (C++23)
 [[assume]] attribute support initialized (C++23)
 Deducing this / explicit object parameter support initialized (C++23 P0847R7)
 if consteval support initialized (C++23 P1938R3) - Runtime strategy
 auto(x) decay-copy and partial constexpr support initialized (C++23 P0849R8)
 C TranslationUnit created for output generation
+Translating class: Entity
+  -> struct Entity with 5 fields
+  Generating implicit copy constructor
+  Generated copy constructor: Entity__ctor_copy
+  [Phase 31-03] Generated 1 constructor, 1 destructor, 6 method declarations
+
+// Static declarations for all Entity methods
+static void Entity__ctor_4(struct Entity *this, float x, float y, float width, float height);
+static void Entity__dtor(struct Entity *this);
+static float Entity_getX(const struct Entity *this);
+static float Entity_getY(const struct Entity *this);
+static float Entity_getWidth(const struct Entity *this);
+static float Entity_getHeight(const struct Entity *this);
+static void Entity_setPosition(struct Entity *this, float newX, float newY);
+static void Entity_update(struct Entity *this, float deltaTime);
+
+Generating vtable for polymorphic class: Entity
+Vtable struct generated:
+struct Entity_vtable {
+    const struct __class_type_info *type_info;  /**< RTTI type_info pointer (Itanium ABI vtable[-1]) */
+    void (*destructor)(struct Entity *this);
+    void (*update)(struct Entity *this, float deltaTime);
+};
+
+Vtable instance generated:
+
+// Vtable instance for Entity
+struct Entity_vtable Entity_vtable_instance = {
+    .type_info = &Entity_type_info,  // RTTI type_info (placeholder)
+    .destructor = Entity_destructor,
+    .update = Entity_update,
+};
+
+Found variable: x
+Found variable: y
+Found variable: width
+Found variable: height
+Translating destructor: ~Entity
+  -> Entity__dtor with 0 statements
+  -> Entity__dtor created
+Found variable: newX
+Found variable: newY
+Found variable: deltaTime
+Translating class: Player
+  -> struct Player with 7 fields
+  Generating implicit copy constructor
+    TODO: Call base copy constructor: Entity[3/5] Processing file /Users/alexanderfedin/Projects/hapyy/hupyy-cpp-to-c/tests/real-world/simple-validation/05-game-logic/src/Entity.cpp.
+__ctor_copy
+  Generated copy constructor: Player__ctor_copy
+  [Phase 31-03] Generated 1 constructor, 1 destructor, 5 method declarations
+
+// Static declarations for all Player methods
+static void Player__ctor_2(struct Player *this, float x, float y);
+static void Player__dtor(struct Player *this);
+static int Player_getHealth(const struct Player *this);
+static int Player_getScore(const struct Player *this);
+static void Player_takeDamage(struct Player *this, int damage);
+static void Player_addScore(struct Player *this, int points);
+static void Player_update(struct Player *this, float deltaTime);
+
+Generating vtable for polymorphic class: Player
+Vtable struct generated:
+struct Player_vtable {
+    const struct __class_type_info *type_info;  /**< RTTI type_info pointer (Itanium ABI vtable[-1]) */
+    void (*destructor)(struct Player *this);
+    void (*update)(struct Player *this, float deltaTime);
+};
+
+Vtable instance generated:
+
+// Vtable instance for Player
+struct Player_vtable Player_vtable_instance = {
+    .type_info = &Player_type_info,  // RTTI type_info (placeholder)
+    .destructor = Player_destructor,
+    .update = Player_update,
+};
+
+Found variable: x
+Found variable: y
+Translating destructor: ~Player
+  Emitting base destructor call for: Entity
+  -> Added base destructor call to Entity__dtor
+  -> Player__dtor with 1 statements
+  -> Player__dtor created
+Translating method: Player::getHealth
+  [Scope] Entering scope at depth 0
+  [Scope] Exiting scope at depth 0 with 0 objects
+  -> Player_getHealth with body translated
+  -> Player_getHealth with 1 parameters
+Translating method: Player::getScore
+  [Scope] Entering scope at depth 0
+  [Scope] Exiting scope at depth 0 with 0 objects
+  -> Player_getScore with body translated
+  -> Player_getScore with 1 parameters
+Translating method: Player::takeDamage
+  [Scope] Entering scope at depth 0
+  [Scope] Exiting scope at depth 0 with 0 objects
+  -> Player_takeDamage with body translated
+  -> Player_takeDamage with 2 parameters
+Found variable: damage
+Translating method: Player::addScore
+  [Scope] Entering scope at depth 0
+  [Scope] Exiting scope at depth 0 with 0 objects
+  -> Player_addScore with body translated
+  -> Player_addScore with 2 parameters
+Found variable: points
+Skipping virtual method (handled by vtable): Player::update
+Found variable: deltaTime
+Translating constructor: Player::Player
+  -> Injected vptr initialization
+  Translating base class initializer: Entity
+  Warning: Base constructor function not found
+  -> Player__ctor with 3 parameters, 3 statements
+Found variable: x
+Found variable: y
+  -> Already translated, skipping redefinition of ~Player
+  -> Already translated, skipping redefinition of Player::getHealth
+  -> Already translated, skipping redefinition of Player::getScore
+  -> Already translated, skipping redefinition of Player::takeDamage
+Found variable: damage
+  -> Already translated, skipping redefinition of Player::addScore
+Found variable: points
+Skipping virtual method (handled by vtable): Player::update
+Found variable: deltaTime
 
 ========================================
 Processing Template Instantiations
@@ -1246,13 +1891,13 @@ Template Monomorphization Complete
   Unique instantiations: 0
 ========================================
 
-C TranslationUnit has 0 generated declarations
+C TranslationUnit has 11 generated declarations
 Generated files:
   transpiled/src/Player.h
   transpiled/src/Player.c
 Parsed file: /Users/alexanderfedin/Projects/hapyy/hupyy-cpp-to-c/tests/real-world/simple-validation/05-game-logic/src/Entity.cpp
 FileOriginTracker configured with user header paths
-Translation unit has 90 top-level declarations
+Translation unit has 111 top-level declarations
 Virtual method support initialized
 Template monomorphization enabled (limit: 1000 instantiations)
 Exception handling support initialized (SJLJ model)
@@ -1264,6 +1909,89 @@ Deducing this / explicit object parameter support initialized (C++23 P0847R7)
 if consteval support initialized (C++23 P1938R3) - Runtime strategy
 auto(x) decay-copy and partial constexpr support initialized (C++23 P0849R8)
 C TranslationUnit created for output generation
+Translating class: Entity
+  -> struct Entity with 5 fields
+  Generating implicit copy constructor
+  Generated copy constructor: Entity__ctor_copy
+  [Phase 31-03] Generated 1 constructor, 1 destructor, 6 method declarations
+
+// Static declarations for all Entity methods
+static void Entity__ctor_4(struct Entity *this, float x, float y, float width, float height);
+static void Entity__dtor(struct Entity *this);
+static float Entity_getX(const struct Entity *this);
+static float Entity_getY(const struct Entity *this);
+static float Entity_getWidth(const struct Entity *this);
+static float Entity_getHeight(const struct Entity *this);
+static void Entity_setPosition(struct Entity *this, float newX, float newY);
+static void Entity_update(struct Entity *this, float deltaTime);
+
+Generating vtable for polymorphic class: Entity
+Vtable struct generated:
+struct Entity_vtable {
+    const struct __class_type_info *type_info;  /**< RTTI type_info pointer (Itanium ABI vtable[-1]) */
+    void (*destructor)(struct Entity *this);
+    void (*update)(struct Entity *this, float deltaTime);
+};
+
+Vtable instance generated:
+
+// Vtable instance for Entity
+struct Entity_vtable Entity_vtable_instance = {
+    .type_info = &Entity_type_info,  // RTTI type_info (placeholder)
+    .destructor = Entity_destructor,
+    .update = Entity_update,
+};
+
+Found variable: x
+Found variable: y
+Found variable: width
+Found variable: height
+Translating destructor: ~Entity
+  -> Entity__dtor with 0 statements
+  -> Entity__dtor created
+Translating method: Entity::getX
+  [Scope] Entering scope at depth 0
+  [Scope] Exiting scope at depth 0 with 0 objects
+  -> Entity_getX with body translated
+  -> Entity_getX with 1 parameters
+Translating method: Entity::getY
+  [Scope] Entering scope at depth 0
+  [Scope] Exiting scope at depth 0 with 0 objects
+  -> Entity_getY with body translated
+  -> Entity_getY with 1 parameters
+Translating method: Entity::getWidth
+  [Scope] Entering scope at depth 0
+  [Scope] Exiting scope at depth 0 with 0 objects
+  -> Entity_getWidth with body translated
+  -> Entity_getWidth with 1 parameters
+Translating method: Entity::getHeight
+  [Scope] Entering scope at depth 0
+  [Scope] Exiting scope at depth 0 with 0 objects
+  -> Entity_getHeight with body translated
+  -> Entity_getHeight with 1 parameters
+Translating method: Entity::setPosition
+  [Scope] Entering scope at depth 0
+  [Scope] Exiting scope at depth 0 with 0 objects
+  -> Entity_setPosition with body translated
+  -> Entity_setPosition with 3 parameters
+Found variable: newX
+Found variable: newY
+Found variable: deltaTime
+Translating constructor: Entity::Entity
+  -> Injected vptr initialization
+  -> Entity__ctor with 5 parameters, 5 statements
+Found variable: x
+Found variable: y
+Found variable: width
+Found variable: height
+  -> Already translated, skipping redefinition of ~Entity
+  -> Already translated, skipping redefinition of Entity::getX
+  -> Already translated, skipping redefinition of Entity::getY
+  -> Already translated, skipping redefinition of Entity::getWidth
+  -> Already translated, skipping redefinition of Entity::getHeight
+  -> Already translated, skipping redefinition of Entity::setPosition
+Found variable: newX
+Found variable: newY
 
 ========================================
 Processing Template Instantiations
@@ -1281,13 +2009,14 @@ Template Monomorphization Complete
   Unique instantiations: 0
 ========================================
 
-C TranslationUnit has 0 generated declarations
+C TranslationUnit has 9 generated declarations
 Generated files:
   transpiled/src/Entity.h
-  transpiled/src/Entity.c
+  transpiled/src/[4/5] Processing file /Users/alexanderfedin/Projects/hapyy/hupyy-cpp-to-c/tests/real-world/simple-validation/05-game-logic/src/CollisionDetector.cpp.
+Entity.c
 Parsed file: /Users/alexanderfedin/Projects/hapyy/hupyy-cpp-to-c/tests/real-world/simple-validation/05-game-logic/src/CollisionDetector.cpp
 FileOriginTracker configured with user header paths
-Translation unit has 90 top-level declarations
+Translation unit has 94 top-level declarations
 Virtual method support initialized
 Template monomorphization enabled (limit: 1000 instantiations)
 Exception handling support initialized (SJLJ model)
@@ -1299,6 +2028,124 @@ Deducing this / explicit object parameter support initialized (C++23 P0847R7)
 if consteval support initialized (C++23 P1938R3) - Runtime strategy
 auto(x) decay-copy and partial constexpr support initialized (C++23 P0849R8)
 C TranslationUnit created for output generation
+Translating class: Entity
+  -> struct Entity with 5 fields
+  Generating implicit copy constructor
+  Generated copy constructor: Entity__ctor_copy
+  [Phase 31-03] Generated 1 constructor, 1 destructor, 6 method declarations
+
+// Static declarations for all Entity methods
+static void Entity__ctor_4(struct Entity *this, float x, float y, float width, float height);
+static void Entity__dtor(struct Entity *this);
+static float Entity_getX(const struct Entity *this);
+static float Entity_getY(const struct Entity *this);
+static float Entity_getWidth(const struct Entity *this);
+static float Entity_getHeight(const struct Entity *this);
+static void Entity_setPosition(struct Entity *this, float newX, float newY);
+static void Entity_update(struct Entity *this, float deltaTime);
+
+Generating vtable for polymorphic class: Entity
+Vtable struct generated:
+struct Entity_vtable {
+    const struct __class_type_info *type_info;  /**< RTTI type_info pointer (Itanium ABI vtable[-1]) */
+    void (*destructor)(struct Entity *this);
+    void (*update)(struct Entity *this, float deltaTime);
+};
+
+Vtable instance generated:
+
+// Vtable instance for Entity
+struct Entity_vtable Entity_vtable_instance = {
+    .type_info = &Entity_type_info,  // RTTI type_info (placeholder)
+    .destructor = Entity_destructor,
+    .update = Entity_update,
+};
+
+Found variable: x
+Found variable: y
+Found variable: width
+Found variable: height
+Translating destructor: ~Entity
+  -> Entity__dtor with 0 statements
+  -> Entity__dtor created
+Found variable: newX
+Found variable: newY
+Found variable: deltaTime
+Translating class: CollisionDetector
+  -> struct CollisionDetector with 0 fields
+  Generating implicit default constructor
+  Generated default constructor: CollisionDetector__ctor_default
+  Generating implicit copy constructor
+  Generated copy constructor: CollisionDetector__ctor_copy
+  [Phase 31-03] Generated 0 constructor, 0 destructor, 2 method declarations
+
+// Static declarations for all CollisionDetector methods
+static int CollisionDetector_checkCollision(struct CollisionDetector *this, const struct Entity * a, const struct Entity * b);
+static int CollisionDetector_pointInside(struct CollisionDetector *this, float px, float py, const struct Entity * entity);
+
+Translating method: CollisionDetector::checkCollision
+  [Scope] Entering scope at depth 0
+  [Translating DeclStmt]
+    Variable: aLeft
+  Warning: Method not in methodToCFunc map, generating call anyway: Entity::getX
+  Generated function name: Entity_getX
+  [Translating DeclStmt]
+    Variable: aRight
+  Warning: Method not in methodToCFunc map, generating call anyway: Entity::getWidth
+  Generated function name: Entity_getWidth
+  [Translating DeclStmt]
+    Variable: aTop
+  Warning: Method not in methodToCFunc map, generating call anyway: Entity::getY
+  Generated function name: Entity_getY
+  [Translating DeclStmt]
+    Variable: aBottom
+  Warning: Method not in methodToCFunc map, generating call anyway: Entity::getHeight
+  Generated function name: Entity_getHeight
+  [Translating DeclStmt]
+    Variable: bLeft
+  [Translating DeclStmt]
+    Variable: bRight
+  [Translating DeclStmt]
+    Variable: bTop
+  [Translating DeclStmt]
+    Variable: bBottom
+  [Scop[5/5] Processing file /Users/alexanderfedin/Projects/hapyy/hupyy-cpp-to-c/tests/real-world/simple-validation/05-game-logic/src/Enemy.cpp.
+e] Exiting scope at depth 0 with 0 objects
+  -> CollisionDetector_checkCollision with body translated
+  -> CollisionDetector_checkCollision with 3 parameters
+Found variable: a
+Found variable: b
+Translating method: CollisionDetector::pointInside
+  [Scope] Entering scope at depth 0
+  [Scope] Exiting scope at depth 0 with 0 objects
+  -> CollisionDetector_pointInside with body translated
+  -> CollisionDetector_pointInside with 4 parameters
+Found variable: px
+Found variable: py
+Found variable: entity
+  -> Already translated, skipping redefinition of CollisionDetector::checkCollision
+Found variable: a
+Found variable: b
+Found variable: aLeft
+Found variable: aRight
+Found variable: aTop
+Found variable: aBottom
+Found variable: bLeft
+Found variable: bRight
+Found variable: bTop
+Found variable: bBottom
+  -> Already translated, skipping redefinition of CollisionDetector::pointInside
+Found variable: px
+Found variable: py
+Found variable: entity
+Found variable: aLeft
+Found variable: aRight
+Found variable: aTop
+Found variable: aBottom
+Found variable: bLeft
+Found variable: bRight
+Found variable: bTop
+Found variable: bBottom
 
 ========================================
 Processing Template Instantiations
@@ -1316,18 +2163,15 @@ Template Monomorphization Complete
   Unique instantiations: 0
 ========================================
 
-C TranslationUnit has 0 generated declarations
+C TranslationUnit has 12 generated declarations
 Generated files:
   transpiled/src/CollisionDetector.h
   transpiled/src/CollisionDetector.c
 Parsed file: /Users/alexanderfedin/Projects/hapyy/hupyy-cpp-to-c/tests/real-world/simple-validation/05-game-logic/src/Enemy.cpp
 FileOriginTracker configured with user header paths
-Translation unit has 90 top-level declarations
+Translation unit has 109 top-level declarations
 Virtual method support initialized
-Template monomorphization enabled (limit: 1000 instantiations)Warning: No C AST nodes generated. Input may contain unsupported C++ features.
-1 error generated.
-Error while processing /Users/alexanderfedin/Projects/hapyy/hupyy-cpp-to-c/tests/real-world/simple-validation/05-game-logic/src/Enemy.cpp.
-
+Template monomorphization enabled (limit: 1000 instantiations)
 Exception handling support initialized (SJLJ model)
 RTTI support initialized (typeid and dynamic_cast)
 Multidimensional subscript operator support initialized (C++23)
@@ -1337,6 +2181,104 @@ Deducing this / explicit object parameter support initialized (C++23 P0847R7)
 if consteval support initialized (C++23 P1938R3) - Runtime strategy
 auto(x) decay-copy and partial constexpr support initialized (C++23 P0849R8)
 C TranslationUnit created for output generation
+Translating class: Entity
+  -> struct Entity with 5 fields
+  Generating implicit copy constructor
+  Generated copy constructor: Entity__ctor_copy
+  [Phase 31-03] Generated 1 constructor, 1 destructor, 6 method declarations
+
+// Static declarations for all Entity methods
+static void Entity__ctor_4(struct Entity *this, float x, float y, float width, float height);
+static void Entity__dtor(struct Entity *this);
+static float Entity_getX(const struct Entity *this);
+static float Entity_getY(const struct Entity *this);
+static float Entity_getWidth(const struct Entity *this);
+static float Entity_getHeight(const struct Entity *this);
+static void Entity_setPosition(struct Entity *this, float newX, float newY);
+static void Entity_update(struct Entity *this, float deltaTime);
+
+Generating vtable for polymorphic class: Entity
+Vtable struct generated:
+struct Entity_vtable {
+    const struct __class_type_info *type_info;  /**< RTTI type_info pointer (Itanium ABI vtable[-1]) */
+    void (*destructor)(struct Entity *this);
+    void (*update)(struct Entity *this, float deltaTime);
+};
+
+Vtable instance generated:
+
+// Vtable instance for Entity
+struct Entity_vtable Entity_vtable_instance = {
+    .type_info = &Entity_type_info,  // RTTI type_info (placeholder)
+    .destructor = Entity_destructor,
+    .update = Entity_update,
+};
+
+Found variable: x
+Found variable: y
+Found variable: width
+Found variable: height
+Translating destructor: ~Entity
+  -> Entity__dtor with 0 statements
+  -> Entity__dtor created
+Found variable: newX
+Found variable: newY
+Found variable: deltaTime
+Translating class: Enemy
+  -> struct Enemy with 7 fields
+  Generating implicit copy constructor
+    TODO: Call base copy constructor: Entity__ctor_copy
+  Generated copy constructor: Enemy__ctor_copy
+  [Phase 31-03] Generated 1 constructor, 1 destructor, 2 method declarations
+
+// Static declarations for all Enemy methods
+static void Enemy__ctor_2(struct Enemy *this, float x, float y);
+static void Enemy__dtor(struct Enemy *this);
+static int Enemy_getDamage(const struct Enemy *this);
+static void Enemy_update(struct Enemy *this, float deltaTime);
+
+Generating vtable for polymorphic class: Enemy
+Vtable struct generated:
+struct Enemy_vtable {
+    const struct __class_type_info *type_info;  /**< RTTI type_info pointer (Itanium ABI vtable[-1]) */
+    void (*destructor)(struct Enemy *this);
+    void (*update)(struct Enemy *this, float deltaTime);
+};
+
+Vtable instance generated:
+
+// Vtable instance for Enemy
+struct Enemy_vtable Enemy_vtable_instance = {
+    .type_info = &Enemy_type_info,  // RTTI type_info (placeholder)
+    .destructor = Enemy_destructor,
+    .update = Enemy_update,
+};
+
+Found variable: x
+Found variable: y
+Translating destructor: ~Enemy
+  Emitting base destructor call for: Entity
+  -> Added base destructor call to Entity__dtor
+  -> Enemy__dtor with 1 statements
+  -> Enemy__dtor created
+Translating method: Enemy::getDamage
+  [Scope] Entering scope at depth 0
+  [Scope] Exiting scope at depth 0 with 0 objects
+  -> Enemy_getDamage with body translated
+  -> Enemy_getDamage with 1 parameters
+Skipping virtual method (handled by vtable): Enemy::update
+Found variable: deltaTime
+Translating constructor: Enemy::Enemy
+  -> Injected vptr initialization
+  Translating base class initializer: Entity
+  Warning: Base constructor function not found
+  -> Enemy__ctor with 3 parameters, 3 statements
+Found variable: x
+Found variable: y
+  -> Already translated, skipping redefinition of ~Enemy
+  -> Already translated, skipping redefinition of Enemy::getDamage
+Skipping virtual method (handled by vtable): Enemy::update
+Found variable: deltaTime
 
 ========================================
 Processing Template Instantiations
@@ -1354,7 +2296,7 @@ Template Monomorphization Complete
   Unique instantiations: 0
 ========================================
 
-C TranslationUnit has 0 generated declarations
+C TranslationUnit has 8 generated declarations
 Generated files:
   transpiled/src/Enemy.h
   transpiled/src/Enemy.c
@@ -1362,9 +2304,186 @@ Generated files:
 Transpilation completed successfully. Generated 5 file pair(s).
     ✓ Transpilation successful
   [4/5] Building transpiled C version...
-    ✓ C build successful
-  [5/5] Running transpiled C version...
-    [0;31m✗ C execution failed[0m
+./main.c:22:15: warning: incompatible pointer types passing 'struct Player *' to parameter of type 'struct Entity *' [-Wincompatible-pointer-types]
+   22 |         Entity__dtor(this);
+      |                      ^~~~
+./main.c:13:35: note: passing argument to parameter 'this' here
+   13 | void Entity__dtor(struct Entity * this) {
+      |                                   ^
+./main.c:31:15: warning: incompatible pointer types passing 'struct Enemy *' to parameter of type 'struct Entity *' [-Wincompatible-pointer-types]
+   31 |         Entity__dtor(this);
+      |                      ^~~~
+./main.c:13:35: note: passing argument to parameter 'this' here
+   13 | void Entity__dtor(struct Entity * this) {
+      |                                   ^
+./main.c:49:20: error: use of undeclared identifier 'CollisionDetector'
+   49 |         bool colliding1 = CollisionDetector::checkCollision(player, enemy);
+      |                           ^
+./main.c:49:37: error: expected ';' at end of declaration
+   49 |         bool colliding1 = CollisionDetector::checkCollision(player, enemy);
+      |                                            ^
+      |                                            ;
+./main.c:51:21: warning: incompatible pointer types passing 'struct Enemy *' to parameter of type 'struct Entity *' [-Wincompatible-pointer-types]
+   51 |         Entity_setPosition(&enemy, 110.F, 100.F);
+      |                            ^~~~~~
+./main.c:40:41: note: passing argument to parameter 'this' here
+   40 | void Entity_setPosition(struct Entity * this, float newX, float newY);
+      |                                         ^
+./main.c:52:20: error: use of undeclared identifier 'CollisionDetector'
+   52 |         bool colliding2 = CollisionDetector::checkCollision(player, enemy);
+      |                           ^
+./main.c:52:37: error: expected ';' at end of declaration
+   52 |         bool colliding2 = CollisionDetector::checkCollision(player, enemy);
+      |                                            ^
+      |                                            ;
+./main.c:56:16: error: use of undeclared identifier 'CollisionDetector'
+   56 |         bool inside = CollisionDetector::pointInside(115.F, 115.F, player);
+      |                       ^
+./main.c:56:33: error: expected ';' at end of declaration
+   56 |         bool inside = CollisionDetector::pointInside(115.F, 115.F, player);
+      |                                        ^
+      |                                        ;
+./main.c:60:29: error: no member named 'getHealth' in 'struct Player'
+   60 |         passed = passed && (player.getHealth() == 90);
+      |                             ~~~~~~ ^
+./main.c:61:29: error: no member named 'getScore' in 'struct Player'
+   61 |         passed = passed && (player.getScore() == 100);
+      |                             ~~~~~~ ^
+3 warnings and 8 errors generated.
+./src/Enemy.c:22:15: warning: incompatible pointer types passing 'struct Enemy *' to parameter of type 'struct Entity *' [-Wincompatible-pointer-types]
+   22 |         Entity__dtor(this);
+      |                      ^~~~
+./src/Enemy.c:13:35: note: passing argument to parameter 'this' here
+   13 | void Entity__dtor(struct Entity * this) {
+      |                                   ^
+./src/Enemy.c:31:10: error: use of undeclared identifier '__vtable_Enemy'
+   31 |         this = &__vtable_Enemy;
+      |                 ^
+1 warning and 1 error generated.
+./src/Entity.c:42:10: error: use of undeclared identifier '__vtable_Entity'
+   42 |         this = &__vtable_Entity;
+      |                 ^
+1 error generated.
+./src/Player.c:22:15: warning: incompatible pointer types passing 'struct Player *' to parameter of type 'struct Entity *' [-Wincompatible-pointer-types]
+   22 |         Entity__dtor(this);
+      |                      ^~~~
+./src/Player.c:13:35: note: passing argument to parameter 'this' here
+   13 | void Entity__dtor(struct Entity * this) {
+      |                                   ^
+./src/Player.c:48:10: error: use of undeclared identifier '__vtable_Player'
+   48 |         this = &__vtable_Player;
+      |                 ^
+1 warning and 1 error generated.
+./src/CollisionDetector.c:27:28: warning: incompatible pointer types passing 'const struct Entity **' to parameter of type 'struct Entity *' [-Wincompatible-pointer-types]
+   27 |         float aLeft = Entity_getX(&a);
+      |                                   ^~
+./src/CollisionDetector.c:22:35: note: passing argument to parameter 'this' here
+   22 | float Entity_getX(struct Entity * this);
+      |                                   ^
+./src/CollisionDetector.c:29:29: warning: incompatible pointer types passing 'const struct Entity **' to parameter of type 'struct Entity *' [-Wincompatible-pointer-types]
+   29 |         float aRight = Entity_getX(&a) + Entity_getWidth(&a);
+      |                                    ^~
+./src/CollisionDetector.c:22:35: note: passing argument to parameter 'this' here
+   22 | float Entity_getX(struct Entity * this);
+      |                                   ^
+./src/CollisionDetector.c:29:51: warning: incompatible pointer types passing 'const struct Entity **' to parameter of type 'struct Entity *' [-Wincompatible-pointer-types]
+   29 |         float aRight = Entity_getX(&a) + Entity_getWidth(&a);
+      |                                                          ^~
+./src/CollisionDetector.c:23:39: note: passing argument to parameter 'this' here
+   23 | float Entity_getWidth(struct Entity * this);
+      |                                       ^
+./src/CollisionDetector.c:31:27: warning: incompatible pointer types passing 'const struct Entity **' to parameter of type 'struct Entity *' [-Wincompatible-pointer-types]
+   31 |         float aTop = Entity_getY(&a);
+      |                                  ^~
+./src/CollisionDetector.c:24:35: note: passing argument to parameter 'this' here
+   24 | float Entity_getY(struct Entity * this);
+      |                                   ^
+./src/CollisionDetector.c:33:30: warning: incompatible pointer types passing 'const struct Entity **' to parameter of type 'struct Entity *' [-Wincompatible-pointer-types]
+   33 |         float aBottom = Entity_getY(&a) + Entity_getHeight(&a);
+      |                                     ^~
+./src/CollisionDetector.c:24:35: note: passing argument to parameter 'this' here
+   24 | float Entity_getY(struct Entity * this);
+      |                                   ^
+./src/CollisionDetector.c:33:53: warning: incompatible pointer types passing 'const struct Entity **' to parameter of type 'struct Entity *' [-Wincompatible-pointer-types]
+   33 |         float aBottom = Entity_getY(&a) + Entity_getHeight(&a);
+      |                                                            ^~
+./src/CollisionDetector.c:25:40: note: passing argument to parameter 'this' here
+   25 | float Entity_getHeight(struct Entity * this);
+      |                                        ^
+./src/CollisionDetector.c:35:28: warning: incompatible pointer types passing 'const struct Entity **' to parameter of type 'struct Entity *' [-Wincompatible-pointer-types]
+   35 |         float bLeft = Entity_getX(&b);
+      |                                   ^~
+./src/CollisionDetector.c:22:35: note: passing argument to parameter 'this' here
+   22 | float Entity_getX(struct Entity * this);
+      |                                   ^
+./src/CollisionDetector.c:37:29: warning: incompatible pointer types passing 'const struct Entity **' to parameter of type 'struct Entity *' [-Wincompatible-pointer-types]
+   37 |         float bRight = Entity_getX(&b) + Entity_getWidth(&b);
+      |                                    ^~
+./src/CollisionDetector.c:22:35: note: passing argument to parameter 'this' here
+   22 | float Entity_getX(struct Entity * this);
+      |                                   ^
+./src/CollisionDetector.c:37:51: warning: incompatible pointer types passing 'const struct Entity **' to parameter of type 'struct Entity *' [-Wincompatible-pointer-types]
+   37 |         float bRight = Entity_getX(&b) + Entity_getWidth(&b);
+      |                                                          ^~
+./src/CollisionDetector.c:23:39: note: passing argument to parameter 'this' here
+   23 | float Entity_getWidth(struct Entity * this);
+      |                                       ^
+./src/CollisionDetector.c:39:27: warning: incompatible pointer types passing 'const struct Entity **' to parameter of type 'struct Entity *' [-Wincompatible-pointer-types]
+   39 |         float bTop = Entity_getY(&b);
+      |                                  ^~
+./src/CollisionDetector.c:24:35: note: passing argument to parameter 'this' here
+   24 | float Entity_getY(struct Entity * this);
+      |                                   ^
+./src/CollisionDetector.c:41:30: warning: incompatible pointer types passing 'const struct Entity **' to parameter of type 'struct Entity *' [-Wincompatible-pointer-types]
+   41 |         float bBottom = Entity_getY(&b) + Entity_getHeight(&b);
+      |                                     ^~
+./src/CollisionDetector.c:24:35: note: passing argument to parameter 'this' here
+   24 | float Entity_getY(struct Entity * this);
+      |                                   ^
+./src/CollisionDetector.c:41:53: warning: incompatible pointer types passing 'const struct Entity **' to parameter of type 'struct Entity *' [-Wincompatible-pointer-types]
+   41 |         float bBottom = Entity_getY(&b) + Entity_getHeight(&b);
+      |                                                            ^~
+./src/CollisionDetector.c:25:40: note: passing argument to parameter 'this' here
+   25 | float Entity_getHeight(struct Entity * this);
+      |                                        ^
+./src/CollisionDetector.c:48:27: warning: incompatible pointer types passing 'const struct Entity **' to parameter of type 'struct Entity *' [-Wincompatible-pointer-types]
+   48 |         return px >= Entity_getX(&entity) && px <= Entity_getX(&entity) + Entity_getWidth(&entity) && py >= Entity_getY(&entity) && py <= Entity_getY(&entity) + Entity_getHeight(&entity);
+      |                                  ^~~~~~~
+./src/CollisionDetector.c:22:35: note: passing argument to parameter 'this' here
+   22 | float Entity_getX(struct Entity * this);
+      |                                   ^
+./src/CollisionDetector.c:48:57: warning: incompatible pointer types passing 'const struct Entity **' to parameter of type 'struct Entity *' [-Wincompatible-pointer-types]
+   48 |         return px >= Entity_getX(&entity) && px <= Entity_getX(&entity) + Entity_getWidth(&entity) && py >= Entity_getY(&entity) && py <= Entity_getY(&entity) + Entity_getHeight(&entity);
+      |                                                                ^~~~~~~
+./src/CollisionDetector.c:22:35: note: passing argument to parameter 'this' here
+   22 | float Entity_getX(struct Entity * this);
+      |                                   ^
+./src/CollisionDetector.c:48:84: warning: incompatible pointer types passing 'const struct Entity **' to parameter of type 'struct Entity *' [-Wincompatible-pointer-types]
+   48 |         return px >= Entity_getX(&entity) && px <= Entity_getX(&entity) + Entity_getWidth(&entity) && py >= Entity_getY(&entity) && py <= Entity_getY(&entity) + Entity_getHeight(&entity);
+      |                                                                                           ^~~~~~~
+./src/CollisionDetector.c:23:39: note: passing argument to parameter 'this' here
+   23 | float Entity_getWidth(struct Entity * this);
+      |                                       ^
+./src/CollisionDetector.c:48:114: warning: incompatible pointer types passing 'const struct Entity **' to parameter of type 'struct Entity *' [-Wincompatible-pointer-types]
+   48 |         return px >= Entity_getX(&entity) && px <= Entity_getX(&entity) + Entity_getWidth(&entity) && py >= Entity_getY(&entity) && py <= Entity_getY(&entity) + Entity_getHeight(&entity);
+      |                                                                                                                         ^~~~~~~
+./src/CollisionDetector.c:24:35: note: passing argument to parameter 'this' here
+   24 | float Entity_getY(struct Entity * this);
+      |                                   ^
+./src/CollisionDetector.c:48:144: warning: incompatible pointer types passing 'const struct Entity **' to parameter of type 'struct Entity *' [-Wincompatible-pointer-types]
+   48 |         return px >= Entity_getX(&entity) && px <= Entity_getX(&entity) + Entity_getWidth(&entity) && py >= Entity_getY(&entity) && py <= Entity_getY(&entity) + Entity_getHeight(&entity);
+      |                                                                                                                                                       ^~~~~~~
+./src/CollisionDetector.c:24:35: note: passing argument to parameter 'this' here
+   24 | float Entity_getY(struct Entity * this);
+      |                                   ^
+./src/CollisionDetector.c:48:172: warning: incompatible pointer types passing 'const struct Entity **' to parameter of type 'struct Entity *' [-Wincompatible-pointer-types]
+   48 |         return px >= Entity_getX(&entity) && px <= Entity_getX(&entity) + Entity_getWidth(&entity) && py >= Entity_getY(&entity) && py <= Entity_getY(&entity) + Entity_getHeight(&entity);
+      |                                                                                                                                                                                   ^~~~~~~
+./src/CollisionDetector.c:25:40: note: passing argument to parameter 'this' here
+   25 | float Entity_getHeight(struct Entity * this);
+      |                                        ^
+18 warnings generated.
+    [0;31m✗ C build failed[0m
 [0;31m❌ FAIL: Game Logic[0m
 
 ========================================
