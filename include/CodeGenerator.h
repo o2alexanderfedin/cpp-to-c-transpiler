@@ -74,4 +74,10 @@ private:
     /// @return true if E or any child contains RecoveryExpr
     /// BUG FIX: Prevents literal "<recovery-expr>()" from appearing in generated C code
     bool containsRecoveryExpr(clang::Expr *E);
+
+    // Bug #23: Print enum as typedef enum for C compatibility
+    /// @brief Print enum declaration as C typedef enum
+    /// @param ED Enum declaration to print
+    /// BUG FIX: Prints "typedef enum { ... } Name;" instead of "enum Name : int { ... };"
+    void printEnumDecl(clang::EnumDecl *ED);
 };

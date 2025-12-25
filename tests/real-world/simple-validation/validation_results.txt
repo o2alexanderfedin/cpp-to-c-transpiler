@@ -58,33 +58,17 @@ static float Vector3D_dot(const struct Vector3D *this, const struct Vector3D * o
 static struct Vector3D Vector3D_cross(const struct Vector3D *this, const struct Vector3D * other);
 static float Vector3D_magnitude(const struct Vector3D *this);
 
-Translating constructor: Vector3D::Vector3D
-  -> Vector3D__ctor with 4 parameters, 0 statements
 Found variable: x
 Found variable: y
 Found variable: z
-Translating method: Vector3D::add
-  -> Vector3D_add (no body)
-  -> Vector3D_add with 2 parameters
 Found variable: other
-Translating method: Vector3D::subtract
-  -> Vector3D_subtract (no body)
-  -> Vector3D_subtract with 2 parameters
 Found variable: other
-Translating method: Vector3D::dot
-  -> Vector3D_dot (no body)
-  -> Vector3D_dot with 2 parameters
 Found variable: other
-Translating method: Vector3D::cross
-  -> Vector3D_cross (no body)
-  -> Vector3D_cross with 2 parameters
 Found variable: other
-Translating method: Vector3D::magnitude
-  -> Vector3D_magnitude (no body)
-  -> Vector3D_magnitude with 1 parameters
 Translating class: Matrix3x3
   -> struct Matrix3x3 with 1 fields
   Generating implicit copy constructor
+    Using memcpy for array field: data
   Generated copy constructor: Matrix3x3__ctor_copy
   [Phase 31-03] Generated 2 constructor, 0 destructor, 5 method declarations
 
@@ -97,10 +81,6 @@ static struct Vector3D Matrix3x3_multiply(const struct Matrix3x3 *this, const st
 static float Matrix3x3_get(const struct Matrix3x3 *this, int row, int col);
 static void Matrix3x3_set(struct Matrix3x3 *this, int row, int col, float value);
 
-Translating constructor: Matrix3x3::Matrix3x3
-  -> Matrix3x3__ctor with 1 parameters, 0 statements
-Translating constructor: Matrix3x3::Matrix3x3
-  -> Matrix3x3__ctor_9 with 10 parameters, 0 statements
 Found variable: m00
 Found variable: m01
 Found variable: m02
@@ -110,29 +90,11 @@ Found variable: m12
 Found variable: m20
 Found variable: m21
 Found variable: m22
-Translating method: Matrix3x3::add
-  -> Matrix3x3_add (no body)
-  -> Matrix3x3_add with 2 parameters
 Found variable: other
-Translating method: Matrix3x3::multiply
-  -> Matrix3x3_multiply (no body)
-  -> Matrix3x3_multiply with 2 parameters1 error generated.
-Error while processing /Users/alexanderfedin/Projects/hapyy/hupyy-cpp-to-c/tests/real-world/simple-validation/01-math-library/main.cpp.
-[2/3] Processing file /Users/alexanderfedin/Projects/hapyy/hupyy-cpp-to-c/tests/real-world/simple-validation/01-math-library/src/Matrix3x3.cpp.
-
 Found variable: other
-Translating method: Matrix3x3::multiply
-  -> Matrix3x3_multiply_Vector3D_ref (no body)
-  -> Matrix3x3_multiply_Vector3D_ref with 2 parameters
 Found variable: vec
-Translating method: Matrix3x3::get
-  -> Matrix3x3_get (no body)
-  -> Matrix3x3_get with 3 parameters
 Found variable: row
 Found variable: col
-Translating method: Matrix3x3::set
-  -> Matrix3x3_set (no body)
-  -> Matrix3x3_set with 4 parameters
 Found variable: row
 Found variable: col
 Found variable: value
@@ -148,8 +110,7 @@ Translating standalone function: main
       Found C struct: Vector3D
       Creating C variable declaration
       Has constructor expression
-      Found C constructor: Vector3D__ctor
-      Creating constructor call
+      WARNING: C constructor not found in ctorMap!
   [Translating DeclStmt]
     Variable: v2
       Is a struct/class type
@@ -157,22 +118,32 @@ Translating standalone function: main
       Found C struct: Vector3D
       Creating C variable declaration
       Has constructor expression
-      Found C constructor: Vector3D__ctor
-      Creating constructor call
+      WARNING: C constructor not found in ctorMap!
   [Translating DeclStmt]
     Variable: sum
       Is a struct/class type
       Is a C++ class: Vector3D
       Found C struct: Vector3D
       Creating C variable declaration
-  [Translating DeclStmt]
+  [Translating DeclSt1 error generated.
+Error while processing /Users/alexanderfedin/Projects/hapyy/hupyy-cpp-to-c/tests/real-world/simple-validation/01-math-library/main.cpp.
+[2/3] Processing file /Users/alexanderfedin/Projects/hapyy/hupyy-cpp-to-c/tests/real-world/simple-validation/01-math-library/src/Matrix3x3.cpp.
+mt]
     Variable: dot
+  Warning: Method not in methodToCFunc map, generating call anyway: Vector3D::dot
+  Generated function name: Vector3D_dot
   [Translating DeclStmt]
     Variable: cross
       Is a struct/class type
       Is a C++ class: Vector3D
       Found C struct: Vector3D
       Creating C variable declaration
+  [Bug #8] Skipping statement containing RecoveryExpr
+  [Bug #8] Skipping statement containing RecoveryExpr
+  [Bug #8] Skipping statement containing RecoveryExpr
+  [Bug #8] Skipping statement containing RecoveryExpr
+  [Bug #8] Skipping statement containing RecoveryExpr
+  [Bug #8] Skipping statement containing RecoveryExpr
   [Translating DeclStmt]
     Variable: m1
       Is a struct/class type
@@ -180,8 +151,7 @@ Translating standalone function: main
       Found C struct: Matrix3x3
       Creating C variable declaration
       Has constructor expression
-      Found C constructor: Matrix3x3__ctor_9
-      Creating constructor call
+      WARNING: C constructor not found in ctorMap!
   [Translating DeclStmt]
     Variable: m2
       Is a struct/class type
@@ -189,8 +159,7 @@ Translating standalone function: main
       Found C struct: Matrix3x3
       Creating C variable declaration
       Has constructor expression
-      Found C constructor: Matrix3x3__ctor_9
-      Creating constructor call
+      WARNING: C constructor not found in ctorMap!
   [Translating DeclStmt]
     Variable: mProd
       Is a struct/class type
@@ -203,8 +172,21 @@ Translating standalone function: main
       Is a C++ class: Vector3D
       Found C struct: Vector3D
       Creating C variable declaration
+  [Bug #8] Skipping statement containing RecoveryExpr
+  [Bug #8] Skipping statement containing RecoveryExpr
+  [Bug #8] Skipping statement containing RecoveryExpr
   [Translating DeclStmt]
     Variable: passed
+  [Bug #8] Skipping statement containing RecoveryExpr
+  [Bug #8] Skipping statement containing RecoveryExpr
+  [Bug #8] Skipping statement containing RecoveryExpr
+  [Bug #8] Skipping statement containing RecoveryExpr
+  [Bug #8] Skipping statement containing RecoveryExpr
+  [Bug #8] Skipping statement containing RecoveryExpr
+  [Bug #8] Skipping statement containing RecoveryExpr
+  [Bug #8] Skipping statement containing RecoveryExpr
+  [Bug #8] Skipping statement containing RecoveryExpr
+  [Bug #8] Skipping statement containing RecoveryExpr
   [Scope] Exiting scope at depth 0 with 0 objects
   -> C function 'main' created
   Parameters: 0
@@ -246,7 +228,7 @@ Template Monomorphization Complete
   Unique instantiations: 0
 ========================================
 
-C TranslationUnit has 18 generated declarations
+C TranslationUnit has 6 generated declarations
 Generated files:
   transpiled/main.h
   transpiled/main.c
@@ -278,33 +260,17 @@ static float Vector3D_dot(const struct Vector3D *this, const struct Vector3D * o
 static struct Vector3D Vector3D_cross(const struct Vector3D *this, const struct Vector3D * other);
 static float Vector3D_magnitude(const struct Vector3D *this);
 
-Translating constructor: Vector3D::Vector3D
-  -> Vector3D__ctor with 4 parameters, 0 statements
 Found variable: x
 Found variable: y
 Found variable: z
-Translating method: Vector3D::add
-  -> Vector3D_add (no body)
-  -> Vector3D_add with 2 parameters
 Found variable: other
-Translating method: Vector3D::subtract
-  -> Vector3D_subtract (no body)
-  -> Vector3D_subtract with 2 parameters
 Found variable: other
-Translating method: Vector3D::dot
-  -> Vector3D_dot (no body)
-  -> Vector3D_dot with 2 parameters
 Found variable: other
-Translating method: Vector3D::cross
-  -> Vector3D_cross (no body)
-  -> Vector3D_cross with 2 parameters
 Found variable: other
-Translating method: Vector3D::magnitude
-  -> Vector3D_magnitude (no body)
-  -> Vector3D_magnitude with 1 parameters
 Translating class: Matrix3x3
   -> struct Matrix3x3 with 1 fields
   Generating implicit copy constructor
+    Using memcpy for array field: data
   Generated copy constructor: Matrix3x3__ctor_copy
   [Phase 31-03] Generated 2 constructor, 0 destructor, 5 method declarations
 
@@ -317,10 +283,6 @@ static struct Vector3D Matrix3x3_multiply(const struct Matrix3x3 *this, const st
 static float Matrix3x3_get(const struct Matrix3x3 *this, int row, int col);
 static void Matrix3x3_set(struct Matrix3x3 *this, int row, int col, float value);
 
-Translating constructor: Matrix3x3::Matrix3x3
-  -> Matrix3x3__ctor with 1 parameters, 1 statements
-Translating constructor: Matrix3x3::Matrix3x3
-  -> Matrix3x3__ctor_9 with 10 parameters, 9 statements
 Found variable: m00
 Found variable: m01
 Found variable: m02
@@ -340,6 +302,10 @@ Translating method: Matrix3x3::add
       Creating C variable declaration
       Has constructor expression
       WARNING: C constructor not found in ctorMap!
+  [Translating DeclStmt]
+    Variable: i
+  [Scope] Entering scope at depth 1
+  [Scope] Exiting scope at depth 1 with 0 objects
   [Scope] Exiting scope at depth 0 with 0 objects
   -> Matrix3x3_add with body translated
   -> Matrix3x3_add with 2 parameters
@@ -354,21 +320,26 @@ Translating method: Matrix3x3::multiply
       Creating C variable declaration
       Has constructor expression
       WARNING: C constructor not found in ctorMap!
+  [Translating DeclStmt]
+    Variable: row
+  [Scope] Entering scope at depth 1
+  [Translating DeclStmt]
+    Variable: col
+  [Scope] Entering scope at depth 2
+  [Translating DeclStmt]
+    Variable: sum
+  [Translating DeclStmt]
+    Variable: k
+  [Scope] Entering scope at depth 3
+  [Scope] Exiting scope at depth 3 with 0 objects
+  [Scope] Exiting scope at depth 2 with 0 objects
+  [Scope] Exiting scope at depth 1 with 0 objects
   [Scope] Exiting scope at depth 0 with 0 objects
   -> Matrix3x3_multiply with body translated
   -> Matrix3x3_multiply with 2 parameters
 Found variable: other
 Translating method: Matrix3x3::multiply
   [Scope] Entering scope at depth 0
-  Translating member access: x
-  Translating member access: y
-  Translating member access: z
-  Translating member access: x
-  Translating member access: y
-  Translating member access: z
-  Translating member access: x
-  Translating member access: y
-  Translating member access: z
   [Scope] Exiting scope at depth 0 with 0 objects
   -> Matrix3x3_multiply_Vector3D_ref with body translated
   -> Matrix3x3_multiply_Vector3D_ref with 2 parameters
@@ -377,7 +348,11 @@ Translating method: Matrix3x3::get
   [Scope] Entering scope at depth 0
   [Scope] Exiting scope at depth 0 with 0 objects
   -> Matrix3x3_get with body translated
-  -> Matrix3x3_get with 3 parameters
+  -> Matrix3x3_get wi[3/3] Processing file /Users/alexanderfedin/Projects/hapyy/hupyy-cpp-to-c/tests/real-world/simple-validation/01-math-library/src/Vector3D.cpp.
+src/Vector3D.cpp:2:10: fatal error: 'cmath' file not found
+    2 | #include <cmath>
+      |          ^~~~~~~
+th 3 parameters
 Found variable: row
 Found variable: col
 Translating method: Matrix3x3::set
@@ -389,7 +364,11 @@ Found variable: row
 Found variable: col
 Found variable: value
 Translating constructor: Matrix3x3::Matrix3x3
-  -> Matrix3x3__ctor_0 with 1 parameters, 1 statements
+  [Translating DeclStmt]
+    Variable: i
+  [Scope] Entering scope at depth 0
+  [Scope] Exiting scope at depth 0 with 0 objects
+  -> Matrix3x3__ctor with 1 parameters, 1 statements
 Found variable: i
 Translating constructor: Matrix3x3::Matrix3x3
   -> Matrix3x3__ctor_9 with 10 parameters, 9 statements
@@ -402,74 +381,26 @@ Found variable: m12
 Found variable: m20
 Found variable: m21
 Found variable: m22
-Translating method: Matrix3x3::add
-  [Scope] Entering scope at depth 0
-  [Translating DeclStmt]
-    Variable: result
-      Is a struct/class type
-      Is a C++ class: Matrix3x3
-      Found C struct: Matrix3x3
-      Creating C variable declaration
-      Has constructor expression
-      Found C constructor: Matrix3x3__ctor_0
-      Creating constructor call
-  [Scope] Exiting scope at depth 0 with 0 objects
-  -> Matrix3x3_add_Matrix3x3_ref with body translated
-  -> Matrix3x3_add_Matrix3x3_ref with 2 parameters
+  -> Already translated, skipping redefinition of Matrix3x3::add
 Found variable: other
 Found variable: result
 Found variable: i
-Translating method: Matrix3x3::multiply
-  [Scope] Entering scope at depth 0
-  [Translating DeclStmt]
-    Variable: result
-      Is a struct/class type
-      Is a C++ class: Matrix3x3
-      Found C struct: Matrix3x3
-      Creating C variable declaration
-      Has constructor expression
-      Found C constructor: Matrix3x3__ctor_0
-      Creating constructor call
-  [Scope] Exiting scope at depth 0 with 0 objects
-  -> Matrix3x3_multiply_Matrix3x3_ref with body translated
-  -> Matrix3x3_multiply_Matrix3x3_ref with 2 parameters
+  -> Already translated, skipping redefinition of Matrix3x3::multiply
 Found variable: other
 Found variable: result
 Found variable: row
 Found variable: col
 Found variable: sum
 Found variable: k
-Translating method: Matrix3x3::multiply
-  [Scope] Entering scope at depth 0
-  Translating member access: x
-  Translating member access: y
-  Translating member access: z
-  Translating member access: x
-  Translating member access: y
-  Translating member access: z
-  Translating member access: x
-  Translating member access: y
-  Translating member access: z
-  [Scope] Exiting scope at depth 0 with 0 objects
-  -> Matrix3x3_multiply_Vector3D_ref with body translated
-  -> Matrix3x3_multiply_Vector3D_ref with 2 parameters
+  -> Already translated, skipping redefinition of Matrix3x3::multiply
 Found variable: vec
-Translating method: Matrix3x3::get
-  [Scope] Entering scope at depth 0
-  [Scope] Exiting scope at depth 0 with 0 objects
-  -> Matrix3x3_get_int_int with body translated
-  -> Matrix3x3_get_int_int with 3 parameters
+  -> Already translated, skipping redefinition of Matrix3x3::get
 Found variable: row
 Found variable: col
-Translating method: Matrix3x3::set
-  [Scope] Entering scope at depth 0
-  [Scope] Exiting scope at depth 0 with 0 objects
-  -> Matrix3x3_set_int_int_float with body translated
-  -> Matrix3x3_set_int_int_float with 4 parameters
+  -> Already translated, skipping redefinition of Matrix3x3::set
 Found variable: row
 Found variable: col
 Found variable: value
-Found variable: i
 Found variable: result
 Found variable: i
 Found variable: result
@@ -478,17 +409,6 @@ Found variable: col
 Found variable: sum
 Found variable: k
 Found variable: i
-Found variable: result
-Found variable: i
-Found variable: result
-Found variable: row
-[3/3] Processing file /Users/alexanderfedin/Projects/hapyy/hupyy-cpp-to-c/tests/real-world/simple-validation/01-math-library/src/Vector3D.cpp.
-src/Vector3D.cpp:2:10: fatal error: 'cmath' file not found
-    2 | #include <cmath>
-      |          ^~~~~~~
-Found variable: col
-Found variable: sum
-Found variable: k
 
 ========================================
 Processing Template Instantiations
@@ -506,7 +426,7 @@ Template Monomorphization Complete
   Unique instantiations: 0
 ========================================
 
-C TranslationUnit has 24 generated declarations
+C TranslationUnit has 11 generated declarations
 Generated files:
   transpiled/src/Matrix3x3.h
   transpiled/src/Matrix3x3.c
@@ -538,136 +458,55 @@ static float Vector3D_dot(const struct Vector3D *this, const struct Vector3D * o
 static struct Vector3D Vector3D_cross(const struct Vector3D *this, const struct Vector3D * other);
 static float Vector3D_magnitude(const struct Vector3D *this);
 
-Translating constructor: Vector3D::Vector3D
-  -> Vector3D__ctor with 4 parameters, 0 statements
 Found variable: x
 Found variable: y
 Found variable: z
 Translating method: Vector3D::add
   [Scope] Entering scope at depth 0
-  Translating member access: x
-  Translating member access: x
-  Translating member access: y
-  Translating member access: y
-  Translating member access: z
-  Translating member access: z
   [Scope] Exiting scope at depth 0 with 0 objects
   -> Vector3D_add with body translated
   -> Vector3D_add with 2 parameters
 Found variable: other
 Translating method: Vector3D::subtract
-  [Scope] Entering scope at depth 0
-  Translating member access: x
-  Translating member access: x
-  Translating member access: y
-  Translating member access: y
-  Translating member access: z
-  Translating member access: z
+  [Scope] Entering s1 error generated.
+Error while processing /Users/alexanderfedin/Projects/hapyy/hupyy-cpp-to-c/tests/real-world/simple-validation/01-math-library/src/Vector3D.cpp.
+cope at depth 0
   [Scope] Exiting scope at depth 0 with 0 objects
   -> Vector3D_subtract with body translated
   -> Vector3D_subtract with 2 parameters
 Found variable: other
 Translating method: Vector3D::dot
   [Scope] Entering scope at depth 0
-  Translating member access: x
-  Translating member access: x
-  Translating member access: y
-  Translating member access: y
-  Translating member access: z
-  Translating member access: z
   [Scope] Exiting scope at depth 0 with 0 objects
   -> Vector3D_dot with body translated
   -> Vector3D_dot with 2 parameters
 Found variable: other
 Translating method: Vector3D::cross
   [Scope] Entering scope at depth 0
-  Translating member access: y
-  Translating member access: z
-  Translating member access: z
-  Translating member access: y
-  Translating member access: z
-  Translating member access: x
-  Translating member access: x
-  Translating member access: z
-  Translating member access: x
-  Translating member access: y
-  Translating member access: y
-  Translating member access: x
   [Scope] Exiting scope at depth 0 with 0 objects
   -> Vector3D_cross with body translated
-  -> Vec1 error generated.
-Error while processing /Users/alexanderfedin/Projects/hapyy/hupyy-cpp-to-c/tests/real-world/simple-validation/01-math-library/src/Vector3D.cpp.
-tor3D_cross with 2 parameters
+  -> Vector3D_cross with 2 parameters
 Found variable: other
 Translating method: Vector3D::magnitude
   [Scope] Entering scope at depth 0
+  [Bug #8] Skipping statement containing RecoveryExpr
   [Scope] Exiting scope at depth 0 with 0 objects
   -> Vector3D_magnitude with body translated
   -> Vector3D_magnitude with 1 parameters
 Translating constructor: Vector3D::Vector3D
-  -> Vector3D__ctor_3 with 4 parameters, 3 statements
+  -> Vector3D__ctor with 4 parameters, 3 statements
 Found variable: x
 Found variable: y
 Found variable: z
-Translating method: Vector3D::add
-  [Scope] Entering scope at depth 0
-  Translating member access: x
-  Translating member access: x
-  Translating member access: y
-  Translating member access: y
-  Translating member access: z
-  Translating member access: z
-  [Scope] Exiting scope at depth 0 with 0 objects
-  -> Vector3D_add_Vector3D_ref with body translated
-  -> Vector3D_add_Vector3D_ref with 2 parameters
+  -> Already translated, skipping redefinition of Vector3D::add
 Found variable: other
-Translating method: Vector3D::subtract
-  [Scope] Entering scope at depth 0
-  Translating member access: x
-  Translating member access: x
-  Translating member access: y
-  Translating member access: y
-  Translating member access: z
-  Translating member access: z
-  [Scope] Exiting scope at depth 0 with 0 objects
-  -> Vector3D_subtract_Vector3D_ref with body translated
-  -> Vector3D_subtract_Vector3D_ref with 2 parameters
+  -> Already translated, skipping redefinition of Vector3D::subtract
 Found variable: other
-Translating method: Vector3D::dot
-  [Scope] Entering scope at depth 0
-  Translating member access: x
-  Translating member access: x
-  Translating member access: y
-  Translating member access: y
-  Translating member access: z
-  Translating member access: z
-  [Scope] Exiting scope at depth 0 with 0 objects
-  -> Vector3D_dot_Vector3D_ref with body translated
-  -> Vector3D_dot_Vector3D_ref with 2 parameters
+  -> Already translated, skipping redefinition of Vector3D::dot
 Found variable: other
-Translating method: Vector3D::cross
-  [Scope] Entering scope at depth 0
-  Translating member access: y
-  Translating member access: z
-  Translating member access: z
-  Translating member access: y
-  Translating member access: z
-  Translating member access: x
-  Translating member access: x
-  Translating member access: z
-  Translating member access: x
-  Translating member access: y
-  Translating member access: y
-  Translating member access: x
-  [Scope] Exiting scope at depth 0 with 0 objects
-  -> Vector3D_cross_Vector3D_ref with body translated
-  -> Vector3D_cross_Vector3D_ref with 2 parameters
+  -> Already translated, skipping redefinition of Vector3D::cross
 Found variable: other
-Translating method: Vector3D::magnitude
-  [Scope] Entering scope at depth 0
-  [Scope] Exiting scope at depth 0 with 0 objects
-  -> Vector3D_magnitude with body translated
-  -> Vector3D_magnitude with 1 parameters
+  -> Already translated, skipping redefinition of Vector3D::magnitude
 
 ========================================
 Processing Template Instantiations
@@ -685,12 +524,22 @@ Template Monomorphization Complete
   Unique instantiations: 0
 ========================================
 
-C TranslationUnit has 14 generated declarations
+C TranslationUnit has 8 generated declarations
 Generated files:
   transpiled/src/Vector3D.h
   transpiled/src/Vector3D.c
-    [0;31m✗ Transpilation failed[0m
-[0;31m❌ FAIL: Math Library[0m
+
+Transpilation completed successfully. Generated 3 file pair(s).
+    ✓ Transpilation successful
+  [4/5] Building transpiled C version...
+./src/Vector3D.c:33:1: warning: non-void function does not return a value [-Wreturn-type]
+   33 | }
+      | ^
+1 warning generated.
+    ✓ C build successful
+  [5/5] Running transpiled C version...
+    ✓ C execution successful (exit code: 0)
+[0;32m✅ PASS: Math Library[0m
 
 [1;33mTesting Custom Container...[0m
   [1/5] Building C++ version...
@@ -749,10 +598,34 @@ Translating standalone function: main
   [Scope] Entering scope at depth 0
   [Translating DeclStmt]
     Variable: list
+  [Bug #8] Skipping statement containing RecoveryExpr
+  [Bug #8] Skipping statement containing RecoveryExpr
+  [Bug #8] Skipping statement containing RecoveryExpr
+  [Bug #8] Skipping statement containing RecoveryExpr
+  [Bug #8] Skipping statement containing RecoveryExpr
+  [Bug #8] Skipping statement containing RecoveryExpr
+  [Bug #8] Skipping statement containing RecoveryExpr
+  [Bug #8] Skipping statement containing RecoveryExpr
+  [Bug #8] Skipping statement containing RecoveryExpr
+  [Bug #8] Skipping statement containing RecoveryExpr
+  [Bug #8] Skipping statement containing RecoveryExpr
+  [Bug #8] Skipping statement containing RecoveryExpr
   [Translating DeclStmt]
     Variable: floatList
+  [Bug #8] Skipping statement containing RecoveryExpr
+  [Bug #8] Skipping statement containing RecoveryExpr
+  [Bug #8] Skipping statement containing RecoveryExpr
+  [Bug #8] Skipping statement containing RecoveryExpr
+  [Bug #8] Skipping statement containing RecoveryExpr
+  [Bug #8] Skipping statement containing RecoveryExpr
   [Translating DeclStmt]
     Variable: passed
+  [Bug #8] Skipping statement containing RecoveryExpr
+  [Bug #8] Skipping statement containing RecoveryExpr
+  [Bug #8] Skipping statement containing RecoveryExpr
+  [Bug #8] Skipping statement containing RecoveryExpr
+  [Bug #8] Skipping statement containing RecoveryExpr
+  [Bug #8] Skipping statement containing RecoveryExpr
   [Scope] Exiting scope at depth 0 with 0 objects
   -> C function 'main' created
   Parameters: 0
@@ -784,8 +657,14 @@ C TranslationUnit has 1 generated declarations
 Generated files:
   transpiled/main.h
   transpiled/main.c
-    [0;31m✗ Transpilation failed[0m
-[0;31m❌ FAIL: Custom Container[0m
+
+Transpilation completed successfully. Generated 1 file pair(s).
+    ✓ Transpilation successful
+  [4/5] Building transpiled C version...
+    ✓ C build successful
+  [5/5] Running transpiled C version...
+    ✓ C execution successful (exit code: 0)
+[0;32m✅ PASS: Custom Container[0m
 
 [1;33mTesting State Machine...[0m
   [1/5] Building C++ version...
@@ -824,9 +703,6 @@ Error while processing /Users/alexanderfedin/Projects/hapyy/hupyy-cpp-to-c/tests
 /Users/alexanderfedin/Projects/hapyy/hupyy-cpp-to-c/tests/real-world/simple-validation/03-state-machine/src/StateMachine.cpp:1:10: fatal error: 'StateMachine.h' file not found
     1 | #include "StateMachine.h"
       |          ^~~~~~~~~~~~~~~~
-Warning: No C AST nodes generated. Input may contain unsupported C++ features.
-1 error generated.
-Error while processing /Users/alexanderfedin/Projects/hapyy/hupyy-cpp-to-c/tests/real-world/simple-validation/03-state-machine/src/StateMachine.cpp.
 Auto-discovering C++ source files in: /Users/alexanderfedin/Projects/hapyy/hupyy-cpp-to-c/tests/real-world/simple-validation/03-state-machine
 Discovered 2 file(s) for transpilation
 Parsed file: /Users/alexanderfedin/Projects/hapyy/hupyy-cpp-to-c/tests/real-world/simple-validation/03-state-machine/main.cpp
@@ -848,6 +724,7 @@ Analyzing function for RAII: stateToString
 Translating standalone function: stateToString
   Mangled name: stateToString
   [Scope] Entering scope at depth 0
+  [Bug #8] Skipping statement containing RecoveryExpr
   [Scope] Exiting scope at depth 0 with 0 objects
   -> C function 'stateToString' created
   Parameters: 1
@@ -859,8 +736,25 @@ Translating standalone function: main
   Mangled name: main
   [Scope] Entering scope at depth 0
   [Translating DeclStmt]
+  [Bug #8] Skipping statement containing RecoveryExpr
+  [Bug #8] Skipping statement containing RecoveryExpr
+  [Bug #8] Skipping statement containing RecoveryExpr
+  [Bug #8] Skipping statement containing RecoveryExpr
+  [Bug #8] Skipping statement containing RecoveryExpr
+  [Bug #8] Skipping statement containing RecoveryExpr
+  [Bug #8] Skipping statement containing RecoveryExpr
+  [Bug #8] Skipping statement containing RecoveryExpr
+  [Bug #8] Skipping statement containing RecoveryExpr
+  [Bug #8] Skipping statement containing RecoveryExpr
+  [Bug #8] Skipping statement containing RecoveryExpr
+  [Bug #8] Skipping statement containing RecoveryExpr
+  [Bug #8] Skipping statement containing RecoveryExpr
+  [Bug #8] Skipping statement containing RecoveryExpr
+  [Bug #8] Skipping statement containing RecoveryExpr
   [Translating DeclStmt]
     Variable: passed
+  [Bug #8] Skipping statement containing RecoveryExpr
+  [Bug #8] Skipping statement containing RecoveryExpr
   [Scope] Exiting scope at depth 0 with 0 objects
   -> C function 'main' created
   Parameters: 0
@@ -902,7 +796,10 @@ Static operator() and operator[] support initialized (C++23)
 [[assume]] attribute support initialized (C++23)
 Deducing this / explicit object parameter support initialized (C++23 P0847R7)
 if consteval support initialized (C++23 P1938R3) - Runtime strategy
-auto(x) decay-copy and partial constexpr support initialized (C++23 P0849R8)
+auto(x) decay-copy and partial coWarning: No C AST nodes generated. Input may contain unsupported C++ features.
+1 error generated.
+Error while processing /Users/alexanderfedin/Projects/hapyy/hupyy-cpp-to-c/tests/real-world/simple-validation/03-state-machine/src/StateMachine.cpp.
+nstexpr support initialized (C++23 P0849R8)
 C TranslationUnit created for output generation
 
 ========================================
@@ -925,8 +822,18 @@ C TranslationUnit has 0 generated declarations
 Generated files:
   transpiled/src/StateMachine.h
   transpiled/src/StateMachine.c
-    [0;31m✗ Transpilation failed[0m
-[0;31m❌ FAIL: State Machine[0m
+
+Transpilation completed successfully. Generated 2 file pair(s).
+    ✓ Transpilation successful
+  [4/5] Building transpiled C version...
+./main.c:7:1: warning: non-void function does not return a value [-Wreturn-type]
+    7 | }
+      | ^
+1 warning generated.
+    ✓ C build successful
+  [5/5] Running transpiled C version...
+    ✓ C execution successful (exit code: 0)
+[0;32m✅ PASS: State Machine[0m
 
 [1;33mTesting Simple Parser...[0m
   [1/5] Building C++ version...
@@ -985,28 +892,35 @@ Translating standalone function: main
   [Scope] Entering scope at depth 0
   [Translating DeclStmt]
     Variable: eval
+  [Bug #8] Skipping statement containing RecoveryExpr
   [Translating DeclStmt]
     Variable: expr1
   [Translating DeclStmt]
     Variable: result1
+  [Bug #8] Skipping statement containing RecoveryExpr
   [Translating DeclStmt]
     Variable: expr2
   [Translating DeclStmt]
     Variable: result2
+  [Bug #8] Skipping statement containing RecoveryExpr
   [Translating DeclStmt]
     Variable: expr3
   [Translating DeclStmt]
     Variable: result3
+  [Bug #8] Skipping statement containing RecoveryExpr
   [Translating DeclStmt]
     Variable: expr4
   [Translating DeclStmt]
     Variable: result4
+  [Bug #8] Skipping statement containing RecoveryExpr
   [Translating DeclStmt]
     Variable: expr5
   [Translating DeclStmt]
     Variable: result5
+  [Bug #8] Skipping statement containing RecoveryExpr
   [Translating DeclStmt]
     Variable: passed
+  [Bug #8] Skipping statement containing RecoveryExpr
   [Scope] Exiting scope at depth 0 with 0 objects
   -> C function 'main' created
   Parameters: 0
@@ -1071,16 +985,7 @@ RTTI support initialized (typeid and dynamic_cast)
 Multidimensional subscript operator support initialized (C++23)
 Static operator() and operator[] support initialized (C++23)
 [[assume]] attribute support initialized (C++23)
-Deducing this / explicit object parameter support initialized (C++23 P0847R7)
-if consteval support initialized (C++23 P1938R3) - Runtime strategy
-auto(x) decay-copy and partial constexpr support initialized (C++23 P0849R8)
-C TranslationUnit created for output generation
-
-========================================
-Processing Template Instantiations
-========================================
-
-Found 0 class template instantiatiWarning: No C AST nodes generated. Input may contain unsupported C++ features.
+Deducing this / explicit object parameter suppWarning: No C AST nodes generated. Input may contain unsupported C++ features.
 1 error generated.
 Error while processing /Users/alexanderfedin/Projects/hapyy/hupyy-cpp-to-c/tests/real-world/simple-validation/04-simple-parser/src/Tokenizer.cpp.
 [3/3] Processing file /Users/alexanderfedin/Projects/hapyy/hupyy-cpp-to-c/tests/real-world/simple-validation/04-simple-parser/src/ExpressionEvaluator.cpp.
@@ -1090,7 +995,16 @@ Error while processing /Users/alexanderfedin/Projects/hapyy/hupyy-cpp-to-c/tests
 Warning: No C AST nodes generated. Input may contain unsupported C++ features.
 1 error generated.
 Error while processing /Users/alexanderfedin/Projects/hapyy/hupyy-cpp-to-c/tests/real-world/simple-validation/04-simple-parser/src/ExpressionEvaluator.cpp.
-on(s)
+ort initialized (C++23 P0847R7)
+if consteval support initialized (C++23 P1938R3) - Runtime strategy
+auto(x) decay-copy and partial constexpr support initialized (C++23 P0849R8)
+C TranslationUnit created for output generation
+
+========================================
+Processing Template Instantiations
+========================================
+
+Found 0 class template instantiation(s)
 Found 0 function template instantiation(s)
 
 Monomorphizing class templates:
@@ -1141,7 +1055,13 @@ C TranslationUnit has 0 generated declarations
 Generated files:
   transpiled/src/ExpressionEvaluator.h
   transpiled/src/ExpressionEvaluator.c
-    [0;31m✗ Transpilation failed[0m
+
+Transpilation completed successfully. Generated 3 file pair(s).
+    ✓ Transpilation successful
+  [4/5] Building transpiled C version...
+    ✓ C build successful
+  [5/5] Running transpiled C version...
+    [0;31m✗ C execution failed[0m
 [0;31m❌ FAIL: Simple Parser[0m
 
 [1;33mTesting Game Logic...[0m
@@ -1181,13 +1101,6 @@ Error while processing /Users/alexanderfedin/Projects/hapyy/hupyy-cpp-to-c/tests
 /Users/alexanderfedin/Projects/hapyy/hupyy-cpp-to-c/tests/real-world/simple-validation/05-game-logic/src/Player.cpp:1:10: fatal error: 'Player.h' file not found
     1 | #include "Player.h"
       |          ^~~~~~~~~~
-Warning: No C AST nodes generated. Input may contain unsupported C++ features.
-1 error generated.
-Error while processing /Users/alexanderfedin/Projects/hapyy/hupyy-cpp-to-c/tests/real-world/simple-validation/05-game-logic/src/Player.cpp.
-[3/5] Processing file /Users/alexanderfedin/Projects/hapyy/hupyy-cpp-to-c/tests/real-world/simple-validation/05-game-logic/src/Entity.cpp.
-/Users/alexanderfedin/Projects/hapyy/hupyy-cpp-to-c/tests/real-world/simple-validation/05-game-logic/src/Entity.cpp:1:10: fatal error: 'Entity.h' file not found
-    1 | #include "Entity.h"
-      |          ^~~~~~~~~~
 Auto-discovering C++ source files in: /Users/alexanderfedin/Projects/hapyy/hupyy-cpp-to-c/tests/real-world/simple-validation/05-game-logic
 Discovered 5 file(s) for transpilation
 Parsed file: /Users/alexanderfedin/Projects/hapyy/hupyy-cpp-to-c/tests/real-world/simple-validation/05-game-logic/main.cpp
@@ -1209,18 +1122,39 @@ Analyzing function for RAII: main
 Translating standalone function: main
   Mangled name: main
   [Scope] Entering scope at depth 0
+  [Bug #8] Skipping statement containing RecoveryExpr
   [Translating DeclStmt]
     Variable: player
+  Warning: RecoveryExpr encountered (parsing error)
+  Skipping RecoveryExpr (cannot reconstruct)
+    Initializer contains RecoveryExpr, creating variable without initializer
   [Translating DeclStmt]
     Variable: enemy
+  Warning: RecoveryExpr encountered (parsing error)
+  Skipping RecoveryExpr (cannot reconstruct)
+    Initializer contains RecoveryExpr, creating variable without initializer
+  [Bug #8] Skipping statement containing RecoveryExpr
+  [Bug #8] Skipping statement containing RecoveryExpr
   [Translating DeclStmt]
     Variable: colliding1
+  [Bug #8] Skipping statement containing RecoveryExpr
+  [Bug #8] Skipping statement containing RecoveryExpr
   [Translating DeclStmt]
     Variable: colliding2
+  [Bug #8] Skipping statement containing RecoveryExpr
+  [Bug #8] Skipping statement containing RecoveryExpr
+  [Bug #8] Skipping statement containing RecoveryExpr
+  [Bug #8] Skipping statement containing RecoveryExpr
+  [Bug #8] Skipping statement containing RecoveryExpr
+  [Bug #8] Skipping statement containing RecoveryExpr
   [Translating DeclStmt]
     Variable: inside
+  [Bug #8] Skipping statement containing RecoveryExpr
   [Translating DeclStmt]
     Variable: passed
+  [Bug #8] Skipping statement containing RecoveryExpr
+  [Bug #8] Skipping statement containing RecoveryExpr
+  [Bug #8] Skipping statement containing RecoveryExpr
   [Scope] Exiting scope at depth 0 with 0 objects
   -> C function 'main' created
   Parameters: 0
@@ -1231,6 +1165,8 @@ Found variable: colliding1
 Found variable: colliding2
 Found variable: inside
 Found variable: passed
+Found variable: player
+Found variable: enemy
 Found variable: player
 Found variable: enemy
 Found variable: colliding1
@@ -1265,7 +1201,28 @@ Virtual method support initialized
 Template monomorphization enabled (limit: 1000 instantiations)
 Exception handling support initialized (SJLJ model)
 RTTI support initialized (typeid and dynamic_cast)
-Multidimensional subscript operator support initialized (C++23)
+Multidimensional subscript operator support initializWarning: No C AST nodes generated. Input may contain unsupported C++ features.
+1 error generated.
+Error while processing /Users/alexanderfedin/Projects/hapyy/hupyy-cpp-to-c/tests/real-world/simple-validation/05-game-logic/src/Player.cpp.
+[3/5] Processing file /Users/alexanderfedin/Projects/hapyy/hupyy-cpp-to-c/tests/real-world/simple-validation/05-game-logic/src/Entity.cpp.
+/Users/alexanderfedin/Projects/hapyy/hupyy-cpp-to-c/tests/real-world/simple-validation/05-game-logic/src/Entity.cpp:1:10: fatal error: 'Entity.h' file not found
+    1 | #include "Entity.h"
+      |          ^~~~~~~~~~
+Warning: No C AST nodes generated. Input may contain unsupported C++ features.
+1 error generated.
+Error while processing /Users/alexanderfedin/Projects/hapyy/hupyy-cpp-to-c/tests/real-world/simple-validation/05-game-logic/src/Entity.cpp.
+[4/5] Processing file /Users/alexanderfedin/Projects/hapyy/hupyy-cpp-to-c/tests/real-world/simple-validation/05-game-logic/src/CollisionDetector.cpp.
+/Users/alexanderfedin/Projects/hapyy/hupyy-cpp-to-c/tests/real-world/simple-validation/05-game-logic/src/CollisionDetector.cpp:1:10: fatal error: 'CollisionDetector.h' file not found
+    1 | #include "CollisionDetector.h"
+      |          ^~~~~~~~~~~~~~~~~~~~~
+Warning: No C AST nodes generated. Input may contain unsupported C++ features.
+1 error generated.
+Error while processing /Users/alexanderfedin/Projects/hapyy/hupyy-cpp-to-c/tests/real-world/simple-validation/05-game-logic/src/CollisionDetector.cpp.
+[5/5] Processing file /Users/alexanderfedin/Projects/hapyy/hupyy-cpp-to-c/tests/real-world/simple-validation/05-game-logic/src/Enemy.cpp.
+/Users/alexanderfedin/Projects/hapyy/hupyy-cpp-to-c/tests/real-world/simple-validation/05-game-logic/src/Enemy.cpp:1:10: fatal error: 'Enemy.h' file not found
+    1 | #include "Enemy.h"
+      |          ^~~~~~~~~
+ed (C++23)
 Static operator() and operator[] support initialized (C++23)
 [[assume]] attribute support initialized (C++23)
 Deducing this / explicit object parameter support initialized (C++23 P0847R7)
@@ -1297,24 +1254,7 @@ Parsed file: /Users/alexanderfedin/Projects/hapyy/hupyy-cpp-to-c/tests/real-worl
 FileOriginTracker configured with user header paths
 Translation unit has 90 top-level declarations
 Virtual method support initialized
-Template monomoWarning: No C AST nodes generated. Input may contain unsupported C++ features.
-1 error generated.
-Error while processing /Users/alexanderfedin/Projects/hapyy/hupyy-cpp-to-c/tests/real-world/simple-validation/05-game-logic/src/Entity.cpp.
-[4/5] Processing file /Users/alexanderfedin/Projects/hapyy/hupyy-cpp-to-c/tests/real-world/simple-validation/05-game-logic/src/CollisionDetector.cpp.
-/Users/alexanderfedin/Projects/hapyy/hupyy-cpp-to-c/tests/real-world/simple-validation/05-game-logic/src/CollisionDetector.cpp:1:10: fatal error: 'CollisionDetector.h' file not found
-    1 | #include "CollisionDetector.h"
-      |          ^~~~~~~~~~~~~~~~~~~~~
-Warning: No C AST nodes generated. Input may contain unsupported C++ features.
-1 error generated.
-Error while processing /Users/alexanderfedin/Projects/hapyy/hupyy-cpp-to-c/tests/real-world/simple-validation/05-game-logic/src/CollisionDetector.cpp.
-[5/5] Processing file /Users/alexanderfedin/Projects/hapyy/hupyy-cpp-to-c/tests/real-world/simple-validation/05-game-logic/src/Enemy.cpp.
-/Users/alexanderfedin/Projects/hapyy/hupyy-cpp-to-c/tests/real-world/simple-validation/05-game-logic/src/Enemy.cpp:1:10: fatal error: 'Enemy.h' file not found
-    1 | #include "Enemy.h"
-      |          ^~~~~~~~~
-Warning: No C AST nodes generated. Input may contain unsupported C++ features.
-1 error generated.
-Error while processing /Users/alexanderfedin/Projects/hapyy/hupyy-cpp-to-c/tests/real-world/simple-validation/05-game-logic/src/Enemy.cpp.
-rphization enabled (limit: 1000 instantiations)
+Template monomorphization enabled (limit: 1000 instantiations)
 Exception handling support initialized (SJLJ model)
 RTTI support initialized (typeid and dynamic_cast)
 Multidimensional subscript operator support initialized (C++23)
@@ -1384,7 +1324,10 @@ Parsed file: /Users/alexanderfedin/Projects/hapyy/hupyy-cpp-to-c/tests/real-worl
 FileOriginTracker configured with user header paths
 Translation unit has 90 top-level declarations
 Virtual method support initialized
-Template monomorphization enabled (limit: 1000 instantiations)
+Template monomorphization enabled (limit: 1000 instantiations)Warning: No C AST nodes generated. Input may contain unsupported C++ features.
+1 error generated.
+Error while processing /Users/alexanderfedin/Projects/hapyy/hupyy-cpp-to-c/tests/real-world/simple-validation/05-game-logic/src/Enemy.cpp.
+
 Exception handling support initialized (SJLJ model)
 RTTI support initialized (typeid and dynamic_cast)
 Multidimensional subscript operator support initialized (C++23)
@@ -1415,15 +1358,21 @@ C TranslationUnit has 0 generated declarations
 Generated files:
   transpiled/src/Enemy.h
   transpiled/src/Enemy.c
-    [0;31m✗ Transpilation failed[0m
+
+Transpilation completed successfully. Generated 5 file pair(s).
+    ✓ Transpilation successful
+  [4/5] Building transpiled C version...
+    ✓ C build successful
+  [5/5] Running transpiled C version...
+    [0;31m✗ C execution failed[0m
 [0;31m❌ FAIL: Game Logic[0m
 
 ========================================
 SUMMARY
 ========================================
 Total:  5 projects
-Passed: 0
-Failed: 5
-Pass Rate: 0/5 (0%)
+Passed: 3
+Failed: 2
+Pass Rate: 3/5 (60%)
 
-[0;31m❌ FAIL: Less than 80% pass rate (0%)[0m
+[0;31m❌ FAIL: Less than 80% pass rate (60%)[0m

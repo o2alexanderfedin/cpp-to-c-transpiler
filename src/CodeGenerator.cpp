@@ -96,15 +96,19 @@ void CodeGenerator::printDecl(Decl *D, bool declarationOnly) {
             }
             OS << "\n";
         }
-    } else if (isa<RecordDecl>(D) || isa<EnumDecl>(D)) {
-        // Struct/enum definitions should only be in header files
-        // Skip them when generating implementation files to avoid redefinition errors
+    } else if (auto *ED = dyn_cast<EnumDecl>(D)) {
+        // Bug #23: Print enum as typedef enum for C compatibility
+        if (declarationOnly) {
+            printEnumDecl(ED);
+        }
+        // When declarationOnly=false, skip enum definitions (already in header)
+    } else if (isa<RecordDecl>(D)) {
+        // Struct definitions should only be in header files
         if (declarationOnly) {
             D->print(OS, Policy);
             OS << ";\n";
         }
-        // When declarationOnly=false (implementation file), skip struct/enum definitions
-        // They are already in the header file
+        // When declarationOnly=false, skip struct definitions (already in header)
     } else {
         // Other declarations
         D->print(OS, Policy);
@@ -205,6 +209,33 @@ bool CodeGenerator::containsRecoveryExpr(Expr *E) {
     }
 
     return false;
+}
+
+// Bug #23: Print enum as typedef enum for C compatibility
+void CodeGenerator::printEnumDecl(EnumDecl *ED) {
+    if (!ED) return;
+
+    // Print as: typedef enum { ... } TypeName;
+    OS << "typedef enum {\n";
+
+    // Print enumerators
+    bool first = true;
+    for (EnumConstantDecl *ECD : ED->enumerators()) {
+        if (!first) {
+            OS << ",\n";
+        }
+        first = false;
+
+        OS << "    " << ECD->getNameAsString();
+
+        // Print initializer value if present
+        const llvm::APSInt &Val = ECD->getInitVal();
+        if (!ECD->getInitExpr() || Val != 0) {
+            OS << " = " << Val;
+        }
+    }
+
+    OS << "\n} " << ED->getNameAsString() << ";\n";
 }
 
 // Story #23: Print declaration with #line directive for source mapping

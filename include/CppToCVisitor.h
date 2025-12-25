@@ -214,6 +214,9 @@ public:
   // Visit variable declarations (including member variables)
   bool VisitVarDecl(clang::VarDecl *VD);
 
+  // Bug #23: Visit enum declarations to translate enum class to C typedef enum
+  bool VisitEnumDecl(clang::EnumDecl *ED);
+
   // Visit compound statements for scope tracking (Story #46)
   bool VisitCompoundStmt(clang::CompoundStmt *CS);
 

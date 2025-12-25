@@ -132,6 +132,51 @@ CppToCVisitor::CppToCVisitor(ASTContext &Context, CNodeBuilder &Builder,
   llvm::outs() << "C TranslationUnit created for output generation\n";
 }
 
+// Bug #23: Enum Class Translation - Convert C++11 enum class to C typedef enum
+bool CppToCVisitor::VisitEnumDecl(EnumDecl *ED) {
+  // Skip declarations from non-transpilable files (system headers, etc.)
+  if (!fileOriginTracker.shouldTranspile(ED)) {
+    return true;
+  }
+
+  // Skip forward declarations
+  if (!ED->isCompleteDefinition()) {
+    return true;
+  }
+
+  // Skip compiler-generated enums
+  if (ED->isImplicit()) {
+    return true;
+  }
+
+  llvm::outs() << "Translating enum: " << ED->getNameAsString() << "\n";
+
+  // Create C enum using CNodeBuilder
+  // Note: C enums are not scoped, so we use plain enum (not enum class)
+  std::vector<std::pair<llvm::StringRef, int>> enumerators;
+
+  // Collect enum constants
+  for (EnumConstantDecl *ECD : ED->enumerators()) {
+    // Get the constant value
+    int value = ECD->getInitVal().getSExtValue();
+    enumerators.push_back({ECD->getName(), value});
+
+    llvm::outs() << "  Enumerator: " << ECD->getName() << " = " << value << "\n";
+  }
+
+  // Create C enum with same name
+  // In C, we use typedef enum { ... } TypeName;
+  EnumDecl *CEnum = Builder.enumDecl(ED->getName(), enumerators);
+
+  // Add to C TranslationUnit
+  C_TranslationUnit->addDecl(CEnum);
+
+  llvm::outs() << "  -> C enum " << ED->getNameAsString() << " with "
+               << enumerators.size() << " values\n";
+
+  return true;
+}
+
 // Story #15 + Story #50: Class-to-Struct Conversion with Base Class Embedding
 bool CppToCVisitor::VisitCXXRecordDecl(CXXRecordDecl *D) {
   // Phase 34 (v2.5.0): Skip declarations from non-transpilable files (system headers, etc.)

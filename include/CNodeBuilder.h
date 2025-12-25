@@ -743,6 +743,49 @@ public:
   }
 
   /**
+   * @brief Create enum declaration (Bug #23: Enum class translation)
+   * @param name Enum name
+   * @param enumerators List of enumerator names and values
+   * @return EnumDecl* declaration
+   *
+   * Example:
+   * @code
+   *   EnumDecl *e = builder.enumDecl("Color", {{"Red", 0}, {"Green", 1}});
+   * @endcode
+   */
+  EnumDecl *enumDecl(llvm::StringRef name,
+                     llvm::ArrayRef<std::pair<llvm::StringRef, int>> enumerators) {
+    IdentifierInfo &II = Ctx.Idents.get(name);
+
+    // Create the enum declaration
+    EnumDecl *ED = EnumDecl::Create(
+        Ctx, Ctx.getTranslationUnitDecl(), SourceLocation(), SourceLocation(),
+        &II, nullptr, false, false, true);  // Not scoped, not fixed underlying type
+
+    ED->startDefinition();
+
+    // Add enumerator constants
+    for (const auto &[enumName, enumValue] : enumerators) {
+      IdentifierInfo &EnumII = Ctx.Idents.get(enumName);
+
+      // Create enumerator constant
+      EnumConstantDecl *ECD = EnumConstantDecl::Create(
+          Ctx, ED, SourceLocation(), &EnumII, Ctx.IntTy,
+          nullptr, llvm::APSInt(llvm::APInt(32, enumValue)));
+
+      // Add to enum
+      ED->addDecl(ECD);
+    }
+
+    ED->completeDefinition(Ctx.IntTy, Ctx.IntTy, 0, 0);
+
+    // Add to TranslationUnitDecl
+    Ctx.getTranslationUnitDecl()->addDecl(ED);
+
+    return ED;
+  }
+
+  /**
    * @brief Create field declaration
    * @param type Field type
    * @param name Field name
