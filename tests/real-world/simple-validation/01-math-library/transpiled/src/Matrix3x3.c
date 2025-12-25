@@ -73,7 +73,7 @@ struct Matrix3x3 Matrix3x3_multiply(struct Matrix3x3 * this, const struct Matrix
 
 
 struct Vector3D Matrix3x3_multiply_Vector3D_ref(struct Matrix3x3 * this, const struct Vector3D * vec) {
-        return this->data[0] * vec.x + this->data[1] * vec.y + this->data[2] * vec.z, this->data[3] * vec.x + this->data[4] * vec.y + this->data[5] * vec.z, this->data[6] * vec.x + this->data[7] * vec.y + this->data[8] * vec.z;
+        return this->data[0] * vec->x + this->data[1] * vec->y + this->data[2] * vec->z, this->data[3] * vec->x + this->data[4] * vec->y + this->data[5] * vec->z, this->data[6] * vec->x + this->data[7] * vec->y + this->data[8] * vec->z;
 }
 
 
@@ -134,7 +134,7 @@ struct Matrix3x3 Matrix3x3_multiply_Matrix3x3_ref(struct Matrix3x3 * this, const
 
 
 struct Vector3D Matrix3x3_multiply_Vector3D_ref(struct Matrix3x3 * this, const struct Vector3D * vec) {
-        return this->data[0] * vec.x + this->data[1] * vec.y + this->data[2] * vec.z, this->data[3] * vec.x + this->data[4] * vec.y + this->data[5] * vec.z, this->data[6] * vec.x + this->data[7] * vec.y + this->data[8] * vec.z;
+        return this->data[0] * vec->x + this->data[1] * vec->y + this->data[2] * vec->z, this->data[3] * vec->x + this->data[4] * vec->y + this->data[5] * vec->z, this->data[6] * vec->x + this->data[7] * vec->y + this->data[8] * vec->z;
 }
 
 

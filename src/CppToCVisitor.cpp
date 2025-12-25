@@ -1901,6 +1901,19 @@ Expr *CppToCVisitor::translateExpr(Expr *E) {
     return translateConstructExpr(CCE);
   }
 
+  // Handle implicit casts - just translate the sub-expression
+  if (ImplicitCastExpr *ICE = dyn_cast<ImplicitCastExpr>(E)) {
+    Expr *SubExpr = ICE->getSubExpr();
+    Expr *TranslatedSub = translateExpr(SubExpr);
+    if (TranslatedSub && TranslatedSub != SubExpr) {
+      // Create new implicit cast with translated sub-expression
+      return ImplicitCastExpr::Create(Context, ICE->getType(), ICE->getCastKind(),
+                                      TranslatedSub, nullptr, ICE->getValueKind(),
+                                      FPOptionsOverride());
+    }
+    return ICE;
+  }
+
   // Default: return expression as-is (literals, etc.)
   return E;
 }
@@ -1940,24 +1953,75 @@ Expr *CppToCVisitor::translateMemberExpr(MemberExpr *ME) {
     return ME;
   }
 
-  // Determine if we need -> or . based on translated base type
-  // After reference-to-pointer conversion, check the translated type not original
-  Expr *Result = nullptr;
+  // Determine if we need -> or . based on the base type
+  // Key insight: We need to check if the base refers to a reference parameter,
+  // even if it's been implicitly cast. Strip implicit casts to find the real base.
+  Expr *UnstrippedBase = Base;
+  while (ImplicitCastExpr *ICE = dyn_cast<ImplicitCastExpr>(UnstrippedBase)) {
+    UnstrippedBase = ICE->getSubExpr();
+  }
+
+  bool useArrow = false;
   QualType TranslatedBaseType = TranslatedBase->getType();
   QualType OriginalBaseType = Base->getType();
 
-  llvm::outs() << "  Base type analysis:\n";
-  llvm::outs() << "    Original type: " << OriginalBaseType.getAsString() << "\n";
-  llvm::outs() << "    Translated type: " << TranslatedBaseType.getAsString() << "\n";
-  llvm::outs() << "    Is original pointer? " << OriginalBaseType->isPointerType() << "\n";
-  llvm::outs() << "    Is original reference? " << OriginalBaseType->isReferenceType() << "\n";
-  llvm::outs() << "    Is translated pointer? " << TranslatedBaseType->isPointerType() << "\n";
+  // Check if base is a pointer
+  if (TranslatedBaseType->isPointerType() || OriginalBaseType->isPointerType()) {
+    useArrow = true;
+  }
+  // Check if base is a reference
+  else if (OriginalBaseType->isReferenceType()) {
+    useArrow = true;
+  }
+  // Check if base is a DeclRef to a reference parameter
+  else if (DeclRefExpr *DRE = dyn_cast<DeclRefExpr>(UnstrippedBase)) {
+    if (ParmVarDecl *PVD = dyn_cast<ParmVarDecl>(DRE->getDecl())) {
+      if (PVD->getType()->isReferenceType()) {
+        useArrow = true;
+      }
+    }
+  }
 
-  if (TranslatedBaseType->isPointerType() || OriginalBaseType->isReferenceType()) {
-    llvm::outs() << "    Using -> (arrow) for member access\n";
+  // Create the member expression with the correct arrow/dot operator
+  // For reference parameters, we need to manually create the MemberExpr
+  // because Builder.arrowMember() requires a pointer type
+  Expr *Result = nullptr;
+
+  if (useArrow) {
+    // Try using Builder.arrowMember() first (for actual pointers)
     Result = Builder.arrowMember(TranslatedBase, Member->getName());
+
+    // If that failed (e.g., because base is a reference, not a pointer),
+    // create the MemberExpr manually with isArrow=true
+    if (!Result) {
+      // Get the record type - for references, we need to strip the reference
+      QualType BaseType = TranslatedBase->getType();
+      if (BaseType->isReferenceType()) {
+        BaseType = BaseType.getNonReferenceType();
+      }
+
+      const RecordType *RT = BaseType->getAs<RecordType>();
+      if (RT) {
+        RecordDecl *RD = RT->getDecl();
+        FieldDecl *FD = nullptr;
+        for (auto *Field : RD->fields()) {
+          if (Field->getName() == Member->getName()) {
+            FD = Field;
+            break;
+          }
+        }
+
+        if (FD) {
+          Result = MemberExpr::Create(
+              Context, TranslatedBase,
+              true, // is arrow
+              SourceLocation(), NestedNameSpecifierLoc(), SourceLocation(), FD,
+              DeclAccessPair::make(FD, AS_public), DeclarationNameInfo(), nullptr,
+              FD->getType(), VK_LValue, OK_Ordinary, NOUR_None);
+        }
+      }
+    }
   } else {
-    llvm::outs() << "    Using . (dot) for member access\n";
     Result = Builder.member(TranslatedBase, Member->getName());
   }
 
@@ -2047,8 +2111,6 @@ Expr *CppToCVisitor::translateBinaryOperator(BinaryOperator *BO) {
 // Translate CXXConstructExpr - handles C++ constructor calls
 // Bug fix: Need to translate arguments to fix member access in constructor args
 Expr *CppToCVisitor::translateConstructExpr(CXXConstructExpr *CCE) {
-  llvm::outs() << "  Translating constructor expression\n";
-
   // Translate all constructor arguments
   std::vector<Expr *> translatedArgs;
   for (unsigned i = 0; i < CCE->getNumArgs(); ++i) {
