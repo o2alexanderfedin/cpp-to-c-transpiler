@@ -88,20 +88,18 @@ void CppToCConsumer::HandleTranslationUnit(clang::ASTContext &Context) {
   implOS << "// Implementation file\n\n";
 
   // Include the corresponding header
-  // Extract base name for #include
+  // Extract base name for #include (strip path and extension)
   size_t lastSlash = InputFilename.find_last_of("/\\");
-  size_t lastDot = InputFilename.find_last_of('.');
   std::string baseName;
   if (lastSlash != std::string::npos) {
     baseName = InputFilename.substr(lastSlash + 1);
   } else {
     baseName = InputFilename;
   }
-  if (lastDot != std::string::npos && lastDot > lastSlash) {
-    size_t dotPos = baseName.find_last_of('.');
-    if (dotPos != std::string::npos) {
-      baseName = baseName.substr(0, dotPos);
-    }
+  // Strip extension from base name (e.g., "main.cpp" → "main")
+  size_t dotPos = baseName.find_last_of('.');
+  if (dotPos != std::string::npos) {
+    baseName = baseName.substr(0, dotPos);
   }
   implOS << "#include \"" << baseName << ".h\"\n\n";
 
