@@ -9,22 +9,22 @@
 #include <stdbool.h>
 
 struct Entity {
-        const struct Entity_vtable *vptr;
-        float x;
-        float y;
-        float width;
-        float height;
+	const struct Entity_vtable * vptr;
+	float x;
+	float y;
+	float width;
+	float height;
 };
 static void Entity__ctor_copy(struct Entity * this, const struct Entity * other);
 void Entity__dtor(struct Entity * this);
 struct Player {
-        const struct Entity_vtable *vptr;
-        float x;
-        float y;
-        float width;
-        float height;
-        int health;
-        int score;
+	const struct Entity_vtable * vptr;
+	float x;
+	float y;
+	float width;
+	float height;
+	int health;
+	int score;
 };
 static void Player__ctor_copy(struct Player * this, const struct Player * other);
 void Player__dtor(struct Player * this);

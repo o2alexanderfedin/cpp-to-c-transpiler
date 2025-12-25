@@ -41,11 +41,11 @@ bool CollisionDetector_checkCollision(struct CollisionDetector * this, const str
 	float bBottom = Entity_getY(&b) + Entity_getHeight(&b);
 
 	return !(aRight < bLeft || aLeft > bRight || aBottom < bTop || aTop > bBottom);
-
+;
 }
 
 bool CollisionDetector_pointInside(struct CollisionDetector * this, float px, float py, const struct Entity * entity) {
 	return px >= Entity_getX(&entity) && px <= Entity_getX(&entity) + Entity_getWidth(&entity) && py >= Entity_getY(&entity) && py <= Entity_getY(&entity) + Entity_getHeight(&entity);
-
+;
 }
 

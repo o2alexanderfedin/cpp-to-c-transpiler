@@ -9,33 +9,33 @@
 #include <stdbool.h>
 
 struct Entity {
-        const struct Entity_vtable *vptr;
-        float x;
-        float y;
-        float width;
-        float height;
+	const struct Entity_vtable * vptr;
+	float x;
+	float y;
+	float width;
+	float height;
 };
 static void Entity__ctor_copy(struct Entity * this, const struct Entity * other);
 void Entity__dtor(struct Entity * this);
 struct Player {
-        const struct Entity_vtable *vptr;
-        float x;
-        float y;
-        float width;
-        float height;
-        int health;
-        int score;
+	const struct Entity_vtable * vptr;
+	float x;
+	float y;
+	float width;
+	float height;
+	int health;
+	int score;
 };
 static void Player__ctor_copy(struct Player * this, const struct Player * other);
 void Player__dtor(struct Player * this);
 struct Enemy {
-        const struct Entity_vtable *vptr;
-        float x;
-        float y;
-        float width;
-        float height;
-        int damage;
-        float speed;
+	const struct Entity_vtable * vptr;
+	float x;
+	float y;
+	float width;
+	float height;
+	int damage;
+	float speed;
 };
 static void Enemy__ctor_copy(struct Enemy * this, const struct Enemy * other);
 void Enemy__dtor(struct Enemy * this);
@@ -47,4 +47,6 @@ void Entity_setPosition(struct Entity * this, float newX, float newY);
 int Enemy_getDamage(struct Enemy * this);
 void Player_takeDamage(struct Player * this, int damage);
 void Player_addScore(struct Player * this, int points);
+int Player_getHealth(struct Player * this);
+int Player_getScore(struct Player * this);
 int main();

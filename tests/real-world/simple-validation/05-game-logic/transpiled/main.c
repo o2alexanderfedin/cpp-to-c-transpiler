@@ -41,6 +41,8 @@ void Entity_setPosition(struct Entity * this, float newX, float newY);
 int Enemy_getDamage(struct Enemy * this);
 void Player_takeDamage(struct Player * this, int damage);
 void Player_addScore(struct Player * this, int points);
+int Player_getHealth(struct Player * this);
+int Player_getScore(struct Player * this);
 int main() {
 	struct Player player;
 
@@ -63,7 +65,7 @@ int main() {
 	passed = passed && (colliding2 == true);
 	passed = passed && (inside == true);
 	return passed ? 0 : 1;
-
+;
 	Enemy__dtor(&enemy);
 	Player__dtor(&player);
 }

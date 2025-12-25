@@ -23,78 +23,77 @@ static void ExpressionEvaluator__ctor_copy(struct ExpressionEvaluator * this, co
 	Token__ctor_copy(&this->currentToken, &other->currentToken);
 }
 
-struct Token Tokenizer_nextToken(struct Tokenizer * this);
+void ExpressionEvaluator_advance(struct ExpressionEvaluator * this) {
+	this->currentToken = this->tokenizer->nextToken();
+}
+
+int ExpressionEvaluator_parseFactor(struct ExpressionEvaluator * this);
 int ExpressionEvaluator_parseTerm(struct ExpressionEvaluator * this) {
 	int left = ExpressionEvaluator_parseFactor(this);
 
-	while (this->currentToken.type == 3 || this->currentToken.type == 4) 	{
-		TokenType op = this->currentToken.type;
+	while (this->currentToken.type == TokenType::Multiply || this->currentToken.type == TokenType::Divide)
+        {
+                TokenType op = this->currentToken.type;
+                this->advance();
+                int right = this->parseFactor();
+                if (op == TokenType::Multiply) {
+                        left = left * right;
+                } else {
+                        left = left / right;
+                }
+        }
 
-		ExpressionEvaluator_advance(this);
-		int right = ExpressionEvaluator_parseFactor(this);
-
-		if (op == 3) 		{
-			left = left * right;
-		}
- else 		{
-			left = left / right;
-		}
-
-	}
 	return left;
-;
+
 }
 
 int ExpressionEvaluator_parseFactor(struct ExpressionEvaluator * this) {
-	if (this->currentToken.type == 0) 	{
-		int value = this->currentToken.value;
-
-		ExpressionEvaluator_advance(this);
-		return value;
-;
-	}
+	if (this->currentToken.type == TokenType::Number) {
+        int value = this->currentToken.value;
+        this->advance();
+        return value;
+}
 
 	return 0;
-;
+
 }
 
 void ExpressionEvaluator__dtor(struct ExpressionEvaluator * this) {
-	if (this->tokenizer != nullptr) 	{
-		delete this->tokenizer;
-	}
+	if (this->tokenizer != nullptr) {
+        delete this->tokenizer;
+}
 
 }
 
+void ExpressionEvaluator_advance(struct ExpressionEvaluator * this);
 int ExpressionEvaluator_parseTerm(struct ExpressionEvaluator * this);
 int ExpressionEvaluator_evaluate(struct ExpressionEvaluator * this, const char * expression) {
-	if (this->tokenizer != nullptr) 	{
-		delete this->tokenizer;
-	}
+	if (this->tokenizer != nullptr) {
+        delete this->tokenizer;
+}
 
 	this->tokenizer = new Tokenizer(expression);
 	ExpressionEvaluator_advance(this);
 	int result = ExpressionEvaluator_parseTerm(this);
 
-	while (this->currentToken.type == 1 || this->currentToken.type == 2) 	{
-		TokenType op = this->currentToken.type;
+	while (this->currentToken.type == TokenType::Plus || this->currentToken.type == TokenType::Minus)
+        {
+                TokenType op = this->currentToken.type;
+                this->advance();
+                int right = this->parseTerm();
+                if (op == TokenType::Plus) {
+                        result = result + right;
+                } else {
+                        result = result - right;
+                }
+        }
 
-		ExpressionEvaluator_advance(this);
-		int right = ExpressionEvaluator_parseTerm(this);
-
-		if (op == 1) 		{
-			result = result + right;
-		}
- else 		{
-			result = result - right;
-		}
-
-	}
 	return result;
-;
+
 }
 
 void ExpressionEvaluator__ctor(struct ExpressionEvaluator * this) {
 	this->tokenizer = nullptr;
-	Token__ctor(&this->currentToken, 5);
+	Token__ctor(&this->currentToken, TokenType::EndOfInput);
 }
 

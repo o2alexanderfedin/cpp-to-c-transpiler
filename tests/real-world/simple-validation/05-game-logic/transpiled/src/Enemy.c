@@ -24,7 +24,7 @@ void Enemy__dtor(struct Enemy * this) {
 
 int Enemy_getDamage(struct Enemy * this) {
 	return this->damage;
-
+;
 }
 
 void Enemy__ctor(struct Enemy * this, float x, float y) {

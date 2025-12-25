@@ -1,8 +1,9 @@
 {
   "transpiler_args": [
-    "--extra-arg=-Iinclude",
+    "--extra-arg=-I/Users/alexanderfedin/Projects/hapyy/hupyy-cpp-to-c/tests/real-world/simple-validation/04-simple-parser/include",
     "--extra-arg=-isystem/Library/Developer/CommandLineTools/SDKs/MacOSX.sdk/usr/include/c++/v1",
-    "--extra-arg=-isystem/Library/Developer/CommandLineTools/usr/lib/clang/17/include"
+    "--extra-arg=-isystem/Library/Developer/CommandLineTools/usr/lib/clang/17/include",
+    "--extra-arg=-isystem/Library/Developer/CommandLineTools/SDKs/MacOSX.sdk/usr/include"
   ],
-  "description": "Simple Parser requires include path for ExpressionEvaluator.h, Tokenizer.h, and Token.h plus C++ standard library"
+  "description": "Simple Parser requires include path for ExpressionEvaluator.h, Tokenizer.h, and Token.h plus C++ standard library and C SDK headers (libc++ needs to find C headers like ctype.h)"
 }

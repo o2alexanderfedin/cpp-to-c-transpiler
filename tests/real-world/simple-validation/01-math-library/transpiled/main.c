@@ -36,6 +36,6 @@ int main() {
 	bool passed = true;
 
 	return passed ? 0 : 1;
-
+;
 }
 

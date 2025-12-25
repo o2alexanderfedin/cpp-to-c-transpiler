@@ -9,9 +9,9 @@
 #include <stdbool.h>
 
 struct Vector3D {
-        float x;
-        float y;
-        float z;
+	float x;
+	float y;
+	float z;
 };
 static void Vector3D__ctor_copy(struct Vector3D * this, const struct Vector3D * other);
 struct Vector3D Vector3D_add(struct Vector3D * this, const struct Vector3D * other);

@@ -1,4 +1,4 @@
-// Generated from: /Users/alexanderfedin/Projects/hapyy/hupyy-cpp-to-c/tests/real-world/simple-validation/04-simple-parser/./src/Tokenizer.cpp
+// Generated from: /Users/alexanderfedin/Projects/hapyy/hupyy-cpp-to-c/tests/real-world/simple-validation/04-simple-parser/./main.cpp
 // Header file
 
 #include <stdio.h>
@@ -27,10 +27,11 @@ struct Tokenizer {
 	int position;
 };
 static void Tokenizer__ctor_copy(struct Tokenizer * this, const struct Tokenizer * other);
-void Tokenizer_skipWhitespace(struct Tokenizer * this);
-int Tokenizer_parseNumber(struct Tokenizer * this);
-void Tokenizer_skipWhitespace(struct Tokenizer * this);
-int Tokenizer_parseNumber(struct Tokenizer * this);
-struct Token Tokenizer_nextToken(struct Tokenizer * this);
-bool Tokenizer_hasMore(struct Tokenizer * this);
-void Tokenizer__ctor(struct Tokenizer * this, const char * input);
+struct ExpressionEvaluator {
+	struct Tokenizer * tokenizer;
+	struct Token currentToken;
+};
+static void ExpressionEvaluator__ctor_copy(struct ExpressionEvaluator * this, const struct ExpressionEvaluator * other);
+void ExpressionEvaluator__dtor(struct ExpressionEvaluator * this);
+int ExpressionEvaluator_evaluate(struct ExpressionEvaluator * this, const char * expression);
+int main();

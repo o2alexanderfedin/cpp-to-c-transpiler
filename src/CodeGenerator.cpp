@@ -160,6 +160,95 @@ void CodeGenerator::printStmt(Stmt *S, unsigned Indent) {
         return;
     }
 
+    // Bug #26 fix: Handle IfStmt manually to print translated branches
+    if (IfStmt *IS = dyn_cast<IfStmt>(S)) {
+        OS << std::string(Indent, '\t') << "if (";
+        if (Expr *Cond = IS->getCond()) {
+            Cond->printPretty(OS, nullptr, Policy, 0);  // Use printPretty for condition (no semicolon)
+        }
+        OS << ") ";
+        if (Stmt *Then = IS->getThen()) {
+            if (isa<CompoundStmt>(Then)) {
+                printStmt(Then, Indent);  // Compound stmt handles its own braces
+            } else {
+                OS << "{\n";
+                printStmt(Then, Indent + 1);
+                OS << std::string(Indent, '\t') << "}";
+            }
+        }
+        if (Stmt *Else = IS->getElse()) {
+            OS << " else ";
+            if (isa<CompoundStmt>(Else)) {
+                printStmt(Else, Indent);
+            } else if (isa<IfStmt>(Else)) {
+                printStmt(Else, Indent);  // else if
+            } else {
+                OS << "{\n";
+                printStmt(Else, Indent + 1);
+                OS << std::string(Indent, '\t') << "}";
+            }
+        }
+        OS << "\n";
+        return;
+    }
+
+    // Bug #26 fix: Handle SwitchStmt manually to print translated cases
+    if (SwitchStmt *SS = dyn_cast<SwitchStmt>(S)) {
+        OS << std::string(Indent, '\t') << "switch (";
+        if (Expr *Cond = SS->getCond()) {
+            Cond->printPretty(OS, nullptr, Policy, 0);  // Use printPretty for condition
+        }
+        OS << ") ";
+        if (Stmt *Body = SS->getBody()) {
+            printStmt(Body, Indent);
+        }
+        OS << "\n";
+        return;
+    }
+
+    // Bug #26 fix: Handle CaseStmt manually
+    if (CaseStmt *CS = dyn_cast<CaseStmt>(S)) {
+        OS << std::string(Indent, '\t') << "case ";
+        if (Expr *LHS = CS->getLHS()) {
+            LHS->printPretty(OS, nullptr, Policy, 0);  // Use printPretty for case value
+        }
+        OS << ":\n";
+        if (Stmt *SubStmt = CS->getSubStmt()) {
+            printStmt(SubStmt, Indent + 1);
+        }
+        return;
+    }
+
+    // Bug #26 fix: Handle DefaultStmt manually
+    if (DefaultStmt *DS = dyn_cast<DefaultStmt>(S)) {
+        OS << std::string(Indent, '\t') << "default:\n";
+        if (Stmt *SubStmt = DS->getSubStmt()) {
+            printStmt(SubStmt, Indent + 1);
+        }
+        return;
+    }
+
+    // Bug #26 fix: Handle WhileStmt manually
+    if (WhileStmt *WS = dyn_cast<WhileStmt>(S)) {
+        OS << std::string(Indent, '\t') << "while (";
+        if (Expr *Cond = WS->getCond()) {
+            Cond->printPretty(OS, nullptr, Policy, 0);  // Use printPretty for condition
+        }
+        OS << ") ";
+        if (Stmt *Body = WS->getBody()) {
+            if (isa<CompoundStmt>(Body)) {
+                printStmt(Body, Indent);
+            } else {
+                OS << "{\n";
+                printStmt(Body, Indent + 1);
+                OS << std::string(Indent, '\t') << "}\n";
+            }
+        } else {
+            OS << "{}\n";
+        }
+        return;
+    }
+
     // Bug #21 fix: Handle DeclStmt with RecoveryExpr specially
     // RecoveryExpr causes literal "<recovery-expr>()" to appear in generated C code
     // Solution: Print variable declarations without initializers if they contain RecoveryExpr

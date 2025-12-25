@@ -24,19 +24,19 @@ void Player__dtor(struct Player * this) {
 
 int Player_getHealth(struct Player * this) {
 	return this->health;
-
+;
 }
 
 int Player_getScore(struct Player * this) {
 	return this->score;
-
+;
 }
 
 void Player_takeDamage(struct Player * this, int damage) {
 	this->health -= damage;
-	if (this->health < 0) {
-        this->health = 0;
-}
+	if (this->health < 0) 	{
+		this->health = 0;
+	}
 
 }
 

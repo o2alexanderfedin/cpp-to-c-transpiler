@@ -30,7 +30,6 @@ static void Tokenizer__ctor_copy(struct Tokenizer * this, const struct Tokenizer
 void Tokenizer_skipWhitespace(struct Tokenizer * this);
 int Tokenizer_parseNumber(struct Tokenizer * this);
 void Tokenizer_skipWhitespace(struct Tokenizer * this);
-int Tokenizer_parseNumber(struct Tokenizer * this);
 struct Token Tokenizer_nextToken(struct Tokenizer * this);
 bool Tokenizer_hasMore(struct Tokenizer * this);
 void Tokenizer__ctor(struct Tokenizer * this, const char * input);

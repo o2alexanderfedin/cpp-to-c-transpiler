@@ -2113,6 +2113,14 @@ Expr *CppToCVisitor::translateExpr(Expr *E) {
 Expr *CppToCVisitor::translateDeclRefExpr(DeclRefExpr *DRE) {
   ValueDecl *D = DRE->getDecl();
 
+  // Bug #28: Replace enum constant references with integer literals to avoid C++ qualifier syntax
+  // In C++: TokenType::EndOfInput, In C: EndOfInput
+  // Solution: Replace DeclRefExpr to EnumConstantDecl with IntegerLiteral
+  if (EnumConstantDecl *ECD = dyn_cast<EnumConstantDecl>(D)) {
+    llvm::APSInt Value = ECD->getInitVal();
+    return Builder.intLit(Value.getExtValue());
+  }
+
   // Check if this is an implicit member access (field without explicit this)
   if (FieldDecl *FD = dyn_cast<FieldDecl>(D)) {
     // We're inside a method body, convert 'x' to 'this->x'
@@ -2509,8 +2517,11 @@ Stmt *CppToCVisitor::translateStmt(Stmt *S) {
   if (!S)
     return nullptr;
 
+  llvm::outs() << "[DEBUG Bug#26] translateStmt called, type: " << S->getStmtClassName() << "\n";
+
   // Dispatch to specific translators
   if (ReturnStmt *RS = dyn_cast<ReturnStmt>(S)) {
+    llvm::outs() << "[DEBUG Bug#26] Dispatching to translateReturnStmt\n";
     return translateReturnStmt(RS);
   }
 
@@ -2543,6 +2554,79 @@ Stmt *CppToCVisitor::translateStmt(Stmt *S) {
         TranslatedBody, FS->getForLoc(), FS->getLParenLoc(), FS->getRParenLoc());
   }
 
+  // Bug #26: Handle IfStmt - translate condition and branches, create NEW C AST node
+  if (IfStmt *IS = dyn_cast<IfStmt>(S)) {
+    Expr *Cond = IS->getCond();
+    Stmt *Then = IS->getThen();
+    Stmt *Else = IS->getElse();
+
+    Expr *TranslatedCond = Cond ? translateExpr(Cond) : nullptr;
+    Stmt *TranslatedThen = Then ? translateStmt(Then) : nullptr;
+    Stmt *TranslatedElse = Else ? translateStmt(Else) : nullptr;
+
+    return IfStmt::Create(Context, IS->getIfLoc(), IfStatementKind::Ordinary,
+                          nullptr, nullptr, TranslatedCond, IS->getLParenLoc(),
+                          IS->getRParenLoc(), TranslatedThen, IS->getElseLoc(),
+                          TranslatedElse);
+  }
+
+  // Bug #26: Handle WhileStmt - translate condition and body, create NEW C AST node
+  if (WhileStmt *WS = dyn_cast<WhileStmt>(S)) {
+    Expr *Cond = WS->getCond();
+    Stmt *Body = WS->getBody();
+
+    Expr *TranslatedCond = Cond ? translateExpr(Cond) : nullptr;
+    Stmt *TranslatedBody = Body ? translateStmt(Body) : nullptr;
+
+    return WhileStmt::Create(Context, nullptr, TranslatedCond, TranslatedBody,
+                              WS->getWhileLoc(), WS->getLParenLoc(), WS->getRParenLoc());
+  }
+
+  // Bug #26: Handle SwitchStmt - translate condition and body, create NEW C AST node
+  if (SwitchStmt *SS = dyn_cast<SwitchStmt>(S)) {
+    Expr *Cond = SS->getCond();
+    Stmt *Body = SS->getBody();
+
+    Expr *TranslatedCond = Cond ? translateExpr(Cond) : nullptr;
+    Stmt *TranslatedBody = Body ? translateStmt(Body) : nullptr;
+
+    SwitchStmt *NewSwitch = SwitchStmt::Create(Context, nullptr, nullptr, TranslatedCond,
+                                                SS->getLParenLoc(), SS->getRParenLoc());
+    NewSwitch->setBody(TranslatedBody);
+    return NewSwitch;
+  }
+
+  // Bug #26: Handle CaseStmt - translate LHS and substmt, create NEW C AST node
+  if (CaseStmt *CS = dyn_cast<CaseStmt>(S)) {
+    Expr *LHS = CS->getLHS();
+    Stmt *SubStmt = CS->getSubStmt();
+
+    Expr *TranslatedLHS = LHS ? translateExpr(LHS) : nullptr;
+    Stmt *TranslatedSubStmt = SubStmt ? translateStmt(SubStmt) : nullptr;
+
+    CaseStmt *NewCase = CaseStmt::Create(Context, TranslatedLHS, nullptr, CS->getCaseLoc(),
+                                          CS->getEllipsisLoc(), CS->getColonLoc());
+    NewCase->setSubStmt(TranslatedSubStmt);
+    return NewCase;
+  }
+
+  // Bug #26: Handle DefaultStmt - translate substmt, create NEW C AST node
+  if (DefaultStmt *DS = dyn_cast<DefaultStmt>(S)) {
+    Stmt *SubStmt = DS->getSubStmt();
+
+    Stmt *TranslatedSubStmt = SubStmt ? translateStmt(SubStmt) : nullptr;
+
+    return new (Context) DefaultStmt(DS->getDefaultLoc(), DS->getColonLoc(), TranslatedSubStmt);
+  }
+
+  // Bug #26: Recursively visit all children to ensure nested return statements are seen
+  // We don't recreate the statement (complex API issues), but we ensure children are visited
+  for (Stmt *Child : S->children()) {
+    if (Child) {
+      translateStmt(Child);
+    }
+  }
+
   // If it's an expression, translate it
   if (Expr *E = dyn_cast<Expr>(S)) {
     return translateExpr(E);
@@ -2559,20 +2643,172 @@ Stmt *CppToCVisitor::translateReturnStmt(ReturnStmt *RS) {
   // inject destructor calls before the return
   // This creates a compound statement: { dtors...; return; }
 
+  llvm::outs() << "[DEBUG Bug#26] translateReturnStmt called\n";
+
   Expr *RetValue = RS->getRetValue();
-  Expr *TranslatedValue = nullptr;
+
+  // Bug #26: Handle constructor calls in return statements
+  // Pattern: return ClassName(args...);
+  // Transform to: struct ClassName temp; ClassName__ctor(&temp, args...); return temp;
   if (RetValue) {
-    TranslatedValue = translateExpr(RetValue);
+    llvm::outs() << "[DEBUG Bug#26] RetValue exists, type: " << RetValue->getStmtClassName() << "\n";
+
+    // Debug: Print full expression structure
+    if (ImplicitCastExpr *ICE = dyn_cast<ImplicitCastExpr>(RetValue)) {
+      llvm::outs() << "[DEBUG Bug#26]   ImplicitCastExpr -> subexpr type: " << ICE->getSubExpr()->getStmtClassName() << "\n";
+    }
+    if (ExprWithCleanups *EWC = dyn_cast<ExprWithCleanups>(RetValue)) {
+      llvm::outs() << "[DEBUG Bug#26]   ExprWithCleanups -> subexpr type: " << EWC->getSubExpr()->getStmtClassName() << "\n";
+    }
+
+    // Check if return value is a constructor expression
+    CXXConstructExpr *CCE = dyn_cast<CXXConstructExpr>(RetValue);
+    if (!CCE) {
+      // Unwrap implicit casts and cleanups
+      if (ExprWithCleanups *EWC = dyn_cast<ExprWithCleanups>(RetValue)) {
+        CCE = dyn_cast<CXXConstructExpr>(EWC->getSubExpr());
+        if (CCE) llvm::outs() << "[DEBUG Bug#26]   Found CCE inside ExprWithCleanups\n";
+      }
+      if (!CCE && isa<ImplicitCastExpr>(RetValue)) {
+        ImplicitCastExpr *ICE = cast<ImplicitCastExpr>(RetValue);
+        CCE = dyn_cast<CXXConstructExpr>(ICE->getSubExpr());
+        if (CCE) llvm::outs() << "[DEBUG Bug#26]   Found CCE inside ImplicitCastExpr\n";
+      }
+      // Bug #26: Also check for CXXFunctionalCastExpr (e.g., Token(EndOfInput))
+      if (!CCE) {
+        if (CXXFunctionalCastExpr *FCE = dyn_cast<CXXFunctionalCastExpr>(RetValue)) {
+          llvm::outs() << "[DEBUG Bug#26]   Found CXXFunctionalCastExpr, checking subexpr\n";
+          Expr *SubExpr = FCE->getSubExpr();
+          // The subexpr might be wrapped in casts
+          while (ImplicitCastExpr *ICE = dyn_cast<ImplicitCastExpr>(SubExpr)) {
+            SubExpr = ICE->getSubExpr();
+          }
+          CCE = dyn_cast<CXXConstructExpr>(SubExpr);
+          if (CCE) llvm::outs() << "[DEBUG Bug#26]   Found CCE inside CXXFunctionalCastExpr\n";
+        }
+      }
+    }
+
+    if (CCE) {
+      llvm::outs() << "[DEBUG Bug#26] Constructor expression detected!\n";
+      // This is a constructor call in return statement
+      CXXConstructorDecl *Ctor = CCE->getConstructor();
+      llvm::outs() << "[DEBUG Bug#26] Constructor: " << Ctor->getNameAsString() << "\n";
+      llvm::outs() << "[DEBUG Bug#26] isCopyConstructor: " << Ctor->isCopyConstructor() << "\n";
+      llvm::outs() << "[DEBUG Bug#26] isMoveConstructor: " << Ctor->isMoveConstructor() << "\n";
+      llvm::outs() << "[DEBUG Bug#26] NumArgs: " << CCE->getNumArgs() << "\n";
+
+      // Check if this is a copy/move constructor wrapping another constructor
+      if (CCE->getNumArgs() == 1 && (Ctor->isCopyConstructor() || Ctor->isMoveConstructor())) {
+        llvm::outs() << "[DEBUG Bug#26] This is a copy/move constructor, checking argument...\n";
+        Expr *Arg = CCE->getArg(0);
+        llvm::outs() << "[DEBUG Bug#26] Argument type: " << Arg->getStmtClassName() << "\n";
+
+        // Unwrap casts
+        while (ImplicitCastExpr *ICE = dyn_cast<ImplicitCastExpr>(Arg)) {
+          Arg = ICE->getSubExpr();
+          llvm::outs() << "[DEBUG Bug#26] Unwrapped to: " << Arg->getStmtClassName() << "\n";
+        }
+
+        // Check if the argument is another constructor call
+        if (CXXConstructExpr *InnerCCE = dyn_cast<CXXConstructExpr>(Arg)) {
+          llvm::outs() << "[DEBUG Bug#26] Found INNER constructor! Unwrapping copy constructor.\n";
+          CCE = InnerCCE;
+          Ctor = CCE->getConstructor();
+          llvm::outs() << "[DEBUG Bug#26] Inner constructor: " << Ctor->getNameAsString() << "\n";
+        } else if (isa<DeclRefExpr>(Arg)) {
+          // Just return the variable directly
+          llvm::outs() << "[DEBUG Bug#26] Copy of variable, returning normally\n";
+          Expr *TranslatedValue = translateExpr(RetValue);
+          return Builder.returnStmt(TranslatedValue);
+        }
+      }
+
+      // Look up the C constructor function using canonical declaration
+      CXXConstructorDecl *CanonicalCtor = cast<CXXConstructorDecl>(Ctor->getCanonicalDecl());
+      llvm::outs() << "[DEBUG Bug#26] Looking up in ctorMap (size: " << ctorMap.size() << ")\n";
+      auto it = ctorMap.find(CanonicalCtor);
+      if (it != ctorMap.end()) {
+        FunctionDecl *CCtorFunc = it->second;
+        llvm::outs() << "[DEBUG Bug#26] Found in ctorMap! C function: " << CCtorFunc->getNameAsString() << "\n";
+
+        // Create a compound statement: { struct Type temp; Type__ctor(&temp, args...); return temp; }
+        std::vector<Stmt *> stmts;
+
+        // 1. Create temporary variable: struct Type temp;
+        QualType resultType = CCE->getType();
+        CXXRecordDecl *CppClass = resultType->getAsCXXRecordDecl();
+        if (CppClass && cppToCMap.find(CppClass) != cppToCMap.end()) {
+          RecordDecl *CStruct = cppToCMap[CppClass];
+          resultType = Context.getRecordType(CStruct);
+        }
+
+        VarDecl *tempVar = Builder.var(resultType, "__return_temp");
+        stmts.push_back(Builder.declStmt(tempVar));
+
+        // 2. Call constructor: Type__ctor(&temp, args...);
+        std::vector<Expr *> ctorArgs;
+
+        // First arg: address of temp variable (&temp)
+        DeclRefExpr *tempRef = Builder.ref(tempVar);
+        Expr *tempAddr = Builder.addrOf(tempRef);
+        ctorArgs.push_back(tempAddr);
+
+        // Remaining args: translate constructor arguments
+        for (unsigned i = 0; i < CCE->getNumArgs(); ++i) {
+          Expr *Arg = CCE->getArg(i);
+          Expr *TranslatedArg = translateExpr(Arg);
+          ctorArgs.push_back(TranslatedArg ? TranslatedArg : Arg);
+        }
+
+        // Handle default arguments if constructor has more parameters
+        unsigned numParams = CCtorFunc->getNumParams();
+        unsigned numArgs = ctorArgs.size(); // Includes 'this' parameter
+        if (numArgs < numParams) {
+          // Add default values for missing arguments
+          for (unsigned i = numArgs; i < numParams; ++i) {
+            ParmVarDecl *Param = CCtorFunc->getParamDecl(i);
+            if (Param->hasDefaultArg()) {
+              Expr *DefaultArg = Param->getDefaultArg();
+              Expr *TranslatedDefault = translateExpr(DefaultArg);
+              ctorArgs.push_back(TranslatedDefault ? TranslatedDefault : DefaultArg);
+            } else {
+              // No default value available - use zero initializer
+              QualType ParamType = Param->getType();
+              if (ParamType->isIntegerType()) {
+                ctorArgs.push_back(Builder.intLit(0));
+              } else {
+                llvm::outs() << "  Warning: No default value for parameter " << i << "\n";
+              }
+            }
+          }
+        }
+
+        // Create constructor call
+        Expr *ctorCall = Builder.call(CCtorFunc, ctorArgs);
+        stmts.push_back(ctorCall);
+
+        // 3. Return temp variable
+        stmts.push_back(Builder.returnStmt(Builder.ref(tempVar)));
+
+        // Return compound statement
+        llvm::outs() << "[DEBUG Bug#26] Returning compound statement with " << stmts.size() << " statements\n";
+        return Builder.block(stmts);
+      } else {
+        llvm::outs() << "[DEBUG Bug#26] WARNING: Constructor not found in ctorMap for return statement\n";
+        llvm::outs() << "[DEBUG Bug#26] Constructor name: " << CanonicalCtor->getNameAsString() << "\n";
+      }
+    } else {
+      llvm::outs() << "[DEBUG Bug#26] No constructor expression detected after unwrapping\n";
+    }
+
+    // Fall back to normal translation
+    Expr *TranslatedValue = translateExpr(RetValue);
+    if (TranslatedValue) {
+      return Builder.returnStmt(TranslatedValue);
+    }
   }
 
-  // Story #45: Check if we need to inject destructors before this return
-  // For now, we'll do this during the VisitFunctionDecl analysis phase
-  // The actual injection happens in a later pass
-  // For this implementation, we just return the translated return statement
-
-  if (TranslatedValue) {
-    return Builder.returnStmt(TranslatedValue);
-  }
   return Builder.returnStmt();
 }
 

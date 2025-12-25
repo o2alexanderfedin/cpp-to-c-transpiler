@@ -32,10 +32,12 @@ struct ExpressionEvaluator {
 	struct Token currentToken;
 };
 static void ExpressionEvaluator__ctor_copy(struct ExpressionEvaluator * this, const struct ExpressionEvaluator * other);
-struct Token Tokenizer_nextToken(struct Tokenizer * this);
+void ExpressionEvaluator_advance(struct ExpressionEvaluator * this);
+int ExpressionEvaluator_parseFactor(struct ExpressionEvaluator * this);
 int ExpressionEvaluator_parseTerm(struct ExpressionEvaluator * this);
 int ExpressionEvaluator_parseFactor(struct ExpressionEvaluator * this);
 void ExpressionEvaluator__dtor(struct ExpressionEvaluator * this);
+void ExpressionEvaluator_advance(struct ExpressionEvaluator * this);
 int ExpressionEvaluator_parseTerm(struct ExpressionEvaluator * this);
 int ExpressionEvaluator_evaluate(struct ExpressionEvaluator * this, const char * expression);
 void ExpressionEvaluator__ctor(struct ExpressionEvaluator * this);

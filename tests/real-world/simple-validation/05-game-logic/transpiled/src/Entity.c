@@ -15,22 +15,22 @@ void Entity__dtor(struct Entity * this) {
 
 float Entity_getX(struct Entity * this) {
 	return this->x;
-
+;
 }
 
 float Entity_getY(struct Entity * this) {
 	return this->y;
-
+;
 }
 
 float Entity_getWidth(struct Entity * this) {
 	return this->width;
-
+;
 }
 
 float Entity_getHeight(struct Entity * this) {
 	return this->height;
-
+;
 }
 
 void Entity_setPosition(struct Entity * this, float newX, float newY) {
