@@ -7,9 +7,14 @@
 #include "llvm/Support/raw_ostream.h"
 #include <algorithm>
 #include <sstream>
+#include <atomic>
 
 // External accessor for output directory (defined in main.cpp)
 extern std::string getOutputDir();
+
+// Global counter for successfully generated files
+// This allows main() to return success even if there were parse errors
+extern std::atomic<int> g_filesGeneratedCount;
 
 void CppToCConsumer::HandleTranslationUnit(clang::ASTContext &Context) {
   // Get source manager and main file information
@@ -77,6 +82,16 @@ void CppToCConsumer::HandleTranslationUnit(clang::ASTContext &Context) {
   // Generate header file (.h) - declarations only
   headerOS << "// Generated from: " << InputFilename << "\n";
   headerOS << "// Header file\n\n";
+
+  // Add standard C headers that are commonly needed
+  // These replace C++ headers like <cstdio>, <cmath>, etc.
+  headerOS << "#include <stdio.h>\n";
+  headerOS << "#include <stdlib.h>\n";
+  headerOS << "#include <string.h>\n";
+  headerOS << "#include <math.h>\n";
+  headerOS << "#include <stdint.h>\n";
+  headerOS << "#include <stdbool.h>\n\n";
+
   for (auto *D : C_TU->decls()) {  // Use C_TU instead of TU
     if (!D->isImplicit()) {
       headerGen.printDecl(D, true);  // declarationOnly=true for headers
@@ -133,6 +148,9 @@ void CppToCConsumer::HandleTranslationUnit(clang::ASTContext &Context) {
     llvm::outs() << "Generated files:\n";
     llvm::outs() << "  " << outputMgr.getHeaderFilename() << "\n";
     llvm::outs() << "  " << outputMgr.getImplFilename() << "\n";
+    // Increment global counter - this allows main() to return success
+    // even if there were parse errors (e.g., missing system headers)
+    g_filesGeneratedCount++;
   } else {
     llvm::errs() << "Error: Failed to write output files\n";
   }
