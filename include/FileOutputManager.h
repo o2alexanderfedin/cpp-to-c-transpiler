@@ -2,6 +2,7 @@
 #define FILE_OUTPUT_MANAGER_H
 
 #include <string>
+#include <vector>
 
 /// @brief Manages file output for generated .h and .c files
 ///
@@ -51,6 +52,40 @@ public:
     /// @return true if successful, false on error
     bool writeFiles(const std::string& headerContent,
                     const std::string& implContent);
+
+    // NEW: Multi-file output API for Phase 34-04
+
+    /// @brief Structure to hold content for a single source file's transpiled output
+    struct FileContent {
+        std::string originFile;     ///< Original source file (e.g., "Point.h", "Point.cpp")
+        std::string headerContent;  ///< Generated C header content
+        std::string implContent;    ///< Generated C implementation content
+    };
+
+    /// @brief Write multiple output file pairs (multi-file transpilation)
+    /// @param files Vector of FileContent entries (one per source file)
+    /// @return true if successful, false on error
+    ///
+    /// This method enables multi-file C++ project transpilation.
+    /// For each FileContent entry:
+    /// 1. Calculates output paths based on originFile
+    /// 2. Merges content if multiple sources map to same output (e.g., Point.h + Point.cpp)
+    /// 3. Writes header and implementation files
+    ///
+    /// Example:
+    /// - Input: Point.h, Point.cpp, main.cpp
+    /// - Output: Point_transpiled.h, Point_transpiled.c, main_transpiled.h, main_transpiled.c
+    bool writeMultiFileOutput(const std::vector<FileContent>& files);
+
+    /// @brief Calculate output path for a specific source file
+    /// @param sourceFile Original source filename (e.g., "include/Point.h")
+    /// @param isHeader true for .h output, false for .c output
+    /// @return Full output path (e.g., "output/include/Point_transpiled.h")
+    ///
+    /// Uses existing path calculation logic with sourceDir preservation.
+    /// Strips .cpp/.h extension and adds _transpiled.h or _transpiled.c suffix.
+    std::string calculateOutputPathForFile(const std::string& sourceFile,
+                                           bool isHeader) const;
 
 private:
     std::string inputFilename;    ///< Input C++ filename
