@@ -7,7 +7,10 @@
 #include "clang/Tooling/CommonOptionsParser.h"
 #include "clang/Tooling/Tooling.h"
 #include "llvm/Support/CommandLine.h"
+#include <filesystem>
+#include <unordered_set>
 
+namespace fs = std::filesystem;
 using namespace clang::tooling;
 
 // Define tool category for command line options
@@ -25,6 +28,20 @@ static llvm::cl::opt<std::string> OutputDir(
     "output-dir",
     llvm::cl::desc("Output directory for generated .c and .h files (default: current directory)"),
     llvm::cl::value_desc("directory"),
+    llvm::cl::cat(ToolCategory));
+
+// Command line option for source directory (structure preservation + auto-discovery)
+static llvm::cl::opt<std::string> SourceDir(
+    "source-dir",
+    llvm::cl::desc("(REQUIRED) Project root directory for transpilation.\n"
+                   "cpptoc operates on a per-project basis and automatically discovers\n"
+                   "all .cpp, .cxx, and .cc files recursively in this directory.\n"
+                   "Individual file arguments are IGNORED.\n"
+                   "Automatically excludes: .git, .svn, build*, cmake-build-*,\n"
+                   "node_modules, vendor, and hidden directories.\n"
+                   "Output preserves the source directory structure."),
+    llvm::cl::value_desc("directory"),
+    llvm::cl::Required,
     llvm::cl::cat(ToolCategory));
 
 // Command line option for dependency visualization
@@ -147,6 +164,11 @@ std::string getOutputDir() {
   return OutputDir;
 }
 
+// Global accessor for source directory setting
+std::string getSourceDir() {
+  return SourceDir;
+}
+
 // Global accessor for ACSL generation setting
 bool shouldGenerateACSL() {
   return GenerateACSL;
@@ -192,9 +214,106 @@ bool shouldEnableRTTI() {
   return EnableRTTI;
 }
 
+// ============================================================================
+// File Discovery Functions (Recursive .cpp file discovery)
+// ============================================================================
+
+// Helper: Check if file has valid C++ source extension
+static bool isCppSourceFile(const fs::path& path) {
+  static const std::unordered_set<std::string> validExtensions = {
+    ".cpp", ".cxx", ".cc"
+  };
+  return validExtensions.count(path.extension().string()) > 0;
+}
+
+// Helper: Check if directory should be excluded from discovery
+static bool shouldExcludeDirectory(const std::string& dirName) {
+  // Exact match exclusions
+  static const std::unordered_set<std::string> excludedDirs = {
+    ".git", ".svn", ".hg",
+    "node_modules", "vendor"
+  };
+
+  if (excludedDirs.count(dirName) > 0) {
+    return true;
+  }
+
+  // Prefix pattern exclusions
+  if (dirName.find("build") == 0) return true;  // build, build-debug, etc.
+  if (dirName.find("cmake-build-") == 0) return true;  // CLion build dirs
+  if (dirName.size() > 0 && dirName[0] == '.' && dirName != "..") return true;  // Hidden dirs
+
+  return false;
+}
+
+// Main file discovery function: recursively finds all .cpp/.cxx/.cc files
+static std::vector<std::string> discoverSourceFiles(const std::string& sourceDir) {
+  std::vector<std::string> discoveredFiles;
+
+  // Validate source directory
+  fs::path sourcePath(sourceDir);
+  if (!fs::exists(sourcePath)) {
+    llvm::errs() << "Error: Source directory does not exist: " << sourceDir << "\n";
+    return discoveredFiles;
+  }
+
+  if (!fs::is_directory(sourcePath)) {
+    llvm::errs() << "Error: Not a directory: " << sourceDir << "\n";
+    return discoveredFiles;
+  }
+
+  // Configure directory iteration options
+  fs::directory_options opts = fs::directory_options::skip_permission_denied;
+
+  // Recursively iterate directory tree
+  std::error_code ec;
+  for (auto it = fs::recursive_directory_iterator(sourcePath, opts, ec);
+       it != fs::recursive_directory_iterator();
+       it.increment(ec)) {
+
+    if (ec) {
+      llvm::errs() << "Warning: " << ec.message() << " for " << it->path() << "\n";
+      ec.clear();
+      continue;
+    }
+
+    // Skip excluded directories
+    if (it->is_directory()) {
+      std::string dirName = it->path().filename().string();
+      if (shouldExcludeDirectory(dirName)) {
+        it.disable_recursion_pending();  // Don't descend into this directory
+        continue;
+      }
+    }
+
+    // Collect C++ source files
+    if (it->is_regular_file() && isCppSourceFile(it->path())) {
+      // Use absolute paths for consistency
+      discoveredFiles.push_back(fs::absolute(it->path()).string());
+    }
+  }
+
+  return discoveredFiles;
+}
+
+// ============================================================================
+// Main Entry Point
+// ============================================================================
+
 int main(int argc, const char **argv) {
+  // Project-based transpilation: always add dummy file for CommonOptionsParser
+  // CommonOptionsParser requires at least one file argument, but we'll discover files later
+  std::vector<const char*> modifiedArgv(argv, argv + argc);
+
+  // Add dummy file before "--" to satisfy CommonOptionsParser
+  // Individual files are IGNORED - we always discover all files from --source-dir
+  auto insertPos = std::find_if(modifiedArgv.begin(), modifiedArgv.end(),
+                                 [](const char* s) { return std::string(s) == "--"; });
+  modifiedArgv.insert(insertPos, "__dummy_for_discovery__.cpp");
+  argc++;
+
   // Parse command line arguments
-  auto ExpectedParser = CommonOptionsParser::create(argc, argv, ToolCategory);
+  auto ExpectedParser = CommonOptionsParser::create(argc, modifiedArgv.data(), ToolCategory);
   if (!ExpectedParser) {
     llvm::errs() << ExpectedParser.takeError();
     return 1;
@@ -216,9 +335,35 @@ int main(int argc, const char **argv) {
     return 1;
   }
 
-  // Create ClangTool with parsed options
-  ClangTool Tool(OptionsParser.getCompilations(),
-                 OptionsParser.getSourcePathList());
+  // ============================================================================
+  // Project-Based Transpilation (--source-dir is REQUIRED)
+  // ============================================================================
+  std::vector<std::string> sourceFiles;
+
+  // Require --source-dir for project-based transpilation
+  if (SourceDir.empty()) {
+    llvm::errs() << "Error: --source-dir is required for project-based transpilation\n"
+                 << "Usage: cpptoc --source-dir=<project-root> --output-dir=<output> --\n"
+                 << "Example: cpptoc --source-dir=src/ --output-dir=build/ --\n";
+    return 1;
+  }
+
+  // AUTO-DISCOVERY MODE (project-based transpilation only)
+  // Individual file arguments are IGNORED - we always transpile the entire project
+  llvm::outs() << "Auto-discovering C++ source files in: " << SourceDir << "\n";
+
+  sourceFiles = discoverSourceFiles(SourceDir);
+
+  if (sourceFiles.empty()) {
+    llvm::errs() << "Warning: No C++ source files (.cpp, .cxx, .cc) found in "
+                 << SourceDir << "\n";
+    return 1;  // Non-fatal error code
+  }
+
+  llvm::outs() << "Discovered " << sourceFiles.size() << " file(s) for transpilation\n";
+
+  // Create ClangTool with discovered or provided files
+  ClangTool Tool(OptionsParser.getCompilations(), sourceFiles);
 
   // Run tool with our custom FrontendAction
   int result = Tool.run(newFrontendActionFactory<CppToCFrontendAction>().get());

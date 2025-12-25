@@ -25,7 +25,7 @@ bool contains(const std::string &haystack, const std::string &needle) {
     return haystack.find(needle) != std::string::npos;
 }
 
-TEST(MemberInitList, BasicMemberInitList:_Simple_primitive_member_initialization) {
+TEST(MemberInitList, BasicMemberInitListSimplePrimitiveMemberInitialization) {
     const char *cpp = R"(
             class Vector {
                 double x, y, z;
@@ -51,7 +51,7 @@ TEST(MemberInitList, BasicMemberInitList:_Simple_primitive_member_initialization
 
         // Generate C code from the function
         std::string output;
-        raw_string_ostream OS(output);
+        llvm::raw_string_ostream OS(output);
         CodeGenerator gen(OS, AST->getASTContext());
         gen.printDecl(CtorFunc);
         OS.flush();
@@ -81,7 +81,7 @@ TEST(MemberInitList, BasicMemberInitList:_Simple_primitive_member_initialization
         }
 }
 
-TEST(MemberInitList, MixedTypesMemberInitList:_int,_double,_char*_initialization) {
+TEST(MemberInitList, MixedTypesMemberInitListIntDoubleCharPtrInitialization) {
     const char *cpp = R"(
             class Entity {
                 int id;
@@ -108,7 +108,7 @@ TEST(MemberInitList, MixedTypesMemberInitList:_int,_double,_char*_initialization
         }
 
         std::string output;
-        raw_string_ostream OS(output);
+        llvm::raw_string_ostream OS(output);
         CodeGenerator gen(OS, AST->getASTContext());
         gen.printDecl(CtorFunc);
         OS.flush();
@@ -125,7 +125,7 @@ TEST(MemberInitList, MixedTypesMemberInitList:_int,_double,_char*_initialization
         }
 }
 
-TEST(MemberInitList, PartialMemberInitList:_Only_some_members_initialized) {
+TEST(MemberInitList, PartialMemberInitListOnlySomeMembersInitialized) {
     const char *cpp = R"(
             class Particle {
                 double x, y;
@@ -150,7 +150,7 @@ TEST(MemberInitList, PartialMemberInitList:_Only_some_members_initialized) {
         }
 
         std::string output;
-        raw_string_ostream OS(output);
+        llvm::raw_string_ostream OS(output);
         CodeGenerator gen(OS, AST->getASTContext());
         gen.printDecl(CtorFunc);
         OS.flush();
@@ -171,7 +171,7 @@ TEST(MemberInitList, PartialMemberInitList:_Only_some_members_initialized) {
         }
 }
 
-TEST(MemberInitList, MemberInitListWithConstants:_Constant_value_initialization) {
+TEST(MemberInitList, MemberInitListWithConstantsConstantValueInitialization) {
     const char *cpp = R"(
             class Config {
                 int version;
@@ -196,7 +196,7 @@ TEST(MemberInitList, MemberInitListWithConstants:_Constant_value_initialization)
         }
 
         std::string output;
-        raw_string_ostream OS(output);
+        llvm::raw_string_ostream OS(output);
         CodeGenerator gen(OS, AST->getASTContext());
         gen.printDecl(CtorFunc);
         OS.flush();
@@ -212,7 +212,7 @@ TEST(MemberInitList, MemberInitListWithConstants:_Constant_value_initialization)
         }
 }
 
-TEST(MemberInitList, DeclarationOrderPreserved:_Init_order_follows_declaration,_not_init_list) {
+TEST(MemberInitList, DeclarationOrderPreservedInitOrderFollowsDeclarationNotInitList) {
     const char *cpp = R"(
             class Test {
                 int a, b, c;
@@ -236,7 +236,7 @@ TEST(MemberInitList, DeclarationOrderPreserved:_Init_order_follows_declaration,_
         }
 
         std::string output;
-        raw_string_ostream OS(output);
+        llvm::raw_string_ostream OS(output);
         CodeGenerator gen(OS, AST->getASTContext());
         gen.printDecl(CtorFunc);
         OS.flush();
@@ -254,6 +254,6 @@ TEST(MemberInitList, DeclarationOrderPreserved:_Init_order_follows_declaration,_
         size_t c_pos = output.find("this->c = 3");
 
         if (!(a_pos < b_pos && b_pos < c_pos)) {
-            FAIL() << "Members not in declaration order (should be a, b, c;");
+            FAIL() << "Members not in declaration order (should be a, b, c)";
         }
 }

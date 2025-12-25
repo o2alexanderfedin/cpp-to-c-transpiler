@@ -212,6 +212,7 @@ add_library(cpptoc_core STATIC
     src/DependencyAnalyzer.cpp
     src/DependencyGraphVisualizer.cpp
     src/FileOutputManager.cpp
+    src/FileOriginTracker.cpp
     src/VirtualMethodAnalyzer.cpp
     src/VptrInjector.cpp
     src/VirtualInheritanceAnalyzer.cpp
@@ -934,6 +935,32 @@ target_link_libraries(FileOutputManagerTest PRIVATE cpptoc_core
 
 # Register with CTest
 gtest_discover_tests(FileOutputManagerTest
+    WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
+)
+
+# Phase 34-02: FileOriginTracker tests
+add_executable(FileOriginTrackerTest
+    tests/FileOriginTrackerTest.cpp
+)
+
+target_compile_definitions(FileOriginTrackerTest PRIVATE ${LLVM_DEFINITIONS})
+
+target_include_directories(FileOriginTrackerTest PRIVATE
+    ${CMAKE_SOURCE_DIR}/include
+    ${LLVM_INCLUDE_DIRS}
+    ${CLANG_INCLUDE_DIRS}
+)
+
+target_link_libraries(FileOriginTrackerTest PRIVATE cpptoc_core
+    clangTooling
+    clangFrontend
+    clangAST
+    clangBasic
+    GTest::gtest
+    GTest::gtest_main)
+
+# Register with CTest
+gtest_discover_tests(FileOriginTrackerTest
     WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
 )
 

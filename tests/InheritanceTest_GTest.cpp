@@ -1185,15 +1185,16 @@ TEST_F(InheritanceTestFixture, MemberInitListDeclarationOrder) {
     EXPECT_EQ(initOrder.size(), 3) << "Should have 3 member initializations";
 
     // Critical assertion: members initialized in declaration order
-    ASSERT(initOrder[0] == "x",
-           "First initialization must be 'x' (declared first), got: " + initOrder[0]);
-    ASSERT(initOrder[1] == "y",
-           "Second initialization must be 'y' (declared second), got: " + initOrder[1]);
-    ASSERT(initOrder[2] == "z",
-           "Third initialization must be 'z' (declared third), got: " + initOrder[2]);
+    ASSERT_EQ(initOrder[0], "x")
+        << "First initialization must be 'x' (declared first), got: " << initOrder[0];
+    ASSERT_EQ(initOrder[1], "y")
+        << "Second initialization must be 'y' (declared second), got: " << initOrder[1];
+    ASSERT_EQ(initOrder[2], "z")
+        << "Third initialization must be 'z' (declared third), got: " << initOrder[2];
 
     // This test currently FAILS because the implementation follows
-    // initializer list order (z, x, y) instead of declaration order (x, y, z)}
+    // initializer list order (z, x, y) instead of declaration order (x, y, z)
+}
 
 /**
  * Test Case 19: Empty Member Init List
@@ -1625,8 +1626,8 @@ TEST_F(InheritanceTestFixture, SimpleMemberConstructorCalls) {
     ASSERT_NE(callee, nullptr) << "Constructor call has no callee";
 
     std::string calleeName = callee->getNameAsString();
-    ASSERT(calleeName.find("Inner__ctor") != std::string::npos,
-           "Expected call to Inner__ctor, got: " + calleeName);
+    ASSERT_NE(calleeName.find("Inner__ctor"), std::string::npos)
+        << "Expected call to Inner__ctor, got: " << calleeName;
 }
 
 
@@ -1696,8 +1697,8 @@ TEST_F(InheritanceTestFixture, MemberDestructorCalls) {
     ASSERT_NE(callee, nullptr) << "Destructor call has no callee";
 
     std::string calleeName = callee->getNameAsString();
-    ASSERT(calleeName.find("Resource__dtor") != std::string::npos,
-           "Expected call to Resource__dtor, got: " + calleeName);
+    ASSERT_NE(calleeName.find("Resource__dtor"), std::string::npos)
+        << "Expected call to Resource__dtor, got: " << calleeName;
 }
 
 
@@ -1893,12 +1894,12 @@ TEST_F(InheritanceTestFixture, MultipleMembersOrderVerification) {
 
     // Verify construction order: A__ctor, B__ctor, C__ctor (declaration order)
     EXPECT_EQ(ctorCallOrder.size(), 3) << "Should have 3 constructor calls";
-    ASSERT(ctorCallOrder[0].find("A__ctor") != std::string::npos,
-           "First ctor should be A__ctor (declared first), got: " + ctorCallOrder[0]);
-    ASSERT(ctorCallOrder[1].find("B__ctor") != std::string::npos,
-           "Second ctor should be B__ctor (declared second), got: " + ctorCallOrder[1]);
-    ASSERT(ctorCallOrder[2].find("C__ctor") != std::string::npos,
-           "Third ctor should be C__ctor (declared third), got: " + ctorCallOrder[2]);
+    ASSERT_NE(ctorCallOrder[0].find("A__ctor"), std::string::npos)
+        << "First ctor should be A__ctor (declared first), got: " << ctorCallOrder[0];
+    ASSERT_NE(ctorCallOrder[1].find("B__ctor"), std::string::npos)
+        << "Second ctor should be B__ctor (declared second), got: " << ctorCallOrder[1];
+    ASSERT_NE(ctorCallOrder[2].find("C__ctor"), std::string::npos)
+        << "Third ctor should be C__ctor (declared third), got: " << ctorCallOrder[2];
 
     // === Test Destructor Order: c, b, a (reverse declaration order) ===
     FunctionDecl *multiDtor = visitor.getDtor("Multi__dtor");
@@ -1928,12 +1929,12 @@ TEST_F(InheritanceTestFixture, MultipleMembersOrderVerification) {
 
     // Verify destruction order: C__dtor, B__dtor, A__dtor (reverse declaration order)
     EXPECT_EQ(dtorCallOrder.size(), 3) << "Should have 3 destructor calls";
-    ASSERT(dtorCallOrder[0].find("C__dtor") != std::string::npos,
-           "First dtor should be C__dtor (declared last), got: " + dtorCallOrder[0]);
-    ASSERT(dtorCallOrder[1].find("B__dtor") != std::string::npos,
-           "Second dtor should be B__dtor (declared middle), got: " + dtorCallOrder[1]);
-    ASSERT(dtorCallOrder[2].find("A__dtor") != std::string::npos,
-           "Third dtor should be A__dtor (declared first), got: " + dtorCallOrder[2]);
+    ASSERT_NE(dtorCallOrder[0].find("C__dtor"), std::string::npos)
+        << "First dtor should be C__dtor (declared last), got: " << dtorCallOrder[0];
+    ASSERT_NE(dtorCallOrder[1].find("B__dtor"), std::string::npos)
+        << "Second dtor should be B__dtor (declared middle), got: " << dtorCallOrder[1];
+    ASSERT_NE(dtorCallOrder[2].find("A__dtor"), std::string::npos)
+        << "Third dtor should be A__dtor (declared first), got: " << dtorCallOrder[2];
 }
 
 

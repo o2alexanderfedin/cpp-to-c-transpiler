@@ -23,12 +23,13 @@ public:
     /// @param usePragmaOnce If true, uses #pragma once; if false, uses traditional guards
     explicit IncludeGuardGenerator(bool usePragmaOnce);
 
-    /// @brief Generate guard name from filename
-    /// @param filename Input filename (e.g., "Point.h", "my-class.h")
+    /// @brief Generate guard name from filename or path
+    /// @param filename Input filename or path (e.g., "Point.h", "include/Point.h", "my-class.h")
     /// @return Guard name in UPPERCASE with special chars replaced by '_'
     ///
     /// Examples:
     /// - "Point.h" → "POINT_H"
+    /// - "include/Point.h" → "POINT_H" (path is stripped)
     /// - "MyClass.h" → "MYCLASS_H"
     /// - "my-class.h" → "MY_CLASS_H"
     std::string generateGuardName(const std::string& filename);

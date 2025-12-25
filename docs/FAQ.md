@@ -267,7 +267,47 @@ Input:  main.cpp     →  Output:  main.h + main.c
 
 ---
 
-### Q11: What C++ features are supported?
+### Q11: How do I preserve my source directory structure in the output?
+
+**A:** Use the `--source-dir` option to mirror your source directory structure in the output:
+
+```bash
+# Preserve directory structure
+./build/cpptoc src/math/Vector.cpp src/utils/helpers.cpp \
+    --source-dir src/ \
+    --output-dir build/
+
+# Output mirrors source structure:
+# build/math/Vector.h, build/math/Vector.c
+# build/utils/helpers.h, build/utils/helpers.c
+```
+
+**Benefits:**
+- **Prevents name collisions**: Files with the same name in different directories won't overwrite each other
+- **Maintains organization**: Logical grouping is preserved (math/, utils/, ui/, etc.)
+- **Build system compatibility**: Many build systems expect mirrored structures
+
+**Backward Compatibility:**
+- Without `--source-dir`, files use flat structure (all in output directory root)
+- This preserves legacy behavior and existing scripts
+
+**Example - Name Collision Prevention:**
+```bash
+# Two files named Vector.cpp in different directories
+./build/cpptoc src/frontend/Vector.cpp src/backend/Vector.cpp \
+    --source-dir src/ \
+    --output-dir build/
+
+# Output (no collision):
+# build/frontend/Vector.h, build/frontend/Vector.c
+# build/backend/Vector.h, build/backend/Vector.c
+```
+
+**See Also:** [Multi-File Transpilation Guide - Directory Structure Preservation](MULTI_FILE_TRANSPILATION.md#directory-structure-preservation)
+
+---
+
+### Q12: What C++ features are supported?
 
 **A:** Full C++20 support (roadmap):
 

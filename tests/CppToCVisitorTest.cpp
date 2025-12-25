@@ -222,11 +222,7 @@ TEST_F(CppToCVisitorTest, ImplicitThisWrite) {
     ASSERT_TRUE(Body != nullptr) << "Function body not translated";
 }
 
-TEST_F(CppToCVisitorTest, ExplicitmemberaccessObj.xPreservedInTranslation) {
-    // Build AST for test
-    const char *code = R"(int main() { return 0; })";
-    std::unique_ptr<ASTUnit> AST = buildAST(code);
-    ASTContext &Ctx = AST->getASTContext();
+TEST_F(CppToCVisitorTest, ExplicitMemberAccessObjXPreservedInTranslation) {
 
     const char *cpp = R"(
             class Point {
@@ -251,11 +247,7 @@ TEST_F(CppToCVisitorTest, ExplicitmemberaccessObj.xPreservedInTranslation) {
         ASSERT_TRUE(Body != nullptr) << "Function body not translated";
 }
 
-TEST_F(CppToCVisitorTest, MultiplefieldaccessReturnWidthHeight) {
-    // Build AST for test
-    const char *code = R"(int main() { return 0; })";
-    std::unique_ptr<ASTUnit> AST = buildAST(code);
-    ASTContext &Ctx = AST->getASTContext();
+TEST_F(CppToCVisitorTest, MultipleFieldAccessReturnWidthHeight) {
 
     const char *cpp = R"(
             class Rectangle {
@@ -281,15 +273,8 @@ TEST_F(CppToCVisitorTest, MultiplefieldaccessReturnWidthHeight) {
         ASSERT_TRUE(Body != nullptr) << "Function body not translated";
 }
 
-TEST_F(CppToCVisitorTest, DefaultconstructorPointVoidPointCtorStructPointThis)_{}) {
-    // Build AST for test
-    const char *code = R"(int main() { return 0; })";
-    std::unique_ptr<ASTUnit> AST = buildAST(code);
-    ASTContext &Ctx = AST->getASTContext();
-
-    {} -> void Point__ctor(struct Point *this) {}");
-
-        const char *cpp = R"(
+TEST_F(CppToCVisitorTest, DefaultConstructorPointVoidPointCtorStructPointThis) {
+    const char *cpp = R"(
             class Point {
                 int x, y;
             public:
@@ -304,22 +289,15 @@ TEST_F(CppToCVisitorTest, DefaultconstructorPointVoidPointCtorStructPointThis)_{
 
         visitor.TraverseDecl(AST->getASTContext().getTranslationUnitDecl());
 
-        // Verify constructor function was generated
-        FunctionDecl *CFunc = visitor.getCtor("Point__ctor");
-        ASSERT_TRUE(CFunc != nullptr) << "Constructor function not generated";
-        ASSERT_TRUE(CFunc->getNumParams() == 1) << "Expected 1 parameter (this;");
-        ASSERT_TRUE(CFunc->getReturnType()->isVoidType()) << "Constructor should return void";
+    // Verify constructor function was generated
+    FunctionDecl *CFunc = visitor.getCtor("Point__ctor");
+    ASSERT_TRUE(CFunc != nullptr) << "Constructor function not generated";
+    ASSERT_TRUE(CFunc->getNumParams() == 1) << "Expected 1 parameter (this)";
+    ASSERT_TRUE(CFunc->getReturnType()->isVoidType()) << "Constructor should return void";
 }
 
-TEST_F(CppToCVisitorTest, MemberinitializersPointIntXIntY)_:_x(x),_y(y)_{}) {
-    // Build AST for test
-    const char *code = R"(int main() { return 0; })";
-    std::unique_ptr<ASTUnit> AST = buildAST(code);
-    ASTContext &Ctx = AST->getASTContext();
-
-    : x(x), y(y) {}");
-
-        const char *cpp = R"(
+TEST_F(CppToCVisitorTest, MemberInitializersPointIntXIntY) {
+    const char *cpp = R"(
             class Point {
                 int x, y;
             public:
@@ -334,21 +312,17 @@ TEST_F(CppToCVisitorTest, MemberinitializersPointIntXIntY)_:_x(x),_y(y)_{}) {
 
         visitor.TraverseDecl(AST->getASTContext().getTranslationUnitDecl());
 
-        // Verify constructor function was generated
-        FunctionDecl *CFunc = visitor.getCtor("Point__ctor");
-        ASSERT_TRUE(CFunc != nullptr) << "Constructor function not generated";
-        ASSERT_TRUE(CFunc->getNumParams() == 3) << "Expected 3 parameters (this + 2 params;");
+    // Verify constructor function was generated
+    FunctionDecl *CFunc = visitor.getCtor("Point__ctor");
+    ASSERT_TRUE(CFunc != nullptr) << "Constructor function not generated";
+    ASSERT_TRUE(CFunc->getNumParams() == 3) << "Expected 3 parameters (this + 2 params)";
 
-        // Verify function has body with member initializers translated to assignments
-        Stmt *Body = CFunc->getBody();
-        ASSERT_TRUE(Body != nullptr) << "Constructor body not translated";
+    // Verify function has body with member initializers translated to assignments
+    Stmt *Body = CFunc->getBody();
+    ASSERT_TRUE(Body != nullptr) << "Constructor body not translated";
 }
 
-TEST_F(CppToCVisitorTest, ConstructorwithbodyConstructorWithStatementsInBody) {
-    // Build AST for test
-    const char *code = R"(int main() { return 0; })";
-    std::unique_ptr<ASTUnit> AST = buildAST(code);
-    ASTContext &Ctx = AST->getASTContext();
+TEST_F(CppToCVisitorTest, ConstructorWithBodyConstructorWithStatementsInBody) {
 
     const char *cpp = R"(
             class Rectangle {
@@ -376,11 +350,7 @@ TEST_F(CppToCVisitorTest, ConstructorwithbodyConstructorWithStatementsInBody) {
         ASSERT_TRUE(Body != nullptr) << "Constructor body not translated";
 }
 
-TEST_F(CppToCVisitorTest, DestructortranslationDestructorTranslation) {
-    // Build AST for test
-    const char *code = R"(int main() { return 0; })";
-    std::unique_ptr<ASTUnit> AST = buildAST(code);
-    ASTContext &Ctx = AST->getASTContext();
+TEST_F(CppToCVisitorTest, DestructorTranslationDestructorTranslation) {
 
     const char *cpp = R"(
             class Resource {
@@ -398,9 +368,9 @@ TEST_F(CppToCVisitorTest, DestructortranslationDestructorTranslation) {
 
         visitor.TraverseDecl(AST->getASTContext().getTranslationUnitDecl());
 
-        // Verify destructor function was generated
-        FunctionDecl *CDtor = visitor.getDtor("Resource__dtor");
-        ASSERT_TRUE(CDtor != nullptr) << "Destructor function not generated";
-        ASSERT_TRUE(CDtor->getNumParams() == 1) << "Expected 1 parameter (this;");
-        ASSERT_TRUE(CDtor->getReturnType()->isVoidType()) << "Destructor should return void";
+    // Verify destructor function was generated
+    FunctionDecl *CDtor = visitor.getDtor("Resource__dtor");
+    ASSERT_TRUE(CDtor != nullptr) << "Destructor function not generated";
+    ASSERT_TRUE(CDtor->getNumParams() == 1) << "Expected 1 parameter (this)";
+    ASSERT_TRUE(CDtor->getReturnType()->isVoidType()) << "Destructor should return void";
 }

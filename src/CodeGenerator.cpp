@@ -84,6 +84,10 @@ void CodeGenerator::printDecl(Decl *D, bool declarationOnly) {
             // Print full function (for implementation)
             // Use Clang's built-in DeclPrinter (via Decl::print)
             D->print(OS, Policy);
+            // Function declarations without bodies need semicolon
+            if (!FD->hasBody()) {
+                OS << ";";
+            }
             OS << "\n";
         }
     } else if (isa<RecordDecl>(D) || isa<EnumDecl>(D)) {

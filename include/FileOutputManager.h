@@ -29,6 +29,14 @@ public:
     /// @param filename Custom implementation filename (e.g., "custom.c")
     void setOutputImpl(const std::string& filename);
 
+    /// @brief Set source root directory for structure preservation
+    /// @param root Source root directory path (e.g., "src/")
+    void setSourceDir(const std::string& root);
+
+    /// @brief Get source root directory
+    /// @return Source root directory path
+    std::string getSourceDir() const;
+
     /// @brief Get header filename (custom or default, with output dir if set)
     /// @return Header filename with full path
     std::string getHeaderFilename() const;
@@ -49,6 +57,7 @@ private:
     std::string outputDir;        ///< Output directory (if set)
     std::string outputHeader;     ///< Custom header filename (if set)
     std::string outputImpl;       ///< Custom impl filename (if set)
+    std::string sourceDir;        ///< Source root directory for structure preservation
 
     /// @brief Derive base name from input filename
     /// @return Base name without extension (e.g., "Point" from "Point.cpp")
@@ -58,6 +67,11 @@ private:
     /// @param filename Base filename
     /// @return Full path with output directory prefix, or just filename if no dir set
     std::string getFullPath(const std::string& filename) const;
+
+    /// @brief Calculate output path with optional structure preservation
+    /// @param extension File extension (e.g., ".h" or ".c")
+    /// @return Output path (preserves structure if sourceDir is set)
+    std::string calculateOutputPath(const std::string& extension) const;
 
     /// @brief Write content to file with error handling
     /// @param filename Output filename

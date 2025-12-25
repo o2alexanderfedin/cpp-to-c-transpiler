@@ -24,12 +24,6 @@ std::unique_ptr<ASTUnit> buildAST(const char *code) {
     return tooling::buildASTFromCodeWithArgs(code, args, "input.cc");
 }
 
-    if (!(cond)) { \
-        std::cerr << "\nASSERT FAILED: " << msg << std::endl; \
-        std::cerr << "  Condition: " #cond << std::endl; \
-        return; \
-    }
-
 FunctionDecl* findFunction(TranslationUnitDecl* TU, const std::string& name) {
     for (auto *D : TU->decls()) {
         if (auto *FD = dyn_cast<FunctionDecl>(D)) {

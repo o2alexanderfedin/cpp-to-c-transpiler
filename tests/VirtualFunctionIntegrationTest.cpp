@@ -34,6 +34,7 @@ std::unique_ptr<ASTUnit> buildAST(const char *code) {
     return tooling::buildASTFromCodeWithArgs(code, args, "input.cc");
 }
 
+#define ASSERT_MSG(cond, msg) \
     if (!(cond)) { \
         std::cerr << "\nASSERT FAILED: " << msg << std::endl; \
         return; \
@@ -412,7 +413,7 @@ TEST_F(VirtualFunctionIntegrationTest, VptrInjection) {
         ASSERT_TRUE(Polymorphic) << "Polymorphic class not found";
 
         // Verify class is polymorphic (vptr should be injected)
-        ASSERT_TRUE(analyzer.isPolymorphic(Polymorphic)) << "Should be polymorphic (needs vptr;");
+        ASSERT_TRUE(analyzer.isPolymorphic(Polymorphic)) << "Should be polymorphic (needs vptr)";
 
         // Test vptr field injection
         std::vector<FieldDecl*> fields;

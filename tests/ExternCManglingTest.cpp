@@ -107,7 +107,7 @@ TEST_F(ExternCManglingTest, ExternCFunctionUnmangled) {
         std::string mangledName = mangler.mangleFunctionName(FD);
 
         // CRITICAL: extern "C" function should return UNMANGLED name
-        ASSERT_TRUE(mangledName == "add") << "extern \"C\" function 'add' should NOT be mangled (expected 'add', got '" + mangledName + "';");
+        ASSERT_TRUE(mangledName == "add") << "extern \"C\" function 'add' should NOT be mangled (expected 'add', got '" + mangledName + "');";
 }
 
 TEST_F(ExternCManglingTest, CppFunctionMangled) {
@@ -133,7 +133,7 @@ TEST_F(ExternCManglingTest, CppFunctionMangled) {
         // C++ function at global scope has no namespace, so name should be unchanged
         // (NameMangler only mangles namespaced functions)
         // For this project's NameMangler, global scope functions are NOT mangled
-        ASSERT_TRUE(mangledName == "normalFunc") << "Global C++ function 'normalFunc' should not be mangled (expected 'normalFunc', got '" + mangledName + "';");
+        ASSERT_TRUE(mangledName == "normalFunc") << "Global C++ function 'normalFunc' should not be mangled (expected 'normalFunc', got '" + mangledName + "');";
 }
 
 TEST_F(ExternCManglingTest, ExternCInNamespace) {
@@ -159,7 +159,7 @@ TEST_F(ExternCManglingTest, ExternCInNamespace) {
         std::string mangledName = mangler.mangleFunctionName(FD);
 
         // CRITICAL: extern "C" suppresses namespace mangling
-        ASSERT_TRUE(mangledName == "helper") << "extern \"C\" function in namespace should NOT be mangled (expected 'helper', got '" + mangledName + "';");
+        ASSERT_TRUE(mangledName == "helper") << "extern \"C\" function in namespace should NOT be mangled (expected 'helper', got '" + mangledName + "');";
 }
 
 TEST_F(ExternCManglingTest, MixedNamespace) {
@@ -183,7 +183,7 @@ TEST_F(ExternCManglingTest, MixedNamespace) {
         std::string cppMangledName = mangler.mangleFunctionName(cppFunc);
 
         // C++ function in namespace SHOULD be mangled with namespace prefix
-        ASSERT_TRUE(cppMangledName == "NS_cppFunc") << "C++ function in namespace should be mangled (expected 'NS_cppFunc', got '" + cppMangledName + "';");
+        ASSERT_TRUE(cppMangledName == "NS_cppFunc") << "C++ function in namespace should be mangled (expected 'NS_cppFunc', got '" + cppMangledName + "');";
 
         // Check extern "C" function
         FunctionDecl *cFunc = findFunction(AST->getASTContext(), "cFunc");
@@ -193,7 +193,7 @@ TEST_F(ExternCManglingTest, MixedNamespace) {
         std::string cMangledName = mangler.mangleFunctionName(cFunc);
 
         // extern "C" function should NOT be mangled (no namespace prefix)
-        ASSERT_TRUE(cMangledName == "cFunc") << "extern \"C\" function should NOT be mangled (expected 'cFunc', got '" + cMangledName + "';");
+        ASSERT_TRUE(cMangledName == "cFunc") << "extern \"C\" function should NOT be mangled (expected 'cFunc', got '" + cMangledName + "');";
 }
 
 TEST_F(ExternCManglingTest, ExternCNoParameterEncoding) {
@@ -215,5 +215,5 @@ TEST_F(ExternCManglingTest, ExternCNoParameterEncoding) {
         std::string mangledName = mangler.mangleFunctionName(FD);
 
         // extern "C" function should be EXACTLY "process" - no param encoding
-        ASSERT_TRUE(mangledName == "process") << "extern \"C\" should not have parameter encoding (expected 'process', got '" + mangledName + "';");
+        ASSERT_TRUE(mangledName == "process") << "extern \"C\" should not have parameter encoding (expected 'process', got '" + mangledName + "');";
 }

@@ -388,24 +388,22 @@ The tool currently parses C++ files and reports AST structure:
 
 ## Multi-File Transpilation
 
-The transpiler supports processing multiple C++ files in a single invocation, with automatic header/implementation separation for each file.
+The transpiler operates **exclusively in project-based mode**, automatically discovering and transpiling all C++ source files in a directory tree. The `--source-dir` option is **REQUIRED**.
 
-### Basic Multi-File Usage
+### Project-Based Transpilation
 
 ```bash
-# Transpile multiple files
-./build/cpptoc file1.cpp file2.cpp file3.cpp --
+# Transpile entire project (REQUIRED usage)
+./build/cpptoc --source-dir src/ --output-dir build/
 
-# With output directory
-./build/cpptoc Point.cpp Circle.cpp --output-dir ./generated
-
-# With include paths
-./build/cpptoc main.cpp utils.cpp -- -I./include -I./third_party
+# Discovers all .cpp, .cxx, and .cc files recursively
+# Output: Auto-discovering C++ source files in: src/
+#         Discovered 15 file(s) for transpilation
 ```
 
 ### Output File Naming Convention
 
-Each input file generates two output files:
+Each discovered input file generates two output files:
 
 ```
 Input:  Point.cpp       →  Output:  Point.h + Point.c
@@ -413,36 +411,134 @@ Input:  Circle.cpp      →  Output:  Circle.h + Circle.c
 Input:  MyClass.cpp     →  Output:  MyClass.h + MyClass.c
 ```
 
-The base name (without extension) is preserved, and files are placed in:
-- Current directory (default)
-- Specified output directory via `--output-dir`
+The base name (without extension) is preserved, and files are placed in the output directory preserving the source directory structure.
 
 ### Output Directory Options
 
 ```bash
-# Relative path
-./build/cpptoc input.cpp --output-dir ./build/generated
+# Relative path (recommended)
+./build/cpptoc --source-dir src/ --output-dir ./build/generated
 
 # Absolute path
-./build/cpptoc input.cpp --output-dir /tmp/transpiled
+./build/cpptoc --source-dir src/ --output-dir /tmp/transpiled
 
 # Create directory if it doesn't exist (automatic)
-./build/cpptoc input.cpp --output-dir ./new_dir
+./build/cpptoc --source-dir src/ --output-dir ./new_dir
 ```
+
+### Directory Structure Preservation
+
+The transpiler **automatically preserves your source directory structure** in the output:
+
+```bash
+# Preserve directory structure (automatic)
+./build/cpptoc --source-dir src/ --output-dir build/
+
+# This mirrors the source structure:
+# Source:                    Output:
+# src/                       build/
+#   math/                      math/
+#     Vector.cpp                 Vector.h
+#                                Vector.c
+#   utils/                     utils/
+#     helpers.cpp                helpers.h
+#                                helpers.c
+```
+
+#### Why Structure Preservation?
+
+1. **Prevents Name Collisions**: Multiple files with the same name in different directories won't overwrite each other
+2. **Maintains Organization**: Preserves your project's logical structure
+3. **Build System Compatibility**: Works naturally with build systems expecting mirrored directory structures
+
+#### Examples
+
+**Simple Directory Structure:**
+```bash
+# Source files in subdirectories
+./build/cpptoc --source-dir src/ --output-dir build/
+
+# Auto-discovers and transpiles:
+# src/core/Engine.cpp → build/core/Engine.h, build/core/Engine.c
+# src/ui/Window.cpp → build/ui/Window.h, build/ui/Window.c
+```
+
+**Nested Directory Structure:**
+```bash
+# Deeply nested source files
+./build/cpptoc --source-dir src/ --output-dir build/
+
+# Preserves full nesting:
+# src/math/algebra/Vector.cpp → build/math/algebra/Vector.h, build/math/algebra/Vector.c
+```
+
+### Automatic File Discovery
+
+cpptoc automatically discovers all C++ source files in a directory tree:
+
+**Supported File Extensions:**
+- `.cpp` (C++ source files)
+- `.cxx` (Alternative C++ extension)
+- `.cc` (Alternative C++ extension)
+
+**Automatically Excluded Directories:**
+
+The auto-discovery feature intelligently skips common build artifacts and version control directories:
+
+- **Version control:** `.git`, `.svn`, `.hg`
+- **Build directories:** `build`, `build-*`, `cmake-build-*`
+- **Dependencies:** `node_modules`, `vendor`
+- **Hidden directories:** All directories starting with `.` (except `..`)
+
+**Example with Complex Project:**
+```bash
+# Project structure:
+# src/
+#   core/
+#     Engine.cpp
+#     Logger.cpp
+#   ui/
+#     Window.cpp
+#   build/           ← Excluded automatically
+#     generated.cpp
+#   .git/            ← Excluded automatically
+#     hooks.cpp
+
+./build/cpptoc --source-dir src/ --output-dir output/
+
+# Discovers only: Engine.cpp, Logger.cpp, Window.cpp
+# Preserves structure:
+# output/
+#   core/
+#     Engine.h, Engine.c
+#     Logger.h, Logger.c
+#   ui/
+#     Window.h, Window.c
+```
+
+**Advantages:**
+- No need to update build scripts when adding new files
+- Automatically handles nested directory structures
+- Cleaner command-line invocations
+- Less error-prone than manual file enumeration
+
+**Important Notes:**
+
+1. **Required Option:** `--source-dir` is **REQUIRED** for all transpilation operations
+
+2. **Individual Files Ignored:** Any individual file arguments on the command line are silently ignored - the transpiler always uses auto-discovery
+
+3. **Empty Directory Warning:** If no `.cpp`/`.cxx`/`.cc` files are found, cpptoc exits with a warning
 
 ### Cross-File Dependencies
 
 Files are transpiled independently, each producing its own `.h` and `.c` files:
 
 ```bash
-# math.cpp and utils.cpp are transpiled separately
-./build/cpptoc math.cpp utils.cpp --output-dir ./output
+# All files in src/ are discovered and transpiled separately
+./build/cpptoc --source-dir src/ --output-dir ./output
 
-# Results in:
-# output/math.h
-# output/math.c
-# output/utils.h
-# output/utils.c
+# Results in independent .h and .c pairs for each discovered file
 ```
 
 To use functions/classes from other files, use standard C include syntax in the generated code:
@@ -459,13 +555,13 @@ Specify header search paths using `-I` flags after the `--` separator:
 
 ```bash
 # Single include directory
-./build/cpptoc main.cpp -- -I./include
+./build/cpptoc --source-dir src/ -- -I./include
 
 # Multiple include directories (searched in order)
-./build/cpptoc main.cpp -- -I./include -I./third_party -I/usr/local/include
+./build/cpptoc --source-dir src/ -- -I./include -I./third_party -I/usr/local/include
 
 # With C++ standard
-./build/cpptoc main.cpp -- -I./include -std=c++20
+./build/cpptoc --source-dir src/ -- -I./include -std=c++20
 ```
 
 Include paths enable standard C++ include syntax:
@@ -481,39 +577,40 @@ The transpiler works with compilation databases (via CommonOptionsParser):
 
 ```bash
 # Use compile_commands.json from build directory
-./build/cpptoc main.cpp -- -p ./build
+./build/cpptoc --source-dir src/ -- -p ./build
 
 # Generate compile_commands.json with CMake
 cmake -B build -DCMAKE_EXPORT_COMPILE_COMMANDS=ON
-./build/cpptoc main.cpp -- -p ./build
+./build/cpptoc --source-dir src/ -- -p ./build
 ```
 
 ### Best Practices
 
 1. **Organize Files**: Keep related files in the same directory
-2. **Use Output Directory**: Separate generated files from source
+2. **Use Output Directory**: Separate generated files from source with `--output-dir`
 3. **Include Paths**: Use `-I` flags for header dependencies
 4. **One Module Per File**: Each `.cpp` should be a self-contained module
 5. **Header Guards**: Generated headers include guards automatically
+6. **Source Root**: Always specify `--source-dir` pointing to your project root
 
 ### Common Issues and Troubleshooting
 
 **Issue: Header not found**
 ```bash
 # Solution: Add include directory
-./build/cpptoc main.cpp -- -I./path/to/headers
+./build/cpptoc --source-dir src/ -- -I./path/to/headers
 ```
 
 **Issue: Files generated in wrong location**
 ```bash
 # Solution: Use --output-dir
-./build/cpptoc main.cpp --output-dir ./desired/path
+./build/cpptoc --source-dir src/ --output-dir ./desired/path
 ```
 
-**Issue: Cross-file struct dependencies**
+**Issue: No files discovered**
 ```bash
-# Each file is transpiled independently
-# Use forward declarations or include generated headers
+# Solution: Verify --source-dir points to correct directory
+./build/cpptoc --source-dir src/  # Should contain .cpp/.cxx/.cc files
 ```
 
 For more details, see [docs/MULTI_FILE_TRANSPILATION.md](docs/MULTI_FILE_TRANSPILATION.md).
@@ -541,30 +638,30 @@ See [docs/testing.md](docs/testing.md) for comprehensive testing guide.
 
 ```bash
 # Basic conversion
-cpptoc input.cpp -o output.c
+cpptoc --source-dir src/ --output-dir build/
 
 # With runtime library (smaller output)
-cpptoc input.cpp -o output.c --runtime-mode=library
+cpptoc --source-dir src/ --output-dir build/ --runtime-mode=library
 
 # Verify with Frama-C
-frama-c -wp output.c cpptoc_runtime.c
+frama-c -wp build/*.c cpptoc_runtime.c
 ```
 
 **ACSL Annotation Generation (Epic #193):**
 
 ```bash
 # Generate ACSL annotations with defaults (basic level, inline mode)
-./build/cpptoc --generate-acsl input.cpp --
+./build/cpptoc --generate-acsl --source-dir src/ --
 
 # Generate ACSL with full coverage (functions + loops + class invariants)
-./build/cpptoc --generate-acsl --acsl-level=full input.cpp --
+./build/cpptoc --generate-acsl --acsl-level=full --source-dir src/ --
 
 # Generate ACSL in separate .acsl files
-./build/cpptoc --generate-acsl --acsl-output=separate input.cpp --
+./build/cpptoc --generate-acsl --acsl-output=separate --source-dir src/ --
 
 # Verify generated code with Frama-C
-./build/cpptoc --generate-acsl input.cpp -- > output.c
-frama-c -cpp-extra-args="-I./runtime" output.c
+./build/cpptoc --generate-acsl --source-dir src/ --output-dir build/ --
+frama-c -cpp-extra-args="-I./runtime" build/*.c
 ```
 
 **CLI Options:**

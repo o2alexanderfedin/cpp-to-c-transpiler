@@ -15,6 +15,7 @@
 #include "clang/Frontend/ASTUnit.h"
 #include "../include/VtableGenerator.h"
 #include "../include/VirtualMethodAnalyzer.h"
+#include "../include/OverrideResolver.h"
 #include <cassert>
 #include <sstream>
 
@@ -59,7 +60,8 @@ TEST_F(VtableGeneratorTest, GenerateSimpleVtable) {
         ASSERT_TRUE(AST) << "Failed to parse C++ code";
 
         VirtualMethodAnalyzer analyzer(AST->getASTContext());
-        VtableGenerator generator(AST->getASTContext(), analyzer);
+        OverrideResolver resolver(AST->getASTContext(), analyzer);
+        VtableGenerator generator(AST->getASTContext(), analyzer, &resolver);
 
         auto *TU = AST->getASTContext().getTranslationUnitDecl();
         auto *Base = findClass(TU, "Base");
@@ -89,7 +91,8 @@ TEST_F(VtableGeneratorTest, VtableMethodOrder) {
         ASSERT_TRUE(AST) << "Failed to parse C++ code";
 
         VirtualMethodAnalyzer analyzer(AST->getASTContext());
-        VtableGenerator generator(AST->getASTContext(), analyzer);
+        OverrideResolver resolver(AST->getASTContext(), analyzer);
+        VtableGenerator generator(AST->getASTContext(), analyzer, &resolver);
 
         auto *TU = AST->getASTContext().getTranslationUnitDecl();
         auto *Shape = findClass(TU, "Shape");
@@ -119,7 +122,8 @@ TEST_F(VtableGeneratorTest, MultipleVirtualMethods) {
         ASSERT_TRUE(AST) << "Failed to parse C++ code";
 
         VirtualMethodAnalyzer analyzer(AST->getASTContext());
-        VtableGenerator generator(AST->getASTContext(), analyzer);
+        OverrideResolver resolver(AST->getASTContext(), analyzer);
+        VtableGenerator generator(AST->getASTContext(), analyzer, &resolver);
 
         auto *TU = AST->getASTContext().getTranslationUnitDecl();
         auto *Widget = findClass(TU, "Widget");
@@ -153,7 +157,8 @@ TEST_F(VtableGeneratorTest, InheritedVirtualMethods) {
         ASSERT_TRUE(AST) << "Failed to parse C++ code";
 
         VirtualMethodAnalyzer analyzer(AST->getASTContext());
-        VtableGenerator generator(AST->getASTContext(), analyzer);
+        OverrideResolver resolver(AST->getASTContext(), analyzer);
+        VtableGenerator generator(AST->getASTContext(), analyzer, &resolver);
 
         auto *TU = AST->getASTContext().getTranslationUnitDecl();
         auto *Derived = findClass(TU, "Derived");
@@ -181,7 +186,8 @@ TEST_F(VtableGeneratorTest, FunctionPointerTypes) {
         ASSERT_TRUE(AST) << "Failed to parse C++ code";
 
         VirtualMethodAnalyzer analyzer(AST->getASTContext());
-        VtableGenerator generator(AST->getASTContext(), analyzer);
+        OverrideResolver resolver(AST->getASTContext(), analyzer);
+        VtableGenerator generator(AST->getASTContext(), analyzer, &resolver);
 
         auto *TU = AST->getASTContext().getTranslationUnitDecl();
         auto *Calculator = findClass(TU, "Calculator");
@@ -208,7 +214,8 @@ TEST_F(VtableGeneratorTest, NonPolymorphicClass) {
         ASSERT_TRUE(AST) << "Failed to parse C++ code";
 
         VirtualMethodAnalyzer analyzer(AST->getASTContext());
-        VtableGenerator generator(AST->getASTContext(), analyzer);
+        OverrideResolver resolver(AST->getASTContext(), analyzer);
+        VtableGenerator generator(AST->getASTContext(), analyzer, &resolver);
 
         auto *TU = AST->getASTContext().getTranslationUnitDecl();
         auto *Regular = findClass(TU, "Regular");
@@ -234,7 +241,8 @@ TEST_F(VtableGeneratorTest, PureVirtualMethods) {
         ASSERT_TRUE(AST) << "Failed to parse C++ code";
 
         VirtualMethodAnalyzer analyzer(AST->getASTContext());
-        VtableGenerator generator(AST->getASTContext(), analyzer);
+        OverrideResolver resolver(AST->getASTContext(), analyzer);
+        VtableGenerator generator(AST->getASTContext(), analyzer, &resolver);
 
         auto *TU = AST->getASTContext().getTranslationUnitDecl();
         auto *Abstract = findClass(TU, "Abstract");
@@ -273,7 +281,8 @@ TEST_F(VtableGeneratorTest, ComplexInheritance) {
         ASSERT_TRUE(AST) << "Failed to parse C++ code";
 
         VirtualMethodAnalyzer analyzer(AST->getASTContext());
-        VtableGenerator generator(AST->getASTContext(), analyzer);
+        OverrideResolver resolver(AST->getASTContext(), analyzer);
+        VtableGenerator generator(AST->getASTContext(), analyzer, &resolver);
 
         auto *TU = AST->getASTContext().getTranslationUnitDecl();
         auto *Derived = findClass(TU, "Derived");

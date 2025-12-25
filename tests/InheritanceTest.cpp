@@ -117,8 +117,8 @@ TEST_F(InheritanceTest, SingleBaseWithFields) {
             derivedFieldCount++;
         }
 
-        ASSERT_TRUE(derivedFieldCount == 2) << "Derived should have 2 fields (x + y;");
-        ASSERT_TRUE(firstFieldName == "x") << "First field should be 'x' from Base (offset 0;");
+        ASSERT_TRUE(derivedFieldCount == 2) << "Derived should have 2 fields (x + y)";
+        ASSERT_TRUE(firstFieldName == "x") << "First field should be 'x' from Base (offset 0)";
         ASSERT_TRUE(secondFieldName == "y") << "Second field should be 'y' from Derived";
 }
 
@@ -156,58 +156,56 @@ TEST_F(InheritanceTest, MultiLevelInheritance) {
             fieldNames.push_back(Field->getNameAsString());
         }
 
-        ASSERT_TRUE(fieldNames.size() == 3) << "C should have 3 fields (a, b, c;");
+        ASSERT_TRUE(fieldNames.size() == 3) << "C should have 3 fields (a, b, c)";
         ASSERT_TRUE(fieldNames[0] == "a") << "First field should be 'a' from A";
         ASSERT_TRUE(fieldNames[1] == "b") << "Second field should be 'b' from B";
         ASSERT_TRUE(fieldNames[2] == "c") << "Third field should be 'c' from C";
 }
 
 TEST_F(InheritanceTest, SizeofVerification) {
-    correct");
+    const char *cpp = R"(
+        class Base {
+        public:
+            int x;
+            int y;
+        };
+        class Derived : public Base {
+        public:
+            int z;
+        };
+    )";
 
-        const char *cpp = R"(
-            class Base {
-            public:
-                int x;
-                int y;
-            };
-            class Derived : public Base {
-            public:
-                int z;
-            };
-        )";
+    std::unique_ptr<ASTUnit> AST = buildAST(cpp);
+    ASSERT_TRUE(AST) << "Failed to parse C++ code";
 
-        std::unique_ptr<ASTUnit> AST = buildAST(cpp);
-        ASSERT_TRUE(AST) << "Failed to parse C++ code";
+    // Get C++ struct sizes
+    TranslationUnitDecl *TU = AST->getASTContext().getTranslationUnitDecl();
+    CXXRecordDecl *BaseClass = nullptr;
+    CXXRecordDecl *DerivedClass = nullptr;
 
-        // Get C++ struct sizes
-        TranslationUnitDecl *TU = AST->getASTContext().getTranslationUnitDecl();
-        CXXRecordDecl *BaseClass = nullptr;
-        CXXRecordDecl *DerivedClass = nullptr;
-
-        for (auto *D : TU->decls()) {
-            if (auto *RD = dyn_cast<CXXRecordDecl>(D)) {
-                if (RD->getNameAsString() == "Base") BaseClass = RD;
-                if (RD->getNameAsString() == "Derived") DerivedClass = RD;
-            }
+    for (auto *D : TU->decls()) {
+        if (auto *RD = dyn_cast<CXXRecordDecl>(D)) {
+            if (RD->getNameAsString() == "Base") BaseClass = RD;
+            if (RD->getNameAsString() == "Derived") DerivedClass = RD;
         }
+    }
 
-        ASSERT_TRUE(BaseClass && DerivedClass) << "Could not find C++ classes";
+    ASSERT_TRUE(BaseClass && DerivedClass) << "Could not find C++ classes";
 
-        const ASTRecordLayout &BaseLayout = AST->getASTContext().getASTRecordLayout(BaseClass);
-        const ASTRecordLayout &DerivedLayout = AST->getASTContext().getASTRecordLayout(DerivedClass);
+    const ASTRecordLayout &BaseLayout = AST->getASTContext().getASTRecordLayout(BaseClass);
+    const ASTRecordLayout &DerivedLayout = AST->getASTContext().getASTRecordLayout(DerivedClass);
 
-        uint64_t baseSize = BaseLayout.getSize().getQuantity();
-        uint64_t derivedSize = DerivedLayout.getSize().getQuantity();
+    uint64_t baseSize = BaseLayout.getSize().getQuantity();
+    uint64_t derivedSize = DerivedLayout.getSize().getQuantity();
 
-        // In C++, Derived should be larger than Base (has additional field)
-        ASSERT_TRUE(derivedSize > baseSize) << "Derived should be larger than Base";
+    // In C++, Derived should be larger than Base (has additional field)
+    ASSERT_TRUE(derivedSize > baseSize) << "Derived should be larger than Base";
 
-        // Derived size should be Base size + size of int (assuming no padding)
-        uint64_t intSize = AST->getASTContext().getTypeSize(AST->getASTContext().IntTy) / 8;
-        uint64_t expectedSize = baseSize + intSize;
+    // Derived size should be Base size + size of int (assuming no padding)
+    uint64_t intSize = AST->getASTContext().getTypeSize(AST->getASTContext().IntTy) / 8;
+    uint64_t expectedSize = baseSize + intSize;
 
-        ASSERT_TRUE(derivedSize >= expectedSize) << "Derived size too small";
+    ASSERT_TRUE(derivedSize >= expectedSize) << "Derived size too small";
 }
 
 TEST_F(InheritanceTest, SimpleConstructorChaining) {
@@ -249,7 +247,7 @@ TEST_F(InheritanceTest, SimpleConstructorChaining) {
         // First statement should be a call to Base__ctor
         Stmt *FirstStmt = *Body->body_begin();
         CallExpr *BaseCtorCall = dyn_cast<CallExpr>(FirstStmt);
-        ASSERT_TRUE(BaseCtorCall != nullptr) << "First statement should be a CallExpr (Base ctor call;");
+        ASSERT_TRUE(BaseCtorCall != nullptr) << "First statement should be a CallExpr (Base ctor call)";
 
         // Verify the call is to Base__ctor
         if (FunctionDecl *Callee = BaseCtorCall->getDirectCallee()) {
@@ -291,7 +289,7 @@ TEST_F(InheritanceTest, ConstructorChainingWithArgs) {
 
         // Base__ctor should receive 3 arguments: this, a, b
         unsigned numArgs = BaseCtorCall->getNumArgs();
-        ASSERT_TRUE(numArgs == 3) << "Base__ctor should receive 3 arguments (this, a, b;");
+        ASSERT_TRUE(numArgs == 3) << "Base__ctor should receive 3 arguments (this, a, b)";
 }
 
 TEST_F(InheritanceTest, MultiLevelConstructorChaining) {
@@ -331,7 +329,7 @@ TEST_F(InheritanceTest, MultiLevelConstructorChaining) {
         // Verify it calls Derived1__ctor (not Base__ctor)
         if (FunctionDecl *Callee = ParentCtorCall->getDirectCallee()) {
             std::string calleeName = Callee->getNameAsString();
-            ASSERT_TRUE(calleeName == "Derived1__ctor") << "Derived2 should call Derived1__ctor (not Base__ctor;");
+            ASSERT_TRUE(calleeName == "Derived1__ctor") << "Derived2 should call Derived1__ctor (not Base__ctor)";
         }
 }
 
@@ -370,7 +368,7 @@ TEST_F(InheritanceTest, SimpleDestructorChaining) {
         // Last statement should be a call to Base__dtor
         Stmt *LastStmt = *(Body->body_end() - 1);
         CallExpr *BaseDtorCall = dyn_cast<CallExpr>(LastStmt);
-        ASSERT_TRUE(BaseDtorCall != nullptr) << "Last statement should be a CallExpr (Base dtor call;");
+        ASSERT_TRUE(BaseDtorCall != nullptr) << "Last statement should be a CallExpr (Base dtor call)";
 
         // Verify the call is to Base__dtor
         if (FunctionDecl *Callee = BaseDtorCall->getDirectCallee()) {
@@ -455,7 +453,7 @@ TEST_F(InheritanceTest, MultiLevelDestructorChaining) {
         // Verify it calls Derived1__dtor (not Base__dtor)
         if (FunctionDecl *Callee = ParentDtorCall->getDirectCallee()) {
             std::string calleeName = Callee->getNameAsString();
-            ASSERT_TRUE(calleeName == "Derived1__dtor") << "Derived2 should call Derived1__dtor (not Base__dtor;");
+            ASSERT_TRUE(calleeName == "Derived1__dtor") << "Derived2 should call Derived1__dtor (not Base__dtor)";
         }
 }
 
@@ -489,7 +487,7 @@ TEST_F(InheritanceTest, MemberAccessInDerivedMethods) {
         for (auto *F : DerivedStruct->fields()) {
             fieldCount++;
         }
-        ASSERT_TRUE(fieldCount == 2) << "Derived should have 2 fields (x from Base, y from Derived;");
+        ASSERT_TRUE(fieldCount == 2) << "Derived should have 2 fields (x from Base, y from Derived)";
 }
 
 TEST_F(InheritanceTest, BasicUpcasting) {
@@ -528,7 +526,7 @@ TEST_F(InheritanceTest, BasicUpcasting) {
 
         // First field must be from Base class
         FieldDecl *firstField = *it;
-        ASSERT_TRUE(firstField->getNameAsString() == "x") << "First field must be 'x' from Base (offset 0 = safe upcasting;");
+        ASSERT_TRUE(firstField->getNameAsString() == "x") << "First field must be 'x' from Base (offset 0 = safe upcasting)";
 
         // Second field should be from Derived class
         ++it;
@@ -585,7 +583,7 @@ TEST_F(InheritanceTest, MultiLevelUpcasting) {
 
         // First field must be 'x' from Base (offset 0)
         FieldDecl *firstField = *it;
-        ASSERT_TRUE(firstField->getNameAsString() == "x") << "First field must be 'x' from Base (offset 0 for upcasting;");
+        ASSERT_TRUE(firstField->getNameAsString() == "x") << "First field must be 'x' from Base (offset 0 for upcasting)";
 
         // Second field must be 'y' from Derived
         ++it;
@@ -707,12 +705,12 @@ TEST_F(InheritanceTest, MethodOverridingWithParameters) {
         // Verify Shape::setSize exists
         FunctionDecl *shapeSetSize = visitor.getCFunc("Shape_setSize");
         ASSERT_TRUE(shapeSetSize != nullptr) << "Shape_setSize function not generated";
-        ASSERT_TRUE(shapeSetSize->getNumParams() == 2) << "Shape_setSize should have 2 parameters (this + s;");
+        ASSERT_TRUE(shapeSetSize->getNumParams() == 2) << "Shape_setSize should have 2 parameters (this + s)";
 
         // Verify Circle::setSize exists
         FunctionDecl *circleSetSize = visitor.getCFunc("Circle_setSize");
         ASSERT_TRUE(circleSetSize != nullptr) << "Circle_setSize function not generated";
-        ASSERT_TRUE(circleSetSize->getNumParams() == 2) << "Circle_setSize should have 2 parameters (this + s;");
+        ASSERT_TRUE(circleSetSize->getNumParams() == 2) << "Circle_setSize should have 2 parameters (this + s)";
 
         // Verify they are distinct
         ASSERT_TRUE(shapeSetSize != circleSetSize) << "Shape_setSize and Circle_setSize must be distinct";
@@ -769,9 +767,9 @@ TEST_F(InheritanceTest, ComprehensiveMultiLevelInheritance) {
             fieldNames.push_back(F->getNameAsString());
         }
 
-        ASSERT_TRUE(fieldNames.size() == 3) << "Dog should have 3 fields (age, furColor, barkVolume;");
-        ASSERT_TRUE(fieldNames[0] == "age") << "Field 0 must be 'age' from Animal (grandparent;");
-        ASSERT_TRUE(fieldNames[1] == "furColor") << "Field 1 must be 'furColor' from Mammal (parent;");
+        ASSERT_TRUE(fieldNames.size() == 3) << "Dog should have 3 fields (age, furColor, barkVolume)";
+        ASSERT_TRUE(fieldNames[0] == "age") << "Field 0 must be 'age' from Animal (grandparent)";
+        ASSERT_TRUE(fieldNames[1] == "furColor") << "Field 1 must be 'furColor' from Mammal (parent)";
         ASSERT_TRUE(fieldNames[2] == "barkVolume") << "Field 2 must be 'barkVolume' from Dog";
 
         // ========================================================================
@@ -780,15 +778,15 @@ TEST_F(InheritanceTest, ComprehensiveMultiLevelInheritance) {
 
         FunctionDecl *animalCtor = visitor.getCtor("Animal__ctor");
         ASSERT_TRUE(animalCtor != nullptr) << "Animal__ctor not generated";
-        ASSERT_TRUE(animalCtor->getNumParams() == 2) << "Animal__ctor(this, age;");
+        ASSERT_TRUE(animalCtor->getNumParams() == 2) << "Animal__ctor(this, age)";
 
         FunctionDecl *mammalCtor = visitor.getCtor("Mammal__ctor");
         ASSERT_TRUE(mammalCtor != nullptr) << "Mammal__ctor not generated";
-        ASSERT_TRUE(mammalCtor->getNumParams() == 3) << "Mammal__ctor(this, age, furColor;");
+        ASSERT_TRUE(mammalCtor->getNumParams() == 3) << "Mammal__ctor(this, age, furColor)";
 
         FunctionDecl *dogCtor = visitor.getCtor("Dog__ctor");
         ASSERT_TRUE(dogCtor != nullptr) << "Dog__ctor not generated";
-        ASSERT_TRUE(dogCtor->getNumParams() == 4) << "Dog__ctor(this, age, furColor, barkVolume;");
+        ASSERT_TRUE(dogCtor->getNumParams() == 4) << "Dog__ctor(this, age, furColor, barkVolume)";
 
         // ========================================================================
         // 3. DESTRUCTOR CHAINING: Verify all destructors exist
@@ -825,7 +823,7 @@ TEST_F(InheritanceTest, ComprehensiveMultiLevelInheritance) {
         // ========================================================================
 
         FunctionDecl *dogGetAge = visitor.getCFunc("Dog_getAge");
-        ASSERT_TRUE(dogGetAge != nullptr) << "Dog_getAge not generated (accesses grandparent member;");
+        ASSERT_TRUE(dogGetAge != nullptr) << "Dog_getAge not generated (accesses grandparent member)";
 
         // ========================================================================
         // 6. UPCASTING: Verify memory layout allows all upcasts
@@ -867,7 +865,7 @@ TEST_F(InheritanceTest, EmptyMemberInitList) {
 
         // Empty init list should generate constructor with no member assignments
         CompoundStmt *body = dyn_cast_or_null<CompoundStmt>(ctor->getBody());
-        ASSERT_TRUE(body != nullptr) << "Constructor body should exist (even if empty;");
+        ASSERT_TRUE(body != nullptr) << "Constructor body should exist (even if empty)";
 }
 
 TEST_F(InheritanceTest, NoImplicitDefaultWithExplicitCtor) {
@@ -944,7 +942,7 @@ TEST_F(InheritanceTest, SimpleMemberConstructorCalls) {
         ASSERT_TRUE(body != nullptr) << "Outer constructor body is null";
 
         // Should have 1 statement: Inner__ctor(&this->inner, v)
-        ASSERT_TRUE(body->size() >= 1) << "Expected at least 1 statement (member ctor call;");
+        ASSERT_TRUE(body->size() >= 1) << "Expected at least 1 statement (member ctor call)";
 
         // Convert body to vector for safe access
         std::vector<Stmt*> stmts;
@@ -1001,7 +999,7 @@ TEST_F(InheritanceTest, MemberDestructorCalls) {
 
         // Should have 1 statement: Resource__dtor(&this->res)
         // (derived body is empty, no base class)
-        ASSERT_TRUE(body->size() >= 1) << "Expected at least 1 statement (member dtor call;");
+        ASSERT_TRUE(body->size() >= 1) << "Expected at least 1 statement (member dtor call)";
 
         // Convert body to vector for safe access
         std::vector<Stmt*> stmts;
@@ -1065,7 +1063,7 @@ TEST_F(InheritanceTest, CompleteChaining_BaseAndMembers) {
 
         // Should have 2 statements: Base__ctor, Member__ctor
         // (derived body is empty)
-        ASSERT_TRUE(ctorBody->size() >= 2) << "Expected at least 2 statements (base ctor, member ctor;");
+        ASSERT_TRUE(ctorBody->size() >= 2) << "Expected at least 2 statements (base ctor, member ctor)";
 
         // Convert body to vector for indexed access
         std::vector<Stmt*> ctorStmts;
@@ -1098,7 +1096,7 @@ TEST_F(InheritanceTest, CompleteChaining_BaseAndMembers) {
 
         // Should have 2 statements: Member__dtor, Base__dtor
         // (derived body is empty)
-        ASSERT_TRUE(dtorBody->size() >= 2) << "Expected at least 2 statements (member dtor, base dtor;");
+        ASSERT_TRUE(dtorBody->size() >= 2) << "Expected at least 2 statements (member dtor, base dtor)";
 
         // Convert body to vector for indexed access
         std::vector<Stmt*> dtorStmts;

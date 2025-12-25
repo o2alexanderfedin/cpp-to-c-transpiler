@@ -191,9 +191,14 @@ public:
     QualType intTy = intType();
     IdentifierInfo &II = Ctx.Idents.get(name);
 
-    return VarDecl::Create(Ctx, Ctx.getTranslationUnitDecl(), SourceLocation(),
+    VarDecl *VD = VarDecl::Create(Ctx, Ctx.getTranslationUnitDecl(), SourceLocation(),
                            SourceLocation(), &II, intTy,
                            Ctx.getTrivialTypeSourceInfo(intTy), SC_None);
+
+    // CRITICAL FIX: Add the variable to the TranslationUnitDecl so it gets printed
+    Ctx.getTranslationUnitDecl()->addDecl(VD);
+
+    return VD;
   }
 
   /**
@@ -210,9 +215,14 @@ public:
   VarDecl *structVar(QualType type, llvm::StringRef name) {
     IdentifierInfo &II = Ctx.Idents.get(name);
 
-    return VarDecl::Create(Ctx, Ctx.getTranslationUnitDecl(), SourceLocation(),
+    VarDecl *VD = VarDecl::Create(Ctx, Ctx.getTranslationUnitDecl(), SourceLocation(),
                            SourceLocation(), &II, type,
                            Ctx.getTrivialTypeSourceInfo(type), SC_None);
+
+    // CRITICAL FIX: Add the variable to the TranslationUnitDecl so it gets printed
+    Ctx.getTranslationUnitDecl()->addDecl(VD);
+
+    return VD;
   }
 
   /**
@@ -230,9 +240,14 @@ public:
     QualType ptrTy = ptrType(pointee);
     IdentifierInfo &II = Ctx.Idents.get(name);
 
-    return VarDecl::Create(Ctx, Ctx.getTranslationUnitDecl(), SourceLocation(),
+    VarDecl *VD = VarDecl::Create(Ctx, Ctx.getTranslationUnitDecl(), SourceLocation(),
                            SourceLocation(), &II, ptrTy,
                            Ctx.getTrivialTypeSourceInfo(ptrTy), SC_None);
+
+    // CRITICAL FIX: Add the variable to the TranslationUnitDecl so it gets printed
+    Ctx.getTranslationUnitDecl()->addDecl(VD);
+
+    return VD;
   }
 
   /**
@@ -257,6 +272,9 @@ public:
     if (init) {
       VD->setInit(init);
     }
+
+    // CRITICAL FIX: Add the variable to the TranslationUnitDecl so it gets printed
+    Ctx.getTranslationUnitDecl()->addDecl(VD);
 
     return VD;
   }
@@ -718,6 +736,9 @@ public:
 
     RD->completeDefinition();
 
+    // CRITICAL FIX: Add the struct to the TranslationUnitDecl so it gets printed
+    Ctx.getTranslationUnitDecl()->addDecl(RD);
+
     return RD;
   }
 
@@ -814,6 +835,9 @@ public:
     if (body) {
       FD->setBody(body);
     }
+
+    // CRITICAL FIX: Add the function to the TranslationUnitDecl so it gets printed
+    Ctx.getTranslationUnitDecl()->addDecl(FD);
 
     return FD;
   }

@@ -16,6 +16,7 @@
 #include "../include/TemplateMonomorphizer.h"
 #include "../include/TemplateInstantiationTracker.h"
 #include "../include/NameMangler.h"
+#include "../include/CNodeBuilder.h"
 #include <cassert>
 #include <memory>
 #include <string>
@@ -72,14 +73,18 @@ TEST_F(TemplateIntegrationTest, SimpleClassTemplateInstantiation) {
         bool foundStackDouble = false;
 
         NameMangler mangler(AST->getASTContext());
-        TemplateMonomorphizer mono(AST->getASTContext(), mangler);
+        CNodeBuilder builder(AST->getASTContext());
+        TemplateMonomorphizer mono(AST->getASTContext(), mangler, builder);
 
         for (auto* inst : classInsts) {
-            std::string code = mono.monomorphizeClass(inst);
-            if (contains(code, "Stack") && contains(code, "int")) {
+            RecordDecl* CStruct = mono.monomorphizeClass(inst);
+            ASSERT_TRUE(CStruct != nullptr) << "monomorphizeClass should return a RecordDecl";
+
+            std::string structName = CStruct->getNameAsString();
+            if (contains(structName, "Stack") && contains(structName, "int")) {
                 foundStackInt = true;
             }
-            if (contains(code, "Stack") && contains(code, "double")) {
+            if (contains(structName, "Stack") && contains(structName, "double")) {
                 foundStackDouble = true;
             }
         }
@@ -408,12 +413,13 @@ TEST_F(TemplateIntegrationTest, DependentTypeResolution) {
         ASSERT_TRUE(classInsts.size() >= 3) << "Should find 3 Container instantiations";
 
         NameMangler mangler(AST->getASTContext());
-        TemplateMonomorphizer mono(AST->getASTContext(), mangler);
+        CNodeBuilder builder(AST->getASTContext());
+        TemplateMonomorphizer mono(AST->getASTContext(), mangler, builder);
 
         for (auto* inst : classInsts) {
-            std::string code = mono.monomorphizeClass(inst);
-            // Verify code generation succeeded
-            ASSERT_TRUE(!code.empty()) << "Generated code should not be empty";
+            RecordDecl* CStruct = mono.monomorphizeClass(inst);
+            // Verify AST generation succeeded
+            ASSERT_TRUE(CStruct != nullptr) << "monomorphizeClass should return a RecordDecl";
         }
 }
 
