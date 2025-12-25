@@ -143,6 +143,23 @@ void CodeGenerator::printStmt(Stmt *S, unsigned Indent) {
         return;
     }
 
+    // Bug #26 fix: Handle ReturnStmt manually to print translated AST
+    // ReturnStmt nodes created by translateReturnStmt() need manual printing
+    // because printPretty() looks at source locations and prints original source
+    if (ReturnStmt *RS = dyn_cast<ReturnStmt>(S)) {
+        llvm::outs() << "[DEBUG CodeGen] Manually printing ReturnStmt\n";
+        if (Expr *RetValue = RS->getRetValue()) {
+            llvm::outs() << "[DEBUG CodeGen] Return value type: " << RetValue->getStmtClassName() << "\n";
+        }
+        OS << std::string(Indent, '\t') << "return";
+        if (Expr *RetValue = RS->getRetValue()) {
+            OS << " ";
+            printStmt(RetValue, 0);  // Print the return expression
+        }
+        OS << ";\n";
+        return;
+    }
+
     // Bug #21 fix: Handle DeclStmt with RecoveryExpr specially
     // RecoveryExpr causes literal "<recovery-expr>()" to appear in generated C code
     // Solution: Print variable declarations without initializers if they contain RecoveryExpr
@@ -250,11 +267,39 @@ void CodeGenerator::printStructDecl(RecordDecl *RD) {
     for (auto *Field : RD->fields()) {
         OS << "\t";
 
-        // Get field type and add 'struct' prefix for class/struct types
         QualType FieldType = Field->getType();
-        printCType(FieldType);
 
-        OS << " " << Field->getNameAsString() << ";\n";
+        // For array types, we need to print: element_type name[size]
+        if (const ArrayType *AT = FieldType->getAsArrayTypeUnsafe()) {
+            // Get element type (e.g., float for float[9])
+            QualType ElementType = AT->getElementType();
+            printCType(ElementType);
+            OS << " " << Field->getNameAsString();
+
+            // Manually construct array dimensions
+            // For ConstantArrayType, print [size]
+            if (const ConstantArrayType *CAT = dyn_cast<ConstantArrayType>(AT)) {
+                OS << "[" << CAT->getSize().getZExtValue() << "]";
+            } else {
+                // For other array types (variable length, etc.), use Clang's printer
+                // Print just the brackets part
+                std::string TypeStr;
+                llvm::raw_string_ostream TempOS(TypeStr);
+                FieldType.print(TempOS, Policy);
+                TempOS.flush();
+                // Extract just the brackets (everything after the first '[')
+                size_t BracketPos = TypeStr.find('[');
+                if (BracketPos != std::string::npos) {
+                    OS << TypeStr.substr(BracketPos);
+                }
+            }
+        } else {
+            // Non-array types: use our custom printer for 'struct' prefixes
+            printCType(FieldType);
+            OS << " " << Field->getNameAsString();
+        }
+
+        OS << ";\n";
     }
 
     OS << "}";
