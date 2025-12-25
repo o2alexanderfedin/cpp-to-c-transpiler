@@ -2147,6 +2147,35 @@ gtest_discover_tests(StandaloneFunctionTranslationTest
     WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
 )
 
+# Struct Return Type Test (Critical Bug Fix)
+add_executable(StructReturnTypeTest
+    tests/StructReturnTypeTest.cpp
+    src/TemplateExtractor.cpp
+    src/TemplateMonomorphizer.cpp
+    src/TemplateInstantiationTracker.cpp
+)
+
+target_compile_definitions(StructReturnTypeTest PRIVATE ${LLVM_DEFINITIONS})
+
+target_include_directories(StructReturnTypeTest PRIVATE
+    ${CMAKE_SOURCE_DIR}/include
+    ${LLVM_INCLUDE_DIRS}
+    ${CLANG_INCLUDE_DIRS}
+)
+
+target_link_libraries(StructReturnTypeTest PRIVATE cpptoc_core
+    clangTooling
+    clangFrontend
+    clangAST
+    clangBasic
+    GTest::gtest
+    GTest::gtest_main)
+
+# Register with CTest
+gtest_discover_tests(StructReturnTypeTest
+    WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
+)
+
 # Phase 35-02: Reference Translation Bug Fix Tests
 add_executable(ReferenceTranslationTest
     tests/ReferenceTranslationTest.cpp

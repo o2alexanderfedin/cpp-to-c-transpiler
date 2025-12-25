@@ -61,4 +61,10 @@ private:
     /// @return C type (references converted to pointers)
     /// CRITICAL BUG FIX: Converts C++ references (&, &&) to C pointers (*)
     clang::QualType convertToCType(clang::QualType Type);
+
+    // Phase 35-03: Print type with proper 'struct' prefix for class/struct types
+    /// @brief Print type with 'struct' prefix for record types
+    /// @param Type Type to print (after convertToCType)
+    /// CRITICAL BUG FIX: Adds 'struct' prefix for class/struct types in C
+    void printCType(clang::QualType Type);
 };

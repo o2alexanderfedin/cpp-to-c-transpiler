@@ -215,14 +215,101 @@ QualType CodeGenerator::convertToCType(QualType Type) {
     return Type;
 }
 
+// Phase 35-03: Print type with 'struct' prefix for class/struct types
+// CRITICAL BUG FIX: Return types for class/struct need 'struct' prefix in C
+void CodeGenerator::printCType(QualType Type) {
+    // Extract const/volatile qualifiers
+    bool isConst = Type.isConstQualified();
+    bool isVolatile = Type.isVolatileQualified();
+
+    // Print qualifiers first
+    if (isConst) {
+        OS << "const ";
+    }
+    if (isVolatile) {
+        OS << "volatile ";
+    }
+
+    // Get the base type without qualifiers
+    QualType BaseType = Type.getUnqualifiedType();
+    const clang::Type *TypePtr = BaseType.getTypePtr();
+
+    // Handle pointer types - need to recurse for pointee type
+    if (const PointerType *PT = dyn_cast<PointerType>(TypePtr)) {
+        QualType PointeeType = PT->getPointeeType();
+
+        // Special handling: if pointee is a record type, print "struct" before recursing
+        // This handles cases like: Vector3D* -> struct Vector3D *
+        QualType UnqualifiedPointee = PointeeType.getUnqualifiedType();
+        const clang::Type *PointeePtr = UnqualifiedPointee.getTypePtr();
+
+        // Check canonical type to handle ElaboratedType
+        const clang::Type *CanonicalPointeePtr = UnqualifiedPointee.getCanonicalType().getTypePtr();
+
+        if (const RecordType *RT = dyn_cast<RecordType>(CanonicalPointeePtr)) {
+            // Pointee is a class/struct - print qualifiers + struct + name + *
+            if (PointeeType.isConstQualified()) {
+                OS << "const ";
+            }
+            if (PointeeType.isVolatileQualified()) {
+                OS << "volatile ";
+            }
+
+            RecordDecl *RD = RT->getDecl();
+            OS << "struct " << RD->getNameAsString() << " *";
+            return;
+        }
+
+        // Also check direct RecordType (without elaboration)
+        if (const RecordType *RT = dyn_cast<RecordType>(PointeePtr)) {
+            // Pointee is a class/struct - print qualifiers + struct + name + *
+            if (PointeeType.isConstQualified()) {
+                OS << "const ";
+            }
+            if (PointeeType.isVolatileQualified()) {
+                OS << "volatile ";
+            }
+
+            RecordDecl *RD = RT->getDecl();
+            OS << "struct " << RD->getNameAsString() << " *";
+            return;
+        }
+
+        // Regular pointer - print pointee type + *
+        printCType(PointeeType);
+        OS << " *";
+        return;
+    }
+
+    // Handle record types (class/struct) - add 'struct' prefix
+    // Note: May be wrapped in ElaboratedType, so we need to check the canonical type
+    const clang::Type *CanonicalTypePtr = BaseType.getCanonicalType().getTypePtr();
+    if (const RecordType *RT = dyn_cast<RecordType>(CanonicalTypePtr)) {
+        RecordDecl *RD = RT->getDecl();
+        OS << "struct " << RD->getNameAsString();
+        return;
+    }
+
+    // Also check if it's directly a RecordType (without elaboration)
+    if (const RecordType *RT = dyn_cast<RecordType>(TypePtr)) {
+        RecordDecl *RD = RT->getDecl();
+        OS << "struct " << RD->getNameAsString();
+        return;
+    }
+
+    // For all other types (primitives, etc.), use default printing
+    BaseType.print(OS, Policy);
+}
+
 // Phase 28: Print function signature without body (for header files)
 // Phase 35-02: Fixed to convert C++ references to C pointers
+// Phase 35-03: Fixed to add 'struct' prefix for class/struct return types
 void CodeGenerator::printFunctionSignature(FunctionDecl *FD) {
     if (!FD) return;
 
-    // Return type - convert references to pointers
+    // Return type - convert references to pointers and add 'struct' prefix
     QualType ReturnType = convertToCType(FD->getReturnType());
-    ReturnType.print(OS, Policy);
+    printCType(ReturnType);
     OS << " ";
 
     // Function name
@@ -234,14 +321,10 @@ void CodeGenerator::printFunctionSignature(FunctionDecl *FD) {
         if (i > 0) OS << ", ";
         ParmVarDecl *Param = FD->getParamDecl(i);
 
-        // Create a copy of the policy with SuppressTagKeyword disabled
-        // This prevents printing full struct definitions in parameter types
-        PrintingPolicy ParamPolicy = Policy;
-        ParamPolicy.IncludeTagDefinition = false;  // Don't include full struct definition
-
         // Phase 35-02: Convert C++ reference parameters to C pointers
+        // Phase 35-03: Add 'struct' prefix for class/struct parameters
         QualType ParamType = convertToCType(Param->getType());
-        ParamType.print(OS, ParamPolicy);
+        printCType(ParamType);
 
         if (!Param->getNameAsString().empty()) {
             OS << " " << Param->getNameAsString();

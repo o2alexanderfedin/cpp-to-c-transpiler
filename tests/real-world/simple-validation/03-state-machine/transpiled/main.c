@@ -3,7 +3,7 @@
 
 #include "main.h"
 
-const char *stateToString(int state) {
+const char * stateToString(int state) {
         switch (<recovery-expr>(state)) {
                 return "Menu";
                 return "Playing";
@@ -13,6 +13,7 @@ const char *stateToString(int state) {
                 return "Unknown";
         }
 }
+
 
 int main() {
         int sm(int);
@@ -36,4 +37,5 @@ int main() {
         <recovery-expr>(printf, "\nValidation: %s\n", passed ? "PASS" : "FAIL");
         return passed ? 0 : 1;
 }
+
 

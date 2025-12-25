@@ -19,10 +19,10 @@ void Vector3D__ctor(struct Vector3D * this, float x, float y, float z) {
 }
 
 
-Vector3D Vector3D_add(struct Vector3D * this, const Vector3D * other);
-Vector3D Vector3D_subtract(struct Vector3D * this, const Vector3D * other);
-float Vector3D_dot(struct Vector3D * this, const Vector3D * other);
-Vector3D Vector3D_cross(struct Vector3D * this, const Vector3D * other);
+struct Vector3D Vector3D_add(struct Vector3D * this, const struct Vector3D * other);
+struct Vector3D Vector3D_subtract(struct Vector3D * this, const struct Vector3D * other);
+float Vector3D_dot(struct Vector3D * this, const struct Vector3D * other);
+struct Vector3D Vector3D_cross(struct Vector3D * this, const struct Vector3D * other);
 float Vector3D_magnitude(struct Vector3D * this);
 struct Matrix3x3 {
         float data[9];
@@ -52,7 +52,7 @@ void Matrix3x3__ctor_9(struct Matrix3x3 * this, float m00, float m01, float m02,
 }
 
 
-Matrix3x3 Matrix3x3_add(struct Matrix3x3 * this, const Matrix3x3 * other) {
+struct Matrix3x3 Matrix3x3_add(struct Matrix3x3 * this, const struct Matrix3x3 * other) {
         {
                 struct Matrix3x3 result;
         }
@@ -63,7 +63,7 @@ Matrix3x3 Matrix3x3_add(struct Matrix3x3 * this, const Matrix3x3 * other) {
 }
 
 
-Matrix3x3 Matrix3x3_multiply(struct Matrix3x3 * this, const Matrix3x3 * other) {
+struct Matrix3x3 Matrix3x3_multiply(struct Matrix3x3 * this, const struct Matrix3x3 * other) {
         {
                 struct Matrix3x3 result;
         }
@@ -80,7 +80,7 @@ Matrix3x3 Matrix3x3_multiply(struct Matrix3x3 * this, const Matrix3x3 * other) {
 }
 
 
-Vector3D Matrix3x3_multiply_Vector3D_ref(struct Matrix3x3 * this, const Vector3D * vec) {
+struct Vector3D Matrix3x3_multiply_Vector3D_ref(struct Matrix3x3 * this, const struct Vector3D * vec) {
         return Vector3D(this->data[0] * vec.x + this->data[1] * vec.y + this->data[2] * vec.z, this->data[3] * vec.x + this->data[4] * vec.y + this->data[5] * vec.z, this->data[6] * vec.x + this->data[7] * vec.y + this->data[8] * vec.z);
 }
 
@@ -115,7 +115,7 @@ void Matrix3x3__ctor_9(struct Matrix3x3 * this, float m00, float m01, float m02,
 }
 
 
-Matrix3x3 Matrix3x3_add_Matrix3x3_ref(struct Matrix3x3 * this, const Matrix3x3 * other) {
+struct Matrix3x3 Matrix3x3_add_Matrix3x3_ref(struct Matrix3x3 * this, const struct Matrix3x3 * other) {
         struct Matrix3x3 result;
         Matrix3x3__ctor_0(&result);
         for (int i = 0; i < 9; i++) {
@@ -125,7 +125,7 @@ Matrix3x3 Matrix3x3_add_Matrix3x3_ref(struct Matrix3x3 * this, const Matrix3x3 *
 }
 
 
-Matrix3x3 Matrix3x3_multiply_Matrix3x3_ref(struct Matrix3x3 * this, const Matrix3x3 * other) {
+struct Matrix3x3 Matrix3x3_multiply_Matrix3x3_ref(struct Matrix3x3 * this, const struct Matrix3x3 * other) {
         struct Matrix3x3 result;
         Matrix3x3__ctor_0(&result);
         for (int row = 0; row < 3; row++) {
@@ -141,7 +141,7 @@ Matrix3x3 Matrix3x3_multiply_Matrix3x3_ref(struct Matrix3x3 * this, const Matrix
 }
 
 
-Vector3D Matrix3x3_multiply_Vector3D_ref(struct Matrix3x3 * this, const Vector3D * vec) {
+struct Vector3D Matrix3x3_multiply_Vector3D_ref(struct Matrix3x3 * this, const struct Vector3D * vec) {
         return Vector3D(this->data[0] * vec.x + this->data[1] * vec.y + this->data[2] * vec.z, this->data[3] * vec.x + this->data[4] * vec.y + this->data[5] * vec.z, this->data[6] * vec.x + this->data[7] * vec.y + this->data[8] * vec.z);
 }
 
