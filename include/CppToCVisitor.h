@@ -228,6 +228,7 @@ public:
   clang::Stmt *translateStmt(clang::Stmt *S);
   clang::Stmt *translateReturnStmt(clang::ReturnStmt *RS);
   clang::Stmt *translateCompoundStmt(clang::CompoundStmt *CS);
+  clang::Stmt *translateDeclStmt(clang::DeclStmt *DS); // Phase 34-05
 
   // Story #45: Return statement visitor for early return detection
   bool VisitReturnStmt(clang::ReturnStmt *RS);

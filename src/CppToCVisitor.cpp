@@ -894,15 +894,19 @@ bool CppToCVisitor::VisitFunctionDecl(FunctionDecl *FD) {
     cParams.push_back(CParam);
   }
 
-  // Get function body (will be translated separately if needed)
+  // Get function body and translate it (Phase 34-05)
   Stmt *body = FD->getBody();
+  Stmt *translatedBody = nullptr;
+  if (body) {
+    translatedBody = translateStmt(body);
+  }
 
   // Check if function is variadic
   bool isVariadic = FD->isVariadic();
 
   // Create C function declaration with mangled name
   FunctionDecl *CFunc =
-      Builder.funcDecl(mangledName, FD->getReturnType(), cParams, body,
+      Builder.funcDecl(mangledName, FD->getReturnType(), cParams, translatedBody,
                        CC_C,      // Calling convention (default)
                        isVariadic // Variadic property
       );
@@ -1950,6 +1954,46 @@ Expr *CppToCVisitor::translateMemberExpr(MemberExpr *ME) {
 
 // Translate CallExpr - handles function calls
 Expr *CppToCVisitor::translateCallExpr(CallExpr *CE) {
+  // Phase 34-05: Check if this is a member method call
+  if (CXXMemberCallExpr *MCE = dyn_cast<CXXMemberCallExpr>(CE)) {
+    CXXMethodDecl *Method = MCE->getMethodDecl();
+    if (Method) {
+      // Find the corresponding C function
+      FunctionDecl *CFunc = nullptr;
+      if (methodToCFunc.find(Method) != methodToCFunc.end()) {
+        CFunc = methodToCFunc[Method];
+      }
+
+      if (CFunc) {
+        // Translate to C function call: object.method(args) -> Method(&object, args)
+        std::vector<Expr *> args;
+
+        // First argument: address of the object
+        Expr *ObjectExpr = MCE->getImplicitObjectArgument();
+        if (ObjectExpr) {
+          Expr *TranslatedObject = translateExpr(ObjectExpr);
+          if (TranslatedObject) {
+            // Take address if not already a pointer
+            if (!ObjectExpr->getType()->isPointerType()) {
+              TranslatedObject = Builder.addrOf(TranslatedObject);
+            }
+            args.push_back(TranslatedObject);
+          }
+        }
+
+        // Add method arguments
+        for (Expr *Arg : MCE->arguments()) {
+          Expr *TranslatedArg = translateExpr(Arg);
+          args.push_back(TranslatedArg ? TranslatedArg : Arg);
+        }
+
+        // Create C function call
+        return Builder.call(CFunc, args);
+      }
+    }
+  }
+
+  // Regular function call (not a method)
   // Translate callee and arguments
   Expr *Callee = translateExpr(CE->getCallee());
 
@@ -2000,6 +2044,11 @@ Stmt *CppToCVisitor::translateStmt(Stmt *S) {
     return translateCompoundStmt(CS);
   }
 
+  // Phase 34-05: Handle variable declarations with constructors
+  if (DeclStmt *DS = dyn_cast<DeclStmt>(S)) {
+    return translateDeclStmt(DS);
+  }
+
   // If it's an expression, translate it
   if (Expr *E = dyn_cast<Expr>(S)) {
     return translateExpr(E);
@@ -2031,6 +2080,138 @@ Stmt *CppToCVisitor::translateReturnStmt(ReturnStmt *RS) {
     return Builder.returnStmt(TranslatedValue);
   }
   return Builder.returnStmt();
+}
+
+// Phase 34-05: Translate declaration statements (variable declarations)
+// This handles C++ constructor syntax and converts it to C initialization
+Stmt *CppToCVisitor::translateDeclStmt(DeclStmt *DS) {
+  if (!DS) {
+    return nullptr;
+  }
+
+  llvm::outs() << "  [Phase 34-05] Translating DeclStmt\n";
+
+  std::vector<Stmt *> statements;
+
+  // Process each declaration in the statement
+  for (Decl *D : DS->decls()) {
+    VarDecl *VD = dyn_cast<VarDecl>(D);
+    if (!VD) {
+      // Not a variable declaration, keep as-is
+      continue;
+    }
+
+    llvm::outs() << "    Variable: " << VD->getNameAsString() << "\n";
+
+    // Get the variable type
+    QualType VarType = VD->getType();
+    const Type *T = VarType.getTypePtr();
+
+    // Check if this is a class type with a constructor call
+    // Note: Use getAs<RecordType>() which works for both C structs and C++ classes
+    if (const RecordType *RT = T->getAs<RecordType>()) {
+      llvm::outs() << "      Is a struct/class type\n";
+      RecordDecl *RD = RT->getDecl();
+      CXXRecordDecl *CXXRD = dyn_cast<CXXRecordDecl>(RD);
+
+      if (CXXRD) {
+        llvm::outs() << "      Is a C++ class: " << CXXRD->getNameAsString() << "\n";
+        // This is a C++ class - need to translate constructor call
+        Expr *Init = VD->getInit();
+
+        // Check if the initializer is a constructor expression
+        CXXConstructExpr *CCE = nullptr;
+        if (Init) {
+          // Direct constructor call: Point p(3, 4);
+          CCE = dyn_cast<CXXConstructExpr>(Init);
+          if (!CCE) {
+            // Might be wrapped in ExprWithCleanups or other expressions
+            if (ExprWithCleanups *EWC = dyn_cast<ExprWithCleanups>(Init)) {
+              CCE = dyn_cast<CXXConstructExpr>(EWC->getSubExpr());
+            }
+          }
+        } else {
+          // Default initialization: Point p;
+          // We'll create a default constructor call if one exists
+        }
+
+        // Find the corresponding C struct
+        RecordDecl *CStruct = nullptr;
+        if (cppToCMap.find(CXXRD) != cppToCMap.end()) {
+          CStruct = cppToCMap[CXXRD];
+          llvm::outs() << "      Found C struct: " << CStruct->getNameAsString() << "\n";
+        } else {
+          llvm::outs() << "      WARNING: C struct not found in cppToCMap!\n";
+        }
+
+        if (CStruct) {
+          llvm::outs() << "      Creating C variable declaration\n";
+          // Step 1: Create variable declaration without initializer
+          //         struct Point p;
+          QualType CStructType = Context.getRecordType(CStruct);
+          VarDecl *CVarDecl = Builder.var(CStructType, VD->getName());
+          DeclStmt *CDeclStmt = Builder.declStmt(CVarDecl);
+          statements.push_back(CDeclStmt);
+
+          // Step 2: If there's a constructor, create the constructor call
+          //         Point__ctor(&p, 3, 4);
+          if (CCE) {
+            llvm::outs() << "      Has constructor expression\n";
+            CXXConstructorDecl *Ctor = CCE->getConstructor();
+
+            // Find the corresponding C constructor function
+            FunctionDecl *CCtorFunc = nullptr;
+            if (ctorMap.find(Ctor) != ctorMap.end()) {
+              CCtorFunc = ctorMap[Ctor];
+              llvm::outs() << "      Found C constructor: " << CCtorFunc->getNameAsString() << "\n";
+            } else {
+              llvm::outs() << "      WARNING: C constructor not found in ctorMap!\n";
+            }
+
+            if (CCtorFunc) {
+              llvm::outs() << "      Creating constructor call\n";
+              // Create argument list: &p, arg1, arg2, ...
+              std::vector<Expr *> args;
+
+              // First argument: address of the variable
+              DeclRefExpr *VarRef = Builder.ref(CVarDecl);
+              Expr *VarAddr = Builder.addrOf(VarRef);
+              args.push_back(VarAddr);
+
+              // Add constructor arguments
+              for (const Expr *Arg : CCE->arguments()) {
+                Expr *TranslatedArg = translateExpr(const_cast<Expr *>(Arg));
+                if (TranslatedArg) {
+                  args.push_back(TranslatedArg);
+                }
+              }
+
+              // Create constructor function call
+              Expr *CtorCall = Builder.call(CCtorFunc, args);
+              statements.push_back(CtorCall);
+            }
+          }
+        } else {
+          // C struct not found, return original statement
+          return DS;
+        }
+      } else {
+        // Plain C struct, return as-is
+        return DS;
+      }
+    } else {
+      // Not a class type (int, float, etc.), return as-is
+      return DS;
+    }
+  }
+
+  // If we generated statements, return them as a compound statement
+  if (!statements.empty()) {
+    return Builder.block(statements);
+  }
+
+  // Fallback: return original
+  return DS;
 }
 
 // Story #45: Helper - removed inline class since it needs access to private
