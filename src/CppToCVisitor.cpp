@@ -2064,9 +2064,30 @@ Expr *CppToCVisitor::translateCallExpr(CallExpr *CE) {
         }
 
         // Add method arguments
+        unsigned paramIdx = 0;  // Index into C++ method parameters
         for (Expr *Arg : MCE->arguments()) {
           Expr *TranslatedArg = translateExpr(Arg);
-          args.push_back(TranslatedArg ? TranslatedArg : Arg);
+          Expr *FinalArg = TranslatedArg ? TranslatedArg : Arg;
+
+          // Bug fix #10: Check if C++ parameter was a reference type
+          // If so, we need to pass address in C
+          if (paramIdx < Method->param_size()) {
+            ParmVarDecl *CppParam = Method->getParamDecl(paramIdx);
+            QualType CppParamType = CppParam->getType();
+
+            // If C++ parameter was a reference and argument is not already an address-of
+            if (CppParamType->isReferenceType() && !isa<UnaryOperator>(FinalArg)) {
+              // Strip any implicit casts to check the underlying expression
+              Expr *UnderlyingExpr = FinalArg->IgnoreImplicitAsWritten();
+
+              // Only take address if not already a pointer type
+              if (!UnderlyingExpr->getType()->isPointerType()) {
+                FinalArg = Builder.addrOf(FinalArg);
+              }
+            }
+          }
+          args.push_back(FinalArg);
+          paramIdx++;
         }
 
         // Create C function call
@@ -2861,6 +2882,53 @@ FunctionDecl *CppToCVisitor::generateCopyConstructor(CXXRecordDecl *D) {
         } else {
           llvm::outs() << "    Warning: Member copy constructor not found: "
                        << fieldCopyCtorName << "\n";
+        }
+      }
+    } else if (fieldType->isArrayType()) {
+      // Array member: use memcpy for deep copy
+      // memcpy(&this->field, &other->field, sizeof(this->field));
+
+      // Get array size
+      const ConstantArrayType *ArrayTy =
+          Context.getAsConstantArrayType(fieldType);
+      if (ArrayTy) {
+        // Create memcpy function reference
+        // We assume memcpy is available (added in generated headers)
+        IdentifierInfo *MemcpyIdent = &Context.Idents.get("memcpy");
+        DeclarationName MemcpyName(MemcpyIdent);
+
+        // Create a placeholder function decl for memcpy
+        // void *memcpy(void *dest, const void *src, size_t n)
+        QualType VoidPtrTy = Context.getPointerType(Context.VoidTy);
+        QualType ConstVoidPtrTy = Context.getPointerType(
+            Context.getConstType(Context.VoidTy));
+        QualType SizeTy = Context.getSizeType();
+
+        std::vector<ParmVarDecl *> memcpyParams;
+        memcpyParams.push_back(Builder.param(VoidPtrTy, "dest"));
+        memcpyParams.push_back(Builder.param(ConstVoidPtrTy, "src"));
+        memcpyParams.push_back(Builder.param(SizeTy, "n"));
+
+        FunctionDecl *MemcpyDecl = Builder.funcDecl(
+            "memcpy", VoidPtrTy, memcpyParams, nullptr);
+
+        // Create arguments for memcpy call
+        std::vector<Expr *> args;
+        args.push_back(Builder.addrOf(ThisMember));    // dest
+        args.push_back(Builder.addrOf(OtherMember));   // src
+
+        // sizeof(this->field)
+        Expr *SizeofExpr = new (Context) UnaryExprOrTypeTraitExpr(
+            UETT_SizeOf, ThisMember, Context.getSizeType(),
+            SourceLocation(), SourceLocation());
+        args.push_back(SizeofExpr);
+
+        // Create memcpy call
+        CallExpr *MemcpyCall = Builder.call(MemcpyDecl, args);
+        if (MemcpyCall) {
+          stmts.push_back(MemcpyCall);
+          llvm::outs() << "    Using memcpy for array field: "
+                       << Field->getName() << "\n";
         }
       }
     } else {
