@@ -360,6 +360,15 @@ Translating method: Matrix3x3::multiply
 Found variable: other
 Translating method: Matrix3x3::multiply
   [Scope] Entering scope at depth 0
+  Translating member access: x
+  Translating member access: y
+  Translating member access: z
+  Translating member access: x
+  Translating member access: y
+  Translating member access: z
+  Translating member access: x
+  Translating member access: y
+  Translating member access: z
   [Scope] Exiting scope at depth 0 with 0 objects
   -> Matrix3x3_multiply_Vector3D_ref with body translated
   -> Matrix3x3_multiply_Vector3D_ref with 2 parameters
@@ -432,6 +441,15 @@ Found variable: sum
 Found variable: k
 Translating method: Matrix3x3::multiply
   [Scope] Entering scope at depth 0
+  Translating member access: x
+  Translating member access: y
+  Translating member access: z
+  Translating member access: x
+  Translating member access: y
+  Translating member access: z
+  Translating member access: x
+  Translating member access: y
+  Translating member access: z
   [Scope] Exiting scope at depth 0 with 0 objects
   -> Matrix3x3_multiply_Vector3D_ref with body translated
   -> Matrix3x3_multiply_Vector3D_ref with 2 parameters
@@ -464,6 +482,10 @@ Found variable: result
 Found variable: i
 Found variable: result
 Found variable: row
+[3/3] Processing file /Users/alexanderfedin/Projects/hapyy/hupyy-cpp-to-c/tests/real-world/simple-validation/01-math-library/src/Vector3D.cpp.
+src/Vector3D.cpp:2:10: fatal error: 'cmath' file not found
+    2 | #include <cmath>
+      |          ^~~~~~~
 Found variable: col
 Found variable: sum
 Found variable: k
@@ -486,11 +508,7 @@ Template Monomorphization Complete
 
 C TranslationUnit has 24 generated declarations
 Generated files:
-  transpiled/src/M[3/3] Processing file /Users/alexanderfedin/Projects/hapyy/hupyy-cpp-to-c/tests/real-world/simple-validation/01-math-library/src/Vector3D.cpp.
-src/Vector3D.cpp:2:10: fatal error: 'cmath' file not found
-    2 | #include <cmath>
-      |          ^~~~~~~
-atrix3x3.h
+  transpiled/src/Matrix3x3.h
   transpiled/src/Matrix3x3.c
 Parsed file: src/Vector3D.cpp
 FileOriginTracker configured with user header paths
@@ -527,27 +545,59 @@ Found variable: y
 Found variable: z
 Translating method: Vector3D::add
   [Scope] Entering scope at depth 0
+  Translating member access: x
+  Translating member access: x
+  Translating member access: y
+  Translating member access: y
+  Translating member access: z
+  Translating member access: z
   [Scope] Exiting scope at depth 0 with 0 objects
   -> Vector3D_add with body translated
   -> Vector3D_add with 2 parameters
 Found variable: other
 Translating method: Vector3D::subtract
   [Scope] Entering scope at depth 0
+  Translating member access: x
+  Translating member access: x
+  Translating member access: y
+  Translating member access: y
+  Translating member access: z
+  Translating member access: z
   [Scope] Exiting scope at depth 0 with 0 objects
   -> Vector3D_subtract with body translated
   -> Vector3D_subtract with 2 parameters
 Found variable: other
 Translating method: Vector3D::dot
   [Scope] Entering scope at depth 0
+  Translating member access: x
+  Translating member access: x
+  Translating member access: y
+  Translating member access: y
+  Translating member access: z
+  Translating member access: z
   [Scope] Exiting scope at depth 0 with 0 objects
   -> Vector3D_dot with body translated
   -> Vector3D_dot with 2 parameters
 Found variable: other
 Translating method: Vector3D::cross
   [Scope] Entering scope at depth 0
+  Translating member access: y
+  Translating member access: z
+  Translating member access: z
+  Translating member access: y
+  Translating member access: z
+  Translating member access: x
+  Translating member access: x
+  Translating member access: z
+  Translating member access: x
+  Translating member access: y
+  Translating member access: y
+  Translating member access: x
   [Scope] Exiting scope at depth 0 with 0 objects
   -> Vector3D_cross with body translated
-  -> Vector3D_cross with 2 parameters
+  -> Vec1 error generated.
+Error while processing /Users/alexanderfedin/Projects/hapyy/hupyy-cpp-to-c/tests/real-world/simple-validation/01-math-library/src/Vector3D.cpp.
+tor3D_cross with 2 parameters
 Found variable: other
 Translating method: Vector3D::magnitude
   [Scope] Entering scope at depth 0
@@ -561,33 +611,61 @@ Found variable: y
 Found variable: z
 Translating method: Vector3D::add
   [Scope] Entering scope at depth 0
+  Translating member access: x
+  Translating member access: x
+  Translating member access: y
+  Translating member access: y
+  Translating member access: z
+  Translating member access: z
   [Scope] Exiting scope at depth 0 with 0 objects
   -> Vector3D_add_Vector3D_ref with body translated
   -> Vector3D_add_Vector3D_ref with 2 parameters
 Found variable: other
 Translating method: Vector3D::subtract
   [Scope] Entering scope at depth 0
+  Translating member access: x
+  Translating member access: x
+  Translating member access: y
+  Translating member access: y
+  Translating member access: z
+  Translating member access: z
   [Scope] Exiting scope at depth 0 with 0 objects
   -> Vector3D_subtract_Vector3D_ref with body translated
   -> Vector3D_subtract_Vector3D_ref with 2 parameters
 Found variable: other
 Translating method: Vector3D::dot
   [Scope] Entering scope at depth 0
+  Translating member access: x
+  Translating member access: x
+  Translating member access: y
+  Translating member access: y
+  Translating member access: z
+  Translating member access: z
   [Scope] Exiting scope at depth 0 with 0 objects
   -> Vector3D_dot_Vector3D_ref with body translated
   -> Vector3D_dot_Vector3D_ref with 2 parameters
 Found variable: other
 Translating method: Vector3D::cross
   [Scope] Entering scope at depth 0
+  Translating member access: y
+  Translating member access: z
+  Translating member access: z
+  Translating member access: y
+  Translating member access: z
+  Translating member access: x
+  Translating member access: x
+  Translating member access: z
+  Translating member access: x
+  Translating member access: y
+  Translating member access: y
+  Translating member access: x
   [Scope] Exiting scope at depth 0 with 0 objects
   -> Vector3D_cross_Vector3D_ref with body translated
   -> Vector3D_cross_Vector3D_ref with 2 parameters
 Found variable: other
 Translating method: Vector3D::magnitude
   [Scope] Entering scope at depth 0
-  1 error generated.
-Error while processing /Users/alexanderfedin/Projects/hapyy/hupyy-cpp-to-c/tests/real-world/simple-validation/01-math-library/src/Vector3D.cpp.
-[Scope] Exiting scope at depth 0 with 0 objects
+  [Scope] Exiting scope at depth 0 with 0 objects
   -> Vector3D_magnitude with body translated
   -> Vector3D_magnitude with 1 parameters
 

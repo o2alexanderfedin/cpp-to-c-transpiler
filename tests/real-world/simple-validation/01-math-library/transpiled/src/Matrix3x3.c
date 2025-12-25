@@ -51,7 +51,7 @@ struct Matrix3x3 Matrix3x3_add(struct Matrix3x3 * this, const struct Matrix3x3 *
         for (int i = 0; i < 9; i++) {
                 result.data[i] = this->data[i] + other.data[i];
         }
-        return result;
+        return (struct Matrix3x3){result};
 }
 
 
@@ -68,12 +68,12 @@ struct Matrix3x3 Matrix3x3_multiply(struct Matrix3x3 * this, const struct Matrix
                         result.data[row * 3 + col] = sum;
                 }
         }
-        return result;
+        return (struct Matrix3x3){result};
 }
 
 
 struct Vector3D Matrix3x3_multiply_Vector3D_ref(struct Matrix3x3 * this, const struct Vector3D * vec) {
-        return this->data[0] * vec->x + this->data[1] * vec->y + this->data[2] * vec->z, this->data[3] * vec->x + this->data[4] * vec->y + this->data[5] * vec->z, this->data[6] * vec->x + this->data[7] * vec->y + this->data[8] * vec->z;
+        return (struct Vector3D){this->data[0] * vec->x + this->data[1] * vec->y + this->data[2] * vec->z, this->data[3] * vec->x + this->data[4] * vec->y + this->data[5] * vec->z, this->data[6] * vec->x + this->data[7] * vec->y + this->data[8] * vec->z};
 }
 
 
@@ -113,7 +113,7 @@ struct Matrix3x3 Matrix3x3_add_Matrix3x3_ref(struct Matrix3x3 * this, const stru
         for (int i = 0; i < 9; i++) {
                 result.data[i] = this->data[i] + other.data[i];
         }
-        return result;
+        return (struct Matrix3x3){result};
 }
 
 
@@ -129,12 +129,12 @@ struct Matrix3x3 Matrix3x3_multiply_Matrix3x3_ref(struct Matrix3x3 * this, const
                         result.data[row * 3 + col] = sum;
                 }
         }
-        return result;
+        return (struct Matrix3x3){result};
 }
 
 
 struct Vector3D Matrix3x3_multiply_Vector3D_ref(struct Matrix3x3 * this, const struct Vector3D * vec) {
-        return this->data[0] * vec->x + this->data[1] * vec->y + this->data[2] * vec->z, this->data[3] * vec->x + this->data[4] * vec->y + this->data[5] * vec->z, this->data[6] * vec->x + this->data[7] * vec->y + this->data[8] * vec->z;
+        return (struct Vector3D){this->data[0] * vec->x + this->data[1] * vec->y + this->data[2] * vec->z, this->data[3] * vec->x + this->data[4] * vec->y + this->data[5] * vec->z, this->data[6] * vec->x + this->data[7] * vec->y + this->data[8] * vec->z};
 }
 
 

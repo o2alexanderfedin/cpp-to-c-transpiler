@@ -15,12 +15,12 @@ void Vector3D__ctor(struct Vector3D * this, float x, float y, float z) {
 
 
 struct Vector3D Vector3D_add(struct Vector3D * this, const struct Vector3D * other) {
-        return this->x + other->x, this->y + other->y, this->z + other->z;
+        return (struct Vector3D){this->x + other->x, this->y + other->y, this->z + other->z};
 }
 
 
 struct Vector3D Vector3D_subtract(struct Vector3D * this, const struct Vector3D * other) {
-        return this->x - other->x, this->y - other->y, this->z - other->z;
+        return (struct Vector3D){this->x - other->x, this->y - other->y, this->z - other->z};
 }
 
 
@@ -30,7 +30,7 @@ float Vector3D_dot(struct Vector3D * this, const struct Vector3D * other) {
 
 
 struct Vector3D Vector3D_cross(struct Vector3D * this, const struct Vector3D * other) {
-        return this->y * other->z - this->z * other->y, this->z * other->x - this->x * other->z, this->x * other->y - this->y * other->x;
+        return (struct Vector3D){this->y * other->z - this->z * other->y, this->z * other->x - this->x * other->z, this->x * other->y - this->y * other->x};
 }
 
 
@@ -47,12 +47,12 @@ void Vector3D__ctor_3(struct Vector3D * this, float x, float y, float z) {
 
 
 struct Vector3D Vector3D_add_Vector3D_ref(struct Vector3D * this, const struct Vector3D * other) {
-        return this->x + other->x, this->y + other->y, this->z + other->z;
+        return (struct Vector3D){this->x + other->x, this->y + other->y, this->z + other->z};
 }
 
 
 struct Vector3D Vector3D_subtract_Vector3D_ref(struct Vector3D * this, const struct Vector3D * other) {
-        return this->x - other->x, this->y - other->y, this->z - other->z;
+        return (struct Vector3D){this->x - other->x, this->y - other->y, this->z - other->z};
 }
 
 
@@ -62,7 +62,7 @@ float Vector3D_dot_Vector3D_ref(struct Vector3D * this, const struct Vector3D * 
 
 
 struct Vector3D Vector3D_cross_Vector3D_ref(struct Vector3D * this, const struct Vector3D * other) {
-        return this->y * other->z - this->z * other->y, this->z * other->x - this->x * other->z, this->x * other->y - this->y * other->x;
+        return (struct Vector3D){this->y * other->z - this->z * other->y, this->z * other->x - this->x * other->z, this->x * other->y - this->y * other->x};
 }
 
 

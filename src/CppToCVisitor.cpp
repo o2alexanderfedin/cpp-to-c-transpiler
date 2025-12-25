@@ -2109,7 +2109,8 @@ Expr *CppToCVisitor::translateBinaryOperator(BinaryOperator *BO) {
 }
 
 // Translate CXXConstructExpr - handles C++ constructor calls
-// Bug fix: Need to translate arguments to fix member access in constructor args
+// Bug fix #6: Convert C++ constructor to C struct initialization (compound literal)
+// Example: Vector3D(x, y, z) -> (struct Vector3D){x, y, z}
 Expr *CppToCVisitor::translateConstructExpr(CXXConstructExpr *CCE) {
   // Translate all constructor arguments
   std::vector<Expr *> translatedArgs;
@@ -2119,13 +2120,29 @@ Expr *CppToCVisitor::translateConstructExpr(CXXConstructExpr *CCE) {
     translatedArgs.push_back(TranslatedArg ? TranslatedArg : Arg);
   }
 
-  // Reconstruct constructor expression with translated arguments
-  return CXXConstructExpr::Create(
-      Context, CCE->getType(), SourceLocation(), CCE->getConstructor(),
-      CCE->isElidable(), translatedArgs, CCE->hadMultipleCandidates(),
-      CCE->isListInitialization(), CCE->isStdInitListInitialization(),
-      CCE->requiresZeroInitialization(), CCE->getConstructionKind(),
-      SourceLocation());
+  // Bug fix #6: Get the C struct type instead of C++ class type
+  // This ensures (struct Type) instead of just (Type)
+  QualType resultType = CCE->getType();
+  CXXRecordDecl *CppClass = CCE->getType()->getAsCXXRecordDecl();
+  if (CppClass && cppToCMap.find(CppClass) != cppToCMap.end()) {
+    // Use the C struct type for proper "struct TypeName" printing
+    RecordDecl *CStruct = cppToCMap[CppClass];
+    resultType = Context.getRecordType(CStruct);
+  }
+
+  // Bug fix #6: Create InitListExpr for C struct initialization
+  // This generates {arg1, arg2, ...} syntax
+  InitListExpr *InitList = new (Context) InitListExpr(
+      Context, SourceLocation(), translatedArgs, SourceLocation());
+  InitList->setType(resultType);
+
+  // Wrap in CompoundLiteralExpr to create (struct Type){...}
+  // This is the proper C99 syntax for struct literals in return statements
+  CompoundLiteralExpr *CompoundLit = new (Context) CompoundLiteralExpr(
+      SourceLocation(), Context.getTrivialTypeSourceInfo(resultType),
+      resultType, VK_PRValue, InitList, false);
+
+  return CompoundLit;
 }
 
 // ============================================================================
