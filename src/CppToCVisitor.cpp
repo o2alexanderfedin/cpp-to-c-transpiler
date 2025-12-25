@@ -1792,6 +1792,28 @@ bool CppToCVisitor::hasNonTrivialDestructor(QualType type) const {
   return CXXRD->hasNonTrivialDestructor();
 }
 
+// Bug #8: Check if a statement contains RecoveryExpr (parsing errors)
+// This recursively checks if any expression in the statement tree is RecoveryExpr
+bool CppToCVisitor::containsRecoveryExpr(Stmt *S) {
+  if (!S) {
+    return false;
+  }
+
+  // Check if this statement itself is a RecoveryExpr
+  if (isa<RecoveryExpr>(S)) {
+    return true;
+  }
+
+  // Recursively check all child statements/expressions
+  for (Stmt *Child : S->children()) {
+    if (containsRecoveryExpr(Child)) {
+      return true;
+    }
+  }
+
+  return false;
+}
+
 // Helper: Create destructor call for a variable
 CallExpr *CppToCVisitor::createDestructorCall(VarDecl *VD) {
   QualType type = VD->getType();
@@ -1912,6 +1934,55 @@ Expr *CppToCVisitor::translateExpr(Expr *E) {
                                       FPOptionsOverride());
     }
     return ICE;
+  }
+
+  // Bug fix #8: Handle RecoveryExpr from missing system headers
+  // RecoveryExpr is created when Clang can't parse something (e.g., missing <cstdio>)
+  // Try to extract the underlying call expression if possible
+  if (RecoveryExpr *RE = dyn_cast<RecoveryExpr>(E)) {
+    llvm::outs() << "  Warning: RecoveryExpr encountered (parsing error)\n";
+
+    // RecoveryExpr contains sub-expressions that were partially parsed
+    // For function calls like printf(...), the sub-expressions are the arguments
+    ArrayRef<Expr *> SubExprs = RE->subExpressions();
+
+    if (SubExprs.size() > 0) {
+      // First sub-expression is usually the function name (as DeclRefExpr)
+      Expr *FirstExpr = SubExprs[0];
+
+      // Check if it's a function call pattern
+      if (DeclRefExpr *FuncRef = dyn_cast<DeclRefExpr>(FirstExpr)) {
+        std::string FuncName = FuncRef->getDecl()->getNameAsString();
+        llvm::outs() << "  RecoveryExpr appears to be call to: " << FuncName << "\n";
+
+        // Create a CallExpr from the recovered pieces
+        std::vector<Expr *> Args;
+        // Arguments start from index 1
+        for (unsigned i = 1; i < SubExprs.size(); ++i) {
+          Expr *TranslatedArg = translateExpr(SubExprs[i]);
+          Args.push_back(TranslatedArg ? TranslatedArg : SubExprs[i]);
+        }
+
+        // Create a function declaration for the call
+        // We assume it returns int (common for printf, etc.)
+        QualType RetType = Context.IntTy;
+        std::vector<ParmVarDecl *> Params;
+
+        // Create function decl
+        FunctionDecl *FuncDecl = Builder.funcDecl(FuncName, RetType, Params, nullptr);
+
+        // Create call expression
+        CallExpr *Call = Builder.call(FuncDecl, Args);
+        if (Call) {
+          llvm::outs() << "  Successfully reconstructed call to " << FuncName << "\n";
+          return Call;
+        }
+      }
+    }
+
+    // If we can't reconstruct it, return nullptr to skip it
+    llvm::outs() << "  Skipping RecoveryExpr (cannot reconstruct)\n";
+    return nullptr;
   }
 
   // Default: return expression as-is (literals, etc.)
@@ -2100,17 +2171,27 @@ Expr *CppToCVisitor::translateCallExpr(CallExpr *CE) {
   // Translate callee and arguments
   Expr *Callee = translateExpr(CE->getCallee());
 
-  // If callee translation failed, return original expression
+  // Bug fix #8: If callee translation failed (e.g., RecoveryExpr), skip entire call
   if (!Callee) {
-    llvm::outs() << "  WARNING: Failed to translate callee, returning original CallExpr\n";
-    return CE;
+    llvm::outs() << "  Skipping CallExpr due to RecoveryExpr in callee\n";
+    return nullptr;
   }
 
   std::vector<Expr *> args;
+  bool hasRecoveryExpr = false;
   for (Expr *Arg : CE->arguments()) {
     Expr *TranslatedArg = translateExpr(Arg);
-    // If any argument translation fails, use the original
-    args.push_back(TranslatedArg ? TranslatedArg : Arg);
+    if (!TranslatedArg) {
+      hasRecoveryExpr = true;
+      break;
+    }
+    args.push_back(TranslatedArg);
+  }
+
+  // Bug fix #8: If any argument is RecoveryExpr, skip entire call
+  if (hasRecoveryExpr) {
+    llvm::outs() << "  Skipping CallExpr due to RecoveryExpr in arguments\n";
+    return nullptr;
   }
 
   // Reconstruct call expression with translated parts
@@ -2123,6 +2204,13 @@ Expr *CppToCVisitor::translateCallExpr(CallExpr *CE) {
 Expr *CppToCVisitor::translateBinaryOperator(BinaryOperator *BO) {
   Expr *LHS = translateExpr(BO->getLHS());
   Expr *RHS = translateExpr(BO->getRHS());
+
+  // Bug fix #8: If either operand contains RecoveryExpr (returns nullptr),
+  // skip the entire binary operator
+  if (!LHS || !RHS) {
+    llvm::outs() << "  Skipping BinaryOperator due to RecoveryExpr in operand\n";
+    return nullptr;
+  }
 
   return BinaryOperator::Create(
       Context, LHS, RHS, BO->getOpcode(), BO->getType(), BO->getValueKind(),
@@ -2348,7 +2436,15 @@ Stmt *CppToCVisitor::translateDeclStmt(DeclStmt *DS) {
       Expr *Init = VD->getInit();
       if (Init) {
         Expr *TranslatedInit = translateExpr(Init);
-        if (TranslatedInit && TranslatedInit != Init) {
+
+        // Bug fix #8: If translation returns nullptr (RecoveryExpr), create var without initializer
+        if (!TranslatedInit) {
+          llvm::outs() << "    Initializer contains RecoveryExpr, creating variable without initializer\n";
+          VarDecl *CVar = Builder.var(VarType, VD->getName());
+          return Builder.declStmt(CVar);
+        }
+
+        if (TranslatedInit != Init) {
           // Initializer was translated (method call, constructor, etc.)
           VarDecl *CVar = Builder.var(VarType, VD->getName(), TranslatedInit);
           return Builder.declStmt(CVar);
@@ -2381,6 +2477,12 @@ Stmt *CppToCVisitor::translateCompoundStmt(CompoundStmt *CS) {
 
   // Translate all statements in the compound statement
   for (Stmt *S : CS->body()) {
+    // Bug #8: Skip statements containing RecoveryExpr (parsing errors from missing headers)
+    if (containsRecoveryExpr(S)) {
+      llvm::outs() << "  [Bug #8] Skipping statement containing RecoveryExpr\n";
+      continue;
+    }
+
     // Check if this is a VarDecl statement with a destructor
     if (DeclStmt *DS = dyn_cast<DeclStmt>(S)) {
       // Check if any decls in this statement have destructors

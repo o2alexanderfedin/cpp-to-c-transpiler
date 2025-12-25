@@ -401,6 +401,16 @@ private:
   void trackObjectInCurrentScope(clang::VarDecl *VD);
 
   /**
+   * @brief Check if a statement contains RecoveryExpr (parsing errors)
+   * @param S The statement to check
+   * @return true if S or any of its sub-expressions contains RecoveryExpr
+   *
+   * Bug #8: Skip statements with RecoveryExpr from missing system headers
+   * Recursively checks if any expression in the statement tree is RecoveryExpr.
+   */
+  bool containsRecoveryExpr(clang::Stmt *S);
+
+  /**
    * @brief Analyze goto-label pairs and determine objects needing destruction
    * @param FD The function containing goto statements
    *
