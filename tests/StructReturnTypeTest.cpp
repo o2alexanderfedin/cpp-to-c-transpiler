@@ -292,3 +292,62 @@ TEST(StructReturnTypeTest, MultipleMethodsWithDifferentReturnTypes) {
   EXPECT_TRUE(output.find("void Vector3D_reset") != std::string::npos)
       << "Void return type should remain void. Output:\n" << output;
 }
+
+// Bug #16: Test that returning a local variable doesn't create compound literal syntax
+TEST(StructReturnTypeTest, ReturnLocalVariableNoCopyConstructor) {
+  const char *code = R"(
+    class Matrix3x3 {
+    public:
+      float data[9];
+
+      Matrix3x3() {
+        for (int i = 0; i < 9; i++) data[i] = 0.0f;
+      }
+
+      Matrix3x3 add(const Matrix3x3& other) const {
+        Matrix3x3 result;
+        for (int i = 0; i < 9; i++) {
+          result.data[i] = data[i] + other.data[i];
+        }
+        return result;
+      }
+    };
+  )";
+
+  std::string output = transpileToCCode(code);
+  ASSERT_FALSE(output.empty()) << "Failed to transpile code";
+
+  // Bug #16: Should NOT have compound literal syntax like:
+  //   return (struct Matrix3x3){result};
+  // Should have simple return:
+  //   return result;
+  EXPECT_TRUE(output.find("return (struct Matrix3x3){result}") == std::string::npos)
+      << "Bug #16: Found invalid compound literal syntax. Should be 'return result;'. Output:\n" << output;
+
+  // Should have simple return statement
+  EXPECT_TRUE(output.find("return result") != std::string::npos)
+      << "Bug #16: Missing simple 'return result;' statement. Output:\n" << output;
+}
+
+// Bug #16: Test that constructor calls still use compound literals correctly
+TEST(StructReturnTypeTest, ReturnConstructorCallUsesCompoundLiteral) {
+  const char *code = R"(
+    class Vector3D {
+    public:
+      float x, y, z;
+
+      Vector3D(float x, float y, float z) : x(x), y(y), z(z) {}
+
+      Vector3D scale(float factor) const {
+        return Vector3D(x * factor, y * factor, z * factor);
+      }
+    };
+  )";
+
+  std::string output = transpileToCCode(code);
+  ASSERT_FALSE(output.empty()) << "Failed to transpile code";
+
+  // Should have compound literal for constructor call with arguments
+  EXPECT_TRUE(output.find("return (struct Vector3D){") != std::string::npos)
+      << "Constructor call should use compound literal syntax. Output:\n" << output;
+}

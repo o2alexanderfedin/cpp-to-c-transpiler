@@ -1936,6 +1936,31 @@ Expr *CppToCVisitor::translateExpr(Expr *E) {
     return ICE;
   }
 
+  // Bug #13 fix: Handle ArraySubscriptExpr - translate base and index
+  // This is critical for expressions like other.data[i] where other is a pointer parameter
+  if (ArraySubscriptExpr *ASE = dyn_cast<ArraySubscriptExpr>(E)) {
+    Expr *Base = ASE->getBase();
+    Expr *Idx = ASE->getIdx();
+
+    // Translate both base and index
+    Expr *TranslatedBase = translateExpr(Base);
+    Expr *TranslatedIdx = translateExpr(Idx);
+
+    // If either changed, create a new ArraySubscriptExpr
+    if ((TranslatedBase && TranslatedBase != Base) ||
+        (TranslatedIdx && TranslatedIdx != Idx)) {
+      Expr *NewBase = TranslatedBase ? TranslatedBase : Base;
+      Expr *NewIdx = TranslatedIdx ? TranslatedIdx : Idx;
+
+      // Create new ArraySubscriptExpr using Clang API
+      return new (Context) ArraySubscriptExpr(
+          NewBase, NewIdx, ASE->getType(),
+          ASE->getValueKind(), ASE->getObjectKind(),
+          ASE->getRBracketLoc());
+    }
+    return ASE;
+  }
+
   // Bug fix #8: Handle RecoveryExpr from missing system headers
   // RecoveryExpr is created when Clang can't parse something (e.g., missing <cstdio>)
   // Try to extract the underlying call expression if possible
@@ -2013,14 +2038,11 @@ Expr *CppToCVisitor::translateMemberExpr(MemberExpr *ME) {
   Expr *Base = ME->getBase();
   ValueDecl *Member = ME->getMemberDecl();
 
-  llvm::outs() << "  Translating member access: " << Member->getName() << "\n";
-
   // Translate base recursively
   Expr *TranslatedBase = translateExpr(Base);
 
   // If translation failed, return original expression
   if (!TranslatedBase) {
-    llvm::outs() << "  WARNING: Failed to translate base expression, returning original\n";
     return ME;
   }
 
@@ -2041,13 +2063,19 @@ Expr *CppToCVisitor::translateMemberExpr(MemberExpr *ME) {
     useArrow = true;
   }
   // Check if base is a reference
-  else if (OriginalBaseType->isReferenceType()) {
+  if (OriginalBaseType->isReferenceType()) {
     useArrow = true;
   }
-  // Check if base is a DeclRef to a reference parameter
-  else if (DeclRefExpr *DRE = dyn_cast<DeclRefExpr>(UnstrippedBase)) {
+  // Bug #13: Check if base is a DeclRef to a reference/pointer parameter
+  // This handles parameters that were converted from references to pointers (Bug #1)
+  if (DeclRefExpr *DRE = dyn_cast<DeclRefExpr>(UnstrippedBase)) {
     if (ParmVarDecl *PVD = dyn_cast<ParmVarDecl>(DRE->getDecl())) {
+      // Check if parameter is a reference (will be converted to pointer by CodeGenerator)
       if (PVD->getType()->isReferenceType()) {
+        useArrow = true;
+      }
+      // Bug #13: Also check if parameter is already a pointer in the original C++ code
+      if (PVD->getType()->isPointerType()) {
         useArrow = true;
       }
     }
@@ -2059,19 +2087,40 @@ Expr *CppToCVisitor::translateMemberExpr(MemberExpr *ME) {
   Expr *Result = nullptr;
 
   if (useArrow) {
-    // Try using Builder.arrowMember() first (for actual pointers)
-    Result = Builder.arrowMember(TranslatedBase, Member->getName());
+    // Bug #13 fix: Convert base to pointer type if it's a reference
+    // This ensures Clang's printer will use -> instead of .
+    Expr *BaseForArrow = TranslatedBase;
+    QualType BaseType = TranslatedBase->getType();
 
-    // If that failed (e.g., because base is a reference, not a pointer),
-    // create the MemberExpr manually with isArrow=true
+    // If the base is a reference type, we need to convert it to a pointer type
+    // for the printer to correctly generate ->
+    if (BaseType->isReferenceType()) {
+      // Get the pointee type (strip reference)
+      QualType PointeeType = BaseType.getNonReferenceType();
+      // Create pointer type
+      QualType PointerType = Context.getPointerType(PointeeType);
+
+      // Create an implicit cast from reference to pointer
+      // Note: This is a semantic conversion, not syntactic - the C code will use the pointer directly
+      BaseForArrow = ImplicitCastExpr::Create(
+          Context, PointerType, CK_LValueToRValue,
+          TranslatedBase, nullptr, VK_PRValue, FPOptionsOverride());
+    }
+
+    // Try using Builder.arrowMember() with the potentially converted base
+    Result = Builder.arrowMember(BaseForArrow, Member->getName());
+
+    // If that failed, create the MemberExpr manually with isArrow=true
     if (!Result) {
       // Get the record type - for references, we need to strip the reference
-      QualType BaseType = TranslatedBase->getType();
-      if (BaseType->isReferenceType()) {
-        BaseType = BaseType.getNonReferenceType();
+      QualType BaseRecordType = BaseForArrow->getType();
+      if (BaseRecordType->isPointerType()) {
+        BaseRecordType = BaseRecordType->getPointeeType();
+      } else if (BaseRecordType->isReferenceType()) {
+        BaseRecordType = BaseRecordType.getNonReferenceType();
       }
 
-      const RecordType *RT = BaseType->getAs<RecordType>();
+      const RecordType *RT = BaseRecordType->getAs<RecordType>();
       if (RT) {
         RecordDecl *RD = RT->getDecl();
         FieldDecl *FD = nullptr;
@@ -2084,7 +2133,7 @@ Expr *CppToCVisitor::translateMemberExpr(MemberExpr *ME) {
 
         if (FD) {
           Result = MemberExpr::Create(
-              Context, TranslatedBase,
+              Context, BaseForArrow,
               true, // is arrow
               SourceLocation(), NestedNameSpecifierLoc(), SourceLocation(), FD,
               DeclAccessPair::make(FD, AS_public), DeclarationNameInfo(), nullptr,
@@ -2098,7 +2147,6 @@ Expr *CppToCVisitor::translateMemberExpr(MemberExpr *ME) {
 
   // If member access creation failed, return original expression
   if (!Result) {
-    llvm::outs() << "  WARNING: Failed to create member access, returning original\n";
     return ME;
   }
 
@@ -2220,7 +2268,31 @@ Expr *CppToCVisitor::translateBinaryOperator(BinaryOperator *BO) {
 // Translate CXXConstructExpr - handles C++ constructor calls
 // Bug fix #6: Convert C++ constructor to C struct initialization (compound literal)
 // Example: Vector3D(x, y, z) -> (struct Vector3D){x, y, z}
+// Bug fix #16: Detect copy construction from variable and unwrap it
+// Example: return result; -> should stay as "return result;" not "return (struct Type){result};"
 Expr *CppToCVisitor::translateConstructExpr(CXXConstructExpr *CCE) {
+  // Bug fix #16: Check if this is a copy/move constructor wrapping a simple variable reference
+  // Pattern: return result; where result is a local variable
+  // Clang represents this as CXXConstructExpr(copy/move ctor, DeclRefExpr)
+  // We should unwrap it to just return the variable directly
+  // Note: In C++23, this is typically a move constructor due to copy elision
+
+  CXXConstructorDecl *Ctor = CCE->getConstructor();
+  if (CCE->getNumArgs() == 1 && (Ctor->isCopyConstructor() || Ctor->isMoveConstructor())) {
+    Expr *Arg = CCE->getArg(0);
+
+    // Skip through any implicit casts to find the underlying expression
+    while (ImplicitCastExpr *ICE = dyn_cast<ImplicitCastExpr>(Arg)) {
+      Arg = ICE->getSubExpr();
+    }
+
+    // If the argument is a simple variable reference (DeclRefExpr),
+    // just return the translated variable reference directly
+    if (DeclRefExpr *DRE = dyn_cast<DeclRefExpr>(Arg)) {
+      return translateExpr(DRE);
+    }
+  }
+
   // Translate all constructor arguments
   std::vector<Expr *> translatedArgs;
   for (unsigned i = 0; i < CCE->getNumArgs(); ++i) {
@@ -2275,6 +2347,26 @@ Stmt *CppToCVisitor::translateStmt(Stmt *S) {
   // Phase 34-05: Handle variable declarations with constructors
   if (DeclStmt *DS = dyn_cast<DeclStmt>(S)) {
     return translateDeclStmt(DS);
+  }
+
+  // Bug #13 fix: Handle ForStmt - translate all sub-statements and expressions
+  // This is critical for translating expressions like other.data[i] inside for loops
+  if (ForStmt *FS = dyn_cast<ForStmt>(S)) {
+    Stmt *Init = FS->getInit();
+    Expr *Cond = FS->getCond();
+    Expr *Inc = FS->getInc();
+    Stmt *Body = FS->getBody();
+
+    // Translate each component
+    Stmt *TranslatedInit = Init ? translateStmt(Init) : nullptr;
+    Expr *TranslatedCond = Cond ? translateExpr(Cond) : nullptr;
+    Expr *TranslatedInc = Inc ? translateExpr(Inc) : nullptr;
+    Stmt *TranslatedBody = Body ? translateStmt(Body) : nullptr;
+
+    // Create new ForStmt with translated components
+    return new (Context) ForStmt(
+        Context, TranslatedInit, TranslatedCond, nullptr, TranslatedInc,
+        TranslatedBody, FS->getForLoc(), FS->getLParenLoc(), FS->getRParenLoc());
   }
 
   // If it's an expression, translate it
@@ -2593,10 +2685,12 @@ Stmt *CppToCVisitor::translateCompoundStmt(CompoundStmt *CS) {
         // translateDeclStmt, flatten it by adding its children directly
         // This fixes the scoping issue where constructor calls were wrapped in a block
         // Example: {struct Point p; Point__ctor(&p, 3, 4);} → two separate statements
+        // Bug #12 fix: Also flatten single-statement blocks from default constructors
+        // Example: {struct Matrix3x3 result;} → struct Matrix3x3 result;
         if (CompoundStmt *TranslatedBlock = dyn_cast<CompoundStmt>(TranslatedStmt)) {
-          // Check if this is a flattening candidate (has multiple statements)
-          // This happens when translateDeclStmt splits a constructor declaration
-          if (TranslatedBlock->size() > 1 && isa<DeclStmt>(S)) {
+          // Check if this is a flattening candidate from translateDeclStmt
+          // Bug #12: Remove size check - flatten ALL DeclStmt blocks, even with 1 statement
+          if (isa<DeclStmt>(S) && TranslatedBlock->size() > 0) {
             // Flatten: add children directly instead of nested block
             for (Stmt *Child : TranslatedBlock->body()) {
               translatedStmts.push_back(Child);
