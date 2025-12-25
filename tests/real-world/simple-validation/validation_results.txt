@@ -1,0 +1,947 @@
+========================================
+Simple Real-World Validation (STL-Free)
+========================================
+
+[1;33mTesting Math Library...[0m
+  [1/5] Building C++ version...
+-- Configuring done (0.1s)
+-- Generating done (0.0s)
+-- Build files have been written to: /Users/alexanderfedin/Projects/hapyy/hupyy-cpp-to-c/tests/real-world/simple-validation/01-math-library/build
+[100%] Built target math_library
+    ✓ C++ build successful
+  [2/5] Running C++ version...
+Vector3D Tests:
+  v1 = (1.0, 2.0, 3.0)
+  v2 = (4.0, 5.0, 6.0)
+  v1 + v2 = (5.0, 7.0, 9.0)
+  v1 . v2 = 32.0
+  v1 x v2 = (-3.0, 6.0, -3.0)
+
+Matrix3x3 Tests:
+  Identity * 2I = 2I (first element: 2.0)
+  2I * v1 = (2.0, 4.0, 6.0)
+
+Validation: PASS
+    ✓ C++ execution successful (exit code: 0)
+  [3/5] Transpiling to C...
+Error while trying to load a compilation database:
+Could not auto-detect compilation database for file "__dummy_for_discovery__.cpp"
+No compilation database found in /Users/alexanderfedin/Projects/hapyy/hupyy-cpp-to-c/tests/real-world/simple-validation/01-math-library or any parent directory
+fixed-compilation-database: Error while opening fixed database: No such file or directory
+json-compilation-database: Error while opening JSON database: No such file or directory
+Running without flags.
+[1/3] Processing file /Users/alexanderfedin/Projects/hapyy/hupyy-cpp-to-c/tests/real-world/simple-validation/01-math-library/main.cpp.
+/Users/alexanderfedin/Projects/hapyy/hupyy-cpp-to-c/tests/real-world/simple-validation/01-math-library/main.cpp:1:10: fatal error: 'Vector3D.h' file not found
+    1 | #include "Vector3D.h"
+      |          ^~~~~~~~~~~~
+1 error generated.
+Error while processing /Users/alexanderfedin/Projects/hapyy/hupyy-cpp-to-c/tests/real-world/simple-validation/01-math-library/main.cpp.
+[2/3] Processing file /Users/alexanderfedin/Projects/hapyy/hupyy-cpp-to-c/tests/real-world/simple-validation/01-math-library/src/Matrix3x3.cpp.
+/Users/alexanderfedin/Projects/hapyy/hupyy-cpp-to-c/tests/real-world/simple-validation/01-math-library/src/Matrix3x3.cpp:1:10: fatal error: 'Matrix3x3.h' file not found
+    1 | #include "Matrix3x3.h"
+      |          ^~~~~~~~~~~~~
+Warning: No C AST nodes generated. Input may contain unsupported C++ features.
+Auto-discovering C++ source files in: /Users/alexanderfedin/Projects/hapyy/hupyy-cpp-to-c/tests/real-world/simple-validation/01-math-library
+Discovered 3 file(s) for transpilation
+Parsed file: /Users/alexanderfedin/Projects/hapyy/hupyy-cpp-to-c/tests/real-world/simple-validation/01-math-library/main.cpp
+FileOriginTracker configured with user header paths
+Translation unit has 91 top-level declarations
+Virtual method support initialized
+Template monomorphization enabled (limit: 1000 instantiations)
+Exception handling support initialized (SJLJ model)
+RTTI support initialized (typeid and dynamic_cast)
+Multidimensional subscript operator support initialized (C++23)
+Static operator() and operator[] support initialized (C++23)
+[[assume]] attribute support initialized (C++23)
+Deducing this / explicit object parameter support initialized (C++23 P0847R7)
+if consteval support initialized (C++23 P1938R3) - Runtime strategy
+auto(x) decay-copy and partial constexpr support initialized (C++23 P0849R8)
+C TranslationUnit created for output generation
+Analyzing function for RAII: main
+  Found 10 local variables
+Translating standalone function: main
+  Mangled name: main
+  [Scope] Entering scope at depth 0
+  [Translating DeclStmt]
+    Variable: v1
+  [Translating DeclStmt]
+    Variable: v2
+  [Translating DeclStmt]
+    Variable: sum
+  [Translating DeclStmt]
+    Variable: dot
+  [Translating DeclStmt]
+    Variable: cross
+  [Translating DeclStmt]
+    Variable: m1
+  [Translating DeclStmt]
+    Variable: m2
+  [Translating DeclStmt]
+    Variable: mProd
+  [Translating DeclStmt]
+    Variable: transformed
+  [Translating DeclStmt]
+    Variable: passed
+  [Scope] Exiting scope at depth 0 with 0 objects
+  -> C function 'main' created
+  Parameters: 0
+  Return type: int
+Found variable: v1
+Found variable: v2
+Found variable: sum
+Found variable: dot
+Found variable: cross
+Found variable: m1
+Found variable: m2
+Found variable: mProd
+Found variable: transformed
+Found variable: passed
+Found variable: dot
+Found variable: v1
+Found variable: v2
+Found variable: sum
+Found variable: dot
+Found variable: cross
+Found variable: m1
+Found variable: m2
+Found variable: mProd
+Found variable: transformed
+Found variable: passed
+
+========================================
+Processing Template Instantiations
+========================================
+
+Found 0 class template instantiation(s)
+Found 0 function template instantiation(s)
+
+Monomorphizing class templates:
+
+Monomorphizing function templates:
+
+========================================
+Template Monomorphization Complete
+  Unique instantiations: 0
+========================================
+
+C TranslationUnit has 1 generated declarations
+Generated files:
+  transpiled/main.h
+  transpiled/main.c
+Parsed file: /Users/alexanderfedin/Projects/hapyy/hupyy-cpp-to-c/tests/real-world/simple-validation/01-math-library/src/Matrix3x3.cpp
+FileOriginTracker configured with user header paths
+Translation unit has 90 top-level declarations
+Virtual method support initialized
+Template monomorphization enabled (limit: 1000 instantiations)
+Exception handling support initialized (SJLJ model)
+RTTI support initialized (typeid and dynamic_cast)
+Multidimensional subscript operator support initialized (C++23)
+Static operator() and operator[] support initialized (C++23)
+[[assume]] attribute support initialized (C++23)
+Deducing this / explicit object parameter support initialized (C++23 P0847R7)
+if consteval support initialized (C++23 P1938R3) - Runtime strategy
+auto(x) decay-copy and partial constexpr support initialized (C++23 P0849R8)
+C TranslationUnit created for output generation
+
+========================================
+Processing Template Instantiations
+========================================
+
+Found 0 class template instantiation(s)
+Found 0 function template instantiation(s)
+
+Monomorphizing class templates:
+
+Monomorphizing function templates:
+
+========================================
+Template Monomorphization Complete
+  Unique instantiations: 0
+========================================
+
+C TranslationUnit has 0 generated declarations
+Generated files:
+  transpil1 error generated.
+Error while processing /Users/alexanderfedin/Projects/hapyy/hupyy-cpp-to-c/tests/real-world/simple-validation/01-math-library/src/Matrix3x3.cpp.
+[3/3] Processing file /Users/alexanderfedin/Projects/hapyy/hupyy-cpp-to-c/tests/real-world/simple-validation/01-math-library/src/Vector3D.cpp.
+/Users/alexanderfedin/Projects/hapyy/hupyy-cpp-to-c/tests/real-world/simple-validation/01-math-library/src/Vector3D.cpp:1:10: fatal error: 'Vector3D.h' file not found
+    1 | #include "Vector3D.h"
+      |          ^~~~~~~~~~~~
+Warning: No C AST nodes generated. Input may contain unsupported C++ features.
+1 error generated.
+Error while processing /Users/alexanderfedin/Projects/hapyy/hupyy-cpp-to-c/tests/real-world/simple-validation/01-math-library/src/Vector3D.cpp.
+ed/src/Matrix3x3.h
+  transpiled/src/Matrix3x3.c
+Parsed file: /Users/alexanderfedin/Projects/hapyy/hupyy-cpp-to-c/tests/real-world/simple-validation/01-math-library/src/Vector3D.cpp
+FileOriginTracker configured with user header paths
+Translation unit has 90 top-level declarations
+Virtual method support initialized
+Template monomorphization enabled (limit: 1000 instantiations)
+Exception handling support initialized (SJLJ model)
+RTTI support initialized (typeid and dynamic_cast)
+Multidimensional subscript operator support initialized (C++23)
+Static operator() and operator[] support initialized (C++23)
+[[assume]] attribute support initialized (C++23)
+Deducing this / explicit object parameter support initialized (C++23 P0847R7)
+if consteval support initialized (C++23 P1938R3) - Runtime strategy
+auto(x) decay-copy and partial constexpr support initialized (C++23 P0849R8)
+C TranslationUnit created for output generation
+
+========================================
+Processing Template Instantiations
+========================================
+
+Found 0 class template instantiation(s)
+Found 0 function template instantiation(s)
+
+Monomorphizing class templates:
+
+Monomorphizing function templates:
+
+========================================
+Template Monomorphization Complete
+  Unique instantiations: 0
+========================================
+
+C TranslationUnit has 0 generated declarations
+Generated files:
+  transpiled/src/Vector3D.h
+  transpiled/src/Vector3D.c
+    [0;31m✗ Transpilation failed[0m
+[0;31m❌ FAIL: Math Library[0m
+
+[1;33mTesting Custom Container...[0m
+  [1/5] Building C++ version...
+-- Configuring done (0.1s)
+-- Generating done (0.0s)
+-- Build files have been written to: /Users/alexanderfedin/Projects/hapyy/hupyy-cpp-to-c/tests/real-world/simple-validation/02-custom-container/build
+[100%] Built target custom_container
+    ✓ C++ build successful
+  [2/5] Running C++ version...
+LinkedList<int> Tests:
+  Initial size: 0
+  Is empty: true
+  After push_back(10, 20, 30): size = 3
+  Front element: 10
+  After push_front(5): size = 4, front = 5
+  After pop_front(): size = 3, front = 10
+
+LinkedList<float> Tests:
+  Size: 3
+  Front: 1.5
+
+Validation: PASS
+    ✓ C++ execution successful (exit code: 0)
+  [3/5] Transpiling to C...
+Error while trying to load a compilation database:
+Could not auto-detect compilation database for file "__dummy_for_discovery__.cpp"
+No compilation database found in /Users/alexanderfedin/Projects/hapyy/hupyy-cpp-to-c/tests/real-world/simple-validation/02-custom-container or any parent directory
+fixed-compilation-database: Error while opening fixed database: No such file or directory
+json-compilation-database: Error while opening JSON database: No such file or directory
+Running without flags.
+/Users/alexanderfedin/Projects/hapyy/hupyy-cpp-to-c/tests/real-world/simple-validation/02-custom-container/main.cpp:1:10: fatal error: 'LinkedList.h' file not found
+    1 | #include "LinkedList.h"
+      |          ^~~~~~~~~~~~~~
+1 error generated.
+Error while processing /Users/alexanderfedin/Projects/hapyy/hupyy-cpp-to-c/tests/real-world/simple-validation/02-custom-container/main.cpp.
+Auto-discovering C++ source files in: /Users/alexanderfedin/Projects/hapyy/hupyy-cpp-to-c/tests/real-world/simple-validation/02-custom-container
+Discovered 1 file(s) for transpilation
+Parsed file: /Users/alexanderfedin/Projects/hapyy/hupyy-cpp-to-c/tests/real-world/simple-validation/02-custom-container/main.cpp
+FileOriginTracker configured with user header paths
+Translation unit has 91 top-level declarations
+Virtual method support initialized
+Template monomorphization enabled (limit: 1000 instantiations)
+Exception handling support initialized (SJLJ model)
+RTTI support initialized (typeid and dynamic_cast)
+Multidimensional subscript operator support initialized (C++23)
+Static operator() and operator[] support initialized (C++23)
+[[assume]] attribute support initialized (C++23)
+Deducing this / explicit object parameter support initialized (C++23 P0847R7)
+if consteval support initialized (C++23 P1938R3) - Runtime strategy
+auto(x) decay-copy and partial constexpr support initialized (C++23 P0849R8)
+C TranslationUnit created for output generation
+Analyzing function for RAII: main
+  Found 3 local variables
+Translating standalone function: main
+  Mangled name: main
+  [Scope] Entering scope at depth 0
+  [Translating DeclStmt]
+    Variable: list
+  [Translating DeclStmt]
+    Variable: floatList
+  [Translating DeclStmt]
+    Variable: passed
+  [Scope] Exiting scope at depth 0 with 0 objects
+  -> C function 'main' created
+  Parameters: 0
+  Return type: int
+Found variable: list
+Found variable: floatList
+Found variable: passed
+Found variable: list
+Found variable: floatList
+Found variable: passed
+
+========================================
+Processing Template Instantiations
+========================================
+
+Found 0 class template instantiation(s)
+Found 0 function template instantiation(s)
+
+Monomorphizing class templates:
+
+Monomorphizing function templates:
+
+========================================
+Template Monomorphization Complete
+  Unique instantiations: 0
+========================================
+
+C TranslationUnit has 1 generated declarations
+Generated files:
+  transpiled/main.h
+  transpiled/main.c
+    [0;31m✗ Transpilation failed[0m
+[0;31m❌ FAIL: Custom Container[0m
+
+[1;33mTesting State Machine...[0m
+  [1/5] Building C++ version...
+-- Configuring done (0.1s)
+-- Generating done (0.0s)
+-- Build files have been written to: /Users/alexanderfedin/Projects/hapyy/hupyy-cpp-to-c/tests/real-world/simple-validation/03-state-machine/build
+[100%] Built target state_machine
+    ✓ C++ build successful
+  [2/5] Running C++ version...
+State Machine Tests:
+  Initial state: Menu
+  After Menu -> Playing: Playing
+  After Playing -> Paused: Paused
+  After Paused -> Playing: Playing
+  After Playing -> GameOver: GameOver
+  After GameOver -> Playing (invalid): GameOver
+  After GameOver -> Menu: Menu
+  Total valid transitions: 5
+
+Validation: PASS
+    ✓ C++ execution successful (exit code: 0)
+  [3/5] Transpiling to C...
+Error while trying to load a compilation database:
+Could not auto-detect compilation database for file "__dummy_for_discovery__.cpp"
+No compilation database found in /Users/alexanderfedin/Projects/hapyy/hupyy-cpp-to-c/tests/real-world/simple-validation/03-state-machine or any parent directory
+fixed-compilation-database: Error while opening fixed database: No such file or directory
+json-compilation-database: Error while opening JSON database: No such file or directory
+Running without flags.
+[1/2] Processing file /Users/alexanderfedin/Projects/hapyy/hupyy-cpp-to-c/tests/real-world/simple-validation/03-state-machine/main.cpp.
+/Users/alexanderfedin/Projects/hapyy/hupyy-cpp-to-c/tests/real-world/simple-validation/03-state-machine/main.cpp:1:10: fatal error: 'StateMachine.h' file not found
+    1 | #include "StateMachine.h"
+      |          ^~~~~~~~~~~~~~~~
+1 error generated.
+Error while processing /Users/alexanderfedin/Projects/hapyy/hupyy-cpp-to-c/tests/real-world/simple-validation/03-state-machine/main.cpp.
+[2/2] Processing file /Users/alexanderfedin/Projects/hapyy/hupyy-cpp-to-c/tests/real-world/simple-validation/03-state-machine/src/StateMachine.cpp.
+/Users/alexanderfedin/Projects/hapyy/hupyy-cpp-to-c/tests/real-world/simple-validation/03-state-machine/src/StateMachine.cpp:1:10: fatal error: 'StateMachine.h' file not found
+    1 | #include "StateMachine.h"
+      |          ^~~~~~~~~~~~~~~~
+Warning: No C AST nodes generated. Input may contain unsupported C++ features.
+1 error generated.
+Error while processing /Users/alexanderfedin/Projects/hapyy/hupyy-cpp-to-c/tests/real-world/simple-validation/03-state-machine/src/StateMachine.cpp.
+Auto-discovering C++ source files in: /Users/alexanderfedin/Projects/hapyy/hupyy-cpp-to-c/tests/real-world/simple-validation/03-state-machine
+Discovered 2 file(s) for transpilation
+Parsed file: /Users/alexanderfedin/Projects/hapyy/hupyy-cpp-to-c/tests/real-world/simple-validation/03-state-machine/main.cpp
+FileOriginTracker configured with user header paths
+Translation unit has 92 top-level declarations
+Virtual method support initialized
+Template monomorphization enabled (limit: 1000 instantiations)
+Exception handling support initialized (SJLJ model)
+RTTI support initialized (typeid and dynamic_cast)
+Multidimensional subscript operator support initialized (C++23)
+Static operator() and operator[] support initialized (C++23)
+[[assume]] attribute support initialized (C++23)
+Deducing this / explicit object parameter support initialized (C++23 P0847R7)
+if consteval support initialized (C++23 P1938R3) - Runtime strategy
+auto(x) decay-copy and partial constexpr support initialized (C++23 P0849R8)
+C TranslationUnit created for output generation
+Analyzing function for RAII: stateToString
+  Found 0 local variables
+Translating standalone function: stateToString
+  Mangled name: stateToString
+  [Scope] Entering scope at depth 0
+  [Scope] Exiting scope at depth 0 with 0 objects
+  -> C function 'stateToString' created
+  Parameters: 1
+  Return type: const char *
+Found variable: state
+Analyzing function for RAII: main
+  Found 1 local variables
+Translating standalone function: main
+  Mangled name: main
+  [Scope] Entering scope at depth 0
+  [Translating DeclStmt]
+  [Translating DeclStmt]
+    Variable: passed
+  [Scope] Exiting scope at depth 0 with 0 objects
+  -> C function 'main' created
+  Parameters: 0
+  Return type: int
+Found variable: 
+Found variable: passed
+Found variable: 
+Found variable: passed
+
+========================================
+Processing Template Instantiations
+========================================
+
+Found 0 class template instantiation(s)
+Found 0 function template instantiation(s)
+
+Monomorphizing class templates:
+
+Monomorphizing function templates:
+
+========================================
+Template Monomorphization Complete
+  Unique instantiations: 0
+========================================
+
+C TranslationUnit has 2 generated declarations
+Generated files:
+  transpiled/main.h
+  transpiled/main.c
+Parsed file: /Users/alexanderfedin/Projects/hapyy/hupyy-cpp-to-c/tests/real-world/simple-validation/03-state-machine/src/StateMachine.cpp
+FileOriginTracker configured with user header paths
+Translation unit has 90 top-level declarations
+Virtual method support initialized
+Template monomorphization enabled (limit: 1000 instantiations)
+Exception handling support initialized (SJLJ model)
+RTTI support initialized (typeid and dynamic_cast)
+Multidimensional subscript operator support initialized (C++23)
+Static operator() and operator[] support initialized (C++23)
+[[assume]] attribute support initialized (C++23)
+Deducing this / explicit object parameter support initialized (C++23 P0847R7)
+if consteval support initialized (C++23 P1938R3) - Runtime strategy
+auto(x) decay-copy and partial constexpr support initialized (C++23 P0849R8)
+C TranslationUnit created for output generation
+
+========================================
+Processing Template Instantiations
+========================================
+
+Found 0 class template instantiation(s)
+Found 0 function template instantiation(s)
+
+Monomorphizing class templates:
+
+Monomorphizing function templates:
+
+========================================
+Template Monomorphization Complete
+  Unique instantiations: 0
+========================================
+
+C TranslationUnit has 0 generated declarations
+Generated files:
+  transpiled/src/StateMachine.h
+  transpiled/src/StateMachine.c
+    [0;31m✗ Transpilation failed[0m
+[0;31m❌ FAIL: State Machine[0m
+
+[1;33mTesting Simple Parser...[0m
+  [1/5] Building C++ version...
+-- Configuring done (0.1s)
+-- Generating done (0.0s)
+-- Build files have been written to: /Users/alexanderfedin/Projects/hapyy/hupyy-cpp-to-c/tests/real-world/simple-validation/04-simple-parser/build
+[100%] Built target simple_parser
+    ✓ C++ build successful
+  [2/5] Running C++ version...
+Expression Evaluator Tests:
+  2 + 3 = 5
+  10 - 4 = 6
+  2 * 3 + 4 = 10
+  20 / 4 = 5
+  2 + 3 * 4 = 14
+
+Validation: PASS
+    ✓ C++ execution successful (exit code: 0)
+  [3/5] Transpiling to C...
+Error while trying to load a compilation database:
+Could not auto-detect compilation database for file "__dummy_for_discovery__.cpp"
+No compilation database found in /Users/alexanderfedin/Projects/hapyy/hupyy-cpp-to-c/tests/real-world/simple-validation/04-simple-parser or any parent directory
+fixed-compilation-database: Error while opening fixed database: No such file or directory
+json-compilation-database: Error while opening JSON database: No such file or directory
+Running without flags.
+[1/3] Processing file /Users/alexanderfedin/Projects/hapyy/hupyy-cpp-to-c/tests/real-world/simple-validation/04-simple-parser/main.cpp.
+/Users/alexanderfedin/Projects/hapyy/hupyy-cpp-to-c/tests/real-world/simple-validation/04-simple-parser/main.cpp:1:10: fatal error: 'ExpressionEvaluator.h' file not found
+    1 | #include "ExpressionEvaluator.h"
+      |          ^~~~~~~~~~~~~~~~~~~~~~~
+1 error generated.
+Error while processing /Users/alexanderfedin/Projects/hapyy/hupyy-cpp-to-c/tests/real-world/simple-validation/04-simple-parser/main.cpp.
+[2/3] Processing file /Users/alexanderfedin/Projects/hapyy/hupyy-cpp-to-c/tests/real-world/simple-validation/04-simple-parser/src/Tokenizer.cpp.
+/Users/alexanderfedin/Projects/hapyy/hupyy-cpp-to-c/tests/real-world/simple-validation/04-simple-parser/src/Tokenizer.cpp:1:10: fatal error: 'Tokenizer.h' file not found
+    1 | #include "Tokenizer.h"
+      |          ^~~~~~~~~~~~~
+Auto-discovering C++ source files in: /Users/alexanderfedin/Projects/hapyy/hupyy-cpp-to-c/tests/real-world/simple-validation/04-simple-parser
+Discovered 3 file(s) for transpilation
+Parsed file: /Users/alexanderfedin/Projects/hapyy/hupyy-cpp-to-c/tests/real-world/simple-validation/04-simple-parser/main.cpp
+FileOriginTracker configured with user header paths
+Translation unit has 91 top-level declarations
+Virtual method support initialized
+Template monomorphization enabled (limit: 1000 instantiations)
+Exception handling support initialized (SJLJ model)
+RTTI support initialized (typeid and dynamic_cast)
+Multidimensional subscript operator support initialized (C++23)
+Static operator() and operator[] support initialized (C++23)
+[[assume]] attribute support initialized (C++23)
+Deducing this / explicit object parameter support initialized (C++23 P0847R7)
+if consteval support initialized (C++23 P1938R3) - Runtime strategy
+auto(x) decay-copy and partial constexpr support initialized (C++23 P0849R8)
+C TranslationUnit created for output generation
+Analyzing function for RAII: main
+  Found 12 local variables
+Translating standalone function: main
+  Mangled name: main
+  [Scope] Entering scope at depth 0
+  [Translating DeclStmt]
+    Variable: eval
+  [Translating DeclStmt]
+    Variable: expr1
+  [Translating DeclStmt]
+    Variable: result1
+  [Translating DeclStmt]
+    Variable: expr2
+  [Translating DeclStmt]
+    Variable: result2
+  [Translating DeclStmt]
+    Variable: expr3
+  [Translating DeclStmt]
+    Variable: result3
+  [Translating DeclStmt]
+    Variable: expr4
+  [Translating DeclStmt]
+    Variable: result4
+  [Translating DeclStmt]
+    Variable: expr5
+  [Translating DeclStmt]
+    Variable: result5
+  [Translating DeclStmt]
+    Variable: passed
+  [Scope] Exiting scope at depth 0 with 0 objects
+  -> C function 'main' created
+  Parameters: 0
+  Return type: int
+Found variable: eval
+Found variable: expr1
+Found variable: result1
+Found variable: expr2
+Found variable: result2
+Found variable: expr3
+Found variable: result3
+Found variable: expr4
+Found variable: result4
+Found variable: expr5
+Found variable: result5
+Found variable: passed
+Found variable: result1
+Found variable: result2
+Found variable: result3
+Found variable: result4
+Found variable: result5
+Found variable: eval
+Found variable: expr1
+Found variable: result1
+Found variable: expr2
+Found variable: result2
+Found variable: expr3
+Found variable: result3
+Found variable: expr4
+Found variable: result4
+Found variable: expr5
+Found variable: result5
+Found variable: passed
+
+========================================
+Processing Template Instantiations
+========================================
+
+Found 0 class template instantiation(s)
+Found 0 function template instantiation(s)
+
+Monomorphizing class templates:
+
+Monomorphizing function templates:
+
+========================================
+Template Monomorphization Complete
+  Unique instantiations: 0
+========================================
+
+C TranslationUnit has 1 generated declarations
+Generated files:
+  transpiled/main.h
+  transpiled/main.c
+Parsed file: /Users/alexanderfedin/Projects/hapyy/hupyy-cpp-to-c/tests/real-world/simple-validation/04-simple-parser/src/Tokenizer.cpp
+FileOriginTracker configured with user header paths
+Translation unit has 90 top-level declarations
+Virtual method support initialized
+Template monomorphization enabled (limit: 1000 instantiations)
+Exception handling support initialized (SJLJ model)
+RTTI support initialized (typeid and dynamic_cast)
+Multidimensional subscript operator support initialized (C++23)
+Static operator() and operator[] support initialized (C++23)
+[[assume]] attribute support initialized (C++23)
+Deducing this / explicit object parameter support initialized (C++23 P0847R7)
+if consteval support initialized (C++23 P1938R3) - Runtime strategy
+auto(x) decay-copy and partial constexpr support initialized (C++23 P0849R8)
+C TranslationUnit created for output generation
+
+========================================
+Processing Template Instantiations
+========================================
+
+Found 0 class template instantiatiWarning: No C AST nodes generated. Input may contain unsupported C++ features.
+1 error generated.
+Error while processing /Users/alexanderfedin/Projects/hapyy/hupyy-cpp-to-c/tests/real-world/simple-validation/04-simple-parser/src/Tokenizer.cpp.
+[3/3] Processing file /Users/alexanderfedin/Projects/hapyy/hupyy-cpp-to-c/tests/real-world/simple-validation/04-simple-parser/src/ExpressionEvaluator.cpp.
+/Users/alexanderfedin/Projects/hapyy/hupyy-cpp-to-c/tests/real-world/simple-validation/04-simple-parser/src/ExpressionEvaluator.cpp:1:10: fatal error: 'ExpressionEvaluator.h' file not found
+    1 | #include "ExpressionEvaluator.h"
+      |          ^~~~~~~~~~~~~~~~~~~~~~~
+Warning: No C AST nodes generated. Input may contain unsupported C++ features.
+1 error generated.
+Error while processing /Users/alexanderfedin/Projects/hapyy/hupyy-cpp-to-c/tests/real-world/simple-validation/04-simple-parser/src/ExpressionEvaluator.cpp.
+on(s)
+Found 0 function template instantiation(s)
+
+Monomorphizing class templates:
+
+Monomorphizing function templates:
+
+========================================
+Template Monomorphization Complete
+  Unique instantiations: 0
+========================================
+
+C TranslationUnit has 0 generated declarations
+Generated files:
+  transpiled/src/Tokenizer.h
+  transpiled/src/Tokenizer.c
+Parsed file: /Users/alexanderfedin/Projects/hapyy/hupyy-cpp-to-c/tests/real-world/simple-validation/04-simple-parser/src/ExpressionEvaluator.cpp
+FileOriginTracker configured with user header paths
+Translation unit has 90 top-level declarations
+Virtual method support initialized
+Template monomorphization enabled (limit: 1000 instantiations)
+Exception handling support initialized (SJLJ model)
+RTTI support initialized (typeid and dynamic_cast)
+Multidimensional subscript operator support initialized (C++23)
+Static operator() and operator[] support initialized (C++23)
+[[assume]] attribute support initialized (C++23)
+Deducing this / explicit object parameter support initialized (C++23 P0847R7)
+if consteval support initialized (C++23 P1938R3) - Runtime strategy
+auto(x) decay-copy and partial constexpr support initialized (C++23 P0849R8)
+C TranslationUnit created for output generation
+
+========================================
+Processing Template Instantiations
+========================================
+
+Found 0 class template instantiation(s)
+Found 0 function template instantiation(s)
+
+Monomorphizing class templates:
+
+Monomorphizing function templates:
+
+========================================
+Template Monomorphization Complete
+  Unique instantiations: 0
+========================================
+
+C TranslationUnit has 0 generated declarations
+Generated files:
+  transpiled/src/ExpressionEvaluator.h
+  transpiled/src/ExpressionEvaluator.c
+    [0;31m✗ Transpilation failed[0m
+[0;31m❌ FAIL: Simple Parser[0m
+
+[1;33mTesting Game Logic...[0m
+  [1/5] Building C++ version...
+-- Configuring done (0.1s)
+-- Generating done (0.0s)
+-- Build files have been written to: /Users/alexanderfedin/Projects/hapyy/hupyy-cpp-to-c/tests/real-world/simple-validation/05-game-logic/build
+[100%] Built target game_logic
+    ✓ C++ build successful
+  [2/5] Running C++ version...
+Game Logic Tests:
+  Player: pos=(100.0, 100.0), health=100, score=0
+  Enemy: pos=(150.0, 100.0), damage=10
+  Initial collision: false
+  After enemy moves to (110, 100): collision = true
+  Player takes 10 damage
+  Player health after damage: 90
+  Player score after +100: 100
+  Point (115, 115) inside player: true
+
+Validation: PASS
+    ✓ C++ execution successful (exit code: 0)
+  [3/5] Transpiling to C...
+Error while trying to load a compilation database:
+Could not auto-detect compilation database for file "__dummy_for_discovery__.cpp"
+No compilation database found in /Users/alexanderfedin/Projects/hapyy/hupyy-cpp-to-c/tests/real-world/simple-validation/05-game-logic or any parent directory
+fixed-compilation-database: Error while opening fixed database: No such file or directory
+json-compilation-database: Error while opening JSON database: No such file or directory
+Running without flags.
+[1/5] Processing file /Users/alexanderfedin/Projects/hapyy/hupyy-cpp-to-c/tests/real-world/simple-validation/05-game-logic/main.cpp.
+/Users/alexanderfedin/Projects/hapyy/hupyy-cpp-to-c/tests/real-world/simple-validation/05-game-logic/main.cpp:1:10: fatal error: 'Player.h' file not found
+    1 | #include "Player.h"
+      |          ^~~~~~~~~~
+1 error generated.
+Error while processing /Users/alexanderfedin/Projects/hapyy/hupyy-cpp-to-c/tests/real-world/simple-validation/05-game-logic/main.cpp.
+[2/5] Processing file /Users/alexanderfedin/Projects/hapyy/hupyy-cpp-to-c/tests/real-world/simple-validation/05-game-logic/src/Player.cpp.
+/Users/alexanderfedin/Projects/hapyy/hupyy-cpp-to-c/tests/real-world/simple-validation/05-game-logic/src/Player.cpp:1:10: fatal error: 'Player.h' file not found
+    1 | #include "Player.h"
+      |          ^~~~~~~~~~
+Warning: No C AST nodes generated. Input may contain unsupported C++ features.
+1 error generated.
+Error while processing /Users/alexanderfedin/Projects/hapyy/hupyy-cpp-to-c/tests/real-world/simple-validation/05-game-logic/src/Player.cpp.
+[3/5] Processing file /Users/alexanderfedin/Projects/hapyy/hupyy-cpp-to-c/tests/real-world/simple-validation/05-game-logic/src/Entity.cpp.
+/Users/alexanderfedin/Projects/hapyy/hupyy-cpp-to-c/tests/real-world/simple-validation/05-game-logic/src/Entity.cpp:1:10: fatal error: 'Entity.h' file not found
+    1 | #include "Entity.h"
+      |          ^~~~~~~~~~
+Auto-discovering C++ source files in: /Users/alexanderfedin/Projects/hapyy/hupyy-cpp-to-c/tests/real-world/simple-validation/05-game-logic
+Discovered 5 file(s) for transpilation
+Parsed file: /Users/alexanderfedin/Projects/hapyy/hupyy-cpp-to-c/tests/real-world/simple-validation/05-game-logic/main.cpp
+FileOriginTracker configured with user header paths
+Translation unit has 91 top-level declarations
+Virtual method support initialized
+Template monomorphization enabled (limit: 1000 instantiations)
+Exception handling support initialized (SJLJ model)
+RTTI support initialized (typeid and dynamic_cast)
+Multidimensional subscript operator support initialized (C++23)
+Static operator() and operator[] support initialized (C++23)
+[[assume]] attribute support initialized (C++23)
+Deducing this / explicit object parameter support initialized (C++23 P0847R7)
+if consteval support initialized (C++23 P1938R3) - Runtime strategy
+auto(x) decay-copy and partial constexpr support initialized (C++23 P0849R8)
+C TranslationUnit created for output generation
+Analyzing function for RAII: main
+  Found 6 local variables
+Translating standalone function: main
+  Mangled name: main
+  [Scope] Entering scope at depth 0
+  [Translating DeclStmt]
+    Variable: player
+  [Translating DeclStmt]
+    Variable: enemy
+  [Translating DeclStmt]
+    Variable: colliding1
+  [Translating DeclStmt]
+    Variable: colliding2
+  [Translating DeclStmt]
+    Variable: inside
+  [Translating DeclStmt]
+    Variable: passed
+  [Scope] Exiting scope at depth 0 with 0 objects
+  -> C function 'main' created
+  Parameters: 0
+  Return type: int
+Found variable: player
+Found variable: enemy
+Found variable: colliding1
+Found variable: colliding2
+Found variable: inside
+Found variable: passed
+Found variable: player
+Found variable: enemy
+Found variable: colliding1
+Found variable: colliding2
+Found variable: inside
+Found variable: passed
+
+========================================
+Processing Template Instantiations
+========================================
+
+Found 0 class template instantiation(s)
+Found 0 function template instantiation(s)
+
+Monomorphizing class templates:
+
+Monomorphizing function templates:
+
+========================================
+Template Monomorphization Complete
+  Unique instantiations: 0
+========================================
+
+C TranslationUnit has 1 generated declarations
+Generated files:
+  transpiled/main.h
+  transpiled/main.c
+Parsed file: /Users/alexanderfedin/Projects/hapyy/hupyy-cpp-to-c/tests/real-world/simple-validation/05-game-logic/src/Player.cpp
+FileOriginTracker configured with user header paths
+Translation unit has 90 top-level declarations
+Virtual method support initialized
+Template monomorphization enabled (limit: 1000 instantiations)
+Exception handling support initialized (SJLJ model)
+RTTI support initialized (typeid and dynamic_cast)
+Multidimensional subscript operator support initialized (C++23)
+Static operator() and operator[] support initialized (C++23)
+[[assume]] attribute support initialized (C++23)
+Deducing this / explicit object parameter support initialized (C++23 P0847R7)
+if consteval support initialized (C++23 P1938R3) - Runtime strategy
+auto(x) decay-copy and partial constexpr support initialized (C++23 P0849R8)
+C TranslationUnit created for output generation
+
+========================================
+Processing Template Instantiations
+========================================
+
+Found 0 class template instantiation(s)
+Found 0 function template instantiation(s)
+
+Monomorphizing class templates:
+
+Monomorphizing function templates:
+
+========================================
+Template Monomorphization Complete
+  Unique instantiations: 0
+========================================
+
+C TranslationUnit has 0 generated declarations
+Generated files:
+  transpiled/src/Player.h
+  transpiled/src/Player.c
+Parsed file: /Users/alexanderfedin/Projects/hapyy/hupyy-cpp-to-c/tests/real-world/simple-validation/05-game-logic/src/Entity.cpp
+FileOriginTracker configured with user header paths
+Translation unit has 90 top-level declarations
+Virtual method support initialized
+Template monomoWarning: No C AST nodes generated. Input may contain unsupported C++ features.
+1 error generated.
+Error while processing /Users/alexanderfedin/Projects/hapyy/hupyy-cpp-to-c/tests/real-world/simple-validation/05-game-logic/src/Entity.cpp.
+[4/5] Processing file /Users/alexanderfedin/Projects/hapyy/hupyy-cpp-to-c/tests/real-world/simple-validation/05-game-logic/src/CollisionDetector.cpp.
+/Users/alexanderfedin/Projects/hapyy/hupyy-cpp-to-c/tests/real-world/simple-validation/05-game-logic/src/CollisionDetector.cpp:1:10: fatal error: 'CollisionDetector.h' file not found
+    1 | #include "CollisionDetector.h"
+      |          ^~~~~~~~~~~~~~~~~~~~~
+Warning: No C AST nodes generated. Input may contain unsupported C++ features.
+1 error generated.
+Error while processing /Users/alexanderfedin/Projects/hapyy/hupyy-cpp-to-c/tests/real-world/simple-validation/05-game-logic/src/CollisionDetector.cpp.
+[5/5] Processing file /Users/alexanderfedin/Projects/hapyy/hupyy-cpp-to-c/tests/real-world/simple-validation/05-game-logic/src/Enemy.cpp.
+/Users/alexanderfedin/Projects/hapyy/hupyy-cpp-to-c/tests/real-world/simple-validation/05-game-logic/src/Enemy.cpp:1:10: fatal error: 'Enemy.h' file not found
+    1 | #include "Enemy.h"
+      |          ^~~~~~~~~
+Warning: No C AST nodes generated. Input may contain unsupported C++ features.
+1 error generated.
+Error while processing /Users/alexanderfedin/Projects/hapyy/hupyy-cpp-to-c/tests/real-world/simple-validation/05-game-logic/src/Enemy.cpp.
+rphization enabled (limit: 1000 instantiations)
+Exception handling support initialized (SJLJ model)
+RTTI support initialized (typeid and dynamic_cast)
+Multidimensional subscript operator support initialized (C++23)
+Static operator() and operator[] support initialized (C++23)
+[[assume]] attribute support initialized (C++23)
+Deducing this / explicit object parameter support initialized (C++23 P0847R7)
+if consteval support initialized (C++23 P1938R3) - Runtime strategy
+auto(x) decay-copy and partial constexpr support initialized (C++23 P0849R8)
+C TranslationUnit created for output generation
+
+========================================
+Processing Template Instantiations
+========================================
+
+Found 0 class template instantiation(s)
+Found 0 function template instantiation(s)
+
+Monomorphizing class templates:
+
+Monomorphizing function templates:
+
+========================================
+Template Monomorphization Complete
+  Unique instantiations: 0
+========================================
+
+C TranslationUnit has 0 generated declarations
+Generated files:
+  transpiled/src/Entity.h
+  transpiled/src/Entity.c
+Parsed file: /Users/alexanderfedin/Projects/hapyy/hupyy-cpp-to-c/tests/real-world/simple-validation/05-game-logic/src/CollisionDetector.cpp
+FileOriginTracker configured with user header paths
+Translation unit has 90 top-level declarations
+Virtual method support initialized
+Template monomorphization enabled (limit: 1000 instantiations)
+Exception handling support initialized (SJLJ model)
+RTTI support initialized (typeid and dynamic_cast)
+Multidimensional subscript operator support initialized (C++23)
+Static operator() and operator[] support initialized (C++23)
+[[assume]] attribute support initialized (C++23)
+Deducing this / explicit object parameter support initialized (C++23 P0847R7)
+if consteval support initialized (C++23 P1938R3) - Runtime strategy
+auto(x) decay-copy and partial constexpr support initialized (C++23 P0849R8)
+C TranslationUnit created for output generation
+
+========================================
+Processing Template Instantiations
+========================================
+
+Found 0 class template instantiation(s)
+Found 0 function template instantiation(s)
+
+Monomorphizing class templates:
+
+Monomorphizing function templates:
+
+========================================
+Template Monomorphization Complete
+  Unique instantiations: 0
+========================================
+
+C TranslationUnit has 0 generated declarations
+Generated files:
+  transpiled/src/CollisionDetector.h
+  transpiled/src/CollisionDetector.c
+Parsed file: /Users/alexanderfedin/Projects/hapyy/hupyy-cpp-to-c/tests/real-world/simple-validation/05-game-logic/src/Enemy.cpp
+FileOriginTracker configured with user header paths
+Translation unit has 90 top-level declarations
+Virtual method support initialized
+Template monomorphization enabled (limit: 1000 instantiations)
+Exception handling support initialized (SJLJ model)
+RTTI support initialized (typeid and dynamic_cast)
+Multidimensional subscript operator support initialized (C++23)
+Static operator() and operator[] support initialized (C++23)
+[[assume]] attribute support initialized (C++23)
+Deducing this / explicit object parameter support initialized (C++23 P0847R7)
+if consteval support initialized (C++23 P1938R3) - Runtime strategy
+auto(x) decay-copy and partial constexpr support initialized (C++23 P0849R8)
+C TranslationUnit created for output generation
+
+========================================
+Processing Template Instantiations
+========================================
+
+Found 0 class template instantiation(s)
+Found 0 function template instantiation(s)
+
+Monomorphizing class templates:
+
+Monomorphizing function templates:
+
+========================================
+Template Monomorphization Complete
+  Unique instantiations: 0
+========================================
+
+C TranslationUnit has 0 generated declarations
+Generated files:
+  transpiled/src/Enemy.h
+  transpiled/src/Enemy.c
+    [0;31m✗ Transpilation failed[0m
+[0;31m❌ FAIL: Game Logic[0m
+
+========================================
+SUMMARY
+========================================
+Total:  5 projects
+Passed: 0
+Failed: 5
+Pass Rate: 0/5 (0%)
+
+[0;31m❌ FAIL: Less than 80% pass rate (0%)[0m
