@@ -312,6 +312,13 @@ void CodeGenerator::printCType(QualType Type) {
 void CodeGenerator::printFunctionSignature(FunctionDecl *FD) {
     if (!FD) return;
 
+    // Bug #19: Print storage class specifier (static/extern) before return type
+    if (FD->getStorageClass() == SC_Static) {
+        OS << "static ";
+    } else if (FD->getStorageClass() == SC_Extern) {
+        OS << "extern ";
+    }
+
     // Return type - convert references to pointers and add 'struct' prefix
     QualType ReturnType = convertToCType(FD->getReturnType());
     printCType(ReturnType);

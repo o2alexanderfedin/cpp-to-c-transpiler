@@ -286,6 +286,24 @@ bool CppToCVisitor::VisitCXXMethodDecl(CXXMethodDecl *MD) {
     return true;
   }
 
+  // Bug fix #11: Skip method declarations (no body) to prevent duplicates
+  // Only process method definitions to avoid generating the same function twice
+  // (once from header declaration, once from .cpp definition)
+  if (!MD->hasBody()) {
+    return true;
+  }
+
+  // Bug fix #15: Skip methods already translated to prevent redefinitions
+  // Check if this method was already processed (prevents duplicate function definitions)
+  // Note: We check the canonical declaration because the AST may contain multiple
+  // CXXMethodDecl nodes for the same method (e.g., declaration vs definition)
+  CXXMethodDecl *CanonicalMD = MD->getCanonicalDecl();
+  if (methodToCFunc.count(CanonicalMD) > 0) {
+    llvm::outs() << "  -> Already translated, skipping redefinition of "
+                 << MD->getQualifiedNameAsString() << "\n";
+    return true;
+  }
+
   // Phase 4: Handle explicit object parameters (deducing this, C++23 P0847R7)
   if (MD->isExplicitObjectMemberFunction()) {
     llvm::outs() << "Translating explicit object member function: "
@@ -397,8 +415,8 @@ bool CppToCVisitor::VisitCXXMethodDecl(CXXMethodDecl *MD) {
   currentThisParam = nullptr;
   currentMethod = nullptr;
 
-  // Store mapping
-  methodToCFunc[MD] = CFunc;
+  // Store mapping using canonical declaration to prevent duplicate processing
+  methodToCFunc[CanonicalMD] = CFunc;
 
   // Phase 32: Add to C TranslationUnit for output generation
   C_TranslationUnit->addDecl(CFunc);
@@ -421,6 +439,27 @@ bool CppToCVisitor::VisitCXXConstructorDecl(CXXConstructorDecl *CD) {
 
   // Edge case: Skip implicit constructors (compiler-generated)
   if (CD->isImplicit()) {
+    return true;
+  }
+
+  // Bug fix #18: Skip constructor declarations without definitions (cross-file duplicates)
+  // Only process constructors with bodies (actual definitions in .cpp files)
+  // Declarations from headers should only generate forward declarations, not definitions
+  if (!CD->isThisDeclarationADefinition() || !CD->hasBody()) {
+    // This is just a declaration (from header), not a definition
+    // The actual definition will be processed when we visit the .cpp file
+    return true;
+  }
+
+  // Bug fix #15: Skip constructors already translated to prevent redefinitions
+  // Check if this constructor was already processed (prevents duplicate function definitions)
+  // Note: We check the canonical declaration because the AST may contain multiple
+  // CXXConstructorDecl nodes for the same constructor (e.g., declaration vs definition)
+  CXXConstructorDecl *CanonicalCD = cast<CXXConstructorDecl>(CD->getCanonicalDecl());
+  if (ctorMap.count(CanonicalCD) > 0) {
+    llvm::outs() << "  -> Already translated, skipping redefinition of "
+                 << CD->getParent()->getName() << "::"
+                 << CD->getParent()->getName() << "\n";
     return true;
   }
 
@@ -575,8 +614,8 @@ bool CppToCVisitor::VisitCXXConstructorDecl(CXXConstructorDecl *CD) {
   // Set function body
   CFunc->setBody(Builder.block(stmts));
 
-  // Store mapping
-  ctorMap[CD] = CFunc;
+  // Store mapping using canonical declaration to prevent duplicate processing
+  ctorMap[CanonicalCD] = CFunc;
 
   // Phase 32: Add to C TranslationUnit for output generation
   C_TranslationUnit->addDecl(CFunc);
@@ -660,6 +699,17 @@ bool CppToCVisitor::VisitCXXDestructorDecl(CXXDestructorDecl *DD) {
     return true;
   }
 
+  // Bug fix #15: Skip destructors already translated to prevent redefinitions
+  // Check if this destructor was already processed (prevents duplicate function definitions)
+  // Note: We check the canonical declaration because the AST may contain multiple
+  // CXXDestructorDecl nodes for the same destructor (e.g., declaration vs definition)
+  CXXDestructorDecl *CanonicalDD = cast<CXXDestructorDecl>(DD->getCanonicalDecl());
+  if (dtorMap.count(CanonicalDD) > 0) {
+    llvm::outs() << "  -> Already translated, skipping redefinition of ~"
+                 << DD->getParent()->getName() << "\n";
+    return true;
+  }
+
   llvm::outs() << "Translating destructor: ~" << DD->getParent()->getName()
                << "\n";
 
@@ -724,8 +774,8 @@ bool CppToCVisitor::VisitCXXDestructorDecl(CXXDestructorDecl *DD) {
   currentThisParam = nullptr;
   currentMethod = nullptr;
 
-  // Store mapping
-  dtorMap[DD] = CFunc;
+  // Store mapping using canonical declaration to prevent duplicate processing
+  dtorMap[CanonicalDD] = CFunc;
 
   // Phase 32: Add to C TranslationUnit for output generation
   C_TranslationUnit->addDecl(CFunc);
@@ -2211,6 +2261,85 @@ Expr *CppToCVisitor::translateCallExpr(CallExpr *CE) {
 
         // Create C function call
         return Builder.call(CFunc, args);
+      } else {
+        // Bug #14 fix: Method not in map (declaration-only in current TU)
+        // Generate the C function call anyway using name mangling
+        llvm::outs() << "  Warning: Method not in methodToCFunc map, generating call anyway: "
+                     << Method->getQualifiedNameAsString() << "\n";
+
+        // Generate mangled C function name
+        std::string funcName = Mangler.mangleName(Method);
+        llvm::outs() << "  Generated function name: " << funcName << "\n";
+
+        // Build argument list: &object + original args
+        std::vector<Expr *> args;
+
+        // First argument: address of the object
+        Expr *ObjectExpr = MCE->getImplicitObjectArgument();
+        if (ObjectExpr) {
+          Expr *TranslatedObject = translateExpr(ObjectExpr);
+          if (TranslatedObject) {
+            // Take address if not already a pointer
+            if (!ObjectExpr->getType()->isPointerType()) {
+              TranslatedObject = Builder.addrOf(TranslatedObject);
+            }
+            args.push_back(TranslatedObject);
+          }
+        }
+
+        // Add method arguments
+        unsigned paramIdx = 0;
+        for (Expr *Arg : MCE->arguments()) {
+          Expr *TranslatedArg = translateExpr(Arg);
+          Expr *FinalArg = TranslatedArg ? TranslatedArg : Arg;
+
+          // Check if C++ parameter was a reference type
+          if (paramIdx < Method->param_size()) {
+            ParmVarDecl *CppParam = Method->getParamDecl(paramIdx);
+            QualType CppParamType = CppParam->getType();
+
+            // If C++ parameter was a reference and argument is not already an address-of
+            if (CppParamType->isReferenceType() && !isa<UnaryOperator>(FinalArg)) {
+              // Strip any implicit casts to check the underlying expression
+              Expr *UnderlyingExpr = FinalArg->IgnoreImplicitAsWritten();
+
+              // Only take address if not already a pointer type
+              if (!UnderlyingExpr->getType()->isPointerType()) {
+                FinalArg = Builder.addrOf(FinalArg);
+              }
+            }
+          }
+          args.push_back(FinalArg);
+          paramIdx++;
+        }
+
+        // Create a function declaration for the C function
+        // Build parameter types: this pointer + original params
+        std::vector<ParmVarDecl *> params;
+
+        // Add this parameter
+        CXXRecordDecl *Parent = Method->getParent();
+        QualType thisType = Builder.ptrType(Builder.structType(Parent->getName()));
+        ParmVarDecl *thisParam = Builder.param(thisType, "this");
+        params.push_back(thisParam);
+
+        // Add original parameters
+        for (ParmVarDecl *Param : Method->parameters()) {
+          ParmVarDecl *CParam = Builder.param(Param->getType(), Param->getName());
+          params.push_back(CParam);
+        }
+
+        // Create function declaration
+        FunctionDecl *CFuncDecl = Builder.funcDecl(funcName, Method->getReturnType(), params, nullptr);
+
+        // Add declaration to C TranslationUnit so it appears in the header
+        C_TranslationUnit->addDecl(CFuncDecl);
+
+        // Also store in methodToCFunc map for future calls
+        methodToCFunc[Method] = CFuncDecl;
+
+        // Create and return the call
+        return Builder.call(CFuncDecl, args);
       }
     }
   }
@@ -2570,7 +2699,9 @@ Stmt *CppToCVisitor::translateCompoundStmt(CompoundStmt *CS) {
   // Translate all statements in the compound statement
   for (Stmt *S : CS->body()) {
     // Bug #8: Skip statements containing RecoveryExpr (parsing errors from missing headers)
-    if (containsRecoveryExpr(S)) {
+    // Bug #17: Exclude DeclStmt from statement-level filtering - it has expression-level handling
+    // DeclStmt with RecoveryExpr in initializer creates variable without initializer (correct behavior)
+    if (containsRecoveryExpr(S) && !isa<DeclStmt>(S)) {
       llvm::outs() << "  [Bug #8] Skipping statement containing RecoveryExpr\n";
       continue;
     }
@@ -2844,6 +2975,11 @@ FunctionDecl *CppToCVisitor::generateDefaultConstructor(CXXRecordDecl *D) {
   FunctionDecl *CFunc =
       Builder.funcDecl(funcName, Builder.voidType(), params, nullptr);
 
+  // Bug #19: Make implicit constructors static to avoid linker conflicts
+  // Since this is an implicit constructor, it's generated in every translation
+  // unit that sees the class. Making it static ensures each TU has its own copy.
+  CFunc->setStorageClass(SC_Static);
+
   // Build function body
   std::vector<Stmt *> stmts;
 
@@ -2988,6 +3124,11 @@ FunctionDecl *CppToCVisitor::generateCopyConstructor(CXXRecordDecl *D) {
   // Create C init function
   FunctionDecl *CFunc =
       Builder.funcDecl(funcName, Builder.voidType(), params, nullptr);
+
+  // Bug #19: Make implicit constructors static to avoid linker conflicts
+  // Since this is an implicit constructor, it's generated in every translation
+  // unit that sees the class. Making it static ensures each TU has its own copy.
+  CFunc->setStorageClass(SC_Static);
 
   // Build function body
   std::vector<Stmt *> stmts;
