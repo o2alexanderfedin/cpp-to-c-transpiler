@@ -6,6 +6,7 @@
 #include "llvm/Config/llvm-config.h"  // For LLVM_VERSION_MAJOR
 #include "clang/AST/Decl.h"
 #include "clang/AST/Stmt.h"
+#include "clang/AST/Expr.h"  // Bug #21: For Expr and RecoveryExpr
 #include "clang/AST/ASTContext.h"
 #include "clang/Basic/SourceManager.h"  // Story #23: For #line directives
 
@@ -126,10 +127,84 @@ void CodeGenerator::printDecl(Decl *D, bool declarationOnly) {
 void CodeGenerator::printStmt(Stmt *S, unsigned Indent) {
     if (!S) return;
 
+    // Bug #21 fix: Handle CompoundStmt recursively to intercept DeclStmt
+    // We need to recursively handle statements to check for RecoveryExpr in DeclStmt
+    if (CompoundStmt *CS = dyn_cast<CompoundStmt>(S)) {
+        OS << std::string(Indent, '\t') << "{\n";
+        for (Stmt *Child : CS->body()) {
+            printStmt(Child, Indent + 1);
+        }
+        OS << std::string(Indent, '\t') << "}\n";
+        return;
+    }
+
+    // Bug #21 fix: Handle DeclStmt with RecoveryExpr specially
+    // RecoveryExpr causes literal "<recovery-expr>()" to appear in generated C code
+    // Solution: Print variable declarations without initializers if they contain RecoveryExpr
+    if (DeclStmt *DS = dyn_cast<DeclStmt>(S)) {
+        bool hasRecoveryExpr = false;
+
+        // Check all declarations in this DeclStmt for RecoveryExpr
+        for (Decl *D : DS->decls()) {
+            if (VarDecl *VD = dyn_cast<VarDecl>(D)) {
+                if (Expr *Init = VD->getInit()) {
+                    if (containsRecoveryExpr(Init)) {
+                        hasRecoveryExpr = true;
+                        break;
+                    }
+                }
+            }
+        }
+
+        if (hasRecoveryExpr) {
+            // Print declarations without initializers
+            for (Decl *D : DS->decls()) {
+                if (VarDecl *VD = dyn_cast<VarDecl>(D)) {
+                    OS << std::string(Indent, '\t');
+                    VD->getType().print(OS, Policy);
+                    OS << " " << VD->getNameAsString() << ";\n";
+                }
+            }
+            return;
+        }
+    }
+
     // Use Clang's built-in StmtPrinter (via Stmt::printPretty)
     // KISS: Leverage existing, tested infrastructure
-    S->printPretty(OS, nullptr, Policy, Indent);
+    OS << std::string(Indent, '\t');
+    S->printPretty(OS, nullptr, Policy, 0);  // Use 0 indent since we handle it above
+
+    // Bug #22: Add semicolon for bare expressions
+    // When we recursively handle CompoundStmt, some child "statements" are actually
+    // bare expressions (like BinaryOperator for assignments) created by AST builder.
+    // These need semicolons, but printPretty() doesn't add them for expressions.
+    // Note: Real statement types (ReturnStmt, DeclStmt, etc.) already have semicolons
+    // from printPretty(), so we only add semicolons for Expr nodes.
+    if (isa<Expr>(S)) {
+        OS << ";";
+    }
     OS << "\n";
+}
+
+// Bug #21: Helper to check if expression contains RecoveryExpr
+bool CodeGenerator::containsRecoveryExpr(Expr *E) {
+    if (!E) return false;
+
+    // Check if this expression itself is a RecoveryExpr
+    if (isa<RecoveryExpr>(E)) {
+        return true;
+    }
+
+    // Recursively check all child expressions
+    for (Stmt *Child : E->children()) {
+        if (Expr *ChildExpr = dyn_cast_or_null<Expr>(Child)) {
+            if (containsRecoveryExpr(ChildExpr)) {
+                return true;
+            }
+        }
+    }
+
+    return false;
 }
 
 // Story #23: Print declaration with #line directive for source mapping

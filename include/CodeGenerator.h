@@ -67,4 +67,11 @@ private:
     /// @param Type Type to print (after convertToCType)
     /// CRITICAL BUG FIX: Adds 'struct' prefix for class/struct types in C
     void printCType(clang::QualType Type);
+
+    // Bug #21: Check if expression contains RecoveryExpr
+    /// @brief Recursively check if expression contains RecoveryExpr
+    /// @param E Expression to check
+    /// @return true if E or any child contains RecoveryExpr
+    /// BUG FIX: Prevents literal "<recovery-expr>()" from appearing in generated C code
+    bool containsRecoveryExpr(clang::Expr *E);
 };
