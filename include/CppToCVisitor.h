@@ -223,6 +223,7 @@ public:
   clang::Expr *translateMemberExpr(clang::MemberExpr *ME);
   clang::Expr *translateCallExpr(clang::CallExpr *CE);
   clang::Expr *translateBinaryOperator(clang::BinaryOperator *BO);
+  clang::Expr *translateConstructExpr(clang::CXXConstructExpr *CCE);
 
   // Statement translation (Story #19)
   clang::Stmt *translateStmt(clang::Stmt *S);

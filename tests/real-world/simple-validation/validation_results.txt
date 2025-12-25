@@ -24,28 +24,15 @@ Matrix3x3 Tests:
 Validation: PASS
     ✓ C++ execution successful (exit code: 0)
   [3/5] Transpiling to C...
-Error while trying to load a compilation database:
-Could not auto-detect compilation database for file "__dummy_for_discovery__.cpp"
-No compilation database found in /Users/alexanderfedin/Projects/hapyy/hupyy-cpp-to-c/tests/real-world/simple-validation/01-math-library or any parent directory
-fixed-compilation-database: Error while opening fixed database: No such file or directory
-json-compilation-database: Error while opening JSON database: No such file or directory
-Running without flags.
 [1/3] Processing file /Users/alexanderfedin/Projects/hapyy/hupyy-cpp-to-c/tests/real-world/simple-validation/01-math-library/main.cpp.
-/Users/alexanderfedin/Projects/hapyy/hupyy-cpp-to-c/tests/real-world/simple-validation/01-math-library/main.cpp:1:10: fatal error: 'Vector3D.h' file not found
-    1 | #include "Vector3D.h"
-      |          ^~~~~~~~~~~~
-1 error generated.
-Error while processing /Users/alexanderfedin/Projects/hapyy/hupyy-cpp-to-c/tests/real-world/simple-validation/01-math-library/main.cpp.
-[2/3] Processing file /Users/alexanderfedin/Projects/hapyy/hupyy-cpp-to-c/tests/real-world/simple-validation/01-math-library/src/Matrix3x3.cpp.
-/Users/alexanderfedin/Projects/hapyy/hupyy-cpp-to-c/tests/real-world/simple-validation/01-math-library/src/Matrix3x3.cpp:1:10: fatal error: 'Matrix3x3.h' file not found
-    1 | #include "Matrix3x3.h"
-      |          ^~~~~~~~~~~~~
-Warning: No C AST nodes generated. Input may contain unsupported C++ features.
+main.cpp:3:10: fatal error: 'cstdio' file not found
+    3 | #include <cstdio>
+      |          ^~~~~~~~
 Auto-discovering C++ source files in: /Users/alexanderfedin/Projects/hapyy/hupyy-cpp-to-c/tests/real-world/simple-validation/01-math-library
 Discovered 3 file(s) for transpilation
-Parsed file: /Users/alexanderfedin/Projects/hapyy/hupyy-cpp-to-c/tests/real-world/simple-validation/01-math-library/main.cpp
+Parsed file: main.cpp
 FileOriginTracker configured with user header paths
-Translation unit has 91 top-level declarations
+Translation unit has 93 top-level declarations
 Virtual method support initialized
 Template monomorphization enabled (limit: 1000 instantiations)
 Exception handling support initialized (SJLJ model)
@@ -57,6 +44,98 @@ Deducing this / explicit object parameter support initialized (C++23 P0847R7)
 if consteval support initialized (C++23 P1938R3) - Runtime strategy
 auto(x) decay-copy and partial constexpr support initialized (C++23 P0849R8)
 C TranslationUnit created for output generation
+Translating class: Vector3D
+  -> struct Vector3D with 3 fields
+  Generating implicit copy constructor
+  Generated copy constructor: Vector3D__ctor_copy
+  [Phase 31-03] Generated 1 constructor, 0 destructor, 5 method declarations
+
+// Static declarations for all Vector3D methods
+static void Vector3D__ctor_3(struct Vector3D *this, float x, float y, float z);
+static struct Vector3D Vector3D_add(const struct Vector3D *this, const struct Vector3D * other);
+static struct Vector3D Vector3D_subtract(const struct Vector3D *this, const struct Vector3D * other);
+static float Vector3D_dot(const struct Vector3D *this, const struct Vector3D * other);
+static struct Vector3D Vector3D_cross(const struct Vector3D *this, const struct Vector3D * other);
+static float Vector3D_magnitude(const struct Vector3D *this);
+
+Translating constructor: Vector3D::Vector3D
+  -> Vector3D__ctor with 4 parameters, 0 statements
+Found variable: x
+Found variable: y
+Found variable: z
+Translating method: Vector3D::add
+  -> Vector3D_add (no body)
+  -> Vector3D_add with 2 parameters
+Found variable: other
+Translating method: Vector3D::subtract
+  -> Vector3D_subtract (no body)
+  -> Vector3D_subtract with 2 parameters
+Found variable: other
+Translating method: Vector3D::dot
+  -> Vector3D_dot (no body)
+  -> Vector3D_dot with 2 parameters
+Found variable: other
+Translating method: Vector3D::cross
+  -> Vector3D_cross (no body)
+  -> Vector3D_cross with 2 parameters
+Found variable: other
+Translating method: Vector3D::magnitude
+  -> Vector3D_magnitude (no body)
+  -> Vector3D_magnitude with 1 parameters
+Translating class: Matrix3x3
+  -> struct Matrix3x3 with 1 fields
+  Generating implicit copy constructor
+  Generated copy constructor: Matrix3x3__ctor_copy
+  [Phase 31-03] Generated 2 constructor, 0 destructor, 5 method declarations
+
+// Static declarations for all Matrix3x3 methods
+static void Matrix3x3__ctor(struct Matrix3x3 *this);
+static void Matrix3x3__ctor_9(struct Matrix3x3 *this, float m00, float m01, float m02, float m10, float m11, float m12, float m20, float m21, float m22);
+static struct Matrix3x3 Matrix3x3_add(const struct Matrix3x3 *this, const struct Matrix3x3 * other);
+static struct Matrix3x3 Matrix3x3_multiply(const struct Matrix3x3 *this, const struct Matrix3x3 * other);
+static struct Vector3D Matrix3x3_multiply(const struct Matrix3x3 *this, const struct Vector3D * vec);
+static float Matrix3x3_get(const struct Matrix3x3 *this, int row, int col);
+static void Matrix3x3_set(struct Matrix3x3 *this, int row, int col, float value);
+
+Translating constructor: Matrix3x3::Matrix3x3
+  -> Matrix3x3__ctor with 1 parameters, 0 statements
+Translating constructor: Matrix3x3::Matrix3x3
+  -> Matrix3x3__ctor_9 with 10 parameters, 0 statements
+Found variable: m00
+Found variable: m01
+Found variable: m02
+Found variable: m10
+Found variable: m11
+Found variable: m12
+Found variable: m20
+Found variable: m21
+Found variable: m22
+Translating method: Matrix3x3::add
+  -> Matrix3x3_add (no body)
+  -> Matrix3x3_add with 2 parameters
+Found variable: other
+Translating method: Matrix3x3::multiply
+  -> Matrix3x3_multiply (no body)
+  -> Matrix3x3_multiply with 2 parameters1 error generated.
+Error while processing /Users/alexanderfedin/Projects/hapyy/hupyy-cpp-to-c/tests/real-world/simple-validation/01-math-library/main.cpp.
+[2/3] Processing file /Users/alexanderfedin/Projects/hapyy/hupyy-cpp-to-c/tests/real-world/simple-validation/01-math-library/src/Matrix3x3.cpp.
+
+Found variable: other
+Translating method: Matrix3x3::multiply
+  -> Matrix3x3_multiply_Vector3D_ref (no body)
+  -> Matrix3x3_multiply_Vector3D_ref with 2 parameters
+Found variable: vec
+Translating method: Matrix3x3::get
+  -> Matrix3x3_get (no body)
+  -> Matrix3x3_get with 3 parameters
+Found variable: row
+Found variable: col
+Translating method: Matrix3x3::set
+  -> Matrix3x3_set (no body)
+  -> Matrix3x3_set with 4 parameters
+Found variable: row
+Found variable: col
+Found variable: value
 Analyzing function for RAII: main
   Found 10 local variables
 Translating standalone function: main
@@ -64,22 +143,66 @@ Translating standalone function: main
   [Scope] Entering scope at depth 0
   [Translating DeclStmt]
     Variable: v1
+      Is a struct/class type
+      Is a C++ class: Vector3D
+      Found C struct: Vector3D
+      Creating C variable declaration
+      Has constructor expression
+      Found C constructor: Vector3D__ctor
+      Creating constructor call
   [Translating DeclStmt]
     Variable: v2
+      Is a struct/class type
+      Is a C++ class: Vector3D
+      Found C struct: Vector3D
+      Creating C variable declaration
+      Has constructor expression
+      Found C constructor: Vector3D__ctor
+      Creating constructor call
   [Translating DeclStmt]
     Variable: sum
+      Is a struct/class type
+      Is a C++ class: Vector3D
+      Found C struct: Vector3D
+      Creating C variable declaration
   [Translating DeclStmt]
     Variable: dot
   [Translating DeclStmt]
     Variable: cross
+      Is a struct/class type
+      Is a C++ class: Vector3D
+      Found C struct: Vector3D
+      Creating C variable declaration
   [Translating DeclStmt]
     Variable: m1
+      Is a struct/class type
+      Is a C++ class: Matrix3x3
+      Found C struct: Matrix3x3
+      Creating C variable declaration
+      Has constructor expression
+      Found C constructor: Matrix3x3__ctor_9
+      Creating constructor call
   [Translating DeclStmt]
     Variable: m2
+      Is a struct/class type
+      Is a C++ class: Matrix3x3
+      Found C struct: Matrix3x3
+      Creating C variable declaration
+      Has constructor expression
+      Found C constructor: Matrix3x3__ctor_9
+      Creating constructor call
   [Translating DeclStmt]
     Variable: mProd
+      Is a struct/class type
+      Is a C++ class: Matrix3x3
+      Found C struct: Matrix3x3
+      Creating C variable declaration
   [Translating DeclStmt]
     Variable: transformed
+      Is a struct/class type
+      Is a C++ class: Vector3D
+      Found C struct: Vector3D
+      Creating C variable declaration
   [Translating DeclStmt]
     Variable: passed
   [Scope] Exiting scope at depth 0 with 0 objects
@@ -96,7 +219,6 @@ Found variable: m2
 Found variable: mProd
 Found variable: transformed
 Found variable: passed
-Found variable: dot
 Found variable: v1
 Found variable: v2
 Found variable: sum
@@ -124,13 +246,13 @@ Template Monomorphization Complete
   Unique instantiations: 0
 ========================================
 
-C TranslationUnit has 1 generated declarations
+C TranslationUnit has 18 generated declarations
 Generated files:
   transpiled/main.h
   transpiled/main.c
-Parsed file: /Users/alexanderfedin/Projects/hapyy/hupyy-cpp-to-c/tests/real-world/simple-validation/01-math-library/src/Matrix3x3.cpp
+Parsed file: src/Matrix3x3.cpp
 FileOriginTracker configured with user header paths
-Translation unit has 90 top-level declarations
+Translation unit has 99 top-level declarations
 Virtual method support initialized
 Template monomorphization enabled (limit: 1000 instantiations)
 Exception handling support initialized (SJLJ model)
@@ -142,6 +264,209 @@ Deducing this / explicit object parameter support initialized (C++23 P0847R7)
 if consteval support initialized (C++23 P1938R3) - Runtime strategy
 auto(x) decay-copy and partial constexpr support initialized (C++23 P0849R8)
 C TranslationUnit created for output generation
+Translating class: Vector3D
+  -> struct Vector3D with 3 fields
+  Generating implicit copy constructor
+  Generated copy constructor: Vector3D__ctor_copy
+  [Phase 31-03] Generated 1 constructor, 0 destructor, 5 method declarations
+
+// Static declarations for all Vector3D methods
+static void Vector3D__ctor_3(struct Vector3D *this, float x, float y, float z);
+static struct Vector3D Vector3D_add(const struct Vector3D *this, const struct Vector3D * other);
+static struct Vector3D Vector3D_subtract(const struct Vector3D *this, const struct Vector3D * other);
+static float Vector3D_dot(const struct Vector3D *this, const struct Vector3D * other);
+static struct Vector3D Vector3D_cross(const struct Vector3D *this, const struct Vector3D * other);
+static float Vector3D_magnitude(const struct Vector3D *this);
+
+Translating constructor: Vector3D::Vector3D
+  -> Vector3D__ctor with 4 parameters, 0 statements
+Found variable: x
+Found variable: y
+Found variable: z
+Translating method: Vector3D::add
+  -> Vector3D_add (no body)
+  -> Vector3D_add with 2 parameters
+Found variable: other
+Translating method: Vector3D::subtract
+  -> Vector3D_subtract (no body)
+  -> Vector3D_subtract with 2 parameters
+Found variable: other
+Translating method: Vector3D::dot
+  -> Vector3D_dot (no body)
+  -> Vector3D_dot with 2 parameters
+Found variable: other
+Translating method: Vector3D::cross
+  -> Vector3D_cross (no body)
+  -> Vector3D_cross with 2 parameters
+Found variable: other
+Translating method: Vector3D::magnitude
+  -> Vector3D_magnitude (no body)
+  -> Vector3D_magnitude with 1 parameters
+Translating class: Matrix3x3
+  -> struct Matrix3x3 with 1 fields
+  Generating implicit copy constructor
+  Generated copy constructor: Matrix3x3__ctor_copy
+  [Phase 31-03] Generated 2 constructor, 0 destructor, 5 method declarations
+
+// Static declarations for all Matrix3x3 methods
+static void Matrix3x3__ctor(struct Matrix3x3 *this);
+static void Matrix3x3__ctor_9(struct Matrix3x3 *this, float m00, float m01, float m02, float m10, float m11, float m12, float m20, float m21, float m22);
+static struct Matrix3x3 Matrix3x3_add(const struct Matrix3x3 *this, const struct Matrix3x3 * other);
+static struct Matrix3x3 Matrix3x3_multiply(const struct Matrix3x3 *this, const struct Matrix3x3 * other);
+static struct Vector3D Matrix3x3_multiply(const struct Matrix3x3 *this, const struct Vector3D * vec);
+static float Matrix3x3_get(const struct Matrix3x3 *this, int row, int col);
+static void Matrix3x3_set(struct Matrix3x3 *this, int row, int col, float value);
+
+Translating constructor: Matrix3x3::Matrix3x3
+  -> Matrix3x3__ctor with 1 parameters, 1 statements
+Translating constructor: Matrix3x3::Matrix3x3
+  -> Matrix3x3__ctor_9 with 10 parameters, 9 statements
+Found variable: m00
+Found variable: m01
+Found variable: m02
+Found variable: m10
+Found variable: m11
+Found variable: m12
+Found variable: m20
+Found variable: m21
+Found variable: m22
+Translating method: Matrix3x3::add
+  [Scope] Entering scope at depth 0
+  [Translating DeclStmt]
+    Variable: result
+      Is a struct/class type
+      Is a C++ class: Matrix3x3
+      Found C struct: Matrix3x3
+      Creating C variable declaration
+      Has constructor expression
+      WARNING: C constructor not found in ctorMap!
+  [Scope] Exiting scope at depth 0 with 0 objects
+  -> Matrix3x3_add with body translated
+  -> Matrix3x3_add with 2 parameters
+Found variable: other
+Translating method: Matrix3x3::multiply
+  [Scope] Entering scope at depth 0
+  [Translating DeclStmt]
+    Variable: result
+      Is a struct/class type
+      Is a C++ class: Matrix3x3
+      Found C struct: Matrix3x3
+      Creating C variable declaration
+      Has constructor expression
+      WARNING: C constructor not found in ctorMap!
+  [Scope] Exiting scope at depth 0 with 0 objects
+  -> Matrix3x3_multiply with body translated
+  -> Matrix3x3_multiply with 2 parameters
+Found variable: other
+Translating method: Matrix3x3::multiply
+  [Scope] Entering scope at depth 0
+  [Scope] Exiting scope at depth 0 with 0 objects
+  -> Matrix3x3_multiply_Vector3D_ref with body translated
+  -> Matrix3x3_multiply_Vector3D_ref with 2 parameters
+Found variable: vec
+Translating method: Matrix3x3::get
+  [Scope] Entering scope at depth 0
+  [Scope] Exiting scope at depth 0 with 0 objects
+  -> Matrix3x3_get with body translated
+  -> Matrix3x3_get with 3 parameters
+Found variable: row
+Found variable: col
+Translating method: Matrix3x3::set
+  [Scope] Entering scope at depth 0
+  [Scope] Exiting scope at depth 0 with 0 objects
+  -> Matrix3x3_set with body translated
+  -> Matrix3x3_set with 4 parameters
+Found variable: row
+Found variable: col
+Found variable: value
+Translating constructor: Matrix3x3::Matrix3x3
+  -> Matrix3x3__ctor_0 with 1 parameters, 1 statements
+Found variable: i
+Translating constructor: Matrix3x3::Matrix3x3
+  -> Matrix3x3__ctor_9 with 10 parameters, 9 statements
+Found variable: m00
+Found variable: m01
+Found variable: m02
+Found variable: m10
+Found variable: m11
+Found variable: m12
+Found variable: m20
+Found variable: m21
+Found variable: m22
+Translating method: Matrix3x3::add
+  [Scope] Entering scope at depth 0
+  [Translating DeclStmt]
+    Variable: result
+      Is a struct/class type
+      Is a C++ class: Matrix3x3
+      Found C struct: Matrix3x3
+      Creating C variable declaration
+      Has constructor expression
+      Found C constructor: Matrix3x3__ctor_0
+      Creating constructor call
+  [Scope] Exiting scope at depth 0 with 0 objects
+  -> Matrix3x3_add_Matrix3x3_ref with body translated
+  -> Matrix3x3_add_Matrix3x3_ref with 2 parameters
+Found variable: other
+Found variable: result
+Found variable: i
+Translating method: Matrix3x3::multiply
+  [Scope] Entering scope at depth 0
+  [Translating DeclStmt]
+    Variable: result
+      Is a struct/class type
+      Is a C++ class: Matrix3x3
+      Found C struct: Matrix3x3
+      Creating C variable declaration
+      Has constructor expression
+      Found C constructor: Matrix3x3__ctor_0
+      Creating constructor call
+  [Scope] Exiting scope at depth 0 with 0 objects
+  -> Matrix3x3_multiply_Matrix3x3_ref with body translated
+  -> Matrix3x3_multiply_Matrix3x3_ref with 2 parameters
+Found variable: other
+Found variable: result
+Found variable: row
+Found variable: col
+Found variable: sum
+Found variable: k
+Translating method: Matrix3x3::multiply
+  [Scope] Entering scope at depth 0
+  [Scope] Exiting scope at depth 0 with 0 objects
+  -> Matrix3x3_multiply_Vector3D_ref with body translated
+  -> Matrix3x3_multiply_Vector3D_ref with 2 parameters
+Found variable: vec
+Translating method: Matrix3x3::get
+  [Scope] Entering scope at depth 0
+  [Scope] Exiting scope at depth 0 with 0 objects
+  -> Matrix3x3_get_int_int with body translated
+  -> Matrix3x3_get_int_int with 3 parameters
+Found variable: row
+Found variable: col
+Translating method: Matrix3x3::set
+  [Scope] Entering scope at depth 0
+  [Scope] Exiting scope at depth 0 with 0 objects
+  -> Matrix3x3_set_int_int_float with body translated
+  -> Matrix3x3_set_int_int_float with 4 parameters
+Found variable: row
+Found variable: col
+Found variable: value
+Found variable: i
+Found variable: result
+Found variable: i
+Found variable: result
+Found variable: row
+Found variable: col
+Found variable: sum
+Found variable: k
+Found variable: i
+Found variable: result
+Found variable: i
+Found variable: result
+Found variable: row
+Found variable: col
+Found variable: sum
+Found variable: k
 
 ========================================
 Processing Template Instantiations
@@ -159,22 +484,17 @@ Template Monomorphization Complete
   Unique instantiations: 0
 ========================================
 
-C TranslationUnit has 0 generated declarations
+C TranslationUnit has 24 generated declarations
 Generated files:
-  transpil1 error generated.
-Error while processing /Users/alexanderfedin/Projects/hapyy/hupyy-cpp-to-c/tests/real-world/simple-validation/01-math-library/src/Matrix3x3.cpp.
-[3/3] Processing file /Users/alexanderfedin/Projects/hapyy/hupyy-cpp-to-c/tests/real-world/simple-validation/01-math-library/src/Vector3D.cpp.
-/Users/alexanderfedin/Projects/hapyy/hupyy-cpp-to-c/tests/real-world/simple-validation/01-math-library/src/Vector3D.cpp:1:10: fatal error: 'Vector3D.h' file not found
-    1 | #include "Vector3D.h"
-      |          ^~~~~~~~~~~~
-Warning: No C AST nodes generated. Input may contain unsupported C++ features.
-1 error generated.
-Error while processing /Users/alexanderfedin/Projects/hapyy/hupyy-cpp-to-c/tests/real-world/simple-validation/01-math-library/src/Vector3D.cpp.
-ed/src/Matrix3x3.h
+  transpiled/src/M[3/3] Processing file /Users/alexanderfedin/Projects/hapyy/hupyy-cpp-to-c/tests/real-world/simple-validation/01-math-library/src/Vector3D.cpp.
+src/Vector3D.cpp:2:10: fatal error: 'cmath' file not found
+    2 | #include <cmath>
+      |          ^~~~~~~
+atrix3x3.h
   transpiled/src/Matrix3x3.c
-Parsed file: /Users/alexanderfedin/Projects/hapyy/hupyy-cpp-to-c/tests/real-world/simple-validation/01-math-library/src/Vector3D.cpp
+Parsed file: src/Vector3D.cpp
 FileOriginTracker configured with user header paths
-Translation unit has 90 top-level declarations
+Translation unit has 97 top-level declarations
 Virtual method support initialized
 Template monomorphization enabled (limit: 1000 instantiations)
 Exception handling support initialized (SJLJ model)
@@ -186,6 +506,90 @@ Deducing this / explicit object parameter support initialized (C++23 P0847R7)
 if consteval support initialized (C++23 P1938R3) - Runtime strategy
 auto(x) decay-copy and partial constexpr support initialized (C++23 P0849R8)
 C TranslationUnit created for output generation
+Translating class: Vector3D
+  -> struct Vector3D with 3 fields
+  Generating implicit copy constructor
+  Generated copy constructor: Vector3D__ctor_copy
+  [Phase 31-03] Generated 1 constructor, 0 destructor, 5 method declarations
+
+// Static declarations for all Vector3D methods
+static void Vector3D__ctor_3(struct Vector3D *this, float x, float y, float z);
+static struct Vector3D Vector3D_add(const struct Vector3D *this, const struct Vector3D * other);
+static struct Vector3D Vector3D_subtract(const struct Vector3D *this, const struct Vector3D * other);
+static float Vector3D_dot(const struct Vector3D *this, const struct Vector3D * other);
+static struct Vector3D Vector3D_cross(const struct Vector3D *this, const struct Vector3D * other);
+static float Vector3D_magnitude(const struct Vector3D *this);
+
+Translating constructor: Vector3D::Vector3D
+  -> Vector3D__ctor with 4 parameters, 0 statements
+Found variable: x
+Found variable: y
+Found variable: z
+Translating method: Vector3D::add
+  [Scope] Entering scope at depth 0
+  [Scope] Exiting scope at depth 0 with 0 objects
+  -> Vector3D_add with body translated
+  -> Vector3D_add with 2 parameters
+Found variable: other
+Translating method: Vector3D::subtract
+  [Scope] Entering scope at depth 0
+  [Scope] Exiting scope at depth 0 with 0 objects
+  -> Vector3D_subtract with body translated
+  -> Vector3D_subtract with 2 parameters
+Found variable: other
+Translating method: Vector3D::dot
+  [Scope] Entering scope at depth 0
+  [Scope] Exiting scope at depth 0 with 0 objects
+  -> Vector3D_dot with body translated
+  -> Vector3D_dot with 2 parameters
+Found variable: other
+Translating method: Vector3D::cross
+  [Scope] Entering scope at depth 0
+  [Scope] Exiting scope at depth 0 with 0 objects
+  -> Vector3D_cross with body translated
+  -> Vector3D_cross with 2 parameters
+Found variable: other
+Translating method: Vector3D::magnitude
+  [Scope] Entering scope at depth 0
+  [Scope] Exiting scope at depth 0 with 0 objects
+  -> Vector3D_magnitude with body translated
+  -> Vector3D_magnitude with 1 parameters
+Translating constructor: Vector3D::Vector3D
+  -> Vector3D__ctor_3 with 4 parameters, 3 statements
+Found variable: x
+Found variable: y
+Found variable: z
+Translating method: Vector3D::add
+  [Scope] Entering scope at depth 0
+  [Scope] Exiting scope at depth 0 with 0 objects
+  -> Vector3D_add_Vector3D_ref with body translated
+  -> Vector3D_add_Vector3D_ref with 2 parameters
+Found variable: other
+Translating method: Vector3D::subtract
+  [Scope] Entering scope at depth 0
+  [Scope] Exiting scope at depth 0 with 0 objects
+  -> Vector3D_subtract_Vector3D_ref with body translated
+  -> Vector3D_subtract_Vector3D_ref with 2 parameters
+Found variable: other
+Translating method: Vector3D::dot
+  [Scope] Entering scope at depth 0
+  [Scope] Exiting scope at depth 0 with 0 objects
+  -> Vector3D_dot_Vector3D_ref with body translated
+  -> Vector3D_dot_Vector3D_ref with 2 parameters
+Found variable: other
+Translating method: Vector3D::cross
+  [Scope] Entering scope at depth 0
+  [Scope] Exiting scope at depth 0 with 0 objects
+  -> Vector3D_cross_Vector3D_ref with body translated
+  -> Vector3D_cross_Vector3D_ref with 2 parameters
+Found variable: other
+Translating method: Vector3D::magnitude
+  [Scope] Entering scope at depth 0
+  1 error generated.
+Error while processing /Users/alexanderfedin/Projects/hapyy/hupyy-cpp-to-c/tests/real-world/simple-validation/01-math-library/src/Vector3D.cpp.
+[Scope] Exiting scope at depth 0 with 0 objects
+  -> Vector3D_magnitude with body translated
+  -> Vector3D_magnitude with 1 parameters
 
 ========================================
 Processing Template Instantiations
@@ -203,7 +607,7 @@ Template Monomorphization Complete
   Unique instantiations: 0
 ========================================
 
-C TranslationUnit has 0 generated declarations
+C TranslationUnit has 14 generated declarations
 Generated files:
   transpiled/src/Vector3D.h
   transpiled/src/Vector3D.c

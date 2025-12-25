@@ -1,13 +1,8 @@
 // Generated from: main.cpp
 // Implementation file
 
-#include "main.cpp.h"
+#include "main.h"
 
-struct Vector3D {
-        float x;
-        float y;
-        float z;
-};
 void Vector3D__ctor_copy(struct Vector3D * this, const struct Vector3D * other) {
         this->x = other->x;
         this->y = other->y;
@@ -24,9 +19,6 @@ struct Vector3D Vector3D_subtract(struct Vector3D * this, const struct Vector3D 
 float Vector3D_dot(struct Vector3D * this, const struct Vector3D * other);
 struct Vector3D Vector3D_cross(struct Vector3D * this, const struct Vector3D * other);
 float Vector3D_magnitude(struct Vector3D * this);
-struct Matrix3x3 {
-        float data[9];
-};
 void Matrix3x3__ctor_copy(struct Matrix3x3 * this, const struct Matrix3x3 * other) {
         this->data = other->data;
 }

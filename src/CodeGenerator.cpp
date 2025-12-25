@@ -96,9 +96,14 @@ void CodeGenerator::printDecl(Decl *D, bool declarationOnly) {
             OS << "\n";
         }
     } else if (isa<RecordDecl>(D) || isa<EnumDecl>(D)) {
-        // Struct/enum definitions always complete (same for header and impl)
-        D->print(OS, Policy);
-        OS << ";\n";
+        // Struct/enum definitions should only be in header files
+        // Skip them when generating implementation files to avoid redefinition errors
+        if (declarationOnly) {
+            D->print(OS, Policy);
+            OS << ";\n";
+        }
+        // When declarationOnly=false (implementation file), skip struct/enum definitions
+        // They are already in the header file
     } else {
         // Other declarations
         D->print(OS, Policy);

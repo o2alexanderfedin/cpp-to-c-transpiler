@@ -1896,6 +1896,11 @@ Expr *CppToCVisitor::translateExpr(Expr *E) {
     return translateBinaryOperator(BO);
   }
 
+  // Handle constructor expressions - need to translate arguments
+  if (CXXConstructExpr *CCE = dyn_cast<CXXConstructExpr>(E)) {
+    return translateConstructExpr(CCE);
+  }
+
   // Default: return expression as-is (literals, etc.)
   return E;
 }
@@ -1935,11 +1940,24 @@ Expr *CppToCVisitor::translateMemberExpr(MemberExpr *ME) {
     return ME;
   }
 
-  // Determine if we need -> or . based on base type
+  // Determine if we need -> or . based on translated base type
+  // After reference-to-pointer conversion, check the translated type not original
   Expr *Result = nullptr;
-  if (Base->getType()->isPointerType()) {
+  QualType TranslatedBaseType = TranslatedBase->getType();
+  QualType OriginalBaseType = Base->getType();
+
+  llvm::outs() << "  Base type analysis:\n";
+  llvm::outs() << "    Original type: " << OriginalBaseType.getAsString() << "\n";
+  llvm::outs() << "    Translated type: " << TranslatedBaseType.getAsString() << "\n";
+  llvm::outs() << "    Is original pointer? " << OriginalBaseType->isPointerType() << "\n";
+  llvm::outs() << "    Is original reference? " << OriginalBaseType->isReferenceType() << "\n";
+  llvm::outs() << "    Is translated pointer? " << TranslatedBaseType->isPointerType() << "\n";
+
+  if (TranslatedBaseType->isPointerType() || OriginalBaseType->isReferenceType()) {
+    llvm::outs() << "    Using -> (arrow) for member access\n";
     Result = Builder.arrowMember(TranslatedBase, Member->getName());
   } else {
+    llvm::outs() << "    Using . (dot) for member access\n";
     Result = Builder.member(TranslatedBase, Member->getName());
   }
 
@@ -2024,6 +2042,28 @@ Expr *CppToCVisitor::translateBinaryOperator(BinaryOperator *BO) {
   return BinaryOperator::Create(
       Context, LHS, RHS, BO->getOpcode(), BO->getType(), BO->getValueKind(),
       BO->getObjectKind(), SourceLocation(), FPOptionsOverride());
+}
+
+// Translate CXXConstructExpr - handles C++ constructor calls
+// Bug fix: Need to translate arguments to fix member access in constructor args
+Expr *CppToCVisitor::translateConstructExpr(CXXConstructExpr *CCE) {
+  llvm::outs() << "  Translating constructor expression\n";
+
+  // Translate all constructor arguments
+  std::vector<Expr *> translatedArgs;
+  for (unsigned i = 0; i < CCE->getNumArgs(); ++i) {
+    Expr *Arg = CCE->getArg(i);
+    Expr *TranslatedArg = translateExpr(Arg);
+    translatedArgs.push_back(TranslatedArg ? TranslatedArg : Arg);
+  }
+
+  // Reconstruct constructor expression with translated arguments
+  return CXXConstructExpr::Create(
+      Context, CCE->getType(), SourceLocation(), CCE->getConstructor(),
+      CCE->isElidable(), translatedArgs, CCE->hadMultipleCandidates(),
+      CCE->isListInitialization(), CCE->isStdInitListInitialization(),
+      CCE->requiresZeroInitialization(), CCE->getConstructionKind(),
+      SourceLocation());
 }
 
 // ============================================================================

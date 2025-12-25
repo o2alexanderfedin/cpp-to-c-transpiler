@@ -3,11 +3,6 @@
 
 #include "Matrix3x3.h"
 
-struct Vector3D {
-        float x;
-        float y;
-        float z;
-};
 void Vector3D__ctor_copy(struct Vector3D * this, const struct Vector3D * other) {
         this->x = other->x;
         this->y = other->y;
@@ -24,9 +19,6 @@ struct Vector3D Vector3D_subtract(struct Vector3D * this, const struct Vector3D 
 float Vector3D_dot(struct Vector3D * this, const struct Vector3D * other);
 struct Vector3D Vector3D_cross(struct Vector3D * this, const struct Vector3D * other);
 float Vector3D_magnitude(struct Vector3D * this);
-struct Matrix3x3 {
-        float data[9];
-};
 void Matrix3x3__ctor_copy(struct Matrix3x3 * this, const struct Matrix3x3 * other) {
         this->data = other->data;
 }
@@ -81,7 +73,7 @@ struct Matrix3x3 Matrix3x3_multiply(struct Matrix3x3 * this, const struct Matrix
 
 
 struct Vector3D Matrix3x3_multiply_Vector3D_ref(struct Matrix3x3 * this, const struct Vector3D * vec) {
-        return Vector3D(this->data[0] * vec.x + this->data[1] * vec.y + this->data[2] * vec.z, this->data[3] * vec.x + this->data[4] * vec.y + this->data[5] * vec.z, this->data[6] * vec.x + this->data[7] * vec.y + this->data[8] * vec.z);
+        return this->data[0] * vec.x + this->data[1] * vec.y + this->data[2] * vec.z, this->data[3] * vec.x + this->data[4] * vec.y + this->data[5] * vec.z, this->data[6] * vec.x + this->data[7] * vec.y + this->data[8] * vec.z;
 }
 
 
@@ -142,7 +134,7 @@ struct Matrix3x3 Matrix3x3_multiply_Matrix3x3_ref(struct Matrix3x3 * this, const
 
 
 struct Vector3D Matrix3x3_multiply_Vector3D_ref(struct Matrix3x3 * this, const struct Vector3D * vec) {
-        return Vector3D(this->data[0] * vec.x + this->data[1] * vec.y + this->data[2] * vec.z, this->data[3] * vec.x + this->data[4] * vec.y + this->data[5] * vec.z, this->data[6] * vec.x + this->data[7] * vec.y + this->data[8] * vec.z);
+        return this->data[0] * vec.x + this->data[1] * vec.y + this->data[2] * vec.z, this->data[3] * vec.x + this->data[4] * vec.y + this->data[5] * vec.z, this->data[6] * vec.x + this->data[7] * vec.y + this->data[8] * vec.z;
 }
 
 
