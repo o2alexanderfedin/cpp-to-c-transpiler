@@ -3,12 +3,12 @@
 **Project**: Extend ACSL annotation system AND implement critical C++ language features
 **Brief**: `.planning/BRIEF.md`
 **Created**: 2025-12-20
-**Updated**: 2025-12-20 (added C++ feature phases 8-17)
+**Updated**: 2025-12-24 (added Workstream E: C++23 Transpiler Fixes, Phases 32-40)
 **Status**: ACTIVE
 
 ## Overview
 
-Three parallel workstreams to transform the transpiler:
+Five parallel workstreams to transform the transpiler:
 
 **Workstream A: ACSL Annotation Completion (v1.17.0 → v2.0.0)**
 - Phases 1-7: Complete Frama-C ACSL 1.17+ compatibility
@@ -20,7 +20,17 @@ Three parallel workstreams to transform the transpiler:
 
 **Workstream C: Validation & Utilities**
 - Phase 30: Transpile real-world test projects for validation
-- Status: Phase 30 ⏳ PLANNED | Independent utility phase
+- Phase 33: C++23 validation suite integration
+- Status: Phase 30 ⏳ IN PROGRESS | Phase 33 ✅ COMPLETE
+
+**Workstream D: Architecture Enhancements**
+- Phase 31: COM-style vtable architecture
+- Phase 32: Transpiler architecture fix (C++ AST routing)
+- Status: Phase 31 ✅ COMPLETE | Phase 32 ✅ COMPLETE
+
+**Workstream E: C++23 Transpiler Fixes (v2.5.0 → v3.0.0)**
+- Phases 34-40: Fix critical gaps blocking production C++23 support
+- Status: All phases ⏳ PLANNED | **CRITICAL PRIORITY**
 
 ## Phase Strategy
 
@@ -1005,3 +1015,713 @@ Three parallel workstreams to transform the transpiler:
 ---
 
 **Ready to plan**: Choose execution strategy and plan first phase(s)
+
+---
+
+# WORKSTREAM E: C++23 TRANSPILER FIXES (CRITICAL PRIORITY)
+
+**Motivation**: Comprehensive gaps analysis (`.prompts/045-cpp23-gaps-analysis/`) revealed critical blockers preventing production C++23 support:
+- **70% of integration tests blocked** by header file skipping architecture issue
+- **Phase 4 completely broken** due to Clang API mismatch (Clang 17 vs 18+)
+- **0% real-world test pass rate** despite 88% unit test success
+- **Actual C++23 coverage: 10-12%** (not 20-25% claimed)
+
+**User Mandate**: "Unacceptable to customers" - requires PRODUCTION-READY transpiler with comprehensive C++23 support.
+
+**Priority**: **CRITICAL** - Blocks all other work until foundation is stable.
+
+---
+
+## Phase 32: Transpiler Architecture Fix ✅ COMPLETE
+
+**Goal**: Fix critical C++ AST routing bug preventing template monomorphization
+
+**Version**: v2.3.0 (patch release)
+
+**Completed**: 2025-12-24
+
+### Problem Identified
+Phase 32 discovered transpiler was routing templates through C++ AST printer instead of C AST transformation, breaking all template-based C++23 features.
+
+### Fix Applied
+- Routed all C++ constructs through proper C AST transformation pipeline
+- Fixed template monomorphization to generate C AST nodes (not strings)
+- Validated with AdvancedTemplateIntegrationTest A/B comparison
+
+### Impact
+- ✅ Template monomorphization now generates valid C code
+- ✅ Foundation stable for C++23 feature integration
+- ✅ Critical blocker resolved
+
+### Dependencies
+- None (architecture fix)
+
+**Summary**: `.planning/phases/32-transpiler-architecture-fix/32-01-SUMMARY.md`
+
+---
+
+## Phase 33: C++23 Validation Suite Integration ✅ COMPLETE
+
+**Goal**: Establish comprehensive C++23 validation framework with baseline metrics
+
+**Version**: Utility (no version bump)
+
+**Completed**: 2025-12-24
+
+### Deliverables Completed
+- ✅ Integrated 130 GCC C++23 tests across 9 categories
+- ✅ Created A/B testing framework (run-tests.sh, compare.py)
+- ✅ Generated baseline metrics: **0.0% C++23 support** (honest assessment)
+- ✅ Documented architectural gaps in GAPS.md, FEATURE-MATRIX.md, ROADMAP.md
+
+### Baseline Metrics
+```
+Total Tests:           130
+C++ Build Success:     0.0%
+Transpile Success:     0.0%
+C Build Success:       0.0%
+Output Match:          0.0%
+Overall Pass Rate:     0.0%
+```
+
+### Critical Findings
+- Header file skipping blocks ~91/130 tests (70%)
+- Phase 4 API blocker (Clang 17 vs 18)
+- No integration testing infrastructure
+- CTAD inherited constructors not implemented
+
+### Impact
+- ✅ Clear baseline established for measuring progress
+- ✅ Comprehensive test infrastructure ready
+- ✅ All gaps documented with severity levels
+- ✅ Roadmap for Phases 34-40 informed by data
+
+**Summary**: `tests/real-world/cpp23-validation/PHASE-33-SUMMARY.md`
+
+**Dependencies**: Requires Phase 32 complete (architecture fix)
+
+---
+
+## Phase 34: Fix Header File Skipping (v2.5.0) ⏳ PLANNED
+
+**Goal**: Enable multi-file transpilation by removing isInMainFile() guards
+
+**Status**: **CRITICAL** - Blocks 70% of C++23 tests (~91/130)
+
+**Estimated Effort**: 2-3 weeks
+
+### Problem Statement
+CppToCVisitor systematically skips ALL declarations from included headers using `isInMainFile()` checks at 12 locations. This architectural decision breaks real-world C++23 code which properly separates declarations (headers) from implementations (.cpp files).
+
+**Impact**:
+- Multi-file projects cannot be transpiled
+- Library code in headers silently ignored
+- Phase 33 tests compile but produce ZERO output
+- No error messages - silent failure mode
+
+### Deliverables
+- ✅ Multi-file transpilation architecture
+- ✅ File origin tracking (main vs header)
+- ✅ Separate .h and .c output generation
+- ✅ Include guard generation enhancements
+- ✅ Cross-file dependency handling
+- ✅ Declaration order preservation
+- ✅ Integration validation with Phase 33 subset
+
+### Technical Approach
+
+**Phase 34-01: Architecture Research** (2-3 days)
+- Analyze FileOutputManager current behavior
+- Document all 12 isInMainFile() usage sites
+- Design FileOriginTracker system
+- Create multi-file test cases
+
+**Phase 34-02: Remove Guards from Class Visitors** (2-3 days)
+- Remove isInMainFile() from VisitCXXRecordDecl (line 136)
+- Remove isInMainFile() from VisitCXXMethodDecl (line 273)
+- Add basic FileOriginTracker infrastructure
+- Test with simple class in header
+
+**Phase 34-03: Remove Guards from Remaining Visitors** (2-3 days)
+- Remove 10 remaining isInMainFile() guards
+- Implement full FileOriginTracker class
+- Update all visitors to use tracker
+- Test with complex multi-file example
+
+**Phase 34-04: Separate Header/Implementation Output** (3-4 days)
+- Modify FileOutputManager for dual output
+- Implement declaration/definition splitting logic
+- Handle forward declarations
+- Test with Phase 33 subset (multidim-subscript)
+
+**Phase 34-05: Enhanced Include Guards** (2 days)
+- Extend IncludeGuardGenerator
+- Add cross-file dependency tracking
+- Preserve declaration order across files
+- Test with full multi-file project
+
+**Phase 34-06: Integration Validation** (1-2 days)
+- Run Phase 33 multidim-subscript category (16 tests)
+- Validate output compiles and runs
+- Measure pass rate improvement (expect 12-14/16, 75-85%)
+- Document remaining failures
+
+### Key Challenges
+- Distinguishing declarations vs definitions across files
+- Handling template instantiations in headers
+- Preserving correct include order
+- Avoiding duplicate symbol definitions
+- Managing circular header dependencies
+
+### Verification Criteria
+- ✅ At least 12/16 multidim-subscript tests passing (75%+)
+- ✅ Multi-file projects transpile without manual inlining
+- ✅ Generated .h files valid C headers
+- ✅ Generated .c files compile and link
+- ✅ No duplicate symbol errors
+- ✅ Include dependencies correct
+
+### Dependencies
+- None (independent architecture fix)
+
+### Expected Impact
+- **Unblocks ~91/130 Phase 33 tests** (70% of validation suite)
+- Enables real-world multi-file project transpilation
+- Foundation for remaining C++23 feature validation
+
+**Parallel Execution**: ❌ Sequential (foundation must be stable first)
+
+---
+
+## Phase 35: Upgrade Clang and Activate Phase 4 (v2.6.0) ⏳ PLANNED
+
+**Goal**: Upgrade to Clang 18+ and activate deducing this translator
+
+**Status**: **HIGH** - Phase 4 completely non-functional (10/12 tests failing)
+
+**Estimated Effort**: 1-2 days
+
+### Problem Statement
+Phase 4 (Deducing This / Explicit Object Parameters) implementation is complete with comprehensive infrastructure, but blocked by missing `isExplicitObjectMemberFunction()` API in Clang 17. This API was introduced in Clang 18+.
+
+**Current State**:
+- ✅ DeducingThisTranslator class implemented (326 lines)
+- ✅ 12 comprehensive tests written
+- ✅ Integration with CppToCVisitor complete
+- ❌ API unavailable in current Clang 17
+- ⚠️ 2/12 tests passing (logic-only, no AST dependency)
+- ❌ 10/12 tests failing (require Clang 18+ API)
+
+### Deliverables
+- ✅ LLVM/Clang upgraded to version 18+
+- ✅ Phase 4 tests rerun and passing (expect 12/12)
+- ✅ CMake configuration updated if needed
+- ✅ Documentation updated with Clang version requirement
+- ✅ CI/CD updated to use Clang 18+
+
+### Technical Approach
+
+**Phase 35-01: Clang Upgrade** (1 day)
+```bash
+# macOS (Homebrew)
+brew upgrade llvm
+
+# Verify version
+clang --version  # Should show 18.0.0 or higher
+
+# Update CMakeLists.txt if needed
+find_package(LLVM 18 REQUIRED)
+```
+
+**Phase 35-02: Rerun Phase 4 Tests** (few hours)
+```bash
+cd build_working
+ctest -R DeducingThisTranslatorTest --verbose
+```
+
+Expected result: **12/12 tests passing** (infrastructure auto-activates)
+
+### Key Challenges
+- System Clang vs Homebrew Clang path conflicts
+- CMake finding correct LLVM installation
+- Potential ABI compatibility issues
+
+### Verification Criteria
+- ✅ Clang version 18+ confirmed
+- ✅ All 12 DeducingThisTranslatorTest tests passing (100%)
+- ✅ No regressions in other tests
+- ✅ Build system finds correct Clang automatically
+
+### Dependencies
+- **Requires Phase 34 complete** (header skipping fixed)
+- Otherwise Phase 4 features won't be testable in real code
+
+### Expected Impact
+- **Activates Phase 4 (Deducing This)** - major C++23 feature
+- Improves C++23 coverage: 10-12% → 15-18%
+- Validates infrastructure investment
+
+**Parallel Execution**: ❌ Sequential after Phase 34
+
+---
+
+## Phase 36: Add Integration Tests (v2.7.0) ⏳ PLANNED
+
+**Goal**: Create standalone integration tests validating Phase 1-6 features in real C++23 code
+
+**Status**: **HIGH** - Zero integration testing currently (0/130 Phase 33 pass rate)
+
+**Estimated Effort**: 2-3 days
+
+### Problem Statement
+Unit tests pass (70/80, 87.5%) but integration tests fail (0/130, 0%). This gap reveals:
+- Features may have edge cases not caught by unit tests
+- Phase 1-6 never tested in real C++23 code contexts
+- Template interaction untested
+- False confidence from unit test success
+
+### Deliverables
+- ✅ `tests/integration/cpp23/` directory with single-file tests
+- ✅ 30+ integration tests covering Phase 1-6 features
+- ✅ Template interaction tests (C++23 features + templates)
+- ✅ Combined feature tests (multidim subscript + static operators, etc.)
+- ✅ Real-world usage patterns
+- ✅ CMakeLists.txt for integration test suite
+
+### Technical Approach
+
+**Phase 36-01: Single-File Integration Tests** (1-2 days)
+Create `tests/integration/cpp23/*.cpp` with all code inline (bypasses header skipping):
+
+```cpp
+// multidim_subscript_integration.cpp
+template<typename T>
+class Matrix {  // All code in one file
+    T& operator[](int i, int j) { /* ... */ }
+};
+
+int main() {
+    Matrix<int> m;
+    m[0, 1] = 42;  // C++23 multidim subscript
+    return 0;
+}
+```
+
+Categories:
+- Multidim subscript (6 tests)
+- Static operators (4 tests)
+- [[assume]] attribute (4 tests)
+- Deducing this (6 tests)
+- if consteval (4 tests)
+- auto(x) decay-copy (4 tests)
+- Constexpr enhancements (4 tests)
+
+**Phase 36-02: Feature Interaction Tests** (1 day)
+Test combinations:
+- Multidim subscript on template class
+- Static operator in template
+- auto(x) with template parameter
+- [[assume]] in template function
+- if consteval in constexpr template
+- Deducing this with virtual methods
+
+### Verification Criteria
+- ✅ At least 25/30 integration tests passing (83%+)
+- ✅ Template interaction tests validate monomorphization
+- ✅ Combined features work together
+- ✅ No silent failures (errors reported clearly)
+
+### Dependencies
+- **Requires Phase 34 complete** (for multi-file tests later)
+- **Requires Phase 35 complete** (for Phase 4 deducing this tests)
+
+### Expected Impact
+- Validates Phase 1-6 implementation quality
+- Discovers edge cases missed by unit tests
+- Provides regression protection
+- Builds confidence in C++23 support
+
+**Parallel Execution**: ❌ Sequential after Phases 34-35
+
+---
+
+## Phase 37: Implement CTAD Inherited Constructors (v2.8.0) ⏳ PLANNED
+
+**Goal**: Complete Feature #8 from original C++23 plan (P2582R1)
+
+**Status**: **MEDIUM** - Unimplemented feature from Phase 1-6 plan
+
+**Estimated Effort**: 1-2 weeks
+
+### Problem Statement
+CTAD (Class Template Argument Deduction) with Inherited Constructors was Feature #8 in original plan but never implemented. Phase 33 has 10 tests waiting for this feature.
+
+**Current State**:
+- ❌ No CTADInheritedTranslator class
+- ❌ No source files
+- ❌ No tests
+- ⚠️ Basic CTAD works (earlier implementation)
+- ❌ Inherited constructor cases fail
+
+### Deliverables
+- ✅ `CTADInheritedTranslator` class (header + implementation)
+- ✅ Constructor inheritance analysis
+- ✅ CTAD deduction guide generation for inherited ctors
+- ✅ Test suite (12+ tests)
+- ✅ Integration with CppToCVisitor
+- ✅ Documentation
+
+### Technical Approach
+
+**Phase 37-01: Infrastructure** (3-4 days)
+```cpp
+// include/CTADInheritedTranslator.h
+class CTADInheritedTranslator {
+public:
+    std::string translateInheritedConstructor(
+        const CXXConstructorDecl *CD,
+        const CXXRecordDecl *Derived
+    );
+    
+    std::string generateDeductionGuide(
+        const CXXConstructorDecl *BaseCtor,
+        const CXXRecordDecl *Derived
+    );
+};
+```
+
+**Phase 37-02: Test Suite** (2-3 days)
+Create `tests/CTADInheritedTranslatorTest.cpp` with 12+ tests:
+- Simple inheritance CTAD
+- Multiple inheritance CTAD
+- Virtual inheritance CTAD
+- Template base class CTAD
+- Constructor forwarding
+- Deduction guide edge cases
+
+**Phase 37-03: Integration** (2-3 days)
+- Add to CppToCVisitor
+- Hook into template instantiation
+- Test with Phase 33 CTAD category (10 tests)
+
+### Key Challenges
+- Deduction guide synthesis for inherited constructors
+- Multiple inheritance scenarios
+- Template parameter forwarding
+- Virtual base class handling
+
+### Verification Criteria
+- ✅ 12/12 unit tests passing
+- ✅ 8/10 Phase 33 CTAD tests passing (80%+)
+- ✅ Integration with existing CTAD infrastructure
+- ✅ No regressions in basic CTAD
+
+### Dependencies
+- **Requires Phase 34 complete** (multi-file transpilation)
+- **Synergy with Phase 11** (Template Integration from Workstream B)
+
+### Expected Impact
+- Completes original 8-feature C++23 plan
+- Improves C++23 coverage: 15-18% → 20-22%
+- Satisfies Phase 33 CTAD category
+
+**Parallel Execution**: ❌ Sequential after Phase 36
+
+---
+
+## Phase 38: Enhanced Constexpr Evaluation (v2.9.0) ⏳ PLANNED
+
+**Goal**: Expand compile-time evaluation beyond simple literals
+
+**Status**: **MEDIUM** - Phase 6 only handles simple cases
+
+**Estimated Effort**: 2-3 weeks
+
+### Problem Statement
+Phase 6 constexpr support is limited to simple cases:
+- ✅ Return literal: `constexpr int f() { return 42; }`
+- ✅ Return expression: `constexpr int f(int x) { return x + 1; }`
+- ❌ Loops: `constexpr int fib(int n) { for... }`
+- ❌ Control flow: `constexpr int max(int a, int b) { if (a > b)... }`
+- ❌ Multiple statements
+- ❌ Recursive functions
+
+**Current Fallback**: Runtime evaluation with silent degradation
+
+### Deliverables
+- ✅ Extended ConstexprEnhancementHandler
+- ✅ APValue evaluator integration (Clang's compile-time evaluator)
+- ✅ Loop evaluation support
+- ✅ Control flow evaluation (if/else/switch)
+- ✅ Multiple statement support
+- ✅ Recursive constexpr function support
+- ✅ Test suite expansion (20+ tests)
+- ✅ Warning system for fallback cases
+
+### Technical Approach
+
+**Phase 38-01: APValue Integration** (1 week)
+Leverage Clang's existing APValue evaluator:
+```cpp
+// Expand ConstexprEnhancementHandler
+bool evaluateConstexpr(const FunctionDecl *FD, 
+                       APValue &Result) {
+    Expr::EvalResult ER;
+    if (FD->getBody()->EvaluateAsRValue(ER, Context)) {
+        Result = ER.Val;
+        return true;
+    }
+    return false;
+}
+```
+
+**Phase 38-02: Pattern Expansion** (1 week)
+- Loops (for, while, do-while)
+- Control flow (if, else, switch, ternary)
+- Multiple statements (sequencing)
+- Local variables
+
+**Phase 38-03: Warning System** (few days)
+- Emit warning when fallback to runtime
+- Document unsupported patterns
+- Provide workarounds
+
+### Key Challenges
+- Clang APValue evaluator integration complexity
+- Recursive function evaluation (stack depth limits)
+- Memory allocation during constexpr (not allowed in C)
+- UB detection in constexpr context
+
+### Verification Criteria
+- ✅ 15/19 Phase 33 constexpr-enhancements tests passing (80%+)
+- ✅ Loops and control flow evaluate at compile-time
+- ✅ Warnings emitted for fallback cases
+- ✅ No performance regression
+
+### Dependencies
+- None (independent enhancement)
+
+### Expected Impact
+- Improves C++23 coverage: 20-22% → 25-30%
+- Better semantic fidelity (compile-time → compile-time)
+- Performance improvement (fewer runtime evaluations)
+
+**Parallel Execution**: ✅ Can run with Phase 39 (documentation)
+
+---
+
+## Phase 39: Update User Documentation (v3.0.0-rc) ⏳ PLANNED
+
+**Goal**: Provide comprehensive user-facing documentation for C++23 support
+
+**Status**: **MEDIUM** - Documentation lags implementation
+
+**Estimated Effort**: 1-2 days
+
+### Problem Statement
+Gaps analysis identified 5 documentation gaps:
+1. User-facing feature support matrix missing
+2. Limitations not user-accessible (buried in code comments)
+3. Migration guide missing (no practical C++23 → C advice)
+4. Warning messages undocumented (users don't know meanings)
+5. FEATURE-MATRIX.md outdated (shows 0% despite implementations)
+
+### Deliverables
+- ✅ Updated `tests/real-world/cpp23-validation/docs/FEATURE-MATRIX.md`
+- ✅ New `docs/CPP23_LIMITATIONS.md`
+- ✅ New `docs/CPP23_MIGRATION_GUIDE.md`
+- ✅ New `docs/WARNING_REFERENCE.md`
+- ✅ Updated `README.md` with C++23 support section
+- ✅ Updated website `features.astro` (if applicable)
+
+### Technical Approach
+
+**Phase 39-01: Feature Matrix Update** (2-3 hours)
+Update FEATURE-MATRIX.md with actual coverage:
+```markdown
+| Feature | Unit Tests | Integration | Phase 33 | Status |
+|---------|-----------|-------------|----------|--------|
+| Multidim subscript | 12/12 (100%) | 6/6 (100%) | 14/16 (87%) | ✅ Complete |
+| Static operators | 10/10 (100%) | 4/4 (100%) | 7/8 (87%) | ✅ Complete |
+| [[assume]] | 12/12 (100%) | 4/4 (100%) | 11/13 (85%) | ✅ Complete |
+| Deducing this | 12/12 (100%) | 6/6 (100%) | 8/10 (80%) | ✅ Complete (Clang 18+) |
+| if consteval | 12/12 (100%) | 4/4 (100%) | 9/13 (69%) | ⚠️ Partial (runtime fallback) |
+| auto(x) | 12/12 (100%) | 4/4 (100%) | 10/22 (45%) | ⚠️ Partial (simple cases) |
+| Constexpr | 10/10 (100%) | 4/4 (100%) | 7/19 (37%) | ⚠️ Partial (enhanced in Phase 38) |
+| CTAD inherited | 12/12 (100%) | 4/4 (100%) | 8/10 (80%) | ✅ Complete |
+```
+
+**Phase 39-02: Limitations Guide** (2-3 hours)
+Create CPP23_LIMITATIONS.md documenting:
+- Architectural impossibilities (concepts, modules, ranges)
+- Runtime fallback features (constexpr, consteval)
+- Known edge cases
+- Workarounds and alternatives
+
+**Phase 39-03: Migration Guide** (2-3 hours)
+Create CPP23_MIGRATION_GUIDE.md with practical advice:
+- Which C++23 features transpile well
+- Which require code changes
+- Common patterns and their C equivalents
+- Performance considerations
+
+**Phase 39-04: Warning Reference** (1-2 hours)
+Document all warning messages with:
+- What triggered the warning
+- What it means
+- How to address it
+- Whether it's safe to ignore
+
+### Verification Criteria
+- ✅ All 5 documentation gaps addressed
+- ✅ User-facing docs complete and accurate
+- ✅ Examples provided for all features
+- ✅ Migration guide tested on real code
+
+### Dependencies
+- **Requires Phases 34-38 complete** (feature set finalized)
+
+### Expected Impact
+- Users understand what's supported
+- Realistic expectations set
+- Migration path clear
+- Support burden reduced (self-service docs)
+
+**Parallel Execution**: ✅ Can run with Phase 38 (independent)
+
+---
+
+## Phase 40: Rerun Phase 33 Validation (v3.0.0) ⏳ PLANNED
+
+**Goal**: Execute full Phase 33 validation suite and generate final compliance report
+
+**Status**: **FINAL VALIDATION** - Measures success of Phases 34-39
+
+**Estimated Effort**: 1 day
+
+### Problem Statement
+Phase 33 established 0.0% baseline. After fixing all gaps (Phases 34-39), we need final metrics to measure success and declare v3.0.0 release.
+
+**Expected Results** (conservative):
+- Overall pass rate: **60-70%** (from 0%)
+- Multidim subscript: 14/16 (87%)
+- Static operators: 7/8 (87%)
+- [[assume]]: 11/13 (85%)
+- Deducing this: 8/10 (80% - with Clang 18)
+- if consteval: 9/13 (69% - runtime fallback acceptable)
+- auto(x): 10/22 (45% - simple cases only)
+- Constexpr: 12/19 (63% - after Phase 38 enhancements)
+- CTAD inherited: 8/10 (80%)
+- Attributes: 8/13 (60%)
+- Miscellaneous: 10/19 (50%)
+- Ranges: 0/10 (0% - architectural blocker, documented)
+
+### Deliverables
+- ✅ Full Phase 33 test suite execution
+- ✅ Updated baseline-metrics.json
+- ✅ Updated compliance-report.html
+- ✅ Comparison report (baseline vs final)
+- ✅ v3.0.0 release notes
+- ✅ CHANGELOG.md update
+
+### Technical Approach
+
+**Phase 40-01: Execute Test Suite** (3-4 hours)
+```bash
+cd tests/real-world/cpp23-validation/ab-test
+./run-tests.sh --all --output results/final-metrics.json
+```
+
+**Phase 40-02: Generate Reports** (2-3 hours)
+```bash
+python3 scripts/generate-baseline-metrics.py \
+    --input results/final-metrics.json \
+    --output results/v3.0.0-compliance-report.html \
+    --compare results/baseline-metrics.json
+```
+
+### Verification Criteria
+- ✅ Overall pass rate ≥60% (10x improvement from 0%)
+- ✅ At least 5 categories with ≥70% pass rate
+- ✅ Zero regressions (no previously passing tests now failing)
+- ✅ All metrics documented and explained
+
+### Dependencies
+- **Requires ALL Phases 34-39 complete**
+
+### Expected Impact
+- **Validates Workstream E success**
+- Provides data-driven release decision
+- Demonstrates 10x improvement (0% → 60-70%)
+- Justifies v3.0.0 major version bump
+- Production-ready C++23 transpiler achieved
+
+**Parallel Execution**: ❌ Sequential (final validation)
+
+---
+
+## Workstream E Summary
+
+### Timeline
+
+| Phase | Effort | Dependency | Can Parallel? |
+|-------|--------|------------|---------------|
+| 34 | 2-3 weeks | None | ❌ (foundation) |
+| 35 | 1-2 days | Phase 34 | ❌ |
+| 36 | 2-3 days | Phases 34,35 | ❌ |
+| 37 | 1-2 weeks | Phase 36 | ❌ |
+| 38 | 2-3 weeks | None | ✅ (with 39) |
+| 39 | 1-2 days | Phases 34-38 | ✅ (with 38) |
+| 40 | 1 day | ALL above | ❌ (final) |
+
+**Total Timeline**: **6-8 weeks** (sequential + some parallelization)
+
+### Success Metrics
+
+**Coverage Improvement**:
+- Baseline: 0% Phase 33 pass rate, 10-12% actual coverage
+- Target: 60-70% Phase 33 pass rate, 60-70% actual coverage
+- **Improvement: 6-7x coverage increase**
+
+**Test Statistics**:
+- Unit tests: 70/80 → 94/106 (88% → 89%, +26 tests from Phases 37-38)
+- Integration tests: 0/130 → 78-91/130 (0% → 60-70%, Phase 33 validation)
+- **Total improvement: +104-117 passing tests**
+
+**User-Facing Impact**:
+- Multi-file projects: BROKEN → ✅ WORKS
+- Real-world C++23 code: 0% → 60-70% transpiles correctly
+- Production readiness: UNACCEPTABLE → PRODUCTION-READY
+
+### Quality Gates
+
+Before declaring v3.0.0:
+- ✅ All Phases 34-39 complete with SUMMARY.md
+- ✅ Phase 40 validation ≥60% pass rate
+- ✅ Zero critical bugs in issue tracker
+- ✅ All unit tests passing (100%)
+- ✅ Documentation complete and accurate
+- ✅ Code review completed
+- ✅ Performance regression ≤20% vs v2.4.0
+- ✅ User acceptance testing successful
+
+### Milestone: v3.0.0 - Production C++23 Transpiler
+
+**Release Criteria**:
+- 60-70% C++23 validation suite pass rate
+- Multi-file transpilation working
+- 8 C++23 features fully implemented
+- Comprehensive documentation
+- Proven real-world usage
+
+**Breaking Changes**:
+- Header file skipping removed (may affect single-file workflows)
+- Requires Clang 18+ for deducing this feature
+- constexpr/consteval runtime fallback (semantic change)
+
+**Migration Guide**: See `docs/CPP23_MIGRATION_GUIDE.md`
+
+---
+
+**Ready to execute**: Phase 34-01 (Multi-file Architecture Research)
+
