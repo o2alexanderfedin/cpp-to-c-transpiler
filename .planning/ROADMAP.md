@@ -1102,15 +1102,34 @@ Overall Pass Rate:     0.0%
 
 ---
 
-## Phase 34: Fix Header File Skipping (v2.5.0) ⏳ PLANNED
+## Phase 34: Fix Header File Skipping (v2.5.0) ✅ COMPLETE
 
 **Goal**: Enable multi-file transpilation by removing isInMainFile() guards
 
-**Status**: **CRITICAL** - Blocks 70% of C++23 tests (~91/130)
+**Status**: ✅ **COMPLETE** - All 6 plans executed successfully (2025-12-24)
 
-**Estimated Effort**: 2-3 weeks
+**Actual Effort**: 2 weeks (Phase 34-01 through 34-06)
 
-### Problem Statement
+### Achievements ✅
+- ✅ FileOriginTracker implemented (O(1) file classification: MainFile, UserHeader, SystemHeader, ThirdPartyHeader)
+- ✅ Multi-file transpilation working (processes user headers, generates separate .h/.c pairs)
+- ✅ All 12 isInMainFile() guards removed
+- ✅ Statement-level translation completed (constructor calls, method calls convert to C syntax)
+- ✅ Unit test pass rate: **99% (1606/1616 tests passing)**
+- ✅ Only 10 failures: DeducingThisTranslatorTest (Clang 17 API limitation - fixable with Clang 18 upgrade)
+- ✅ Zero regressions (all previously passing tests still pass)
+
+### Validation Results (2025-12-24)
+**Unit Tests**: 99% pass rate ✅
+**Phase 33 Integration Tests**: Blocked by corrupted test files (not transpiler issue) ⚠️
+**Real-World Projects (Phase 30-01)**: 0% success rate (blocked by STL dependencies) ❌
+
+**Critical Discovery**: Header file skipping was successfully fixed, but **STL support** emerged as the new #1 blocker preventing real-world usage.
+
+**Summary**: `.planning/phases/34-header-file-skipping/34-06-SUMMARY.md`
+**Full Validation**: `.planning/VALIDATION_SUMMARY.md`
+
+### Problem Statement (Original)
 CppToCVisitor systematically skips ALL declarations from included headers using `isInMainFile()` checks at 12 locations. This architectural decision breaks real-world C++23 code which properly separates declarations (headers) from implementations (.cpp files).
 
 **Impact**:
@@ -1193,35 +1212,102 @@ CppToCVisitor systematically skips ALL declarations from included headers using 
 
 ---
 
-## Phase 35: Upgrade Clang and Activate Phase 4 (v2.6.0) ⏳ PLANNED
+## Phase 35: Post-Phase 34 Foundation & STL Strategy (v2.6.0) ⏳ PLANNED
 
-**Goal**: Upgrade to Clang 18+ and activate deducing this translator
+**Goal**: Define transpiler scope, establish validation baseline, fix immediate blockers
 
-**Status**: **HIGH** - Phase 4 completely non-functional (10/12 tests failing)
+**Status**: **CRITICAL** - Required before any STL or real-world work
 
-**Estimated Effort**: 1-2 days
+**Estimated Effort**: 1-2 weeks
 
-### Problem Statement
-Phase 4 (Deducing This / Explicit Object Parameters) implementation is complete with comprehensive infrastructure, but blocked by missing `isExplicitObjectMemberFunction()` API in Clang 17. This API was introduced in Clang 18+.
+### Context (Post-Phase 34 Validation Findings)
+Phase 34 successfully fixed header file skipping (99% unit test pass rate), but comprehensive validation revealed:
 
-**Current State**:
-- ✅ DeducingThisTranslator class implemented (326 lines)
-- ✅ 12 comprehensive tests written
-- ✅ Integration with CppToCVisitor complete
-- ❌ API unavailable in current Clang 17
-- ⚠️ 2/12 tests passing (logic-only, no AST dependency)
-- ❌ 10/12 tests failing (require Clang 18+ API)
+**✅ What Works**:
+- Multi-file transpilation (Phase 34)
+- 99% unit test pass rate (1606/1616 tests)
+- C++23 feature support (Phases 1-3, 5-6 working)
+- Translation infrastructure complete
 
-### Deliverables
+**❌ What Doesn't Work (Blockers)**:
+1. **STL Support** - ALL real-world projects require std::string, std::vector, std::map (0% real-world success rate)
+2. **Clang 17 API limitation** - 10 DeducingThisTranslatorTest failures (Phase 4 broken)
+3. **Phase 33 test suite** - Corrupted test files (not transpiler fault)
+4. **No simple validation** - Cannot prove transpiler works without complex STL dependencies
+
+**Strategic Decision Needed**: Full STL implementation (6-12 months) vs. subset (2-3 months) vs. "Transpilable C++" subset (document limitations, focus on what works)
+
+### Phase 35-01: STL Support Strategy & "Transpilable C++" Definition (3-5 days)
+
+**Goal**: Define transpiler scope and set realistic user expectations
+
+**Deliverables**:
+- ✅ Strategic decision: Full STL vs. subset vs. limitations-first approach
+- ✅ "Transpilable C++" subset definition (which C++ features work WITHOUT STL)
+- ✅ `docs/TRANSPILABLE_CPP.md` - Official feature support matrix
+- ✅ `docs/STL_ROADMAP.md` - Long-term STL implementation plan (if subset chosen)
+- ✅ Updated `README.md` with honest current capabilities
+- ✅ Phase 30-01 alternative approaches (if STL deferred)
+
+**Research Questions**:
+1. What % of real-world C++ code can work without STL?
+2. Which STL types are most critical? (std::string, std::vector, std::map, ...)
+3. Can we provide C equivalents? (char*, dynamic arrays, custom maps)
+4. What's the ROI of STL subset vs. full implementation?
+5. Do we need STL for C++23 feature validation?
+
+**Approaches**:
+- **Option A: Full STL** (6-12 months) - std::string, std::vector, std::map, std::unordered_map, smart pointers, etc.
+- **Option B: Critical Subset** (2-3 months) - std::string + std::vector only (covers 80% of use cases)
+- **Option C: Limitations-First** (immediate) - Document what works, provide workarounds, defer STL to v4.0
+
+**Success Criteria**:
+- ✅ Strategic decision made with clear rationale
+- ✅ User-facing documentation complete
+- ✅ Realistic expectations set (avoid "complete product" claims without STL)
+- ✅ Clear roadmap for next steps
+
+### Phase 35-02: Simple Real-World Validation Tests (2-3 days)
+
+**Goal**: Prove Phase 34 works with STL-free real-world code
+
+**Context**: Phase 33 suite has corrupted files. Phase 30-01 failed due to STL. Need clean validation that Phase 34 multi-file transpilation actually works.
+
+**Deliverables**:
+- ✅ 5+ simple real-world test projects (header + impl + main, NO STL)
+- ✅ Categories: Math library, custom containers, state machines, parsers (simple), game logic
+- ✅ All projects transpile, compile, and execute correctly
+- ✅ Documented in `tests/real-world/simple-validation/README.md`
+- ✅ Baseline metrics: X/5 projects working (target: 4/5 = 80%)
+
+**Example Test Projects**:
+1. **Math Library**: Vector3D, Matrix operations (no std::vector, pure C arrays)
+2. **Custom Container**: Simple linked list, binary tree (no STL)
+3. **State Machine**: Game state transitions, event handlers
+4. **Simple Parser**: Tokenizer, expression evaluator (no std::string)
+5. **Game Logic**: Player, Enemy, collision detection
+
+**Success Criteria**:
+- ✅ At least 4/5 projects transpile successfully
+- ✅ Generated C code compiles with gcc/clang
+- ✅ Binary executes correctly (behavior matches C++)
+- ✅ Proves Phase 34 multi-file transpilation works for STL-free code
+- ✅ Establishes realistic baseline for user expectations
+
+### Phase 35-03: Clang 18 Upgrade (1 day)
+
+**Goal**: Fix 10 DeducingThisTranslatorTest failures (Clang 17 → Clang 18 API)
+
+**Context**: Phase 4 (Deducing This) is fully implemented but 10/12 tests fail due to missing `isExplicitObjectMemberFunction()` API in Clang 17. This API exists in Clang 18+.
+
+**Deliverables**:
 - ✅ LLVM/Clang upgraded to version 18+
-- ✅ Phase 4 tests rerun and passing (expect 12/12)
-- ✅ CMake configuration updated if needed
-- ✅ Documentation updated with Clang version requirement
-- ✅ CI/CD updated to use Clang 18+
+- ✅ CMake configuration updated
+- ✅ All 12 DeducingThisTranslatorTest tests passing (100%)
+- ✅ No regressions in other tests (verify 1606/1616 still pass)
+- ✅ Documentation updated with Clang 18 requirement
 
-### Technical Approach
-
-**Phase 35-01: Clang Upgrade** (1 day)
+**Technical Approach**:
 ```bash
 # macOS (Homebrew)
 brew upgrade llvm
@@ -1231,149 +1317,133 @@ clang --version  # Should show 18.0.0 or higher
 
 # Update CMakeLists.txt if needed
 find_package(LLVM 18 REQUIRED)
-```
 
-**Phase 35-02: Rerun Phase 4 Tests** (few hours)
-```bash
+# Rebuild and test
 cd build_working
+cmake ..
+make -j$(sysctl -n hw.ncpu)
 ctest -R DeducingThisTranslatorTest --verbose
 ```
 
-Expected result: **12/12 tests passing** (infrastructure auto-activates)
+**Expected Result**: **12/12 tests passing** (infrastructure auto-activates)
 
-### Key Challenges
-- System Clang vs Homebrew Clang path conflicts
-- CMake finding correct LLVM installation
-- Potential ABI compatibility issues
-
-### Verification Criteria
+**Success Criteria**:
 - ✅ Clang version 18+ confirmed
 - ✅ All 12 DeducingThisTranslatorTest tests passing (100%)
+- ✅ Test pass rate improves: 1606/1616 (99%) → 1616/1616 (100%)
 - ✅ No regressions in other tests
-- ✅ Build system finds correct Clang automatically
 
-### Dependencies
-- **Requires Phase 34 complete** (header skipping fixed)
-- Otherwise Phase 4 features won't be testable in real code
+### Phase 35-04: Phase 33 Test Suite Fix (1-2 days)
 
-### Expected Impact
-- **Activates Phase 4 (Deducing This)** - major C++23 feature
-- Improves C++23 coverage: 10-12% → 15-18%
-- Validates infrastructure investment
+**Goal**: Repair or replace corrupted Phase 33 integration tests
 
-**Parallel Execution**: ❌ Sequential after Phase 34
+**Context**: Phase 33 validation suite (130 GCC C++23 tests) has corrupted test files. All tests fail to build C++ originals (not transpiler issue).
 
----
+**Approaches**:
+- **Option A: Repair** - Fix corrupted files, restore from GCC testsuite source
+- **Option B: Replace** - Create fresh C++23 integration tests based on cppreference.com examples
+- **Option C: Defer** - Use Phase 35-02 simple validation instead, defer Phase 33 to Phase 41
 
-## Phase 36: Add Integration Tests (v2.7.0) ⏳ PLANNED
+**Deliverables** (if Option A or B chosen):
+- ✅ 130 working C++23 integration tests
+- ✅ A/B testing framework operational
+- ✅ Baseline metrics established
+- ✅ Integration with CMake/CTest
 
-**Goal**: Create standalone integration tests validating Phase 1-6 features in real C++23 code
+**Success Criteria**:
+- ✅ C++ originals compile and run (verify test suite is valid)
+- ✅ Baseline transpilation metrics established
+- ✅ Clear pass/fail data for C++23 support
 
-**Status**: **HIGH** - Zero integration testing currently (0/130 Phase 33 pass rate)
+### Overall Phase 35 Dependencies
+- **Requires Phase 34 complete** ✅ (multi-file transpilation working)
 
-**Estimated Effort**: 2-3 days
+### Overall Phase 35 Expected Impact
+- **Clear scope definition** - Users know what's supported vs. planned
+- **Validation baseline** - Prove Phase 34 works for STL-free code
+- **100% unit test pass rate** - Fix Clang 17 API blocker (10 tests)
+- **Strategic clarity** - STL roadmap or deferral decision made
+- **Foundation ready** - Can proceed to Phase 36+ with confidence
 
-### Problem Statement
-Unit tests pass (70/80, 87.5%) but integration tests fail (0/130, 0%). This gap reveals:
-- Features may have edge cases not caught by unit tests
-- Phase 1-6 never tested in real C++23 code contexts
-- Template interaction untested
-- False confidence from unit test success
-
-### Deliverables
-- ✅ `tests/integration/cpp23/` directory with single-file tests
-- ✅ 30+ integration tests covering Phase 1-6 features
-- ✅ Template interaction tests (C++23 features + templates)
-- ✅ Combined feature tests (multidim subscript + static operators, etc.)
-- ✅ Real-world usage patterns
-- ✅ CMakeLists.txt for integration test suite
-
-### Technical Approach
-
-**Phase 36-01: Single-File Integration Tests** (1-2 days)
-Create `tests/integration/cpp23/*.cpp` with all code inline (bypasses header skipping):
-
-```cpp
-// multidim_subscript_integration.cpp
-template<typename T>
-class Matrix {  // All code in one file
-    T& operator[](int i, int j) { /* ... */ }
-};
-
-int main() {
-    Matrix<int> m;
-    m[0, 1] = 42;  // C++23 multidim subscript
-    return 0;
-}
-```
-
-Categories:
-- Multidim subscript (6 tests)
-- Static operators (4 tests)
-- [[assume]] attribute (4 tests)
-- Deducing this (6 tests)
-- if consteval (4 tests)
-- auto(x) decay-copy (4 tests)
-- Constexpr enhancements (4 tests)
-
-**Phase 36-02: Feature Interaction Tests** (1 day)
-Test combinations:
-- Multidim subscript on template class
-- Static operator in template
-- auto(x) with template parameter
-- [[assume]] in template function
-- if consteval in constexpr template
-- Deducing this with virtual methods
-
-### Verification Criteria
-- ✅ At least 25/30 integration tests passing (83%+)
-- ✅ Template interaction tests validate monomorphization
-- ✅ Combined features work together
-- ✅ No silent failures (errors reported clearly)
-
-### Dependencies
-- **Requires Phase 34 complete** (for multi-file tests later)
-- **Requires Phase 35 complete** (for Phase 4 deducing this tests)
-
-### Expected Impact
-- Validates Phase 1-6 implementation quality
-- Discovers edge cases missed by unit tests
-- Provides regression protection
-- Builds confidence in C++23 support
-
-**Parallel Execution**: ❌ Sequential after Phases 34-35
+**Parallel Execution**: ✅ Plans 35-01 and 35-02 can run in parallel. Plan 35-03 independent. Plan 35-04 can run in parallel with others.
 
 ---
 
-## Phase 37: Implement CTAD Inherited Constructors (v2.8.0) ⏳ PLANNED
+## Phase 36: STL Subset Implementation (v2.7.0-v2.9.0) ⏳ PLANNED
 
-**Goal**: Complete Feature #8 from original C++23 plan (P2582R1)
+**Goal**: Implement critical STL types to enable real-world C++ transpilation
 
-**Status**: **MEDIUM** - Unimplemented feature from Phase 1-6 plan
+**Status**: **CRITICAL** - Blocks all real-world usage (0% real-world success without STL)
 
-**Estimated Effort**: 1-2 weeks
+**Estimated Effort**: 2-4 months (depending on Phase 35-01 decision)
 
-### Problem Statement
-CTAD (Class Template Argument Deduction) with Inherited Constructors was Feature #8 in original plan but never implemented. Phase 33 has 10 tests waiting for this feature.
+**Note**: This phase definition depends on Phase 35-01 strategic decision. If "Limitations-First" approach chosen, this phase may be deferred to v4.0 roadmap.
 
-**Current State**:
-- ❌ No CTADInheritedTranslator class
-- ❌ No source files
-- ❌ No tests
-- ⚠️ Basic CTAD works (earlier implementation)
-- ❌ Inherited constructor cases fail
+### Conditional Phase Definition
 
-### Deliverables
+**IF Phase 35-01 chooses "Critical Subset" approach**:
+
+### Phase 36-01: std::string Implementation (v2.7.0) - 3-4 weeks
+- ✅ String class with dynamic allocation
+- ✅ Constructor overloads (default, C-string, copy, move)
+- ✅ Basic operations (append, substr, find, replace)
+- ✅ Iterators (begin, end)
+- ✅ Memory management (RAII, copy-on-write optional)
+- ✅ C interop (c_str(), data())
+- ✅ Comprehensive test suite (50+ tests)
+
+### Phase 36-02: std::vector Implementation (v2.8.0) - 3-4 weeks
+- ✅ Dynamic array with capacity management
+- ✅ Constructor overloads (default, size, initializer list)
+- ✅ Element access ([], at, front, back)
+- ✅ Modifiers (push_back, pop_back, insert, erase, clear)
+- ✅ Iterators (begin, end, reverse iterators)
+- ✅ Memory management (reallocation strategy)
+- ✅ Comprehensive test suite (50+ tests)
+
+### Phase 36-03: Real-World Validation with STL Subset (v2.9.0) - 1 week
+- ✅ Re-transpile Phase 30-01 real-world projects
+- ✅ Measure success rate improvement (target: 60-80%)
+- ✅ Document remaining blockers
+- ✅ Update TRANSPILABLE_CPP.md with STL subset support
+
+**Expected Impact**: 0% → 60-80% real-world project success rate
+
+**IF Phase 35-01 chooses "Limitations-First" approach**:
+
+### Phase 36: Integration Tests for STL-Free C++ (v2.7.0) - 1 week
+- ✅ Expand Phase 35-02 simple validation (5 → 20 projects)
+- ✅ Cover all C++23 features without STL
+- ✅ Establish clear "Transpilable C++" baseline
+- ✅ Defer STL to v4.0 roadmap
+
+**Expected Impact**: Clear scope boundaries, realistic user expectations
+
+---
+
+## Phase 37: C++23 Feature Completion (v2.10.0) ⏳ PLANNED
+
+**Goal**: Complete remaining C++23 features and enhance existing ones
+
+**Status**: **HIGH** - Gap filling and quality improvements
+
+**Estimated Effort**: 3-4 weeks
+
+### Phase 37-01: CTAD Inherited Constructors (P2582R1) - 1-2 weeks
+
+**Goal**: Complete Feature #8 from original C++23 plan
+
+**Context**: Feature #8 was planned but never implemented. Required for Phase 33 CTAD category (10 tests).
+
+**Deliverables**:
 - ✅ `CTADInheritedTranslator` class (header + implementation)
 - ✅ Constructor inheritance analysis
 - ✅ CTAD deduction guide generation for inherited ctors
 - ✅ Test suite (12+ tests)
 - ✅ Integration with CppToCVisitor
-- ✅ Documentation
+- ✅ 8/10 Phase 33 CTAD tests passing (80%+)
 
-### Technical Approach
-
-**Phase 37-01: Infrastructure** (3-4 days)
+**Technical Approach**:
 ```cpp
 // include/CTADInheritedTranslator.h
 class CTADInheritedTranslator {
@@ -1382,7 +1452,7 @@ public:
         const CXXConstructorDecl *CD,
         const CXXRecordDecl *Derived
     );
-    
+
     std::string generateDeductionGuide(
         const CXXConstructorDecl *BaseCtor,
         const CXXRecordDecl *Derived
@@ -1390,55 +1460,13 @@ public:
 };
 ```
 
-**Phase 37-02: Test Suite** (2-3 days)
-Create `tests/CTADInheritedTranslatorTest.cpp` with 12+ tests:
-- Simple inheritance CTAD
-- Multiple inheritance CTAD
-- Virtual inheritance CTAD
-- Template base class CTAD
-- Constructor forwarding
-- Deduction guide edge cases
-
-**Phase 37-03: Integration** (2-3 days)
-- Add to CppToCVisitor
-- Hook into template instantiation
-- Test with Phase 33 CTAD category (10 tests)
-
-### Key Challenges
-- Deduction guide synthesis for inherited constructors
-- Multiple inheritance scenarios
-- Template parameter forwarding
-- Virtual base class handling
-
-### Verification Criteria
-- ✅ 12/12 unit tests passing
-- ✅ 8/10 Phase 33 CTAD tests passing (80%+)
-- ✅ Integration with existing CTAD infrastructure
-- ✅ No regressions in basic CTAD
-
-### Dependencies
-- **Requires Phase 34 complete** (multi-file transpilation)
-- **Synergy with Phase 11** (Template Integration from Workstream B)
-
-### Expected Impact
-- Completes original 8-feature C++23 plan
-- Improves C++23 coverage: 15-18% → 20-22%
-- Satisfies Phase 33 CTAD category
-
-**Parallel Execution**: ❌ Sequential after Phase 36
-
----
-
-## Phase 38: Enhanced Constexpr Evaluation (v2.9.0) ⏳ PLANNED
+### Phase 37-02: Enhanced Constexpr Evaluation - 2-3 weeks
 
 **Goal**: Expand compile-time evaluation beyond simple literals
 
-**Status**: **MEDIUM** - Phase 6 only handles simple cases
+**Context**: Phase 6 constexpr support limited to simple cases. Need loops, control flow, multiple statements.
 
-**Estimated Effort**: 2-3 weeks
-
-### Problem Statement
-Phase 6 constexpr support is limited to simple cases:
+**Current Limitations**:
 - ✅ Return literal: `constexpr int f() { return 42; }`
 - ✅ Return expression: `constexpr int f(int x) { return x + 1; }`
 - ❌ Loops: `constexpr int fib(int n) { for... }`
@@ -1446,25 +1474,21 @@ Phase 6 constexpr support is limited to simple cases:
 - ❌ Multiple statements
 - ❌ Recursive functions
 
-**Current Fallback**: Runtime evaluation with silent degradation
-
-### Deliverables
+**Deliverables**:
 - ✅ Extended ConstexprEnhancementHandler
 - ✅ APValue evaluator integration (Clang's compile-time evaluator)
-- ✅ Loop evaluation support
-- ✅ Control flow evaluation (if/else/switch)
+- ✅ Loop evaluation support (for, while, do-while)
+- ✅ Control flow evaluation (if, else, switch, ternary)
 - ✅ Multiple statement support
 - ✅ Recursive constexpr function support
 - ✅ Test suite expansion (20+ tests)
 - ✅ Warning system for fallback cases
+- ✅ 15/19 Phase 33 constexpr-enhancements tests passing (80%+)
 
-### Technical Approach
-
-**Phase 38-01: APValue Integration** (1 week)
-Leverage Clang's existing APValue evaluator:
+**Technical Approach**:
 ```cpp
 // Expand ConstexprEnhancementHandler
-bool evaluateConstexpr(const FunctionDecl *FD, 
+bool evaluateConstexpr(const FunctionDecl *FD,
                        APValue &Result) {
     Expr::EvalResult ER;
     if (FD->getBody()->EvaluateAsRValue(ER, Context)) {
@@ -1475,186 +1499,237 @@ bool evaluateConstexpr(const FunctionDecl *FD,
 }
 ```
 
-**Phase 38-02: Pattern Expansion** (1 week)
-- Loops (for, while, do-while)
-- Control flow (if, else, switch, ternary)
-- Multiple statements (sequencing)
-- Local variables
+### Phase 37-03: C++23 Feature Gap Filling - 1 week
 
-**Phase 38-03: Warning System** (few days)
-- Emit warning when fallback to runtime
-- Document unsupported patterns
-- Provide workarounds
+**Goal**: Address remaining gaps from Phase 33 validation
 
-### Key Challenges
-- Clang APValue evaluator integration complexity
-- Recursive function evaluation (stack depth limits)
-- Memory allocation during constexpr (not allowed in C)
-- UB detection in constexpr context
+**Context**: Phase 33 analysis identified 25% of failures due to missing feature visitors.
 
-### Verification Criteria
-- ✅ 15/19 Phase 33 constexpr-enhancements tests passing (80%+)
-- ✅ Loops and control flow evaluate at compile-time
-- ✅ Warnings emitted for fallback cases
-- ✅ No performance regression
+**Deliverables**:
+- ✅ Remaining attribute support ([[nodiscard]], [[deprecated]])
+- ✅ Range-based for loop enhancements (if any gaps)
+- ✅ Auto deduction edge cases
+- ✅ Any other gaps identified in Phase 35-04
 
-### Dependencies
-- None (independent enhancement)
-
-### Expected Impact
-- Improves C++23 coverage: 20-22% → 25-30%
-- Better semantic fidelity (compile-time → compile-time)
-- Performance improvement (fewer runtime evaluations)
-
-**Parallel Execution**: ✅ Can run with Phase 39 (documentation)
+**Expected Impact**:
+- Completes C++23 feature set
+- Improves Phase 33 pass rate (if Phase 35-04 fixes suite)
+- Achieves comprehensive C++23 support
 
 ---
 
-## Phase 39: Update User Documentation (v3.0.0-rc) ⏳ PLANNED
+## Phase 38: Integration Tests & Quality Assurance (v3.0.0-rc) ⏳ PLANNED
 
-**Goal**: Provide comprehensive user-facing documentation for C++23 support
+**Goal**: Comprehensive integration testing and quality assurance
 
-**Status**: **MEDIUM** - Documentation lags implementation
+**Status**: **HIGH** - Validate all Phase 1-37 work
 
-**Estimated Effort**: 1-2 days
+**Estimated Effort**: 1-2 weeks
 
-### Problem Statement
-Gaps analysis identified 5 documentation gaps:
-1. User-facing feature support matrix missing
-2. Limitations not user-accessible (buried in code comments)
-3. Migration guide missing (no practical C++23 → C advice)
-4. Warning messages undocumented (users don't know meanings)
-5. FEATURE-MATRIX.md outdated (shows 0% despite implementations)
+### Phase 38-01: Integration Test Suite - 1 week
 
-### Deliverables
-- ✅ Updated `tests/real-world/cpp23-validation/docs/FEATURE-MATRIX.md`
-- ✅ New `docs/CPP23_LIMITATIONS.md`
-- ✅ New `docs/CPP23_MIGRATION_GUIDE.md`
-- ✅ New `docs/WARNING_REFERENCE.md`
-- ✅ Updated `README.md` with C++23 support section
-- ✅ Updated website `features.astro` (if applicable)
+**Goal**: Create comprehensive single-file integration tests
 
-### Technical Approach
+**Context**: Unit tests pass but need integration validation combining features.
 
-**Phase 39-01: Feature Matrix Update** (2-3 hours)
-Update FEATURE-MATRIX.md with actual coverage:
+**Deliverables**:
+- ✅ `tests/integration/cpp23/` directory
+- ✅ 30+ single-file integration tests covering Phase 1-6 features
+- ✅ Template interaction tests (C++23 features + templates)
+- ✅ Combined feature tests (multidim subscript + static operators, etc.)
+- ✅ Real-world usage patterns
+
+**Categories**:
+- Multidim subscript (6 tests)
+- Static operators (4 tests)
+- [[assume]] attribute (4 tests)
+- Deducing this (6 tests)
+- if consteval (4 tests)
+- auto(x) decay-copy (4 tests)
+- Constexpr enhancements (4 tests)
+
+**Success Criteria**:
+- ✅ At least 25/30 integration tests passing (83%+)
+- ✅ Template interaction validated
+- ✅ Combined features work together
+
+### Phase 38-02: Performance Optimization - 3-5 days
+
+**Goal**: Optimize transpiler performance for large codebases
+
+**Deliverables**:
+- ✅ FileOriginTracker optimization (already O(1), verify)
+- ✅ Translation map optimization (reduce lookups)
+- ✅ Memory usage profiling and optimization
+- ✅ Parallel processing where applicable
+- ✅ Benchmark suite
+
+**Success Criteria**:
+- ✅ No performance regressions vs. Phase 34
+- ✅ Large file transpilation (1000+ LOC) acceptable
+- ✅ Memory usage reasonable
+
+### Phase 38-03: Code Quality & Refactoring - 3-5 days
+
+**Goal**: Clean up technical debt, improve maintainability
+
+**Deliverables**:
+- ✅ Remove debug output statements (Phase 34-06 artifacts)
+- ✅ Comprehensive inline documentation
+- ✅ Refactor duplicated code (DRY violations)
+- ✅ Update architecture docs
+- ✅ Code review and cleanup
+
+**Success Criteria**:
+- ✅ Clean, maintainable codebase
+- ✅ All tests still pass (no regressions)
+- ✅ Documentation current
+
+---
+
+## Phase 39: User Documentation & Release Preparation (v3.0.0-rc) ⏳ PLANNED
+
+**Goal**: Complete user-facing documentation and prepare for v3.0.0 release
+
+**Status**: **HIGH** - Required for production release
+
+**Estimated Effort**: 3-5 days
+
+### Phase 39-01: Comprehensive Documentation - 2-3 days
+
+**Deliverables**:
+- ✅ `docs/TRANSPILABLE_CPP.md` - Official supported features (from Phase 35-01)
+- ✅ `docs/STL_ROADMAP.md` - STL implementation plan (if applicable)
+- ✅ `docs/CPP23_LIMITATIONS.md` - Known limitations and workarounds
+- ✅ `docs/MIGRATION_GUIDE.md` - Practical C++ → C transpilation guide
+- ✅ `docs/WARNING_REFERENCE.md` - All warning messages explained
+- ✅ Updated `README.md` with honest capabilities
+- ✅ Updated `FEATURE-MATRIX.md` with actual metrics
+
+**Feature Matrix Example**:
 ```markdown
-| Feature | Unit Tests | Integration | Phase 33 | Status |
-|---------|-----------|-------------|----------|--------|
-| Multidim subscript | 12/12 (100%) | 6/6 (100%) | 14/16 (87%) | ✅ Complete |
-| Static operators | 10/10 (100%) | 4/4 (100%) | 7/8 (87%) | ✅ Complete |
-| [[assume]] | 12/12 (100%) | 4/4 (100%) | 11/13 (85%) | ✅ Complete |
-| Deducing this | 12/12 (100%) | 6/6 (100%) | 8/10 (80%) | ✅ Complete (Clang 18+) |
-| if consteval | 12/12 (100%) | 4/4 (100%) | 9/13 (69%) | ⚠️ Partial (runtime fallback) |
-| auto(x) | 12/12 (100%) | 4/4 (100%) | 10/22 (45%) | ⚠️ Partial (simple cases) |
-| Constexpr | 10/10 (100%) | 4/4 (100%) | 7/19 (37%) | ⚠️ Partial (enhanced in Phase 38) |
-| CTAD inherited | 12/12 (100%) | 4/4 (100%) | 8/10 (80%) | ✅ Complete |
+| Feature | Unit Tests | Integration | Real-World | Status |
+|---------|-----------|-------------|------------|--------|
+| Multi-file transpilation | 100% | 100% | 80% (STL-free) | ✅ Complete |
+| Multidim subscript | 100% | 100% | 100% | ✅ Complete |
+| Static operators | 100% | 100% | 100% | ✅ Complete |
+| [[assume]] | 100% | 100% | 100% | ✅ Complete |
+| Deducing this | 100% | 100% | 100% | ✅ Complete (Clang 18+) |
+| if consteval | 100% | 100% | 69% | ⚠️ Partial |
+| auto(x) | 100% | 100% | 45% | ⚠️ Partial |
+| Constexpr enhanced | 100% | 100% | 80% | ✅ Complete |
+| CTAD inherited | 100% | 100% | 80% | ✅ Complete |
+| STL support | N/A | N/A | 0% | ❌ Not supported (v4.0) |
 ```
 
-**Phase 39-02: Limitations Guide** (2-3 hours)
-Create CPP23_LIMITATIONS.md documenting:
-- Architectural impossibilities (concepts, modules, ranges)
-- Runtime fallback features (constexpr, consteval)
-- Known edge cases
-- Workarounds and alternatives
+### Phase 39-02: Release Notes & Changelog - 1 day
 
-**Phase 39-03: Migration Guide** (2-3 hours)
-Create CPP23_MIGRATION_GUIDE.md with practical advice:
-- Which C++23 features transpile well
-- Which require code changes
-- Common patterns and their C equivalents
-- Performance considerations
+**Deliverables**:
+- ✅ `CHANGELOG.md` - v2.5.0 → v3.0.0 changes
+- ✅ `RELEASE_NOTES_v3.0.0.md` - User-facing release notes
+- ✅ Migration guide for v2.x → v3.0.0 users
+- ✅ Breaking changes documentation (if any)
 
-**Phase 39-04: Warning Reference** (1-2 hours)
-Document all warning messages with:
-- What triggered the warning
-- What it means
-- How to address it
-- Whether it's safe to ignore
+### Phase 39-03: CI/CD & Build Verification - 1-2 days
 
-### Verification Criteria
-- ✅ All 5 documentation gaps addressed
-- ✅ User-facing docs complete and accurate
-- ✅ Examples provided for all features
-- ✅ Migration guide tested on real code
+**Deliverables**:
+- ✅ GitHub Actions workflow for continuous testing
+- ✅ Automated build verification on commit
+- ✅ Test result reporting
+- ✅ Release automation
 
-### Dependencies
-- **Requires Phases 34-38 complete** (feature set finalized)
-
-### Expected Impact
-- Users understand what's supported
-- Realistic expectations set
-- Migration path clear
-- Support burden reduced (self-service docs)
-
-**Parallel Execution**: ✅ Can run with Phase 38 (independent)
+**Success Criteria**:
+- ✅ All documentation complete and accurate
+- ✅ Release notes capture all Phase 34-38 changes
+- ✅ CI/CD pipeline operational
+- ✅ Ready for v3.0.0 release
 
 ---
 
-## Phase 40: Rerun Phase 33 Validation (v3.0.0) ⏳ PLANNED
+## Phase 40: Final Validation & v3.0.0 Release ⏳ PLANNED
 
-**Goal**: Execute full Phase 33 validation suite and generate final compliance report
+**Goal**: Execute comprehensive validation and release v3.0.0
 
-**Status**: **FINAL VALIDATION** - Measures success of Phases 34-39
+**Status**: **CRITICAL** - Final gate before release
 
-**Estimated Effort**: 1 day
+**Estimated Effort**: 2-3 days
 
-### Problem Statement
-Phase 33 established 0.0% baseline. After fixing all gaps (Phases 34-39), we need final metrics to measure success and declare v3.0.0 release.
+### Phase 40-01: Comprehensive Unit Test Validation - 1 day
 
-**Expected Results** (conservative):
-- Overall pass rate: **60-70%** (from 0%)
-- Multidim subscript: 14/16 (87%)
-- Static operators: 7/8 (87%)
-- [[assume]]: 11/13 (85%)
-- Deducing this: 8/10 (80% - with Clang 18)
-- if consteval: 9/13 (69% - runtime fallback acceptable)
-- auto(x): 10/22 (45% - simple cases only)
-- Constexpr: 12/19 (63% - after Phase 38 enhancements)
-- CTAD inherited: 8/10 (80%)
-- Attributes: 8/13 (60%)
-- Miscellaneous: 10/19 (50%)
-- Ranges: 0/10 (0% - architectural blocker, documented)
+**Goal**: Verify 100% unit test pass rate and zero regressions
 
-### Deliverables
-- ✅ Full Phase 33 test suite execution
-- ✅ Updated baseline-metrics.json
-- ✅ Updated compliance-report.html
-- ✅ Comparison report (baseline vs final)
-- ✅ v3.0.0 release notes
-- ✅ CHANGELOG.md update
+**Deliverables**:
+- ✅ Run full unit test suite via ctest
+- ✅ Verify: 1616/1616 tests passing (100%)
+- ✅ No regressions from Phase 34 baseline (1606 tests)
+- ✅ All 12 DeducingThisTranslatorTest tests passing (Phase 35-03 Clang 18 upgrade)
 
-### Technical Approach
-
-**Phase 40-01: Execute Test Suite** (3-4 hours)
+**Commands**:
 ```bash
-cd tests/real-world/cpp23-validation/ab-test
-./run-tests.sh --all --output results/final-metrics.json
+cd build_working
+cmake --build . -j$(sysctl -n hw.ncpu)
+ctest --output-on-failure --parallel $(sysctl -n hw.ncpu)
 ```
 
-**Phase 40-02: Generate Reports** (2-3 hours)
+**Success Criteria**:
+- ✅ **100% unit test pass rate (1616/1616)** ← NON-NEGOTIABLE
+- ✅ Zero failures, zero crashes, zero segfaults
+- ✅ All Phase 1-6 features validated
+
+### Phase 40-02: Integration Test Validation - 1 day
+
+**Goal**: Validate Phase 38-01 integration tests and Phase 35-02 simple validation
+
+**Deliverables**:
+- ✅ Phase 38-01: 25/30 integration tests passing (83%+)
+- ✅ Phase 35-02: 4/5 simple real-world projects passing (80%+)
+- ✅ Phase 33 suite: Results or documented deferral (depends on Phase 35-04 decision)
+
+**Success Criteria**:
+- ✅ Integration tests prove feature combinations work
+- ✅ Simple validation proves multi-file transpilation works
+- ✅ Clear documentation of what works vs. what's blocked by STL
+
+### Phase 40-03: Release Decision & v3.0.0 Tag - 4 hours
+
+**Goal**: Make data-driven release decision and tag v3.0.0
+
+**Deliverables**:
+- ✅ v3.0.0 release notes (based on Phase 39-02)
+- ✅ Final CHANGELOG.md entry
+- ✅ Git tag: `v3.0.0`
+- ✅ GitHub release with binaries (if applicable)
+
+**Commands**:
 ```bash
-python3 scripts/generate-baseline-metrics.py \
-    --input results/final-metrics.json \
-    --output results/v3.0.0-compliance-report.html \
-    --compare results/baseline-metrics.json
+# Tag release
+git tag -a v3.0.0 -m "Release v3.0.0: Multi-file transpilation + 100% unit test coverage"
+
+# Push tag
+git push origin v3.0.0
+
+# Create GitHub release
+gh release create v3.0.0 \
+    --title "v3.0.0: Production-Ready Multi-File C++23 Transpiler" \
+    --notes-file RELEASE_NOTES_v3.0.0.md \
+    build_working/cpptoc
 ```
 
-### Verification Criteria
-- ✅ Overall pass rate ≥60% (10x improvement from 0%)
-- ✅ At least 5 categories with ≥70% pass rate
-- ✅ Zero regressions (no previously passing tests now failing)
-- ✅ All metrics documented and explained
+**Success Criteria**:
+- ✅ 100% unit test pass rate achieved
+- ✅ Multi-file transpilation working for STL-free code
+- ✅ Clear documentation of supported features vs. limitations
+- ✅ v3.0.0 tagged and released
 
 ### Dependencies
-- **Requires ALL Phases 34-39 complete**
+- **Requires ALL Phases 35-39 complete**
 
 ### Expected Impact
-- **Validates Workstream E success**
-- Provides data-driven release decision
-- Demonstrates 10x improvement (0% → 60-70%)
-- Justifies v3.0.0 major version bump
-- Production-ready C++23 transpiler achieved
+- **100% unit test pass rate** (up from 99%)
+- **Multi-file transpilation operational** (Phase 34 goal achieved)
+- **Clear scope boundaries** ("Transpilable C++" subset defined)
+- **Production-ready for STL-free C++23 code**
+- **Honest, accurate documentation** (realistic expectations)
 
 **Parallel Execution**: ❌ Sequential (final validation)
 
