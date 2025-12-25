@@ -86,64 +86,82 @@ std::string MethodSignatureHelper::generateSignature(
 }
 
 std::string MethodSignatureHelper::getTypeString(QualType Type) {
-    // Phase 31-04: Check cache first for non-const types
+    // Phase 35-02 CRITICAL BUG FIX: Properly handle reference types
+    // References MUST be converted to pointers BEFORE any other processing
+
     const clang::Type* T = Type.getTypePtr();
+
+    // Phase 35-02: Check if this is a reference type FIRST (before removing qualifiers)
+    // This is CRITICAL: const T& is different from const T
+    if (const ReferenceType* RT = dyn_cast<ReferenceType>(T)) {
+        // Get the pointee type (what the reference refers to)
+        QualType PointeeType = RT->getPointeeType();
+
+        // References become pointers in C
+        // Recursively process the pointee type, then add pointer
+        return getTypeString(PointeeType) + " *";
+    }
 
     // For const types, we need to handle the qualifier separately
     const bool isConst = Type.isConstQualified();
+    const bool isVolatile = Type.isVolatileQualified();
 
-    // Check cache for the base type (without const)
-    auto it = typeStringCache.find(T);
+    // Get base type without qualifiers for caching
+    QualType BaseType = Type.getUnqualifiedType();
+    const clang::Type* BaseT = BaseType.getTypePtr();
+
+    // Check cache for the base type (without const/volatile)
+    auto it = typeStringCache.find(BaseT);
     if (it != typeStringCache.end()) {
-        // Cache hit - return cached string with const prefix if needed
-        if (isConst) {
-            return "const " + it->second;
-        }
-        return it->second;
+        // Cache hit - return cached string with qualifiers if needed
+        std::string result;
+        if (isConst) result += "const ";
+        if (isVolatile) result += "volatile ";
+        result += it->second;
+        return result;
     }
 
     // Cache miss - compute type string
     std::string baseTypeStr;
 
-    if (T->isVoidType()) {
+    if (BaseT->isVoidType()) {
         baseTypeStr = "void";
-    } else if (T->isBooleanType()) {
+    } else if (BaseT->isBooleanType()) {
         baseTypeStr = "int"; // C doesn't have bool, use int
-    } else if (T->isIntegerType()) {
-        if (T->isSignedIntegerType()) {
+    } else if (BaseT->isIntegerType()) {
+        if (BaseT->isSignedIntegerType()) {
             baseTypeStr = "int";
         } else {
             baseTypeStr = "unsigned int";
         }
-    } else if (T->isFloatingType()) {
-        if (T->isSpecificBuiltinType(BuiltinType::Float)) {
+    } else if (BaseT->isFloatingType()) {
+        if (BaseT->isSpecificBuiltinType(BuiltinType::Float)) {
             baseTypeStr = "float";
         } else {
             baseTypeStr = "double";
         }
-    } else if (T->isPointerType()) {
-        QualType pointeeType = T->getPointeeType();
+    } else if (BaseT->isPointerType()) {
+        QualType pointeeType = BaseT->getPointeeType();
         baseTypeStr = getTypeString(pointeeType) + " *";
-    } else if (T->isReferenceType()) {
-        QualType refType = T->getPointeeType();
-        baseTypeStr = getTypeString(refType) + " *"; // References become pointers in C
-    } else if (const RecordType* RT = T->getAs<RecordType>()) {
+    } else if (const RecordType* RT = BaseT->getAs<RecordType>()) {
         // Class/struct type
         RecordDecl* RD = RT->getDecl();
         baseTypeStr = "struct " + RD->getNameAsString();
     } else {
         // Fallback: use Clang's string representation
+        // Phase 35-02: This should NEVER be reached for reference types now
         baseTypeStr = Type.getAsString();
     }
 
     // Cache the base type string
-    typeStringCache[T] = baseTypeStr;
+    typeStringCache[BaseT] = baseTypeStr;
 
-    // Return with const prefix if needed
-    if (isConst) {
-        return "const " + baseTypeStr;
-    }
-    return baseTypeStr;
+    // Return with qualifiers if needed
+    std::string result;
+    if (isConst) result += "const ";
+    if (isVolatile) result += "volatile ";
+    result += baseTypeStr;
+    return result;
 }
 
 std::string MethodSignatureHelper::getMangledName(

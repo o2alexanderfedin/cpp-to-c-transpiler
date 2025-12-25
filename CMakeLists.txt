@@ -2147,6 +2147,35 @@ gtest_discover_tests(StandaloneFunctionTranslationTest
     WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
 )
 
+# Phase 35-02: Reference Translation Bug Fix Tests
+add_executable(ReferenceTranslationTest
+    tests/ReferenceTranslationTest.cpp
+    src/TemplateExtractor.cpp
+    src/TemplateMonomorphizer.cpp
+    src/TemplateInstantiationTracker.cpp
+)
+
+target_compile_definitions(ReferenceTranslationTest PRIVATE ${LLVM_DEFINITIONS})
+
+target_include_directories(ReferenceTranslationTest PRIVATE
+    ${CMAKE_SOURCE_DIR}/include
+    ${LLVM_INCLUDE_DIRS}
+    ${CLANG_INCLUDE_DIRS}
+)
+
+target_link_libraries(ReferenceTranslationTest PRIVATE cpptoc_core
+    clangTooling
+    clangFrontend
+    clangAST
+    clangBasic
+    GTest::gtest
+    GTest::gtest_main)
+
+# Register with CTest
+gtest_discover_tests(ReferenceTranslationTest
+    WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
+)
+
 # Phase 13: RTTI Integration Tests (v2.6.0)
 add_executable(RTTIIntegrationTest
     tests/RTTIIntegrationTest.cpp

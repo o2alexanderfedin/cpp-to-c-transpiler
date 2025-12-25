@@ -54,4 +54,11 @@ private:
     /// @brief Print function signature without body
     /// @param FD Function declaration
     void printFunctionSignature(clang::FunctionDecl *FD);
+
+    // Phase 35-02: Convert C++ types to C types (references -> pointers)
+    /// @brief Convert C++ QualType to C-compatible type
+    /// @param Type C++ type (may contain references)
+    /// @return C type (references converted to pointers)
+    /// CRITICAL BUG FIX: Converts C++ references (&, &&) to C pointers (*)
+    clang::QualType convertToCType(clang::QualType Type);
 };
