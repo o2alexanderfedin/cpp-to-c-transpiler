@@ -24,11 +24,9 @@ void Point_setX(struct Point *this, int x);
 void Point_setY(struct Point *this, int y);
 int Point_distanceSquared(struct Point *this);
 int main() {
-        {
-                struct Point p;
-                Point__ctor(&p, 3, 4);
-        }
-        int dist = p.distanceSquared();
+        struct Point p;
+        Point__ctor(&p, 3, 4);
+        int dist = Point_distanceSquared(&p);
         return dist == 25 ? 0 : 1;
 }
 

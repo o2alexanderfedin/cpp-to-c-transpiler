@@ -2089,7 +2089,9 @@ Stmt *CppToCVisitor::translateDeclStmt(DeclStmt *DS) {
     return nullptr;
   }
 
-  llvm::outs() << "  [Phase 34-05] Translating DeclStmt\n";
+  // Phase 34-05/34-06: Translate variable declarations
+  // Handles both class constructors and method call initializers
+  llvm::outs() << "  [Translating DeclStmt]\n";
 
   std::vector<Stmt *> statements;
 
@@ -2200,7 +2202,19 @@ Stmt *CppToCVisitor::translateDeclStmt(DeclStmt *DS) {
         return DS;
       }
     } else {
-      // Not a class type (int, float, etc.), return as-is
+      // Not a class type (int, float, etc.)
+      // Phase 34-06: Still need to translate initializer if it contains method calls
+      // Example: int dist = p.distanceSquared(); → int dist = Point_distanceSquared(&p);
+      Expr *Init = VD->getInit();
+      if (Init) {
+        Expr *TranslatedInit = translateExpr(Init);
+        if (TranslatedInit && TranslatedInit != Init) {
+          // Initializer was translated (method call, constructor, etc.)
+          VarDecl *CVar = Builder.var(VarType, VD->getName(), TranslatedInit);
+          return Builder.declStmt(CVar);
+        }
+      }
+      // No translation needed, return as-is
       return DS;
     }
   }
@@ -2333,7 +2347,24 @@ Stmt *CppToCVisitor::translateCompoundStmt(CompoundStmt *CS) {
       // Regular statement translation (includes nested CompoundStmts)
       Stmt *TranslatedStmt = translateStmt(S);
       if (TranslatedStmt) {
-        translatedStmts.push_back(TranslatedStmt);
+        // Phase 34-06: If the translated statement is a CompoundStmt returned from
+        // translateDeclStmt, flatten it by adding its children directly
+        // This fixes the scoping issue where constructor calls were wrapped in a block
+        // Example: {struct Point p; Point__ctor(&p, 3, 4);} → two separate statements
+        if (CompoundStmt *TranslatedBlock = dyn_cast<CompoundStmt>(TranslatedStmt)) {
+          // Check if this is a flattening candidate (has multiple statements)
+          // This happens when translateDeclStmt splits a constructor declaration
+          if (TranslatedBlock->size() > 1 && isa<DeclStmt>(S)) {
+            // Flatten: add children directly instead of nested block
+            for (Stmt *Child : TranslatedBlock->body()) {
+              translatedStmts.push_back(Child);
+            }
+          } else {
+            translatedStmts.push_back(TranslatedStmt);
+          }
+        } else {
+          translatedStmts.push_back(TranslatedStmt);
+        }
       }
     }
   }
