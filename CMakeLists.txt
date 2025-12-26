@@ -248,6 +248,10 @@ add_library(cpptoc_core STATIC
     # Phase 39-01a: Handler infrastructure
     src/handlers/HandlerContext.cpp
     src/handlers/FunctionHandler.cpp
+    # Phase 39-01b: Core handlers
+    src/handlers/VariableHandler.cpp
+    src/handlers/StatementHandler.cpp
+    src/handlers/ExpressionHandler.cpp
 )
 
 target_compile_definitions(cpptoc_core PRIVATE ${LLVM_DEFINITIONS})
@@ -3861,6 +3865,87 @@ target_link_libraries(FunctionHandlerTest PRIVATE
 )
 
 gtest_discover_tests(FunctionHandlerTest
+    WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
+)
+
+# ExpressionHandler unit tests
+add_executable(ExpressionHandlerTest
+    tests/unit/handlers/ExpressionHandlerTest.cpp
+)
+
+target_include_directories(ExpressionHandlerTest PRIVATE
+    ${CMAKE_SOURCE_DIR}/tests/fixtures
+    ${CMAKE_SOURCE_DIR}/include
+    ${LLVM_INCLUDE_DIRS}
+    ${CLANG_INCLUDE_DIRS}
+)
+
+target_link_libraries(ExpressionHandlerTest PRIVATE
+    test_fixtures
+    cpptoc_core
+    clangTooling
+    clangAST
+    clangBasic
+    GTest::gtest
+    GTest::gtest_main
+)
+
+gtest_discover_tests(ExpressionHandlerTest
+    WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
+)
+
+# ============================================================================
+# Phase 39-01b: VariableHandler Unit Tests
+# ============================================================================
+
+add_executable(VariableHandlerTest
+    tests/unit/handlers/VariableHandlerTest.cpp
+)
+
+target_include_directories(VariableHandlerTest PRIVATE
+    ${CMAKE_SOURCE_DIR}/tests/fixtures
+    ${CMAKE_SOURCE_DIR}/include
+    ${LLVM_INCLUDE_DIRS}
+    ${CLANG_INCLUDE_DIRS}
+)
+
+target_link_libraries(VariableHandlerTest PRIVATE
+    test_fixtures
+    cpptoc_core
+    clangTooling
+    clangAST
+    clangBasic
+    GTest::gtest
+    GTest::gtest_main
+)
+
+gtest_discover_tests(VariableHandlerTest
+    WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
+)
+
+# StatementHandler unit tests
+add_executable(StatementHandlerTest
+    tests/unit/handlers/StatementHandlerTest.cpp
+)
+
+target_include_directories(StatementHandlerTest PRIVATE
+    ${CMAKE_SOURCE_DIR}/tests/fixtures
+    ${CMAKE_SOURCE_DIR}/include
+    ${LLVM_INCLUDE_DIRS}
+    ${CLANG_INCLUDE_DIRS}
+)
+
+target_link_libraries(StatementHandlerTest PRIVATE
+    test_fixtures
+    cpptoc_core
+    clangTooling
+    clangAST
+    clangBasic
+    GTest::gtest
+    GTest::gtest_main
+)
+
+gtest_discover_tests(StatementHandlerTest
     WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
 )
 
