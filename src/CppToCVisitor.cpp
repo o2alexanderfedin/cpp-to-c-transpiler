@@ -27,12 +27,19 @@ extern bool shouldEnableRTTI();                      // Phase 13 (v2.6.0)
 // Epic #193: ACSL Integration - Constructor Implementation
 CppToCVisitor::CppToCVisitor(ASTContext &Context, CNodeBuilder &Builder,
                              cpptoc::FileOriginTracker &tracker,
-                             TranslationUnitDecl *C_TU_param)
+                             TranslationUnitDecl *C_TU_param,
+                             const std::string& currentFile)
     : Context(Context), Builder(Builder), Mangler(Context),
       fileOriginTracker(tracker),
       VirtualAnalyzer(Context), VptrInjectorInstance(Context, VirtualAnalyzer),
       MoveCtorTranslator(Context), MoveAssignTranslator(Context),
       RvalueRefParamTrans(Context), C_TranslationUnit(C_TU_param) {
+
+  // Initialize FileOriginFilter for proper file-based filtering
+  if (!currentFile.empty()) {
+    fileOriginFilter = std::make_unique<cpptoc::FileOriginFilter>(tracker, currentFile);
+    llvm::outs() << "FileOriginFilter initialized for: " << currentFile << "\n";
+  }
 
   // Initialize ACSL annotators if --generate-acsl flag is enabled
   if (shouldGenerateACSL()) {
@@ -154,6 +161,14 @@ bool CppToCVisitor::VisitEnumDecl(EnumDecl *ED) {
 
   llvm::outs() << "Translating enum: " << ED->getNameAsString() << "\n";
 
+  // Bug #37 FIX: Detect scoped enums (enum class) and preserve scoping in C
+  // In C++: enum class GameState { Menu, Playing };
+  // In C: enum { GameState__Menu, GameState__Playing };
+  bool isScoped = ED->isScoped();
+  if (isScoped) {
+    llvm::outs() << "  -> Scoped enum detected, will prefix enumerators with " << ED->getNameAsString() << "__\n";
+  }
+
   // Create C enum using CNodeBuilder
   // Note: C enums are not scoped, so we use plain enum (not enum class)
   std::vector<std::pair<llvm::StringRef, int>> enumerators;
@@ -162,9 +177,18 @@ bool CppToCVisitor::VisitEnumDecl(EnumDecl *ED) {
   for (EnumConstantDecl *ECD : ED->enumerators()) {
     // Get the constant value
     int value = ECD->getInitVal().getSExtValue();
-    enumerators.push_back({ECD->getName(), value});
 
-    llvm::outs() << "  Enumerator: " << ECD->getName() << " = " << value << "\n";
+    // Bug #37 FIX: For scoped enums, prefix enumerator name with EnumName__
+    std::string enumeratorName;
+    if (isScoped) {
+      enumeratorName = ED->getNameAsString() + "__" + ECD->getName().str();
+      llvm::outs() << "  Enumerator: " << ECD->getName() << " -> " << enumeratorName << " = " << value << "\n";
+    } else {
+      enumeratorName = ECD->getName().str();
+      llvm::outs() << "  Enumerator: " << ECD->getName() << " = " << value << "\n";
+    }
+
+    enumerators.push_back({Context.Idents.get(enumeratorName).getName(), value});
   }
 
   // Create C enum with same name
@@ -173,6 +197,20 @@ bool CppToCVisitor::VisitEnumDecl(EnumDecl *ED) {
 
   // Add to C TranslationUnit
   C_TranslationUnit->addDecl(CEnum);
+
+  // Bug #37 FIX: For scoped enums, populate enumConstantMap to translate references
+  if (isScoped) {
+    // Map C++ enum constants to C enum constants
+    auto cppEnumIt = ED->enumerator_begin();
+    auto cEnumIt = CEnum->enumerator_begin();
+    while (cppEnumIt != ED->enumerator_end() && cEnumIt != CEnum->enumerator_end()) {
+      enumConstantMap[*cppEnumIt] = *cEnumIt;
+      llvm::outs() << "    Mapped: " << (*cppEnumIt)->getName() << " (C++) -> "
+                   << (*cEnumIt)->getName() << " (C)\n";
+      ++cppEnumIt;
+      ++cEnumIt;
+    }
+  }
 
   llvm::outs() << "  -> C enum " << ED->getNameAsString() << " with "
                << enumerators.size() << " values\n";
@@ -345,8 +383,15 @@ bool CppToCVisitor::VisitCXXRecordDecl(CXXRecordDecl *D) {
 
 // Story #16: Method-to-Function Conversion
 bool CppToCVisitor::VisitCXXMethodDecl(CXXMethodDecl *MD) {
-  // Phase 34 (v2.5.0): Skip declarations from non-transpilable files
-  if (!fileOriginTracker.shouldTranspile(MD)) {
+  // Bug #43 FIX: Use FileOriginFilter for proper file-based filtering
+  // This ensures method bodies from StateMachine.cpp don't get processed when
+  // we're translating main.cpp (even though main.cpp includes StateMachine.h)
+  if (fileOriginFilter && !fileOriginFilter->shouldProcessMethod(MD)) {
+    return true;
+  }
+
+  // Fallback to old tracker if filter not initialized
+  if (!fileOriginFilter && !fileOriginTracker.shouldTranspile(MD)) {
     return true;
   }
 
@@ -396,16 +441,11 @@ bool CppToCVisitor::VisitCXXMethodDecl(CXXMethodDecl *MD) {
     return true;
   }
 
-  // Bug fix #15: Skip methods already translated to prevent redefinitions
-  // Check if this method was already processed (prevents duplicate function definitions)
-  // Note: We check the canonical declaration because the AST may contain multiple
-  // CXXMethodDecl nodes for the same method (e.g., declaration vs definition)
+  // Bug #43 FIX: FileOriginFilter ensures proper file-based filtering
+  // Do NOT check methodToCFunc here - that map is shared across files which causes issues
+  // FileOriginFilter already prevents cross-file pollution
+  // We DO need the canonical decl for later storage
   CXXMethodDecl *CanonicalMD = MD->getCanonicalDecl();
-  if (methodToCFunc.count(CanonicalMD) > 0) {
-    llvm::outs() << "  -> Already translated, skipping redefinition of "
-                 << MD->getQualifiedNameAsString() << "\n";
-    return true;
-  }
 
   // Phase 4: Handle explicit object parameters (deducing this, C++23 P0847R7)
   if (MD->isExplicitObjectMemberFunction()) {
@@ -2096,6 +2136,13 @@ Expr *CppToCVisitor::translateExpr(Expr *E) {
   if (!E)
     return nullptr;
 
+  // Bug #37: Handle ConstantExpr - unwrap and translate subexpression
+  // ConstantExpr appears in case labels: case GameState::Menu
+  // Unwrap to get the DeclRefExpr and translate it
+  if (ConstantExpr *CE = dyn_cast<ConstantExpr>(E)) {
+    return translateExpr(CE->getSubExpr());
+  }
+
   // Dispatch to specific translators based on expression type
   if (MemberExpr *ME = dyn_cast<MemberExpr>(E)) {
     return translateMemberExpr(ME);
@@ -2137,6 +2184,39 @@ Expr *CppToCVisitor::translateExpr(Expr *E) {
 
     // Get the allocated type
     QualType AllocatedType = NE->getAllocatedType();
+
+    // Bug #38 FIX: Check if this is a nested class that needs substitution
+    // E.g., "new Node()" -> "malloc(sizeof(struct LinkedList_int_Node))"
+    if (currentNestedClassMappings && AllocatedType->isRecordType()) {
+      const RecordType *RT = AllocatedType->getAs<RecordType>();
+      RecordDecl *RD = RT->getDecl();
+      std::string typeName = RD->getNameAsString();
+
+      auto it = currentNestedClassMappings->find(typeName);
+      if (it != currentNestedClassMappings->end()) {
+        // Found it! Replace with monomorphized type
+        std::string monomorphizedName = it->second;
+        llvm::outs() << "      Substituting new expression type: new " << typeName
+                     << "() -> malloc(sizeof(struct " << monomorphizedName << "))\n";
+
+        // Create the monomorphized struct type
+        IdentifierInfo &II = Context.Idents.get(monomorphizedName);
+        RecordDecl *CRecord = RecordDecl::Create(
+            Context,
+#if LLVM_VERSION_MAJOR >= 16
+            TagTypeKind::Struct,
+#else
+            TTK_Struct,
+#endif
+            Context.getTranslationUnitDecl(),
+            SourceLocation(),
+            SourceLocation(),
+            &II
+        );
+
+        AllocatedType = Context.getRecordType(CRecord);
+      }
+    }
 
     // Create malloc call: malloc(sizeof(Type))
     // 1. Create sizeof(Type) expression using UnaryExprOrTypeTraitExpr
@@ -2234,6 +2314,57 @@ Expr *CppToCVisitor::translateExpr(Expr *E) {
     return ASE;
   }
 
+  // Bug #38 FIX: Handle sizeof expressions to substitute nested class types
+  // E.g., sizeof(Node) -> sizeof(struct LinkedList_int_Node)
+  if (UnaryExprOrTypeTraitExpr *UETTE = dyn_cast<UnaryExprOrTypeTraitExpr>(E)) {
+    if (UETTE->getKind() == UETT_SizeOf && UETTE->isArgumentType()) {
+      QualType ArgType = UETTE->getArgumentType();
+
+      // Check if this is a nested class type that needs substitution
+      if (currentNestedClassMappings && ArgType->isRecordType()) {
+        const RecordType *RT = ArgType->getAs<RecordType>();
+        RecordDecl *RD = RT->getDecl();
+        std::string typeName = RD->getNameAsString();
+
+        auto it = currentNestedClassMappings->find(typeName);
+        if (it != currentNestedClassMappings->end()) {
+          // Found it! Replace with monomorphized type
+          std::string monomorphizedName = it->second;
+          llvm::outs() << "      Substituting sizeof nested class: sizeof(" << typeName
+                       << ") -> sizeof(struct " << monomorphizedName << ")\n";
+
+          // Create the monomorphized struct type
+          IdentifierInfo &II = Context.Idents.get(monomorphizedName);
+          RecordDecl *CRecord = RecordDecl::Create(
+              Context,
+#if LLVM_VERSION_MAJOR >= 16
+              TagTypeKind::Struct,
+#else
+              TTK_Struct,
+#endif
+              Context.getTranslationUnitDecl(),
+              SourceLocation(),
+              SourceLocation(),
+              &II
+          );
+
+          QualType CStructType = Context.getRecordType(CRecord);
+
+          // Create new sizeof expression with substituted type
+          return new (Context) UnaryExprOrTypeTraitExpr(
+              UETT_SizeOf,
+              Context.getTrivialTypeSourceInfo(CStructType, SourceLocation()),
+              Context.getSizeType(),
+              SourceLocation(),
+              SourceLocation()
+          );
+        }
+      }
+    }
+    // No substitution needed, return as-is
+    return UETTE;
+  }
+
   // Bug fix #8: Handle RecoveryExpr from missing system headers
   // RecoveryExpr is created when Clang can't parse something (e.g., missing <cstdio>)
   // Try to extract the underlying call expression if possible
@@ -2283,6 +2414,16 @@ Expr *CppToCVisitor::translateExpr(Expr *E) {
     return nullptr;
   }
 
+  // Bug #42: Handle ParenExpr - translate subexpression and recreate ParenExpr
+  if (ParenExpr *PE = dyn_cast<ParenExpr>(E)) {
+    Expr *SubExpr = PE->getSubExpr();
+    Expr *TranslatedSubExpr = translateExpr(SubExpr);
+    if (TranslatedSubExpr && TranslatedSubExpr != SubExpr) {
+      return new (Context) ParenExpr(SourceLocation(), SourceLocation(), TranslatedSubExpr);
+    }
+    return PE;  // Return original if subexpr unchanged
+  }
+
   // Default: return expression as-is (literals, etc.)
   return E;
 }
@@ -2291,12 +2432,25 @@ Expr *CppToCVisitor::translateExpr(Expr *E) {
 Expr *CppToCVisitor::translateDeclRefExpr(DeclRefExpr *DRE) {
   ValueDecl *D = DRE->getDecl();
 
-  // Bug #28: Replace enum constant references with integer literals to avoid C++ qualifier syntax
-  // In C++: TokenType::EndOfInput, In C: EndOfInput
-  // Solution: Replace DeclRefExpr to EnumConstantDecl with IntegerLiteral
+  // Bug #37 FIX: Translate scoped enum references to use C naming convention
+  // In C++: GameState::Menu (with NestedNameSpecifier)
+  // In C: GameState__Menu (scoped enum) or integer literal (unscoped enum)
   if (EnumConstantDecl *ECD = dyn_cast<EnumConstantDecl>(D)) {
-    llvm::APSInt Value = ECD->getInitVal();
-    return Builder.intLit(Value.getExtValue());
+    // Check if this C++ enum constant has been mapped to a C enum constant
+    auto it = enumConstantMap.find(ECD);
+    if (it != enumConstantMap.end()) {
+      // Scoped enum: use the mapped C enum constant
+      EnumConstantDecl *CECD = it->second;
+      llvm::outs() << "  Translating scoped enum ref: " << ECD->getName()
+                   << " -> " << CECD->getName() << "\n";
+
+      // Create a DeclRefExpr to the C enum constant
+      return Builder.ref(CECD);
+    } else {
+      // Bug #28: Unscoped enum - keep as integer literal for backward compatibility
+      llvm::APSInt Value = ECD->getInitVal();
+      return Builder.intLit(Value.getExtValue());
+    }
   }
 
   // Check if this is an implicit member access (field without explicit this)
@@ -2440,10 +2594,15 @@ Expr *CppToCVisitor::translateCallExpr(CallExpr *CE) {
   if (CXXMemberCallExpr *MCE = dyn_cast<CXXMemberCallExpr>(CE)) {
     CXXMethodDecl *Method = MCE->getMethodDecl();
     if (Method) {
+      // Bug #41 FIX: Use canonical method declaration for lookup
+      // Methods are stored in map using canonical decl (line 553)
+      // but were being looked up using non-canonical decl, causing mismatches
+      CXXMethodDecl *CanonicalMethod = cast<CXXMethodDecl>(Method->getCanonicalDecl());
+
       // Find the corresponding C function
       FunctionDecl *CFunc = nullptr;
-      if (methodToCFunc.find(Method) != methodToCFunc.end()) {
-        CFunc = methodToCFunc[Method];
+      if (methodToCFunc.find(CanonicalMethod) != methodToCFunc.end()) {
+        CFunc = methodToCFunc[CanonicalMethod];
       }
 
       if (CFunc) {
@@ -2566,8 +2725,10 @@ Expr *CppToCVisitor::translateCallExpr(CallExpr *CE) {
         // Add declaration to C TranslationUnit so it appears in the header
         C_TranslationUnit->addDecl(CFuncDecl);
 
-        // Also store in methodToCFunc map for future calls
-        methodToCFunc[Method] = CFuncDecl;
+        // Bug #43 FIX: Store in methodToCFunc map using canonical decl as key
+        // This ensures consistency with VisitCXXMethodDecl which also uses canonical
+        CXXMethodDecl *CanonicalMethod = cast<CXXMethodDecl>(Method->getCanonicalDecl());
+        methodToCFunc[CanonicalMethod] = CFuncDecl;
 
         // Create and return the call
         return Builder.call(CFuncDecl, args);
@@ -3016,6 +3177,60 @@ Stmt *CppToCVisitor::translateDeclStmt(DeclStmt *DS) {
     // Get the variable type
     QualType VarType = VD->getType();
     const Type *T = VarType.getTypePtr();
+
+    // Bug #38 FIX: Check if this is a pointer to a nested class that needs monomorphization
+    // E.g., "Node *newNode" -> "struct LinkedList_int_Node *newNode"
+    if (currentNestedClassMappings && T->isPointerType()) {
+      const PointerType *PT = T->getAs<PointerType>();
+      QualType PointeeType = PT->getPointeeType();
+
+      // Check if pointee is a record type (struct/class)
+      if (const RecordType *RT = PointeeType->getAs<RecordType>()) {
+        RecordDecl *RD = RT->getDecl();
+        std::string typeName = RD->getNameAsString();
+
+        // Check if this type is in our nested class mappings
+        auto it = currentNestedClassMappings->find(typeName);
+        if (it != currentNestedClassMappings->end()) {
+          // Found it! Replace with monomorphized type
+          std::string monomorphizedName = it->second;
+          llvm::outs() << "      Substituting nested class pointer: " << typeName
+                       << "* -> struct " << monomorphizedName << "*\n";
+
+          // Create the monomorphized struct type
+          IdentifierInfo &II = Context.Idents.get(monomorphizedName);
+          RecordDecl *CRecord = RecordDecl::Create(
+              Context,
+#if LLVM_VERSION_MAJOR >= 16
+              TagTypeKind::Struct,
+#else
+              TTK_Struct,
+#endif
+              Context.getTranslationUnitDecl(),
+              SourceLocation(),
+              SourceLocation(),
+              &II
+          );
+
+          // Create pointer to the struct
+          QualType CStructType = Context.getRecordType(CRecord);
+          QualType CPointerType = Context.getPointerType(CStructType);
+
+          // Create the C variable declaration
+          VarDecl *CVarDecl = Builder.var(CPointerType, VD->getName());
+
+          // If there's an initializer, translate it
+          if (Expr *Init = VD->getInit()) {
+            Expr *TranslatedInit = translateExpr(Init);
+            if (TranslatedInit) {
+              CVarDecl->setInit(TranslatedInit);
+            }
+          }
+
+          return Builder.declStmt(CVarDecl);
+        }
+      }
+    }
 
     // BUG FIX (Bug #18): Check if this is a template specialization type
     // E.g., LinkedList<int> list; -> struct LinkedList_int list;
@@ -4354,6 +4569,11 @@ void CppToCVisitor::processTemplateInstantiations(TranslationUnitDecl *TU) {
             }
             currentMethod = PatternMethod;
 
+            // Bug #38 FIX: Set nested class mappings for this template
+            // This allows translateDeclStmt() to substitute nested class types
+            // E.g., "Node*" -> "struct LinkedList_int_Node*"
+            currentNestedClassMappings = &m_templateMonomorphizer->getNestedClassMappings();
+
             // Translate the method body
             Stmt* TranslatedBody = translateStmt(BodyToTranslate);
 
@@ -4367,6 +4587,7 @@ void CppToCVisitor::processTemplateInstantiations(TranslationUnitDecl *TU) {
             // Clear translation context
             currentThisParam = nullptr;
             currentMethod = nullptr;
+            currentNestedClassMappings = nullptr;
           } else {
             llvm::outs() << "      -> Warning: Could not find body for method: " << methodName << "\n";
           }

@@ -95,7 +95,7 @@ test_project() {
         fi
     fi
 
-    if $transpiler --source-dir "$project_root" --output-dir transpiled/ $extra_args >> "../$RESULTS_FILE" 2>&1; then
+    if $transpiler --source-dir "$project_root" --output-dir "$project_root/transpiled" $extra_args >> "../$RESULTS_FILE" 2>&1; then
         echo "    ✓ Transpilation successful" | tee -a "../$RESULTS_FILE"
     else
         echo -e "    ${RED}✗ Transpilation failed${NC}" | tee -a "../$RESULTS_FILE"

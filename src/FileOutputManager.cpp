@@ -127,11 +127,20 @@ std::string FileOutputManager::getImplFilename() const {
 
 bool FileOutputManager::writeFile(const std::string& filename,
                                    const std::string& content) {
+    // Bug #40 DEBUG: Add extensive logging
+    std::cout << "[DEBUG FileOutputManager] writeFile called with filename: " << filename << "\n";
+    std::cout << "[DEBUG FileOutputManager] Content size: " << content.size() << " bytes\n";
+
     // Create parent directories if they don't exist
     fs::path filePath(filename);
     fs::path parentDir = filePath.parent_path();
 
+    std::cout << "[DEBUG FileOutputManager] Parent directory: " << parentDir << "\n";
+    std::cout << "[DEBUG FileOutputManager] Parent directory empty: " << (parentDir.empty() ? "yes" : "no") << "\n";
+    std::cout << "[DEBUG FileOutputManager] Parent directory exists: " << (fs::exists(parentDir) ? "yes" : "no") << "\n";
+
     if (!parentDir.empty() && !fs::exists(parentDir)) {
+        std::cout << "[DEBUG FileOutputManager] Creating parent directory: " << parentDir << "\n";
         std::error_code ec;
         fs::create_directories(parentDir, ec);
         if (ec) {
@@ -139,14 +148,17 @@ bool FileOutputManager::writeFile(const std::string& filename,
                       << " - " << ec.message() << std::endl;
             return false;
         }
+        std::cout << "[DEBUG FileOutputManager] Parent directory created successfully\n";
     }
 
+    std::cout << "[DEBUG FileOutputManager] Opening file for writing: " << filename << "\n";
     std::ofstream outFile(filename);
 
     if (!outFile.is_open()) {
         std::cerr << "Error: Could not open file for writing: " << filename << std::endl;
         return false;
     }
+    std::cout << "[DEBUG FileOutputManager] File opened successfully\n";
 
     outFile << content;
 
@@ -154,8 +166,11 @@ bool FileOutputManager::writeFile(const std::string& filename,
         std::cerr << "Error: Failed to write to file: " << filename << std::endl;
         return false;
     }
+    std::cout << "[DEBUG FileOutputManager] Content written successfully\n";
 
     outFile.close();
+    std::cout << "[DEBUG FileOutputManager] File closed successfully\n";
+    std::cout << "[DEBUG FileOutputManager] writeFile returning true\n";
     return true;
 }
 

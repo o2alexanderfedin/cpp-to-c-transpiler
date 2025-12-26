@@ -38,7 +38,7 @@ struct Token Tokenizer_nextToken(struct Tokenizer * this) {
 		{
 			struct Token __return_temp;
 
-			Token__ctor(&__return_temp, 5);
+			Token__ctor(&__return_temp, TokenType__EndOfInput);
 			return __return_temp;
 ;
 		}
@@ -51,7 +51,7 @@ struct Token Tokenizer_nextToken(struct Tokenizer * this) {
 			{
 				struct Token __return_temp;
 
-				Token__ctor(&__return_temp, 1);
+				Token__ctor(&__return_temp, TokenType__Plus);
 				return __return_temp;
 ;
 			}
@@ -59,7 +59,7 @@ struct Token Tokenizer_nextToken(struct Tokenizer * this) {
 			{
 				struct Token __return_temp;
 
-				Token__ctor(&__return_temp, 2);
+				Token__ctor(&__return_temp, TokenType__Minus);
 				return __return_temp;
 ;
 			}
@@ -67,7 +67,7 @@ struct Token Tokenizer_nextToken(struct Tokenizer * this) {
 			{
 				struct Token __return_temp;
 
-				Token__ctor(&__return_temp, 3);
+				Token__ctor(&__return_temp, TokenType__Multiply);
 				return __return_temp;
 ;
 			}
@@ -75,7 +75,7 @@ struct Token Tokenizer_nextToken(struct Tokenizer * this) {
 			{
 				struct Token __return_temp;
 
-				Token__ctor(&__return_temp, 4);
+				Token__ctor(&__return_temp, TokenType__Divide);
 				return __return_temp;
 ;
 			}
@@ -83,7 +83,7 @@ struct Token Tokenizer_nextToken(struct Tokenizer * this) {
 			{
 				struct Token __return_temp;
 
-				Token__ctor(&__return_temp, 5);
+				Token__ctor(&__return_temp, TokenType__EndOfInput);
 				return __return_temp;
 ;
 			}

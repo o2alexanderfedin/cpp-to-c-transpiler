@@ -86,4 +86,12 @@ private:
     /// @param RD Record declaration to print
     /// BUG FIX #24: Prints "struct Foo { struct Bar *field; }" instead of "struct Foo { Bar *field; }"
     void printStructDecl(clang::RecordDecl *RD);
+
+    // Bug #37: Print expression with C-compatible syntax (no C++ qualifiers)
+    /// @brief Print expression with C syntax (converts C++ :: to C naming)
+    /// @param E Expression to print
+    /// BUG FIX #37: Converts GameState::Menu to Menu (just the enum constant name)
+    /// BUG FIX #40: Converts obj.method() to ClassName_method(&obj)
+    /// BUG FIX #41: Converts Class::staticMethod() to Class_staticMethod()
+    void printExpr(clang::Expr *E);
 };

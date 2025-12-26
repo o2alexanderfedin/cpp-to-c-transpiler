@@ -375,6 +375,22 @@ public:
   }
 
   /**
+   * @brief Create reference to enum constant (Bug #37)
+   * @param enumConst EnumConstantDecl
+   * @return DeclRefExpr* referring to the enum constant
+   *
+   * Example:
+   * @code
+   *   DeclRefExpr *ref = builder.ref(gameStateMenuConst);
+   * @endcode
+   */
+  DeclRefExpr *ref(EnumConstantDecl *enumConst) {
+    return DeclRefExpr::Create(Ctx, NestedNameSpecifierLoc(), SourceLocation(),
+                               enumConst, false, SourceLocation(), enumConst->getType(),
+                               VK_PRValue);
+  }
+
+  /**
    * @brief Create function call by name
    * @param funcName Function name
    * @param args Argument expressions

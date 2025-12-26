@@ -60,7 +60,8 @@ void CppToCConsumer::HandleTranslationUnit(clang::ASTContext &Context) {
   // Create and run visitor to traverse AST
   // Phase 34: Pass FileOriginTracker to visitor for multi-file support
   // Pass the C_TU to the Visitor so it knows where to add declarations
-  CppToCVisitor Visitor(Context, Builder, fileOriginTracker, C_TU);
+  // Bug #43 FIX: Pass current filename for FileOriginFilter
+  CppToCVisitor Visitor(Context, Builder, fileOriginTracker, C_TU, InputFilename);
   Visitor.TraverseDecl(TU);
 
   // Phase 11 (v2.4.0): Process template instantiations after AST traversal

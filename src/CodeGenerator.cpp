@@ -5,8 +5,10 @@
 #include "CodeGenerator.h"
 #include "llvm/Config/llvm-config.h"  // For LLVM_VERSION_MAJOR
 #include "clang/AST/Decl.h"
+#include "clang/AST/DeclCXX.h"  // For CXXMethodDecl
 #include "clang/AST/Stmt.h"
 #include "clang/AST/Expr.h"  // Bug #21: For Expr and RecoveryExpr
+#include "clang/AST/ExprCXX.h"  // For CXXMemberCallExpr
 #include "clang/AST/ASTContext.h"
 #include "clang/Basic/SourceManager.h"  // Story #23: For #line directives
 
@@ -173,7 +175,7 @@ void CodeGenerator::printStmt(Stmt *S, unsigned Indent) {
     if (IfStmt *IS = dyn_cast<IfStmt>(S)) {
         OS << std::string(Indent, '\t') << "if (";
         if (Expr *Cond = IS->getCond()) {
-            Cond->printPretty(OS, nullptr, Policy, 0);  // Use printPretty for condition (no semicolon)
+            printExpr(Cond);  // Bug #37,40,41: Use printExpr for C-compatible syntax
         }
         OS << ") ";
         if (Stmt *Then = IS->getThen()) {
@@ -205,7 +207,7 @@ void CodeGenerator::printStmt(Stmt *S, unsigned Indent) {
     if (SwitchStmt *SS = dyn_cast<SwitchStmt>(S)) {
         OS << std::string(Indent, '\t') << "switch (";
         if (Expr *Cond = SS->getCond()) {
-            Cond->printPretty(OS, nullptr, Policy, 0);  // Use printPretty for condition
+            printExpr(Cond);  // Bug #37,40,41: Use printExpr for C-compatible syntax
         }
         OS << ") ";
         if (Stmt *Body = SS->getBody()) {
@@ -216,10 +218,11 @@ void CodeGenerator::printStmt(Stmt *S, unsigned Indent) {
     }
 
     // Bug #26 fix: Handle CaseStmt manually
+    // Bug #37 fix: Use printExpr instead of printPretty to handle enum constants
     if (CaseStmt *CS = dyn_cast<CaseStmt>(S)) {
         OS << std::string(Indent, '\t') << "case ";
         if (Expr *LHS = CS->getLHS()) {
-            LHS->printPretty(OS, nullptr, Policy, 0);  // Use printPretty for case value
+            printExpr(LHS);  // Bug #37: Use printExpr to convert GameState::Menu -> Menu
         }
         OS << ":\n";
         if (Stmt *SubStmt = CS->getSubStmt()) {
@@ -241,7 +244,7 @@ void CodeGenerator::printStmt(Stmt *S, unsigned Indent) {
     if (WhileStmt *WS = dyn_cast<WhileStmt>(S)) {
         OS << std::string(Indent, '\t') << "while (";
         if (Expr *Cond = WS->getCond()) {
-            Cond->printPretty(OS, nullptr, Policy, 0);  // Use printPretty for condition
+            printExpr(Cond);  // Bug #37,40,41: Use printExpr for C-compatible syntax
         }
         OS << ") ";
         if (Stmt *Body = WS->getBody()) {
@@ -287,6 +290,19 @@ void CodeGenerator::printStmt(Stmt *S, unsigned Indent) {
             }
             return;
         }
+    }
+
+    // Bug #42 fix: Handle BinaryOperator manually to use printExpr for C-compatible syntax
+    // This ensures member calls, enum constants, etc. in binary expressions are translated
+    // Example: sm.getCurrentState() -> StateMachine_getCurrentState(&sm)
+    // Example: GameState::Menu -> GameState__Menu
+    if (BinaryOperator *BO = dyn_cast<BinaryOperator>(S)) {
+        OS << std::string(Indent, '\t');
+        printExpr(BO->getLHS());
+        OS << " " << BO->getOpcodeStr().str() << " ";
+        printExpr(BO->getRHS());
+        OS << ";\n";
+        return;
     }
 
     // Use Clang's built-in StmtPrinter (via Stmt::printPretty)
@@ -614,4 +630,106 @@ void CodeGenerator::printFunctionSignature(FunctionDecl *FD) {
         }
     }
     OS << ")";
+}
+
+// Bug #37, #40, #41: Print expression with C-compatible syntax
+// Handles:
+// - DeclRefExpr to EnumConstantDecl: GameState::Menu -> Menu
+// - CXXMemberCallExpr: obj.method() -> Class_method(&obj)
+// - CXXOperatorCallExpr for static: Class::method() -> Class_method()
+void CodeGenerator::printExpr(Expr *E) {
+    if (!E) {
+        OS << "/* null expr */";
+        return;
+    }
+
+    // Bug #37: Handle DeclRefExpr to enum constants
+    // Need to unwrap ConstantExpr, ImplicitCastExpr, etc. to get to the DeclRefExpr
+    // In C++: GameState::Menu  In C: Menu (or the integer value)
+    Expr *Unwrapped = E->IgnoreImpCasts();  // Strip implicit casts, ConstantExpr, etc.
+
+    if (DeclRefExpr *DRE = dyn_cast<DeclRefExpr>(Unwrapped)) {
+        if (EnumConstantDecl *ECD = dyn_cast<EnumConstantDecl>(DRE->getDecl())) {
+            // Bug #42: Print the enum constant name (should already be prefixed for scoped enums)
+            std::string enumName = ECD->getNameAsString();
+            llvm::outs() << "[DEBUG printExpr] Enum constant: " << enumName << "\n";
+            OS << enumName;
+            return;
+        }
+    }
+
+    // Bug #40: Handle CXXMemberCallExpr: obj.method() -> Class_method(&obj)
+    if (CXXMemberCallExpr *MCE = dyn_cast<CXXMemberCallExpr>(E)) {
+        CXXMethodDecl *Method = MCE->getMethodDecl();
+        if (Method) {
+            // Get the class name
+            std::string ClassName = Method->getParent()->getNameAsString();
+            std::string MethodName = Method->getNameAsString();
+
+            // Print as: ClassName_methodName
+            OS << ClassName << "_" << MethodName << "(";
+
+            // Print implicit object argument first
+            if (Expr *ImplicitObject = MCE->getImplicitObjectArgument()) {
+                OS << "&";
+                printExpr(ImplicitObject);
+            }
+
+            // Print other arguments
+            for (unsigned i = 0; i < MCE->getNumArgs(); ++i) {
+                if (i > 0 || MCE->getImplicitObjectArgument()) {
+                    OS << ", ";
+                }
+                printExpr(MCE->getArg(i));
+            }
+            OS << ")";
+            return;
+        }
+    }
+
+    // Bug #41: Handle static member calls (represented as CallExpr or CXXOperatorCallExpr)
+    // CollisionDetector::checkCollision(...) -> CollisionDetector_checkCollision(...)
+    if (CallExpr *CE = dyn_cast<CallExpr>(E)) {
+        // Check if the callee is a member function reference
+        if (Expr *Callee = CE->getCallee()) {
+            if (DeclRefExpr *DRE = dyn_cast<DeclRefExpr>(Callee)) {
+                if (CXXMethodDecl *Method = dyn_cast<CXXMethodDecl>(DRE->getDecl())) {
+                    // Static method call
+                    std::string ClassName = Method->getParent()->getNameAsString();
+                    std::string MethodName = Method->getNameAsString();
+
+                    OS << ClassName << "_" << MethodName << "(";
+                    for (unsigned i = 0; i < CE->getNumArgs(); ++i) {
+                        if (i > 0) OS << ", ";
+                        printExpr(CE->getArg(i));
+                    }
+                    OS << ")";
+                    return;
+                }
+            }
+        }
+    }
+
+    // Bug #42: Handle BinaryOperator recursively to ensure subexpressions are translated
+    // Example: passed && (sm.getCurrentState() == GameState::Menu)
+    if (BinaryOperator *BO = dyn_cast<BinaryOperator>(E)) {
+        printExpr(BO->getLHS());
+        OS << " " << BO->getOpcodeStr().str() << " ";
+        printExpr(BO->getRHS());
+        return;
+    }
+
+    // Bug #42: Handle ParenExpr by recursively printing the subexpression with parentheses
+    if (ParenExpr *PE = dyn_cast<ParenExpr>(E)) {
+        OS << "(";
+        printExpr(PE->getSubExpr());
+        OS << ")";
+        return;
+    }
+
+    // Default: use printPretty, but recursively call printExpr for child expressions
+    // to ensure enum constants and member calls are handled correctly
+    // For now, just use printPretty (handling all expression types recursively is complex)
+    // TODO: Implement full recursive expression printing for all operators
+    E->printPretty(OS, nullptr, Policy, 0);
 }

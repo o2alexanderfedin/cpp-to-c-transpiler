@@ -73,6 +73,18 @@ public:
     std::string generateMangledName(const std::string& BaseName,
                                    const clang::TemplateArgumentList& TemplateArgs);
 
+    /**
+     * @brief Get nested class mappings for current template being monomorphized
+     * @return Map from original nested class name to monomorphized name
+     *         E.g., "Node" -> "LinkedList_int_Node"
+     *
+     * Bug #38 FIX: Expose nested class mappings so CppToCVisitor can substitute
+     * types in method bodies correctly
+     */
+    const std::map<std::string, std::string>& getNestedClassMappings() const {
+        return nestedClassMappings;
+    }
+
 private:
     clang::ASTContext& Context;
     NameMangler& Mangler;

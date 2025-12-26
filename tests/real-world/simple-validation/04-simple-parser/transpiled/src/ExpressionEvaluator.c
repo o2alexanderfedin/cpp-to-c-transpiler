@@ -27,13 +27,13 @@ struct Token Tokenizer_nextToken(struct Tokenizer * this);
 int ExpressionEvaluator_parseTerm(struct ExpressionEvaluator * this) {
 	int left = ExpressionEvaluator_parseFactor(this);
 
-	while (this->currentToken.type == 3 || this->currentToken.type == 4) 	{
+	while (this->currentToken.type == TokenType__Multiply || this->currentToken.type == TokenType__Divide) 	{
 		TokenType op = this->currentToken.type;
 
 		ExpressionEvaluator_advance(this);
 		int right = ExpressionEvaluator_parseFactor(this);
 
-		if (op == 3) 		{
+		if (op == TokenType__Multiply) 		{
 			left = left * right;
 		}
  else 		{
@@ -46,7 +46,7 @@ int ExpressionEvaluator_parseTerm(struct ExpressionEvaluator * this) {
 }
 
 int ExpressionEvaluator_parseFactor(struct ExpressionEvaluator * this) {
-	if (this->currentToken.type == 0) 	{
+	if (this->currentToken.type == TokenType__Number) 	{
 		int value = this->currentToken.value;
 
 		ExpressionEvaluator_advance(this);
@@ -75,13 +75,13 @@ int ExpressionEvaluator_evaluate(struct ExpressionEvaluator * this, const char *
 	ExpressionEvaluator_advance(this);
 	int result = ExpressionEvaluator_parseTerm(this);
 
-	while (this->currentToken.type == 1 || this->currentToken.type == 2) 	{
+	while (this->currentToken.type == TokenType__Plus || this->currentToken.type == TokenType__Minus) 	{
 		TokenType op = this->currentToken.type;
 
 		ExpressionEvaluator_advance(this);
 		int right = ExpressionEvaluator_parseTerm(this);
 
-		if (op == 1) 		{
+		if (op == TokenType__Plus) 		{
 			result = result + right;
 		}
  else 		{
@@ -95,6 +95,6 @@ int ExpressionEvaluator_evaluate(struct ExpressionEvaluator * this, const char *
 
 void ExpressionEvaluator__ctor(struct ExpressionEvaluator * this) {
 	this->tokenizer = 0;
-	Token__ctor(&this->currentToken, 5);
+	Token__ctor(&this->currentToken, TokenType__EndOfInput);
 }
 

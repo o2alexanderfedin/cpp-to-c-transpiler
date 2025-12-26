@@ -17,6 +17,7 @@
 #include "DynamicCastTranslator.h"
 #include "ExceptionFrameGenerator.h"
 #include "FileOriginTracker.h"
+#include "FileOriginFilter.h"
 #include "MoveAssignmentTranslator.h"
 #include "MoveConstructorTranslator.h"
 #include "MultidimSubscriptTranslator.h"
@@ -50,6 +51,7 @@ class CppToCVisitor : public clang::RecursiveASTVisitor<CppToCVisitor> {
 
   // Phase 34 (v2.5.0): File origin tracking for multi-file transpilation
   cpptoc::FileOriginTracker &fileOriginTracker;
+  std::unique_ptr<cpptoc::FileOriginFilter> fileOriginFilter;
 
   // Phase 9 (v2.2.0): Virtual method support
   VirtualMethodAnalyzer VirtualAnalyzer;
@@ -146,6 +148,15 @@ class CppToCVisitor : public clang::RecursiveASTVisitor<CppToCVisitor> {
   clang::ParmVarDecl *currentThisParam = nullptr;
   clang::CXXMethodDecl *currentMethod = nullptr;
 
+  // Bug #38 FIX: Track nested class mappings during template method translation
+  // Maps original nested class name (e.g., "Node") to monomorphized name (e.g., "LinkedList_int_Node")
+  const std::map<std::string, std::string>* currentNestedClassMappings = nullptr;
+
+  // Bug #37 FIX: Track enum constant mappings for scoped enums
+  // Maps C++ EnumConstantDecl* -> C EnumConstantDecl* for scoped enum translation
+  // E.g., GameState::Menu (C++) -> GameState__Menu (C)
+  std::map<const clang::EnumConstantDecl*, clang::EnumConstantDecl*> enumConstantMap;
+
   // Story #44: Track local objects with destructors for current function
   std::vector<clang::VarDecl *> currentFunctionObjectsToDestroy;
 
@@ -195,7 +206,8 @@ public:
   explicit CppToCVisitor(clang::ASTContext &Context,
                          clang::CNodeBuilder &Builder,
                          cpptoc::FileOriginTracker &tracker,
-                         clang::TranslationUnitDecl *C_TU);
+                         clang::TranslationUnitDecl *C_TU,
+                         const std::string& currentFile = "");
 
   // ============================================================================
   // RecursiveASTVisitor Configuration (Bug #17: System Header Hang Fix)

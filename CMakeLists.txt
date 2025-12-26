@@ -214,6 +214,7 @@ add_library(cpptoc_core STATIC
     src/DependencyGraphVisualizer.cpp
     src/FileOutputManager.cpp
     src/FileOriginTracker.cpp
+    src/FileOriginFilter.cpp
     src/VirtualMethodAnalyzer.cpp
     src/VptrInjector.cpp
     src/VirtualInheritanceAnalyzer.cpp

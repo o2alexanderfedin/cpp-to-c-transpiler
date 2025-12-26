@@ -4,7 +4,7 @@ Simple Real-World Validation (STL-Free)
 
 [1;33mTesting Math Library...[0m
   [1/5] Building C++ version...
--- Configuring done (0.1s)
+-- Configuring done (0.0s)
 -- Generating done (0.0s)
 -- Build files have been written to: /Users/alexanderfedin/Projects/hapyy/hupyy-cpp-to-c/tests/real-world/simple-validation/01-math-library/build
 [100%] Built target math_library
@@ -110,10 +110,10 @@ FileOriginTracker configured with user header paths
 Translation unit has 390 top-level declarations
 [Bug #30 FIX] Creating independent target ASTContext for C output...
 [Bug #30 FIX] Target ASTContext created successfully:
-  - ASTContext @ 0x144842800
+  - ASTContext @ 0x10a16ec00
   - Target Triple: arm64-apple-darwin24.5.0
   - Language: C11
-[Bug #30 FIX] Created C_TU @ 0x14484cb68 for file: /Users/alexanderfedin/Projects/hapyy/hupyy-cpp-to-c/tests/real-world/simple-validation/01-math-library/main.cpp
+[Bug #30 FIX] Created C_TU @ 0x10a178f68 for file: /Users/alexanderfedin/Projects/hapyy/hupyy-cpp-to-c/tests/real-world/simple-validation/01-math-library/main.cpp
 Virtual method support initialized
 Template monomorphization enabled (limit: 1000 instantiations)
 Exception handling support initialized (SJLJ model)
@@ -124,7 +124,7 @@ Static operator() and operator[] support initialized (C++23)
 Deducing this / explicit object parameter support initialized (C++23 P0847R7)
 if consteval support initialized (C++23 P1938R3) - Runtime strategy
 auto(x) decay-copy and partial constexpr support initialized (C++23 P0849R8)
-[Bug #30 FIX] CppToCVisitor using C_TU @ 0x14484cb68
+[Bug #30 FIX] CppToCVisitor using C_TU @ 0x10a178f68
 Translating class: Vector3D
 
 *** Dumping AST Record Layout
@@ -588,12 +588,12 @@ C TranslationUnit has 6 generated declarations
 [DEBUG CodeGen] Manually printing ReturnStmt
 [DEBUG CodeGen] Return value type: ConditionalOperator
 Generated files:
-  transpiled/main.h
-  transpiled/main.c
+  /Users/alexanderfedin/Projects/hapyy/hupyy-cpp-to-c/tests/real-world/simple-validation/01-math-library/transpiled/main.h
+  /Users/alexanderfedin/Projects/hapyy/hupyy-cpp-to-c/tests/real-world/simple-validation/01-math-library/transpiled/main.c
 Parsed file: /Users/alexanderfedin/Projects/hapyy/hupyy-cpp-to-c/tests/real-world/simple-validation/01-math-library/src/Matrix3x3.cpp
 FileOriginTracker configured with user header paths
 Translation unit has 99 top-level declarations
-[Bug #30 FIX] Created C_TU @ 0x14484ffb8 for file: /Users/alexanderfedin/Projects/hapyy/hupyy-cpp-to-c/tests/real-world/simple-validation/01-math-library/src/Matrix3x3.cpp
+[Bug #30 FIX] Created C_TU @ 0x10a17ba18 for file: /Users/alexanderfedin/Projects/hapyy/hupyy-cpp-to-c/tests/real-world/simple-validation/01-math-library/src/Matrix3x3.cpp
 Virtual method support initialized
 Template monomorphization enabled (limit: 1000 instantiations)
 Exception handling support initialized (SJLJ model)
@@ -604,7 +604,7 @@ Static operator() and operator[] support initialized (C++23)
 Deducing this / explicit object parameter support initialized (C++23 P0847R7)
 if consteval support initialized (C++23 P1938R3) - Runtime strategy
 auto(x) decay-copy and partial constexpr support initialized (C++23 P0849R8)
-[Bug #30 FIX] CppToCVisitor using C_TU @ 0x14484ffb8
+[Bug #30 FIX] CppToCVisitor using C_TU @ 0x10a17ba18
 Translating class: Vector3D
   -> struct Vector3D with 3 fields
   Generating implicit copy constructor
@@ -1001,11 +1001,7 @@ C TranslationUnit has 11 generated declarations
 [DEBUG CodeGen] Manually printing ReturnStmt
 [DEBUG CodeGen] Return value type: DeclRefExpr
 [DEBUG CodeGen] Manually printing ReturnStmt
-[DEBUG CodeGen] Return value type: DeclRefExpr
-[DEBUG CodeGen] Manually printing ReturnStmt
-[DEBUG CodeGen] Return value type: CompoundLiteralExpr
-[DEBUG CodeGen] Manually printing ReturnStmt
-[DEBUG CodeGen] Re[3/3] Processing file /Users/alexanderfedin/Projects/hapyy/hupyy-cpp-to-c/tests/real-world/simple-validation/01-math-library/src/Vector3D.cpp.
+[DEB[3/3] Processing file /Users/alexanderfedin/Projects/hapyy/hupyy-cpp-to-c/tests/real-world/simple-validation/01-math-library/src/Vector3D.cpp.
 In file included from /Users/alexanderfedin/Projects/hapyy/hupyy-cpp-to-c/tests/real-world/simple-validation/01-math-library/src/Vector3D.cpp:2:
 In file included from /opt/homebrew/Cellar/llvm/21.1.7/include/c++/v1/cmath:319:
 In file included from /opt/homebrew/Cellar/llvm/21.1.7/include/c++/v1/__math/hypot.h:21:
@@ -1078,14 +1074,18 @@ In file included from /opt/homebrew/Cellar/llvm/21.1.7/include/c++/v1/cmath:331:
   490 | using std::__math::sqrt;
       |                    ^
 fatal error: too many errors emitted, stopping now [-ferror-limit=]
-turn value type: ImplicitCastExpr
+UG CodeGen] Return value type: DeclRefExpr
+[DEBUG CodeGen] Manually printing ReturnStmt
+[DEBUG CodeGen] Return value type: CompoundLiteralExpr
+[DEBUG CodeGen] Manually printing ReturnStmt
+[DEBUG CodeGen] Return value type: ImplicitCastExpr
 Generated files:
-  transpiled/src/Matrix3x3.h
-  transpiled/src/Matrix3x3.c
+  /Users/alexanderfedin/Projects/hapyy/hupyy-cpp-to-c/tests/real-world/simple-validation/01-math-library/transpiled/src/Matrix3x3.h
+  /Users/alexanderfedin/Projects/hapyy/hupyy-cpp-to-c/tests/real-world/simple-validation/01-math-library/transpiled/src/Matrix3x3.c
 Parsed file: /Users/alexanderfedin/Projects/hapyy/hupyy-cpp-to-c/tests/real-world/simple-validation/01-math-library/src/Vector3D.cpp
 FileOriginTracker configured with user header paths
 Translation unit has 393 top-level declarations
-[Bug #30 FIX] Created C_TU @ 0x155061ac0 for file: /Users/alexanderfedin/Projects/hapyy/hupyy-cpp-to-c/tests/real-world/simple-validation/01-math-library/src/Vector3D.cpp
+[Bug #30 FIX] Created C_TU @ 0x11e97c130 for file: /Users/alexanderfedin/Projects/hapyy/hupyy-cpp-to-c/tests/real-world/simple-validation/01-math-library/src/Vector3D.cpp
 Virtual method support initialized
 Template monomorphization enabled (limit: 1000 instantiations)
 Exception handling support initialized (SJLJ model)
@@ -1096,7 +1096,7 @@ Static operator() and operator[] support initialized (C++23)
 Deducing this / explicit object parameter support initialized (C++23 P0847R7)
 if consteval support initialized (C++23 P1938R3) - Runtime strategy
 auto(x) decay-copy and partial constexpr support initialized (C++23 P0849R8)
-[Bug #30 FIX] CppToCVisitor using C_TU @ 0x155061ac0
+[Bug #30 FIX] CppToCVisitor using C_TU @ 0x11e97c130
 Translating class: Vector3D
 
 *** Dumping AST Record Layout
@@ -1420,7 +1420,53 @@ Processing Template Instantiations
   -> Skipped (not user code)
 [DEBUG TemplateExtractor] VisitClassTemplateDecl: hash
   -> Skipped (not user code)
-[DEBUG TemplateExtractor] VisitClassTemplateDecl: reference_wrapper
+[D[DEBUG FileOutputManager] writeFile called with filename: /Users/alexanderfedin/Projects/hapyy/hupyy-cpp-to-c/tests/real-world/simple-validation/01-math-library/transpiled/main.h
+[DEBUG FileOutputManager] Content size: 621 bytes
+[DEBUG FileOutputManager] Parent directory: "/Users/alexanderfedin/Projects/hapyy/hupyy-cpp-to-c/tests/real-world/simple-validation/01-math-library/transpiled"
+[DEBUG FileOutputManager] Parent directory empty: no
+[DEBUG FileOutputManager] Parent directory exists: yes
+[DEBUG FileOutputManager] Opening file for writing: /Users/alexanderfedin/Projects/hapyy/hupyy-cpp-to-c/tests/real-world/simple-validation/01-math-library/transpiled/main.h
+[DEBUG FileOutputManager] File opened successfully
+[DEBUG FileOutputManager] Content written successfully
+[DEBUG FileOutputManager] File closed successfully
+[DEBUG FileOutputManager] writeFile returning true
+[DEBUG FileOutputManager] writeFile called with filename: /Users/alexanderfedin/Projects/hapyy/hupyy-cpp-to-c/tests/real-world/simple-validation/01-math-library/transpiled/main.c
+[DEBUG FileOutputManager] Content size: 851 bytes
+[DEBUG FileOutputManager] Parent directory: "/Users/alexanderfedin/Projects/hapyy/hupyy-cpp-to-c/tests/real-world/simple-validation/01-math-library/transpiled"
+[DEBUG FileOutputManager] Parent directory empty: no
+[DEBUG FileOutputManager] Parent directory exists: yes
+[DEBUG FileOutputManager] Opening file for writing: /Users/alexanderfedin/Projects/hapyy/hupyy-cpp-to-c/tests/real-world/simple-validation/01-math-library/transpiled/main.c
+[DEBUG FileOutputManager] File opened successfully
+[DEBUG FileOutputManager] Content written successfully
+[DEBUG FileOutputManager] File closed successfully
+[DEBUG FileOutputManager] writeFile returning true
+[DEBUG FileOutputManager] writeFile called with filename: /Users/alexanderfedin/Projects/hapyy/hupyy-cpp-to-c/tests/real-world/simple-validation/01-math-library/transpiled/src/Matrix3x3.h
+[DEBUG FileOutputManager] Content size: 1164 bytes
+[DEBUG FileOutputManager] Parent directory: "/Users/alexanderfedin/Projects/hapyy/hupyy-cpp-to-c/tests/real-world/simple-validation/01-math-library/transpiled/src"
+[DEBUG FileOutputManager] Parent directory empty: no
+[DEBUG FileOutputManager] Parent directory exists: no
+[DEBUG FileOutputManager] Creating parent directory: "/Users/alexanderfedin/Projects/hapyy/hupyy-cpp-to-c/tests/real-world/simple-validation/01-math-library/transpiled/src"
+[DEBUG FileOutputManager] Parent directory created successfully
+[DEBUG FileOutputManager] Opening file for writing: /Users/alexanderfedin/Projects/hapyy/hupyy-cpp-to-c/tests/real-world/simple-validation/01-math-library/transpiled/src/Matrix3x3.h
+[DEBUG FileOutputManager] File opened successfully
+[DEBUG FileOutputManager] Content written successfully
+[DEBUG FileOutputManager] File closed successfully
+[DEBUG FileOutputManager] writeFile returning true
+[DEBUG FileOutputManager] writeFile called with filename: /Users/alexanderfedin/Projects/hapyy/hupyy-cpp-to-c/tests/real-world/simple-validation/01-math-library/transpiled/src/Matrix3x3.c
+[DEBUG FileOutputManager] Content size: 2232 bytes
+[DEBUG FileOutputManager] Parent directory: "/Users/alexanderfedin/Projects/hapyy/hupyy-cpp-to-c/tests/real-world/simple-validation/01-math-library/transpiled/src"
+[DEBUG FileOutputManager] Parent directory empty: no
+[DEBUG FileOutputManager] Parent directory exists: yes
+[DEBUG FileOutputManager] Opening file for writing: /Users/alexanderfedin/Projects/hapyy/hupyy-cpp-to-c/tests/real-world/simple-validation/01-math-library/transpiled/src/Matrix3x3.c
+[DEBUG FileOutputManager] File opened successfully
+[DEBUG FileOutputManager] Content written successfully
+[DEBUG FileOutputManager] File closed successfully
+[DEBUG FileOutputManager] writeFile returning true
+[DEBUG FileOutputManager] writeFile called with filename: /Users/alexanderfedin/Projects/hapyy/hupyy-cpp-to-c/tests/real-world/simple-validation/01-math-library/transpiled/src/Vector3D.h
+[DEBUG FileOutputManager] Content size: 872 bytes
+[DEBUG FileOutputManager] Parent directory: "/Users/alexanderfedi20 errors generated.
+Error while processing /Users/alexanderfedin/Projects/hapyy/hupyy-cpp-to-c/tests/real-world/simple-validation/01-math-library/src/Vector3D.cpp.
+EBUG TemplateExtractor] VisitClassTemplateDecl: reference_wrapper
   -> Skipped (not user code)
 [DEBUG TemplateExtractor] VisitClassTemplateDecl: __is_reference_wrapper_impl
   -> Skipped (not user code)
@@ -1428,9 +1474,7 @@ Processing Template Instantiations
   -> Skipped (not user code)
 [DEBUG TemplateExtractor] VisitClassTemplateDecl: __invoke_result_impl
   -> Skipped (not user code)
-[DEBUG T20 errors generated.
-Error while processing /Users/alexanderfedin/Projects/hapyy/hupyy-cpp-to-c/tests/real-world/simple-validation/01-math-library/src/Vector3D.cpp.
-emplateExtractor] VisitClassTemplateDecl: __is_invocable
+[DEBUG TemplateExtractor] VisitClassTemplateDecl: __is_invocable
   -> Skipped (not user code)
 [DEBUG TemplateExtractor] VisitClassTemplateDecl: __invoke_void_return_wrapper
   -> Skipped (not user code)
@@ -1502,12 +1546,30 @@ C TranslationUnit has 8 generated declarations
 [DEBUG CodeGen] Manually printing ReturnStmt
 [DEBUG CodeGen] Return value type: CompoundLiteralExpr
 Generated files:
-  transpiled/src/Vector3D.h
-  transpiled/src/Vector3D.c
+  /Users/alexanderfedin/Projects/hapyy/hupyy-cpp-to-c/tests/real-world/simple-validation/01-math-library/transpiled/src/Vector3D.h
+  /Users/alexanderfedin/Projects/hapyy/hupyy-cpp-to-c/tests/real-world/simple-validation/01-math-library/transpiled/src/Vector3D.c
 [DEBUG] Tool.run() returned: 1
 [DEBUG] After Tool.run(), about to handle dependencies...
 
 Transpilation completed successfully. Generated 3 file pair(s).
+n/Projects/hapyy/hupyy-cpp-to-c/tests/real-world/simple-validation/01-math-library/transpiled/src"
+[DEBUG FileOutputManager] Parent directory empty: no
+[DEBUG FileOutputManager] Parent directory exists: yes
+[DEBUG FileOutputManager] Opening file for writing: /Users/alexanderfedin/Projects/hapyy/hupyy-cpp-to-c/tests/real-world/simple-validation/01-math-library/transpiled/src/Vector3D.h
+[DEBUG FileOutputManager] File opened successfully
+[DEBUG FileOutputManager] Content written successfully
+[DEBUG FileOutputManager] File closed successfully
+[DEBUG FileOutputManager] writeFile returning true
+[DEBUG FileOutputManager] writeFile called with filename: /Users/alexanderfedin/Projects/hapyy/hupyy-cpp-to-c/tests/real-world/simple-validation/01-math-library/transpiled/src/Vector3D.c
+[DEBUG FileOutputManager] Content size: 1268 bytes
+[DEBUG FileOutputManager] Parent directory: "/Users/alexanderfedin/Projects/hapyy/hupyy-cpp-to-c/tests/real-world/simple-validation/01-math-library/transpiled/src"
+[DEBUG FileOutputManager] Parent directory empty: no
+[DEBUG FileOutputManager] Parent directory exists: yes
+[DEBUG FileOutputManager] Opening file for writing: /Users/alexanderfedin/Projects/hapyy/hupyy-cpp-to-c/tests/real-world/simple-validation/01-math-library/transpiled/src/Vector3D.c
+[DEBUG FileOutputManager] File opened successfully
+[DEBUG FileOutputManager] Content written successfully
+[DEBUG FileOutputManager] File closed successfully
+[DEBUG FileOutputManager] writeFile returning true
     ✓ Transpilation successful
   [4/5] Building transpiled C version...
 ./src/Vector3D.c:33:1: warning: non-void function does not return a value [-Wreturn-type]
@@ -1543,12 +1605,6 @@ Validation: PASS
     ✓ C++ execution successful (exit code: 0)
   [3/5] Transpiling to C...
     [Config] Using project-specific args
-Error while trying to load a compilation database:
-Could not auto-detect compilation database for file "__dummy_for_discovery__.cpp"
-No compilation database found in /Users/alexanderfedin/Projects/hapyy/hupyy-cpp-to-c/tests/real-world/simple-validation/02-custom-container or any parent directory
-fixed-compilation-database: Error while opening fixed database: No such file or directory
-json-compilation-database: Error while opening JSON database: No such file or directory
-Running without flags.
 [DEBUG] Installing segfault handler...
 [DEBUG] Signal handlers installed
 Auto-discovering C++ source files in: /Users/alexanderfedin/Projects/hapyy/hupyy-cpp-to-c/tests/real-world/simple-validation/02-custom-container
@@ -1565,10 +1621,10 @@ FileOriginTracker configured with user header paths
 Translation unit has 113 top-level declarations
 [Bug #30 FIX] Creating independent target ASTContext for C output...
 [Bug #30 FIX] Target ASTContext created successfully:
-  - ASTContext @ 0x15103ca00
+  - ASTContext @ 0x12781d400
   - Target Triple: arm64-apple-darwin24.5.0
   - Language: C11
-[Bug #30 FIX] Created C_TU @ 0x151046d68 for file: /Users/alexanderfedin/Projects/hapyy/hupyy-cpp-to-c/tests/real-world/simple-validation/02-custom-container/main.cpp
+[Bug #30 FIX] Created C_TU @ 0x127827768 for file: /Users/alexanderfedin/Projects/hapyy/hupyy-cpp-to-c/tests/real-world/simple-validation/02-custom-container/main.cpp
 Virtual method support initialized
 Template monomorphization enabled (limit: 1000 instantiations)
 Exception handling support initialized (SJLJ model)
@@ -1579,7 +1635,7 @@ Static operator() and operator[] support initialized (C++23)
 Deducing this / explicit object parameter support initialized (C++23 P0847R7)
 if consteval support initialized (C++23 P1938R3) - Runtime strategy
 auto(x) decay-copy and partial constexpr support initialized (C++23 P0849R8)
-[Bug #30 FIX] CppToCVisitor using C_TU @ 0x151046d68
+[Bug #30 FIX] CppToCVisitor using C_TU @ 0x127827768
 Found class template: LinkedList
 Skipping nested class 'Node' inside template pattern 'LinkedList'
 Skipping method 'Node' of nested class 'Node' inside template pattern 'LinkedList'
@@ -1605,36 +1661,230 @@ Translating standalone function: main
       Is a template specialization: LinkedList
       Monomorphized struct name: LinkedList_int
   [Bug #8] Skipping statement containing RecoveryExpr
-  [Bug #8] Skipping statement containing RecoveryExpr
-  [Bug #8] Skipping statement containing RecoveryExpr
-  [Bug #8] Skipping statement containing RecoveryExpr
-  [Bug #8] Skipping statement containing RecoveryExpr
-  [Bug #8] Skipping statement containing RecoveryExpr
-  [Bug #8] Skipping statement containing RecoveryExpr
-  [Bug #8] Skipping statement containing RecoveryExpr
-  [Bug #8] Skipping statement containing RecoveryExpr
-  [Bug #8] Skipping statement containing RecoveryExpr
-  [Bug #8] Skipping statement containing RecoveryExpr
-  [Bug #8] Skipping statement containing RecoveryExpr
+[DEBUG Bug#26] translateStmt called, type: CallExpr
+[DEBUG Bug#26] translateStmt called, type: UnresolvedLookupExpr
+[DEBUG Bug#26] translateStmt called, type: StringLiteral
+[DEBUG Bug#26] translateStmt called, type: CallExpr
+[DEBUG Bug#26] translateStmt called, type: CXXDependentScopeMemberExpr
+[DEBUG Bug#26] translateStmt called, type: RecoveryExpr
+  Warning: RecoveryExpr encountered (parsing error)
+  Skipping RecoveryExpr (cannot reconstruct)
+[DEBUG Bug#26] translateStmt called, type: CallExpr
+[DEBUG Bug#26] translateStmt called, type: UnresolvedLookupExpr
+[DEBUG Bug#26] translateStmt called, type: StringLiteral
+[DEBUG Bug#26] translateStmt called, type: ConditionalOperator
+[DEBUG Bug#26] translateStmt called, type: CallExpr
+[DEBUG Bug#26] translateStmt called, type: CXXDependentScopeMemberExpr
+[DEBUG Bug#26] translateStmt called, type: RecoveryExpr
+  Warning: RecoveryExpr encountered (parsing error)
+  Skipping RecoveryExpr (cannot reconstruct)
+[DEBUG Bug#26] translateStmt called, type: StringLiteral
+[DEBUG Bug#26] translateStmt called, type: StringLiteral
+[DEBUG Bug#26] translateStmt called, type: CallExpr
+[DEBUG Bug#26] translateStmt called, type: CXXDependentScopeMemberExpr
+[DEBUG Bug#26] translateStmt called, type: RecoveryExpr
+[DEBUG Bug#26] translateStmt called, type: DeclRefExpr
+  Warning: RecoveryExpr encountered (parsing error)
+  RecoveryExpr appears to be call to: list
+  Successfully reconstructed call to list
+[DEBUG Bug#26] translateStmt called, type: IntegerLiteral
+[DEBUG Bug#26] translateStmt called, type: CallExpr
+[DEBUG Bug#26] translateStmt called, type: CXXDependentScopeMemberExpr
+[DEBUG Bug#26] translateStmt called, type: RecoveryExpr
+[DEBUG Bug#26] translateStmt called, type: DeclRefExpr
+  Warning: RecoveryExpr encountered (parsing error)
+  RecoveryExpr appears to be call to: list
+  Successfully reconstructed call to list
+[DEBUG Bug#26] translateStmt called, type: IntegerLiteral
+[DEBUG Bug#26] translateStmt called, type: CallExpr
+[DEBUG Bug#26] translateStmt called, type: CXXDependentScopeMemberExpr
+[DEBUG Bug#26] translateStmt called, type: RecoveryExpr
+[DEBUG Bug#26] translateStmt called, type: DeclRefExpr
+  Warning: RecoveryExpr encountered (parsing error)
+  RecoveryExpr appears to be call to: list
+  Successfully reconstructed call to list
+[DEBUG Bug#26] translateStmt called, type: IntegerLiteral
+[DEBUG Bug#26] translateStmt called, type: CallExpr
+[DEBUG Bug#26] translateStmt called, type: UnresolvedLookupExpr
+[DEBUG Bug#26] translateStmt called, type: StringLiteral
+[DEBUG Bug#26] translateStmt called, type: CallExpr
+[DEBUG Bug#26] translateStmt called, type: CXXDependentScopeMemberExpr
+[DEBUG Bug#26] translateStmt called, type: RecoveryExpr
+  Warning: RecoveryExpr encountered (parsing error)
+  Skipping RecoveryExpr (cannot reconstruct)
+[DEBUG Bug#26] translateStmt called, type: CallExpr
+[DEBUG Bug#26] translateStmt called, type: UnresolvedLookupExpr
+[DEBUG Bug#26] translateStmt called, type: StringLiteral
+[DEBUG Bug#26] translateStmt called, type: CallExpr
+[DEBUG Bug#26] translateStmt called, type: CXXDependentScopeMemberExpr
+[DEBUG Bug#26] translateStmt called, type: RecoveryExpr
+  Warning: RecoveryExpr encountered (parsing error)
+  Skipping RecoveryExpr (cannot reconstruct)
+[DEBUG Bug#26] translateStmt called, type: CallExpr
+[DEBUG Bug#26] translateStmt called, type: CXXDependentScopeMemberExpr
+[DEBUG Bug#26] translateStmt called, type: RecoveryExpr
+[DEBUG Bug#26] translateStmt called, type: DeclRefExpr
+  Warning: RecoveryExpr encountered (parsing error)
+  RecoveryExpr appears to be call to: list
+  Successfully reconstructed call to list
+[DEBUG Bug#26] translateStmt called, type: IntegerLiteral
+[DEBUG Bug#26] translateStmt called, type: CallExpr
+[DEBUG Bug#26] translateStmt called, type: UnresolvedLookupExpr
+[DEBUG Bug#26] translateStmt called, type: StringLiteral
+[DEBUG Bug#26] translateStmt called, type: CallExpr
+[DEBUG Bug#26] translateStmt called, type: CXXDependentScopeMemberExpr
+[DEBUG Bug#26] translateStmt called, type: RecoveryExpr
+  Warning: RecoveryExpr encountered (parsing error)
+  Skipping RecoveryExpr (cannot reconstruct)
+[DEBUG Bug#26] translateStmt called, type: CallExpr
+[DEBUG Bug#26] translateStmt called, type: CXXDependentScopeMemberExpr
+[DEBUG Bug#26] translateStmt called, type: RecoveryExpr
+  Warning: RecoveryExpr encountered (parsing error)
+  Skipping RecoveryExpr (cannot reconstruct)
+[DEBUG Bug#26] translateStmt called, type: CallExpr
+[DEBUG Bug#26] translateStmt called, type: CXXDependentScopeMemberExpr
+[DEBUG Bug#26] translateStmt called, type: RecoveryExpr
+[DEBUG Bug#26] translateStmt called, type: DeclRefExpr
+  Warning: RecoveryExpr encountered (parsing error)
+  RecoveryExpr appears to be call to: list
+  Successfully reconstructed call to list
+[DEBUG Bug#26] translateStmt called, type: CallExpr
+[DEBUG Bug#26] translateStmt called, type: UnresolvedLookupExpr
+[DEBUG Bug#26] translateStmt called, type: StringLiteral
+[DEBUG Bug#26] translateStmt called, type: CallExpr
+[DEBUG Bug#26] translateStmt called, type: CXXDependentScopeMemberExpr
+[DEBUG Bug#26] translateStmt called, type: RecoveryExpr
+  Warning: RecoveryExpr encountered (parsing error)
+  Skipping RecoveryExpr (cannot reconstruct)
+[DEBUG Bug#26] translateStmt called, type: CallExpr
+[DEBUG Bug#26] translateStmt called, type: CXXDependentScopeMemberExpr
+[DEBUG Bug#26] translateStmt called, type: RecoveryExpr
+  Warning: RecoveryExpr encountered (parsing error)
+  Skipping RecoveryExpr (cannot reconstruct)
 [DEBUG Bug#26] translateStmt called, type: DeclStmt
   [Translating DeclStmt]
     Variable: floatList
       Is a template specialization: LinkedList
       Monomorphized struct name: LinkedList_float
+[DEBUG Bug#26] translateStmt called, type: CallExpr
+[DEBUG Bug#26] translateStmt called, type: CXXDependentScopeMemberExpr
+[DEBUG Bug#26] translateStmt called, type: RecoveryExpr
+[DEBUG Bug#26] translateStmt called, type: DeclRefExpr
+  Warning: RecoveryExpr encountered (parsing error)
+  RecoveryExpr appears to be call to: floatList
+  Successfully reconstructed call to floatList
+[DEBUG Bug#26] translateStmt called, type: FloatingLiteral
+[DEBUG Bug#26] translateStmt called, type: CallExpr
+[DEBUG Bug#26] translateStmt called, type: CXXDependentScopeMemberExpr
+[DEBUG Bug#26] translateStmt called, type: RecoveryExpr
+[DEBUG Bug#26] translateStmt called, type: DeclRefExpr
+  Warning: RecoveryExpr encountered (parsing error)
+  RecoveryExpr appears to be call to: floatList
+  Successfully reconstructed call to floatList
+[DEBUG Bug#26] translateStmt called, type: FloatingLiteral
+[DEBUG Bug#26] translateStmt called, type: CallExpr
+[DEBUG Bug#26] translateStmt called, type: CXXDependentScopeMemberExpr
+[DEBUG Bug#26] translateStmt called, type: RecoveryExpr
+[DEBUG Bug#26] translateStmt called, type: DeclRefExpr
+  Warning: RecoveryExpr encountered (parsing error)
+  RecoveryExpr appears to be call to: floatList
+  Successfully reconstructed call to floatList
+[DEBUG Bug#26] translateStmt called, type: FloatingLiteral
   [Bug #8] Skipping statement containing RecoveryExpr
-  [Bug #8] Skipping statement containing RecoveryExpr
-  [Bug #8] Skipping statement containing RecoveryExpr
-  [Bug #8] Skipping statement containing RecoveryExpr
-  [Bug #8] Skipping statement containing RecoveryExpr
-  [Bug #8] Skipping statement containing RecoveryExpr
+[DEBUG Bug#26] translateStmt called, type: CallExpr
+[DEBUG Bug#26] translateStmt called, type: UnresolvedLookupExpr
+[DEBUG Bug#26] translateStmt called, type: StringLiteral
+[DEBUG Bug#26] translateStmt called, type: CallExpr
+[DEBUG Bug#26] translateStmt called, type: CXXDependentScopeMemberExpr
+[DEBUG Bug#26] translateStmt called, type: RecoveryExpr
+  Warning: RecoveryExpr encountered (parsing error)
+  Skipping RecoveryExpr (cannot reconstruct)
+[DEBUG Bug#26] translateStmt called, type: CallExpr
+[DEBUG Bug#26] translateStmt called, type: UnresolvedLookupExpr
+[DEBUG Bug#26] translateStmt called, type: StringLiteral
+[DEBUG Bug#26] translateStmt called, type: CallExpr
+[DEBUG Bug#26] translateStmt called, type: CXXDependentScopeMemberExpr
+[DEBUG Bug#26] translateStmt called, type: RecoveryExpr
+  Warning: RecoveryExpr encountered (parsing error)
+  Skipping RecoveryExpr (cannot reconstruct)
 [DEBUG Bug#26] translateStmt called, type: DeclStmt
   [Translating DeclStmt]
     Variable: passed
-  [Bug #8] Skipping statement containing RecoveryExpr
-  [Bug #8] Skipping statement containing RecoveryExpr
-  [Bug #8] Skipping statement containing RecoveryExpr
-  [Bug #8] Skipping statement containing RecoveryExpr
-  [Bug #8] Skipping statement containing RecoveryExpr
+[DEBUG Bug#26] translateStmt called, type: BinaryOperator
+[DEBUG Bug#26] translateStmt called, type: DeclRefExpr
+[DEBUG Bug#26] translateStmt called, type: BinaryOperator
+[DEBUG Bug#26] translateStmt called, type: DeclRefExpr
+[DEBUG Bug#26] translateStmt called, type: ParenExpr
+[DEBUG Bug#26] translateStmt called, type: BinaryOperator
+[DEBUG Bug#26] translateStmt called, type: CallExpr
+[DEBUG Bug#26] translateStmt called, type: CXXDependentScopeMemberExpr
+[DEBUG Bug#26] translateStmt called, type: RecoveryExpr
+[DEBUG Bug#26] translateStmt called, type: DeclRefExpr
+  Warning: RecoveryExpr encountered (parsing error)
+  RecoveryExpr appears to be call to: list
+  Successfully reconstructed call to list
+[DEBUG Bug#26] translateStmt called, type: IntegerLiteral
+[DEBUG Bug#26] translateStmt called, type: BinaryOperator
+[DEBUG Bug#26] translateStmt called, type: DeclRefExpr
+[DEBUG Bug#26] translateStmt called, type: BinaryOperator
+[DEBUG Bug#26] translateStmt called, type: DeclRefExpr
+[DEBUG Bug#26] translateStmt called, type: ParenExpr
+[DEBUG Bug#26] translateStmt called, type: BinaryOperator
+[DEBUG Bug#26] translateStmt called, type: CallExpr
+[DEBUG Bug#26] translateStmt called, type: CXXDependentScopeMemberExpr
+[DEBUG Bug#26] translateStmt called, type: RecoveryExpr
+[DEBUG Bug#26] translateStmt called, type: DeclRefExpr
+  Warning: RecoveryExpr encountered (parsing error)
+  RecoveryExpr appears to be call to: list
+  Successfully reconstructed call to list
+[DEBUG Bug#26] translateStmt called, type: IntegerLiteral
+[DEBUG Bug#26] translateStmt called, type: BinaryOperator
+[DEBUG Bug#26] translateStmt called, type: DeclRefExpr
+[DEBUG Bug#26] translateStmt called, type: BinaryOperator
+[DEBUG Bug#26] translateStmt called, type: DeclRefExpr
+[DEBUG Bug#26] translateStmt called, type: ParenExpr
+[DEBUG Bug#26] translateStmt called, type: UnaryOperator
+[DEBUG Bug#26] translateStmt called, type: CallExpr
+[DEBUG Bug#26] translateStmt called, type: CXXDependentScopeMemberExpr
+[DEBUG Bug#26] translateStmt called, type: RecoveryExpr
+  Warning: RecoveryExpr encountered (parsing error)
+  Skipping RecoveryExpr (cannot reconstruct)
+[DEBUG Bug#26] translateStmt called, type: BinaryOperator
+[DEBUG Bug#26] translateStmt called, type: DeclRefExpr
+[DEBUG Bug#26] translateStmt called, type: BinaryOperator
+[DEBUG Bug#26] translateStmt called, type: DeclRefExpr
+[DEBUG Bug#26] translateStmt called, type: ParenExpr
+[DEBUG Bug#26] translateStmt called, type: BinaryOperator
+[DEBUG Bug#26] translateStmt called, type: CallExpr
+[DEBUG Bug#26] translateStmt called, type: CXXDependentScopeMemberExpr
+[DEBUG Bug#26] translateStmt called, type: RecoveryExpr
+[DEBUG Bug#26] translateStmt called, type: DeclRefExpr
+  Warning: RecoveryExpr encountered (parsing error)
+  RecoveryExpr appears to be call to: floatList
+  Successfully reconstructed call to floatList
+[DEBUG Bug#26] translateStmt called, type: IntegerLiteral
+[DEBUG Bug#26] translateStmt called, type: BinaryOperator
+[DEBUG Bug#26] translateStmt called, type: DeclRefExpr
+[DEBUG Bug#26] translateStmt called, type: BinaryOperator
+[DEBUG Bug#26] translateStmt called, type: DeclRefExpr
+[DEBUG Bug#26] translateStmt called, type: ParenExpr
+[DEBUG Bug#26] translateStmt called, type: BinaryOperator
+[DEBUG Bug#26] translateStmt called, type: BinaryOperator
+[DEBUG Bug#26] translateStmt called, type: CallExpr
+[DEBUG Bug#26] translateStmt called, type: CXXDependentScopeMemberExpr
+[DEBUG Bug#26] translateStmt called, type: RecoveryExpr
+[DEBUG Bug#26] translateStmt called, type: DeclRefExpr
+  Warning: RecoveryExpr encountered (parsing error)
+  RecoveryExpr appears to be call to: floatList
+  Successfully reconstructed call to floatList
+[DEBUG Bug#26] translateStmt called, type: FloatingLiteral
+[DEBUG Bug#26] translateStmt called, type: BinaryOperator
+[DEBUG Bug#26] translateStmt called, type: CallExpr
+[DEBUG Bug#26] translateStmt called, type: CXXDependentScopeMemberExpr
+[DEBUG Bug#26] translateStmt called, type: RecoveryExpr
+  Warning: RecoveryExpr encountered (parsing error)
+  Skipping RecoveryExpr (cannot reconstruct)
+[DEBUG Bug#26] translateStmt called, type: FloatingLiteral
   [Bug #8] Skipping statement containing RecoveryExpr
 [DEBUG Bug#26] translateStmt called, type: ReturnStmt
 [DEBUG Bug#26] Dispatching to translateReturnStmt
@@ -1672,6 +1922,7 @@ Found 0 function template instantiation(s)
 
 Monomorphizing class templates:
   Generating AST for: LinkedList<int>
+  Registered nested class mapping: Node -> LinkedList_int_Node
   Processing nested class: Node
     -> Generated struct LinkedList_int_Node with 2 fields
     -> Processing nested constructor: Node
@@ -1692,7 +1943,9 @@ Monomorphizing class templates:
 [DEBUG Bug#26] translateStmt called, type: DeclStmt
   [Translating DeclStmt]
     Variable: newNode
+      Substituting nested class pointer: Node* -> struct LinkedList_int_Node*
   Translating CXXNewExpr to malloc()
+      Substituting new expression type: new Node() -> malloc(sizeof(struct LinkedList_int_Node))
 [DEBUG Bug#26] translateStmt called, type: IfStmt
   Translating nullptr to NULL
 [DEBUG Bug#26] translateStmt called, type: CompoundStmt
@@ -1727,7 +1980,9 @@ Monomorphizing class templates:
 [DEBUG Bug#26] translateStmt called, type: DeclStmt
   [Translating DeclStmt]
     Variable: newNode
+      Substituting nested class pointer: Node* -> struct LinkedList_int_Node*
   Translating CXXNewExpr to malloc()
+      Substituting new expression type: new Node() -> malloc(sizeof(struct LinkedList_int_Node))
 [DEBUG Bug#26] translateStmt called, type: BinaryOperator
 [DEBUG Bug#26] translateStmt called, type: CXXDependentScopeMemberExpr
 [DEBUG Bug#26] translateStmt called, type: ImplicitCastExpr
@@ -1761,6 +2016,7 @@ Monomorphizing class templates:
 [DEBUG Bug#26] translateStmt called, type: DeclStmt
   [Translating DeclStmt]
     Variable: temp
+      Substituting nested class pointer: Node* -> struct LinkedList_int_Node*
 [DEBUG Bug#26] translateStmt called, type: BinaryOperator
 [DEBUG Bug#26] translateStmt called, type: MemberExpr
 [DEBUG Bug#26] translateStmt called, type: CXXThisExpr
@@ -1815,6 +2071,7 @@ Monomorphizing class templates:
 [DEBUG Bug#26] translateStmt called, type: DeclStmt
   [Translating DeclStmt]
     Variable: temp
+      Substituting nested class pointer: Node* -> struct LinkedList_int_Node*
 [DEBUG Bug#26] translateStmt called, type: BinaryOperator
 [DEBUG Bug#26] translateStmt called, type: MemberExpr
 [DEBUG Bug#26] translateStmt called, type: CXXThisExpr
@@ -1835,6 +2092,7 @@ Monomorphizing class templates:
   [Scope] Exiting scope at depth 0 with 0 objects
       -> Body translated successfully
   Generating AST for: LinkedList<float>
+  Registered nested class mapping: Node -> LinkedList_float_Node
   Processing nested class: Node
     -> Generated struct LinkedList_float_Node with 2 fields
     -> Processing nested constructor: Node
@@ -1855,7 +2113,9 @@ Monomorphizing class templates:
 [DEBUG Bug#26] translateStmt called, type: DeclStmt
   [Translating DeclStmt]
     Variable: newNode
+      Substituting nested class pointer: Node* -> struct LinkedList_float_Node*
   Translating CXXNewExpr to malloc()
+      Substituting new expression type: new Node() -> malloc(sizeof(struct LinkedList_float_Node))
 [DEBUG Bug#26] translateStmt called, type: IfStmt
   Translating nullptr to NULL
 [DEBUG Bug#26] translateStmt called, type: CompoundStmt
@@ -1890,7 +2150,9 @@ Monomorphizing class templates:
 [DEBUG Bug#26] translateStmt called, type: DeclStmt
   [Translating DeclStmt]
     Variable: newNode
+      Substituting nested class pointer: Node* -> struct LinkedList_float_Node*
   Translating CXXNewExpr to malloc()
+      Substituting new expression type: new Node() -> malloc(sizeof(struct LinkedList_float_Node))
 [DEBUG Bug#26] translateStmt called, type: BinaryOperator
 [DEBUG Bug#26] translateStmt called, type: CXXDependentScopeMemberExpr
 [DEBUG Bug#26] translateStmt called, type: ImplicitCastExpr
@@ -1924,6 +2186,7 @@ Monomorphizing class templates:
 [DEBUG Bug#26] translateStmt called, type: DeclStmt
   [Translating DeclStmt]
     Variable: temp
+      Substituting nested class pointer: Node* -> struct LinkedList_float_Node*
 [DEBUG Bug#26] translateStmt called, type: BinaryOperator
 [DEBUG Bug#26] translateStmt called, type: MemberExpr
 [DEBUG Bug#26] translateStmt called, type: CXXThisExpr
@@ -1978,6 +2241,7 @@ Monomorphizing class templates:
 [DEBUG Bug#26] translateStmt called, type: DeclStmt
   [Translating DeclStmt]
     Variable: temp
+      Substituting nested class pointer: Node* -> struct LinkedList_float_Node*
 [DEBUG Bug#26] translateStmt called, type: BinaryOperator
 [DEBUG Bug#26] translateStmt called, type: MemberExpr
 [DEBUG Bug#26] translateStmt called, type: CXXThisExpr
@@ -1991,9 +2255,7 @@ Monomorphizing class templates:
   [Scope] Exiting scope at depth 1 with 0 objects
 [DEBUG Bug#26] translateStmt called, type: BinaryOperator
 [DEBUG Bug#26] translateStmt called, type: MemberExpr
-[DEBUG Bug#1 error generated.
-Error while processing /Users/alexanderfedin/Projects/hapyy/hupyy-cpp-to-c/tests/real-world/simple-validation/02-custom-container/main.cpp.
-26] translateStmt called, type: CXXThisExpr
+[DEBUG Bug#26] translateStmt called, type: CXXThisExpr
 [DEBUG Bug#26] translateStmt called, type: CXXNullPtrLiteralExpr
   Translating nullptr to NULL
   Translating nullptr to NULL
@@ -2004,150 +2266,122 @@ Monomorphizing function templates:
 
 ========================================
 Template Monomorphization Complete
-  Unique instantiations: 2
+  Unique instantiations:1 error generated.
+Error while processing /Users/alexanderfedin/Projects/hapyy/hupyy-cpp-to-c/tests/real-world/simple-validation/02-custom-container/main.cpp.
+ 2
 ========================================
 
-C TranslationUnit has 25 generated declarations
+C TranslationUnit has 29 generated declarations
+[Bug #35] Skipping orphaned top-level VarDecl: newNode
+[Bug #35] Skipping orphaned top-level VarDecl: newNode
+[Bug #35] Skipping orphaned top-level VarDecl: temp
+[Bug #35] Skipping orphaned top-level VarDecl: temp
+[Bug #35] Skipping orphaned top-level VarDecl: newNode
+[Bug #35] Skipping orphaned top-level VarDecl: newNode
+[Bug #35] Skipping orphaned top-level VarDecl: temp
+[Bug #35] Skipping orphaned top-level VarDecl: temp
 [DEBUG CodeGen] Manually printing ReturnStmt
 [DEBUG CodeGen] Return value type: ConditionalOperator
 [DEBUG CodeGen] Manually printing ReturnStmt
 [DEBUG CodeGen] Return value type: CXXDependentScopeMemberExpr
+[Bug #35] Skipping orphaned top-level VarDecl: newNode
+[Bug #35] Skipping orphaned top-level VarDecl: newNode
+[Bug #35] Skipping orphaned top-level VarDecl: temp
+[Bug #35] Skipping orphaned top-level VarDecl: temp
 [DEBUG CodeGen] Manually printing ReturnStmt
 [DEBUG CodeGen] Return value type: CXXDependentScopeMemberExpr
+[Bug #35] Skipping orphaned top-level VarDecl: newNode
+[Bug #35] Skipping orphaned top-level VarDecl: newNode
+[Bug #35] Skipping orphaned top-level VarDecl: temp
+[Bug #35] Skipping orphaned top-level VarDecl: temp
 Generated files:
-  transpiled/main.h
-  transpiled/main.c
+  /Users/alexanderfedin/Projects/hapyy/hupyy-cpp-to-c/tests/real-world/simple-validation/02-custom-container/transpiled/main.h
+  /Users/alexanderfedin/Projects/hapyy/hupyy-cpp-to-c/tests/real-world/simple-validation/02-custom-container/transpiled/main.c
 [DEBUG] Tool.run() returned: 1
 [DEBUG] After Tool.run(), about to handle dependencies...
 
 Transpilation completed successfully. Generated 1 file pair(s).
+[DEBUG FileOutputManager] writeFile called with filename: /Users/alexanderfedin/Projects/hapyy/hupyy-cpp-to-c/tests/real-world/simple-validation/02-custom-container/transpiled/main.h
+[DEBUG FileOutputManager] Content size: 1748 bytes
+[DEBUG FileOutputManager] Parent directory: "/Users/alexanderfedin/Projects/hapyy/hupyy-cpp-to-c/tests/real-world/simple-validation/02-custom-container/transpiled"
+[DEBUG FileOutputManager] Parent directory empty: no
+[DEBUG FileOutputManager] Parent directory exists: yes
+[DEBUG FileOutputManager] Opening file for writing: /Users/alexanderfedin/Projects/hapyy/hupyy-cpp-to-c/tests/real-world/simple-validation/02-custom-container/transpiled/main.h
+[DEBUG FileOutputManager] File opened successfully
+[DEBUG FileOutputManager] Content written successfully
+[DEBUG FileOutputManager] File closed successfully
+[DEBUG FileOutputManager] writeFile returning true
+[DEBUG FileOutputManager] writeFile called with filename: /Users/alexanderfedin/Projects/hapyy/hupyy-cpp-to-c/tests/real-world/simple-validation/02-custom-container/transpiled/main.c
+[DEBUG FileOutputManager] Content size: 4238 bytes
+[DEBUG FileOutputManager] Parent directory: "/Users/alexanderfedin/Projects/hapyy/hupyy-cpp-to-c/tests/real-world/simple-validation/02-custom-container/transpiled"
+[DEBUG FileOutputManager] Parent directory empty: no
+[DEBUG FileOutputManager] Parent directory exists: yes
+[DEBUG FileOutputManager] Opening file for writing: /Users/alexanderfedin/Projects/hapyy/hupyy-cpp-to-c/tests/real-world/simple-validation/02-custom-container/transpiled/main.c
+[DEBUG FileOutputManager] File opened successfully
+[DEBUG FileOutputManager] Content written successfully
+[DEBUG FileOutputManager] File closed successfully
+[DEBUG FileOutputManager] writeFile returning true
     ✓ Transpilation successful
   [4/5] Building transpiled C version...
-In file included from ./main.c:4:
-./main.h:29:1: error: must use 'struct' tag to refer to type 'Node'
-   29 | Node *newNode = malloc(sizeof(Node))
-      | ^
-      | struct 
-./main.h:29:31: error: use of undeclared identifier 'Node'; did you mean 'modf'?
-   29 | Node *newNode = malloc(sizeof(Node))
-      |                               ^~~~
-      |                               modf
-/Library/Developer/CommandLineTools/SDKs/MacOSX.sdk/usr/include/math.h:399:15: note: 'modf' declared here
-  399 | extern double modf(double, double *);
-      |               ^
-In file included from ./main.c:4:
-./main.h:29:17: error: initializer element is not a compile-time constant
-   29 | Node *newNode = malloc(sizeof(Node))
-      |                 ^~~~~~~~~~~~~~~~~~~~
-./main.h:29:37: error: expected ';' after top level declarator
-   29 | Node *newNode = malloc(sizeof(Node))
-      |                                     ^
-      |                                     ;
-./main.h:35:41: warning: declaration of 'struct LinkedList_float_Node' will not be visible outside of this function [-Wvisibility]
-   35 | void LinkedList_float_Node__ctor(struct LinkedList_float_Node * this, float * value);
+./main.c:9:34: error: expected expression
+    9 |         printf("  Initial size: %zu\n", <recovery-expr>().size());
       |                                         ^
-./main.h:48:1: error: must use 'struct' tag to refer to type 'Node'
-   48 | Node *newNode = malloc(sizeof(Node))
-      | ^
-      | struct 
-./main.h:48:31: error: use of undeclared identifier 'Node'; did you mean 'modf'?
-   48 | Node *newNode = malloc(sizeof(Node))
-      |                               ^~~~
-      |                               modf
-/Library/Developer/CommandLineTools/SDKs/MacOSX.sdk/usr/include/math.h:399:15: note: 'modf' declared here
-  399 | extern double modf(double, double *);
-      |               ^
-In file included from ./main.c:4:
-./main.h:48:7: error: redefinition of 'newNode'
-   48 | Node *newNode = malloc(sizeof(Node))
-      |       ^
-./main.h:29:7: note: previous definition is here
-   29 | Node *newNode = malloc(sizeof(Node))
-      |       ^
-./main.h:48:37: error: expected ';' after top level declarator
-   48 | Node *newNode = malloc(sizeof(Node))
+./main.c:9:35: error: use of undeclared identifier 'recovery'
+    9 |         printf("  Initial size: %zu\n", <recovery-expr>().size());
+      |                                          ^
+./main.c:9:44: error: use of undeclared identifier 'expr'
+    9 |         printf("  Initial size: %zu\n", <recovery-expr>().size());
+      |                                                   ^
+./main.c:9:50: error: expected expression
+    9 |         printf("  Initial size: %zu\n", <recovery-expr>().size());
+      |                                                         ^
+./main.c:10:29: error: expected expression
+   10 |         printf("  Is empty: %s\n", <recovery-expr>().isEmpty() ? "true" : "false");
+      |                                    ^
+./main.c:10:30: error: use of undeclared identifier 'recovery'
+   10 |         printf("  Is empty: %s\n", <recovery-expr>().isEmpty() ? "true" : "false");
       |                                     ^
-      |                                     ;
-./main.c:19:2: error: must use 'struct' tag to refer to type 'Node'
-   19 |         Node *newNode = malloc(sizeof(Node));
+./main.c:10:39: error: use of undeclared identifier 'expr'
+   10 |         printf("  Is empty: %s\n", <recovery-expr>().isEmpty() ? "true" : "false");
+      |                                              ^
+./main.c:10:45: error: expected expression
+   10 |         printf("  Is empty: %s\n", <recovery-expr>().isEmpty() ? "true" : "false");
+      |                                                    ^
+./main.c:11:2: error: expected expression
+   11 |         <recovery-expr>(list).push_back(10);
       |         ^
-      |         struct 
-./main.c:19:32: error: use of undeclared identifier 'Node'; did you mean 'modf'?
-   19 |         Node *newNode = malloc(sizeof(Node));
-      |                                       ^~~~
-      |                                       modf
-/Library/Developer/CommandLineTools/SDKs/MacOSX.sdk/usr/include/math.h:399:15: note: 'modf' declared here
-  399 | extern double modf(double, double *);
-      |               ^
-./main.c:22:27: warning: incompatible pointer types assigning to 'struct LinkedList_int_Node *' from 'Node *' [-Wincompatible-pointer-types]
-   22 |                 this->head = this->tail = newNode;
-      |                                         ^ ~~~~~~~
-./main.c:26:14: warning: incompatible pointer types assigning to 'struct LinkedList_int_Node *' from 'Node *' [-Wincompatible-pointer-types]
-   26 |                 this->tail = newNode;
-      |                            ^ ~~~~~~~
-./main.c:32:2: error: must use 'struct' tag to refer to type 'Node'
-   32 |         Node *newNode = malloc(sizeof(Node));
+./main.c:11:3: error: use of undeclared identifier 'recovery'
+   11 |         <recovery-expr>(list).push_back(10);
+      |          ^
+./main.c:11:12: error: use of undeclared identifier 'expr'
+   11 |         <recovery-expr>(list).push_back(10);
+      |                   ^
+./main.c:11:24: error: no member named 'push_back' in 'struct LinkedList_int'
+   11 |         <recovery-expr>(list).push_back(10);
+      |                        ~~~~~~ ^
+./main.c:12:2: error: expected expression
+   12 |         <recovery-expr>(list).push_back(20);
       |         ^
-      |         struct 
-./main.c:32:32: error: use of undeclared identifier 'Node'; did you mean 'modf'?
-   32 |         Node *newNode = malloc(sizeof(Node));
-      |                                       ^~~~
-      |                                       modf
-/Library/Developer/CommandLineTools/SDKs/MacOSX.sdk/usr/include/math.h:399:15: note: 'modf' declared here
-  399 | extern double modf(double, double *);
-      |               ^
-./main.c:34:9: error: incomplete definition of type 'Node'
-   34 |         newNode->next = this->head;
-      |         ~~~~~~~^
-./main.h:14:9: note: forward declaration of 'struct Node'
-   14 |         struct Node * next;
-      |                ^
-./main.c:35:13: warning: incompatible pointer types assigning to 'struct LinkedList_int_Node *' from 'Node *' [-Wincompatible-pointer-types]
-   35 |         this->head = newNode;
-      |                    ^ ~~~~~~~
-./main.c:44:3: error: must use 'struct' tag to refer to type 'Node'
-   44 |                 Node *temp = this->head;
-      |                 ^
-      |                 struct 
-./main.c:44:9: warning: incompatible pointer types initializing 'Node *' with an expression of type 'struct LinkedList_int_Node *' [-Wincompatible-pointer-types]
-   44 |                 Node *temp = this->head;
-      |                       ^      ~~~~~~~~~~
-./main.c:46:14: warning: incompatible pointer types assigning to 'struct LinkedList_int_Node *' from 'struct Node *' [-Wincompatible-pointer-types]
-   46 |                 this->head = this->head->next;
-      |                            ^ ~~~~~~~~~~~~~~~~
-./main.c:67:3: error: must use 'struct' tag to refer to type 'Node'
-   67 |                 Node *temp = this->head;
-      |                 ^
-      |                 struct 
-./main.c:67:9: warning: incompatible pointer types initializing 'Node *' with an expression of type 'struct LinkedList_int_Node *' [-Wincompatible-pointer-types]
-   67 |                 Node *temp = this->head;
-      |                       ^      ~~~~~~~~~~
-./main.c:69:14: warning: incompatible pointer types assigning to 'struct LinkedList_int_Node *' from 'struct Node *' [-Wincompatible-pointer-types]
-   69 |                 this->head = this->head->next;
-      |                            ^ ~~~~~~~~~~~~~~~~
-./main.c:75:1: error: must use 'struct' tag to refer to type 'Node'
-   75 | Node *newNode = malloc(sizeof(Node))
-      | ^
-      | struct 
-./main.c:75:31: error: use of undeclared identifier 'Node'; did you mean 'modf'?
-   75 | Node *newNode = malloc(sizeof(Node))
-      |                               ^~~~
-      |                               modf
-/Library/Developer/CommandLineTools/SDKs/MacOSX.sdk/usr/include/math.h:399:15: note: 'modf' declared here
-  399 | extern double modf(double, double *);
-      |               ^
-./main.c:75:7: error: redefinition of 'newNode'
-   75 | Node *newNode = malloc(sizeof(Node))
-      |       ^
-./main.h:29:7: note: previous definition is here
-   29 | Node *newNode = malloc(sizeof(Node))
-      |       ^
-./main.c:75:37: error: expected ';' after top level declarator
-   75 | Node *newNode = malloc(sizeof(Node))
-      |                                     ^
-      |                                     ;
+./main.c:12:3: error: use of undeclared identifier 'recovery'
+   12 |         <recovery-expr>(list).push_back(20);
+      |          ^
+./main.c:12:12: error: use of undeclared identifier 'expr'
+   12 |         <recovery-expr>(list).push_back(20);
+      |                   ^
+./main.c:12:24: error: no member named 'push_back' in 'struct LinkedList_int'
+   12 |         <recovery-expr>(list).push_back(20);
+      |                        ~~~~~~ ^
+./main.c:13:2: error: expected expression
+   13 |         <recovery-expr>(list).push_back(30);
+      |         ^
+./main.c:13:3: error: use of undeclared identifier 'recovery'
+   13 |         <recovery-expr>(list).push_back(30);
+      |          ^
+./main.c:13:12: error: use of undeclared identifier 'expr'
+   13 |         <recovery-expr>(list).push_back(30);
+      |                   ^
 fatal error: too many errors emitted, stopping now [-ferror-limit=]
-8 warnings and 20 errors generated.
+20 errors generated.
     [0;31m✗ C build failed[0m
 [0;31m❌ FAIL: Custom Container[0m
 
@@ -2220,10 +2454,10 @@ FileOriginTracker configured with user header paths
 Translation unit has 96 top-level declarations
 [Bug #30 FIX] Creating independent target ASTContext for C output...
 [Bug #30 FIX] Target ASTContext created successfully:
-  - ASTContext @ 0x11f849200
+  - ASTContext @ 0x129010600
   - Target Triple: arm64-apple-darwin24.5.0
   - Language: C11
-[Bug #30 FIX] Created C_TU @ 0x11f853b68 for file: /Users/alexanderfedin/Projects/hapyy/hupyy-cpp-to-c/tests/real-world/simple-validation/03-state-machine/main.cpp
+[Bug #30 FIX] Created C_TU @ 0x12901dd68 for file: /Users/alexanderfedin/Projects/hapyy/hupyy-cpp-to-c/tests/real-world/simple-validation/03-state-machine/main.cpp
 Virtual method support initialized
 Template monomorphization enabled (limit: 1000 instantiations)
 Exception handling support initialized (SJLJ model)
@@ -2234,12 +2468,17 @@ Static operator() and operator[] support initialized (C++23)
 Deducing this / explicit object parameter support initialized (C++23 P0847R7)
 if consteval support initialized (C++23 P1938R3) - Runtime strategy
 auto(x) decay-copy and partial constexpr support initialized (C++23 P0849R8)
-[Bug #30 FIX] CppToCVisitor using C_TU @ 0x11f853b68
+[Bug #30 FIX] CppToCVisitor using C_TU @ 0x12901dd68
 Translating enum: GameState
-  Enumerator: Menu = 0
-  Enumerator: Playing = 1
-  Enumerator: Paused = 2
-  Enumerator: GameOver = 3
+  -> Scoped enum detected, will prefix enumerators with GameState__
+  Enumerator: Menu -> GameState__Menu = 0
+  Enumerator: Playing -> GameState__Playing = 1
+  Enumerator: Paused -> GameState__Paused = 2
+  Enumerator: GameOver -> GameState__GameOver = 3
+    Mapped: Menu (C++) -> GameState__Menu (C)
+    Mapped: Playing (C++) -> GameState__Playing (C)
+    Mapped: Paused (C++) -> GameState__Paused (C)
+    Mapped: GameOver (C++) -> GameState__GameOver (C)
   -> C enum GameState with 4 values
 Translating class: StateMachine
 
@@ -2335,33 +2574,48 @@ Translating standalone function: main
 [DEBUG Bug#26] translateStmt called, type: MemberExpr
 [DEBUG Bug#26] translateStmt called, type: DeclRefExpr
 [DEBUG Bug#26] translateStmt called, type: DeclRefExpr
+  Translating scoped enum ref: Playing -> GameState__Playing
   Warning: Method not in methodToCFunc map, generating call anyway: StateMachine::transition
   Generated function name: StateMachine_transition
+  Translating scoped enum ref: Playing -> GameState__Playing
   [Bug #8] Skipping statement containing RecoveryExpr
 [DEBUG Bug#26] translateStmt called, type: CXXMemberCallExpr
 [DEBUG Bug#26] translateStmt called, type: MemberExpr
 [DEBUG Bug#26] translateStmt called, type: DeclRefExpr
 [DEBUG Bug#26] translateStmt called, type: DeclRefExpr
+  Translating scoped enum ref: Paused -> GameState__Paused
+  Translating scoped enum ref: Paused -> GameState__Paused
   [Bug #8] Skipping statement containing RecoveryExpr
 [DEBUG Bug#26] translateStmt called, type: CXXMemberCallExpr
 [DEBUG Bug#26] translateStmt called, type: MemberExpr
 [DEBUG Bug#26] translateStmt called, type: DeclRefExpr
 [DEBUG Bug#26] translateStmt called, type: DeclRefExpr
+  Translating scoped enum ref: Playing -> GameState__Playing
+  Translating scoped enum ref: Playing -> GameState__Playing
   [Bug #8] Skipping statement containing RecoveryExpr
 [DEBUG Bug#26] translateStmt called, type: CXXMemberCallExpr
 [DEBUG Bug#26] translateStmt called, type: MemberExpr
 [DEBUG Bug#26] translateStmt called, type: DeclRefExpr
 [DEBUG Bug#26] translateStmt called, type: DeclRefExpr
+  Translating scoped enum ref: GameOver -> GameState__GameOver
+  Translating scoped enum ref: GameOver -> GameState__GameOver
   [Bug #8] Skipping statement containing RecoveryExpr
 [DEBUG Bug#26] translateStmt called, type: CXXMemberCallExpr
 [DEBUG Bug#26] translateStmt called, type: MemberExpr
 [DEBUG Bug#26] translateStmt called, type: DeclRefExpr
 [DEBUG Bug#26] translateStmt called, type: DeclRefExpr
+  Translating scoped enum ref: Playing -> GameState__Playing
+  Translating scoped enum ref: Playing -> GameState__Playing
   [Bug #8] Skipping statement containing RecoveryExpr
 [DEBUG Bug#26] translateStmt called, type: CXXMemberCallExpr
 [DEBUG Bug#26] translateStmt called, type: MemberExpr
+[DEBUG Bug#10 errors generated.
+Error while processing /Users/alexanderfedin/Projects/hapyy/hupyy-cpp-to-c/tests/real-world/simple-validation/03-state-machine/main.cpp.
+[2/2] Processing file /Users/alexanderfedin/Projects/hapyy/hupyy-cpp-to-c/tests/real-world/simple-validation/03-state-machine/src/StateMachine.cpp.
+26] translateStmt called, type: DeclRefExpr
 [DEBUG Bug#26] translateStmt called, type: DeclRefExpr
-[DEBUG Bug#26] translateStmt called, type: DeclRefExpr
+  Translating scoped enum ref: Menu -> GameState__Menu
+  Translating scoped enum ref: Menu -> GameState__Menu
   [Bug #8] Skipping statement containing RecoveryExpr
   [Bug #8] Skipping statement containing RecoveryExpr
 [DEBUG Bug#26] translateStmt called, type: DeclStmt
@@ -2378,12 +2632,11 @@ Translating standalone function: main
 [DEBUG Bug#26] translateStmt called, type: MemberExpr
 [DEBUG Bug#26] translateStmt called, type: ImplicitCastExpr
 [DEBUG Bug#26] translateStmt called, type: DeclRefExpr
-  Warning: Method not in methodTo10 errors generated.
-Error while processing /Users/alexanderfedin/Projects/hapyy/hupyy-cpp-to-c/tests/real-world/simple-validation/03-state-machine/main.cpp.
-[2/2] Processing file /Users/alexanderfedin/Projects/hapyy/hupyy-cpp-to-c/tests/real-world/simple-validation/03-state-machine/src/StateMachine.cpp.
-CFunc map, generating call anyway: StateMachine::getCurrentState
+  Warning: Method not in methodToCFunc map, generating call anyway: StateMachine::getCurrentState
   Generated function name: StateMachine_getCurrentState
 [DEBUG Bug#26] translateStmt called, type: DeclRefExpr
+  Translating scoped enum ref: Menu -> GameState__Menu
+  Translating scoped enum ref: Menu -> GameState__Menu
 [DEBUG Bug#26] translateStmt called, type: BinaryOperator
 [DEBUG Bug#26] translateStmt called, type: DeclRefExpr
 [DEBUG Bug#26] translateStmt called, type: BinaryOperator
@@ -2441,12 +2694,12 @@ C TranslationUnit has 8 generated declarations
 [DEBUG CodeGen] Manually printing ReturnStmt
 [DEBUG CodeGen] Return value type: ConditionalOperator
 Generated files:
-  transpiled/main.h
-  transpiled/main.c
+  /Users/alexanderfedin/Projects/hapyy/hupyy-cpp-to-c/tests/real-world/simple-validation/03-state-machine/transpiled/main.h
+  /Users/alexanderfedin/Projects/hapyy/hupyy-cpp-to-c/tests/real-world/simple-validation/03-state-machine/transpiled/main.c
 Parsed file: /Users/alexanderfedin/Projects/hapyy/hupyy-cpp-to-c/tests/real-world/simple-validation/03-state-machine/src/StateMachine.cpp
 FileOriginTracker configured with user header paths
 Translation unit has 97 top-level declarations
-[Bug #30 FIX] Created C_TU @ 0x140029c18 for file: /Users/alexanderfedin/Projects/hapyy/hupyy-cpp-to-c/tests/real-world/simple-validation/03-state-machine/src/StateMachine.cpp
+[Bug #30 FIX] Created C_TU @ 0x1290232a8 for file: /Users/alexanderfedin/Projects/hapyy/hupyy-cpp-to-c/tests/real-world/simple-validation/03-state-machine/src/StateMachine.cpp
 Virtual method support initialized
 Template monomorphization enabled (limit: 1000 instantiations)
 Exception handling support initialized (SJLJ model)
@@ -2457,12 +2710,17 @@ Static operator() and operator[] support initialized (C++23)
 Deducing this / explicit object parameter support initialized (C++23 P0847R7)
 if consteval support initialized (C++23 P1938R3) - Runtime strategy
 auto(x) decay-copy and partial constexpr support initialized (C++23 P0849R8)
-[Bug #30 FIX] CppToCVisitor using C_TU @ 0x140029c18
+[Bug #30 FIX] CppToCVisitor using C_TU @ 0x1290232a8
 Translating enum: GameState
-  Enumerator: Menu = 0
-  Enumerator: Playing = 1
-  Enumerator: Paused = 2
-  Enumerator: GameOver = 3
+  -> Scoped enum detected, will prefix enumerators with GameState__
+  Enumerator: Menu -> GameState__Menu = 0
+  Enumerator: Playing -> GameState__Playing = 1
+  Enumerator: Paused -> GameState__Paused = 2
+  Enumerator: GameOver -> GameState__GameOver = 3
+    Mapped: Menu (C++) -> GameState__Menu (C)
+    Mapped: Playing (C++) -> GameState__Playing (C)
+    Mapped: Paused (C++) -> GameState__Paused (C)
+    Mapped: GameOver (C++) -> GameState__GameOver (C)
   -> C enum GameState with 4 values
 Translating class: StateMachine
 
@@ -2565,42 +2823,68 @@ C TranslationUnit has 7 generated declarations
 [DEBUG CodeGen] Manually printing ReturnStmt
 [DEBUG CodeGen] Return value type: ImplicitCastExpr
 Generated files:
-  transpiled/src/StateMachine.h
-  transpiled/src/StateMachine.c
+  /Users/alexanderfedin/Projects/hapyy/hupyy-cpp-to-c/tests/real-world/simple-validation/03-state-machine/transpiled/src/StateMachine.h
+  /Users/alexanderfedin/Projects/hapyy/hupyy-cpp-to-c/tests/real-world/simple-validation/03-state-machine/transpiled/src/StateMachine.c
 [DEBUG] Tool.run() returned: 1
 [DEBUG] After Tool.run(), about to handle dependencies...
 
 Transpilation completed successfully. Generated 2 file pair(s).
+[DEBUG FileOutputManager] writeFile called with filename: /Users/alexanderfedin/Projects/hapyy/hupyy-cpp-to-c/tests/real-world/simple-validation/03-state-machine/transpiled/main.h
+[DEBUG FileOutputManager] Content size: 843 bytes
+[DEBUG FileOutputManager] Parent directory: "/Users/alexanderfedin/Projects/hapyy/hupyy-cpp-to-c/tests/real-world/simple-validation/03-state-machine/transpiled"
+[DEBUG FileOutputManager] Parent directory empty: no
+[DEBUG FileOutputManager] Parent directory exists: yes
+[DEBUG FileOutputManager] Opening file for writing: /Users/alexanderfedin/Projects/hapyy/hupyy-cpp-to-c/tests/real-world/simple-validation/03-state-machine/transpiled/main.h
+[DEBUG FileOutputManager] File opened successfully
+[DEBUG FileOutputManager] Content written successfully
+[DEBUG FileOutputManager] File closed successfully
+[DEBUG FileOutputManager] writeFile returning true
+[DEBUG FileOutputManager] writeFile called with filename: /Users/alexanderfedin/Projects/hapyy/hupyy-cpp-to-c/tests/real-world/simple-validation/03-state-machine/transpiled/main.c
+[DEBUG FileOutputManager] Content size: 1346 bytes
+[DEBUG FileOutputManager] Parent directory: "/Users/alexanderfedin/Projects/hapyy/hupyy-cpp-to-c/tests/real-world/simple-validation/03-state-machine/transpiled"
+[DEBUG FileOutputManager] Parent directory empty: no
+[DEBUG FileOutputManager] Parent directory exists: yes
+[DEBUG FileOutputManager] Opening file for writing: /Users/alexanderfedin/Projects/hapyy/hupyy-cpp-to-c/tests/real-world/simple-validation/03-state-machine/transpiled/main.c
+[DEBUG FileOutputManager] File opened successfully
+[DEBUG FileOutputManager] Content written successfully
+[DEBUG FileOutputManager] File closed successfully
+[DEBUG FileOutputManager] writeFile returning true
+[DEBUG FileOutputManager] writeFile called with filename: /Users/alexanderfedin/Projects/hapyy/hupyy-cpp-to-c/tests/real-world/simple-validation/03-state-machine/transpiled/src/StateMachine.h
+[DEBUG FileOutputManager] Content size: 892 bytes
+[DEBUG FileOutputManager] Parent directory: "/Users/alexanderfedin/Projects/hapyy/hupyy-cpp-to-c/tests/real-world/simple-validation/03-state-machine/transpiled/src"
+[DEBUG FileOutputManager] Parent directory empty: no
+[DEBUG FileOutputManager] Parent directory exists: no
+[DEBUG FileOutputManager] Creating parent directory: "/Users/alexanderfedin/Projects/hapyy/hupyy-cpp-to-c/tests/real-world/simple-validation/03-state-machine/transpiled/src"
+[DEBUG FileOutputManager] Parent directory created successfully
+[DEBUG FileOutputManager] Opening file for writing: /Users/alexanderfedin/Projects/hapyy/hupyy-cpp-to-c/tests/real-world/simple-validation/03-state-machine/transpiled/src/StateMachine.h
+[DEBUG FileOutputManager] File opened successfully
+[DEBUG FileOutputManager] Content written successfully
+[DEBUG FileOutputManager] File closed successfully
+[DEBUG FileOutputManager] writeFile returning true
+[DEBUG FileOutputManager] writeFile called with filename: /Users/alexanderfedin/Projects/hapyy/hupyy-cpp-to-c/tests/real-world/simple-validation/03-state-machine/transpiled/src/StateMachine.c
+[DEBUG FileOutputManager] Content size: 835 bytes
+[DEBUG FileOutputManager] Parent directory: "/Users/alexanderfedin/Projects/hapyy/hupyy-cpp-to-c/tests/real-world/simple-validation/03-state-machine/transpiled/src"
+[DEBUG FileOutputManager] Parent directory empty: no
+[DEBUG FileOutputManager] Parent directory exists: yes
+[DEBUG FileOutputManager] Opening file for writing: /Users/alexanderfedin/Projects/hapyy/hupyy-cpp-to-c/tests/real-world/simple-validation/03-state-machine/transpiled/src/StateMachine.c
+[DEBUG FileOutputManager] File opened successfully
+[DEBUG FileOutputManager] Content written successfully
+[DEBUG FileOutputManager] File closed successfully
+[DEBUG FileOutputManager] writeFile returning true
     ✓ Transpilation successful
   [4/5] Building transpiled C version...
-./main.c:13:8: error: unexpected type name 'GameState': expected expression
-   13 |                 case GameState::Menu:
+./main.c:13:8: error: use of undeclared identifier 'Menu'
+   13 |                 case Menu:
       |                      ^
-./main.c:13:17: error: expected ':' after 'case'
-   13 |                 case GameState::Menu:
-      |                               ^~
-      |                               :
-./main.c:16:8: error: unexpected type name 'GameState': expected expression
-   16 |                 case GameState::Playing:
+./main.c:16:8: error: use of undeclared identifier 'Playing'
+   16 |                 case Playing:
       |                      ^
-./main.c:16:17: error: expected ':' after 'case'
-   16 |                 case GameState::Playing:
-      |                               ^~
-      |                               :
-./main.c:19:8: error: unexpected type name 'GameState': expected expression
-   19 |                 case GameState::Paused:
+./main.c:19:8: error: use of undeclared identifier 'Paused'
+   19 |                 case Paused:
       |                      ^
-./main.c:19:17: error: expected ':' after 'case'
-   19 |                 case GameState::Paused:
-      |                               ^~
-      |                               :
-./main.c:22:8: error: unexpected type name 'GameState': expected expression
-   22 |                 case GameState::GameOver:
+./main.c:22:8: error: use of undeclared identifier 'GameOver'
+   22 |                 case GameOver:
       |                      ^
-./main.c:22:17: error: expected ':' after 'case'
-   22 |                 case GameState::GameOver:
-      |                               ^~
-      |                               :
 ./main.c:46:46: error: unexpected type name 'GameState': expected expression
    46 |         passed = passed && (sm.getCurrentState() == GameState::Menu);
       |                                                     ^
@@ -2610,7 +2894,7 @@ Transpilation completed successfully. Generated 2 file pair(s).
 ./main.c:47:25: error: no member named 'getTransitionCount' in 'struct StateMachine'
    47 |         passed = passed && (sm.getTransitionCount() == 5);
       |                             ~~ ^
-11 errors generated.
+7 errors generated.
     [0;31m✗ C build failed[0m
 [0;31m❌ FAIL: State Machine[0m
 
@@ -2671,10 +2955,10 @@ FileOriginTracker configured with user header paths
 Translation unit has 97 top-level declarations
 [Bug #30 FIX] Creating independent target ASTContext for C output...
 [Bug #30 FIX] Target ASTContext created successfully:
-  - ASTContext @ 0x12685e600
+  - ASTContext @ 0x13c814200
   - Target Triple: arm64-apple-darwin24.5.0
   - Language: C11
-[Bug #30 FIX] Created C_TU @ 0x126868968 for file: /Users/alexanderfedin/Projects/hapyy/hupyy-cpp-to-c/tests/real-world/simple-validation/04-simple-parser/main.cpp
+[Bug #30 FIX] Created C_TU @ 0x13c81e568 for file: /Users/alexanderfedin/Projects/hapyy/hupyy-cpp-to-c/tests/real-world/simple-validation/04-simple-parser/main.cpp
 Virtual method support initialized
 Template monomorphization enabled (limit: 1000 instantiations)
 Exception handling support initialized (SJLJ model)
@@ -2685,14 +2969,21 @@ Static operator() and operator[] support initialized (C++23)
 Deducing this / explicit object parameter support initialized (C++23 P0847R7)
 if consteval support initialized (C++23 P1938R3) - Runtime strategy
 auto(x) decay-copy and partial constexpr support initialized (C++23 P0849R8)
-[Bug #30 FIX] CppToCVisitor using C_TU @ 0x126868968
+[Bug #30 FIX] CppToCVisitor using C_TU @ 0x13c81e568
 Translating enum: TokenType
-  Enumerator: Number = 0
-  Enumerator: Plus = 1
-  Enumerator: Minus = 2
-  Enumerator: Multiply = 3
-  Enumerator: Divide = 4
-  Enumerator: EndOfInput = 5
+  -> Scoped enum detected, will prefix enumerators with TokenType__
+  Enumerator: Number -> TokenType__Number = 0
+  Enumerator: Plus -> TokenType__Plus = 1
+  Enumerator: Minus -> TokenType__Minus = 2
+  Enumerator: Multiply -> TokenType__Multiply = 3
+  Enumerator: Divide -> TokenType__Divide = 4
+  Enumerator: EndOfInput -> TokenType__EndOfInput = 5
+    Mapped: Number (C++) -> TokenType__Number (C)
+    Mapped: Plus (C++) -> TokenType__Plus (C)
+    Mapped: Minus (C++) -> TokenType__Minus (C)
+    Mapped: Multiply (C++) -> TokenType__Multiply (C)
+    Mapped: Divide (C++) -> TokenType__Divide (C)
+    Mapped: EndOfInput (C++) -> TokenType__EndOfInput (C)
   -> C enum TokenType with 6 values
 Translating class: Token
   -> struct Token with 2 fields
@@ -2832,15 +3123,7 @@ Translating standalone function: main
 [DEBUG Bug#26] translateStmt called, type: BinaryOperator
 [DEBUG Bug#26] translateStmt called, type: DeclRefExpr
 [DEBUG Bug#26] translateStmt called, type: BinaryOperator
-[DEBUG Bug#26] translateStmt called, type: ImplicitCastExpr
-[DEBUG Bug#26] translateStmt called, type: DeclRefExpr
-[DEBUG Bug#26] translateStmt called, type: ParenExpr
-[DEBUG Bug#26] translateStmt called, type: BinaryOperator
-[DEBUG Bug#26] translateStmt called, type: ImplicitCastExpr
-[DEBUG Bug#26] translateStmt called, type: DeclRefExpr
-[DEBUG Bug#26] translateStmt called, type: IntegerLiteral
-[DEBUG Bug#26] translateStmt called, type: BinaryOperator
-[DEBUG Bug#26] translateStmt called, type: Decl7 errors generated.
+[7 errors generated.
 Error while processing /Users/alexanderfedin/Projects/hapyy/hupyy-cpp-to-c/tests/real-world/simple-validation/04-simple-parser/main.cpp.
 [2/3] Processing file /Users/alexanderfedin/Projects/hapyy/hupyy-cpp-to-c/tests/real-world/simple-validation/04-simple-parser/src/Tokenizer.cpp.
 /Users/alexanderfedin/Projects/hapyy/hupyy-cpp-to-c/tests/real-world/simple-validation/04-simple-parser/src/Tokenizer.cpp:14:12: error: use of undeclared identifier 'isdigit'
@@ -2849,7 +3132,15 @@ Error while processing /Users/alexanderfedin/Projects/hapyy/hupyy-cpp-to-c/tests
 /Users/alexanderfedin/Projects/hapyy/hupyy-cpp-to-c/tests/real-world/simple-validation/04-simple-parser/src/Tokenizer.cpp:28:9: error: use of undeclared identifier 'isdigit'
    28 |     if (isdigit(input[position])) {
       |         ^~~~~~~
-RefExpr
+DEBUG Bug#26] translateStmt called, type: ImplicitCastExpr
+[DEBUG Bug#26] translateStmt called, type: DeclRefExpr
+[DEBUG Bug#26] translateStmt called, type: ParenExpr
+[DEBUG Bug#26] translateStmt called, type: BinaryOperator
+[DEBUG Bug#26] translateStmt called, type: ImplicitCastExpr
+[DEBUG Bug#26] translateStmt called, type: DeclRefExpr
+[DEBUG Bug#26] translateStmt called, type: IntegerLiteral
+[DEBUG Bug#26] translateStmt called, type: BinaryOperator
+[DEBUG Bug#26] translateStmt called, type: DeclRefExpr
 [DEBUG Bug#26] translateStmt called, type: BinaryOperator
 [DEBUG Bug#26] translateStmt called, type: ImplicitCastExpr
 [DEBUG Bug#26] translateStmt called, type: DeclRefExpr
@@ -2905,12 +3196,12 @@ C TranslationUnit has 11 generated declarations
 [DEBUG CodeGen] Manually printing ReturnStmt
 [DEBUG CodeGen] Return value type: ConditionalOperator
 Generated files:
-  transpiled/main.h
-  transpiled/main.c
+  /Users/alexanderfedin/Projects/hapyy/hupyy-cpp-to-c/tests/real-world/simple-validation/04-simple-parser/transpiled/main.h
+  /Users/alexanderfedin/Projects/hapyy/hupyy-cpp-to-c/tests/real-world/simple-validation/04-simple-parser/transpiled/main.c
 Parsed file: /Users/alexanderfedin/Projects/hapyy/hupyy-cpp-to-c/tests/real-world/simple-validation/04-simple-parser/src/Tokenizer.cpp
 FileOriginTracker configured with user header paths
 Translation unit has 99 top-level declarations
-[Bug #30 FIX] Created C_TU @ 0x12686d938 for file: /Users/alexanderfedin/Projects/hapyy/hupyy-cpp-to-c/tests/real-world/simple-validation/04-simple-parser/src/Tokenizer.cpp
+[Bug #30 FIX] Created C_TU @ 0x13c823538 for file: /Users/alexanderfedin/Projects/hapyy/hupyy-cpp-to-c/tests/real-world/simple-validation/04-simple-parser/src/Tokenizer.cpp
 Virtual method support initialized
 Template monomorphization enabled (limit: 1000 instantiations)
 Exception handling support initialized (SJLJ model)
@@ -2921,14 +3212,21 @@ Static operator() and operator[] support initialized (C++23)
 Deducing this / explicit object parameter support initialized (C++23 P0847R7)
 if consteval support initialized (C++23 P1938R3) - Runtime strategy
 auto(x) decay-copy and partial constexpr support initialized (C++23 P0849R8)
-[Bug #30 FIX] CppToCVisitor using C_TU @ 0x12686d938
+[Bug #30 FIX] CppToCVisitor using C_TU @ 0x13c823538
 Translating enum: TokenType
-  Enumerator: Number = 0
-  Enumerator: Plus = 1
-  Enumerator: Minus = 2
-  Enumerator: Multiply = 3
-  Enumerator: Divide = 4
-  Enumerator: EndOfInput = 5
+  -> Scoped enum detected, will prefix enumerators with TokenType__
+  Enumerator: Number -> TokenType__Number = 0
+  Enumerator: Plus -> TokenType__Plus = 1
+  Enumerator: Minus -> TokenType__Minus = 2
+  Enumerator: Multiply -> TokenType__Multiply = 3
+  Enumerator: Divide -> TokenType__Divide = 4
+  Enumerator: EndOfInput -> TokenType__EndOfInput = 5
+    Mapped: Number (C++) -> TokenType__Number (C)
+    Mapped: Plus (C++) -> TokenType__Plus (C)
+    Mapped: Minus (C++) -> TokenType__Minus (C)
+    Mapped: Multiply (C++) -> TokenType__Multiply (C)
+    Mapped: Divide (C++) -> TokenType__Divide (C)
+    Mapped: EndOfInput (C++) -> TokenType__EndOfInput (C)
   -> C enum TokenType with 6 values
 Translating class: Token
 
@@ -3022,6 +3320,7 @@ Translating method: Tokenizer::nextToken
 [DEBUG Bug#26] NumArgs: 2
 [DEBUG Bug#26] Looking up in ctorMap (size: 3)
 [DEBUG Bug#26] Found in ctorMap! C function: Token__ctor
+  Translating scoped enum ref: EndOfInput -> TokenType__EndOfInput
 [DEBUG Bug#26] Returning compound statement with 3 statements
   [Scope] Exiting scope at depth 1 with 0 objects
   [Bug #8] Skipping statement containing RecoveryExpr
@@ -3045,6 +3344,7 @@ Translating method: Tokenizer::nextToken
 [DEBUG Bug#26] NumArgs: 2
 [DEBUG Bug#26] Looking up in ctorMap (size: 3)
 [DEBUG Bug#26] Found in ctorMap! C function: Token__ctor
+  Translating scoped enum ref: Plus -> TokenType__Plus
 [DEBUG Bug#26] Returning compound statement with 3 statements
 [DEBUG Bug#26] translateStmt called, type: CaseStmt
 [DEBUG Bug#26] translateStmt called, type: ReturnStmt
@@ -3060,6 +3360,7 @@ Translating method: Tokenizer::nextToken
 [DEBUG Bug#26] NumArgs: 2
 [DEBUG Bug#26] Looking up in ctorMap (size: 3)
 [DEBUG Bug#26] Found in ctorMap! C function: Token__ctor
+  Translating scoped enum ref: Minus -> TokenType__Minus
 [DEBUG Bug#26] Returning compound statement with 3 statements
 [DEBUG Bug#26] translateStmt called, type: CaseStmt
 [DEBUG Bug#26] translateStmt called, type: ReturnStmt
@@ -3075,6 +3376,7 @@ Translating method: Tokenizer::nextToken
 [DEBUG Bug#26] NumArgs: 2
 [DEBUG Bug#26] Looking up in ctorMap (size: 3)
 [DEBUG Bug#26] Found in ctorMap! C function: Token__ctor
+  Translating scoped enum ref: Multiply -> TokenType__Multiply
 [DEBUG Bug#26] Returning compound statement with 3 statements
 [DEBUG Bug#26] translateStmt called, type: CaseStmt
 [DEBUG Bug#26] translateStmt called, type: ReturnStmt
@@ -3090,11 +3392,15 @@ Translating method: Tokenizer::nextToken
 [DEBUG Bug#26] NumArgs: 2
 [DEBUG Bug#26] Looking up in ctorMap (size: 3)
 [DEBUG Bug#26] Found in ctorMap! C function: Token__ctor
+  Translating scoped enum ref: Divide -> TokenType__Divide
 [DEBUG Bug#26] Returning compound statement with 3 statements
 [DEBUG Bug#26] translateStmt called, type: DefaultStmt
 [DEBUG Bug#26] translateStmt called, type: ReturnStmt
 [DEBUG Bug#26] Dispatching to translateReturnStmt
-[DEBUG Bug#26] translateReturnStmt called
+[DEBUG2 errors generated.
+Error while processing /Users/alexanderfedin/Projects/hapyy/hupyy-cpp-to-c/tests/real-world/simple-validation/04-simple-parser/src/Tokenizer.cpp.
+[3/3] Processing file /Users/alexanderfedin/Projects/hapyy/hupyy-cpp-to-c/tests/real-world/simple-validation/04-simple-parser/src/ExpressionEvaluator.cpp.
+ Bug#26] translateReturnStmt called
 [DEBUG Bug#26] RetValue exists, type: CXXFunctionalCastExpr
 [DEBUG Bug#26]   Found CXXFunctionalCastExpr, checking subexpr
 [DEBUG Bug#26]   Found CCE inside CXXFunctionalCastExpr
@@ -3105,6 +3411,7 @@ Translating method: Tokenizer::nextToken
 [DEBUG Bug#26] NumArgs: 2
 [DEBUG Bug#26] Looking up in ctorMap (size: 3)
 [DEBUG Bug#26] Found in ctorMap! C function: Token__ctor
+  Translating scoped enum ref: EndOfInput -> TokenType__EndOfInput
 [DEBUG Bug#26] Returning compound statement with 3 statements
   [Scope] Exiting scope at depth 1 with 0 objects
   [Scope] Exiting scope at depth 0 with 0 objects
@@ -3126,10 +3433,7 @@ Translating method: Tokenizer::hasMore
 [DEBUG Bug#26] Dispatching to translateReturnStmt
 [DEBUG Bug#26] translateReturnStmt called
 [DEBUG Bug#26] RetValue exists, type: BinaryOperator
-[DEBUG Bug#26] No constructor exp2 errors generated.
-Error while processing /Users/alexanderfedin/Projects/hapyy/hupyy-cpp-to-c/tests/real-world/simple-validation/04-simple-parser/src/Tokenizer.cpp.
-[3/3] Processing file /Users/alexanderfedin/Projects/hapyy/hupyy-cpp-to-c/tests/real-world/simple-validation/04-simple-parser/src/ExpressionEvaluator.cpp.
-ression detected after unwrapping
+[DEBUG Bug#26] No constructor expression detected after unwrapping
   [Scope] Exiting scope at depth 0 with 0 objects
   -> Tokenizer_hasMore with body translated
   -> Tokenizer_hasMore with 1 parameters
@@ -3179,12 +3483,12 @@ C TranslationUnit has 12 generated declarations
 [DEBUG CodeGen] Manually printing ReturnStmt
 [DEBUG CodeGen] Return value type: BinaryOperator
 Generated files:
-  transpiled/src/Tokenizer.h
-  transpiled/src/Tokenizer.c
+  /Users/alexanderfedin/Projects/hapyy/hupyy-cpp-to-c/tests/real-world/simple-validation/04-simple-parser/transpiled/src/Tokenizer.h
+  /Users/alexanderfedin/Projects/hapyy/hupyy-cpp-to-c/tests/real-world/simple-validation/04-simple-parser/transpiled/src/Tokenizer.c
 Parsed file: /Users/alexanderfedin/Projects/hapyy/hupyy-cpp-to-c/tests/real-world/simple-validation/04-simple-parser/src/ExpressionEvaluator.cpp
 FileOriginTracker configured with user header paths
 Translation unit has 113 top-level declarations
-[Bug #30 FIX] Created C_TU @ 0x125055098 for file: /Users/alexanderfedin/Projects/hapyy/hupyy-cpp-to-c/tests/real-world/simple-validation/04-simple-parser/src/ExpressionEvaluator.cpp
+[Bug #30 FIX] Created C_TU @ 0x11b828810 for file: /Users/alexanderfedin/Projects/hapyy/hupyy-cpp-to-c/tests/real-world/simple-validation/04-simple-parser/src/ExpressionEvaluator.cpp
 Virtual method support initialized
 Template monomorphization enabled (limit: 1000 instantiations)
 Exception handling support initialized (SJLJ model)
@@ -3195,14 +3499,21 @@ Static operator() and operator[] support initialized (C++23)
 Deducing this / explicit object parameter support initialized (C++23 P0847R7)
 if consteval support initialized (C++23 P1938R3) - Runtime strategy
 auto(x) decay-copy and partial constexpr support initialized (C++23 P0849R8)
-[Bug #30 FIX] CppToCVisitor using C_TU @ 0x125055098
+[Bug #30 FIX] CppToCVisitor using C_TU @ 0x11b828810
 Translating enum: TokenType
-  Enumerator: Number = 0
-  Enumerator: Plus = 1
-  Enumerator: Minus = 2
-  Enumerator: Multiply = 3
-  Enumerator: Divide = 4
-  Enumerator: EndOfInput = 5
+  -> Scoped enum detected, will prefix enumerators with TokenType__
+  Enumerator: Number -> TokenType__Number = 0
+  Enumerator: Plus -> TokenType__Plus = 1
+  Enumerator: Minus -> TokenType__Minus = 2
+  Enumerator: Multiply -> TokenType__Multiply = 3
+  Enumerator: Divide -> TokenType__Divide = 4
+  Enumerator: EndOfInput -> TokenType__EndOfInput = 5
+    Mapped: Number (C++) -> TokenType__Number (C)
+    Mapped: Plus (C++) -> TokenType__Plus (C)
+    Mapped: Minus (C++) -> TokenType__Minus (C)
+    Mapped: Multiply (C++) -> TokenType__Multiply (C)
+    Mapped: Divide (C++) -> TokenType__Divide (C)
+    Mapped: EndOfInput (C++) -> TokenType__EndOfInput (C)
   -> C enum TokenType with 6 values
 Translating class: Token
   -> struct Token with 2 fields
@@ -3275,6 +3586,8 @@ Translating method: ExpressionEvaluator::parseTerm
   Warning: Method not in methodToCFunc map, generating call anyway: ExpressionEvaluator::parseFactor
   Generated function name: ExpressionEvaluator_parseFactor
 [DEBUG Bug#26] translateStmt called, type: WhileStmt
+  Translating scoped enum ref: Multiply -> TokenType__Multiply
+  Translating scoped enum ref: Divide -> TokenType__Divide
 [DEBUG Bug#26] translateStmt called, type: CompoundStmt
   [Scope] Entering scope at depth 1
 [DEBUG Bug#26] translateStmt called, type: DeclStmt
@@ -3289,6 +3602,7 @@ Translating method: ExpressionEvaluator::parseTerm
   [Translating DeclStmt]
     Variable: right
 [DEBUG Bug#26] translateStmt called, type: IfStmt
+  Translating scoped enum ref: Multiply -> TokenType__Multiply
 [DEBUG Bug#26] translateStmt called, type: CompoundStmt
   [Scope] Entering scope at depth 2
 [DEBUG Bug#26] translateStmt called, type: BinaryOperator
@@ -3323,6 +3637,7 @@ Translating method: ExpressionEvaluator::parseFactor
 [DEBUG Bug#26] translateStmt called, type: CompoundStmt
   [Scope] Entering scope at depth 0
 [DEBUG Bug#26] translateStmt called, type: IfStmt
+  Translating scoped enum ref: Number -> TokenType__Number
 [DEBUG Bug#26] translateStmt called, type: CompoundStmt
   [Scope] Entering scope at depth 1
 [DEBUG Bug#26] translateStmt called, type: DeclStmt
@@ -3390,6 +3705,8 @@ Translating method: ExpressionEvaluator::evaluate
   Warning: Method not in methodToCFunc map, generating call anyway: ExpressionEvaluator::parseTerm
   Generated function name: ExpressionEvaluator_parseTerm
 [DEBUG Bug#26] translateStmt called, type: WhileStmt
+  Translating scoped enum ref: Plus -> TokenType__Plus
+  Translating scoped enum ref: Minus -> TokenType__Minus
 [DEBUG Bug#26] translateStmt called, type: CompoundStmt
   [Scope] Entering scope at depth 1
 [DEBUG Bug#26] translateStmt called, type: DeclStmt
@@ -3402,6 +3719,7 @@ Translating method: ExpressionEvaluator::evaluate
   [Translating DeclStmt]
     Variable: right
 [DEBUG Bug#26] translateStmt called, type: IfStmt
+  Translating scoped enum ref: Plus -> TokenType__Plus
 [DEBUG Bug#26] translateStmt called, type: CompoundStmt
   [Scope] Entering scope at depth 2
 [DEBUG Bug#26] translateStmt called, type: BinaryOperator
@@ -3412,7 +3730,51 @@ Translating method: ExpressionEvaluator::evaluate
 [DEBUG Bug#26] translateStmt called, type: ImplicitCastExpr
 [DEBUG Bug#26] translateStmt called, type: DeclRefExpr
   [Scope] Exiting scope at depth 2 with 0 objects
-[DEBUG Bug#26] translateStmt called, type: CompoundStmt
+[DEBUG Bug[DEBUG FileOutputManager] writeFile called with filename: /Users/alexanderfedin/Projects/hapyy/hupyy-cpp-to-c/tests/real-world/simple-validation/04-simple-parser/transpiled/main.h
+[DEBUG FileOutputManager] Content size: 1178 bytes
+[DEBUG FileOutputManager] Parent directory: "/Users/alexanderfedin/Projects/hapyy/hupyy-cpp-to-c/tests/real-world/simple-validation/04-simple-parser/transpiled"
+[DEBUG FileOutputManager] Parent directory empty: no
+[DEBUG FileOutputManager] Parent directory exists: yes
+[DEBUG FileOutputManager] Opening file for writing: /Users/alexanderfedin/Projects/hapyy/hupyy-cpp-to-c/tests/real-world/simple-validation/04-simple-parser/transpiled/main.h
+[DEBUG FileOutputManager] File opened successfully
+[DEBUG FileOutputManager] Content written successfully
+[DEBUG FileOutputManager] File closed successfully
+[DEBUG FileOutputManager] writeFile returning true
+[DEBUG FileOutputManager] writeFile called with filename: /Users/alexanderfedin/Projects/hapyy/hupyy-cpp-to-c/tests/real-world/simple-validation/04-simple-parser/transpiled/main.c
+[DEBUG FileOutputManager] Content size: 1741 bytes
+[DEBUG FileOutputManager] Parent directory: "/Users/alexanderfedin/Projects/hapyy/hupyy-cpp-to-c/tests/real-world/simple-validation/04-simple-parser/transpiled"
+[DEBUG FileOutputManager] Parent directory empty: no
+[DEBUG FileOutputManager] Parent directory exists: yes
+[DEBUG FileOutputManager] Opening file for writing: /Users/alexanderfedin/Projects/hapyy/hupyy-cpp-to-c/tests/real-world/simple-validation/04-simple-parser/transpiled/main.c
+[DEBUG FileOutputManager] File opened successfully
+[DEBUG FileOutputManager] Content written successfully
+[DEBUG FileOutputManager] File closed successfully
+[DEBUG FileOutputManager] writeFile returning true
+[DEBUG FileOutputManager] writeFile called with filename: /Users/alexanderfedin/Projects/hapyy/hupyy-cpp-to-c/tests/real-world/simple-validation/04-simple-parser/transpiled/src/Tokenizer.h
+[DEBUG FileOutputManager] Content size: 1141 bytes
+[DEBUG FileOutputManager] Parent directory: "/Users/alexanderfedin/Projects/hapyy/hupyy-cpp-to-c/tests/real-world/simple-validation/04-simple-parser/transpiled/src"
+[DEBUG FileOutputManager] Parent directory empty: no
+[DEBUG FileOutputManager] Parent directory exists: no
+[DEBUG FileOutputManager] Creating parent directory: "/Users/alexanderfedin/Projects/hapyy/hupyy-cpp-to-c/tests/real-world/simple-validation/04-simple-parser/transpiled/src"
+[DEBUG FileOutputManager] Parent directory created successfully
+[DEBUG FileOutputManager] Opening file for writing: /Users/alexanderfedin/Projects/hapyy/hupyy-cpp-to-c/tests/real-world/simple-validation/04-simple-parser/transpiled/src/Tokenizer.h
+[DEBUG FileOutputManager] File opened successfully
+[DEBUG FileOutputManager] Content written successfully
+[DEBUG FileOutputManager] File closed successfully
+[DEBUG FileOutputManager] writeFile returning true
+[DEBUG FileOutputManager] writeFile called with filename: /Users/alexanderfedin/Projects/hapyy/hupyy-cpp-to-c/tests/real-world/simple-validation/04-simple-parser/transpiled/src/Tokenizer.c
+[DEBUG FileOutputManager] Content size: 2228 bytes
+[DEBUG FileOutputManager] Parent directory: "/Users/alexanderfedin/Projects/hapyy/hupyy-cpp-to-c/tests/real-world/simple-validation/04-simple-parser/transpiled/src"
+[DEBUG FileOutputManager] Parent directory empty: no
+[DEBUG FileOutputManager] Parent directory exists: yes
+[DEBUG FileOutputManager] Opening file for writing: /Users/alexanderfedin/Projects/hapyy/hupyy-cpp-to-c/tests/real-world/simple-validation/04-simple-parser/transpiled/src/Tokenizer.c
+[DEBUG FileOutputManager] File opened successfully
+[DEBUG FileOutputManager] Content written successfully
+[DEBUG FileOutputManager] File closed successfully
+[DEBUG FileOutputManager] writeFile returning true
+[DEBUG FileOutputManager] writeFile called with filename: /Users/alexanderfedin/Projects/hapyy/hupyy-cpp-to-c/tests/real-world/simple-validation/04-simple-parser/transpiled/src/ExpressionEvaluator.h
+[DEBUG FileOutputManager] Content size: 1523 bytes
+[DEBUG FileOutputManager] Parent dire#26] translateStmt called, type: CompoundStmt
   [Scope] Entering scope at depth 2
 [DEBUG Bug#26] translateStmt called, type: BinaryOperator
 [DEBUG Bug#26] translateStmt called, type: DeclRefExpr
@@ -3435,6 +3797,7 @@ Translating method: ExpressionEvaluator::evaluate
 Found variable: expression
 Translating constructor: ExpressionEvaluator::ExpressionEvaluator
   Translating nullptr to NULL
+  Translating scoped enum ref: EndOfInput -> TokenType__EndOfInput
   -> ExpressionEvaluator__ctor with 1 parameters, 2 statements
   -> Already translated, skipping redefinition of ~ExpressionEvaluator
   -> Already translated, skipping redefinition of ExpressionEvaluator::advance
@@ -3476,12 +3839,30 @@ C TranslationUnit has 15 generated declarations
 [DEBUG CodeGen] Manually printing ReturnStmt
 [DEBUG CodeGen] Return value type: ImplicitCastExpr
 Generated files:
-  transpiled/src/ExpressionEvaluator.h
-  transpiled/src/ExpressionEvaluator.c
+  /Users/alexanderfedin/Projects/hapyy/hupyy-cpp-to-c/tests/real-world/simple-validation/04-simple-parser/transpiled/src/ExpressionEvaluator.h
+  /Users/alexanderfedin/Projects/hapyy/hupyy-cpp-to-c/tests/real-world/simple-validation/04-simple-parser/transpiled/src/ExpressionEvaluator.c
 [DEBUG] Tool.run() returned: 1
 [DEBUG] After Tool.run(), about to handle dependencies...
 
 Transpilation completed successfully. Generated 3 file pair(s).
+ctory: "/Users/alexanderfedin/Projects/hapyy/hupyy-cpp-to-c/tests/real-world/simple-validation/04-simple-parser/transpiled/src"
+[DEBUG FileOutputManager] Parent directory empty: no
+[DEBUG FileOutputManager] Parent directory exists: yes
+[DEBUG FileOutputManager] Opening file for writing: /Users/alexanderfedin/Projects/hapyy/hupyy-cpp-to-c/tests/real-world/simple-validation/04-simple-parser/transpiled/src/ExpressionEvaluator.h
+[DEBUG FileOutputManager] File opened successfully
+[DEBUG FileOutputManager] Content written successfully
+[DEBUG FileOutputManager] File closed successfully
+[DEBUG FileOutputManager] writeFile returning true
+[DEBUG FileOutputManager] writeFile called with filename: /Users/alexanderfedin/Projects/hapyy/hupyy-cpp-to-c/tests/real-world/simple-validation/04-simple-parser/transpiled/src/ExpressionEvaluator.c
+[DEBUG FileOutputManager] Content size: 2626 bytes
+[DEBUG FileOutputManager] Parent directory: "/Users/alexanderfedin/Projects/hapyy/hupyy-cpp-to-c/tests/real-world/simple-validation/04-simple-parser/transpiled/src"
+[DEBUG FileOutputManager] Parent directory empty: no
+[DEBUG FileOutputManager] Parent directory exists: yes
+[DEBUG FileOutputManager] Opening file for writing: /Users/alexanderfedin/Projects/hapyy/hupyy-cpp-to-c/tests/real-world/simple-validation/04-simple-parser/transpiled/src/ExpressionEvaluator.c
+[DEBUG FileOutputManager] File opened successfully
+[DEBUG FileOutputManager] Content written successfully
+[DEBUG FileOutputManager] File closed successfully
+[DEBUG FileOutputManager] writeFile returning true
     ✓ Transpilation successful
   [4/5] Building transpiled C version...
 ./src/ExpressionEvaluator.c:33:3: error: call to undeclared function 'ExpressionEvaluator_advance'; ISO C99 and later do not support implicit function declarations [-Wimplicit-function-declaration]
@@ -3496,46 +3877,46 @@ Transpilation completed successfully. Generated 3 file pair(s).
 ./src/ExpressionEvaluator.c:75:2: error: call to undeclared function 'ExpressionEvaluator_advance'; ISO C99 and later do not support implicit function declarations [-Wimplicit-function-declaration]
    75 |         ExpressionEvaluator_advance(this);
       |         ^
-./src/ExpressionEvaluator.c:98:36: error: too few arguments to function call, expected 3, have 2
-   98 |         Token__ctor(&this->currentToken, 5);
-      |         ~~~~~~~~~~~                       ^
+./src/ExpressionEvaluator.c:98:56: error: too few arguments to function call, expected 3, have 2
+   98 |         Token__ctor(&this->currentToken, TokenType__EndOfInput);
+      |         ~~~~~~~~~~~                                           ^
 ./src/ExpressionEvaluator.c:11:6: note: 'Token__ctor' declared here
    11 | void Token__ctor(struct Token * this, TokenType t, int v) {
       |      ^           ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 5 errors generated.
-./src/Tokenizer.c:41:33: error: too few arguments to function call, expected 3, have 2
-   41 |                         Token__ctor(&__return_temp, 5);
-      |                         ~~~~~~~~~~~                  ^
+./src/Tokenizer.c:41:53: error: too few arguments to function call, expected 3, have 2
+   41 |                         Token__ctor(&__return_temp, TokenType__EndOfInput);
+      |                         ~~~~~~~~~~~                                      ^
 ./src/Tokenizer.c:11:6: note: 'Token__ctor' declared here
    11 | void Token__ctor(struct Token * this, TokenType t, int v) {
       |      ^           ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-./src/Tokenizer.c:54:34: error: too few arguments to function call, expected 3, have 2
-   54 |                                 Token__ctor(&__return_temp, 1);
-      |                                 ~~~~~~~~~~~                  ^
+./src/Tokenizer.c:54:48: error: too few arguments to function call, expected 3, have 2
+   54 |                                 Token__ctor(&__return_temp, TokenType__Plus);
+      |                                 ~~~~~~~~~~~                                ^
 ./src/Tokenizer.c:11:6: note: 'Token__ctor' declared here
    11 | void Token__ctor(struct Token * this, TokenType t, int v) {
       |      ^           ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-./src/Tokenizer.c:62:34: error: too few arguments to function call, expected 3, have 2
-   62 |                                 Token__ctor(&__return_temp, 2);
-      |                                 ~~~~~~~~~~~                  ^
+./src/Tokenizer.c:62:49: error: too few arguments to function call, expected 3, have 2
+   62 |                                 Token__ctor(&__return_temp, TokenType__Minus);
+      |                                 ~~~~~~~~~~~                                 ^
 ./src/Tokenizer.c:11:6: note: 'Token__ctor' declared here
    11 | void Token__ctor(struct Token * this, TokenType t, int v) {
       |      ^           ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-./src/Tokenizer.c:70:34: error: too few arguments to function call, expected 3, have 2
-   70 |                                 Token__ctor(&__return_temp, 3);
-      |                                 ~~~~~~~~~~~                  ^
+./src/Tokenizer.c:70:52: error: too few arguments to function call, expected 3, have 2
+   70 |                                 Token__ctor(&__return_temp, TokenType__Multiply);
+      |                                 ~~~~~~~~~~~                                    ^
 ./src/Tokenizer.c:11:6: note: 'Token__ctor' declared here
    11 | void Token__ctor(struct Token * this, TokenType t, int v) {
       |      ^           ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-./src/Tokenizer.c:78:34: error: too few arguments to function call, expected 3, have 2
-   78 |                                 Token__ctor(&__return_temp, 4);
-      |                                 ~~~~~~~~~~~                  ^
+./src/Tokenizer.c:78:50: error: too few arguments to function call, expected 3, have 2
+   78 |                                 Token__ctor(&__return_temp, TokenType__Divide);
+      |                                 ~~~~~~~~~~~                                  ^
 ./src/Tokenizer.c:11:6: note: 'Token__ctor' declared here
    11 | void Token__ctor(struct Token * this, TokenType t, int v) {
       |      ^           ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-./src/Tokenizer.c:86:34: error: too few arguments to function call, expected 3, have 2
-   86 |                                 Token__ctor(&__return_temp, 5);
-      |                                 ~~~~~~~~~~~                  ^
+./src/Tokenizer.c:86:54: error: too few arguments to function call, expected 3, have 2
+   86 |                                 Token__ctor(&__return_temp, TokenType__EndOfInput);
+      |                                 ~~~~~~~~~~~                                      ^
 ./src/Tokenizer.c:11:6: note: 'Token__ctor' declared here
    11 | void Token__ctor(struct Token * this, TokenType t, int v) {
       |      ^           ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -3612,10 +3993,10 @@ FileOriginTracker configured with user header paths
 Translation unit has 97 top-level declarations
 [Bug #30 FIX] Creating independent target ASTContext for C output...
 [Bug #30 FIX] Target ASTContext created successfully:
-  - ASTContext @ 0x14b03d200
+  - ASTContext @ 0x136814400
   - Target Triple: arm64-apple-darwin24.5.0
   - Language: C11
-[Bug #30 FIX] Created C_TU @ 0x14b046b68 for file: /Users/alexanderfedin/Projects/hapyy/hupyy-cpp-to-c/tests/real-world/simple-validation/05-game-logic/main.cpp
+[Bug #30 FIX] Created C_TU @ 0x13681e768 for file: /Users/alexanderfedin/Projects/hapyy/hupyy-cpp-to-c/tests/real-world/simple-validation/05-game-logic/main.cpp
 Virtual method support initialized
 Template monomorphization enabled (limit: 1000 instantiations)
 Exception handling support initialized (SJLJ model)
@@ -3626,7 +4007,7 @@ Static operator() and operator[] support initialized (C++23)
 Deducing this / explicit object parameter support initialized (C++23 P0847R7)
 if consteval support initialized (C++23 P1938R3) - Runtime strategy
 auto(x) decay-copy and partial constexpr support initialized (C++23 P0849R8)
-[Bug #30 FIX] CppToCVisitor using C_TU @ 0x14b046b68
+[Bug #30 FIX] CppToCVisitor using C_TU @ 0x13681e768
 Translating class: Entity
   -> struct Entity with 5 fields
   Generating implicit copy constructor
@@ -3812,6 +4193,28 @@ Translating standalone function: main
 [DEBUG Bug#26] translateStmt called, type: FloatingLiteral
   Warning: Method not in methodToCFunc map, generating call anyway: Entity::setPosition
   Generated function name: Entity_setPosition
+
+*** Dumping AST Record Layout
+Type: class Entity
+
+Layout: <ASTRecordLayout
+  Size:192
+  DataSize:192
+  Alignment:64
+  BaseOffsets: []>
+  VBaseOffsets: []>
+  FieldOffsets: [64, 96, 128, 160]>
+
+*** Dumping AST Record Layout
+Type: class Enemy
+
+Layout: <ASTRecordLayout
+  Size:256
+  DataSize:256
+  Alignment:64
+  BaseOffsets: [0]>
+  VBaseOffsets: []>
+  FieldOffsets: [192, 224]>
 [DEBUG Bug#26] translateStmt called, type: DeclStmt
   [Translating DeclStmt]
     Variable: colliding2
@@ -3877,16 +4280,16 @@ Translating standalone function: main
 [DEBUG Bug#26] translateStmt called, type: ImplicitCastExpr
 [DEBUG Bug#26] translateStmt called, type: DeclRefExpr
 [DEBUG Bug#26] translateStmt called, type: ParenExpr
-[DEBUG Bug#26] translateStmt called, type: BinaryOperator
+[DEBUG Bug#26] 10 errors generated.
+Error while processing /Users/alexanderfedin/Projects/hapyy/hupyy-cpp-to-c/tests/real-world/simple-validation/05-game-logic/main.cpp.
+[2/5] Processing file /Users/alexanderfedin/Projects/hapyy/hupyy-cpp-to-c/tests/real-world/simple-validation/05-game-logic/src/Player.cpp.
+translateStmt called, type: BinaryOperator
 [DEBUG Bug#26] translateStmt called, type: ImplicitCastExpr
 [DEBUG Bug#26] translateStmt called, type: ImplicitCastExpr
 [DEBUG Bug#26] translateStmt called, type: DeclRefExpr
 [DEBUG Bug#26] translateStmt called, type: ImplicitCastExpr
 [DEBUG Bug#26] translateStmt called, type: CXXBoolLiteralExpr
-[DEBUG Bug#26] translateStmt called,10 errors generated.
-Error while processing /Users/alexanderfedin/Projects/hapyy/hupyy-cpp-to-c/tests/real-world/simple-validation/05-game-logic/main.cpp.
-[2/5] Processing file /Users/alexanderfedin/Projects/hapyy/hupyy-cpp-to-c/tests/real-world/simple-validation/05-game-logic/src/Player.cpp.
- type: BinaryOperator
+[DEBUG Bug#26] translateStmt called, type: BinaryOperator
 [DEBUG Bug#26] translateStmt called, type: DeclRefExpr
 [DEBUG Bug#26] translateStmt called, type: BinaryOperator
 [DEBUG Bug#26] translateStmt called, type: ImplicitCastExpr
@@ -3952,12 +4355,12 @@ C TranslationUnit has 19 generated declarations
 [DEBUG CodeGen] Manually printing ReturnStmt
 [DEBUG CodeGen] Return value type: ConditionalOperator
 Generated files:
-  transpiled/main.h
-  transpiled/main.c
+  /Users/alexanderfedin/Projects/hapyy/hupyy-cpp-to-c/tests/real-world/simple-validation/05-game-logic/transpiled/main.h
+  /Users/alexanderfedin/Projects/hapyy/hupyy-cpp-to-c/tests/real-world/simple-validation/05-game-logic/transpiled/main.c
 Parsed file: /Users/alexanderfedin/Projects/hapyy/hupyy-cpp-to-c/tests/real-world/simple-validation/05-game-logic/src/Player.cpp
 FileOriginTracker configured with user header paths
 Translation unit has 112 top-level declarations
-[Bug #30 FIX] Created C_TU @ 0x14b04ecb0 for file: /Users/alexanderfedin/Projects/hapyy/hupyy-cpp-to-c/tests/real-world/simple-validation/05-game-logic/src/Player.cpp
+[Bug #30 FIX] Created C_TU @ 0x136828328 for file: /Users/alexanderfedin/Projects/hapyy/hupyy-cpp-to-c/tests/real-world/simple-validation/05-game-logic/src/Player.cpp
 Virtual method support initialized
 Template monomorphization enabled (limit: 1000 instantiations)
 Exception handling support initialized (SJLJ model)
@@ -3968,7 +4371,7 @@ Static operator() and operator[] support initialized (C++23)
 Deducing this / explicit object parameter support initialized (C++23 P0847R7)
 if consteval support initialized (C++23 P1938R3) - Runtime strategy
 auto(x) decay-copy and partial constexpr support initialized (C++23 P0849R8)
-[Bug #30 FIX] CppToCVisitor using C_TU @ 0x14b04ecb0
+[Bug #30 FIX] CppToCVisitor using C_TU @ 0x136828328
 Translating class: Entity
   -> struct Entity with 5 fields
   Generating implicit copy constructor
@@ -4065,7 +4468,8 @@ Translating method: Player::getHealth
   -> Player_getHealth with body translated
   -> Player_getHealth with 1 parameters
 Translating method: Player::getScore
-[DEBUG Bug#26] translateStmt called, type: CompoundStmt
+[DEBUG Bu[3/5] Processing file /Users/alexanderfedin/Projects/hapyy/hupyy-cpp-to-c/tests/real-world/simple-validation/05-game-logic/src/Entity.cpp.
+g#26] translateStmt called, type: CompoundStmt
   [Scope] Entering scope at depth 0
 [DEBUG Bug#26] translateStmt called, type: ReturnStmt
 [DEBUG Bug#26] Dispatching to translateReturnStmt
@@ -4076,8 +4480,7 @@ Translating method: Player::getScore
   [Scope] Exiting scope at depth 0 with 0 objects
   -> Player_getScore with body translated
   -> Player_getScore with 1 parameters
-Translating method: Player::takeDa[3/5] Processing file /Users/alexanderfedin/Projects/hapyy/hupyy-cpp-to-c/tests/real-world/simple-validation/05-game-logic/src/Entity.cpp.
-mage
+Translating method: Player::takeDamage
 [DEBUG Bug#26] translateStmt called, type: CompoundStmt
   [Scope] Entering scope at depth 0
 [DEBUG Bug#26] translateStmt called, type: CompoundAssignOperator
@@ -4150,12 +4553,12 @@ C TranslationUnit has 11 generated declarations
 [DEBUG CodeGen] Manually printing ReturnStmt
 [DEBUG CodeGen] Return value type: ImplicitCastExpr
 Generated files:
-  transpiled/src/Player.h
-  transpiled/src/Player.c
+  /Users/alexanderfedin/Projects/hapyy/hupyy-cpp-to-c/tests/real-world/simple-validation/05-game-logic/transpiled/src/Player.h
+  /Users/alexanderfedin/Projects/hapyy/hupyy-cpp-to-c/tests/real-world/simple-validation/05-game-logic/transpiled/src/Player.c
 Parsed file: /Users/alexanderfedin/Projects/hapyy/hupyy-cpp-to-c/tests/real-world/simple-validation/05-game-logic/src/Entity.cpp
 FileOriginTracker configured with user header paths
 Translation unit has 111 top-level declarations
-[Bug #30 FIX] Created C_TU @ 0x14b18e9a8 for file: /Users/alexanderfedin/Projects/hapyy/hupyy-cpp-to-c/tests/real-world/simple-validation/05-game-logic/src/Entity.cpp
+[Bug #30 FIX] Created C_TU @ 0x136968790 for file: /Users/alexanderfedin/Projects/hapyy/hupyy-cpp-to-c/tests/real-world/simple-validation/05-game-logic/src/Entity.cpp
 Virtual method support initialized
 Template monomorphization enabled (limit: 1000 instantiations)
 Exception handling support initialized (SJLJ model)
@@ -4166,7 +4569,7 @@ Static operator() and operator[] support initialized (C++23)
 Deducing this / explicit object parameter support initialized (C++23 P0847R7)
 if consteval support initialized (C++23 P1938R3) - Runtime strategy
 auto(x) decay-copy and partial constexpr support initialized (C++23 P0849R8)
-[Bug #30 FIX] CppToCVisitor using C_TU @ 0x14b18e9a8
+[Bug #30 FIX] CppToCVisitor using C_TU @ 0x136968790
 Translating class: Entity
   -> struct Entity with 5 fields
   Generating implicit copy constructor
@@ -4244,7 +4647,52 @@ Translating method: Entity::getWidth
   -> Entity_getWidth with body translated
   -> Entity_getWidth with 1 parameters
 Translating method: Entity::getHeight
-[DEBUG Bug#26] translateStmt called, type: CompoundStmt
+[DEBUG Bug#26] tr[DEBUG FileOutputManager] writeFile called with filename: /Users/alexanderfedin/Projects/hapyy/hupyy-cpp-to-c/tests/real-world/simple-validation/05-game-logic/transpiled/main.h
+[DEBUG FileOutputManager] Content size: 1540 bytes
+[DEBUG FileOutputManager] Parent directory: "/Users/alexanderfedin/Projects/hapyy/hupyy-cpp-to-c/tests/real-world/simple-validation/05-game-logic/transpiled"
+[DEBUG FileOutputManager] Parent directory empty: no
+[DEBUG FileOutputManager] Parent directory exists: yes
+[DEBUG FileOutputManager] Opening file for writing: /Users/alexanderfedin/Projects/hapyy/hupyy-cpp-to-c/tests/real-world/simple-validation/05-game-logic/transpiled/main.h
+[DEBUG FileOutputManager] File opened successfully
+[DEBUG FileOutputManager] Content written successfully
+[DEBUG FileOutputManager] File closed successfully
+[DEBUG FileOutputManager] writeFile returning true
+[DEBUG FileOutputManager] writeFile called with filename: /Users/alexanderfedin/Projects/hapyy/hupyy-cpp-to-c/tests/real-world/simple-validation/05-game-logic/transpiled/main.c
+[DEBUG FileOutputManager] Content size: 2053 bytes
+[DEBUG FileOutputManager] Parent directory: "/Users/alexanderfedin/Projects/hapyy/hupyy-cpp-to-c/tests/real-world/simple-validation/05-game-logic/transpiled"
+[DEBUG FileOutputManager] Parent directory empty: no
+[DEBUG FileOutputManager] Parent directory exists: yes
+[DEBUG FileOutputManager] Opening file for writing: /Users/alexanderfedin/Projects/hapyy/hupyy-cpp-to-c/tests/real-world/simple-validation/05-game-logic/transpiled/main.c
+[DEBUG FileOutputManager] File opened successfully
+[DEBUG FileOutputManager] Content written successfully
+[DEBUG FileOutputManager] File closed successfully
+[DEBUG FileOutputManager] writeFile returning true
+[DEBUG FileOutputManager] writeFile called with filename: /Users/alexanderfedin/Projects/hapyy/hupyy-cpp-to-c/tests/real-world/simple-validation/05-game-logic/transpiled/src/Player.h
+[DEBUG FileOutputManager] Content size: 1009 bytes
+[DEBUG FileOutputManager] Parent directory: "/Users/alexanderfedin/Projects/hapyy/hupyy-cpp-to-c/tests/real-world/simple-validation/05-game-logic/transpiled/src"
+[DEBUG FileOutputManager] Parent directory empty: no
+[DEBUG FileOutputManager] Parent directory exists: no
+[DEBUG FileOutputManager] Creating parent directory: "/Users/alexanderfedin/Projects/hapyy/hupyy-cpp-to-c/tests/real-world/simple-validation/05-game-logic/transpiled/src"
+[DEBUG FileOutputManager] Parent directory created successfully
+[DEBUG FileOutputManager] Opening file for writing: /Users/alexanderfedin/Projects/hapyy/hupyy-cpp-to-c/tests/real-world/simple-validation/05-game-logic/transpiled/src/Player.h
+[DEBUG FileOutputManager] File opened successfully
+[DEBUG FileOutputManager] Content written successfully
+[DEBUG FileOutputManager] File closed successfully
+[DEBUG FileOutputManager] writeFile returning true
+[DEBUG FileOutputManager] writeFile called with filename: /Users/alexanderfedin/Projects/hapyy/hupyy-cpp-to-c/tests/real-world/simple-validation/05-game-logic/transpiled/src/Player.c
+[DEBUG FileOutputManager] Content size: 1116 bytes
+[DEBUG FileOutputManager] Parent directory: "/Users/alexanderfedin/Projects/hapyy/hupyy-cpp-to-c/tests/real-world/simple-validation/05-game-logic/transpiled/src"
+[DEBUG FileOutputManager] Parent directory empty: no
+[DEBUG FileOutputManager] Parent directory exists: yes
+[DEBUG FileOutputManager] Opening file for writing: /Users/alexanderfedin/Projects/hapyy/hupyy-cpp-to-c/tests/real-world/simple-validation/05-game-logic/transpiled/src/Player.c
+[DEBUG FileOutputManager] File opened successfully
+[DEBUG FileOutputManager] Content written successfully
+[DEBUG FileOutputManager] File closed successfully
+[DEBUG FileOutputManager] writeFile returning true
+[DEBUG FileOutputManager] writeFile called with filename: /Users/alexanderfedin/Projects/hapyy/hupyy-cpp-to-c/tests/real-world/simple-validation/05-game-logic/transpiled/src/Entity.h
+[DEBUG FileOutputManager] Content size: 827 bytes
+[DEBUG FileOutputManager] Parent directory: "/Users/alexanderfedin/Projects/hapyy/hupyy-cpp-to-c/tests/re[4/5] Processing file /Users/alexanderfedin/Projects/hapyy/hupyy-cpp-to-c/tests/real-world/simple-validation/05-game-logic/src/CollisionDetector.cpp.
+anslateStmt called, type: CompoundStmt
   [Scope] Entering scope at depth 0
 [DEBUG Bug#26] translateStmt called, type: ReturnStmt
 [DEBUG Bug#26] Dispatching to translateReturnStmt
@@ -4259,8 +4707,7 @@ Translating method: Entity::setPosition
 [DEBUG Bug#26] translateStmt called, type: CompoundStmt
   [Scope] Entering scope at depth 0
 [DEBUG Bug#26] translateStmt called, type: BinaryOperator
-[DEBUG Bug#26] translateStmt called, type: MemberExp[4/5] Processing file /Users/alexanderfedin/Projects/hapyy/hupyy-cpp-to-c/tests/real-world/simple-validation/05-game-logic/src/CollisionDetector.cpp.
-r
+[DEBUG Bug#26] translateStmt called, type: MemberExpr
 [DEBUG Bug#26] translateStmt called, type: CXXThisExpr
 [DEBUG Bug#26] translateStmt called, type: ImplicitCastExpr
 [DEBUG Bug#26] translateStmt called, type: DeclRefExpr
@@ -4317,12 +4764,12 @@ C TranslationUnit has 9 generated declarations
 [DEBUG CodeGen] Manually printing ReturnStmt
 [DEBUG CodeGen] Return value type: ImplicitCastExpr
 Generated files:
-  transpiled/src/Entity.h
-  transpiled/src/Entity.c
+  /Users/alexanderfedin/Projects/hapyy/hupyy-cpp-to-c/tests/real-world/simple-validation/05-game-logic/transpiled/src/Entity.h
+  /Users/alexanderfedin/Projects/hapyy/hupyy-cpp-to-c/tests/real-world/simple-validation/05-game-logic/transpiled/src/Entity.c
 Parsed file: /Users/alexanderfedin/Projects/hapyy/hupyy-cpp-to-c/tests/real-world/simple-validation/05-game-logic/src/CollisionDetector.cpp
 FileOriginTracker configured with user header paths
 Translation unit has 94 top-level declarations
-[Bug #30 FIX] Created C_TU @ 0x14b189788 for file: /Users/alexanderfedin/Projects/hapyy/hupyy-cpp-to-c/tests/real-world/simple-validation/05-game-logic/src/CollisionDetector.cpp
+[Bug #30 FIX] Created C_TU @ 0x1369638d0 for file: /Users/alexanderfedin/Projects/hapyy/hupyy-cpp-to-c/tests/real-world/simple-validation/05-game-logic/src/CollisionDetector.cpp
 Virtual method support initialized
 Template monomorphization enabled (limit: 1000 instantiations)
 Exception handling support initialized (SJLJ model)
@@ -4333,7 +4780,7 @@ Static operator() and operator[] support initialized (C++23)
 Deducing this / explicit object parameter support initialized (C++23 P0847R7)
 if consteval support initialized (C++23 P1938R3) - Runtime strategy
 auto(x) decay-copy and partial constexpr support initialized (C++23 P0849R8)
-[Bug #30 FIX] CppToCVisitor using C_TU @ 0x14b189788
+[Bug #30 FIX] CppToCVisitor using C_TU @ 0x1369638d0
 Translating class: Entity
   -> struct Entity with 5 fields
   Generating implicit copy constructor
@@ -4428,7 +4875,8 @@ Translating method: CollisionDetector::checkCollision
 [DEBUG Bug#26] Dispatching to translateReturnStmt
 [DEBUG Bug#26] translateReturnStmt called
 [DEBUG Bug#26] RetValue exists, type: UnaryOperator
-[DEBUG Bug#26] No constructor expression detected after unwrapping
+[DEBUG Bug#26] No constructor expression detected after unwra[5/5] Processing file /Users/alexanderfedin/Projects/hapyy/hupyy-cpp-to-c/tests/real-world/simple-validation/05-game-logic/src/Enemy.cpp.
+pping
   [Scope] Exiting scope at depth 0 with 0 objects
   -> CollisionDetector_checkCollision with body translated
   -> CollisionDetector_checkCollision with 3 parameters
@@ -4452,8 +4900,7 @@ Found variable: entity
 Found variable: a
 Found variable: b
 Found variable: aLeft
-Foun[5/5] Processing file /Users/alexanderfedin/Projects/hapyy/hupyy-cpp-to-c/tests/real-world/simple-validation/05-game-logic/src/Enemy.cpp.
-d variable: aRight
+Found variable: aRight
 Found variable: aTop
 Found variable: aBottom
 Found variable: bLeft
@@ -4487,12 +4934,12 @@ C TranslationUnit has 12 generated declarations
 [DEBUG CodeGen] Manually printing ReturnStmt
 [DEBUG CodeGen] Return value type: BinaryOperator
 Generated files:
-  transpiled/src/CollisionDetector.h
-  transpiled/src/CollisionDetector.c
+  /Users/alexanderfedin/Projects/hapyy/hupyy-cpp-to-c/tests/real-world/simple-validation/05-game-logic/transpiled/src/CollisionDetector.h
+  /Users/alexanderfedin/Projects/hapyy/hupyy-cpp-to-c/tests/real-world/simple-validation/05-game-logic/transpiled/src/CollisionDetector.c
 Parsed file: /Users/alexanderfedin/Projects/hapyy/hupyy-cpp-to-c/tests/real-world/simple-validation/05-game-logic/src/Enemy.cpp
 FileOriginTracker configured with user header paths
 Translation unit has 109 top-level declarations
-[Bug #30 FIX] Created C_TU @ 0x14b07d3b0 for file: /Users/alexanderfedin/Projects/hapyy/hupyy-cpp-to-c/tests/real-world/simple-validation/05-game-logic/src/Enemy.cpp
+[Bug #30 FIX] Created C_TU @ 0x109879cd8 for file: /Users/alexanderfedin/Projects/hapyy/hupyy-cpp-to-c/tests/real-world/simple-validation/05-game-logic/src/Enemy.cpp
 Virtual method support initialized
 Template monomorphization enabled (limit: 1000 instantiations)
 Exception handling support initialized (SJLJ model)
@@ -4503,7 +4950,7 @@ Static operator() and operator[] support initialized (C++23)
 Deducing this / explicit object parameter support initialized (C++23 P0847R7)
 if consteval support initialized (C++23 P1938R3) - Runtime strategy
 auto(x) decay-copy and partial constexpr support initialized (C++23 P0849R8)
-[Bug #30 FIX] CppToCVisitor using C_TU @ 0x14b07d3b0
+[Bug #30 FIX] CppToCVisitor using C_TU @ 0x109879cd8
 Translating class: Entity
   -> struct Entity with 5 fields
   Generating implicit copy constructor
@@ -4521,7 +4968,54 @@ static void Entity_setPosition(struct Entity *this, float newX, float newY);
 static void Entity_update(struct Entity *this, float deltaTime);
 
 Generating vtable for polymorphic class: Entity
-Vtable struct generated:
+Vtaal-world/simple-validation/05-game-logic/transpiled/src"
+[DEBUG FileOutputManager] Parent directory empty: no
+[DEBUG FileOutputManager] Parent directory exists: yes
+[DEBUG FileOutputManager] Opening file for writing: /Users/alexanderfedin/Projects/hapyy/hupyy-cpp-to-c/tests/real-world/simple-validation/05-game-logic/transpiled/src/Entity.h
+[DEBUG FileOutputManager] File opened successfully
+[DEBUG FileOutputManager] Content written successfully
+[DEBUG FileOutputManager] File closed successfully
+[DEBUG FileOutputManager] writeFile returning true
+[DEBUG FileOutputManager] writeFile called with filename: /Users/alexanderfedin/Projects/hapyy/hupyy-cpp-to-c/tests/real-world/simple-validation/05-game-logic/transpiled/src/Entity.c
+[DEBUG FileOutputManager] Content size: 986 bytes
+[DEBUG FileOutputManager] Parent directory: "/Users/alexanderfedin/Projects/hapyy/hupyy-cpp-to-c/tests/real-world/simple-validation/05-game-logic/transpiled/src"
+[DEBUG FileOutputManager] Parent directory empty: no
+[DEBUG FileOutputManager] Parent directory exists: yes
+[DEBUG FileOutputManager] Opening file for writing: /Users/alexanderfedin/Projects/hapyy/hupyy-cpp-to-c/tests/real-world/simple-validation/05-game-logic/transpiled/src/Entity.c
+[DEBUG FileOutputManager] File opened successfully
+[DEBUG FileOutputManager] Content written successfully
+[DEBUG FileOutputManager] File closed successfully
+[DEBUG FileOutputManager] writeFile returning true
+[DEBUG FileOutputManager] writeFile called with filename: /Users/alexanderfedin/Projects/hapyy/hupyy-cpp-to-c/tests/real-world/simple-validation/05-game-logic/transpiled/src/CollisionDetector.h
+[DEBUG FileOutputManager] Content size: 1145 bytes
+[DEBUG FileOutputManager] Parent directory: "/Users/alexanderfedin/Projects/hapyy/hupyy-cpp-to-c/tests/real-world/simple-validation/05-game-logic/transpiled/src"
+[DEBUG FileOutputManager] Parent directory empty: no
+[DEBUG FileOutputManager] Parent directory exists: yes
+[DEBUG FileOutputManager] Opening file for writing: /Users/alexanderfedin/Projects/hapyy/hupyy-cpp-to-c/tests/real-world/simple-validation/05-game-logic/transpiled/src/CollisionDetector.h
+[DEBUG FileOutputManager] File opened successfully
+[DEBUG FileOutputManager] Content written successfully
+[DEBUG FileOutputManager] File closed successfully
+[DEBUG FileOutputManager] writeFile returning true
+[DEBUG FileOutputManager] writeFile called with filename: /Users/alexanderfedin/Projects/hapyy/hupyy-cpp-to-c/tests/real-world/simple-validation/05-game-logic/transpiled/src/CollisionDetector.c
+[DEBUG FileOutputManager] Content size: 1682 bytes
+[DEBUG FileOutputManager] Parent directory: "/Users/alexanderfedin/Projects/hapyy/hupyy-cpp-to-c/tests/real-world/simple-validation/05-game-logic/transpiled/src"
+[DEBUG FileOutputManager] Parent directory empty: no
+[DEBUG FileOutputManager] Parent directory exists: yes
+[DEBUG FileOutputManager] Opening file for writing: /Users/alexanderfedin/Projects/hapyy/hupyy-cpp-to-c/tests/real-world/simple-validation/05-game-logic/transpiled/src/CollisionDetector.c
+[DEBUG FileOutputManager] File opened successfully
+[DEBUG FileOutputManager] Content written successfully
+[DEBUG FileOutputManager] File closed successfully
+[DEBUG FileOutputManager] writeFile returning true
+[DEBUG FileOutputManager] writeFile called with filename: /Users/alexanderfedin/Projects/hapyy/hupyy-cpp-to-c/tests/real-world/simple-validation/05-game-logic/transpiled/src/Enemy.h
+[DEBUG FileOutputManager] Content size: 843 bytes
+[DEBUG FileOutputManager] Parent directory: "/Users/alexanderfedin/Projects/hapyy/hupyy-cpp-to-c/tests/real-world/simple-validation/05-game-logic/transpiled/src"
+[DEBUG FileOutputManager] Parent directory empty: no
+[DEBUG FileOutputManager] Parent directory exists: yes
+[DEBUG FileOutputManager] Opening file for writing: /Users/alexanderfedin/Projects/hapyy/hupyy-cpp-to-c/tests/real-world/simple-validation/05-game-logic/transpiled/src/Enemy.h
+[DEBUG FileOutputManager] File opened successfully
+[DEBUG FileOutputManager] Content written successfully
+[DEBUG FileOutputManager] File closed successfully
+[ble struct generated:
 struct Entity_vtable {
     const struct __class_type_info *type_info;  /**< RTTI type_info pointer (Itanium ABI vtable[-1]) */
     void (*destructor)(struct Entity *this);
@@ -4630,12 +5124,23 @@ C TranslationUnit has 8 generated declarations
 [DEBUG CodeGen] Manually printing ReturnStmt
 [DEBUG CodeGen] Return value type: ImplicitCastExpr
 Generated files:
-  transpiled/src/Enemy.h
-  transpiled/src/Enemy.c
+  /Users/alexanderfedin/Projects/hapyy/hupyy-cpp-to-c/tests/real-world/simple-validation/05-game-logic/transpiled/src/Enemy.h
+  /Users/alexanderfedin/Projects/hapyy/hupyy-cpp-to-c/tests/real-world/simple-validation/05-game-logic/transpiled/src/Enemy.c
 [DEBUG] Tool.run() returned: 1
 [DEBUG] After Tool.run(), about to handle dependencies...
 
 Transpilation completed successfully. Generated 5 file pair(s).
+DEBUG FileOutputManager] writeFile returning true
+[DEBUG FileOutputManager] writeFile called with filename: /Users/alexanderfedin/Projects/hapyy/hupyy-cpp-to-c/tests/real-world/simple-validation/05-game-logic/transpiled/src/Enemy.c
+[DEBUG FileOutputManager] Content size: 815 bytes
+[DEBUG FileOutputManager] Parent directory: "/Users/alexanderfedin/Projects/hapyy/hupyy-cpp-to-c/tests/real-world/simple-validation/05-game-logic/transpiled/src"
+[DEBUG FileOutputManager] Parent directory empty: no
+[DEBUG FileOutputManager] Parent directory exists: yes
+[DEBUG FileOutputManager] Opening file for writing: /Users/alexanderfedin/Projects/hapyy/hupyy-cpp-to-c/tests/real-world/simple-validation/05-game-logic/transpiled/src/Enemy.c
+[DEBUG FileOutputManager] File opened successfully
+[DEBUG FileOutputManager] Content written successfully
+[DEBUG FileOutputManager] File closed successfully
+[DEBUG FileOutputManager] writeFile returning true
     ✓ Transpilation successful
   [4/5] Building transpiled C version...
 ./main.c:22:15: warning: incompatible pointer types passing 'struct Player *' to parameter of type 'struct Entity *' [-Wincompatible-pointer-types]
