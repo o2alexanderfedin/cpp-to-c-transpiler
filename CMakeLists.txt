@@ -4004,6 +4004,32 @@ gtest_discover_tests(ExpressionHandlerTest_This
     WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
 )
 
+# ExpressionHandler Method Call unit tests (Phase 44 Task 8)
+add_executable(ExpressionHandlerTest_MethodCall
+    tests/unit/handlers/ExpressionHandlerTest_MethodCall.cpp
+)
+
+target_include_directories(ExpressionHandlerTest_MethodCall PRIVATE
+    ${CMAKE_SOURCE_DIR}/tests/fixtures
+    ${CMAKE_SOURCE_DIR}/include
+    ${LLVM_INCLUDE_DIRS}
+    ${CLANG_INCLUDE_DIRS}
+)
+
+target_link_libraries(ExpressionHandlerTest_MethodCall PRIVATE
+    test_fixtures
+    cpptoc_core
+    clangTooling
+    clangAST
+    clangBasic
+    GTest::gtest
+    GTest::gtest_main
+)
+
+gtest_discover_tests(ExpressionHandlerTest_MethodCall
+    WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
+)
+
 # ============================================================================
 # Phase 39-01b: VariableHandler Unit Tests
 # ============================================================================
@@ -4082,6 +4108,32 @@ target_link_libraries(StatementHandlerTest PRIVATE
 )
 
 gtest_discover_tests(StatementHandlerTest
+    WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
+)
+
+# StatementHandler Object Lifecycle tests (Phase 44, Task 9)
+add_executable(StatementHandlerTest_Objects
+    tests/unit/handlers/StatementHandlerTest_Objects.cpp
+)
+
+target_include_directories(StatementHandlerTest_Objects PRIVATE
+    ${CMAKE_SOURCE_DIR}/tests/fixtures
+    ${CMAKE_SOURCE_DIR}/include
+    ${LLVM_INCLUDE_DIRS}
+    ${CLANG_INCLUDE_DIRS}
+)
+
+target_link_libraries(StatementHandlerTest_Objects PRIVATE
+    test_fixtures
+    cpptoc_core
+    clangTooling
+    clangAST
+    clangBasic
+    GTest::gtest
+    GTest::gtest_main
+)
+
+gtest_discover_tests(StatementHandlerTest_Objects
     WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
 )
 

@@ -37,7 +37,8 @@ bool ExpressionHandler::canHandle(const clang::Expr* E) const {
            llvm::isa<clang::InitListExpr>(E) ||
            llvm::isa<clang::CXXNullPtrLiteralExpr>(E) ||
            llvm::isa<clang::MemberExpr>(E) ||
-           llvm::isa<clang::CXXThisExpr>(E);
+           llvm::isa<clang::CXXThisExpr>(E) ||
+           llvm::isa<clang::CXXMemberCallExpr>(E);
 }
 
 clang::Expr* ExpressionHandler::handleExpr(const clang::Expr* E, HandlerContext& ctx) {
@@ -88,6 +89,9 @@ clang::Expr* ExpressionHandler::handleExpr(const clang::Expr* E, HandlerContext&
     }
     if (auto* TE = llvm::dyn_cast<clang::CXXThisExpr>(E)) {
         return translateCXXThisExpr(TE, ctx);
+    }
+    if (auto* MCE = llvm::dyn_cast<clang::CXXMemberCallExpr>(E)) {
+        return translateCXXMemberCallExpr(MCE, ctx);
     }
 
     // Unsupported expression type
@@ -636,6 +640,184 @@ clang::Expr* ExpressionHandler::translateCXXThisExpr(
         thisParam->getType(),                 // Type: struct ClassName*
         clang::VK_LValue                      // Value kind: lvalue
     );
+}
+
+// ============================================================================
+// Method Call Translation (Phase 44, Task 8)
+// ============================================================================
+
+clang::Expr* ExpressionHandler::translateCXXMemberCallExpr(
+    const clang::CXXMemberCallExpr* MCE,
+    HandlerContext& ctx
+) {
+    // C++ method call → C function call with explicit 'this' parameter
+    //
+    // Translation strategy:
+    // 1. Get the C++ method being called
+    // 2. Look up the corresponding C function in context
+    // 3. Get the implicit object argument (the object being called on)
+    // 4. Translate object expression and determine if we need &
+    // 5. Create CallExpr with C function
+    // 6. Insert object as first argument
+    // 7. Translate and add remaining arguments
+    //
+    // Examples:
+    // C++: obj.method(args...)      → C: ClassName_method(&obj, args...)
+    // C++: ptr->method(args...)     → C: ClassName_method(ptr, args...)
+    // C++: this->method(args...)    → C: ClassName_method(this, args...)
+
+    clang::ASTContext& cCtx = ctx.getCContext();
+
+    // 1. Get the method being called
+    const clang::CXXMethodDecl* method = MCE->getMethodDecl();
+    if (!method) {
+        // No method declaration - shouldn't happen in well-formed code
+        return nullptr;
+    }
+
+    // 2. Look up the corresponding C function
+    clang::FunctionDecl* cFunc = ctx.lookupMethod(method);
+    if (!cFunc) {
+        // Method not registered - can't translate
+        // This happens when the method hasn't been translated yet
+        return nullptr;
+    }
+
+    // 3. Get the implicit object argument (the object being called on)
+    const clang::Expr* objectExpr = MCE->getImplicitObjectArgument();
+    if (!objectExpr) {
+        // No object - might be a static method call
+        // For static methods, we don't add 'this' parameter
+        // Just translate arguments and create call
+        llvm::SmallVector<clang::Expr*, 8> translatedArgs;
+        for (unsigned i = 0; i < MCE->getNumArgs(); ++i) {
+            clang::Expr* arg = handleExpr(MCE->getArg(i), ctx);
+            if (!arg) {
+                return nullptr;  // Argument translation failed
+            }
+            translatedArgs.push_back(arg);
+        }
+
+        // Create function reference
+        clang::DeclRefExpr* funcRef = clang::DeclRefExpr::Create(
+            cCtx,
+            clang::NestedNameSpecifierLoc(),
+            clang::SourceLocation(),
+            cFunc,
+            false,
+            clang::DeclarationNameInfo(cFunc->getDeclName(), MCE->getExprLoc()),
+            cFunc->getType(),
+            clang::VK_LValue
+        );
+
+        // Create call expression
+        return clang::CallExpr::Create(
+            cCtx,
+            funcRef,
+            translatedArgs,
+            MCE->getType(),
+            MCE->getValueKind(),
+            MCE->getExprLoc(),
+            clang::FPOptionsOverride()
+        );
+    }
+
+    // 4. Translate object expression and determine if we need &
+    clang::Expr* translatedObject = handleExpr(objectExpr, ctx);
+    if (!translatedObject) {
+        return nullptr;  // Object translation failed
+    }
+
+    // Determine if we need to take address of object
+    // Rules:
+    // - If object is already a pointer (ptr->method), use it directly
+    // - If object is a value (obj.method), take its address (&obj)
+    // - Special case: 'this' is already a pointer, use directly
+
+    bool needsAddressOf = false;
+    clang::QualType objectType = objectExpr->getType();
+
+    // Check if the object expression is a pointer or reference
+    if (objectType->isPointerType()) {
+        // ptr->method() - object is already a pointer
+        needsAddressOf = false;
+    } else if (objectType->isReferenceType()) {
+        // ref.method() - references become pointers in C, no & needed
+        needsAddressOf = false;
+    } else {
+        // obj.method() - object is a value, need to take its address
+        needsAddressOf = true;
+    }
+
+    // Wrap object in UnaryOperator(&) if needed
+    clang::Expr* objectArg = translatedObject;
+    if (needsAddressOf) {
+        // Get the pointer type (what we get when we take address)
+        clang::QualType ptrType = cCtx.getPointerType(translatedObject->getType());
+
+        objectArg = clang::UnaryOperator::Create(
+            cCtx,
+            translatedObject,               // Subexpression (the object)
+            clang::UO_AddrOf,               // Address-of operator
+            ptrType,                        // Result type (pointer)
+            clang::VK_PRValue,              // Value kind (prvalue for &)
+            clang::OK_Ordinary,             // Object kind
+            MCE->getExprLoc(),              // Source location
+            false,                          // Can overflow (not relevant)
+            clang::FPOptionsOverride()      // FP options
+        );
+    }
+
+    // 5. Translate remaining arguments
+    llvm::SmallVector<clang::Expr*, 8> allArgs;
+
+    // First argument: the object (this)
+    allArgs.push_back(objectArg);
+
+    // Remaining arguments: translate each one
+    for (unsigned i = 0; i < MCE->getNumArgs(); ++i) {
+        clang::Expr* arg = handleExpr(MCE->getArg(i), ctx);
+        if (!arg) {
+            return nullptr;  // Argument translation failed
+        }
+        allArgs.push_back(arg);
+    }
+
+    // 6. Create function reference (callee expression)
+    clang::DeclRefExpr* funcRef = clang::DeclRefExpr::Create(
+        cCtx,
+        clang::NestedNameSpecifierLoc(),      // No nested name specifier
+        clang::SourceLocation(),              // No template keyword
+        cFunc,                                // The C function
+        false,                                // Not refersToEnclosingVariableOrCapture
+        clang::DeclarationNameInfo(
+            cFunc->getDeclName(),
+            MCE->getExprLoc()
+        ),                                    // Name and location
+        cFunc->getType(),                     // Type: function type
+        clang::VK_LValue                      // Value kind: lvalue for function
+    );
+
+    // 7. Create CallExpr
+    // CallExpr::Create parameters:
+    // - ASTContext
+    // - Callee (function reference)
+    // - Args (array of arguments)
+    // - Type (return type)
+    // - ValueKind
+    // - RParenLoc
+    // - FPFeatures
+    clang::CallExpr* callExpr = clang::CallExpr::Create(
+        cCtx,
+        funcRef,                          // Callee (function reference)
+        allArgs,                          // Arguments (object + original args)
+        MCE->getType(),                   // Return type
+        MCE->getValueKind(),              // Value kind
+        MCE->getExprLoc(),                // Location
+        clang::FPOptionsOverride()        // FP options
+    );
+
+    return callExpr;
 }
 
 } // namespace cpptoc

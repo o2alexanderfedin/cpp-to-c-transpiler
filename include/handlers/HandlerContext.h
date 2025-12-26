@@ -19,8 +19,10 @@
 #include "CNodeBuilder.h"
 #include "clang/AST/ASTContext.h"
 #include "clang/AST/Decl.h"
+#include "clang/AST/DeclCXX.h"
 #include "clang/AST/Type.h"
 #include <map>
+#include <vector>
 
 namespace cpptoc {
 
@@ -54,6 +56,12 @@ private:
 
     /// Current function being translated (for context-dependent translations)
     clang::FunctionDecl* currentFunction_ = nullptr;
+
+    /// Function context stack (for nested function translations)
+    std::vector<clang::FunctionDecl*> functionStack_;
+
+    /// Method-to-function mapping (C++ method → C function)
+    std::map<const clang::CXXMethodDecl*, clang::FunctionDecl*> methodMap_;
 
 public:
     /**
@@ -174,6 +182,74 @@ public:
      */
     clang::FunctionDecl* getCurrentFunction() const {
         return currentFunction_;
+    }
+
+    /**
+     * @brief Push function onto context stack
+     * @param func C function declaration to push
+     *
+     * Used for managing nested function translation contexts.
+     * Automatically sets currentFunction_ to the pushed function.
+     */
+    void pushFunction(clang::FunctionDecl* func) {
+        functionStack_.push_back(func);
+        currentFunction_ = func;
+    }
+
+    /**
+     * @brief Pop function from context stack
+     *
+     * Restores the previous function context, or sets currentFunction_ to nullptr
+     * if the stack becomes empty.
+     */
+    void popFunction() {
+        if (!functionStack_.empty()) {
+            functionStack_.pop_back();
+            currentFunction_ = functionStack_.empty() ? nullptr : functionStack_.back();
+        }
+    }
+
+    // ========================================================================
+    // Method Registration and Lookup
+    // ========================================================================
+
+    /**
+     * @brief Register C++ method → C function mapping
+     * @param cppMethod C++ method declaration (source)
+     * @param cFunc C function declaration (target)
+     *
+     * Allows method call translation to find the corresponding C function.
+     * The C function should have 'this' as its first parameter for non-static methods.
+     *
+     * Example:
+     * @code
+     *   // C++: class Counter { void increment(); };
+     *   // C:   void Counter_increment(struct Counter* this);
+     *   ctx.registerMethod(cppMethod, cFunc);
+     * @endcode
+     */
+    void registerMethod(const clang::CXXMethodDecl* cppMethod, clang::FunctionDecl* cFunc) {
+        methodMap_[cppMethod] = cFunc;
+        // Also register in general decl map for backward compatibility
+        registerDecl(cppMethod, cFunc);
+    }
+
+    /**
+     * @brief Lookup C function for C++ method
+     * @param cppMethod C++ method to lookup
+     * @return C function declaration, or nullptr if not found
+     *
+     * Example:
+     * @code
+     *   FunctionDecl* cFunc = ctx.lookupMethod(cppMethod);
+     *   if (cFunc) {
+     *       // Use translated function
+     *   }
+     * @endcode
+     */
+    clang::FunctionDecl* lookupMethod(const clang::CXXMethodDecl* cppMethod) const {
+        auto it = methodMap_.find(cppMethod);
+        return (it != methodMap_.end()) ? it->second : nullptr;
     }
 };
 

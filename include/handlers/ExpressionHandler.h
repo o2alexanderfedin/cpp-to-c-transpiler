@@ -191,6 +191,37 @@ private:
         const clang::CXXThisExpr* TE,
         HandlerContext& ctx
     );
+
+    /**
+     * @brief Translate CXXMemberCallExpr (C++ method call) to C function call
+     * @param MCE C++ CXXMemberCallExpr
+     * @param ctx Handler context
+     * @return C CallExpr with explicit 'this' parameter
+     *
+     * Translates C++ method calls to C function calls with explicit object parameter.
+     *
+     * Translation rules:
+     * - obj.method(args...) → ClassName_method(&obj, args...)
+     * - ptr->method(args...) → ClassName_method(ptr, args...)
+     * - this->method(args...) → ClassName_method(this, args...)
+     *
+     * The method must be registered in context via ctx.registerMethod().
+     * If method is not found, returns nullptr.
+     *
+     * Examples:
+     * C++: counter.increment();
+     * C:   Counter_increment(&counter);
+     *
+     * C++: ptr->getValue();
+     * C:   Counter_getValue(ptr);
+     *
+     * C++: this->helper(42);
+     * C:   Counter_helper(this, 42);
+     */
+    clang::Expr* translateCXXMemberCallExpr(
+        const clang::CXXMemberCallExpr* MCE,
+        HandlerContext& ctx
+    );
 };
 
 } // namespace cpptoc
