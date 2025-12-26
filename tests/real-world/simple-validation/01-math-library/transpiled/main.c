@@ -1,4 +1,4 @@
-// Generated from: main.cpp
+// Generated from: /Users/alexanderfedin/Projects/hapyy/hupyy-cpp-to-c/tests/real-world/simple-validation/01-math-library/main.cpp
 // Implementation file
 
 #include "main.h"

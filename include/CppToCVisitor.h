@@ -194,7 +194,33 @@ class CppToCVisitor : public clang::RecursiveASTVisitor<CppToCVisitor> {
 public:
   explicit CppToCVisitor(clang::ASTContext &Context,
                          clang::CNodeBuilder &Builder,
-                         cpptoc::FileOriginTracker &tracker);
+                         cpptoc::FileOriginTracker &tracker,
+                         clang::TranslationUnitDecl *C_TU);
+
+  // ============================================================================
+  // RecursiveASTVisitor Configuration (Bug #17: System Header Hang Fix)
+  // ============================================================================
+
+  // Bug #33 FIX: DO NOT override shouldVisitTemplateInstantiations()!
+  //
+  // Previous (incorrect) approach:
+  // - Returned false to skip ALL template instantiations
+  // - This prevented discovering user code templates (LinkedList<int>, etc.)
+  // - Result: Template monomorphization found 0 instantiations
+  //
+  // Current (correct) approach:
+  // - Let RecursiveASTVisitor visit template instantiations normally
+  // - Filter system headers in VisitClassTemplateSpecializationDecl using FileOriginTracker
+  // - This allows discovering user templates while skipping STL templates
+  //
+  // Note: We removed the shouldVisitTemplateInstantiations() override entirely
+
+  // Override shouldVisitImplicitCode to skip compiler-generated implicit code.
+  // This prevents visiting massive amounts of implicit constructors, destructors,
+  // and operators from system headers.
+  bool shouldVisitImplicitCode() const {
+    return false;  // Skip implicit code - we handle explicit user code only
+  }
 
   // Visit C++ class/struct declarations
   bool VisitCXXRecordDecl(clang::CXXRecordDecl *D);
@@ -227,6 +253,8 @@ public:
   clang::Expr *translateCallExpr(clang::CallExpr *CE);
   clang::Expr *translateBinaryOperator(clang::BinaryOperator *BO);
   clang::Expr *translateConstructExpr(clang::CXXConstructExpr *CCE);
+  clang::Expr *translateNewExpr(clang::CXXNewExpr *NE); // Bug #29.3
+  clang::Expr *translateDeleteExpr(clang::CXXDeleteExpr *DE); // Bug #29.2
 
   // Statement translation (Story #19)
   clang::Stmt *translateStmt(clang::Stmt *S);

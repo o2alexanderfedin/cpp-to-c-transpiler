@@ -193,6 +193,7 @@ add_subdirectory(tests/real-world/test-framework)
 
 add_library(cpptoc_core STATIC
     src/TranspilerAPI.cpp
+    src/TargetContext.cpp
     src/CppToCVisitor.cpp
     src/CFGAnalyzer.cpp
     src/NameMangler.cpp

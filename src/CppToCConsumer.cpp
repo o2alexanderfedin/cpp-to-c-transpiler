@@ -3,6 +3,7 @@
 #include "CppToCVisitor.h"
 #include "CodeGenerator.h"
 #include "FileOutputManager.h"
+#include "TargetContext.h"
 #include "clang/Basic/SourceManager.h"
 #include "llvm/Support/raw_ostream.h"
 #include <algorithm>
@@ -43,21 +44,31 @@ void CppToCConsumer::HandleTranslationUnit(clang::ASTContext &Context) {
   llvm::outs() << "Translation unit has " << DeclCount
                << " top-level declarations\n";
 
-  // Create CNodeBuilder for C AST construction (Epic #3)
-  clang::CNodeBuilder Builder(Context);
+  // Phase 35-02 (Bug #30 FIX): Use shared target context for C AST nodes
+  // Get the singleton target context (creates independent ASTContext on first call)
+  TargetContext& targetCtx = TargetContext::getInstance();
+
+  // Create CNodeBuilder using the shared target context
+  // All C nodes from all files are created in this shared context
+  clang::CNodeBuilder Builder(targetCtx.getContext());
+
+  // Create a new C_TranslationUnit for THIS source file
+  // Each file gets its own C_TU for separate .c/.h output
+  clang::TranslationUnitDecl* C_TU = targetCtx.createTranslationUnit();
+  llvm::outs() << "[Bug #30 FIX] Created C_TU @ " << (void*)C_TU << " for file: " << InputFilename << "\n";
 
   // Create and run visitor to traverse AST
   // Phase 34: Pass FileOriginTracker to visitor for multi-file support
-  CppToCVisitor Visitor(Context, Builder, fileOriginTracker);
+  // Pass the C_TU to the Visitor so it knows where to add declarations
+  CppToCVisitor Visitor(Context, Builder, fileOriginTracker, C_TU);
   Visitor.TraverseDecl(TU);
 
   // Phase 11 (v2.4.0): Process template instantiations after AST traversal
   // This generates monomorphized C code for all template instantiations
   Visitor.processTemplateInstantiations(TU);
 
-  // Phase 32 (v3.0.0): Get C TranslationUnit for output generation
-  // This fixes the bug where C++ AST was being printed instead of C AST
-  clang::TranslationUnitDecl* C_TU = Visitor.getCTranslationUnit();
+  // Phase 35-02 (Bug #30 FIX): C_TU already created above and passed to Visitor
+  // The Visitor added all declarations to this file's C_TU during traversal
 
   // Validate that C TranslationUnit has declarations
   auto CTU_DeclCount = std::distance(C_TU->decls().begin(), C_TU->decls().end());

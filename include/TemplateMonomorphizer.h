@@ -64,10 +64,24 @@ public:
      */
     clang::FunctionDecl* monomorphizeFunction(clang::FunctionDecl* D);
 
+    /**
+     * @brief Generate mangled name for template instantiation
+     * @param BaseName Base class/function name
+     * @param TemplateArgs Template arguments
+     * @return Mangled name (e.g., Stack_int, Array_double_20, Container_int_ptr)
+     */
+    std::string generateMangledName(const std::string& BaseName,
+                                   const clang::TemplateArgumentList& TemplateArgs);
+
 private:
     clang::ASTContext& Context;
     NameMangler& Mangler;
     clang::CNodeBuilder& Builder;
+
+    // BUG FIX (Bug #18): Track nested class mappings for type substitution
+    // Maps original nested class name -> monomorphized struct name
+    // E.g., "Node" -> "LinkedList_int_Node"
+    std::map<std::string, std::string> nestedClassMappings;
 
     /**
      * @brief Substitute template parameters with actual types in a QualType
@@ -118,15 +132,7 @@ private:
      * Reference types use "_ref" suffix (e.g., "int&" -> "int_ref")
      */
     std::string typeToIdentifierString(clang::QualType Type);
-
-    /**
-     * @brief Generate mangled name for template instantiation
-     * @param BaseName Template base name
-     * @param TemplateArgs Template arguments
-     * @return Mangled name (e.g., Stack_int, Array_double_20, Container_int_ptr)
-     */
-    std::string generateMangledName(const std::string& BaseName,
-                                   const clang::TemplateArgumentList& TemplateArgs);
 };
+
 
 #endif // TEMPLATE_MONOMORPHIZER_H

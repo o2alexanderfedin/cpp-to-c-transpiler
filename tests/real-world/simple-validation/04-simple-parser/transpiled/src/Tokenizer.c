@@ -1,4 +1,4 @@
-// Generated from: /Users/alexanderfedin/Projects/hapyy/hupyy-cpp-to-c/tests/real-world/simple-validation/04-simple-parser/./src/Tokenizer.cpp
+// Generated from: /Users/alexanderfedin/Projects/hapyy/hupyy-cpp-to-c/tests/real-world/simple-validation/04-simple-parser/src/Tokenizer.cpp
 // Implementation file
 
 #include "Tokenizer.h"
@@ -27,16 +27,11 @@ void Tokenizer_skipWhitespace(struct Tokenizer * this) {
 int Tokenizer_parseNumber(struct Tokenizer * this) {
 	int value = 0;
 
-	while (isdigit(this->input[this->position])) 	{
-		value = value * 10 + (this->input[this->position] - '0');
-		this->position++;
-	}
 	return value;
 ;
 }
 
 void Tokenizer_skipWhitespace(struct Tokenizer * this);
-int Tokenizer_parseNumber(struct Tokenizer * this);
 struct Token Tokenizer_nextToken(struct Tokenizer * this) {
 	Tokenizer_skipWhitespace(this);
 	if (this->input[this->position] == '\x00') 	{
@@ -44,18 +39,6 @@ struct Token Tokenizer_nextToken(struct Tokenizer * this) {
 			struct Token __return_temp;
 
 			Token__ctor(&__return_temp, 5);
-			return __return_temp;
-;
-		}
-	}
-
-	if (isdigit(this->input[this->position])) 	{
-		int value = Tokenizer_parseNumber(this);
-
-		{
-			struct Token __return_temp;
-
-			Token__ctor(&__return_temp, 0, value);
 			return __return_temp;
 ;
 		}

@@ -74,6 +74,7 @@ PrintingPolicy CodeGenerator::createC99Policy(ASTContext &Ctx) {
 // Print a declaration using Clang's DeclPrinter
 // Dependency Inversion: Depends on Clang's abstract Decl interface
 // Phase 35-02: Fixed to convert C++ references to C pointers in all function declarations
+// Bug #35 FIX: Skip VarDecl in headers (local variables belong in function bodies)
 void CodeGenerator::printDecl(Decl *D, bool declarationOnly) {
     if (!D) return;
 
@@ -110,6 +111,17 @@ void CodeGenerator::printDecl(Decl *D, bool declarationOnly) {
             OS << ";\n";
         }
         // When declarationOnly=false, skip struct definitions (already in header)
+    } else if (auto *VD = dyn_cast<VarDecl>(D)) {
+        // Bug #35 FIX: Variable declarations should NOT appear in headers
+        // Local variables are part of function bodies, not top-level declarations
+        // Global variables (if any) would need special handling, but for now skip all VarDecl in headers
+        if (declarationOnly) {
+            // Skip variable declarations in header files
+            return;
+        }
+        // In implementation files, print the variable declaration
+        D->print(OS, Policy);
+        OS << ";\n";
     } else {
         // Other declarations
         D->print(OS, Policy);

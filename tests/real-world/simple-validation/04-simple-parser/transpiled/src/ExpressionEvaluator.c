@@ -1,4 +1,4 @@
-// Generated from: /Users/alexanderfedin/Projects/hapyy/hupyy-cpp-to-c/tests/real-world/simple-validation/04-simple-parser/./src/ExpressionEvaluator.cpp
+// Generated from: /Users/alexanderfedin/Projects/hapyy/hupyy-cpp-to-c/tests/real-world/simple-validation/04-simple-parser/src/ExpressionEvaluator.cpp
 // Implementation file
 
 #include "ExpressionEvaluator.h"
@@ -59,19 +59,19 @@ int ExpressionEvaluator_parseFactor(struct ExpressionEvaluator * this) {
 }
 
 void ExpressionEvaluator__dtor(struct ExpressionEvaluator * this) {
-	if (this->tokenizer != nullptr) 	{
-		delete this->tokenizer;
+	if (this->tokenizer != 0) 	{
+		free(this->tokenizer);
 	}
 
 }
 
 int ExpressionEvaluator_parseTerm(struct ExpressionEvaluator * this);
 int ExpressionEvaluator_evaluate(struct ExpressionEvaluator * this, const char * expression) {
-	if (this->tokenizer != nullptr) 	{
-		delete this->tokenizer;
+	if (this->tokenizer != 0) 	{
+		free(this->tokenizer);
 	}
 
-	this->tokenizer = new Tokenizer(expression);
+	this->tokenizer = malloc(sizeof(Tokenizer));
 	ExpressionEvaluator_advance(this);
 	int result = ExpressionEvaluator_parseTerm(this);
 
@@ -94,7 +94,7 @@ int ExpressionEvaluator_evaluate(struct ExpressionEvaluator * this, const char *
 }
 
 void ExpressionEvaluator__ctor(struct ExpressionEvaluator * this) {
-	this->tokenizer = nullptr;
+	this->tokenizer = 0;
 	Token__ctor(&this->currentToken, 5);
 }
 

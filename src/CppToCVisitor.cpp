@@ -1,6 +1,7 @@
 #include "CppToCVisitor.h"
 #include "CFGAnalyzer.h"
 #include "MethodSignatureHelper.h"
+#include "TargetContext.h"
 #include "clang/AST/Attr.h"
 #include "clang/AST/Expr.h"
 #include "clang/AST/ExprCXX.h"
@@ -25,12 +26,13 @@ extern bool shouldEnableRTTI();                      // Phase 13 (v2.6.0)
 
 // Epic #193: ACSL Integration - Constructor Implementation
 CppToCVisitor::CppToCVisitor(ASTContext &Context, CNodeBuilder &Builder,
-                             cpptoc::FileOriginTracker &tracker)
+                             cpptoc::FileOriginTracker &tracker,
+                             TranslationUnitDecl *C_TU_param)
     : Context(Context), Builder(Builder), Mangler(Context),
       fileOriginTracker(tracker),
       VirtualAnalyzer(Context), VptrInjectorInstance(Context, VirtualAnalyzer),
       MoveCtorTranslator(Context), MoveAssignTranslator(Context),
-      RvalueRefParamTrans(Context) {
+      RvalueRefParamTrans(Context), C_TranslationUnit(C_TU_param) {
 
   // Initialize ACSL annotators if --generate-acsl flag is enabled
   if (shouldGenerateACSL()) {
@@ -78,7 +80,8 @@ CppToCVisitor::CppToCVisitor(ASTContext &Context, CNodeBuilder &Builder,
   // Phase 11 (v2.4.0): Initialize template monomorphization infrastructure
   // Note: Always initialize these, but only use them if
   // shouldMonomorphizeTemplates() is true
-  m_templateExtractor = std::make_unique<TemplateExtractor>(Context);
+  // Bug #17: Pass FileOriginTracker to skip system header templates
+  m_templateExtractor = std::make_unique<TemplateExtractor>(Context, &tracker);
   m_templateMonomorphizer =
       std::make_unique<TemplateMonomorphizer>(Context, Mangler, Builder);
   m_templateTracker = std::make_unique<TemplateInstantiationTracker>();
@@ -127,9 +130,9 @@ CppToCVisitor::CppToCVisitor(ASTContext &Context, CNodeBuilder &Builder,
   m_constexprHandler = std::make_unique<ConstexprEnhancementHandler>(Builder);
   llvm::outs() << "auto(x) decay-copy and partial constexpr support initialized (C++23 P0849R8)\n";
 
-  // Phase 32 (v3.0.0): Initialize C TranslationUnit for output generation
-  C_TranslationUnit = TranslationUnitDecl::Create(Context);
-  llvm::outs() << "C TranslationUnit created for output generation\n";
+  // Phase 35-02 (Bug #30 FIX): C_TranslationUnit passed as constructor parameter
+  // Each source file has its own C_TU in the shared target context
+  llvm::outs() << "[Bug #30 FIX] CppToCVisitor using C_TU @ " << (void*)C_TranslationUnit << "\n";
 }
 
 // Bug #23: Enum Class Translation - Convert C++11 enum class to C typedef enum
@@ -192,7 +195,33 @@ bool CppToCVisitor::VisitCXXRecordDecl(CXXRecordDecl *D) {
   if (D->isImplicit())
     return true;
 
-  // Edge case 3: Already translated - avoid duplicates
+  // Edge case 3: Template patterns - skip (Bug #17)
+  // Template patterns are handled by template monomorphization
+  // Only template specializations (instantiations) should be visited here
+  if (D->getDescribedClassTemplate() != nullptr) {
+    // This is a template pattern (e.g., template<typename T> class LinkedList)
+    // Skip it - we'll generate monomorphized versions from TemplateMonomorphizer
+    return true;
+  }
+
+  // Edge case 3b: Nested classes inside template patterns - skip (Bug #17 extension)
+  // If this class is defined inside a template class, skip it here.
+  // It will be handled by TemplateMonomorphizer when generating monomorphized versions.
+  // Example: struct Node inside template<typename T> class LinkedList
+  DeclContext *DC = D->getDeclContext();
+  while (DC && !DC->isTranslationUnit()) {
+    if (CXXRecordDecl *ParentRecord = dyn_cast<CXXRecordDecl>(DC)) {
+      if (ParentRecord->getDescribedClassTemplate() != nullptr) {
+        // Parent is a template pattern, so this nested class should be skipped
+        llvm::outs() << "Skipping nested class '" << D->getNameAsString()
+                     << "' inside template pattern '" << ParentRecord->getNameAsString() << "'\n";
+        return true;
+      }
+    }
+    DC = DC->getParent();
+  }
+
+  // Edge case 4: Already translated - avoid duplicates
   if (cppToCMap.find(D) != cppToCMap.end())
     return true;
 
@@ -324,6 +353,35 @@ bool CppToCVisitor::VisitCXXMethodDecl(CXXMethodDecl *MD) {
   // Edge case 1: Skip implicit methods (compiler-generated)
   if (MD->isImplicit()) {
     return true;
+  }
+
+  // Edge case 2: Skip methods of template patterns (Bug #17)
+  // Template pattern methods are handled by template monomorphization
+  CXXRecordDecl *ParentClass = MD->getParent();
+  if (ParentClass && ParentClass->getDescribedClassTemplate() != nullptr) {
+    // This method belongs to a template pattern class
+    // Skip it - we'll generate monomorphized versions from TemplateMonomorphizer
+    return true;
+  }
+
+  // Edge case 2b: Skip methods of nested classes inside template patterns (Bug #17 extension)
+  // If the parent class is nested inside a template class, skip it here.
+  // It will be handled by TemplateMonomorphizer when generating monomorphized versions.
+  // Example: methods of struct Node inside template<typename T> class LinkedList
+  if (ParentClass) {
+    DeclContext *DC = ParentClass->getDeclContext();
+    while (DC && !DC->isTranslationUnit()) {
+      if (CXXRecordDecl *AncestorRecord = dyn_cast<CXXRecordDecl>(DC)) {
+        if (AncestorRecord->getDescribedClassTemplate() != nullptr) {
+          // Ancestor is a template pattern, so this method should be skipped
+          llvm::outs() << "Skipping method '" << MD->getNameAsString()
+                       << "' of nested class '" << ParentClass->getNameAsString()
+                       << "' inside template pattern '" << AncestorRecord->getNameAsString() << "'\n";
+          return true;
+        }
+      }
+      DC = DC->getParent();
+    }
   }
 
   // Edge case 3: Skip constructors/destructors (handled separately)
@@ -485,6 +543,34 @@ bool CppToCVisitor::VisitCXXConstructorDecl(CXXConstructorDecl *CD) {
   // Edge case: Skip implicit constructors (compiler-generated)
   if (CD->isImplicit()) {
     return true;
+  }
+
+  // Edge case: Skip constructors of template patterns (Bug #17)
+  // Template pattern constructors are handled by template monomorphization
+  CXXRecordDecl *ParentClass = CD->getParent();
+  if (ParentClass && ParentClass->getDescribedClassTemplate() != nullptr) {
+    // This constructor belongs to a template pattern class
+    // Skip it - we'll generate monomorphized versions from TemplateMonomorphizer
+    return true;
+  }
+
+  // Edge case extension: Skip constructors of nested classes inside template patterns (Bug #17 extension)
+  // If the parent class is nested inside a template class, skip it here.
+  // It will be handled by TemplateMonomorphizer when generating monomorphized versions.
+  // Example: constructor of struct Node inside template<typename T> class LinkedList
+  if (ParentClass) {
+    DeclContext *DC = ParentClass->getDeclContext();
+    while (DC && !DC->isTranslationUnit()) {
+      if (CXXRecordDecl *AncestorRecord = dyn_cast<CXXRecordDecl>(DC)) {
+        if (AncestorRecord->getDescribedClassTemplate() != nullptr) {
+          // Ancestor is a template pattern, so this constructor should be skipped
+          llvm::outs() << "Skipping constructor of nested class '" << ParentClass->getNameAsString()
+                       << "' inside template pattern '" << AncestorRecord->getNameAsString() << "'\n";
+          return true;
+        }
+      }
+      DC = DC->getParent();
+    }
   }
 
   // Bug fix #18: Skip constructor declarations without definitions (cross-file duplicates)
@@ -672,6 +758,11 @@ bool CppToCVisitor::VisitCXXConstructorDecl(CXXConstructorDecl *CD) {
 }
 
 bool CppToCVisitor::VisitVarDecl(VarDecl *VD) {
+  // Phase 34 (v2.5.0): Skip declarations from non-transpilable files
+  if (!fileOriginTracker.shouldTranspile(VD)) {
+    return true;
+  }
+
   llvm::outs() << "Found variable: " << VD->getNameAsString() << "\n";
   return true;
 }
@@ -741,6 +832,15 @@ bool CppToCVisitor::VisitCXXDestructorDecl(CXXDestructorDecl *DD) {
 
   // Edge case: Skip implicit destructors (compiler-generated)
   if (DD->isImplicit() || DD->isTrivial()) {
+    return true;
+  }
+
+  // Edge case: Skip destructors of template patterns (Bug #17)
+  // Template pattern destructors are handled by template monomorphization
+  CXXRecordDecl *ParentClass = DD->getParent();
+  if (ParentClass && ParentClass->getDescribedClassTemplate() != nullptr) {
+    // This destructor belongs to a template pattern class
+    // Skip it - we'll generate monomorphized versions from TemplateMonomorphizer
     return true;
   }
 
@@ -1899,7 +1999,19 @@ bool CppToCVisitor::containsRecoveryExpr(Stmt *S) {
     return true;
   }
 
-  // Recursively check all child statements/expressions
+  // CRITICAL FIX for Bug #X (Empty C files):
+  // Do NOT recurse into nested CompoundStmts - they handle their own filtering.
+  // This prevents skipping entire if/while/for blocks just because they contain
+  // a RecoveryExpr somewhere deep inside.
+  //
+  // Each CompoundStmt independently filters its own statements, creating a
+  // hierarchy of filtering rather than all-or-nothing.
+  if (isa<CompoundStmt>(S)) {
+    // Don't recurse into compound statements - they filter themselves
+    return false;
+  }
+
+  // Recursively check all child statements/expressions (except CompoundStmts)
   for (Stmt *Child : S->children()) {
     if (containsRecoveryExpr(Child)) {
       return true;
@@ -2016,6 +2128,72 @@ Expr *CppToCVisitor::translateExpr(Expr *E) {
   // Handle constructor expressions - need to translate arguments
   if (CXXConstructExpr *CCE = dyn_cast<CXXConstructExpr>(E)) {
     return translateConstructExpr(CCE);
+  }
+
+  // Bug fix: Handle C++ new operator - convert to malloc()
+  // Example: new Node(value) → malloc(sizeof(struct Node_int))
+  if (CXXNewExpr *NE = dyn_cast<CXXNewExpr>(E)) {
+    llvm::outs() << "  Translating CXXNewExpr to malloc()\n";
+
+    // Get the allocated type
+    QualType AllocatedType = NE->getAllocatedType();
+
+    // Create malloc call: malloc(sizeof(Type))
+    // 1. Create sizeof(Type) expression using UnaryExprOrTypeTraitExpr
+    UnaryExprOrTypeTraitExpr *SizeOfExpr = new (Context) UnaryExprOrTypeTraitExpr(
+        UETT_SizeOf,
+        Context.getTrivialTypeSourceInfo(AllocatedType, SourceLocation()),
+        Context.getSizeType(),
+        SourceLocation(),
+        SourceLocation()
+    );
+
+    // 2. Create malloc call using Builder (takes function name as string)
+    std::vector<Expr*> MallocArgs;
+    MallocArgs.push_back(SizeOfExpr);
+    CallExpr *MallocCall = Builder.call("malloc", MallocArgs);
+
+    // 3. Cast result to appropriate pointer type
+    QualType ResultType = Context.getPointerType(AllocatedType);
+    return ImplicitCastExpr::Create(Context, ResultType, CK_BitCast,
+                                    MallocCall, nullptr, VK_PRValue,
+                                    FPOptionsOverride());
+  }
+
+  // Bug fix: Handle C++ delete operator - convert to free()
+  // Example: delete temp → free(temp)
+  if (CXXDeleteExpr *DE = dyn_cast<CXXDeleteExpr>(E)) {
+    llvm::outs() << "  Translating CXXDeleteExpr to free()\n";
+
+    // Get the pointer being deleted
+    Expr *Argument = DE->getArgument();
+    Expr *TranslatedArg = translateExpr(Argument);
+    if (!TranslatedArg) {
+      TranslatedArg = Argument;
+    }
+
+    // Create free call using Builder (takes function name as string)
+    std::vector<Expr*> FreeArgs;
+    FreeArgs.push_back(TranslatedArg);
+    return Builder.call("free", FreeArgs);
+  }
+
+  // Bug fix: Handle C++ nullptr literal - convert to NULL
+  // Example: nullptr → NULL (which is ((void*)0) in C)
+  if (CXXNullPtrLiteralExpr *NPE = dyn_cast<CXXNullPtrLiteralExpr>(E)) {
+    llvm::outs() << "  Translating nullptr to NULL\n";
+
+    // Create NULL as ((void*)0)
+    // 1. Create integer literal 0
+    llvm::APInt Zero(32, 0);
+    IntegerLiteral *ZeroLit = IntegerLiteral::Create(
+        Context, Zero, Context.IntTy, SourceLocation());
+
+    // 2. Cast to void*
+    QualType VoidPtrType = Context.getPointerType(Context.VoidTy);
+    return ImplicitCastExpr::Create(Context, VoidPtrType, CK_NullToPointer,
+                                    ZeroLit, nullptr, VK_PRValue,
+                                    FPOptionsOverride());
   }
 
   // Handle implicit casts - just translate the sub-expression
@@ -2838,6 +3016,46 @@ Stmt *CppToCVisitor::translateDeclStmt(DeclStmt *DS) {
     // Get the variable type
     QualType VarType = VD->getType();
     const Type *T = VarType.getTypePtr();
+
+    // BUG FIX (Bug #18): Check if this is a template specialization type
+    // E.g., LinkedList<int> list; -> struct LinkedList_int list;
+    if (const RecordType *RT = T->getAs<RecordType>()) {
+      RecordDecl *RD = RT->getDecl();
+
+      // Check if this is a ClassTemplateSpecializationDecl
+      if (ClassTemplateSpecializationDecl *CTSD = dyn_cast<ClassTemplateSpecializationDecl>(RD)) {
+        llvm::outs() << "      Is a template specialization: " << CTSD->getNameAsString() << "\n";
+
+        // Generate mangled name for the monomorphized struct
+        // Reuse TemplateMonomorphizer's generateMangledName function
+        std::string mangledName = m_templateMonomorphizer->generateMangledName(
+            CTSD->getSpecializedTemplate()->getNameAsString(),
+            CTSD->getTemplateArgs()
+        );
+
+        llvm::outs() << "      Monomorphized struct name: " << mangledName << "\n";
+
+        // Create C variable declaration with monomorphized struct type
+        // struct LinkedList_int list;
+        IdentifierInfo &II = Context.Idents.get(mangledName);
+        RecordDecl *CRecord = RecordDecl::Create(
+            Context,
+#if LLVM_VERSION_MAJOR >= 16
+            TagTypeKind::Struct,
+#else
+            TTK_Struct,
+#endif
+            Context.getTranslationUnitDecl(),
+            SourceLocation(),
+            SourceLocation(),
+            &II
+        );
+
+        QualType CStructType = Context.getRecordType(CRecord);
+        VarDecl *CVarDecl = Builder.var(CStructType, VD->getName());
+        return Builder.declStmt(CVarDecl);
+      }
+    }
 
     // Check if this is a class type with a constructor call
     // Note: Use getAs<RecordType>() which works for both C structs and C++ classes
@@ -4043,6 +4261,117 @@ void CppToCVisitor::processTemplateInstantiations(TranslationUnitDecl *TU) {
           m_templateMonomorphizer->monomorphizeClassMethods(classInst, CStruct);
 
       llvm::outs() << "    -> Created " << methods.size() << " method function(s)\n";
+
+      // BUG FIX: Translate method bodies for monomorphized functions
+      // The monomorphizer creates function signatures, but bodies need translation
+      //
+      // NOTE: We use the INSTANTIATION's methods (classInst), not the pattern,
+      // because template method out-of-line definitions are not associated with
+      // the pattern's method declarations. The instantiation has all bodies.
+
+      // Get template pattern to access method list
+      ClassTemplateDecl* Template = classInst->getSpecializedTemplate();
+      CXXRecordDecl* Pattern = Template ? Template->getTemplatedDecl() : nullptr;
+
+      if (Pattern) {
+        // Build a map of pattern methods (these have the names we need)
+        std::map<std::string, CXXMethodDecl*> methodMap;
+        for (auto* PatternMethod : Pattern->methods()) {
+          // Skip compiler-generated, constructors, destructors (same as monomorphizer)
+          if (PatternMethod->isImplicit()) continue;
+          if (isa<CXXConstructorDecl>(PatternMethod) || isa<CXXDestructorDecl>(PatternMethod)) {
+            continue;
+          }
+          std::string methodName = PatternMethod->getNameAsString();
+          llvm::outs() << "      -> Found pattern method: " << methodName << "\n";
+          methodMap[methodName] = PatternMethod;
+        }
+
+        // Translate bodies for each monomorphized method
+        std::string className = CStruct->getNameAsString();
+        for (FunctionDecl* MonoFunc : methods) {
+          // Extract method name from monomorphized function name
+          // Format: ClassName_methodName
+          std::string funcName = MonoFunc->getNameAsString();
+          std::string prefix = className + "_";
+          if (funcName.find(prefix) != 0) {
+            llvm::outs() << "      -> Warning: Unexpected function name format: " << funcName << "\n";
+            continue;
+          }
+
+          std::string methodName = funcName.substr(prefix.length());
+
+          // Find corresponding pattern method
+          auto it = methodMap.find(methodName);
+          if (it == methodMap.end()) {
+            llvm::outs() << "      -> Warning: No method found for: " << methodName << "\n";
+            continue;
+          }
+
+          CXXMethodDecl* PatternMethod = it->second;
+
+          // The key insight: For template instantiations, we need to get the
+          // body from the INSTANTIATED version. Use getTemplateInstantiationPattern
+          // to find the original template, then walk to the instantiated body.
+          //
+          // If the pattern method is inline (body in class), it will have hasBody() = true
+          // If it's out-of-line, we need to look for it in the TU declarations
+          Stmt* BodyToTranslate = nullptr;
+
+          // First try: Check if pattern has inline body
+          if (PatternMethod->hasBody()) {
+            llvm::outs() << "      -> Method " << methodName << " has inline body\n";
+            BodyToTranslate = PatternMethod->getBody();
+          } else {
+            // Out-of-line definition - need to find it
+            // For templates, the actual instantiated body exists in the AST
+            // We need to search for the FunctionDecl that corresponds to this instantiation
+            llvm::outs() << "      -> Method " << methodName << " has out-of-line definition, searching...\n";
+
+            // Search all decls in TranslationUnit for this method's definition
+            for (auto* Decl : Context.getTranslationUnitDecl()->decls()) {
+              if (auto* FuncTemplate = dyn_cast<FunctionTemplateDecl>(Decl)) {
+                // Check if this is the template definition for our method
+                if (FuncTemplate->getTemplatedDecl()->getNameAsString() == methodName) {
+                  // This might be it, but we need the instantiated version
+                  // For now, try the templated decl
+                  if (FuncTemplate->getTemplatedDecl()->hasBody()) {
+                    llvm::outs() << "      -> Found function template definition!\n";
+                    BodyToTranslate = FuncTemplate->getTemplatedDecl()->getBody();
+                    break;
+                  }
+                }
+              }
+            }
+          }
+
+          if (BodyToTranslate) {
+            llvm::outs() << "      -> Translating body for " << funcName << "\n";
+
+            // Set up translation context
+            if (MonoFunc->getNumParams() > 0) {
+              currentThisParam = MonoFunc->getParamDecl(0);  // First param is 'this'
+            }
+            currentMethod = PatternMethod;
+
+            // Translate the method body
+            Stmt* TranslatedBody = translateStmt(BodyToTranslate);
+
+            if (TranslatedBody) {
+              MonoFunc->setBody(TranslatedBody);
+              llvm::outs() << "      -> Body translated successfully\n";
+            } else {
+              llvm::outs() << "      -> Warning: Body translation returned nullptr\n";
+            }
+
+            // Clear translation context
+            currentThisParam = nullptr;
+            currentMethod = nullptr;
+          } else {
+            llvm::outs() << "      -> Warning: Could not find body for method: " << methodName << "\n";
+          }
+        }
+      }
     }
   }
 

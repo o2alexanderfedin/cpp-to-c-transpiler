@@ -1,0 +1,6 @@
+{
+  "transpiler_args": [
+    "--extra-arg=-I/Users/alexanderfedin/Projects/hapyy/hupyy-cpp-to-c/tests/real-world/simple-validation/03-state-machine/include",
+    "--extra-arg=-isystem/opt/homebrew/Cellar/llvm/21.1.7/include/c++/v1"
+  ]
+}

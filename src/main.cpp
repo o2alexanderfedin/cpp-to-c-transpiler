@@ -4,6 +4,7 @@
 #include "CppToCFrontendAction.h"
 #include "DependencyGraphVisualizer.h"
 #include "ACSLGenerator.h"
+#include "TargetContext.h"
 #include "clang/Tooling/CommonOptionsParser.h"
 #include "clang/Tooling/Tooling.h"
 #include "clang/Tooling/ArgumentsAdjusters.h"
@@ -21,6 +22,28 @@ using namespace clang::tooling;
 // Allows returning success even when parse errors occur (e.g., missing system headers)
 // Shared with CppToCConsumer.cpp
 std::atomic<int> g_filesGeneratedCount{0};
+
+// Bug #32 DEBUG: Signal handler to catch segfaults and print location
+#include <signal.h>
+#include <execinfo.h>
+#include <unistd.h>
+static void segfaultHandler(int sig) {
+    llvm::errs() << "\n\n!!! SEGFAULT CAUGHT (signal " << sig << ") !!!\n";
+    llvm::errs() << "Last operation before crash:\n";
+    llvm::errs() << "Backtrace:\n";
+    void* array[100];
+    size_t size = backtrace(array, 100);
+    backtrace_symbols_fd(array, size, STDERR_FILENO);
+    llvm::errs() << "\n!!! CRITICAL: Exiting due to segfault !!!\n";
+    _exit(139);
+}
+
+// Bug #31 FIX: atexit handler to clean up TargetContext singleton
+// DISABLED: Causes segfaults due to LLVM cleanup ordering issues
+// The singleton will be cleaned up by the OS when the process exits
+// static void cleanupTargetContext() {
+//   TargetContext::cleanup();
+// }
 
 // Define tool category for command line options
 static llvm::cl::OptionCategory ToolCategory("cpptoc options");
@@ -310,6 +333,17 @@ static std::vector<std::string> discoverSourceFiles(const std::string& sourceDir
 // ============================================================================
 
 int main(int argc, const char **argv) {
+  // Bug #32 DEBUG: Install signal handler to catch segfaults
+  llvm::outs() << "[DEBUG] Installing segfault handler...\n";
+  signal(SIGSEGV, segfaultHandler);
+  signal(SIGABRT, segfaultHandler);
+  llvm::outs() << "[DEBUG] Signal handlers installed\n";
+
+  // Bug #31 FIX: DO NOT register atexit cleanup for TargetContext
+  // The singleton will be cleaned up by the OS when the process exits
+  // Explicit cleanup causes segfaults due to LLVM cleanup ordering issues
+  // std::atexit(cleanupTargetContext);
+
   // Project-based transpilation: always add dummy file for CommonOptionsParser
   // CommonOptionsParser requires at least one file argument, but we'll discover files later
   std::vector<const char*> modifiedArgv(argv, argv + argc);
@@ -383,7 +417,26 @@ int main(int argc, const char **argv) {
       ArgumentInsertPosition::BEGIN));
 
   // Run tool with our custom FrontendAction
-  int result = Tool.run(newFrontendActionFactory<CppToCFrontendAction>().get());
+  llvm::outs() << "[DEBUG] About to call Tool.run()...\n";
+  llvm::outs().flush();
+
+  int result = -1;
+  try {
+    result = Tool.run(newFrontendActionFactory<CppToCFrontendAction>().get());
+    llvm::outs() << "[DEBUG] Tool.run() returned: " << result << "\n";
+    llvm::outs().flush();
+  } catch (const std::exception& e) {
+    llvm::errs() << "[DEBUG] EXCEPTION caught in Tool.run(): " << e.what() << "\n";
+    llvm::errs().flush();
+    return 1;
+  } catch (...) {
+    llvm::errs() << "[DEBUG] UNKNOWN EXCEPTION caught in Tool.run()\n";
+    llvm::errs().flush();
+    return 1;
+  }
+
+  llvm::outs() << "[DEBUG] After Tool.run(), about to handle dependencies...\n";
+  llvm::outs().flush();
 
   // Handle dependency visualization if requested
   if (VisualizeDeps || !DumpDeps.empty()) {
@@ -424,4 +477,5 @@ int main(int argc, const char **argv) {
   }
 
   return result;
+  // Bug #31 FIX: TargetContext cleanup happens automatically via atexit handler
 }

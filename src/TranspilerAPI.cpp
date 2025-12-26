@@ -8,6 +8,7 @@
 #include "CodeGenerator.h"
 #include "HeaderSeparator.h"
 #include "IncludeGuardGenerator.h"
+#include "TargetContext.h"
 #include "clang/Frontend/FrontendAction.h"
 #include "clang/Frontend/CompilerInstance.h"
 #include "clang/Tooling/Tooling.h"
@@ -119,8 +120,12 @@ public:
         tracker.addUserHeaderPath("include/");
         tracker.addUserHeaderPath("src/");
 
+        // Phase 35-02 (Bug #30 FIX): Get target context and create C_TU
+        TargetContext& targetCtx = TargetContext::getInstance();
+        clang::TranslationUnitDecl* C_TU = targetCtx.createTranslationUnit();
+
         // Create and run visitor to traverse AST
-        CppToCVisitor Visitor(Context, Builder, tracker);
+        CppToCVisitor Visitor(Context, Builder, tracker, C_TU);
         auto *TU = Context.getTranslationUnitDecl();
         Visitor.TraverseDecl(TU);
 

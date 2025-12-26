@@ -56,21 +56,40 @@ std::vector<FunctionDecl*> TemplateMonomorphizer::monomorphizeClassMethods(
     std::vector<FunctionDecl*> methods;
     std::string mangledName = CStruct->getNameAsString();
 
-    // Generate method declarations
-    for (auto* Decl : D->decls()) {
-        if (auto* Method = dyn_cast<CXXMethodDecl>(Decl)) {
-            // Skip compiler-generated methods
-            if (Method->isImplicit()) continue;
+    // BUG FIX (Bug #16): For template specializations, methods aren't in decls().
+    // We need to get them from the template definition (pattern).
+    //
+    // Root cause: ClassTemplateSpecializationDecl::decls() returns 0 items because
+    // methods are defined in the template pattern, not duplicated in each instantiation.
+    //
+    // Solution: Get the template pattern via getSpecializedTemplate()->getTemplatedDecl()
+    // and iterate over its methods, then monomorphize each one with the concrete types.
 
-            FunctionDecl* CMethod = createMethodFunction(
-                Method,
-                mangledName,
-                D->getTemplateArgs()
-            );
+    ClassTemplateDecl* Template = D->getSpecializedTemplate();
+    CXXRecordDecl* Pattern = Template ? Template->getTemplatedDecl() : nullptr;
 
-            if (CMethod) {
-                methods.push_back(CMethod);
-            }
+    if (!Pattern) {
+        return methods;
+    }
+
+    // Iterate over template pattern's methods and monomorphize each one
+    for (auto* Method : Pattern->methods()) {
+        // Skip compiler-generated methods
+        if (Method->isImplicit()) continue;
+
+        // Skip constructors and destructors (handled separately if needed)
+        if (isa<CXXConstructorDecl>(Method) || isa<CXXDestructorDecl>(Method)) {
+            continue;
+        }
+
+        FunctionDecl* CMethod = createMethodFunction(
+            Method,
+            mangledName,
+            D->getTemplateArgs()
+        );
+
+        if (CMethod) {
+            methods.push_back(CMethod);
         }
     }
 
@@ -203,15 +222,144 @@ RecordDecl* TemplateMonomorphizer::createStruct(ClassTemplateSpecializationDecl*
     // Build field list (following CppToCVisitor::VisitCXXRecordDecl pattern)
     std::vector<FieldDecl*> fields;
 
+    // BUG FIX (Bug #17): For template specializations, fields might not be populated.
+    // Similar to methods, we need to get them from the template pattern.
+    ClassTemplateDecl* Template = D->getSpecializedTemplate();
+    CXXRecordDecl* Pattern = Template ? Template->getTemplatedDecl() : nullptr;
+
+    // Try pattern first, fall back to specialization
+    CXXRecordDecl* SourceDecl = Pattern ? Pattern : D;
+
+    // Get template arguments for type substitution
+    const TemplateArgumentList& TemplateArgs = D->getTemplateArgs();
+
+    // BUG FIX (Bug #18): Clear nested class mappings for this instantiation
+    nestedClassMappings.clear();
+
+    // BUG FIX (Bug #17 extension): Handle nested classes inside template
+    // Example: struct Node inside template<typename T> class LinkedList
+    // Need to generate monomorphized versions of nested classes first
+
+    // BUG FIX (Bug #34): First pass - populate nestedClassMappings before processing fields
+    // This ensures that when we process nested struct fields (like Node::next),
+    // the mapping is already available for substituteType() to use
+    for (auto* Decl : SourceDecl->decls()) {
+        if (CXXRecordDecl* NestedClass = dyn_cast<CXXRecordDecl>(Decl)) {
+            // Skip forward declarations
+            if (!NestedClass->isCompleteDefinition()) continue;
+
+            // Skip compiler-generated
+            if (NestedClass->isImplicit()) continue;
+
+            // Generate mangled name for nested struct: OuterClass_NestedClass
+            std::string nestedMangledName = MangledName + "_" + NestedClass->getNameAsString();
+
+            // Store mapping for nested class name substitution
+            // E.g., "Node" -> "LinkedList_int_Node"
+            nestedClassMappings[NestedClass->getNameAsString()] = nestedMangledName;
+
+            llvm::outs() << "  Registered nested class mapping: " << NestedClass->getNameAsString()
+                         << " -> " << nestedMangledName << "\n";
+        }
+    }
+
+    // Second pass - now process the nested classes with mappings in place
+    std::vector<RecordDecl*> nestedStructs;
+    for (auto* Decl : SourceDecl->decls()) {
+        if (CXXRecordDecl* NestedClass = dyn_cast<CXXRecordDecl>(Decl)) {
+            // Skip forward declarations
+            if (!NestedClass->isCompleteDefinition()) continue;
+
+            // Skip compiler-generated
+            if (NestedClass->isImplicit()) continue;
+
+            llvm::outs() << "  Processing nested class: " << NestedClass->getNameAsString() << "\n";
+
+            // Get the mangled name from our mapping
+            std::string nestedMangledName = nestedClassMappings[NestedClass->getNameAsString()];
+
+            // Build fields for nested struct
+            std::vector<FieldDecl*> nestedFields;
+            for (auto* NestedField : NestedClass->fields()) {
+                QualType nestedFieldType = NestedField->getType();
+                std::string nestedFieldName = NestedField->getNameAsString();
+
+                // Substitute template parameters in nested field types
+                // BUG FIX (Bug #34): Now nestedClassMappings is populated, so substituteType()
+                // will correctly replace Node* with LinkedList_int_Node*
+                nestedFieldType = substituteType(nestedFieldType, TemplateArgs);
+                nestedFieldType = convertToCType(nestedFieldType);
+
+                FieldDecl* CNestedField = Builder.fieldDecl(nestedFieldType, nestedFieldName);
+                nestedFields.push_back(CNestedField);
+            }
+
+            // Create nested struct
+            RecordDecl* CNestedStruct = Builder.structDecl(nestedMangledName, nestedFields);
+            nestedStructs.push_back(CNestedStruct);
+
+            llvm::outs() << "    -> Generated struct " << nestedMangledName << " with "
+                         << nestedFields.size() << " fields\n";
+
+            // Generate constructors for nested class
+            for (auto* Ctor : NestedClass->ctors()) {
+                // Skip implicit constructors
+                if (Ctor->isImplicit()) continue;
+
+                // Skip copy/move constructors (handled separately)
+                if (Ctor->isCopyConstructor() || Ctor->isMoveConstructor()) continue;
+
+                llvm::outs() << "    -> Processing nested constructor: " << Ctor->getNameAsString() << "\n";
+
+                // Build mangled constructor name: OuterClass_NestedClass__ctor
+                std::string ctorName = nestedMangledName + "__ctor";
+
+                // Build parameter list with 'this' pointer
+                llvm::SmallVector<ParmVarDecl*, 8> ctorParams;
+
+                // First parameter: 'this' pointer
+                QualType thisType = Context.getPointerType(Context.getRecordType(CNestedStruct));
+                ParmVarDecl* thisParam = Builder.param(thisType, "this");
+                ctorParams.push_back(thisParam);
+
+                // Add constructor parameters
+                for (unsigned i = 0; i < Ctor->getNumParams(); ++i) {
+                    ParmVarDecl* OrigParam = Ctor->getParamDecl(i);
+                    QualType paramType = OrigParam->getType();
+                    std::string paramName = OrigParam->getNameAsString();
+
+                    // Substitute template parameters in parameter types
+                    paramType = substituteType(paramType, TemplateArgs);
+                    paramType = convertToCType(paramType);
+
+                    ParmVarDecl* CParam = Builder.param(paramType, paramName);
+                    ctorParams.push_back(CParam);
+                }
+
+                // Return type is void for constructors in C
+                QualType returnType = Context.VoidTy;
+
+                // Create C function declaration
+                FunctionDecl* CCtorFunc = Builder.funcDecl(ctorName, returnType, ctorParams, nullptr);
+
+                llvm::outs() << "      -> Generated constructor function: " << ctorName << "\n";
+            }
+        }
+    }
+
     // Generate fields from template class
-    for (auto* Field : D->fields()) {
-        // Field type is already substituted by Clang during instantiation
+    for (auto* Field : SourceDecl->fields()) {
+        // Get field type from pattern (may have template parameters like T)
         QualType fieldType = Field->getType();
         std::string fieldName = Field->getNameAsString();
 
-        // BUG FIX: Convert C++ class template types to C struct types
-        // If field type is a RecordType pointing to ClassTemplateSpecializationDecl,
-        // replace with a C struct type so it prints as "struct" not "class"
+        // BUG FIX (Bug #17): Substitute template parameters with concrete types
+        // If we're using the pattern, T needs to be replaced with int/float/etc
+        if (Pattern) {
+            fieldType = substituteType(fieldType, TemplateArgs);
+        }
+
+        // Convert C++ class template types to C struct types
         fieldType = convertToCType(fieldType);
 
         // Create C field using CNodeBuilder
@@ -268,11 +416,15 @@ FunctionDecl* TemplateMonomorphizer::createMethodFunction(
     for (unsigned i = 0; i < Method->getNumParams(); ++i) {
         ParmVarDecl* OrigParam = Method->getParamDecl(i);
 
-        // Parameter type is already substituted by Clang during instantiation
+        // Get parameter type from pattern (still has template parameters like T)
         QualType paramType = OrigParam->getType();
         std::string paramName = OrigParam->getNameAsString();
 
-        // BUG FIX: Convert C++ types to C types
+        // BUG FIX (Bug #17): Substitute template parameters with concrete types
+        // Method comes from template pattern, so T needs to be replaced with int/float/etc
+        paramType = substituteType(paramType, TemplateArgs);
+
+        // Convert C++ types to C types
         paramType = convertToCType(paramType);
 
         // Create C parameter using CNodeBuilder
@@ -280,10 +432,13 @@ FunctionDecl* TemplateMonomorphizer::createMethodFunction(
         params.push_back(CParam);
     }
 
-    // Return type (already substituted by Clang)
+    // Get return type from pattern (still has template parameters like T)
     QualType returnType = Method->getReturnType();
 
-    // BUG FIX: Convert C++ types to C types
+    // BUG FIX (Bug #17): Substitute template parameters with concrete types
+    returnType = substituteType(returnType, TemplateArgs);
+
+    // Convert C++ types to C types
     returnType = convertToCType(returnType);
 
     // Create C function declaration using CNodeBuilder
@@ -303,8 +458,91 @@ FunctionDecl* TemplateMonomorphizer::createMethodFunction(
 
 QualType TemplateMonomorphizer::substituteType(QualType Type,
                                                const TemplateArgumentList& TemplateArgs) {
-    // For now, types are already substituted by Clang during instantiation
-    // This method is for future enhancements if needed
+    // Handle template parameter types (e.g., T in template<typename T>)
+    if (const TemplateTypeParmType* TTPT = Type->getAs<TemplateTypeParmType>()) {
+        // Get the index of this template parameter
+        unsigned Index = TTPT->getIndex();
+
+        // Check if we have a template argument for this index
+        if (Index < TemplateArgs.size()) {
+            const TemplateArgument& Arg = TemplateArgs[Index];
+            if (Arg.getKind() == TemplateArgument::Type) {
+                // Return the concrete type (e.g., int, float)
+                return Arg.getAsType();
+            }
+        }
+    }
+
+    // BUG FIX (Bug #18): Handle nested class types
+    // If type is a RecordType referring to a nested class (e.g., Node),
+    // replace it with the monomorphized struct type (e.g., LinkedList_int_Node)
+    if (const RecordType* RT = Type->getAs<RecordType>()) {
+        RecordDecl* RD = RT->getDecl();
+        std::string recordName = RD->getNameAsString();
+
+        // Check if this is a nested class we've monomorphized
+        auto it = nestedClassMappings.find(recordName);
+        if (it != nestedClassMappings.end()) {
+            // Create a new RecordDecl with the monomorphized name
+            std::string mangledName = it->second;
+            IdentifierInfo& II = Context.Idents.get(mangledName);
+
+            RecordDecl* CRecord = RecordDecl::Create(
+                Context,
+#if LLVM_VERSION_MAJOR >= 16
+                TagTypeKind::Struct,
+#else
+                TTK_Struct,
+#endif
+                Context.getTranslationUnitDecl(),
+                SourceLocation(),
+                SourceLocation(),
+                &II
+            );
+
+            return Context.getRecordType(CRecord);
+        }
+    }
+
+    // Handle pointer types recursively
+    if (const PointerType* PT = Type->getAs<PointerType>()) {
+        QualType PointeeType = substituteType(PT->getPointeeType(), TemplateArgs);
+        return Context.getPointerType(PointeeType);
+    }
+
+    // Handle reference types recursively
+    if (const ReferenceType* RefT = Type->getAs<ReferenceType>()) {
+        QualType PointeeType = substituteType(RefT->getPointeeType(), TemplateArgs);
+        if (isa<LValueReferenceType>(RefT)) {
+            return Context.getLValueReferenceType(PointeeType);
+        } else if (isa<RValueReferenceType>(RefT)) {
+            return Context.getRValueReferenceType(PointeeType);
+        }
+    }
+
+    // Handle array types recursively
+    if (const ArrayType* AT = Type->getAsArrayTypeUnsafe()) {
+        QualType ElementType = substituteType(AT->getElementType(), TemplateArgs);
+        if (const ConstantArrayType* CAT = dyn_cast<ConstantArrayType>(AT)) {
+            return Context.getConstantArrayType(
+                ElementType,
+                CAT->getSize(),
+                CAT->getSizeExpr(),
+                CAT->getSizeModifier(),
+                CAT->getIndexTypeCVRQualifiers()
+            );
+        }
+    }
+
+    // Handle const/volatile qualifiers
+    if (Type.hasLocalQualifiers()) {
+        Qualifiers Quals = Type.getLocalQualifiers();
+        QualType UnqualType = Type.getUnqualifiedType();
+        QualType SubstitutedType = substituteType(UnqualType, TemplateArgs);
+        return Context.getQualifiedType(SubstitutedType, Quals);
+    }
+
+    // For other types, return as-is
     return Type;
 }
 
