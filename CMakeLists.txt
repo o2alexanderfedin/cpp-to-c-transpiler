@@ -4006,6 +4006,62 @@ gtest_discover_tests(E2EPhase1Test
 )
 
 # ============================================================================
+# Phase 40-01: Control Flow Integration Tests
+# ============================================================================
+
+add_executable(ControlFlowIntegrationTest
+    tests/integration/handlers/ControlFlowIntegrationTest.cpp
+)
+
+target_include_directories(ControlFlowIntegrationTest PRIVATE
+    ${CMAKE_SOURCE_DIR}/tests/fixtures
+    ${CMAKE_SOURCE_DIR}/include
+    ${LLVM_INCLUDE_DIRS}
+    ${CLANG_INCLUDE_DIRS}
+)
+
+target_link_libraries(ControlFlowIntegrationTest PRIVATE
+    test_fixtures
+    cpptoc_core
+    clangTooling
+    clangAST
+    clangBasic
+    GTest::gtest
+    GTest::gtest_main
+)
+
+gtest_discover_tests(ControlFlowIntegrationTest
+    WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
+)
+
+# ============================================================================
+# Phase 40-01: Control Flow E2E Tests
+# ============================================================================
+
+add_executable(ControlFlowE2ETest
+    tests/e2e/phase2/ControlFlowE2ETest.cpp
+)
+
+target_include_directories(ControlFlowE2ETest PRIVATE
+    ${CMAKE_SOURCE_DIR}/include
+    ${LLVM_INCLUDE_DIRS}
+    ${CLANG_INCLUDE_DIRS}
+)
+
+target_link_libraries(ControlFlowE2ETest PRIVATE
+    cpptoc_core
+    clangTooling
+    clangAST
+    clangBasic
+    GTest::gtest
+    GTest::gtest_main
+)
+
+gtest_discover_tests(ControlFlowE2ETest
+    WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
+)
+
+# ============================================================================
 # Phase 15-04: Unified Test Execution - Convenience Test Targets
 # ============================================================================
 

@@ -952,3 +952,933 @@ TEST_F(ExpressionHandlerTest, ComplexLogical) {
     // Assert
     ASSERT_NE(result, nullptr);
 }
+
+// ============================================================================
+// UNARY OPERATORS - PHASE 2 TASK 3 (Tests 39-50)
+// ============================================================================
+
+/**
+ * Test 39: Prefix Increment
+ * C++ Input: ++x
+ * Expected: UnaryOperator with UO_PreInc
+ */
+TEST_F(ExpressionHandlerTest, PrefixIncrement) {
+    // Arrange
+    std::string code = "int x = 0; void test() { ++x; }";
+    auto AST = clang::tooling::buildASTFromCode(code);
+    ASSERT_NE(AST, nullptr);
+
+    ExprExtractor extractor;
+    extractor.TraverseDecl(AST->getASTContext().getTranslationUnitDecl());
+    clang::Expr* cppExpr = extractor.foundExpr;
+    ASSERT_NE(cppExpr, nullptr);
+
+    // Act
+    ExpressionHandler handler;
+    clang::Expr* result = handler.handleExpr(cppExpr, *context);
+
+    // Assert
+    ASSERT_NE(result, nullptr) << "Translation returned null";
+    auto* unOp = llvm::dyn_cast<clang::UnaryOperator>(result);
+    ASSERT_NE(unOp, nullptr) << "Result is not UnaryOperator";
+    EXPECT_EQ(unOp->getOpcode(), clang::UO_PreInc);
+}
+
+/**
+ * Test 40: Prefix Decrement
+ * C++ Input: --x
+ * Expected: UnaryOperator with UO_PreDec
+ */
+TEST_F(ExpressionHandlerTest, PrefixDecrement) {
+    // Arrange
+    std::string code = "int x = 10; void test() { --x; }";
+    auto AST = clang::tooling::buildASTFromCode(code);
+    ASSERT_NE(AST, nullptr);
+
+    ExprExtractor extractor;
+    extractor.TraverseDecl(AST->getASTContext().getTranslationUnitDecl());
+    clang::Expr* cppExpr = extractor.foundExpr;
+    ASSERT_NE(cppExpr, nullptr);
+
+    // Act
+    ExpressionHandler handler;
+    clang::Expr* result = handler.handleExpr(cppExpr, *context);
+
+    // Assert
+    ASSERT_NE(result, nullptr) << "Translation returned null";
+    auto* unOp = llvm::dyn_cast<clang::UnaryOperator>(result);
+    ASSERT_NE(unOp, nullptr) << "Result is not UnaryOperator";
+    EXPECT_EQ(unOp->getOpcode(), clang::UO_PreDec);
+}
+
+/**
+ * Test 41: Prefix Increment in Expression
+ * C++ Input: ++x + y
+ * Expected: Addition with prefix increment on LHS
+ */
+TEST_F(ExpressionHandlerTest, PrefixInExpression) {
+    // Arrange
+    std::string code = "int x = 0; int y = 5; void test() { ++x + y; }";
+    auto AST = clang::tooling::buildASTFromCode(code);
+    ASSERT_NE(AST, nullptr);
+
+    ExprExtractor extractor;
+    extractor.TraverseDecl(AST->getASTContext().getTranslationUnitDecl());
+    clang::Expr* cppExpr = extractor.foundExpr;
+    ASSERT_NE(cppExpr, nullptr);
+
+    // Act
+    ExpressionHandler handler;
+    clang::Expr* result = handler.handleExpr(cppExpr, *context);
+
+    // Assert
+    ASSERT_NE(result, nullptr) << "Translation returned null";
+    auto* binOp = llvm::dyn_cast<clang::BinaryOperator>(result);
+    ASSERT_NE(binOp, nullptr) << "Result is not BinaryOperator";
+    auto* lhsUnOp = llvm::dyn_cast<clang::UnaryOperator>(binOp->getLHS());
+    ASSERT_NE(lhsUnOp, nullptr) << "LHS is not UnaryOperator";
+    EXPECT_EQ(lhsUnOp->getOpcode(), clang::UO_PreInc);
+}
+
+/**
+ * Test 42: Prefix Nested
+ * C++ Input: ++(++x)
+ * Expected: Nested UnaryOperator with UO_PreInc
+ */
+TEST_F(ExpressionHandlerTest, PrefixNested) {
+    // Arrange
+    std::string code = "int x = 0; void test() { ++(++x); }";
+    auto AST = clang::tooling::buildASTFromCode(code);
+    ASSERT_NE(AST, nullptr);
+
+    ExprExtractor extractor;
+    extractor.TraverseDecl(AST->getASTContext().getTranslationUnitDecl());
+    clang::Expr* cppExpr = extractor.foundExpr;
+    ASSERT_NE(cppExpr, nullptr);
+
+    // Act
+    ExpressionHandler handler;
+    clang::Expr* result = handler.handleExpr(cppExpr, *context);
+
+    // Assert
+    ASSERT_NE(result, nullptr) << "Translation returned null";
+    auto* unOp = llvm::dyn_cast<clang::UnaryOperator>(result);
+    ASSERT_NE(unOp, nullptr) << "Result is not UnaryOperator";
+    EXPECT_EQ(unOp->getOpcode(), clang::UO_PreInc);
+}
+
+/**
+ * Test 43: Postfix Increment
+ * C++ Input: x++
+ * Expected: UnaryOperator with UO_PostInc
+ */
+TEST_F(ExpressionHandlerTest, PostfixIncrement) {
+    // Arrange
+    std::string code = "int x = 0; void test() { x++; }";
+    auto AST = clang::tooling::buildASTFromCode(code);
+    ASSERT_NE(AST, nullptr);
+
+    ExprExtractor extractor;
+    extractor.TraverseDecl(AST->getASTContext().getTranslationUnitDecl());
+    clang::Expr* cppExpr = extractor.foundExpr;
+    ASSERT_NE(cppExpr, nullptr);
+
+    // Act
+    ExpressionHandler handler;
+    clang::Expr* result = handler.handleExpr(cppExpr, *context);
+
+    // Assert
+    ASSERT_NE(result, nullptr) << "Translation returned null";
+    auto* unOp = llvm::dyn_cast<clang::UnaryOperator>(result);
+    ASSERT_NE(unOp, nullptr) << "Result is not UnaryOperator";
+    EXPECT_EQ(unOp->getOpcode(), clang::UO_PostInc);
+}
+
+/**
+ * Test 44: Postfix Decrement
+ * C++ Input: x--
+ * Expected: UnaryOperator with UO_PostDec
+ */
+TEST_F(ExpressionHandlerTest, PostfixDecrement) {
+    // Arrange
+    std::string code = "int x = 10; void test() { x--; }";
+    auto AST = clang::tooling::buildASTFromCode(code);
+    ASSERT_NE(AST, nullptr);
+
+    ExprExtractor extractor;
+    extractor.TraverseDecl(AST->getASTContext().getTranslationUnitDecl());
+    clang::Expr* cppExpr = extractor.foundExpr;
+    ASSERT_NE(cppExpr, nullptr);
+
+    // Act
+    ExpressionHandler handler;
+    clang::Expr* result = handler.handleExpr(cppExpr, *context);
+
+    // Assert
+    ASSERT_NE(result, nullptr) << "Translation returned null";
+    auto* unOp = llvm::dyn_cast<clang::UnaryOperator>(result);
+    ASSERT_NE(unOp, nullptr) << "Result is not UnaryOperator";
+    EXPECT_EQ(unOp->getOpcode(), clang::UO_PostDec);
+}
+
+/**
+ * Test 45: Postfix Increment in Expression
+ * C++ Input: x++ + y
+ * Expected: Addition with postfix increment on LHS
+ */
+TEST_F(ExpressionHandlerTest, PostfixInExpression) {
+    // Arrange
+    std::string code = "int x = 0; int y = 5; void test() { x++ + y; }";
+    auto AST = clang::tooling::buildASTFromCode(code);
+    ASSERT_NE(AST, nullptr);
+
+    ExprExtractor extractor;
+    extractor.TraverseDecl(AST->getASTContext().getTranslationUnitDecl());
+    clang::Expr* cppExpr = extractor.foundExpr;
+    ASSERT_NE(cppExpr, nullptr);
+
+    // Act
+    ExpressionHandler handler;
+    clang::Expr* result = handler.handleExpr(cppExpr, *context);
+
+    // Assert
+    ASSERT_NE(result, nullptr) << "Translation returned null";
+    auto* binOp = llvm::dyn_cast<clang::BinaryOperator>(result);
+    ASSERT_NE(binOp, nullptr) << "Result is not BinaryOperator";
+    auto* lhsUnOp = llvm::dyn_cast<clang::UnaryOperator>(binOp->getLHS());
+    ASSERT_NE(lhsUnOp, nullptr) << "LHS is not UnaryOperator";
+    EXPECT_EQ(lhsUnOp->getOpcode(), clang::UO_PostInc);
+}
+
+/**
+ * Test 46: Postfix Nested (edge case - invalid C++)
+ * C++ Input: (x++)++
+ * Note: This is invalid in C++, so we test a valid variant
+ */
+TEST_F(ExpressionHandlerTest, PostfixNested) {
+    // Arrange - test valid postfix nested in parentheses
+    std::string code = "int x = 0; void test() { (x++); }";
+    auto AST = clang::tooling::buildASTFromCode(code);
+    ASSERT_NE(AST, nullptr);
+
+    ExprExtractor extractor;
+    extractor.TraverseDecl(AST->getASTContext().getTranslationUnitDecl());
+    clang::Expr* cppExpr = extractor.foundExpr;
+    ASSERT_NE(cppExpr, nullptr);
+
+    // Act
+    ExpressionHandler handler;
+    clang::Expr* result = handler.handleExpr(cppExpr, *context);
+
+    // Assert
+    ASSERT_NE(result, nullptr) << "Translation returned null";
+}
+
+/**
+ * Test 47: Unary Minus
+ * C++ Input: -x
+ * Expected: UnaryOperator with UO_Minus
+ */
+TEST_F(ExpressionHandlerTest, UnaryMinusOperator) {
+    // Arrange
+    std::string code = "int x = 5; void test() { -x; }";
+    auto AST = clang::tooling::buildASTFromCode(code);
+    ASSERT_NE(AST, nullptr);
+
+    ExprExtractor extractor;
+    extractor.TraverseDecl(AST->getASTContext().getTranslationUnitDecl());
+    clang::Expr* cppExpr = extractor.foundExpr;
+    ASSERT_NE(cppExpr, nullptr);
+
+    // Act
+    ExpressionHandler handler;
+    clang::Expr* result = handler.handleExpr(cppExpr, *context);
+
+    // Assert
+    ASSERT_NE(result, nullptr) << "Translation returned null";
+    auto* unOp = llvm::dyn_cast<clang::UnaryOperator>(result);
+    ASSERT_NE(unOp, nullptr) << "Result is not UnaryOperator";
+    EXPECT_EQ(unOp->getOpcode(), clang::UO_Minus);
+}
+
+/**
+ * Test 48: Unary Plus
+ * C++ Input: +x
+ * Expected: UnaryOperator with UO_Plus
+ */
+TEST_F(ExpressionHandlerTest, UnaryPlusOperator) {
+    // Arrange
+    std::string code = "int x = 5; void test() { +x; }";
+    auto AST = clang::tooling::buildASTFromCode(code);
+    ASSERT_NE(AST, nullptr);
+
+    ExprExtractor extractor;
+    extractor.TraverseDecl(AST->getASTContext().getTranslationUnitDecl());
+    clang::Expr* cppExpr = extractor.foundExpr;
+    ASSERT_NE(cppExpr, nullptr);
+
+    // Act
+    ExpressionHandler handler;
+    clang::Expr* result = handler.handleExpr(cppExpr, *context);
+
+    // Assert
+    ASSERT_NE(result, nullptr) << "Translation returned null";
+    auto* unOp = llvm::dyn_cast<clang::UnaryOperator>(result);
+    ASSERT_NE(unOp, nullptr) << "Result is not UnaryOperator";
+    EXPECT_EQ(unOp->getOpcode(), clang::UO_Plus);
+}
+
+/**
+ * Test 49: Unary Minus in Expression
+ * C++ Input: a + (-b)
+ * Expected: BinaryOperator with negated subexpression
+ */
+TEST_F(ExpressionHandlerTest, UnaryMinusInExpression) {
+    // Arrange
+    std::string code = "int a = 5; int b = 3; void test() { a + (-b); }";
+    auto AST = clang::tooling::buildASTFromCode(code);
+    ASSERT_NE(AST, nullptr);
+
+    ExprExtractor extractor;
+    extractor.TraverseDecl(AST->getASTContext().getTranslationUnitDecl());
+    clang::Expr* cppExpr = extractor.foundExpr;
+    ASSERT_NE(cppExpr, nullptr);
+
+    // Act
+    ExpressionHandler handler;
+    clang::Expr* result = handler.handleExpr(cppExpr, *context);
+
+    // Assert
+    ASSERT_NE(result, nullptr) << "Translation returned null";
+    auto* binOp = llvm::dyn_cast<clang::BinaryOperator>(result);
+    ASSERT_NE(binOp, nullptr) << "Result is not BinaryOperator";
+    EXPECT_EQ(binOp->getOpcode(), clang::BO_Add);
+    auto* rhsUnOp = llvm::dyn_cast<clang::UnaryOperator>(binOp->getRHS()->IgnoreParens());
+    ASSERT_NE(rhsUnOp, nullptr) << "RHS is not UnaryOperator";
+    EXPECT_EQ(rhsUnOp->getOpcode(), clang::UO_Minus);
+}
+
+/**
+ * Test 50: Double Negative
+ * C++ Input: -(-x)
+ * Expected: Nested UnaryOperator with UO_Minus
+ */
+TEST_F(ExpressionHandlerTest, DoubleNegative) {
+    // Arrange
+    std::string code = "int x = 5; void test() { -(-x); }";
+    auto AST = clang::tooling::buildASTFromCode(code);
+    ASSERT_NE(AST, nullptr);
+
+    ExprExtractor extractor;
+    extractor.TraverseDecl(AST->getASTContext().getTranslationUnitDecl());
+    clang::Expr* cppExpr = extractor.foundExpr;
+    ASSERT_NE(cppExpr, nullptr);
+
+    // Act
+    ExpressionHandler handler;
+    clang::Expr* result = handler.handleExpr(cppExpr, *context);
+
+    // Assert
+    ASSERT_NE(result, nullptr) << "Translation returned null";
+    auto* unOp = llvm::dyn_cast<clang::UnaryOperator>(result);
+    ASSERT_NE(unOp, nullptr) << "Result is not UnaryOperator";
+    EXPECT_EQ(unOp->getOpcode(), clang::UO_Minus);
+    auto* subUnOp = llvm::dyn_cast<clang::UnaryOperator>(unOp->getSubExpr()->IgnoreParens());
+    ASSERT_NE(subUnOp, nullptr) << "Subexpression is not UnaryOperator";
+    EXPECT_EQ(subUnOp->getOpcode(), clang::UO_Minus);
+}
+
+// ============================================================================
+// COMPARISON OPERATORS - PHASE 2 TASK 1 (Tests 39-50)
+// ============================================================================
+
+/**
+ * Test 39: Equality Operator with Integers
+ * C++ Input: 5 == 10
+ * Expected: BinaryOperator with BO_EQ
+ */
+TEST_F(ExpressionHandlerTest, EqualityOperator) {
+    // Arrange
+    clang::Expr* cppExpr = parseExpr("5 == 10");
+    ASSERT_NE(cppExpr, nullptr);
+
+    // Act
+    ExpressionHandler handler;
+    clang::Expr* result = handler.handleExpr(cppExpr, *context);
+
+    // Assert
+    ASSERT_NE(result, nullptr) << "Translation returned null";
+    auto* binOp = llvm::dyn_cast<clang::BinaryOperator>(result);
+    ASSERT_NE(binOp, nullptr) << "Result is not BinaryOperator";
+    EXPECT_EQ(binOp->getOpcode(), clang::BO_EQ);
+}
+
+/**
+ * Test 40: Inequality Operator
+ * C++ Input: 5 != 10
+ * Expected: BinaryOperator with BO_NE
+ */
+TEST_F(ExpressionHandlerTest, InequalityOperator) {
+    // Arrange
+    clang::Expr* cppExpr = parseExpr("5 != 10");
+    ASSERT_NE(cppExpr, nullptr);
+
+    // Act
+    ExpressionHandler handler;
+    clang::Expr* result = handler.handleExpr(cppExpr, *context);
+
+    // Assert
+    ASSERT_NE(result, nullptr) << "Translation returned null";
+    auto* binOp = llvm::dyn_cast<clang::BinaryOperator>(result);
+    ASSERT_NE(binOp, nullptr) << "Result is not BinaryOperator";
+    EXPECT_EQ(binOp->getOpcode(), clang::BO_NE);
+}
+
+/**
+ * Test 41: Equality with Zero
+ * C++ Input: 0 == 0
+ * Expected: BinaryOperator with BO_EQ
+ */
+TEST_F(ExpressionHandlerTest, EqualityWithLiterals) {
+    // Arrange
+    clang::Expr* cppExpr = parseExpr("0 == 0");
+    ASSERT_NE(cppExpr, nullptr);
+
+    // Act
+    ExpressionHandler handler;
+    clang::Expr* result = handler.handleExpr(cppExpr, *context);
+
+    // Assert
+    ASSERT_NE(result, nullptr) << "Translation returned null";
+    auto* binOp = llvm::dyn_cast<clang::BinaryOperator>(result);
+    ASSERT_NE(binOp, nullptr) << "Result is not BinaryOperator";
+    EXPECT_EQ(binOp->getOpcode(), clang::BO_EQ);
+}
+
+/**
+ * Test 42: Inequality with 42
+ * C++ Input: 42 != 0
+ * Expected: BinaryOperator with BO_NE
+ */
+TEST_F(ExpressionHandlerTest, InequalityWithLiterals) {
+    // Arrange
+    clang::Expr* cppExpr = parseExpr("42 != 0");
+    ASSERT_NE(cppExpr, nullptr);
+
+    // Act
+    ExpressionHandler handler;
+    clang::Expr* result = handler.handleExpr(cppExpr, *context);
+
+    // Assert
+    ASSERT_NE(result, nullptr) << "Translation returned null";
+    auto* binOp = llvm::dyn_cast<clang::BinaryOperator>(result);
+    ASSERT_NE(binOp, nullptr) << "Result is not BinaryOperator";
+    EXPECT_EQ(binOp->getOpcode(), clang::BO_NE);
+}
+
+/**
+ * Test 43: Less Than Operator
+ * C++ Input: 5 < 10
+ * Expected: BinaryOperator with BO_LT
+ */
+TEST_F(ExpressionHandlerTest, LessThanOperator) {
+    // Arrange
+    clang::Expr* cppExpr = parseExpr("5 < 10");
+    ASSERT_NE(cppExpr, nullptr);
+
+    // Act
+    ExpressionHandler handler;
+    clang::Expr* result = handler.handleExpr(cppExpr, *context);
+
+    // Assert
+    ASSERT_NE(result, nullptr) << "Translation returned null";
+    auto* binOp = llvm::dyn_cast<clang::BinaryOperator>(result);
+    ASSERT_NE(binOp, nullptr) << "Result is not BinaryOperator";
+    EXPECT_EQ(binOp->getOpcode(), clang::BO_LT);
+}
+
+/**
+ * Test 44: Greater Than Operator
+ * C++ Input: 15 > 10
+ * Expected: BinaryOperator with BO_GT
+ */
+TEST_F(ExpressionHandlerTest, GreaterThanOperator) {
+    // Arrange
+    clang::Expr* cppExpr = parseExpr("15 > 10");
+    ASSERT_NE(cppExpr, nullptr);
+
+    // Act
+    ExpressionHandler handler;
+    clang::Expr* result = handler.handleExpr(cppExpr, *context);
+
+    // Assert
+    ASSERT_NE(result, nullptr) << "Translation returned null";
+    auto* binOp = llvm::dyn_cast<clang::BinaryOperator>(result);
+    ASSERT_NE(binOp, nullptr) << "Result is not BinaryOperator";
+    EXPECT_EQ(binOp->getOpcode(), clang::BO_GT);
+}
+
+/**
+ * Test 45: Less Or Equal Operator
+ * C++ Input: 5 <= 10
+ * Expected: BinaryOperator with BO_LE
+ */
+TEST_F(ExpressionHandlerTest, LessOrEqualOperator) {
+    // Arrange
+    clang::Expr* cppExpr = parseExpr("5 <= 10");
+    ASSERT_NE(cppExpr, nullptr);
+
+    // Act
+    ExpressionHandler handler;
+    clang::Expr* result = handler.handleExpr(cppExpr, *context);
+
+    // Assert
+    ASSERT_NE(result, nullptr) << "Translation returned null";
+    auto* binOp = llvm::dyn_cast<clang::BinaryOperator>(result);
+    ASSERT_NE(binOp, nullptr) << "Result is not BinaryOperator";
+    EXPECT_EQ(binOp->getOpcode(), clang::BO_LE);
+}
+
+/**
+ * Test 46: Greater Or Equal Operator
+ * C++ Input: 15 >= 10
+ * Expected: BinaryOperator with BO_GE
+ */
+TEST_F(ExpressionHandlerTest, GreaterOrEqualOperator) {
+    // Arrange
+    clang::Expr* cppExpr = parseExpr("15 >= 10");
+    ASSERT_NE(cppExpr, nullptr);
+
+    // Act
+    ExpressionHandler handler;
+    clang::Expr* result = handler.handleExpr(cppExpr, *context);
+
+    // Assert
+    ASSERT_NE(result, nullptr) << "Translation returned null";
+    auto* binOp = llvm::dyn_cast<clang::BinaryOperator>(result);
+    ASSERT_NE(binOp, nullptr) << "Result is not BinaryOperator";
+    EXPECT_EQ(binOp->getOpcode(), clang::BO_GE);
+}
+
+/**
+ * Test 47: Relational with Different Literals
+ * C++ Input: 7 < 20
+ * Expected: BinaryOperator with BO_LT
+ */
+TEST_F(ExpressionHandlerTest, RelationalWithLiterals) {
+    // Arrange
+    clang::Expr* cppExpr = parseExpr("7 < 20");
+    ASSERT_NE(cppExpr, nullptr);
+
+    // Act
+    ExpressionHandler handler;
+    clang::Expr* result = handler.handleExpr(cppExpr, *context);
+
+    // Assert
+    ASSERT_NE(result, nullptr) << "Translation returned null";
+    auto* binOp = llvm::dyn_cast<clang::BinaryOperator>(result);
+    ASSERT_NE(binOp, nullptr) << "Result is not BinaryOperator";
+    EXPECT_EQ(binOp->getOpcode(), clang::BO_LT);
+}
+
+/**
+ * Test 48: Relational Chaining with Logical AND
+ * C++ Input: 1 < 2 && 2 < 3
+ * Expected: LogicalAnd of two comparisons
+ */
+TEST_F(ExpressionHandlerTest, RelationalChaining) {
+    // Arrange
+    clang::Expr* cppExpr = parseExpr("1 < 2 && 2 < 3");
+    ASSERT_NE(cppExpr, nullptr);
+
+    // Act
+    ExpressionHandler handler;
+    clang::Expr* result = handler.handleExpr(cppExpr, *context);
+
+    // Assert
+    ASSERT_NE(result, nullptr) << "Translation returned null";
+    auto* binOp = llvm::dyn_cast<clang::BinaryOperator>(result);
+    ASSERT_NE(binOp, nullptr) << "Result is not BinaryOperator";
+    EXPECT_EQ(binOp->getOpcode(), clang::BO_LAnd);
+}
+
+/**
+ * Test 49: Negative Comparison
+ * C++ Input: -5 < 0
+ * Expected: Comparison with negative literal
+ */
+TEST_F(ExpressionHandlerTest, NegativeComparison) {
+    // Arrange
+    clang::Expr* cppExpr = parseExpr("-5 < 0");
+    ASSERT_NE(cppExpr, nullptr);
+
+    // Act
+    ExpressionHandler handler;
+    clang::Expr* result = handler.handleExpr(cppExpr, *context);
+
+    // Assert
+    ASSERT_NE(result, nullptr) << "Translation returned null";
+    auto* binOp = llvm::dyn_cast<clang::BinaryOperator>(result);
+    ASSERT_NE(binOp, nullptr) << "Result is not BinaryOperator";
+    EXPECT_EQ(binOp->getOpcode(), clang::BO_LT);
+}
+
+/**
+ * Test 50: Float Comparison
+ * C++ Input: 2.5 > 3.14
+ * Expected: Comparison with floating literal
+ */
+TEST_F(ExpressionHandlerTest, FloatComparison) {
+    // Arrange
+    clang::Expr* cppExpr = parseExpr("2.5 > 3.14");
+    ASSERT_NE(cppExpr, nullptr);
+
+    // Act
+    ExpressionHandler handler;
+    clang::Expr* result = handler.handleExpr(cppExpr, *context);
+
+    // Assert
+    ASSERT_NE(result, nullptr) << "Translation returned null";
+    auto* binOp = llvm::dyn_cast<clang::BinaryOperator>(result);
+    ASSERT_NE(binOp, nullptr) << "Result is not BinaryOperator";
+    EXPECT_EQ(binOp->getOpcode(), clang::BO_GT);
+}
+
+
+// ============================================================================
+// LOGICAL OPERATORS - TASK 2 (15 tests)
+// ============================================================================
+
+/**
+ * Test 51: Logical AND Basic
+ * C++ Input: a && b
+ * Expected: BinaryOperator with BO_LAnd
+ */
+TEST_F(ExpressionHandlerTest, LogicalAndBasic) {
+    // Arrange
+    clang::Expr* cppExpr = parseExpr("1 && 1");
+    ASSERT_NE(cppExpr, nullptr);
+
+    // Act
+    ExpressionHandler handler;
+    clang::Expr* result = handler.handleExpr(cppExpr, *context);
+
+    // Assert
+    ASSERT_NE(result, nullptr) << "Translation returned null";
+    auto* binOp = llvm::dyn_cast<clang::BinaryOperator>(result);
+    ASSERT_NE(binOp, nullptr) << "Result is not BinaryOperator";
+    EXPECT_EQ(binOp->getOpcode(), clang::BO_LAnd);
+}
+
+/**
+ * Test 52: Logical AND With Comparison
+ * C++ Input: x > 0 && y < 10
+ * Expected: BinaryOperator(BO_LAnd) with comparison operators
+ */
+TEST_F(ExpressionHandlerTest, LogicalAndWithComparison) {
+    // Arrange
+    clang::Expr* cppExpr = parseExpr("(1 > 0) && (2 < 10)");
+    ASSERT_NE(cppExpr, nullptr);
+
+    // Act
+    ExpressionHandler handler;
+    clang::Expr* result = handler.handleExpr(cppExpr, *context);
+
+    // Assert
+    ASSERT_NE(result, nullptr) << "Translation returned null";
+    auto* binOp = llvm::dyn_cast<clang::BinaryOperator>(result);
+    ASSERT_NE(binOp, nullptr) << "Result is not BinaryOperator";
+    EXPECT_EQ(binOp->getOpcode(), clang::BO_LAnd);
+}
+
+/**
+ * Test 53: Logical AND Chain
+ * C++ Input: a && b && c
+ * Expected: Chained BinaryOperators with BO_LAnd
+ */
+TEST_F(ExpressionHandlerTest, LogicalAndChain) {
+    // Arrange - Use simpler expression that parseExpr handles properly
+    clang::Expr* cppExpr = parseExpr("(1 && 1) && 1");
+    ASSERT_NE(cppExpr, nullptr);
+
+    // Act
+    ExpressionHandler handler;
+    clang::Expr* result = handler.handleExpr(cppExpr, *context);
+
+    // Assert
+    ASSERT_NE(result, nullptr) << "Translation returned null";
+    auto* binOp = llvm::dyn_cast<clang::BinaryOperator>(result);
+    ASSERT_NE(binOp, nullptr) << "Result is not BinaryOperator";
+    EXPECT_EQ(binOp->getOpcode(), clang::BO_LAnd);
+}
+
+/**
+ * Test 54: Logical AND Nested
+ * C++ Input: (a && b) && (c && d)
+ * Expected: Nested BinaryOperators with BO_LAnd
+ */
+TEST_F(ExpressionHandlerTest, LogicalAndNested) {
+    // Arrange
+    clang::Expr* cppExpr = parseExpr("(1 && 2) && (3 && 4)");
+    ASSERT_NE(cppExpr, nullptr);
+
+    // Act
+    ExpressionHandler handler;
+    clang::Expr* result = handler.handleExpr(cppExpr, *context);
+
+    // Assert
+    ASSERT_NE(result, nullptr) << "Translation returned null";
+    auto* binOp = llvm::dyn_cast<clang::BinaryOperator>(result);
+    ASSERT_NE(binOp, nullptr) << "Result is not BinaryOperator";
+    EXPECT_EQ(binOp->getOpcode(), clang::BO_LAnd);
+}
+
+/**
+ * Test 55: Logical AND Short-Circuit Semantics
+ * C++ Input: 1 && 0
+ * Expected: BinaryOperator with preserved structure
+ */
+TEST_F(ExpressionHandlerTest, LogicalAndShortCircuit) {
+    // Arrange
+    clang::Expr* cppExpr = parseExpr("1 && 0");
+    ASSERT_NE(cppExpr, nullptr);
+
+    // Act
+    ExpressionHandler handler;
+    clang::Expr* result = handler.handleExpr(cppExpr, *context);
+
+    // Assert
+    ASSERT_NE(result, nullptr) << "Translation returned null";
+    auto* binOp = llvm::dyn_cast<clang::BinaryOperator>(result);
+    ASSERT_NE(binOp, nullptr) << "Result is not BinaryOperator";
+    EXPECT_EQ(binOp->getOpcode(), clang::BO_LAnd);
+    ASSERT_NE(binOp->getLHS(), nullptr);
+    ASSERT_NE(binOp->getRHS(), nullptr);
+}
+
+/**
+ * Test 56: Logical OR Basic
+ * C++ Input: a || b
+ * Expected: BinaryOperator with BO_LOr
+ */
+TEST_F(ExpressionHandlerTest, LogicalOrBasic) {
+    // Arrange
+    clang::Expr* cppExpr = parseExpr("1 || 0");
+    ASSERT_NE(cppExpr, nullptr);
+
+    // Act
+    ExpressionHandler handler;
+    clang::Expr* result = handler.handleExpr(cppExpr, *context);
+
+    // Assert
+    ASSERT_NE(result, nullptr) << "Translation returned null";
+    auto* binOp = llvm::dyn_cast<clang::BinaryOperator>(result);
+    ASSERT_NE(binOp, nullptr) << "Result is not BinaryOperator";
+    EXPECT_EQ(binOp->getOpcode(), clang::BO_LOr);
+}
+
+/**
+ * Test 57: Logical OR With Comparison
+ * C++ Input: x < 0 || x > 100
+ * Expected: BinaryOperator(BO_LOr) with comparison operators
+ */
+TEST_F(ExpressionHandlerTest, LogicalOrWithComparison) {
+    // Arrange
+    clang::Expr* cppExpr = parseExpr("(1 < 0) || (1 > 100)");
+    ASSERT_NE(cppExpr, nullptr);
+
+    // Act
+    ExpressionHandler handler;
+    clang::Expr* result = handler.handleExpr(cppExpr, *context);
+
+    // Assert
+    ASSERT_NE(result, nullptr) << "Translation returned null";
+    auto* binOp = llvm::dyn_cast<clang::BinaryOperator>(result);
+    ASSERT_NE(binOp, nullptr) << "Result is not BinaryOperator";
+    EXPECT_EQ(binOp->getOpcode(), clang::BO_LOr);
+}
+
+/**
+ * Test 58: Logical OR Chain
+ * C++ Input: a || b || c
+ * Expected: Chained BinaryOperators with BO_LOr
+ */
+TEST_F(ExpressionHandlerTest, LogicalOrChain) {
+    // Arrange - Use simpler expression that parseExpr handles properly
+    clang::Expr* cppExpr = parseExpr("(0 || 1) || 1");
+    ASSERT_NE(cppExpr, nullptr);
+
+    // Act
+    ExpressionHandler handler;
+    clang::Expr* result = handler.handleExpr(cppExpr, *context);
+
+    // Assert
+    ASSERT_NE(result, nullptr) << "Translation returned null";
+    auto* binOp = llvm::dyn_cast<clang::BinaryOperator>(result);
+    ASSERT_NE(binOp, nullptr) << "Result is not BinaryOperator";
+    EXPECT_EQ(binOp->getOpcode(), clang::BO_LOr);
+}
+
+/**
+ * Test 59: Logical OR Nested
+ * C++ Input: (a || b) || (c || d)
+ * Expected: Nested BinaryOperators with BO_LOr
+ */
+TEST_F(ExpressionHandlerTest, LogicalOrNested) {
+    // Arrange
+    clang::Expr* cppExpr = parseExpr("(1 || 0) || (0 || 1)");
+    ASSERT_NE(cppExpr, nullptr);
+
+    // Act
+    ExpressionHandler handler;
+    clang::Expr* result = handler.handleExpr(cppExpr, *context);
+
+    // Assert
+    ASSERT_NE(result, nullptr) << "Translation returned null";
+    auto* binOp = llvm::dyn_cast<clang::BinaryOperator>(result);
+    ASSERT_NE(binOp, nullptr) << "Result is not BinaryOperator";
+    EXPECT_EQ(binOp->getOpcode(), clang::BO_LOr);
+}
+
+/**
+ * Test 60: Logical OR Short-Circuit Semantics
+ * C++ Input: 1 || 0
+ * Expected: BinaryOperator with preserved structure
+ */
+TEST_F(ExpressionHandlerTest, LogicalOrShortCircuit) {
+    // Arrange
+    clang::Expr* cppExpr = parseExpr("1 || 0");
+    ASSERT_NE(cppExpr, nullptr);
+
+    // Act
+    ExpressionHandler handler;
+    clang::Expr* result = handler.handleExpr(cppExpr, *context);
+
+    // Assert
+    ASSERT_NE(result, nullptr) << "Translation returned null";
+    auto* binOp = llvm::dyn_cast<clang::BinaryOperator>(result);
+    ASSERT_NE(binOp, nullptr) << "Result is not BinaryOperator";
+    EXPECT_EQ(binOp->getOpcode(), clang::BO_LOr);
+    ASSERT_NE(binOp->getLHS(), nullptr);
+    ASSERT_NE(binOp->getRHS(), nullptr);
+}
+
+/**
+ * Test 61: Logical NOT Basic
+ * C++ Input: !a
+ * Expected: UnaryOperator with UO_LNot
+ */
+TEST_F(ExpressionHandlerTest, LogicalNotBasic) {
+    // Arrange
+    clang::Expr* cppExpr = parseExpr("!1");
+    ASSERT_NE(cppExpr, nullptr);
+
+    // Act
+    ExpressionHandler handler;
+    clang::Expr* result = handler.handleExpr(cppExpr, *context);
+
+    // Assert
+    ASSERT_NE(result, nullptr) << "Translation returned null";
+    auto* unOp = llvm::dyn_cast<clang::UnaryOperator>(result);
+    ASSERT_NE(unOp, nullptr) << "Result is not UnaryOperator";
+    EXPECT_EQ(unOp->getOpcode(), clang::UO_LNot);
+}
+
+/**
+ * Test 62: Logical NOT With Comparison
+ * C++ Input: !(x > 0)
+ * Expected: UnaryOperator(UO_LNot) with comparison operator
+ */
+TEST_F(ExpressionHandlerTest, LogicalNotWithComparison) {
+    // Arrange
+    clang::Expr* cppExpr = parseExpr("!(1 > 0)");
+    ASSERT_NE(cppExpr, nullptr);
+
+    // Act
+    ExpressionHandler handler;
+    clang::Expr* result = handler.handleExpr(cppExpr, *context);
+
+    // Assert
+    ASSERT_NE(result, nullptr) << "Translation returned null";
+    auto* unOp = llvm::dyn_cast<clang::UnaryOperator>(result);
+    ASSERT_NE(unOp, nullptr) << "Result is not UnaryOperator";
+    EXPECT_EQ(unOp->getOpcode(), clang::UO_LNot);
+}
+
+/**
+ * Test 63: Logical NOT Double Negation
+ * C++ Input: !!x
+ * Expected: Nested UnaryOperators with UO_LNot
+ */
+TEST_F(ExpressionHandlerTest, LogicalNotDouble) {
+    // Arrange
+    clang::Expr* cppExpr = parseExpr("!!1");
+    ASSERT_NE(cppExpr, nullptr);
+
+    // Act
+    ExpressionHandler handler;
+    clang::Expr* result = handler.handleExpr(cppExpr, *context);
+
+    // Assert
+    ASSERT_NE(result, nullptr) << "Translation returned null";
+    auto* unOp = llvm::dyn_cast<clang::UnaryOperator>(result);
+    ASSERT_NE(unOp, nullptr) << "Result is not UnaryOperator";
+    EXPECT_EQ(unOp->getOpcode(), clang::UO_LNot);
+
+    auto* innerExpr = unOp->getSubExpr();
+    ASSERT_NE(innerExpr, nullptr);
+    auto* innerUnOp = llvm::dyn_cast<clang::UnaryOperator>(innerExpr->IgnoreParens());
+    ASSERT_NE(innerUnOp, nullptr);
+    EXPECT_EQ(innerUnOp->getOpcode(), clang::UO_LNot);
+}
+
+/**
+ * Test 64: Logical NOT In Condition
+ * C++ Input: !a && b
+ * Expected: BinaryOperator(BO_LAnd) with left UnaryOperator(UO_LNot)
+ */
+TEST_F(ExpressionHandlerTest, LogicalNotInCondition) {
+    // Arrange
+    clang::Expr* cppExpr = parseExpr("!0 && 1");
+    ASSERT_NE(cppExpr, nullptr);
+
+    // Act
+    ExpressionHandler handler;
+    clang::Expr* result = handler.handleExpr(cppExpr, *context);
+
+    // Assert
+    ASSERT_NE(result, nullptr) << "Translation returned null";
+    auto* binOp = llvm::dyn_cast<clang::BinaryOperator>(result);
+    ASSERT_NE(binOp, nullptr) << "Result is not BinaryOperator";
+    EXPECT_EQ(binOp->getOpcode(), clang::BO_LAnd);
+
+    auto* lhs = llvm::dyn_cast<clang::UnaryOperator>(binOp->getLHS()->IgnoreParens());
+    ASSERT_NE(lhs, nullptr) << "LHS is not UnaryOperator";
+    EXPECT_EQ(lhs->getOpcode(), clang::UO_LNot);
+}
+
+/**
+ * Test 65: Logical NOT Complex
+ * C++ Input: !(a && b || c)
+ * Expected: UnaryOperator(UO_LNot) with complex logical expression
+ */
+TEST_F(ExpressionHandlerTest, LogicalNotComplex) {
+    // Arrange
+    clang::Expr* cppExpr = parseExpr("!(1 && 0 || 1)");
+    ASSERT_NE(cppExpr, nullptr);
+
+    // Act
+    ExpressionHandler handler;
+    clang::Expr* result = handler.handleExpr(cppExpr, *context);
+
+    // Assert
+    ASSERT_NE(result, nullptr) << "Translation returned null";
+    auto* unOp = llvm::dyn_cast<clang::UnaryOperator>(result);
+    ASSERT_NE(unOp, nullptr) << "Result is not UnaryOperator";
+    EXPECT_EQ(unOp->getOpcode(), clang::UO_LNot);
+
+    auto* innerExpr = unOp->getSubExpr();
+    ASSERT_NE(innerExpr, nullptr);
+    auto* innerBinOp = llvm::dyn_cast<clang::BinaryOperator>(innerExpr->IgnoreParens());
+    ASSERT_NE(innerBinOp, nullptr) << "Inner expression is not BinaryOperator";
+}
