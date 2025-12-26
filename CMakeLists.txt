@@ -252,6 +252,8 @@ add_library(cpptoc_core STATIC
     src/handlers/VariableHandler.cpp
     src/handlers/StatementHandler.cpp
     src/handlers/ExpressionHandler.cpp
+    # Phase 43-01: Struct handlers
+    src/handlers/RecordHandler.cpp
 )
 
 target_compile_definitions(cpptoc_core PRIVATE ${LLVM_DEFINITIONS})
@@ -3975,6 +3977,32 @@ gtest_discover_tests(StatementHandlerTest
     WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
 )
 
+# RecordHandler unit tests (Phase 43, Task 1)
+add_executable(RecordHandlerTest
+    tests/unit/handlers/RecordHandlerTest.cpp
+)
+
+target_include_directories(RecordHandlerTest PRIVATE
+    ${CMAKE_SOURCE_DIR}/tests/fixtures
+    ${CMAKE_SOURCE_DIR}/include
+    ${LLVM_INCLUDE_DIRS}
+    ${CLANG_INCLUDE_DIRS}
+)
+
+target_link_libraries(RecordHandlerTest PRIVATE
+    test_fixtures
+    cpptoc_core
+    clangTooling
+    clangAST
+    clangBasic
+    GTest::gtest
+    GTest::gtest_main
+)
+
+gtest_discover_tests(RecordHandlerTest
+    WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
+)
+
 # ============================================================================
 # Phase 39-01c: Integration Tests - Handler Cooperation
 # ============================================================================
@@ -4119,6 +4147,35 @@ gtest_discover_tests(PointersIntegrationTest
 )
 
 # ============================================================================
+# Phase 43-01: Structs (C-style) Integration Tests
+# ============================================================================
+
+add_executable(StructsIntegrationTest
+    tests/integration/handlers/StructsIntegrationTest.cpp
+)
+
+target_include_directories(StructsIntegrationTest PRIVATE
+    ${CMAKE_SOURCE_DIR}/tests/fixtures
+    ${CMAKE_SOURCE_DIR}/include
+    ${LLVM_INCLUDE_DIRS}
+    ${CLANG_INCLUDE_DIRS}
+)
+
+target_link_libraries(StructsIntegrationTest PRIVATE
+    test_fixtures
+    cpptoc_core
+    clangTooling
+    clangAST
+    clangBasic
+    GTest::gtest
+    GTest::gtest_main
+)
+
+gtest_discover_tests(StructsIntegrationTest
+    WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
+)
+
+# ============================================================================
 # Phase 40-01: Control Flow E2E Tests
 # ============================================================================
 
@@ -4196,6 +4253,33 @@ target_link_libraries(PointersE2ETest PRIVATE
 )
 
 gtest_discover_tests(PointersE2ETest
+    WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
+)
+
+# ============================================================================
+# Phase 43-01: Structs (C-style) E2E Tests
+# ============================================================================
+
+add_executable(StructsE2ETest
+    tests/e2e/phase5/StructsE2ETest.cpp
+)
+
+target_include_directories(StructsE2ETest PRIVATE
+    ${CMAKE_SOURCE_DIR}/include
+    ${LLVM_INCLUDE_DIRS}
+    ${CLANG_INCLUDE_DIRS}
+)
+
+target_link_libraries(StructsE2ETest PRIVATE
+    cpptoc_core
+    clangTooling
+    clangAST
+    clangBasic
+    GTest::gtest
+    GTest::gtest_main
+)
+
+gtest_discover_tests(StructsE2ETest
     WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
 )
 

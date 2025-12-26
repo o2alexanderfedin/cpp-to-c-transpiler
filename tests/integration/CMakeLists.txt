@@ -68,6 +68,15 @@ target_include_directories(PointersIntegrationTest PRIVATE
     ${CMAKE_SOURCE_DIR}/../../src
 )
 
+# Phase 43: Structs (C-style) Integration Tests
+add_executable(StructsIntegrationTest handlers/StructsIntegrationTest.cpp)
+target_link_libraries(StructsIntegrationTest GTest::gtest GTest::gtest_main ${CLANG_LIBS})
+target_include_directories(StructsIntegrationTest PRIVATE
+    ${CMAKE_SOURCE_DIR}/../../include
+    ${CMAKE_SOURCE_DIR}/../../include/handlers
+    ${CMAKE_SOURCE_DIR}/../../src
+)
+
 # Enable testing
 enable_testing()
 include(GoogleTest)
@@ -86,6 +95,10 @@ gtest_discover_tests(PointersIntegrationTest
     WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
     PROPERTIES LABELS "integration;pointers;phase42"
 )
+gtest_discover_tests(StructsIntegrationTest
+    WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
+    PROPERTIES LABELS "integration;structs;phase43"
+)
 
 message(STATUS "Integration tests configured:")
 message(STATUS "  - FeatureInteractionTest: 30 tests")
@@ -95,4 +108,5 @@ message(STATUS "  - ErrorHandlingTest: 25 tests (legacy)")
 message(STATUS "  - ErrorHandlingTest_gtest: 25 tests (Google Test)")
 message(STATUS "  - MoveSemanticIntegrationTest: 16 tests (Google Test)")
 message(STATUS "  - PointersIntegrationTest: 24 tests (Phase 42)")
-message(STATUS "  Total: 170 integration tests")
+message(STATUS "  - StructsIntegrationTest: 25 tests (Phase 43)")
+message(STATUS "  Total: 195 integration tests")

@@ -2684,7 +2684,485 @@ TEST_F(VariableHandlerTest, ConstReferenceToConst) {
     EXPECT_TRUE(pointeeType.isConstQualified()) << "Pointee should be const";
 }
 
+// ============================================================================
+// Phase 43 Tests: Struct Type Variables (Task 6)
+// ============================================================================
+
+/**
+ * Test 52: Local variable with struct type
+ *
+ * C++ Input:  Point p;
+ * C Output:   struct Point p;
+ *
+ * Tests struct type variable declaration with struct keyword insertion.
+ */
+TEST_F(VariableHandlerTest, LocalStructVariable) {
+    // Arrange: Create a struct Point first
+    const char* structCode = R"(
+        struct Point {
+            int x;
+            int y;
+        };
+    )";
+
+    auto structAST = clang::tooling::buildASTFromCode(structCode);
+    ASSERT_NE(structAST, nullptr);
+
+    clang::ASTContext& ctx = cppAST->getASTContext();
+
+    // Get RecordDecl for Point
+    const clang::RecordDecl* pointRecord = nullptr;
+    auto& structCtx = structAST->getASTContext();
+    for (auto* decl : structCtx.getTranslationUnitDecl()->decls()) {
+        if (auto* rd = llvm::dyn_cast<clang::RecordDecl>(decl)) {
+            if (rd->getNameAsString() == "Point") {
+                pointRecord = rd;
+                break;
+            }
+        }
+    }
+    ASSERT_NE(pointRecord, nullptr);
+
+    // Create RecordType for Point
+    clang::QualType pointType = ctx.getRecordType(pointRecord);
+
+    // Create variable Point p
+    clang::IdentifierInfo& II = ctx.Idents.get("p");
+    clang::VarDecl* cppVar = clang::VarDecl::Create(
+        ctx,
+        ctx.getTranslationUnitDecl(),
+        clang::SourceLocation(),
+        clang::SourceLocation(),
+        &II,
+        pointType,
+        ctx.getTrivialTypeSourceInfo(pointType),
+        clang::SC_None
+    );
+
+    // Act
+    VariableHandler handler;
+    clang::Decl* result = handler.handleDecl(cppVar, *context);
+
+    // Assert
+    ASSERT_NE(result, nullptr);
+    auto* cVar = llvm::dyn_cast<clang::VarDecl>(result);
+    ASSERT_NE(cVar, nullptr);
+
+    EXPECT_EQ(cVar->getNameAsString(), "p");
+    EXPECT_TRUE(cVar->getType()->isRecordType()) << "Type should be struct type";
+}
+
+/**
+ * Test 53: Global variable with struct type
+ *
+ * C++ Input:  Point globalPoint;
+ * C Output:   struct Point globalPoint;
+ *
+ * Tests global struct variable declaration.
+ */
+TEST_F(VariableHandlerTest, GlobalStructVariable) {
+    // Arrange
+    const char* structCode = R"(
+        struct Point {
+            int x;
+            int y;
+        };
+    )";
+
+    auto structAST = clang::tooling::buildASTFromCode(structCode);
+    ASSERT_NE(structAST, nullptr);
+
+    clang::ASTContext& ctx = cppAST->getASTContext();
+
+    // Get RecordDecl
+    const clang::RecordDecl* pointRecord = nullptr;
+    auto& structCtx = structAST->getASTContext();
+    for (auto* decl : structCtx.getTranslationUnitDecl()->decls()) {
+        if (auto* rd = llvm::dyn_cast<clang::RecordDecl>(decl)) {
+            if (rd->getNameAsString() == "Point") {
+                pointRecord = rd;
+                break;
+            }
+        }
+    }
+    ASSERT_NE(pointRecord, nullptr);
+
+    clang::QualType pointType = ctx.getRecordType(pointRecord);
+
+    // Create global variable
+    clang::IdentifierInfo& II = ctx.Idents.get("globalPoint");
+    clang::VarDecl* cppVar = clang::VarDecl::Create(
+        ctx,
+        ctx.getTranslationUnitDecl(),
+        clang::SourceLocation(),
+        clang::SourceLocation(),
+        &II,
+        pointType,
+        ctx.getTrivialTypeSourceInfo(pointType),
+        clang::SC_None
+    );
+
+    // Act
+    VariableHandler handler;
+    clang::Decl* result = handler.handleDecl(cppVar, *context);
+
+    // Assert
+    ASSERT_NE(result, nullptr);
+    auto* cVar = llvm::dyn_cast<clang::VarDecl>(result);
+    ASSERT_NE(cVar, nullptr);
+
+    EXPECT_EQ(cVar->getNameAsString(), "globalPoint");
+    EXPECT_TRUE(cVar->getType()->isRecordType());
+}
+
+/**
+ * Test 54: Struct array variable
+ *
+ * C++ Input:  Point points[10];
+ * C Output:   struct Point points[10];
+ *
+ * Tests array of struct variables.
+ */
+TEST_F(VariableHandlerTest, StructArrayVariable) {
+    // Arrange
+    const char* structCode = R"(
+        struct Point {
+            int x;
+            int y;
+        };
+    )";
+
+    auto structAST = clang::tooling::buildASTFromCode(structCode);
+    ASSERT_NE(structAST, nullptr);
+
+    clang::ASTContext& ctx = cppAST->getASTContext();
+
+    // Get RecordDecl
+    const clang::RecordDecl* pointRecord = nullptr;
+    auto& structCtx = structAST->getASTContext();
+    for (auto* decl : structCtx.getTranslationUnitDecl()->decls()) {
+        if (auto* rd = llvm::dyn_cast<clang::RecordDecl>(decl)) {
+            if (rd->getNameAsString() == "Point") {
+                pointRecord = rd;
+                break;
+            }
+        }
+    }
+    ASSERT_NE(pointRecord, nullptr);
+
+    // Create array of Point
+    clang::QualType pointType = ctx.getRecordType(pointRecord);
+    llvm::APInt arraySize(32, 10);
+    clang::QualType arrayType = ctx.getConstantArrayType(
+        pointType,
+        arraySize,
+        nullptr,
+        clang::ArraySizeModifier::Normal,
+        0
+    );
+
+    // Create variable Point points[10]
+    clang::IdentifierInfo& II = ctx.Idents.get("points");
+    clang::VarDecl* cppVar = clang::VarDecl::Create(
+        ctx,
+        ctx.getTranslationUnitDecl(),
+        clang::SourceLocation(),
+        clang::SourceLocation(),
+        &II,
+        arrayType,
+        ctx.getTrivialTypeSourceInfo(arrayType),
+        clang::SC_None
+    );
+
+    // Act
+    VariableHandler handler;
+    clang::Decl* result = handler.handleDecl(cppVar, *context);
+
+    // Assert
+    ASSERT_NE(result, nullptr);
+    auto* cVar = llvm::dyn_cast<clang::VarDecl>(result);
+    ASSERT_NE(cVar, nullptr);
+
+    EXPECT_EQ(cVar->getNameAsString(), "points");
+    EXPECT_TRUE(cVar->getType()->isArrayType()) << "Type should be array";
+
+    const auto* cArrayType = llvm::dyn_cast<clang::ConstantArrayType>(cVar->getType().getTypePtr());
+    ASSERT_NE(cArrayType, nullptr);
+    EXPECT_EQ(cArrayType->getSize().getZExtValue(), 10);
+    EXPECT_TRUE(cArrayType->getElementType()->isRecordType()) << "Element should be struct type";
+}
+
+/**
+ * Test 55: Struct pointer variable
+ *
+ * C++ Input:  Point* ptr;
+ * C Output:   struct Point* ptr;
+ *
+ * Tests pointer to struct variable.
+ */
+TEST_F(VariableHandlerTest, StructPointerVariable) {
+    // Arrange
+    const char* structCode = R"(
+        struct Point {
+            int x;
+            int y;
+        };
+    )";
+
+    auto structAST = clang::tooling::buildASTFromCode(structCode);
+    ASSERT_NE(structAST, nullptr);
+
+    clang::ASTContext& ctx = cppAST->getASTContext();
+
+    // Get RecordDecl
+    const clang::RecordDecl* pointRecord = nullptr;
+    auto& structCtx = structAST->getASTContext();
+    for (auto* decl : structCtx.getTranslationUnitDecl()->decls()) {
+        if (auto* rd = llvm::dyn_cast<clang::RecordDecl>(decl)) {
+            if (rd->getNameAsString() == "Point") {
+                pointRecord = rd;
+                break;
+            }
+        }
+    }
+    ASSERT_NE(pointRecord, nullptr);
+
+    // Create Point* type
+    clang::QualType pointType = ctx.getRecordType(pointRecord);
+    clang::QualType ptrType = ctx.getPointerType(pointType);
+
+    // Create variable Point* ptr
+    clang::IdentifierInfo& II = ctx.Idents.get("ptr");
+    clang::VarDecl* cppVar = clang::VarDecl::Create(
+        ctx,
+        ctx.getTranslationUnitDecl(),
+        clang::SourceLocation(),
+        clang::SourceLocation(),
+        &II,
+        ptrType,
+        ctx.getTrivialTypeSourceInfo(ptrType),
+        clang::SC_None
+    );
+
+    // Act
+    VariableHandler handler;
+    clang::Decl* result = handler.handleDecl(cppVar, *context);
+
+    // Assert
+    ASSERT_NE(result, nullptr);
+    auto* cVar = llvm::dyn_cast<clang::VarDecl>(result);
+    ASSERT_NE(cVar, nullptr);
+
+    EXPECT_EQ(cVar->getNameAsString(), "ptr");
+    EXPECT_TRUE(cVar->getType()->isPointerType()) << "Type should be pointer";
+
+    clang::QualType pointeeType = cVar->getType()->getPointeeType();
+    EXPECT_TRUE(pointeeType->isRecordType()) << "Pointee should be struct type";
+}
+
+/**
+ * Test 56: Typedef struct variable (Task 7)
+ *
+ * C++ Input:  typedef struct Point Point_t; Point_t p;
+ * C Output:   typedef struct Point Point_t; Point_t p;
+ *
+ * Tests typedef struct variable declaration.
+ */
+TEST_F(VariableHandlerTest, TypedefStructVariable) {
+    // Arrange: Build AST with typedef struct
+    const char* code = R"(
+        struct Point {
+            int x;
+            int y;
+        };
+        typedef struct Point Point_t;
+    )";
+
+    cppAST = clang::tooling::buildASTFromCode(code);
+    ASSERT_NE(cppAST, nullptr);
+
+    // Recreate builder and context
+    builder = std::make_unique<clang::CNodeBuilder>(cAST->getASTContext());
+    context = std::make_unique<HandlerContext>(
+        cppAST->getASTContext(),
+        cAST->getASTContext(),
+        *builder
+    );
+
+    clang::ASTContext& ctx = cppAST->getASTContext();
+
+    // Find the typedef
+    const clang::TypedefDecl* typedefDecl = nullptr;
+    for (auto* decl : ctx.getTranslationUnitDecl()->decls()) {
+        if (auto* td = llvm::dyn_cast<clang::TypedefDecl>(decl)) {
+            if (td->getNameAsString() == "Point_t") {
+                typedefDecl = td;
+                break;
+            }
+        }
+    }
+    ASSERT_NE(typedefDecl, nullptr);
+
+    // Create variable using typedef type
+    clang::QualType typedefType = ctx.getTypedefType(typedefDecl);
+    clang::IdentifierInfo& II = ctx.Idents.get("p");
+    clang::VarDecl* cppVar = clang::VarDecl::Create(
+        ctx,
+        ctx.getTranslationUnitDecl(),
+        clang::SourceLocation(),
+        clang::SourceLocation(),
+        &II,
+        typedefType,
+        ctx.getTrivialTypeSourceInfo(typedefType),
+        clang::SC_None
+    );
+
+    // Act
+    VariableHandler handler;
+    clang::Decl* result = handler.handleDecl(cppVar, *context);
+
+    // Assert
+    ASSERT_NE(result, nullptr);
+    auto* cVar = llvm::dyn_cast<clang::VarDecl>(result);
+    ASSERT_NE(cVar, nullptr);
+
+    EXPECT_EQ(cVar->getNameAsString(), "p");
+    // The type should be the typedef type
+    EXPECT_TRUE(cVar->getType()->isTypedefNameType() ||
+                cVar->getType()->isRecordType())
+        << "Type should be typedef or struct type";
+}
+
+/**
+ * Test 57: Const struct variable (Task 7)
+ *
+ * C++ Input:  const Point p = {1, 2};
+ * C Output:   const struct Point p = {1, 2};
+ *
+ * Tests const struct variable declaration.
+ */
+TEST_F(VariableHandlerTest, ConstStructVariable) {
+    // Arrange
+    const char* structCode = R"(
+        struct Point {
+            int x;
+            int y;
+        };
+    )";
+
+    auto structAST = clang::tooling::buildASTFromCode(structCode);
+    ASSERT_NE(structAST, nullptr);
+
+    clang::ASTContext& ctx = cppAST->getASTContext();
+
+    // Get RecordDecl
+    const clang::RecordDecl* pointRecord = nullptr;
+    auto& structCtx = structAST->getASTContext();
+    for (auto* decl : structCtx.getTranslationUnitDecl()->decls()) {
+        if (auto* rd = llvm::dyn_cast<clang::RecordDecl>(decl)) {
+            if (rd->getNameAsString() == "Point") {
+                pointRecord = rd;
+                break;
+            }
+        }
+    }
+    ASSERT_NE(pointRecord, nullptr);
+
+    // Create const Point type
+    clang::QualType pointType = ctx.getRecordType(pointRecord);
+    clang::QualType constPointType = pointType.withConst();
+
+    // Create const variable
+    clang::IdentifierInfo& II = ctx.Idents.get("p");
+    clang::VarDecl* cppVar = clang::VarDecl::Create(
+        ctx,
+        ctx.getTranslationUnitDecl(),
+        clang::SourceLocation(),
+        clang::SourceLocation(),
+        &II,
+        constPointType,
+        ctx.getTrivialTypeSourceInfo(constPointType),
+        clang::SC_None
+    );
+
+    // Act
+    VariableHandler handler;
+    clang::Decl* result = handler.handleDecl(cppVar, *context);
+
+    // Assert
+    ASSERT_NE(result, nullptr);
+    auto* cVar = llvm::dyn_cast<clang::VarDecl>(result);
+    ASSERT_NE(cVar, nullptr);
+
+    EXPECT_EQ(cVar->getNameAsString(), "p");
+    EXPECT_TRUE(cVar->getType().isConstQualified()) << "Type should be const";
+    EXPECT_TRUE(cVar->getType()->isRecordType()) << "Type should be struct type";
+}
+
+/**
+ * Test 58: Static struct variable (Task 7)
+ *
+ * C++ Input:  static Point globalPoint;
+ * C Output:   static struct Point globalPoint;
+ *
+ * Tests static struct variable declaration.
+ */
+TEST_F(VariableHandlerTest, StaticStructVariable) {
+    // Arrange
+    const char* structCode = R"(
+        struct Point {
+            int x;
+            int y;
+        };
+    )";
+
+    auto structAST = clang::tooling::buildASTFromCode(structCode);
+    ASSERT_NE(structAST, nullptr);
+
+    clang::ASTContext& ctx = cppAST->getASTContext();
+
+    // Get RecordDecl
+    const clang::RecordDecl* pointRecord = nullptr;
+    auto& structCtx = structAST->getASTContext();
+    for (auto* decl : structCtx.getTranslationUnitDecl()->decls()) {
+        if (auto* rd = llvm::dyn_cast<clang::RecordDecl>(decl)) {
+            if (rd->getNameAsString() == "Point") {
+                pointRecord = rd;
+                break;
+            }
+        }
+    }
+    ASSERT_NE(pointRecord, nullptr);
+
+    // Create static variable
+    clang::QualType pointType = ctx.getRecordType(pointRecord);
+    clang::IdentifierInfo& II = ctx.Idents.get("globalPoint");
+    clang::VarDecl* cppVar = clang::VarDecl::Create(
+        ctx,
+        ctx.getTranslationUnitDecl(),
+        clang::SourceLocation(),
+        clang::SourceLocation(),
+        &II,
+        pointType,
+        ctx.getTrivialTypeSourceInfo(pointType),
+        clang::SC_Static
+    );
+
+    // Act
+    VariableHandler handler;
+    clang::Decl* result = handler.handleDecl(cppVar, *context);
+
+    // Assert
+    ASSERT_NE(result, nullptr);
+    auto* cVar = llvm::dyn_cast<clang::VarDecl>(result);
+    ASSERT_NE(cVar, nullptr);
+
+    EXPECT_EQ(cVar->getNameAsString(), "globalPoint");
+    EXPECT_EQ(cVar->getStorageClass(), clang::SC_Static) << "Storage class should be static";
+    EXPECT_TRUE(cVar->getType()->isRecordType()) << "Type should be struct type";
+}
+
 // TODO: Additional tests for Phase 42+:
-// - Test 52: Array initialization with InitListExpr
-// - Test 53: Complex initialization expressions
-// - Test 54: Variable with cast expression init
+// - Test 59: Array initialization with InitListExpr
+// - Test 60: Complex initialization expressions
+// - Test 61: Variable with cast expression init

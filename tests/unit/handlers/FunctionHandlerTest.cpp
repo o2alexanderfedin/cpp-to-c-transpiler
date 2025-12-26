@@ -578,4 +578,446 @@ TEST_F(FunctionHandlerTest, FunctionWithMixedParameters) {
     EXPECT_TRUE(param3->getType()->getPointeeType().isConstQualified()) << "Pointee should be const";
 }
 
+// ============================================================================
+// Phase 43 Tests: Struct Parameters and Return Values (Task 6)
+// ============================================================================
+
+/**
+ * Test 9: Function with struct parameter by value
+ *
+ * C++ Input:  void func(Point p);
+ * C Output:   void func(struct Point p);
+ *
+ * Tests struct parameter translation with struct keyword insertion.
+ */
+TEST_F(FunctionHandlerTest, FunctionWithStructParameterByValue) {
+    // Arrange: First create a struct Point
+    const char* structCode = R"(
+        struct Point {
+            int x;
+            int y;
+        };
+    )";
+
+    auto structAST = clang::tooling::buildASTFromCode(structCode);
+    ASSERT_NE(structAST, nullptr);
+
+    clang::ASTContext& ctx = cppAST->getASTContext();
+
+    // Get the RecordDecl for Point
+    const clang::RecordDecl* pointRecord = nullptr;
+    auto& structCtx = structAST->getASTContext();
+    for (auto* decl : structCtx.getTranslationUnitDecl()->decls()) {
+        if (auto* rd = llvm::dyn_cast<clang::RecordDecl>(decl)) {
+            if (rd->getNameAsString() == "Point") {
+                pointRecord = rd;
+                break;
+            }
+        }
+    }
+    ASSERT_NE(pointRecord, nullptr);
+
+    // Create RecordType for Point
+    clang::QualType pointType = ctx.getRecordType(pointRecord);
+
+    // Create parameter with struct type
+    clang::IdentifierInfo& paramII = ctx.Idents.get("p");
+    clang::ParmVarDecl* cppParam = clang::ParmVarDecl::Create(
+        ctx,
+        ctx.getTranslationUnitDecl(),
+        clang::SourceLocation(),
+        clang::SourceLocation(),
+        &paramII,
+        pointType,
+        ctx.getTrivialTypeSourceInfo(pointType),
+        clang::SC_None,
+        nullptr
+    );
+
+    // Create function void func(Point p)
+    clang::IdentifierInfo& funcII = ctx.Idents.get("func");
+    clang::DeclarationName declName(&funcII);
+
+    std::vector<clang::QualType> paramTypes = {pointType};
+    clang::FunctionProtoType::ExtProtoInfo EPI;
+    clang::QualType funcType = ctx.getFunctionType(ctx.VoidTy, paramTypes, EPI);
+
+    clang::FunctionDecl* cppFunc = clang::FunctionDecl::Create(
+        ctx,
+        ctx.getTranslationUnitDecl(),
+        clang::SourceLocation(),
+        clang::SourceLocation(),
+        declName,
+        funcType,
+        ctx.getTrivialTypeSourceInfo(funcType),
+        clang::SC_None
+    );
+
+    cppFunc->setParams({cppParam});
+
+    // Act
+    FunctionHandler handler;
+    clang::Decl* result = handler.handleDecl(cppFunc, *context);
+
+    // Assert
+    ASSERT_NE(result, nullptr);
+    auto* cFunc = llvm::dyn_cast<clang::FunctionDecl>(result);
+    ASSERT_NE(cFunc, nullptr);
+
+    EXPECT_EQ(cFunc->getNameAsString(), "func");
+    EXPECT_EQ(cFunc->getNumParams(), 1);
+
+    const auto* param = cFunc->getParamDecl(0);
+    ASSERT_NE(param, nullptr);
+    EXPECT_EQ(param->getNameAsString(), "p");
+    EXPECT_TRUE(param->getType()->isRecordType()) << "Parameter should have struct type";
+}
+
+/**
+ * Test 10: Function with struct parameter by pointer
+ *
+ * C++ Input:  void func(Point* p);
+ * C Output:   void func(struct Point* p);
+ *
+ * Tests struct pointer parameter translation.
+ */
+TEST_F(FunctionHandlerTest, FunctionWithStructParameterByPointer) {
+    // Arrange: Create struct Point and function void func(Point* p)
+    const char* structCode = R"(
+        struct Point {
+            int x;
+            int y;
+        };
+    )";
+
+    auto structAST = clang::tooling::buildASTFromCode(structCode);
+    ASSERT_NE(structAST, nullptr);
+
+    clang::ASTContext& ctx = cppAST->getASTContext();
+
+    // Get RecordDecl for Point
+    const clang::RecordDecl* pointRecord = nullptr;
+    auto& structCtx = structAST->getASTContext();
+    for (auto* decl : structCtx.getTranslationUnitDecl()->decls()) {
+        if (auto* rd = llvm::dyn_cast<clang::RecordDecl>(decl)) {
+            if (rd->getNameAsString() == "Point") {
+                pointRecord = rd;
+                break;
+            }
+        }
+    }
+    ASSERT_NE(pointRecord, nullptr);
+
+    // Create RecordType for Point and then pointer to it
+    clang::QualType pointType = ctx.getRecordType(pointRecord);
+    clang::QualType pointPtrType = ctx.getPointerType(pointType);
+
+    // Create parameter
+    clang::IdentifierInfo& paramII = ctx.Idents.get("p");
+    clang::ParmVarDecl* cppParam = clang::ParmVarDecl::Create(
+        ctx,
+        ctx.getTranslationUnitDecl(),
+        clang::SourceLocation(),
+        clang::SourceLocation(),
+        &paramII,
+        pointPtrType,
+        ctx.getTrivialTypeSourceInfo(pointPtrType),
+        clang::SC_None,
+        nullptr
+    );
+
+    // Create function
+    clang::IdentifierInfo& funcII = ctx.Idents.get("func");
+    clang::DeclarationName declName(&funcII);
+
+    std::vector<clang::QualType> paramTypes = {pointPtrType};
+    clang::FunctionProtoType::ExtProtoInfo EPI;
+    clang::QualType funcType = ctx.getFunctionType(ctx.VoidTy, paramTypes, EPI);
+
+    clang::FunctionDecl* cppFunc = clang::FunctionDecl::Create(
+        ctx,
+        ctx.getTranslationUnitDecl(),
+        clang::SourceLocation(),
+        clang::SourceLocation(),
+        declName,
+        funcType,
+        ctx.getTrivialTypeSourceInfo(funcType),
+        clang::SC_None
+    );
+
+    cppFunc->setParams({cppParam});
+
+    // Act
+    FunctionHandler handler;
+    clang::Decl* result = handler.handleDecl(cppFunc, *context);
+
+    // Assert
+    ASSERT_NE(result, nullptr);
+    auto* cFunc = llvm::dyn_cast<clang::FunctionDecl>(result);
+    ASSERT_NE(cFunc, nullptr);
+
+    EXPECT_EQ(cFunc->getNumParams(), 1);
+
+    const auto* param = cFunc->getParamDecl(0);
+    ASSERT_NE(param, nullptr);
+    EXPECT_TRUE(param->getType()->isPointerType()) << "Parameter should be pointer";
+    EXPECT_TRUE(param->getType()->getPointeeType()->isRecordType()) << "Pointee should be struct";
+}
+
+/**
+ * Test 11: Function returning struct by value
+ *
+ * C++ Input:  Point createPoint();
+ * C Output:   struct Point createPoint();
+ *
+ * Tests struct return type translation.
+ */
+TEST_F(FunctionHandlerTest, FunctionReturningStructByValue) {
+    // Arrange: Create struct Point and function Point createPoint()
+    const char* structCode = R"(
+        struct Point {
+            int x;
+            int y;
+        };
+    )";
+
+    auto structAST = clang::tooling::buildASTFromCode(structCode);
+    ASSERT_NE(structAST, nullptr);
+
+    clang::ASTContext& ctx = cppAST->getASTContext();
+
+    // Get RecordDecl for Point
+    const clang::RecordDecl* pointRecord = nullptr;
+    auto& structCtx = structAST->getASTContext();
+    for (auto* decl : structCtx.getTranslationUnitDecl()->decls()) {
+        if (auto* rd = llvm::dyn_cast<clang::RecordDecl>(decl)) {
+            if (rd->getNameAsString() == "Point") {
+                pointRecord = rd;
+                break;
+            }
+        }
+    }
+    ASSERT_NE(pointRecord, nullptr);
+
+    // Create RecordType for Point
+    clang::QualType pointType = ctx.getRecordType(pointRecord);
+
+    // Create function Point createPoint()
+    clang::IdentifierInfo& funcII = ctx.Idents.get("createPoint");
+    clang::DeclarationName declName(&funcII);
+
+    clang::FunctionProtoType::ExtProtoInfo EPI;
+    clang::QualType funcType = ctx.getFunctionType(pointType, {}, EPI);
+
+    clang::FunctionDecl* cppFunc = clang::FunctionDecl::Create(
+        ctx,
+        ctx.getTranslationUnitDecl(),
+        clang::SourceLocation(),
+        clang::SourceLocation(),
+        declName,
+        funcType,
+        ctx.getTrivialTypeSourceInfo(funcType),
+        clang::SC_None
+    );
+
+    // Act
+    FunctionHandler handler;
+    clang::Decl* result = handler.handleDecl(cppFunc, *context);
+
+    // Assert
+    ASSERT_NE(result, nullptr);
+    auto* cFunc = llvm::dyn_cast<clang::FunctionDecl>(result);
+    ASSERT_NE(cFunc, nullptr);
+
+    EXPECT_EQ(cFunc->getNameAsString(), "createPoint");
+    EXPECT_TRUE(cFunc->getReturnType()->isRecordType()) << "Return type should be struct";
+}
+
+/**
+ * Test 12: Function returning struct pointer
+ *
+ * C++ Input:  Point* getPointPtr();
+ * C Output:   struct Point* getPointPtr();
+ *
+ * Tests struct pointer return type translation.
+ */
+TEST_F(FunctionHandlerTest, FunctionReturningStructPointer) {
+    // Arrange
+    const char* structCode = R"(
+        struct Point {
+            int x;
+            int y;
+        };
+    )";
+
+    auto structAST = clang::tooling::buildASTFromCode(structCode);
+    ASSERT_NE(structAST, nullptr);
+
+    clang::ASTContext& ctx = cppAST->getASTContext();
+
+    // Get RecordDecl for Point
+    const clang::RecordDecl* pointRecord = nullptr;
+    auto& structCtx = structAST->getASTContext();
+    for (auto* decl : structCtx.getTranslationUnitDecl()->decls()) {
+        if (auto* rd = llvm::dyn_cast<clang::RecordDecl>(decl)) {
+            if (rd->getNameAsString() == "Point") {
+                pointRecord = rd;
+                break;
+            }
+        }
+    }
+    ASSERT_NE(pointRecord, nullptr);
+
+    // Create pointer to struct
+    clang::QualType pointType = ctx.getRecordType(pointRecord);
+    clang::QualType pointPtrType = ctx.getPointerType(pointType);
+
+    // Create function Point* getPointPtr()
+    clang::IdentifierInfo& funcII = ctx.Idents.get("getPointPtr");
+    clang::DeclarationName declName(&funcII);
+
+    clang::FunctionProtoType::ExtProtoInfo EPI;
+    clang::QualType funcType = ctx.getFunctionType(pointPtrType, {}, EPI);
+
+    clang::FunctionDecl* cppFunc = clang::FunctionDecl::Create(
+        ctx,
+        ctx.getTranslationUnitDecl(),
+        clang::SourceLocation(),
+        clang::SourceLocation(),
+        declName,
+        funcType,
+        ctx.getTrivialTypeSourceInfo(funcType),
+        clang::SC_None
+    );
+
+    // Act
+    FunctionHandler handler;
+    clang::Decl* result = handler.handleDecl(cppFunc, *context);
+
+    // Assert
+    ASSERT_NE(result, nullptr);
+    auto* cFunc = llvm::dyn_cast<clang::FunctionDecl>(result);
+    ASSERT_NE(cFunc, nullptr);
+
+    EXPECT_TRUE(cFunc->getReturnType()->isPointerType()) << "Return type should be pointer";
+    EXPECT_TRUE(cFunc->getReturnType()->getPointeeType()->isRecordType()) << "Pointee should be struct";
+}
+
+/**
+ * Test 13: Function with multiple struct parameters
+ *
+ * C++ Input:  void func(Point a, Point b, Point c);
+ * C Output:   void func(struct Point a, struct Point b, struct Point c);
+ *
+ * Tests multiple struct parameters.
+ */
+TEST_F(FunctionHandlerTest, FunctionWithMultipleStructParameters) {
+    // Arrange
+    const char* structCode = R"(
+        struct Point {
+            int x;
+            int y;
+        };
+    )";
+
+    auto structAST = clang::tooling::buildASTFromCode(structCode);
+    ASSERT_NE(structAST, nullptr);
+
+    clang::ASTContext& ctx = cppAST->getASTContext();
+
+    // Get RecordDecl for Point
+    const clang::RecordDecl* pointRecord = nullptr;
+    auto& structCtx = structAST->getASTContext();
+    for (auto* decl : structCtx.getTranslationUnitDecl()->decls()) {
+        if (auto* rd = llvm::dyn_cast<clang::RecordDecl>(decl)) {
+            if (rd->getNameAsString() == "Point") {
+                pointRecord = rd;
+                break;
+            }
+        }
+    }
+    ASSERT_NE(pointRecord, nullptr);
+
+    clang::QualType pointType = ctx.getRecordType(pointRecord);
+
+    // Create three parameters
+    clang::IdentifierInfo& aII = ctx.Idents.get("a");
+    clang::ParmVarDecl* paramA = clang::ParmVarDecl::Create(
+        ctx,
+        ctx.getTranslationUnitDecl(),
+        clang::SourceLocation(),
+        clang::SourceLocation(),
+        &aII,
+        pointType,
+        ctx.getTrivialTypeSourceInfo(pointType),
+        clang::SC_None,
+        nullptr
+    );
+
+    clang::IdentifierInfo& bII = ctx.Idents.get("b");
+    clang::ParmVarDecl* paramB = clang::ParmVarDecl::Create(
+        ctx,
+        ctx.getTranslationUnitDecl(),
+        clang::SourceLocation(),
+        clang::SourceLocation(),
+        &bII,
+        pointType,
+        ctx.getTrivialTypeSourceInfo(pointType),
+        clang::SC_None,
+        nullptr
+    );
+
+    clang::IdentifierInfo& cII = ctx.Idents.get("c");
+    clang::ParmVarDecl* paramC = clang::ParmVarDecl::Create(
+        ctx,
+        ctx.getTranslationUnitDecl(),
+        clang::SourceLocation(),
+        clang::SourceLocation(),
+        &cII,
+        pointType,
+        ctx.getTrivialTypeSourceInfo(pointType),
+        clang::SC_None,
+        nullptr
+    );
+
+    // Create function
+    clang::IdentifierInfo& funcII = ctx.Idents.get("func");
+    clang::DeclarationName declName(&funcII);
+
+    std::vector<clang::QualType> paramTypes = {pointType, pointType, pointType};
+    clang::FunctionProtoType::ExtProtoInfo EPI;
+    clang::QualType funcType = ctx.getFunctionType(ctx.VoidTy, paramTypes, EPI);
+
+    clang::FunctionDecl* cppFunc = clang::FunctionDecl::Create(
+        ctx,
+        ctx.getTranslationUnitDecl(),
+        clang::SourceLocation(),
+        clang::SourceLocation(),
+        declName,
+        funcType,
+        ctx.getTrivialTypeSourceInfo(funcType),
+        clang::SC_None
+    );
+
+    cppFunc->setParams({paramA, paramB, paramC});
+
+    // Act
+    FunctionHandler handler;
+    clang::Decl* result = handler.handleDecl(cppFunc, *context);
+
+    // Assert
+    ASSERT_NE(result, nullptr);
+    auto* cFunc = llvm::dyn_cast<clang::FunctionDecl>(result);
+    ASSERT_NE(cFunc, nullptr);
+
+    EXPECT_EQ(cFunc->getNumParams(), 3) << "Should have three parameters";
+
+    // Verify all three parameters are struct types
+    for (unsigned i = 0; i < 3; ++i) {
+        const auto* param = cFunc->getParamDecl(i);
+        ASSERT_NE(param, nullptr);
+        EXPECT_TRUE(param->getType()->isRecordType()) << "Parameter " << i << " should be struct type";
+    }
+}
+
 // TODO: Add more tests following TDD cycles

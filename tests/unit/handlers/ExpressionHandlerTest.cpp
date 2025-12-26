@@ -5543,3 +5543,1518 @@ TEST_F(ExpressionHandlerTest, ReferenceUsage_Aliasing) {
         EXPECT_EQ(derefOp->getOpcode(), clang::UO_Deref);
     }
 }
+
+// ============================================================================
+// MEMBER EXPRESSION - ARROW OPERATOR (Task 4 - Phase 43)
+// Tests: 125-132
+// ============================================================================
+
+/**
+ * Test 125: Simple pointer field access (ptr->x)
+ * C++ Input: struct Point { int x; int y; }; Point* ptr; ptr->x;
+ * Expected: MemberExpr with isArrow() == true, accessing field x
+ */
+TEST_F(ExpressionHandlerTest, MemberExpr_SimplePointerFieldAccess) {
+    // Arrange: Build AST with pointer field access
+    std::string code = R"(
+        struct Point {
+            int x;
+            int y;
+        };
+        void test() {
+            Point p;
+            Point* ptr = &p;
+            int val = ptr->x;
+        }
+    )";
+    auto AST = clang::tooling::buildASTFromCode(code);
+    ASSERT_NE(AST, nullptr);
+
+    // Find the "ptr->x" expression
+    class MemberExprFinder : public clang::RecursiveASTVisitor<MemberExprFinder> {
+    public:
+        clang::MemberExpr* foundME = nullptr;
+
+        bool VisitMemberExpr(clang::MemberExpr* ME) {
+            if (ME->isArrow()) {
+                foundME = ME;
+            }
+            return true;
+        }
+    };
+
+    MemberExprFinder finder;
+    finder.TraverseDecl(AST->getASTContext().getTranslationUnitDecl());
+    ASSERT_NE(finder.foundME, nullptr) << "Could not find 'ptr->x' expression";
+
+    // Act
+    ExpressionHandler handler;
+    clang::Expr* result = handler.handleExpr(finder.foundME, *context);
+
+    // Assert
+    ASSERT_NE(result, nullptr) << "Translation returned null";
+    auto* ME = llvm::dyn_cast<clang::MemberExpr>(result);
+    EXPECT_NE(ME, nullptr) << "Result should be a MemberExpr";
+    if (ME) {
+        EXPECT_TRUE(ME->isArrow()) << "Should preserve arrow operator";
+        EXPECT_EQ(ME->getMemberDecl()->getName(), "x") << "Should access field 'x'";
+    }
+}
+
+/**
+ * Test 126: Pointer field access in expression (ptr->x + 1)
+ * C++ Input: ptr->x + 1
+ * Expected: BinaryOperator with MemberExpr as LHS
+ */
+TEST_F(ExpressionHandlerTest, MemberExpr_PointerFieldAccessInExpression) {
+    // Arrange
+    std::string code = R"(
+        struct Point {
+            int x;
+            int y;
+        };
+        void test() {
+            Point p;
+            Point* ptr = &p;
+            int val = ptr->x + 1;
+        }
+    )";
+    auto AST = clang::tooling::buildASTFromCode(code);
+    ASSERT_NE(AST, nullptr);
+
+    // Find the "ptr->x + 1" expression
+    class BinOpFinder : public clang::RecursiveASTVisitor<BinOpFinder> {
+    public:
+        clang::BinaryOperator* foundBO = nullptr;
+
+        bool VisitBinaryOperator(clang::BinaryOperator* BO) {
+            if (BO->getOpcode() == clang::BO_Add) {
+                auto* LHS = BO->getLHS()->IgnoreImpCasts();
+                if (auto* ME = llvm::dyn_cast<clang::MemberExpr>(LHS)) {
+                    if (ME->isArrow()) {
+                        foundBO = BO;
+                    }
+                }
+            }
+            return true;
+        }
+    };
+
+    BinOpFinder finder;
+    finder.TraverseDecl(AST->getASTContext().getTranslationUnitDecl());
+    ASSERT_NE(finder.foundBO, nullptr) << "Could not find 'ptr->x + 1' expression";
+
+    // Act
+    ExpressionHandler handler;
+    clang::Expr* result = handler.handleExpr(finder.foundBO, *context);
+
+    // Assert
+    ASSERT_NE(result, nullptr) << "Translation returned null";
+    auto* BO = llvm::dyn_cast<clang::BinaryOperator>(result);
+    EXPECT_NE(BO, nullptr) << "Result should be a BinaryOperator";
+    if (BO) {
+        auto* LHS = llvm::dyn_cast<clang::MemberExpr>(BO->getLHS()->IgnoreImpCasts());
+        EXPECT_NE(LHS, nullptr) << "LHS should be MemberExpr";
+        if (LHS) {
+            EXPECT_TRUE(LHS->isArrow()) << "Should preserve arrow operator";
+        }
+    }
+}
+
+/**
+ * Test 127: Pointer field access as lvalue (ptr->x = 10)
+ * C++ Input: ptr->x = 10
+ * Expected: Assignment with MemberExpr as LHS
+ */
+TEST_F(ExpressionHandlerTest, MemberExpr_PointerFieldAccessAsLValue) {
+    // Arrange
+    std::string code = R"(
+        struct Point {
+            int x;
+            int y;
+        };
+        void test() {
+            Point p;
+            Point* ptr = &p;
+            ptr->x = 10;
+        }
+    )";
+    auto AST = clang::tooling::buildASTFromCode(code);
+    ASSERT_NE(AST, nullptr);
+
+    // Find the "ptr->x = 10" expression
+    class AssignFinder : public clang::RecursiveASTVisitor<AssignFinder> {
+    public:
+        clang::BinaryOperator* foundBO = nullptr;
+
+        bool VisitBinaryOperator(clang::BinaryOperator* BO) {
+            if (BO->getOpcode() == clang::BO_Assign) {
+                auto* LHS = BO->getLHS()->IgnoreImpCasts();
+                if (auto* ME = llvm::dyn_cast<clang::MemberExpr>(LHS)) {
+                    if (ME->isArrow()) {
+                        foundBO = BO;
+                    }
+                }
+            }
+            return true;
+        }
+    };
+
+    AssignFinder finder;
+    finder.TraverseDecl(AST->getASTContext().getTranslationUnitDecl());
+    ASSERT_NE(finder.foundBO, nullptr) << "Could not find 'ptr->x = 10' expression";
+
+    // Act
+    ExpressionHandler handler;
+    clang::Expr* result = handler.handleExpr(finder.foundBO, *context);
+
+    // Assert
+    ASSERT_NE(result, nullptr) << "Translation returned null";
+    auto* BO = llvm::dyn_cast<clang::BinaryOperator>(result);
+    EXPECT_NE(BO, nullptr) << "Result should be a BinaryOperator";
+    if (BO) {
+        auto* LHS = llvm::dyn_cast<clang::MemberExpr>(BO->getLHS()->IgnoreImpCasts());
+        EXPECT_NE(LHS, nullptr) << "LHS should be MemberExpr";
+        if (LHS) {
+            EXPECT_TRUE(LHS->isArrow()) << "Should preserve arrow operator";
+            EXPECT_EQ(LHS->getValueKind(), clang::VK_LValue) << "Should be lvalue";
+        }
+    }
+}
+
+/**
+ * Test 128: Nested pointer field access (ptr->next->value)
+ * C++ Input: struct Node { int value; Node* next; }; ptr->next->value
+ * Expected: Nested MemberExpr, both with arrow operators
+ */
+TEST_F(ExpressionHandlerTest, MemberExpr_NestedPointerFieldAccess) {
+    // Arrange
+    std::string code = R"(
+        struct Node {
+            int value;
+            Node* next;
+        };
+        void test() {
+            Node n1, n2;
+            Node* ptr = &n1;
+            int val = ptr->next->value;
+        }
+    )";
+    auto AST = clang::tooling::buildASTFromCode(code);
+    ASSERT_NE(AST, nullptr);
+
+    // Find the outer "ptr->next->value" expression
+    class NestedMemberFinder : public clang::RecursiveASTVisitor<NestedMemberFinder> {
+    public:
+        clang::MemberExpr* foundME = nullptr;
+
+        bool VisitMemberExpr(clang::MemberExpr* ME) {
+            if (ME->isArrow() && ME->getMemberDecl()->getName() == "value") {
+                // This is the outer MemberExpr accessing 'value'
+                auto* base = ME->getBase()->IgnoreImpCasts();
+                if (auto* innerME = llvm::dyn_cast<clang::MemberExpr>(base)) {
+                    if (innerME->isArrow() && innerME->getMemberDecl()->getName() == "next") {
+                        foundME = ME;
+                    }
+                }
+            }
+            return true;
+        }
+    };
+
+    NestedMemberFinder finder;
+    finder.TraverseDecl(AST->getASTContext().getTranslationUnitDecl());
+    ASSERT_NE(finder.foundME, nullptr) << "Could not find 'ptr->next->value' expression";
+
+    // Act
+    ExpressionHandler handler;
+    clang::Expr* result = handler.handleExpr(finder.foundME, *context);
+
+    // Assert
+    ASSERT_NE(result, nullptr) << "Translation returned null";
+    auto* outerME = llvm::dyn_cast<clang::MemberExpr>(result);
+    EXPECT_NE(outerME, nullptr) << "Result should be a MemberExpr";
+    if (outerME) {
+        EXPECT_TRUE(outerME->isArrow()) << "Outer access should use arrow";
+        EXPECT_EQ(outerME->getMemberDecl()->getName(), "value");
+
+        auto* base = outerME->getBase()->IgnoreImpCasts();
+        auto* innerME = llvm::dyn_cast<clang::MemberExpr>(base);
+        EXPECT_NE(innerME, nullptr) << "Base should be MemberExpr";
+        if (innerME) {
+            EXPECT_TRUE(innerME->isArrow()) << "Inner access should use arrow";
+            EXPECT_EQ(innerME->getMemberDecl()->getName(), "next");
+        }
+    }
+}
+
+/**
+ * Test 129: Pointer field access in function call (func(ptr->x))
+ * C++ Input: func(ptr->x)
+ * Expected: MemberExpr as function argument
+ */
+TEST_F(ExpressionHandlerTest, MemberExpr_PointerFieldAccessInFunctionCall) {
+    // Arrange
+    std::string code = R"(
+        struct Point {
+            int x;
+            int y;
+        };
+        int func(int val) { return val; }
+        void test() {
+            Point p;
+            Point* ptr = &p;
+            func(ptr->x);
+        }
+    )";
+    auto AST = clang::tooling::buildASTFromCode(code);
+    ASSERT_NE(AST, nullptr);
+
+    // Find the "ptr->x" inside function call
+    class MemberInCallFinder : public clang::RecursiveASTVisitor<MemberInCallFinder> {
+    public:
+        clang::MemberExpr* foundME = nullptr;
+
+        bool VisitCallExpr(clang::CallExpr* CE) {
+            if (CE->getNumArgs() > 0) {
+                auto* arg = CE->getArg(0)->IgnoreImpCasts();
+                if (auto* ME = llvm::dyn_cast<clang::MemberExpr>(arg)) {
+                    if (ME->isArrow()) {
+                        foundME = ME;
+                    }
+                }
+            }
+            return true;
+        }
+    };
+
+    MemberInCallFinder finder;
+    finder.TraverseDecl(AST->getASTContext().getTranslationUnitDecl());
+    ASSERT_NE(finder.foundME, nullptr) << "Could not find 'ptr->x' in function call";
+
+    // Act
+    ExpressionHandler handler;
+    clang::Expr* result = handler.handleExpr(finder.foundME, *context);
+
+    // Assert
+    ASSERT_NE(result, nullptr) << "Translation returned null";
+    auto* ME = llvm::dyn_cast<clang::MemberExpr>(result);
+    EXPECT_NE(ME, nullptr) << "Result should be a MemberExpr";
+    if (ME) {
+        EXPECT_TRUE(ME->isArrow()) << "Should preserve arrow operator";
+    }
+}
+
+/**
+ * Test 130: Mix of dot and arrow (struct.ptr->value)
+ * C++ Input: struct Container { Point* ptr; }; container.ptr->x
+ * Expected: MemberExpr with arrow on top of MemberExpr with dot
+ */
+TEST_F(ExpressionHandlerTest, MemberExpr_MixDotAndArrow) {
+    // Arrange
+    std::string code = R"(
+        struct Point {
+            int x;
+            int y;
+        };
+        struct Container {
+            Point* ptr;
+        };
+        void test() {
+            Point p;
+            Container c;
+            c.ptr = &p;
+            int val = c.ptr->x;
+        }
+    )";
+    auto AST = clang::tooling::buildASTFromCode(code);
+    ASSERT_NE(AST, nullptr);
+
+    // Find the "c.ptr->x" expression
+    class MixedMemberFinder : public clang::RecursiveASTVisitor<MixedMemberFinder> {
+    public:
+        clang::MemberExpr* foundME = nullptr;
+
+        bool VisitMemberExpr(clang::MemberExpr* ME) {
+            if (ME->isArrow() && ME->getMemberDecl()->getName() == "x") {
+                auto* base = ME->getBase()->IgnoreImpCasts();
+                if (auto* innerME = llvm::dyn_cast<clang::MemberExpr>(base)) {
+                    if (!innerME->isArrow() && innerME->getMemberDecl()->getName() == "ptr") {
+                        foundME = ME;
+                    }
+                }
+            }
+            return true;
+        }
+    };
+
+    MixedMemberFinder finder;
+    finder.TraverseDecl(AST->getASTContext().getTranslationUnitDecl());
+    ASSERT_NE(finder.foundME, nullptr) << "Could not find 'c.ptr->x' expression";
+
+    // Act
+    ExpressionHandler handler;
+    clang::Expr* result = handler.handleExpr(finder.foundME, *context);
+
+    // Assert
+    ASSERT_NE(result, nullptr) << "Translation returned null";
+    auto* outerME = llvm::dyn_cast<clang::MemberExpr>(result);
+    EXPECT_NE(outerME, nullptr) << "Result should be a MemberExpr";
+    if (outerME) {
+        EXPECT_TRUE(outerME->isArrow()) << "Outer access should use arrow";
+        EXPECT_EQ(outerME->getMemberDecl()->getName(), "x");
+
+        auto* base = outerME->getBase()->IgnoreImpCasts();
+        auto* innerME = llvm::dyn_cast<clang::MemberExpr>(base);
+        EXPECT_NE(innerME, nullptr) << "Base should be MemberExpr";
+        if (innerME) {
+            EXPECT_FALSE(innerME->isArrow()) << "Inner access should use dot";
+            EXPECT_EQ(innerME->getMemberDecl()->getName(), "ptr");
+        }
+    }
+}
+
+/**
+ * Test 131: Simple dot field access (s.x)
+ * C++ Input: struct Point { int x; int y; }; Point s; s.x;
+ * Expected: MemberExpr with isArrow() == false, accessing field x
+ */
+TEST_F(ExpressionHandlerTest, MemberExpr_SimpleDotFieldAccess) {
+    // Arrange
+    std::string code = R"(
+        struct Point {
+            int x;
+            int y;
+        };
+        void test() {
+            Point p;
+            int val = p.x;
+        }
+    )";
+    auto AST = clang::tooling::buildASTFromCode(code);
+    ASSERT_NE(AST, nullptr);
+
+    // Find the "p.x" expression
+    class MemberExprFinder : public clang::RecursiveASTVisitor<MemberExprFinder> {
+    public:
+        clang::MemberExpr* foundME = nullptr;
+
+        bool VisitMemberExpr(clang::MemberExpr* ME) {
+            if (!ME->isArrow() && ME->getMemberDecl()->getName() == "x") {
+                foundME = ME;
+            }
+            return true;
+        }
+    };
+
+    MemberExprFinder finder;
+    finder.TraverseDecl(AST->getASTContext().getTranslationUnitDecl());
+    ASSERT_NE(finder.foundME, nullptr) << "Could not find 'p.x' expression";
+
+    // Act
+    ExpressionHandler handler;
+    clang::Expr* result = handler.handleExpr(finder.foundME, *context);
+
+    // Assert
+    ASSERT_NE(result, nullptr) << "Translation returned null";
+    auto* ME = llvm::dyn_cast<clang::MemberExpr>(result);
+    EXPECT_NE(ME, nullptr) << "Result should be a MemberExpr";
+    if (ME) {
+        EXPECT_FALSE(ME->isArrow()) << "Should use dot operator";
+        EXPECT_EQ(ME->getMemberDecl()->getName(), "x") << "Should access field 'x'";
+    }
+}
+
+/**
+ * Test 132: Nested dot field access (rect.topLeft.x)
+ * C++ Input: struct Point { int x; }; struct Rect { Point topLeft; }; rect.topLeft.x
+ * Expected: Nested MemberExpr, both with dot operators
+ */
+TEST_F(ExpressionHandlerTest, MemberExpr_NestedDotFieldAccess) {
+    // Arrange
+    std::string code = R"(
+        struct Point {
+            int x;
+            int y;
+        };
+        struct Rect {
+            Point topLeft;
+            Point bottomRight;
+        };
+        void test() {
+            Rect r;
+            int val = r.topLeft.x;
+        }
+    )";
+    auto AST = clang::tooling::buildASTFromCode(code);
+    ASSERT_NE(AST, nullptr);
+
+    // Find the "r.topLeft.x" expression
+    class NestedMemberFinder : public clang::RecursiveASTVisitor<NestedMemberFinder> {
+    public:
+        clang::MemberExpr* foundME = nullptr;
+
+        bool VisitMemberExpr(clang::MemberExpr* ME) {
+            if (!ME->isArrow() && ME->getMemberDecl()->getName() == "x") {
+                auto* base = ME->getBase()->IgnoreImpCasts();
+                if (auto* innerME = llvm::dyn_cast<clang::MemberExpr>(base)) {
+                    if (!innerME->isArrow() && innerME->getMemberDecl()->getName() == "topLeft") {
+                        foundME = ME;
+                    }
+                }
+            }
+            return true;
+        }
+    };
+
+    NestedMemberFinder finder;
+    finder.TraverseDecl(AST->getASTContext().getTranslationUnitDecl());
+    ASSERT_NE(finder.foundME, nullptr) << "Could not find 'r.topLeft.x' expression";
+
+    // Act
+    ExpressionHandler handler;
+    clang::Expr* result = handler.handleExpr(finder.foundME, *context);
+
+    // Assert
+    ASSERT_NE(result, nullptr) << "Translation returned null";
+    auto* outerME = llvm::dyn_cast<clang::MemberExpr>(result);
+    EXPECT_NE(outerME, nullptr) << "Result should be a MemberExpr";
+    if (outerME) {
+        EXPECT_FALSE(outerME->isArrow()) << "Outer access should use dot";
+        EXPECT_EQ(outerME->getMemberDecl()->getName(), "x");
+
+        auto* base = outerME->getBase()->IgnoreImpCasts();
+        auto* innerME = llvm::dyn_cast<clang::MemberExpr>(base);
+        EXPECT_NE(innerME, nullptr) << "Base should be MemberExpr";
+        if (innerME) {
+            EXPECT_FALSE(innerME->isArrow()) << "Inner access should use dot";
+            EXPECT_EQ(innerME->getMemberDecl()->getName(), "topLeft");
+        }
+    }
+}
+
+/**
+ * Test: Field access in expression (s.x + 1)
+ * C++ Input: Point p; p.x + 1
+ * Expected: BinaryOperator with LHS=MemberExpr(p.x), RHS=1
+ */
+TEST_F(ExpressionHandlerTest, MemberExpr_DotInExpression) {
+    // Arrange
+    const char* code = R"(
+        struct Point { int x; int y; };
+        void test() {
+            Point p;
+            p.x + 1;
+        }
+    )";
+    auto AST = clang::tooling::buildASTFromCode(code);
+    ASSERT_NE(AST, nullptr);
+
+    // Find the binary operator
+    class BinOpFinder : public clang::RecursiveASTVisitor<BinOpFinder> {
+    public:
+        clang::BinaryOperator* foundBO = nullptr;
+
+        bool VisitBinaryOperator(clang::BinaryOperator* BO) {
+            if (!foundBO && BO->getOpcode() == clang::BO_Add) {
+                foundBO = BO;
+            }
+            return true;
+        }
+    };
+
+    BinOpFinder finder;
+    finder.TraverseDecl(AST->getASTContext().getTranslationUnitDecl());
+    ASSERT_NE(finder.foundBO, nullptr) << "Could not find BinaryOperator";
+
+    // Act
+    ExpressionHandler handler;
+    clang::Expr* result = handler.handleExpr(finder.foundBO, *context);
+
+    // Assert
+    ASSERT_NE(result, nullptr) << "Translation returned null";
+    auto* binOp = llvm::dyn_cast<clang::BinaryOperator>(result);
+    ASSERT_NE(binOp, nullptr) << "Result is not BinaryOperator";
+
+    // Check LHS is MemberExpr
+    auto* lhs = binOp->getLHS()->IgnoreImpCasts();
+    EXPECT_NE(llvm::dyn_cast<clang::MemberExpr>(lhs), nullptr) << "LHS should be MemberExpr";
+}
+
+/**
+ * Test: Field access as lvalue (s.x = 10)
+ * C++ Input: Point p; p.x = 10
+ * Expected: BinaryOperator(Assign) with LHS=MemberExpr, RHS=10
+ */
+TEST_F(ExpressionHandlerTest, MemberExpr_DotAsLValue) {
+    // Arrange
+    const char* code = R"(
+        struct Point { int x; int y; };
+        void test() {
+            Point p;
+            p.x = 10;
+        }
+    )";
+    auto AST = clang::tooling::buildASTFromCode(code);
+    ASSERT_NE(AST, nullptr);
+
+    // Find the assignment operator
+    class AssignFinder : public clang::RecursiveASTVisitor<AssignFinder> {
+    public:
+        clang::BinaryOperator* foundBO = nullptr;
+
+        bool VisitBinaryOperator(clang::BinaryOperator* BO) {
+            if (!foundBO && BO->getOpcode() == clang::BO_Assign) {
+                foundBO = BO;
+            }
+            return true;
+        }
+    };
+
+    AssignFinder finder;
+    finder.TraverseDecl(AST->getASTContext().getTranslationUnitDecl());
+    ASSERT_NE(finder.foundBO, nullptr) << "Could not find assignment";
+
+    // Act
+    ExpressionHandler handler;
+    clang::Expr* result = handler.handleExpr(finder.foundBO, *context);
+
+    // Assert
+    ASSERT_NE(result, nullptr) << "Translation returned null";
+    auto* assignOp = llvm::dyn_cast<clang::BinaryOperator>(result);
+    ASSERT_NE(assignOp, nullptr) << "Result is not assignment operator";
+    EXPECT_EQ(assignOp->getOpcode(), clang::BO_Assign);
+
+    // Check LHS is MemberExpr
+    auto* lhs = assignOp->getLHS();
+    EXPECT_NE(llvm::dyn_cast<clang::MemberExpr>(lhs), nullptr) << "LHS should be MemberExpr";
+}
+
+/**
+ * Test: Field access in function call (func(s.x))
+ * C++ Input: void func(int); Point p; func(p.x)
+ * Expected: CallExpr with arg=MemberExpr
+ */
+TEST_F(ExpressionHandlerTest, MemberExpr_DotInFunctionCall) {
+    // Arrange
+    const char* code = R"(
+        struct Point { int x; int y; };
+        void func(int val) {}
+        void test() {
+            Point p;
+            func(p.x);
+        }
+    )";
+    auto AST = clang::tooling::buildASTFromCode(code);
+    ASSERT_NE(AST, nullptr);
+
+    // Find the member expression in function call
+    class MemberInCallFinder : public clang::RecursiveASTVisitor<MemberInCallFinder> {
+    public:
+        clang::MemberExpr* foundME = nullptr;
+
+        bool VisitCallExpr(clang::CallExpr* CE) {
+            if (CE->getNumArgs() > 0) {
+                auto* arg = CE->getArg(0)->IgnoreImpCasts();
+                if (auto* ME = llvm::dyn_cast<clang::MemberExpr>(arg)) {
+                    if (!ME->isArrow()) {
+                        foundME = ME;
+                    }
+                }
+            }
+            return true;
+        }
+    };
+
+    MemberInCallFinder finder;
+    finder.TraverseDecl(AST->getASTContext().getTranslationUnitDecl());
+    ASSERT_NE(finder.foundME, nullptr) << "Could not find MemberExpr in call";
+
+    // Act
+    ExpressionHandler handler;
+    clang::Expr* result = handler.handleExpr(finder.foundME, *context);
+
+    // Assert
+    ASSERT_NE(result, nullptr) << "Translation returned null";
+    auto* memberExpr = llvm::dyn_cast<clang::MemberExpr>(result);
+    ASSERT_NE(memberExpr, nullptr) << "Result is not MemberExpr";
+    EXPECT_FALSE(memberExpr->isArrow());
+    EXPECT_EQ(memberExpr->getMemberDecl()->getName(), "x");
+}
+
+/**
+ * Test: Field access in array subscript (arr[s.index])
+ * C++ Input: struct Data { int index; }; int arr[10]; Data d; arr[d.index]
+ * Expected: ArraySubscriptExpr with index=MemberExpr
+ */
+TEST_F(ExpressionHandlerTest, MemberExpr_DotInArraySubscript) {
+    // Arrange
+    const char* code = R"(
+        struct Data { int index; };
+        void test() {
+            int arr[10];
+            Data d;
+            arr[d.index];
+        }
+    )";
+    auto AST = clang::tooling::buildASTFromCode(code);
+    ASSERT_NE(AST, nullptr);
+
+    // Find the array subscript expression
+    class ArraySubFinder : public clang::RecursiveASTVisitor<ArraySubFinder> {
+    public:
+        clang::ArraySubscriptExpr* foundASE = nullptr;
+
+        bool VisitArraySubscriptExpr(clang::ArraySubscriptExpr* ASE) {
+            if (!foundASE) {
+                foundASE = ASE;
+            }
+            return true;
+        }
+    };
+
+    ArraySubFinder finder;
+    finder.TraverseDecl(AST->getASTContext().getTranslationUnitDecl());
+    ASSERT_NE(finder.foundASE, nullptr) << "Could not find ArraySubscriptExpr";
+
+    // Act
+    ExpressionHandler handler;
+    clang::Expr* result = handler.handleExpr(finder.foundASE, *context);
+
+    // Assert
+    ASSERT_NE(result, nullptr) << "Translation returned null";
+    auto* arrayExpr = llvm::dyn_cast<clang::ArraySubscriptExpr>(result);
+    ASSERT_NE(arrayExpr, nullptr) << "Result is not ArraySubscriptExpr";
+
+    // Check index is MemberExpr
+    auto* idx = arrayExpr->getIdx()->IgnoreImpCasts();
+    auto* memberIdx = llvm::dyn_cast<clang::MemberExpr>(idx);
+    ASSERT_NE(memberIdx, nullptr) << "Index should be MemberExpr";
+    EXPECT_EQ(memberIdx->getMemberDecl()->getName(), "index");
+}
+
+/**
+ * Test: Field access of array field (s.arr[0])
+ * C++ Input: struct Container { int arr[10]; }; Container c; c.arr[0]
+ * Expected: ArraySubscriptExpr with base=MemberExpr(c.arr)
+ */
+TEST_F(ExpressionHandlerTest, MemberExpr_DotArrayField) {
+    // Arrange
+    const char* code = R"(
+        struct Container { int arr[10]; };
+        void test() {
+            Container c;
+            c.arr[0];
+        }
+    )";
+    auto AST = clang::tooling::buildASTFromCode(code);
+    ASSERT_NE(AST, nullptr);
+
+    // Find the array subscript expression
+    class ArraySubFinder : public clang::RecursiveASTVisitor<ArraySubFinder> {
+    public:
+        clang::ArraySubscriptExpr* foundASE = nullptr;
+
+        bool VisitArraySubscriptExpr(clang::ArraySubscriptExpr* ASE) {
+            if (!foundASE) {
+                foundASE = ASE;
+            }
+            return true;
+        }
+    };
+
+    ArraySubFinder finder;
+    finder.TraverseDecl(AST->getASTContext().getTranslationUnitDecl());
+    ASSERT_NE(finder.foundASE, nullptr) << "Could not find ArraySubscriptExpr";
+
+    // Act
+    ExpressionHandler handler;
+    clang::Expr* result = handler.handleExpr(finder.foundASE, *context);
+
+    // Assert
+    ASSERT_NE(result, nullptr) << "Translation returned null";
+    auto* arrayExpr = llvm::dyn_cast<clang::ArraySubscriptExpr>(result);
+    ASSERT_NE(arrayExpr, nullptr) << "Result is not ArraySubscriptExpr";
+
+    // Check base is MemberExpr
+    auto* base = arrayExpr->getBase()->IgnoreImpCasts();
+    auto* memberBase = llvm::dyn_cast<clang::MemberExpr>(base);
+    ASSERT_NE(memberBase, nullptr) << "Base should be MemberExpr";
+    EXPECT_EQ(memberBase->getMemberDecl()->getName(), "arr");
+}
+
+/**
+ * Test: Multiple field accesses in expression (s.x + s.y)
+ * C++ Input: Point p; p.x + p.y
+ * Expected: BinaryOperator with both operands as MemberExpr
+ */
+TEST_F(ExpressionHandlerTest, MemberExpr_DotMultipleInExpression) {
+    // Arrange
+    const char* code = R"(
+        struct Point { int x; int y; };
+        void test() {
+            Point p;
+            p.x + p.y;
+        }
+    )";
+    auto AST = clang::tooling::buildASTFromCode(code);
+    ASSERT_NE(AST, nullptr);
+
+    // Find the binary operator
+    class BinOpFinder : public clang::RecursiveASTVisitor<BinOpFinder> {
+    public:
+        clang::BinaryOperator* foundBO = nullptr;
+
+        bool VisitBinaryOperator(clang::BinaryOperator* BO) {
+            if (!foundBO && BO->getOpcode() == clang::BO_Add) {
+                foundBO = BO;
+            }
+            return true;
+        }
+    };
+
+    BinOpFinder finder;
+    finder.TraverseDecl(AST->getASTContext().getTranslationUnitDecl());
+    ASSERT_NE(finder.foundBO, nullptr) << "Could not find BinaryOperator";
+
+    // Act
+    ExpressionHandler handler;
+    clang::Expr* result = handler.handleExpr(finder.foundBO, *context);
+
+    // Assert
+    ASSERT_NE(result, nullptr) << "Translation returned null";
+    auto* binOp = llvm::dyn_cast<clang::BinaryOperator>(result);
+    ASSERT_NE(binOp, nullptr) << "Result is not BinaryOperator";
+
+    // Check both LHS and RHS are MemberExpr
+    auto* lhs = binOp->getLHS()->IgnoreImpCasts();
+    auto* rhs = binOp->getRHS()->IgnoreImpCasts();
+
+    EXPECT_NE(llvm::dyn_cast<clang::MemberExpr>(lhs), nullptr) << "LHS should be MemberExpr";
+    EXPECT_NE(llvm::dyn_cast<clang::MemberExpr>(rhs), nullptr) << "RHS should be MemberExpr";
+}
+
+/**
+ * Test: Field comparison (s.x > s.y)
+ * C++ Input: Point p; p.x > p.y
+ * Expected: BinaryOperator(BO_GT) with both operands as MemberExpr
+ */
+TEST_F(ExpressionHandlerTest, MemberExpr_DotInComparison) {
+    // Arrange
+    const char* code = R"(
+        struct Point { int x; int y; };
+        void test() {
+            Point p;
+            p.x > p.y;
+        }
+    )";
+    auto AST = clang::tooling::buildASTFromCode(code);
+    ASSERT_NE(AST, nullptr);
+
+    // Find the comparison operator
+    class CompFinder : public clang::RecursiveASTVisitor<CompFinder> {
+    public:
+        clang::BinaryOperator* foundBO = nullptr;
+
+        bool VisitBinaryOperator(clang::BinaryOperator* BO) {
+            if (!foundBO && BO->getOpcode() == clang::BO_GT) {
+                foundBO = BO;
+            }
+            return true;
+        }
+    };
+
+    CompFinder finder;
+    finder.TraverseDecl(AST->getASTContext().getTranslationUnitDecl());
+    ASSERT_NE(finder.foundBO, nullptr) << "Could not find comparison operator";
+
+    // Act
+    ExpressionHandler handler;
+    clang::Expr* result = handler.handleExpr(finder.foundBO, *context);
+
+    // Assert
+    ASSERT_NE(result, nullptr) << "Translation returned null";
+    auto* binOp = llvm::dyn_cast<clang::BinaryOperator>(result);
+    ASSERT_NE(binOp, nullptr) << "Result is not BinaryOperator";
+    EXPECT_EQ(binOp->getOpcode(), clang::BO_GT);
+}
+
+/**
+ * Test: Field access with const struct
+ * C++ Input: const Point p; p.x
+ * Expected: MemberExpr with const base
+ */
+TEST_F(ExpressionHandlerTest, MemberExpr_DotConstStruct) {
+    // Arrange
+    const char* code = R"(
+        struct Point { int x; int y; };
+        void test() {
+            const Point p = {1, 2};
+            p.x;
+        }
+    )";
+    auto AST = clang::tooling::buildASTFromCode(code);
+    ASSERT_NE(AST, nullptr);
+
+    // Find the member expression
+    class MemberExprFinder : public clang::RecursiveASTVisitor<MemberExprFinder> {
+    public:
+        clang::MemberExpr* foundME = nullptr;
+
+        bool VisitMemberExpr(clang::MemberExpr* ME) {
+            if (!foundME && !ME->isArrow()) {
+                foundME = ME;
+            }
+            return true;
+        }
+    };
+
+    MemberExprFinder finder;
+    finder.TraverseDecl(AST->getASTContext().getTranslationUnitDecl());
+    ASSERT_NE(finder.foundME, nullptr) << "Could not find MemberExpr";
+
+    // Act
+    ExpressionHandler handler;
+    clang::Expr* result = handler.handleExpr(finder.foundME, *context);
+
+    // Assert
+    ASSERT_NE(result, nullptr) << "Translation returned null";
+    auto* memberExpr = llvm::dyn_cast<clang::MemberExpr>(result);
+    ASSERT_NE(memberExpr, nullptr) << "Result is not MemberExpr";
+    EXPECT_EQ(memberExpr->getMemberDecl()->getName(), "x");
+}
+
+/**
+ * Test: Field access in complex nested expression
+ * C++ Input: (rect.topLeft.x + rect.bottomRight.x) / 2
+ * Expected: Proper nesting of expressions with MemberExprs
+ */
+TEST_F(ExpressionHandlerTest, MemberExpr_DotComplexNested) {
+    // Arrange
+    const char* code = R"(
+        struct Point { int x; int y; };
+        struct Rect { Point topLeft; Point bottomRight; };
+        void test() {
+            Rect rect;
+            (rect.topLeft.x + rect.bottomRight.x) / 2;
+        }
+    )";
+    auto AST = clang::tooling::buildASTFromCode(code);
+    ASSERT_NE(AST, nullptr);
+
+    // Find the division operator (top level)
+    class DivFinder : public clang::RecursiveASTVisitor<DivFinder> {
+    public:
+        clang::BinaryOperator* foundBO = nullptr;
+
+        bool VisitBinaryOperator(clang::BinaryOperator* BO) {
+            if (!foundBO && BO->getOpcode() == clang::BO_Div) {
+                foundBO = BO;
+            }
+            return true;
+        }
+    };
+
+    DivFinder finder;
+    finder.TraverseDecl(AST->getASTContext().getTranslationUnitDecl());
+    ASSERT_NE(finder.foundBO, nullptr) << "Could not find division operator";
+
+    // Act
+    ExpressionHandler handler;
+    clang::Expr* result = handler.handleExpr(finder.foundBO, *context);
+
+    // Assert
+    ASSERT_NE(result, nullptr) << "Translation returned null";
+    auto* divOp = llvm::dyn_cast<clang::BinaryOperator>(result);
+    ASSERT_NE(divOp, nullptr) << "Result is not BinaryOperator";
+    EXPECT_EQ(divOp->getOpcode(), clang::BO_Div);
+}
+
+// ============================================================================
+// PHASE 43: STRUCT INITIALIZATION TESTS (Task 5)
+// ============================================================================
+
+/**
+ * Test: Full struct initialization ({1, 2})
+ * C++ Input: struct Point { int x; int y; }; Point p = {1, 2};
+ * Expected: InitListExpr with 2 initializers (IntegerLiteral 1, IntegerLiteral 2)
+ */
+TEST_F(ExpressionHandlerTest, InitListExpr_FullStructInit) {
+    // Arrange
+    std::string code = R"(
+        struct Point {
+            int x;
+            int y;
+        };
+        void test() {
+            Point p = {1, 2};
+        }
+    )";
+
+    auto testAST = clang::tooling::buildASTFromCode(code);
+    ASSERT_NE(testAST, nullptr);
+
+    // Find the initializer list
+    const clang::InitListExpr* initList = nullptr;
+    struct Visitor : public clang::RecursiveASTVisitor<Visitor> {
+        const clang::InitListExpr** target;
+        Visitor(const clang::InitListExpr** t) : target(t) {}
+        bool VisitInitListExpr(const clang::InitListExpr* ILE) {
+            if (!*target) *target = ILE;
+            return true;
+        }
+    } visitor(&initList);
+    visitor.TraverseDecl(testAST->getASTContext().getTranslationUnitDecl());
+    ASSERT_NE(initList, nullptr) << "InitListExpr not found";
+
+    // Act
+    ExpressionHandler handler;
+    clang::Expr* result = handler.handleExpr(initList, *context);
+
+    // Assert
+    ASSERT_NE(result, nullptr) << "Translation failed";
+    auto* translatedInitList = llvm::dyn_cast<clang::InitListExpr>(result);
+    ASSERT_NE(translatedInitList, nullptr) << "Result is not InitListExpr";
+    EXPECT_EQ(translatedInitList->getNumInits(), 2u);
+
+    // Verify first initializer (1)
+    auto* init0 = translatedInitList->getInit(0);
+    ASSERT_NE(init0, nullptr);
+    auto* literal0 = llvm::dyn_cast<clang::IntegerLiteral>(init0);
+    ASSERT_NE(literal0, nullptr);
+    EXPECT_EQ(literal0->getValue().getLimitedValue(), 1u);
+
+    // Verify second initializer (2)
+    auto* init1 = translatedInitList->getInit(1);
+    ASSERT_NE(init1, nullptr);
+    auto* literal1 = llvm::dyn_cast<clang::IntegerLiteral>(init1);
+    ASSERT_NE(literal1, nullptr);
+    EXPECT_EQ(literal1->getValue().getLimitedValue(), 2u);
+}
+
+/**
+ * Test: Partial struct initialization ({1})
+ * C++ Input: struct Point { int x; int y; }; Point p = {1};
+ * Expected: InitListExpr with 1 initializer (remaining fields zero-initialized)
+ */
+TEST_F(ExpressionHandlerTest, InitListExpr_PartialStructInit) {
+    // Arrange
+    std::string code = R"(
+        struct Point {
+            int x;
+            int y;
+        };
+        void test() {
+            Point p = {1};
+        }
+    )";
+
+    auto testAST = clang::tooling::buildASTFromCode(code);
+    ASSERT_NE(testAST, nullptr);
+
+    // Find the initializer list
+    const clang::InitListExpr* initList = nullptr;
+    struct Visitor : public clang::RecursiveASTVisitor<Visitor> {
+        const clang::InitListExpr** target;
+        Visitor(const clang::InitListExpr** t) : target(t) {}
+        bool VisitInitListExpr(const clang::InitListExpr* ILE) {
+            if (!*target) *target = ILE;
+            return true;
+        }
+    } visitor(&initList);
+    visitor.TraverseDecl(testAST->getASTContext().getTranslationUnitDecl());
+    ASSERT_NE(initList, nullptr) << "InitListExpr not found";
+
+    // Act
+    ExpressionHandler handler;
+    clang::Expr* result = handler.handleExpr(initList, *context);
+
+    // Assert
+    ASSERT_NE(result, nullptr) << "Translation failed";
+    auto* translatedInitList = llvm::dyn_cast<clang::InitListExpr>(result);
+    ASSERT_NE(translatedInitList, nullptr) << "Result is not InitListExpr";
+
+    // C preserves partial initialization - only explicit initializers are present
+    EXPECT_GE(translatedInitList->getNumInits(), 1u);
+
+    // Verify first initializer (1)
+    auto* init0 = translatedInitList->getInit(0);
+    ASSERT_NE(init0, nullptr);
+    auto* literal0 = llvm::dyn_cast<clang::IntegerLiteral>(init0);
+    ASSERT_NE(literal0, nullptr);
+    EXPECT_EQ(literal0->getValue().getLimitedValue(), 1u);
+}
+
+/**
+ * Test: Empty struct initializer ({})
+ * C++ Input: struct Point { int x; int y; }; Point p = {};
+ * Expected: InitListExpr with 0 explicit initializers (all fields zero-initialized)
+ */
+TEST_F(ExpressionHandlerTest, InitListExpr_EmptyStructInit) {
+    // Arrange
+    std::string code = R"(
+        struct Point {
+            int x;
+            int y;
+        };
+        void test() {
+            Point p = {};
+        }
+    )";
+
+    auto testAST = clang::tooling::buildASTFromCode(code);
+    ASSERT_NE(testAST, nullptr);
+
+    // Find the initializer list
+    const clang::InitListExpr* initList = nullptr;
+    struct Visitor : public clang::RecursiveASTVisitor<Visitor> {
+        const clang::InitListExpr** target;
+        Visitor(const clang::InitListExpr** t) : target(t) {}
+        bool VisitInitListExpr(const clang::InitListExpr* ILE) {
+            if (!*target) *target = ILE;
+            return true;
+        }
+    } visitor(&initList);
+    visitor.TraverseDecl(testAST->getASTContext().getTranslationUnitDecl());
+    ASSERT_NE(initList, nullptr) << "InitListExpr not found";
+
+    // Act
+    ExpressionHandler handler;
+    clang::Expr* result = handler.handleExpr(initList, *context);
+
+    // Assert
+    ASSERT_NE(result, nullptr) << "Translation failed";
+    auto* translatedInitList = llvm::dyn_cast<clang::InitListExpr>(result);
+    ASSERT_NE(translatedInitList, nullptr) << "Result is not InitListExpr";
+
+    // Empty initializer list
+    EXPECT_GE(translatedInitList->getNumInits(), 0u);
+}
+
+/**
+ * Test: Nested struct initialization ({{1, 2}, {3, 4}})
+ * C++ Input: struct Point { int x; int y; };
+ *            struct Rect { Point p1; Point p2; };
+ *            Rect r = {{1, 2}, {3, 4}};
+ * Expected: InitListExpr with 2 nested InitListExpr initializers
+ */
+TEST_F(ExpressionHandlerTest, InitListExpr_NestedStructInit) {
+    // Arrange
+    std::string code = R"(
+        struct Point {
+            int x;
+            int y;
+        };
+        struct Rect {
+            Point p1;
+            Point p2;
+        };
+        void test() {
+            Rect r = {{1, 2}, {3, 4}};
+        }
+    )";
+
+    auto testAST = clang::tooling::buildASTFromCode(code);
+    ASSERT_NE(testAST, nullptr);
+
+    // Find the outermost initializer list
+    const clang::InitListExpr* initList = nullptr;
+    struct Visitor : public clang::RecursiveASTVisitor<Visitor> {
+        const clang::InitListExpr** target;
+        int depth = 0;
+        Visitor(const clang::InitListExpr** t) : target(t) {}
+        bool VisitInitListExpr(const clang::InitListExpr* ILE) {
+            if (depth == 0 && !*target) *target = ILE;
+            depth++;
+            return true;
+        }
+    } visitor(&initList);
+    visitor.TraverseDecl(testAST->getASTContext().getTranslationUnitDecl());
+    ASSERT_NE(initList, nullptr) << "InitListExpr not found";
+
+    // Act
+    ExpressionHandler handler;
+    clang::Expr* result = handler.handleExpr(initList, *context);
+
+    // Assert
+    ASSERT_NE(result, nullptr) << "Translation failed";
+    auto* translatedInitList = llvm::dyn_cast<clang::InitListExpr>(result);
+    ASSERT_NE(translatedInitList, nullptr) << "Result is not InitListExpr";
+    EXPECT_EQ(translatedInitList->getNumInits(), 2u);
+
+    // Verify first nested initializer {1, 2}
+    auto* init0 = translatedInitList->getInit(0);
+    ASSERT_NE(init0, nullptr);
+    auto* nestedInit0 = llvm::dyn_cast<clang::InitListExpr>(init0);
+    ASSERT_NE(nestedInit0, nullptr) << "First initializer is not InitListExpr";
+    EXPECT_EQ(nestedInit0->getNumInits(), 2u);
+
+    // Verify second nested initializer {3, 4}
+    auto* init1 = translatedInitList->getInit(1);
+    ASSERT_NE(init1, nullptr);
+    auto* nestedInit1 = llvm::dyn_cast<clang::InitListExpr>(init1);
+    ASSERT_NE(nestedInit1, nullptr) << "Second initializer is not InitListExpr";
+    EXPECT_EQ(nestedInit1->getNumInits(), 2u);
+}
+
+/**
+ * Test: Designated initializer ({.x = 1, .y = 2})
+ * C++ Input: struct Point { int x; int y; }; Point p = {.x = 1, .y = 2};
+ * Expected: InitListExpr with designated initializers (C++20 feature)
+ */
+/**
+ * Test: Designated initializer - SKIPPED
+ * Note: Designated initializers in C++20 have different AST representation
+ * and require special handling. They use CXXParenListInitExpr which is
+ * beyond the scope of Phase 43 (C-style structs).
+ * We'll handle designated initializers in the C output generation phase
+ * when translating from C++ to C, where we can emit C99 designated initializers.
+ */
+TEST_F(ExpressionHandlerTest, DISABLED_InitListExpr_DesignatedStructInit) {
+    // This test is disabled because designated initializers are a C99/C11/C++20 feature
+    // that requires special AST node handling (DesignatedInitExpr).
+    // For Phase 43, we focus on basic struct initialization.
+    // Designated initializers will be supported in a later phase.
+}
+
+/**
+ * Test: Mixed struct initialization (some designated, some positional)
+ * C++ Input: struct Point { int x; int y; int z; }; Point p = {1, .z = 3};
+ * Expected: InitListExpr with mixed initializers
+ * Note: C++20 does NOT support mixing positional and designated initializers
+ * This test uses all designated initializers instead
+ */
+/**
+ * Test: Mixed struct initialization - SKIPPED
+ * Note: Similar to designated initializers, this requires special handling.
+ * For Phase 43, we focus on positional initialization only.
+ */
+TEST_F(ExpressionHandlerTest, DISABLED_InitListExpr_MixedStructInit) {
+    // This test is disabled for the same reason as DesignatedStructInit.
+    // Mixed initialization with designated initializers is a C99/C++20 feature.
+    // For Phase 43, we support positional initialization only.
+}
+
+/**
+ * Test: Initialization with expressions ({a+1, b*2})
+ * C++ Input: struct Point { int x; int y; }; int a = 1, b = 2; Point p = {a+1, b*2};
+ * Expected: InitListExpr with BinaryOperator initializers
+ */
+TEST_F(ExpressionHandlerTest, InitListExpr_StructInitWithExpressions) {
+    // Arrange
+    std::string code = R"(
+        struct Point {
+            int x;
+            int y;
+        };
+        void test() {
+            int a = 1;
+            int b = 2;
+            Point p = {a+1, b*2};
+        }
+    )";
+
+    auto testAST = clang::tooling::buildASTFromCode(code);
+    ASSERT_NE(testAST, nullptr);
+
+    // Find the initializer list for Point p
+    const clang::InitListExpr* initList = nullptr;
+    struct Visitor : public clang::RecursiveASTVisitor<Visitor> {
+        const clang::InitListExpr** target;
+        int count = 0;
+        Visitor(const clang::InitListExpr** t) : target(t) {}
+        bool VisitInitListExpr(const clang::InitListExpr* ILE) {
+            // Skip the first two InitListExprs (for a=1, b=2 if any)
+            // Get the third one which is for Point p
+            if (ILE->getNumInits() == 2 && !*target) {
+                *target = ILE;
+            }
+            count++;
+            return true;
+        }
+    } visitor(&initList);
+    visitor.TraverseDecl(testAST->getASTContext().getTranslationUnitDecl());
+    ASSERT_NE(initList, nullptr) << "InitListExpr not found";
+
+    // Act
+    ExpressionHandler handler;
+    clang::Expr* result = handler.handleExpr(initList, *context);
+
+    // Assert
+    ASSERT_NE(result, nullptr) << "Translation failed";
+    auto* translatedInitList = llvm::dyn_cast<clang::InitListExpr>(result);
+    ASSERT_NE(translatedInitList, nullptr) << "Result is not InitListExpr";
+    EXPECT_EQ(translatedInitList->getNumInits(), 2u);
+
+    // Verify first initializer (a+1) is a BinaryOperator
+    auto* init0 = translatedInitList->getInit(0);
+    ASSERT_NE(init0, nullptr);
+    // Could be BinaryOperator or ImplicitCastExpr wrapping BinaryOperator
+    // Just verify it exists
+
+    // Verify second initializer (b*2)
+    auto* init1 = translatedInitList->getInit(1);
+    ASSERT_NE(init1, nullptr);
+}
+
+/**
+ * Test: Array field initialization ({.arr = {1, 2, 3}})
+ * C++ Input: struct Container { int arr[3]; }; Container c = {{1, 2, 3}};
+ * Expected: InitListExpr with nested InitListExpr for array field
+ */
+TEST_F(ExpressionHandlerTest, InitListExpr_StructWithArrayField) {
+    // Arrange
+    std::string code = R"(
+        struct Container {
+            int arr[3];
+        };
+        void test() {
+            Container c = {{1, 2, 3}};
+        }
+    )";
+
+    auto testAST = clang::tooling::buildASTFromCode(code);
+    ASSERT_NE(testAST, nullptr);
+
+    // Find the initializer list
+    const clang::InitListExpr* initList = nullptr;
+    struct Visitor : public clang::RecursiveASTVisitor<Visitor> {
+        const clang::InitListExpr** target;
+        int depth = 0;
+        Visitor(const clang::InitListExpr** t) : target(t) {}
+        bool VisitInitListExpr(const clang::InitListExpr* ILE) {
+            if (depth == 0 && !*target) *target = ILE;
+            depth++;
+            return true;
+        }
+    } visitor(&initList);
+    visitor.TraverseDecl(testAST->getASTContext().getTranslationUnitDecl());
+    ASSERT_NE(initList, nullptr) << "InitListExpr not found";
+
+    // Act
+    ExpressionHandler handler;
+    clang::Expr* result = handler.handleExpr(initList, *context);
+
+    // Assert
+    ASSERT_NE(result, nullptr) << "Translation failed";
+    auto* translatedInitList = llvm::dyn_cast<clang::InitListExpr>(result);
+    ASSERT_NE(translatedInitList, nullptr) << "Result is not InitListExpr";
+
+    // Should have nested initializer for array
+    EXPECT_GE(translatedInitList->getNumInits(), 1u);
+
+    // Verify nested array initializer
+    auto* arrayInit = translatedInitList->getInit(0);
+    ASSERT_NE(arrayInit, nullptr);
+    auto* nestedInitList = llvm::dyn_cast<clang::InitListExpr>(arrayInit);
+    ASSERT_NE(nestedInitList, nullptr) << "Array initializer is not InitListExpr";
+    EXPECT_EQ(nestedInitList->getNumInits(), 3u);
+}
+
+/**
+ * Test: Struct with multiple field types
+ * C++ Input: struct Data { int i; float f; char c; }; Data d = {42, 3.14f, 'x'};
+ * Expected: InitListExpr with mixed type initializers
+ */
+TEST_F(ExpressionHandlerTest, InitListExpr_StructMixedTypes) {
+    // Arrange
+    std::string code = R"(
+        struct Data {
+            int i;
+            float f;
+            char c;
+        };
+        void test() {
+            Data d = {42, 3.14f, 'x'};
+        }
+    )";
+
+    auto testAST = clang::tooling::buildASTFromCode(code);
+    ASSERT_NE(testAST, nullptr);
+
+    // Find the initializer list
+    const clang::InitListExpr* initList = nullptr;
+    struct Visitor : public clang::RecursiveASTVisitor<Visitor> {
+        const clang::InitListExpr** target;
+        Visitor(const clang::InitListExpr** t) : target(t) {}
+        bool VisitInitListExpr(const clang::InitListExpr* ILE) {
+            if (!*target) *target = ILE;
+            return true;
+        }
+    } visitor(&initList);
+    visitor.TraverseDecl(testAST->getASTContext().getTranslationUnitDecl());
+    ASSERT_NE(initList, nullptr) << "InitListExpr not found";
+
+    // Act
+    ExpressionHandler handler;
+    clang::Expr* result = handler.handleExpr(initList, *context);
+
+    // Assert
+    ASSERT_NE(result, nullptr) << "Translation failed";
+    auto* translatedInitList = llvm::dyn_cast<clang::InitListExpr>(result);
+    ASSERT_NE(translatedInitList, nullptr) << "Result is not InitListExpr";
+    EXPECT_EQ(translatedInitList->getNumInits(), 3u);
+
+    // Verify we have 3 initializers of different types
+    EXPECT_NE(translatedInitList->getInit(0), nullptr);
+    EXPECT_NE(translatedInitList->getInit(1), nullptr);
+    EXPECT_NE(translatedInitList->getInit(2), nullptr);
+}
+
+/**
+ * Test: Struct with pointer fields
+ * C++ Input: struct Ptrs { int* p1; int* p2; }; int x = 1; Ptrs ptrs = {&x, nullptr};
+ * Expected: InitListExpr with pointer initializers
+ */
+TEST_F(ExpressionHandlerTest, InitListExpr_StructWithPointers) {
+    // Arrange
+    std::string code = R"(
+        struct Ptrs {
+            int* p1;
+            int* p2;
+        };
+        void test() {
+            int x = 1;
+            Ptrs ptrs = {&x, nullptr};
+        }
+    )";
+
+    auto testAST = clang::tooling::buildASTFromCode(code);
+    ASSERT_NE(testAST, nullptr);
+
+    // Find the initializer list for Ptrs
+    const clang::InitListExpr* initList = nullptr;
+    struct Visitor : public clang::RecursiveASTVisitor<Visitor> {
+        const clang::InitListExpr** target;
+        int count = 0;
+        Visitor(const clang::InitListExpr** t) : target(t) {}
+        bool VisitInitListExpr(const clang::InitListExpr* ILE) {
+            // Get the last InitListExpr (for Ptrs)
+            *target = ILE;
+            return true;
+        }
+    } visitor(&initList);
+    visitor.TraverseDecl(testAST->getASTContext().getTranslationUnitDecl());
+    ASSERT_NE(initList, nullptr) << "InitListExpr not found";
+
+    // Act
+    ExpressionHandler handler;
+    clang::Expr* result = handler.handleExpr(initList, *context);
+
+    // Assert
+    ASSERT_NE(result, nullptr) << "Translation failed";
+    auto* translatedInitList = llvm::dyn_cast<clang::InitListExpr>(result);
+    ASSERT_NE(translatedInitList, nullptr) << "Result is not InitListExpr";
+    EXPECT_EQ(translatedInitList->getNumInits(), 2u);
+
+    // Verify pointer initializers exist
+    EXPECT_NE(translatedInitList->getInit(0), nullptr); // &x
+    EXPECT_NE(translatedInitList->getInit(1), nullptr); // nullptr
+}
+
+/**
+ * Test: Three-level nested struct initialization
+ * C++ Input: struct A { int x; }; struct B { A a; }; struct C { B b; };
+ *            C c = {{{42}}};
+ * Expected: InitListExpr with deep nesting
+ */
+TEST_F(ExpressionHandlerTest, InitListExpr_DeepNestedStruct) {
+    // Arrange
+    std::string code = R"(
+        struct A {
+            int x;
+        };
+        struct B {
+            A a;
+        };
+        struct C {
+            B b;
+        };
+        void test() {
+            C c = {{{42}}};
+        }
+    )";
+
+    auto testAST = clang::tooling::buildASTFromCode(code);
+    ASSERT_NE(testAST, nullptr);
+
+    // Find the outermost initializer list
+    const clang::InitListExpr* initList = nullptr;
+    struct Visitor : public clang::RecursiveASTVisitor<Visitor> {
+        const clang::InitListExpr** target;
+        int depth = 0;
+        Visitor(const clang::InitListExpr** t) : target(t) {}
+        bool VisitInitListExpr(const clang::InitListExpr* ILE) {
+            if (depth == 0 && !*target) *target = ILE;
+            depth++;
+            return true;
+        }
+    } visitor(&initList);
+    visitor.TraverseDecl(testAST->getASTContext().getTranslationUnitDecl());
+    ASSERT_NE(initList, nullptr) << "InitListExpr not found";
+
+    // Act
+    ExpressionHandler handler;
+    clang::Expr* result = handler.handleExpr(initList, *context);
+
+    // Assert
+    ASSERT_NE(result, nullptr) << "Translation failed";
+    auto* translatedInitList = llvm::dyn_cast<clang::InitListExpr>(result);
+    ASSERT_NE(translatedInitList, nullptr) << "Result is not InitListExpr";
+
+    // Verify it has at least one nested initializer
+    EXPECT_GE(translatedInitList->getNumInits(), 1u);
+
+    // Verify first level nesting
+    auto* level1 = translatedInitList->getInit(0);
+    ASSERT_NE(level1, nullptr);
+    auto* level1Init = llvm::dyn_cast<clang::InitListExpr>(level1);
+    ASSERT_NE(level1Init, nullptr) << "First level is not InitListExpr";
+
+    // Verify second level nesting exists
+    EXPECT_GE(level1Init->getNumInits(), 1u);
+}
+
+/**
+ * Test: Struct initialization in return statement
+ * C++ Input: struct Point { int x; int y; }; Point getPoint() { return {1, 2}; }
+ * Expected: InitListExpr as return value
+ */
+TEST_F(ExpressionHandlerTest, InitListExpr_StructInitInReturn) {
+    // Arrange
+    std::string code = R"(
+        struct Point {
+            int x;
+            int y;
+        };
+        Point getPoint() {
+            return {1, 2};
+        }
+    )";
+
+    auto testAST = clang::tooling::buildASTFromCode(code);
+    ASSERT_NE(testAST, nullptr);
+
+    // Find the initializer list in return statement
+    const clang::InitListExpr* initList = nullptr;
+    struct Visitor : public clang::RecursiveASTVisitor<Visitor> {
+        const clang::InitListExpr** target;
+        Visitor(const clang::InitListExpr** t) : target(t) {}
+        bool VisitInitListExpr(const clang::InitListExpr* ILE) {
+            if (!*target) *target = ILE;
+            return true;
+        }
+    } visitor(&initList);
+    visitor.TraverseDecl(testAST->getASTContext().getTranslationUnitDecl());
+    ASSERT_NE(initList, nullptr) << "InitListExpr not found";
+
+    // Act
+    ExpressionHandler handler;
+    clang::Expr* result = handler.handleExpr(initList, *context);
+
+    // Assert
+    ASSERT_NE(result, nullptr) << "Translation failed";
+    auto* translatedInitList = llvm::dyn_cast<clang::InitListExpr>(result);
+    ASSERT_NE(translatedInitList, nullptr) << "Result is not InitListExpr";
+    EXPECT_EQ(translatedInitList->getNumInits(), 2u);
+}

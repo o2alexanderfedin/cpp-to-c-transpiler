@@ -35,7 +35,8 @@ bool ExpressionHandler::canHandle(const clang::Expr* E) const {
            llvm::isa<clang::CStyleCastExpr>(E) ||
            llvm::isa<clang::ArraySubscriptExpr>(E) ||
            llvm::isa<clang::InitListExpr>(E) ||
-           llvm::isa<clang::CXXNullPtrLiteralExpr>(E);
+           llvm::isa<clang::CXXNullPtrLiteralExpr>(E) ||
+           llvm::isa<clang::MemberExpr>(E);
 }
 
 clang::Expr* ExpressionHandler::handleExpr(const clang::Expr* E, HandlerContext& ctx) {
@@ -80,6 +81,9 @@ clang::Expr* ExpressionHandler::handleExpr(const clang::Expr* E, HandlerContext&
     }
     if (auto* NPE = llvm::dyn_cast<clang::CXXNullPtrLiteralExpr>(E)) {
         return translateNullPtrLiteral(NPE, ctx);
+    }
+    if (auto* ME = llvm::dyn_cast<clang::MemberExpr>(E)) {
+        return translateMemberExpr(ME, ctx);
     }
 
     // Unsupported expression type
@@ -475,6 +479,79 @@ clang::Expr* ExpressionHandler::translateNullPtrLiteral(
         cCtx.getTrivialTypeSourceInfo(voidPtrType),  // Type source info
         NPE->getLocation(),             // L paren
         NPE->getLocation()              // R paren
+    );
+}
+
+// ============================================================================
+// Member Expression Translation (Phase 43, Tasks 3 & 4)
+// ============================================================================
+
+clang::Expr* ExpressionHandler::translateMemberExpr(
+    const clang::MemberExpr* ME,
+    HandlerContext& ctx
+) {
+    // Member expressions are identical in C and C++
+    // Both dot (.) and arrow (->) operators work the same way
+    // Syntax: base.member or ptr->member
+    // We preserve the operator type (isArrow()) and recursively translate the base
+
+    clang::ASTContext& cCtx = ctx.getCContext();
+
+    // Recursively translate the base expression (the object or pointer)
+    clang::Expr* Base = handleExpr(ME->getBase(), ctx);
+    if (!Base) {
+        return nullptr;
+    }
+
+    // Get the member declaration
+    // In C++ AST, this is already a FieldDecl or VarDecl
+    // For C-style structs, we use it directly
+    // Note: For future class support, we'll need to map member decls
+    clang::ValueDecl* MemberDecl = ME->getMemberDecl();
+
+    // Handle template arguments if present
+    // For C-style structs (Phase 43), template arguments should not be present
+    // For future template support, we'll need to translate template args
+    const clang::TemplateArgumentListInfo* TemplateArgs = nullptr;
+    if (ME->hasExplicitTemplateArgs()) {
+        // For now, we don't support template arguments in member access
+        // This will be needed for template member functions in later phases
+        // For C-style structs, this should never be hit
+        return nullptr;
+    }
+
+    // Create C MemberExpr with same structure
+    // MemberExpr::Create parameters:
+    // - ASTContext
+    // - Base expression
+    // - IsArrow (true for ->, false for .)
+    // - OperatorLoc
+    // - NestedNameSpecifierLoc
+    // - TemplateKeywordLoc
+    // - MemberDecl
+    // - FoundDecl (for overloaded members)
+    // - MemberNameInfo
+    // - TemplateArgs (nullptr for C-style structs)
+    // - Type
+    // - ValueKind
+    // - ObjectKind
+    // - NonOdrUseReason
+
+    return clang::MemberExpr::Create(
+        cCtx,
+        Base,                           // Base expression
+        ME->isArrow(),                  // Is arrow operator (-> vs .)
+        ME->getOperatorLoc(),           // Operator location
+        ME->getQualifierLoc(),          // Nested name specifier
+        ME->getTemplateKeywordLoc(),    // Template keyword location
+        MemberDecl,                     // Member declaration
+        ME->getFoundDecl(),             // Found declaration
+        ME->getMemberNameInfo(),        // Member name info
+        TemplateArgs,                   // Template arguments (nullptr for C structs)
+        ME->getType(),                  // Result type
+        ME->getValueKind(),             // Value kind (lvalue/rvalue)
+        ME->getObjectKind(),            // Object kind
+        ME->isNonOdrUse()               // Non-ODR use
     );
 }
 

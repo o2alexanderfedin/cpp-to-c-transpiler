@@ -163,6 +163,14 @@ private:
         const clang::CXXNullPtrLiteralExpr* NPE,
         HandlerContext& ctx
     );
+
+    /**
+     * @brief Translate member expression (field access with . or ->)
+     */
+    clang::Expr* translateMemberExpr(
+        const clang::MemberExpr* ME,
+        HandlerContext& ctx
+    );
 };
 
 } // namespace cpptoc
