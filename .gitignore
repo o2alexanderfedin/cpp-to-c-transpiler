@@ -56,9 +56,15 @@ bin/
 lib/
 dist/
 *.dSYM/
-build_working/
-build_working_new/
+build/
+build-*/
+build_*/
+**/build/
+tests/**/build/
 emsdk/
+build-wasm-*/
+build-asan/
+build-test*/
 
 # Dependency management
 compile_commands.json
@@ -97,6 +103,7 @@ docs/_build/
 # Package managers
 .cache/
 *.egg-info/
+node_modules/
 
 # Python (if using Python scripts)
 __pycache__/
