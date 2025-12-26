@@ -34,7 +34,8 @@ bool ExpressionHandler::canHandle(const clang::Expr* E) const {
            llvm::isa<clang::ImplicitCastExpr>(E) ||
            llvm::isa<clang::CStyleCastExpr>(E) ||
            llvm::isa<clang::ArraySubscriptExpr>(E) ||
-           llvm::isa<clang::InitListExpr>(E);
+           llvm::isa<clang::InitListExpr>(E) ||
+           llvm::isa<clang::CXXNullPtrLiteralExpr>(E);
 }
 
 clang::Expr* ExpressionHandler::handleExpr(const clang::Expr* E, HandlerContext& ctx) {
@@ -76,6 +77,9 @@ clang::Expr* ExpressionHandler::handleExpr(const clang::Expr* E, HandlerContext&
     }
     if (auto* ILE = llvm::dyn_cast<clang::InitListExpr>(E)) {
         return translateInitListExpr(ILE, ctx);
+    }
+    if (auto* NPE = llvm::dyn_cast<clang::CXXNullPtrLiteralExpr>(E)) {
+        return translateNullPtrLiteral(NPE, ctx);
     }
 
     // Unsupported expression type
@@ -240,7 +244,8 @@ clang::Expr* ExpressionHandler::translateDeclRefExpr(
     clang::NamedDecl* foundDecl = const_cast<clang::NamedDecl*>(DRE->getFoundDecl());
     clang::ValueDecl* mutableValueDecl = const_cast<clang::ValueDecl*>(valueDecl);
 
-    return clang::DeclRefExpr::Create(
+    // Create the DeclRefExpr
+    clang::Expr* result = clang::DeclRefExpr::Create(
         cCtx,
         DRE->getQualifierLoc(),
         DRE->getTemplateKeywordLoc(),
@@ -251,6 +256,30 @@ clang::Expr* ExpressionHandler::translateDeclRefExpr(
         DRE->getValueKind(),
         foundDecl
     );
+
+    // Task 7: Reference Usage Translation
+    // If the C++ declaration is a reference type, we need to dereference it in C
+    // C++ references are automatically dereferenced, but in C we use pointers
+    // So: C++ "ref" becomes C "*ref"
+    if (cppDecl->getType()->isReferenceType()) {
+        // Get the pointee type (what the reference refers to)
+        clang::QualType pointeeType = cppDecl->getType()->getPointeeType();
+
+        // Wrap the DeclRefExpr in a dereference operator
+        result = clang::UnaryOperator::Create(
+            cCtx,
+            result,                         // Subexpression (the pointer)
+            clang::UO_Deref,                // Dereference operator
+            pointeeType,                    // Result type (pointee type)
+            clang::VK_LValue,               // Value kind
+            clang::OK_Ordinary,             // Object kind
+            DRE->getLocation(),             // Source location
+            false,                          // Can overflow (not relevant for deref)
+            clang::FPOptionsOverride()      // FP options
+        );
+    }
+
+    return result;
 }
 
 // ============================================================================
@@ -407,6 +436,45 @@ clang::Expr* ExpressionHandler::translateCStyleCastExpr(
         CCE->getTypeInfoAsWritten(),       // Type info as written
         CCE->getLParenLoc(),               // Left paren location
         CCE->getRParenLoc()                // Right paren location
+    );
+}
+
+// ============================================================================
+// Null Pointer Translation (Phase 42, Task 6)
+// ============================================================================
+
+clang::Expr* ExpressionHandler::translateNullPtrLiteral(
+    const clang::CXXNullPtrLiteralExpr* NPE,
+    HandlerContext& ctx
+) {
+    // C++11 nullptr → C NULL (represented as (void*)0)
+    // We create a C-style cast of 0 to void*
+    clang::ASTContext& cCtx = ctx.getCContext();
+
+    // Create integer literal with value 0
+    llvm::APInt zero(32, 0);
+    clang::IntegerLiteral* zeroLiteral = clang::IntegerLiteral::Create(
+        cCtx,
+        zero,
+        cCtx.IntTy,
+        NPE->getLocation()
+    );
+
+    // Cast 0 to void* to create NULL equivalent
+    // This matches C's NULL definition: ((void*)0)
+    clang::QualType voidPtrType = cCtx.getPointerType(cCtx.VoidTy);
+
+    return clang::CStyleCastExpr::Create(
+        cCtx,
+        voidPtrType,                    // Target type: void*
+        clang::VK_PRValue,              // Value kind
+        clang::CK_NullToPointer,        // Cast kind
+        zeroLiteral,                    // Subexpression: 0
+        nullptr,                        // Base path
+        clang::FPOptionsOverride(),     // FP options
+        cCtx.getTrivialTypeSourceInfo(voidPtrType),  // Type source info
+        NPE->getLocation(),             // L paren
+        NPE->getLocation()              // R paren
     );
 }
 

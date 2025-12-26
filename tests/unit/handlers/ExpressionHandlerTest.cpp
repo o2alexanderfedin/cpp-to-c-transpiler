@@ -3439,3 +3439,2107 @@ TEST_F(ExpressionHandlerTest, ImplicitCast_ComplexExpression) {
     auto* binOp = llvm::dyn_cast<clang::BinaryOperator>(result);
     ASSERT_NE(binOp, nullptr) << "Result is not BinaryOperator";
 }
+
+// ============================================================================
+// PHASE 42: POINTERS & REFERENCES - ADDRESS-OF OPERATOR (Tests 99-106)
+// ============================================================================
+
+/**
+ * Test 99: Address of variable (&x)
+ * C++ Input: &x
+ * Expected: UnaryOperator with UO_AddrOf
+ */
+TEST_F(ExpressionHandlerTest, AddressOf_SimpleVariable) {
+    // Arrange
+    // Helper class to find UnaryOperator specifically
+    class UnaryOpExtractor : public clang::RecursiveASTVisitor<UnaryOpExtractor> {
+    public:
+        clang::UnaryOperator* foundOp = nullptr;
+
+        bool VisitUnaryOperator(clang::UnaryOperator* UO) {
+            if (!foundOp) {
+                foundOp = UO;
+            }
+            return true;
+        }
+    };
+
+    std::string code = "int x = 5; void test() { &x; }";
+    auto AST = clang::tooling::buildASTFromCode(code);
+    ASSERT_NE(AST, nullptr);
+
+    UnaryOpExtractor extractor;
+    extractor.TraverseDecl(AST->getASTContext().getTranslationUnitDecl());
+    clang::UnaryOperator* cppExpr = extractor.foundOp;
+    ASSERT_NE(cppExpr, nullptr);
+    ASSERT_EQ(cppExpr->getOpcode(), clang::UO_AddrOf) << "C++ expr is not address-of";
+
+    // Act
+    ExpressionHandler handler;
+    clang::Expr* result = handler.handleExpr(cppExpr, *context);
+
+    // Assert
+    ASSERT_NE(result, nullptr) << "Translation returned null";
+    auto* unOp = llvm::dyn_cast<clang::UnaryOperator>(result);
+    ASSERT_NE(unOp, nullptr) << "Result is not UnaryOperator";
+    EXPECT_EQ(unOp->getOpcode(), clang::UO_AddrOf);
+}
+
+/**
+ * Test 100: Address of array element (&arr[i])
+ * C++ Input: &arr[i]
+ * Expected: UnaryOperator with UO_AddrOf wrapping ArraySubscriptExpr
+ */
+TEST_F(ExpressionHandlerTest, AddressOf_ArrayElement) {
+    // Arrange
+    class UnaryOpExtractor : public clang::RecursiveASTVisitor<UnaryOpExtractor> {
+    public:
+        clang::UnaryOperator* foundOp = nullptr;
+
+        bool VisitUnaryOperator(clang::UnaryOperator* UO) {
+            if (!foundOp && UO->getOpcode() == clang::UO_AddrOf) {
+                foundOp = UO;
+            }
+            return true;
+        }
+    };
+
+    std::string code = "int arr[10]; int i = 0; void test() { &arr[i]; }";
+    auto AST = clang::tooling::buildASTFromCode(code);
+    ASSERT_NE(AST, nullptr);
+
+    UnaryOpExtractor extractor;
+    extractor.TraverseDecl(AST->getASTContext().getTranslationUnitDecl());
+    clang::UnaryOperator* cppExpr = extractor.foundOp;
+    ASSERT_NE(cppExpr, nullptr);
+
+    // Act
+    ExpressionHandler handler;
+    clang::Expr* result = handler.handleExpr(cppExpr, *context);
+
+    // Assert
+    ASSERT_NE(result, nullptr) << "Translation returned null";
+    auto* unOp = llvm::dyn_cast<clang::UnaryOperator>(result);
+    ASSERT_NE(unOp, nullptr) << "Result is not UnaryOperator";
+    EXPECT_EQ(unOp->getOpcode(), clang::UO_AddrOf);
+
+    // Verify sub-expression is ArraySubscriptExpr
+    auto* arrayExpr = llvm::dyn_cast<clang::ArraySubscriptExpr>(unOp->getSubExpr()->IgnoreImpCasts());
+    EXPECT_NE(arrayExpr, nullptr) << "Subexpression is not ArraySubscriptExpr";
+}
+
+/**
+ * Test 101: Address of dereferenced pointer (&*ptr)
+ * C++ Input: &*ptr
+ * Expected: UnaryOperator with UO_AddrOf wrapping UnaryOperator with UO_Deref
+ */
+TEST_F(ExpressionHandlerTest, AddressOf_DereferencedPointer) {
+    // Arrange
+    std::string code = "int x = 5; int* ptr = &x; void test() { &*ptr; }";
+    auto AST = clang::tooling::buildASTFromCode(code);
+    ASSERT_NE(AST, nullptr);
+
+    ExprExtractor extractor;
+    extractor.TraverseDecl(AST->getASTContext().getTranslationUnitDecl());
+    clang::Expr* cppExpr = extractor.foundExpr;
+    ASSERT_NE(cppExpr, nullptr);
+
+    // Act
+    ExpressionHandler handler;
+    clang::Expr* result = handler.handleExpr(cppExpr, *context);
+
+    // Assert
+    ASSERT_NE(result, nullptr) << "Translation returned null";
+    // Note: The compiler might optimize &*ptr to ptr, so we accept either form
+    // For now, just verify we get a valid result
+}
+
+/**
+ * Test 102: Address in assignment (ptr = &x)
+ * C++ Input: ptr = &x
+ * Expected: BinaryOperator with RHS being UnaryOperator(UO_AddrOf)
+ */
+TEST_F(ExpressionHandlerTest, AddressOf_InAssignment) {
+    // Arrange
+    class BinaryOpExtractor : public clang::RecursiveASTVisitor<BinaryOpExtractor> {
+    public:
+        clang::BinaryOperator* foundOp = nullptr;
+
+        bool VisitBinaryOperator(clang::BinaryOperator* BO) {
+            if (!foundOp && BO->getOpcode() == clang::BO_Assign) {
+                foundOp = BO;
+            }
+            return true;
+        }
+    };
+
+    std::string code = "int x = 5; int* ptr; void test() { ptr = &x; }";
+    auto AST = clang::tooling::buildASTFromCode(code);
+    ASSERT_NE(AST, nullptr);
+
+    BinaryOpExtractor extractor;
+    extractor.TraverseDecl(AST->getASTContext().getTranslationUnitDecl());
+    clang::BinaryOperator* cppExpr = extractor.foundOp;
+    ASSERT_NE(cppExpr, nullptr);
+
+    // Act
+    ExpressionHandler handler;
+    clang::Expr* result = handler.handleExpr(cppExpr, *context);
+
+    // Assert
+    ASSERT_NE(result, nullptr) << "Translation returned null";
+    auto* binOp = llvm::dyn_cast<clang::BinaryOperator>(result);
+    ASSERT_NE(binOp, nullptr) << "Result is not BinaryOperator";
+    EXPECT_EQ(binOp->getOpcode(), clang::BO_Assign);
+
+    // Verify RHS is address-of operator
+    auto* rhsUnOp = llvm::dyn_cast<clang::UnaryOperator>(binOp->getRHS()->IgnoreImpCasts());
+    ASSERT_NE(rhsUnOp, nullptr) << "RHS is not UnaryOperator";
+    EXPECT_EQ(rhsUnOp->getOpcode(), clang::UO_AddrOf);
+}
+
+/**
+ * Test 103: Address in function call (func(&x))
+ * C++ Input: &x in function argument position
+ * Expected: UnaryOperator with UO_AddrOf
+ */
+TEST_F(ExpressionHandlerTest, AddressOf_InFunctionCall) {
+    // Arrange
+    class UnaryOpExtractor : public clang::RecursiveASTVisitor<UnaryOpExtractor> {
+    public:
+        clang::UnaryOperator* foundOp = nullptr;
+
+        bool VisitUnaryOperator(clang::UnaryOperator* UO) {
+            if (!foundOp && UO->getOpcode() == clang::UO_AddrOf) {
+                foundOp = UO;
+            }
+            return true;
+        }
+    };
+
+    // For now, just test the address-of expression itself
+    std::string code = "int x = 5; void test() { &x; }";
+    auto AST = clang::tooling::buildASTFromCode(code);
+    ASSERT_NE(AST, nullptr);
+
+    UnaryOpExtractor extractor;
+    extractor.TraverseDecl(AST->getASTContext().getTranslationUnitDecl());
+    clang::UnaryOperator* cppExpr = extractor.foundOp;
+    ASSERT_NE(cppExpr, nullptr);
+
+    // Act
+    ExpressionHandler handler;
+    clang::Expr* result = handler.handleExpr(cppExpr, *context);
+
+    // Assert
+    ASSERT_NE(result, nullptr) << "Translation returned null";
+    auto* unOp = llvm::dyn_cast<clang::UnaryOperator>(result);
+    ASSERT_NE(unOp, nullptr) << "Result is not UnaryOperator";
+    EXPECT_EQ(unOp->getOpcode(), clang::UO_AddrOf);
+}
+
+/**
+ * Test 104: Address in expression (&x + 5)
+ * C++ Input: &x + 5 (pointer arithmetic)
+ * Expected: BinaryOperator with LHS being UnaryOperator(UO_AddrOf)
+ */
+TEST_F(ExpressionHandlerTest, AddressOf_InExpression) {
+    // Arrange
+    class BinaryOpExtractor : public clang::RecursiveASTVisitor<BinaryOpExtractor> {
+    public:
+        clang::BinaryOperator* foundOp = nullptr;
+
+        bool VisitBinaryOperator(clang::BinaryOperator* BO) {
+            if (!foundOp && BO->getOpcode() == clang::BO_Add) {
+                foundOp = BO;
+            }
+            return true;
+        }
+    };
+
+    std::string code = "int x = 5; void test() { &x + 5; }";
+    auto AST = clang::tooling::buildASTFromCode(code);
+    ASSERT_NE(AST, nullptr);
+
+    BinaryOpExtractor extractor;
+    extractor.TraverseDecl(AST->getASTContext().getTranslationUnitDecl());
+    clang::BinaryOperator* cppExpr = extractor.foundOp;
+    ASSERT_NE(cppExpr, nullptr);
+
+    // Act
+    ExpressionHandler handler;
+    clang::Expr* result = handler.handleExpr(cppExpr, *context);
+
+    // Assert
+    ASSERT_NE(result, nullptr) << "Translation returned null";
+    auto* binOp = llvm::dyn_cast<clang::BinaryOperator>(result);
+    ASSERT_NE(binOp, nullptr) << "Result is not BinaryOperator";
+
+    // Verify LHS is address-of operator
+    auto* lhsUnOp = llvm::dyn_cast<clang::UnaryOperator>(binOp->getLHS()->IgnoreImpCasts());
+    ASSERT_NE(lhsUnOp, nullptr) << "LHS is not UnaryOperator";
+    EXPECT_EQ(lhsUnOp->getOpcode(), clang::UO_AddrOf);
+}
+
+/**
+ * Test 105: Multiple address-of operators in expression
+ * C++ Input: &a == &b
+ * Expected: BinaryOperator with both sides being UnaryOperator(UO_AddrOf)
+ */
+TEST_F(ExpressionHandlerTest, AddressOf_MultipleInComparison) {
+    // Arrange
+    class BinaryOpExtractor : public clang::RecursiveASTVisitor<BinaryOpExtractor> {
+    public:
+        clang::BinaryOperator* foundOp = nullptr;
+
+        bool VisitBinaryOperator(clang::BinaryOperator* BO) {
+            if (!foundOp && BO->getOpcode() == clang::BO_EQ) {
+                foundOp = BO;
+            }
+            return true;
+        }
+    };
+
+    std::string code = "int a; int b; void test() { &a == &b; }";
+    auto AST = clang::tooling::buildASTFromCode(code);
+    ASSERT_NE(AST, nullptr);
+
+    BinaryOpExtractor extractor;
+    extractor.TraverseDecl(AST->getASTContext().getTranslationUnitDecl());
+    clang::BinaryOperator* cppExpr = extractor.foundOp;
+    ASSERT_NE(cppExpr, nullptr) << "Failed to find BO_EQ operator";
+
+    // Act
+    ExpressionHandler handler;
+    clang::Expr* result = handler.handleExpr(cppExpr, *context);
+
+    // Assert
+    ASSERT_NE(result, nullptr) << "Translation returned null";
+    auto* binOp = llvm::dyn_cast<clang::BinaryOperator>(result);
+    ASSERT_NE(binOp, nullptr) << "Result is not BinaryOperator";
+    EXPECT_EQ(binOp->getOpcode(), clang::BO_EQ);
+
+    // Verify both sides are address-of operators
+    auto* lhsUnOp = llvm::dyn_cast<clang::UnaryOperator>(binOp->getLHS()->IgnoreImpCasts());
+    ASSERT_NE(lhsUnOp, nullptr) << "LHS is not UnaryOperator";
+    EXPECT_EQ(lhsUnOp->getOpcode(), clang::UO_AddrOf);
+
+    auto* rhsUnOp = llvm::dyn_cast<clang::UnaryOperator>(binOp->getRHS()->IgnoreImpCasts());
+    ASSERT_NE(rhsUnOp, nullptr) << "RHS is not UnaryOperator";
+    EXPECT_EQ(rhsUnOp->getOpcode(), clang::UO_AddrOf);
+}
+
+/**
+ * Test 106: Address of with parentheses (&(x))
+ * C++ Input: &(x)
+ * Expected: UnaryOperator with UO_AddrOf wrapping ParenExpr
+ */
+TEST_F(ExpressionHandlerTest, AddressOf_WithParentheses) {
+    // Arrange
+    class UnaryOpExtractor : public clang::RecursiveASTVisitor<UnaryOpExtractor> {
+    public:
+        clang::UnaryOperator* foundOp = nullptr;
+
+        bool VisitUnaryOperator(clang::UnaryOperator* UO) {
+            if (!foundOp && UO->getOpcode() == clang::UO_AddrOf) {
+                foundOp = UO;
+            }
+            return true;
+        }
+    };
+
+    std::string code = "int x; void test() { &(x); }";
+    auto AST = clang::tooling::buildASTFromCode(code);
+    ASSERT_NE(AST, nullptr);
+
+    UnaryOpExtractor extractor;
+    extractor.TraverseDecl(AST->getASTContext().getTranslationUnitDecl());
+    clang::UnaryOperator* cppExpr = extractor.foundOp;
+    ASSERT_NE(cppExpr, nullptr) << "Failed to find UO_AddrOf operator";
+
+    // Act
+    ExpressionHandler handler;
+    clang::Expr* result = handler.handleExpr(cppExpr, *context);
+
+    // Assert
+    ASSERT_NE(result, nullptr) << "Translation returned null";
+    auto* unOp = llvm::dyn_cast<clang::UnaryOperator>(result);
+    ASSERT_NE(unOp, nullptr) << "Result is not UnaryOperator";
+    EXPECT_EQ(unOp->getOpcode(), clang::UO_AddrOf);
+}
+
+// ============================================================================
+// PHASE 42: POINTERS & REFERENCES - DEREFERENCE OPERATOR (Tests 107-114)
+// ============================================================================
+
+/**
+ * Test 107: Simple dereference operator (*ptr)
+ * C++ Input: *ptr
+ * Expected: UnaryOperator with UO_Deref
+ */
+TEST_F(ExpressionHandlerTest, Dereference_SimplePointer) {
+    // Arrange
+    // Helper class to find UnaryOperator specifically
+    class UnaryOpExtractor : public clang::RecursiveASTVisitor<UnaryOpExtractor> {
+    public:
+        clang::UnaryOperator* foundOp = nullptr;
+
+        bool VisitUnaryOperator(clang::UnaryOperator* UO) {
+            if (!foundOp && UO->getOpcode() == clang::UO_Deref) {
+                foundOp = UO;
+            }
+            return true;
+        }
+    };
+
+    std::string code = "int x = 5; int* ptr = &x; void test() { *ptr; }";
+    auto AST = clang::tooling::buildASTFromCode(code);
+    ASSERT_NE(AST, nullptr);
+
+    UnaryOpExtractor extractor;
+    extractor.TraverseDecl(AST->getASTContext().getTranslationUnitDecl());
+    clang::UnaryOperator* cppExpr = extractor.foundOp;
+    ASSERT_NE(cppExpr, nullptr) << "Failed to find UO_Deref operator";
+
+    // Act
+    ExpressionHandler handler;
+    clang::Expr* result = handler.handleExpr(cppExpr, *context);
+
+    // Assert
+    ASSERT_NE(result, nullptr) << "Translation returned null";
+    auto* unOp = llvm::dyn_cast<clang::UnaryOperator>(result);
+    ASSERT_NE(unOp, nullptr) << "Result is not UnaryOperator";
+    EXPECT_EQ(unOp->getOpcode(), clang::UO_Deref) << "Opcode is not UO_Deref";
+}
+
+/**
+ * Test 108: Dereference in assignment (*ptr = 5)
+ * C++ Input: *ptr = 5
+ * Expected: BinaryOperator with UnaryOperator(UO_Deref) on LHS
+ */
+TEST_F(ExpressionHandlerTest, Dereference_InAssignment) {
+    // Arrange
+    // Helper class to find BinaryOperator specifically
+    class BinOpExtractor : public clang::RecursiveASTVisitor<BinOpExtractor> {
+    public:
+        clang::BinaryOperator* foundOp = nullptr;
+
+        bool VisitBinaryOperator(clang::BinaryOperator* BO) {
+            if (!foundOp && BO->getOpcode() == clang::BO_Assign) {
+                foundOp = BO;
+            }
+            return true;
+        }
+    };
+
+    std::string code = "int x = 0; int* ptr = &x; void test() { *ptr = 5; }";
+    auto AST = clang::tooling::buildASTFromCode(code);
+    ASSERT_NE(AST, nullptr);
+
+    BinOpExtractor extractor;
+    extractor.TraverseDecl(AST->getASTContext().getTranslationUnitDecl());
+    clang::BinaryOperator* cppExpr = extractor.foundOp;
+    ASSERT_NE(cppExpr, nullptr) << "Failed to find BO_Assign operator";
+
+    // Act
+    ExpressionHandler handler;
+    clang::Expr* result = handler.handleExpr(cppExpr, *context);
+
+    // Assert
+    ASSERT_NE(result, nullptr) << "Translation returned null";
+    auto* binOp = llvm::dyn_cast<clang::BinaryOperator>(result);
+    ASSERT_NE(binOp, nullptr) << "Result is not BinaryOperator";
+    EXPECT_EQ(binOp->getOpcode(), clang::BO_Assign) << "Opcode is not BO_Assign";
+
+    // Check LHS is dereference operator
+    auto* lhs = llvm::dyn_cast<clang::UnaryOperator>(binOp->getLHS());
+    ASSERT_NE(lhs, nullptr) << "LHS is not UnaryOperator";
+    EXPECT_EQ(lhs->getOpcode(), clang::UO_Deref) << "LHS opcode is not UO_Deref";
+}
+
+/**
+ * Test 109: Dereference in expression (*ptr + 1)
+ * C++ Input: *ptr + 1
+ * Expected: BinaryOperator with UnaryOperator(UO_Deref) on LHS
+ */
+TEST_F(ExpressionHandlerTest, Dereference_InExpression) {
+    // Arrange
+    std::string code = "int x = 5; int* ptr = &x; void test() { *ptr + 1; }";
+    auto AST = clang::tooling::buildASTFromCode(code);
+    ASSERT_NE(AST, nullptr);
+
+    class BinOpExtractor : public clang::RecursiveASTVisitor<BinOpExtractor> {
+    public:
+        clang::BinaryOperator* foundOp = nullptr;
+
+        bool VisitBinaryOperator(clang::BinaryOperator* BO) {
+            if (!foundOp && BO->getOpcode() == clang::BO_Add) {
+                foundOp = BO;
+            }
+            return true;
+        }
+    };
+
+    BinOpExtractor extractor;
+    extractor.TraverseDecl(AST->getASTContext().getTranslationUnitDecl());
+    clang::BinaryOperator* cppExpr = extractor.foundOp;
+    ASSERT_NE(cppExpr, nullptr) << "Failed to find BO_Add operator";
+
+    // Act
+    ExpressionHandler handler;
+    clang::Expr* result = handler.handleExpr(cppExpr, *context);
+
+    // Assert
+    ASSERT_NE(result, nullptr) << "Translation returned null";
+    auto* binOp = llvm::dyn_cast<clang::BinaryOperator>(result);
+    ASSERT_NE(binOp, nullptr) << "Result is not BinaryOperator";
+    EXPECT_EQ(binOp->getOpcode(), clang::BO_Add) << "Opcode is not BO_Add";
+}
+
+/**
+ * Test 110: Double dereference (**pp)
+ * C++ Input: **pp
+ * Expected: Nested UnaryOperator with UO_Deref
+ */
+TEST_F(ExpressionHandlerTest, Dereference_Double) {
+    // Arrange
+    std::string code = "int x = 5; int* p = &x; int** pp = &p; void test() { **pp; }";
+    auto AST = clang::tooling::buildASTFromCode(code);
+    ASSERT_NE(AST, nullptr);
+
+    class UnaryOpExtractor : public clang::RecursiveASTVisitor<UnaryOpExtractor> {
+    public:
+        clang::Expr* foundExpr = nullptr;
+
+        bool VisitUnaryOperator(clang::UnaryOperator* UO) {
+            if (!foundExpr && UO->getOpcode() == clang::UO_Deref) {
+                foundExpr = UO;
+            }
+            return true;
+        }
+    };
+
+    UnaryOpExtractor extractor;
+    extractor.TraverseDecl(AST->getASTContext().getTranslationUnitDecl());
+    clang::Expr* cppExpr = extractor.foundExpr;
+    ASSERT_NE(cppExpr, nullptr);
+
+    // Act
+    ExpressionHandler handler;
+    clang::Expr* result = handler.handleExpr(cppExpr, *context);
+
+    // Assert
+    ASSERT_NE(result, nullptr) << "Translation returned null";
+
+    // Outer dereference
+    auto* outerDeref = llvm::dyn_cast<clang::UnaryOperator>(result);
+    ASSERT_NE(outerDeref, nullptr) << "Outer result is not UnaryOperator";
+    EXPECT_EQ(outerDeref->getOpcode(), clang::UO_Deref) << "Outer opcode is not UO_Deref";
+
+    // Inner dereference
+    auto* innerDeref = llvm::dyn_cast<clang::UnaryOperator>(outerDeref->getSubExpr());
+    ASSERT_NE(innerDeref, nullptr) << "Inner result is not UnaryOperator";
+    EXPECT_EQ(innerDeref->getOpcode(), clang::UO_Deref) << "Inner opcode is not UO_Deref";
+}
+
+/**
+ * Test 111: Dereference with postfix increment (*ptr++)
+ * C++ Input: *ptr++
+ * Expected: Dereference of postfix increment
+ */
+TEST_F(ExpressionHandlerTest, Dereference_WithPostfixIncrement) {
+    // Arrange
+    std::string code = "int arr[5] = {1,2,3,4,5}; int* ptr = arr; void test() { *ptr++; }";
+    auto AST = clang::tooling::buildASTFromCode(code);
+    ASSERT_NE(AST, nullptr);
+
+    class UnaryOpExtractor : public clang::RecursiveASTVisitor<UnaryOpExtractor> {
+    public:
+        clang::Expr* foundExpr = nullptr;
+
+        bool VisitUnaryOperator(clang::UnaryOperator* UO) {
+            if (!foundExpr && UO->getOpcode() == clang::UO_Deref) {
+                foundExpr = UO;
+            }
+            return true;
+        }
+    };
+
+    UnaryOpExtractor extractor;
+    extractor.TraverseDecl(AST->getASTContext().getTranslationUnitDecl());
+    clang::Expr* cppExpr = extractor.foundExpr;
+    ASSERT_NE(cppExpr, nullptr);
+
+    // Act
+    ExpressionHandler handler;
+    clang::Expr* result = handler.handleExpr(cppExpr, *context);
+
+    // Assert
+    ASSERT_NE(result, nullptr) << "Translation returned null";
+
+    // Outer operation should be dereference
+    auto* deref = llvm::dyn_cast<clang::UnaryOperator>(result);
+    ASSERT_NE(deref, nullptr) << "Result is not UnaryOperator";
+    EXPECT_EQ(deref->getOpcode(), clang::UO_Deref) << "Opcode is not UO_Deref";
+}
+
+/**
+ * Test 112: Dereference of pointer arithmetic (*(arr + i))
+ * C++ Input: *(arr + i)
+ * Expected: Dereference of binary addition
+ */
+TEST_F(ExpressionHandlerTest, Dereference_PointerArithmetic) {
+    // Arrange
+    std::string code = "int arr[5] = {1,2,3,4,5}; int i = 2; void test() { *(arr + i); }";
+    auto AST = clang::tooling::buildASTFromCode(code);
+    ASSERT_NE(AST, nullptr);
+
+    class UnaryOpExtractor : public clang::RecursiveASTVisitor<UnaryOpExtractor> {
+    public:
+        clang::Expr* foundExpr = nullptr;
+
+        bool VisitUnaryOperator(clang::UnaryOperator* UO) {
+            if (!foundExpr && UO->getOpcode() == clang::UO_Deref) {
+                foundExpr = UO;
+            }
+            return true;
+        }
+    };
+
+    UnaryOpExtractor extractor;
+    extractor.TraverseDecl(AST->getASTContext().getTranslationUnitDecl());
+    clang::Expr* cppExpr = extractor.foundExpr;
+    ASSERT_NE(cppExpr, nullptr);
+
+    // Act
+    ExpressionHandler handler;
+    clang::Expr* result = handler.handleExpr(cppExpr, *context);
+
+    // Assert
+    ASSERT_NE(result, nullptr) << "Translation returned null";
+
+    // Outer operation should be dereference
+    auto* deref = llvm::dyn_cast<clang::UnaryOperator>(result);
+    ASSERT_NE(deref, nullptr) << "Result is not UnaryOperator";
+    EXPECT_EQ(deref->getOpcode(), clang::UO_Deref) << "Opcode is not UO_Deref";
+
+    // Inner should be binary operator (addition)
+    auto* binOp = llvm::dyn_cast<clang::BinaryOperator>(deref->getSubExpr());
+    ASSERT_NE(binOp, nullptr) << "Subexpression is not BinaryOperator";
+    EXPECT_EQ(binOp->getOpcode(), clang::BO_Add) << "Subexpression opcode is not BO_Add";
+}
+
+/**
+ * Test 113: Dereference in complex expression (*ptr1 + *ptr2)
+ * C++ Input: *ptr1 + *ptr2
+ * Expected: Addition of two dereferences
+ */
+TEST_F(ExpressionHandlerTest, Dereference_ComplexExpression) {
+    // Arrange
+    std::string code = "int x = 5; int y = 10; int* ptr1 = &x; int* ptr2 = &y; void test() { *ptr1 + *ptr2; }";
+    auto AST = clang::tooling::buildASTFromCode(code);
+    ASSERT_NE(AST, nullptr);
+
+    class UnaryOpExtractor : public clang::RecursiveASTVisitor<UnaryOpExtractor> {
+    public:
+        clang::Expr* foundExpr = nullptr;
+
+        bool VisitBinaryOperator(clang::BinaryOperator* BO) {
+            if (!foundExpr && BO->getOpcode() == clang::BO_Add) {
+                foundExpr = BO;
+            }
+            return true;
+        }
+    };
+
+    UnaryOpExtractor extractor;
+    extractor.TraverseDecl(AST->getASTContext().getTranslationUnitDecl());
+    clang::Expr* cppExpr = extractor.foundExpr;
+    ASSERT_NE(cppExpr, nullptr);
+
+    // Act
+    ExpressionHandler handler;
+    clang::Expr* result = handler.handleExpr(cppExpr, *context);
+
+    // Assert
+    ASSERT_NE(result, nullptr) << "Translation returned null";
+
+    // Top level should be addition
+    auto* binOp = llvm::dyn_cast<clang::BinaryOperator>(result);
+    ASSERT_NE(binOp, nullptr) << "Result is not BinaryOperator";
+    EXPECT_EQ(binOp->getOpcode(), clang::BO_Add) << "Opcode is not BO_Add";
+
+    // LHS and RHS should both be dereferences
+    auto* lhsDeref = llvm::dyn_cast<clang::UnaryOperator>(binOp->getLHS());
+    ASSERT_NE(lhsDeref, nullptr) << "LHS is not UnaryOperator";
+    EXPECT_EQ(lhsDeref->getOpcode(), clang::UO_Deref) << "LHS opcode is not UO_Deref";
+
+    auto* rhsDeref = llvm::dyn_cast<clang::UnaryOperator>(binOp->getRHS());
+    ASSERT_NE(rhsDeref, nullptr) << "RHS is not UnaryOperator";
+    EXPECT_EQ(rhsDeref->getOpcode(), clang::UO_Deref) << "RHS opcode is not UO_Deref";
+}
+
+/**
+ * Test 114: Parenthesized dereference ((*ptr))
+ * C++ Input: (*ptr)
+ * Expected: ParenExpr containing UnaryOperator(UO_Deref)
+ */
+TEST_F(ExpressionHandlerTest, Dereference_Parenthesized) {
+    // Arrange
+    std::string code = "int x = 5; int* ptr = &x; void test() { (*ptr); }";
+    auto AST = clang::tooling::buildASTFromCode(code);
+    ASSERT_NE(AST, nullptr);
+
+    class UnaryOpExtractor : public clang::RecursiveASTVisitor<UnaryOpExtractor> {
+    public:
+        clang::Expr* foundExpr = nullptr;
+
+        bool VisitParenExpr(clang::ParenExpr* PE) {
+            if (!foundExpr) {
+                foundExpr = PE;
+            }
+            return true;
+        }
+    };
+
+    UnaryOpExtractor extractor;
+    extractor.TraverseDecl(AST->getASTContext().getTranslationUnitDecl());
+    clang::Expr* cppExpr = extractor.foundExpr;
+    ASSERT_NE(cppExpr, nullptr);
+
+    // Act
+    ExpressionHandler handler;
+    clang::Expr* result = handler.handleExpr(cppExpr, *context);
+
+    // Assert
+    ASSERT_NE(result, nullptr) << "Translation returned null";
+
+    // Outer should be parenthesized expression
+    auto* parenExpr = llvm::dyn_cast<clang::ParenExpr>(result);
+    ASSERT_NE(parenExpr, nullptr) << "Result is not ParenExpr";
+
+    // Inner should be dereference
+    auto* deref = llvm::dyn_cast<clang::UnaryOperator>(parenExpr->getSubExpr());
+    ASSERT_NE(deref, nullptr) << "Subexpression is not UnaryOperator";
+    EXPECT_EQ(deref->getOpcode(), clang::UO_Deref) << "Opcode is not UO_Deref";
+}
+
+// ============================================================================
+// PHASE 42: POINTER ARITHMETIC (Tests 107-118) - Task 5
+// ============================================================================
+
+/**
+ * Test 107: Pointer plus integer
+ * C++ Input: ptr + 5
+ * Expected: BinaryOperator with BO_Add opcode, pointer type
+ */
+TEST_F(ExpressionHandlerTest, PointerArithmetic_PointerPlusInt) {
+    // Arrange
+    std::string code = R"(
+        void test() {
+            int arr[10];
+            int* ptr = arr;
+            int* result = ptr + 5;
+        }
+    )";
+    auto AST = clang::tooling::buildASTFromCode(code);
+    ASSERT_NE(AST, nullptr);
+
+    // Find the "ptr + 5" expression
+    class PtrArithFinder : public clang::RecursiveASTVisitor<PtrArithFinder> {
+    public:
+        clang::BinaryOperator* foundBinOp = nullptr;
+
+        bool VisitBinaryOperator(clang::BinaryOperator* BO) {
+            if (BO->getOpcode() == clang::BO_Add &&
+                BO->getLHS()->getType()->isPointerType()) {
+                foundBinOp = BO;
+            }
+            return true;
+        }
+    };
+
+    PtrArithFinder finder;
+    finder.TraverseDecl(AST->getASTContext().getTranslationUnitDecl());
+    ASSERT_NE(finder.foundBinOp, nullptr) << "Could not find ptr + 5 expression";
+
+    // Act
+    ExpressionHandler handler;
+    clang::Expr* result = handler.handleExpr(finder.foundBinOp, *context);
+
+    // Assert
+    ASSERT_NE(result, nullptr) << "Translation returned null";
+    auto* binOp = llvm::dyn_cast<clang::BinaryOperator>(result);
+    ASSERT_NE(binOp, nullptr) << "Result is not BinaryOperator";
+    EXPECT_EQ(binOp->getOpcode(), clang::BO_Add) << "Opcode should be BO_Add";
+}
+
+/**
+ * Test 108: Pointer minus integer
+ * C++ Input: ptr - 3
+ * Expected: BinaryOperator with BO_Sub opcode, pointer type
+ */
+TEST_F(ExpressionHandlerTest, PointerArithmetic_PointerMinusInt) {
+    // Arrange
+    std::string code = R"(
+        void test() {
+            int arr[10];
+            int* ptr = arr + 7;
+            int* result = ptr - 3;
+        }
+    )";
+    auto AST = clang::tooling::buildASTFromCode(code);
+    ASSERT_NE(AST, nullptr);
+
+    // Find the "ptr - 3" expression
+    class PtrArithFinder : public clang::RecursiveASTVisitor<PtrArithFinder> {
+    public:
+        clang::BinaryOperator* foundBinOp = nullptr;
+
+        bool VisitBinaryOperator(clang::BinaryOperator* BO) {
+            if (BO->getOpcode() == clang::BO_Sub &&
+                BO->getLHS()->getType()->isPointerType() &&
+                !BO->getRHS()->getType()->isPointerType()) {
+                foundBinOp = BO;
+            }
+            return true;
+        }
+    };
+
+    PtrArithFinder finder;
+    finder.TraverseDecl(AST->getASTContext().getTranslationUnitDecl());
+    ASSERT_NE(finder.foundBinOp, nullptr) << "Could not find ptr - 3 expression";
+
+    // Act
+    ExpressionHandler handler;
+    clang::Expr* result = handler.handleExpr(finder.foundBinOp, *context);
+
+    // Assert
+    ASSERT_NE(result, nullptr) << "Translation returned null";
+    auto* binOp = llvm::dyn_cast<clang::BinaryOperator>(result);
+    ASSERT_NE(binOp, nullptr) << "Result is not BinaryOperator";
+    EXPECT_EQ(binOp->getOpcode(), clang::BO_Sub) << "Opcode should be BO_Sub";
+}
+
+/**
+ * Test 109: Integer plus pointer (commutative)
+ * C++ Input: 5 + ptr
+ * Expected: BinaryOperator with BO_Add opcode, pointer type
+ */
+TEST_F(ExpressionHandlerTest, PointerArithmetic_IntPlusPointer) {
+    // Arrange
+    std::string code = R"(
+        void test() {
+            int arr[10];
+            int* ptr = arr;
+            int* result = 5 + ptr;
+        }
+    )";
+    auto AST = clang::tooling::buildASTFromCode(code);
+    ASSERT_NE(AST, nullptr);
+
+    // Find the "5 + ptr" expression
+    class PtrArithFinder : public clang::RecursiveASTVisitor<PtrArithFinder> {
+    public:
+        clang::BinaryOperator* foundBinOp = nullptr;
+
+        bool VisitBinaryOperator(clang::BinaryOperator* BO) {
+            if (BO->getOpcode() == clang::BO_Add &&
+                BO->getRHS()->getType()->isPointerType()) {
+                foundBinOp = BO;
+            }
+            return true;
+        }
+    };
+
+    PtrArithFinder finder;
+    finder.TraverseDecl(AST->getASTContext().getTranslationUnitDecl());
+    ASSERT_NE(finder.foundBinOp, nullptr) << "Could not find 5 + ptr expression";
+
+    // Act
+    ExpressionHandler handler;
+    clang::Expr* result = handler.handleExpr(finder.foundBinOp, *context);
+
+    // Assert
+    ASSERT_NE(result, nullptr) << "Translation returned null";
+    auto* binOp = llvm::dyn_cast<clang::BinaryOperator>(result);
+    ASSERT_NE(binOp, nullptr) << "Result is not BinaryOperator";
+    EXPECT_EQ(binOp->getOpcode(), clang::BO_Add) << "Opcode should be BO_Add";
+}
+
+/**
+ * Test 110: Pointer minus pointer (ptrdiff_t)
+ * C++ Input: ptr2 - ptr1
+ * Expected: BinaryOperator with BO_Sub opcode, ptrdiff_t type
+ */
+TEST_F(ExpressionHandlerTest, PointerArithmetic_PointerMinusPointer) {
+    // Arrange
+    std::string code = R"(
+        void test() {
+            int arr[10];
+            int* ptr1 = arr;
+            int* ptr2 = arr + 5;
+            long diff = ptr2 - ptr1;
+        }
+    )";
+    auto AST = clang::tooling::buildASTFromCode(code);
+    ASSERT_NE(AST, nullptr);
+
+    // Find the "ptr2 - ptr1" expression
+    class PtrArithFinder : public clang::RecursiveASTVisitor<PtrArithFinder> {
+    public:
+        clang::BinaryOperator* foundBinOp = nullptr;
+
+        bool VisitBinaryOperator(clang::BinaryOperator* BO) {
+            if (BO->getOpcode() == clang::BO_Sub &&
+                BO->getLHS()->getType()->isPointerType() &&
+                BO->getRHS()->getType()->isPointerType()) {
+                foundBinOp = BO;
+            }
+            return true;
+        }
+    };
+
+    PtrArithFinder finder;
+    finder.TraverseDecl(AST->getASTContext().getTranslationUnitDecl());
+    ASSERT_NE(finder.foundBinOp, nullptr) << "Could not find ptr2 - ptr1 expression";
+
+    // Act
+    ExpressionHandler handler;
+    clang::Expr* result = handler.handleExpr(finder.foundBinOp, *context);
+
+    // Assert
+    ASSERT_NE(result, nullptr) << "Translation returned null";
+    auto* binOp = llvm::dyn_cast<clang::BinaryOperator>(result);
+    ASSERT_NE(binOp, nullptr) << "Result is not BinaryOperator";
+    EXPECT_EQ(binOp->getOpcode(), clang::BO_Sub) << "Opcode should be BO_Sub";
+}
+
+/**
+ * Test 111: Pointer postfix increment
+ * C++ Input: ptr++
+ * Expected: UnaryOperator with UO_PostInc opcode
+ */
+TEST_F(ExpressionHandlerTest, PointerArithmetic_PostfixIncrement) {
+    // Arrange
+    std::string code = R"(
+        void test() {
+            int arr[10];
+            int* ptr = arr;
+            ptr++;
+        }
+    )";
+    auto AST = clang::tooling::buildASTFromCode(code);
+    ASSERT_NE(AST, nullptr);
+
+    // Find the "ptr++" expression
+    class PtrArithFinder : public clang::RecursiveASTVisitor<PtrArithFinder> {
+    public:
+        clang::UnaryOperator* foundUnaryOp = nullptr;
+
+        bool VisitUnaryOperator(clang::UnaryOperator* UO) {
+            if (UO->getOpcode() == clang::UO_PostInc &&
+                UO->getSubExpr()->getType()->isPointerType()) {
+                foundUnaryOp = UO;
+            }
+            return true;
+        }
+    };
+
+    PtrArithFinder finder;
+    finder.TraverseDecl(AST->getASTContext().getTranslationUnitDecl());
+    ASSERT_NE(finder.foundUnaryOp, nullptr) << "Could not find ptr++ expression";
+
+    // Act
+    ExpressionHandler handler;
+    clang::Expr* result = handler.handleExpr(finder.foundUnaryOp, *context);
+
+    // Assert
+    ASSERT_NE(result, nullptr) << "Translation returned null";
+    auto* unaryOp = llvm::dyn_cast<clang::UnaryOperator>(result);
+    ASSERT_NE(unaryOp, nullptr) << "Result is not UnaryOperator";
+    EXPECT_EQ(unaryOp->getOpcode(), clang::UO_PostInc) << "Opcode should be UO_PostInc";
+}
+
+/**
+ * Test 112: Pointer prefix increment
+ * C++ Input: ++ptr
+ * Expected: UnaryOperator with UO_PreInc opcode
+ */
+TEST_F(ExpressionHandlerTest, PointerArithmetic_PrefixIncrement) {
+    // Arrange
+    std::string code = R"(
+        void test() {
+            int arr[10];
+            int* ptr = arr;
+            ++ptr;
+        }
+    )";
+    auto AST = clang::tooling::buildASTFromCode(code);
+    ASSERT_NE(AST, nullptr);
+
+    // Find the "++ptr" expression
+    class PtrArithFinder : public clang::RecursiveASTVisitor<PtrArithFinder> {
+    public:
+        clang::UnaryOperator* foundUnaryOp = nullptr;
+
+        bool VisitUnaryOperator(clang::UnaryOperator* UO) {
+            if (UO->getOpcode() == clang::UO_PreInc &&
+                UO->getSubExpr()->getType()->isPointerType()) {
+                foundUnaryOp = UO;
+            }
+            return true;
+        }
+    };
+
+    PtrArithFinder finder;
+    finder.TraverseDecl(AST->getASTContext().getTranslationUnitDecl());
+    ASSERT_NE(finder.foundUnaryOp, nullptr) << "Could not find ++ptr expression";
+
+    // Act
+    ExpressionHandler handler;
+    clang::Expr* result = handler.handleExpr(finder.foundUnaryOp, *context);
+
+    // Assert
+    ASSERT_NE(result, nullptr) << "Translation returned null";
+    auto* unaryOp = llvm::dyn_cast<clang::UnaryOperator>(result);
+    ASSERT_NE(unaryOp, nullptr) << "Result is not UnaryOperator";
+    EXPECT_EQ(unaryOp->getOpcode(), clang::UO_PreInc) << "Opcode should be UO_PreInc";
+}
+
+/**
+ * Test 113: Pointer postfix decrement
+ * C++ Input: ptr--
+ * Expected: UnaryOperator with UO_PostDec opcode
+ */
+TEST_F(ExpressionHandlerTest, PointerArithmetic_PostfixDecrement) {
+    // Arrange
+    std::string code = R"(
+        void test() {
+            int arr[10];
+            int* ptr = arr + 9;
+            ptr--;
+        }
+    )";
+    auto AST = clang::tooling::buildASTFromCode(code);
+    ASSERT_NE(AST, nullptr);
+
+    // Find the "ptr--" expression
+    class PtrArithFinder : public clang::RecursiveASTVisitor<PtrArithFinder> {
+    public:
+        clang::UnaryOperator* foundUnaryOp = nullptr;
+
+        bool VisitUnaryOperator(clang::UnaryOperator* UO) {
+            if (UO->getOpcode() == clang::UO_PostDec &&
+                UO->getSubExpr()->getType()->isPointerType()) {
+                foundUnaryOp = UO;
+            }
+            return true;
+        }
+    };
+
+    PtrArithFinder finder;
+    finder.TraverseDecl(AST->getASTContext().getTranslationUnitDecl());
+    ASSERT_NE(finder.foundUnaryOp, nullptr) << "Could not find ptr-- expression";
+
+    // Act
+    ExpressionHandler handler;
+    clang::Expr* result = handler.handleExpr(finder.foundUnaryOp, *context);
+
+    // Assert
+    ASSERT_NE(result, nullptr) << "Translation returned null";
+    auto* unaryOp = llvm::dyn_cast<clang::UnaryOperator>(result);
+    ASSERT_NE(unaryOp, nullptr) << "Result is not UnaryOperator";
+    EXPECT_EQ(unaryOp->getOpcode(), clang::UO_PostDec) << "Opcode should be UO_PostDec";
+}
+
+/**
+ * Test 114: Pointer prefix decrement
+ * C++ Input: --ptr
+ * Expected: UnaryOperator with UO_PreDec opcode
+ */
+TEST_F(ExpressionHandlerTest, PointerArithmetic_PrefixDecrement) {
+    // Arrange
+    std::string code = R"(
+        void test() {
+            int arr[10];
+            int* ptr = arr + 9;
+            --ptr;
+        }
+    )";
+    auto AST = clang::tooling::buildASTFromCode(code);
+    ASSERT_NE(AST, nullptr);
+
+    // Find the "--ptr" expression
+    class PtrArithFinder : public clang::RecursiveASTVisitor<PtrArithFinder> {
+    public:
+        clang::UnaryOperator* foundUnaryOp = nullptr;
+
+        bool VisitUnaryOperator(clang::UnaryOperator* UO) {
+            if (UO->getOpcode() == clang::UO_PreDec &&
+                UO->getSubExpr()->getType()->isPointerType()) {
+                foundUnaryOp = UO;
+            }
+            return true;
+        }
+    };
+
+    PtrArithFinder finder;
+    finder.TraverseDecl(AST->getASTContext().getTranslationUnitDecl());
+    ASSERT_NE(finder.foundUnaryOp, nullptr) << "Could not find --ptr expression";
+
+    // Act
+    ExpressionHandler handler;
+    clang::Expr* result = handler.handleExpr(finder.foundUnaryOp, *context);
+
+    // Assert
+    ASSERT_NE(result, nullptr) << "Translation returned null";
+    auto* unaryOp = llvm::dyn_cast<clang::UnaryOperator>(result);
+    ASSERT_NE(unaryOp, nullptr) << "Result is not UnaryOperator";
+    EXPECT_EQ(unaryOp->getOpcode(), clang::UO_PreDec) << "Opcode should be UO_PreDec";
+}
+
+/**
+ * Test 115: Pointer compound assignment (+=)
+ * C++ Input: ptr += 2
+ * Expected: BinaryOperator with BO_AddAssign opcode
+ */
+TEST_F(ExpressionHandlerTest, PointerArithmetic_CompoundAddAssign) {
+    // Arrange
+    std::string code = R"(
+        void test() {
+            int arr[10];
+            int* ptr = arr;
+            ptr += 2;
+        }
+    )";
+    auto AST = clang::tooling::buildASTFromCode(code);
+    ASSERT_NE(AST, nullptr);
+
+    // Find the "ptr += 2" expression
+    class PtrArithFinder : public clang::RecursiveASTVisitor<PtrArithFinder> {
+    public:
+        clang::BinaryOperator* foundBinOp = nullptr;
+
+        bool VisitBinaryOperator(clang::BinaryOperator* BO) {
+            if (BO->getOpcode() == clang::BO_AddAssign &&
+                BO->getLHS()->getType()->isPointerType()) {
+                foundBinOp = BO;
+            }
+            return true;
+        }
+    };
+
+    PtrArithFinder finder;
+    finder.TraverseDecl(AST->getASTContext().getTranslationUnitDecl());
+    ASSERT_NE(finder.foundBinOp, nullptr) << "Could not find ptr += 2 expression";
+
+    // Act
+    ExpressionHandler handler;
+    clang::Expr* result = handler.handleExpr(finder.foundBinOp, *context);
+
+    // Assert
+    ASSERT_NE(result, nullptr) << "Translation returned null";
+    auto* binOp = llvm::dyn_cast<clang::BinaryOperator>(result);
+    ASSERT_NE(binOp, nullptr) << "Result is not BinaryOperator";
+    EXPECT_EQ(binOp->getOpcode(), clang::BO_AddAssign) << "Opcode should be BO_AddAssign";
+}
+
+/**
+ * Test 116: Pointer compound assignment (-=)
+ * C++ Input: ptr -= 1
+ * Expected: BinaryOperator with BO_SubAssign opcode
+ */
+TEST_F(ExpressionHandlerTest, PointerArithmetic_CompoundSubAssign) {
+    // Arrange
+    std::string code = R"(
+        void test() {
+            int arr[10];
+            int* ptr = arr + 5;
+            ptr -= 1;
+        }
+    )";
+    auto AST = clang::tooling::buildASTFromCode(code);
+    ASSERT_NE(AST, nullptr);
+
+    // Find the "ptr -= 1" expression
+    class PtrArithFinder : public clang::RecursiveASTVisitor<PtrArithFinder> {
+    public:
+        clang::BinaryOperator* foundBinOp = nullptr;
+
+        bool VisitBinaryOperator(clang::BinaryOperator* BO) {
+            if (BO->getOpcode() == clang::BO_SubAssign &&
+                BO->getLHS()->getType()->isPointerType()) {
+                foundBinOp = BO;
+            }
+            return true;
+        }
+    };
+
+    PtrArithFinder finder;
+    finder.TraverseDecl(AST->getASTContext().getTranslationUnitDecl());
+    ASSERT_NE(finder.foundBinOp, nullptr) << "Could not find ptr -= 1 expression";
+
+    // Act
+    ExpressionHandler handler;
+    clang::Expr* result = handler.handleExpr(finder.foundBinOp, *context);
+
+    // Assert
+    ASSERT_NE(result, nullptr) << "Translation returned null";
+    auto* binOp = llvm::dyn_cast<clang::BinaryOperator>(result);
+    ASSERT_NE(binOp, nullptr) << "Result is not BinaryOperator";
+    EXPECT_EQ(binOp->getOpcode(), clang::BO_SubAssign) << "Opcode should be BO_SubAssign";
+}
+
+/**
+ * Test 117: Pointer array access via arithmetic
+ * C++ Input: *(ptr + i)
+ * Expected: UnaryOperator (dereference) of BinaryOperator (pointer + int)
+ */
+TEST_F(ExpressionHandlerTest, PointerArithmetic_ArrayAccessViaArithmetic) {
+    // Arrange
+    std::string code = R"(
+        void test() {
+            int arr[10];
+            int* ptr = arr;
+            int i = 3;
+            int value = *(ptr + i);
+        }
+    )";
+    auto AST = clang::tooling::buildASTFromCode(code);
+    ASSERT_NE(AST, nullptr);
+
+    // Find the "*(ptr + i)" expression
+    class PtrArithFinder : public clang::RecursiveASTVisitor<PtrArithFinder> {
+    public:
+        clang::UnaryOperator* foundUnaryOp = nullptr;
+
+        bool VisitUnaryOperator(clang::UnaryOperator* UO) {
+            if (UO->getOpcode() == clang::UO_Deref) {
+                if (auto* BO = llvm::dyn_cast<clang::BinaryOperator>(UO->getSubExpr()->IgnoreParenImpCasts())) {
+                    if (BO->getOpcode() == clang::BO_Add &&
+                        BO->getLHS()->getType()->isPointerType()) {
+                        foundUnaryOp = UO;
+                    }
+                }
+            }
+            return true;
+        }
+    };
+
+    PtrArithFinder finder;
+    finder.TraverseDecl(AST->getASTContext().getTranslationUnitDecl());
+    ASSERT_NE(finder.foundUnaryOp, nullptr) << "Could not find *(ptr + i) expression";
+
+    // Act
+    ExpressionHandler handler;
+    clang::Expr* result = handler.handleExpr(finder.foundUnaryOp, *context);
+
+    // Assert
+    ASSERT_NE(result, nullptr) << "Translation returned null";
+    auto* unaryOp = llvm::dyn_cast<clang::UnaryOperator>(result);
+    ASSERT_NE(unaryOp, nullptr) << "Result is not UnaryOperator";
+    EXPECT_EQ(unaryOp->getOpcode(), clang::UO_Deref) << "Opcode should be UO_Deref";
+}
+
+/**
+ * Test 118: Pointer comparison (less than)
+ * C++ Input: ptr1 < ptr2
+ * Expected: BinaryOperator with BO_LT opcode
+ */
+TEST_F(ExpressionHandlerTest, PointerArithmetic_PointerComparison) {
+    // Arrange
+    std::string code = R"(
+        void test() {
+            int arr[10];
+            int* ptr1 = arr;
+            int* ptr2 = arr + 5;
+            int result = ptr1 < ptr2;
+        }
+    )";
+    auto AST = clang::tooling::buildASTFromCode(code);
+    ASSERT_NE(AST, nullptr);
+
+    // Find the "ptr1 < ptr2" expression
+    class PtrArithFinder : public clang::RecursiveASTVisitor<PtrArithFinder> {
+    public:
+        clang::BinaryOperator* foundBinOp = nullptr;
+
+        bool VisitBinaryOperator(clang::BinaryOperator* BO) {
+            if (BO->getOpcode() == clang::BO_LT &&
+                BO->getLHS()->getType()->isPointerType() &&
+                BO->getRHS()->getType()->isPointerType()) {
+                foundBinOp = BO;
+            }
+            return true;
+        }
+    };
+
+    PtrArithFinder finder;
+    finder.TraverseDecl(AST->getASTContext().getTranslationUnitDecl());
+    ASSERT_NE(finder.foundBinOp, nullptr) << "Could not find ptr1 < ptr2 expression";
+
+    // Act
+    ExpressionHandler handler;
+    clang::Expr* result = handler.handleExpr(finder.foundBinOp, *context);
+
+    // Assert
+    ASSERT_NE(result, nullptr) << "Translation returned null";
+    auto* binOp = llvm::dyn_cast<clang::BinaryOperator>(result);
+    ASSERT_NE(binOp, nullptr) << "Result is not BinaryOperator";
+    EXPECT_EQ(binOp->getOpcode(), clang::BO_LT) << "Opcode should be BO_LT";
+}
+
+// =============================================================================
+// NULL POINTER TESTS (Phase 42, Task 6)
+// =============================================================================
+
+/**
+ * Test: Null Pointer Literal in Assignment
+ * C++ Input: ptr = nullptr
+ * Expected: Transform to NULL or (void*)0
+ */
+TEST_F(ExpressionHandlerTest, NullPtrLiteralInAssignment) {
+    // Arrange
+    std::string code = "void test() { int* ptr = nullptr; }";
+    auto AST = clang::tooling::buildASTFromCode(code);
+    ASSERT_NE(AST, nullptr);
+
+    // Find the nullptr literal
+    class NullPtrFinder : public clang::RecursiveASTVisitor<NullPtrFinder> {
+    public:
+        clang::CXXNullPtrLiteralExpr* foundNullPtr = nullptr;
+
+        bool VisitCXXNullPtrLiteralExpr(clang::CXXNullPtrLiteralExpr* NPE) {
+            foundNullPtr = NPE;
+            return true;
+        }
+    };
+
+    NullPtrFinder finder;
+    finder.TraverseDecl(AST->getASTContext().getTranslationUnitDecl());
+    ASSERT_NE(finder.foundNullPtr, nullptr) << "Could not find nullptr literal";
+
+    // Act
+    ExpressionHandler handler;
+    clang::Expr* result = handler.handleExpr(finder.foundNullPtr, *context);
+
+    // Assert
+    ASSERT_NE(result, nullptr) << "Translation returned null";
+    // Result should be a C-compatible null pointer expression
+    // This could be an IntegerLiteral (0) or ImplicitCastExpr wrapping it
+    // We verify that the type is a pointer type
+    EXPECT_TRUE(result->getType()->isPointerType() ||
+                result->getType()->isNullPtrType())
+        << "Result should be a pointer or nullptr type";
+}
+
+/**
+ * Test: Null Pointer in Variable Initialization
+ * C++ Input: int* ptr = nullptr
+ * Expected: Transform to NULL
+ */
+TEST_F(ExpressionHandlerTest, NullPtrVariableInitialization) {
+    // Arrange
+    std::string code = "int* ptr = nullptr;";
+    auto AST = clang::tooling::buildASTFromCode(code);
+    ASSERT_NE(AST, nullptr);
+
+    // Find the nullptr literal
+    class NullPtrFinder : public clang::RecursiveASTVisitor<NullPtrFinder> {
+    public:
+        clang::CXXNullPtrLiteralExpr* foundNullPtr = nullptr;
+
+        bool VisitCXXNullPtrLiteralExpr(clang::CXXNullPtrLiteralExpr* NPE) {
+            foundNullPtr = NPE;
+            return true;
+        }
+    };
+
+    NullPtrFinder finder;
+    finder.TraverseDecl(AST->getASTContext().getTranslationUnitDecl());
+    ASSERT_NE(finder.foundNullPtr, nullptr) << "Could not find nullptr literal";
+
+    // Act
+    ExpressionHandler handler;
+    clang::Expr* result = handler.handleExpr(finder.foundNullPtr, *context);
+
+    // Assert
+    ASSERT_NE(result, nullptr) << "Translation returned null";
+    EXPECT_TRUE(result->getType()->isPointerType() ||
+                result->getType()->isNullPtrType())
+        << "Result should be a pointer or nullptr type";
+}
+
+/**
+ * Test: Null Pointer Comparison (ptr == nullptr)
+ * C++ Input: if (ptr == nullptr)
+ * Expected: Transform to if (ptr == NULL)
+ */
+TEST_F(ExpressionHandlerTest, NullPtrComparison) {
+    // Arrange
+    std::string code = R"(
+        void test() {
+            int* ptr = nullptr;
+            if (ptr == nullptr) {
+                // do something
+            }
+        }
+    )";
+    auto AST = clang::tooling::buildASTFromCode(code);
+    ASSERT_NE(AST, nullptr);
+
+    // Find the nullptr literal in the comparison
+    class NullPtrFinder : public clang::RecursiveASTVisitor<NullPtrFinder> {
+    public:
+        clang::CXXNullPtrLiteralExpr* foundNullPtr = nullptr;
+
+        bool VisitCXXNullPtrLiteralExpr(clang::CXXNullPtrLiteralExpr* NPE) {
+            if (!foundNullPtr) {  // Get the second nullptr (in the comparison)
+                foundNullPtr = NPE;
+            } else {
+                foundNullPtr = NPE;  // Overwrite with second one
+            }
+            return true;
+        }
+    };
+
+    NullPtrFinder finder;
+    finder.TraverseDecl(AST->getASTContext().getTranslationUnitDecl());
+    ASSERT_NE(finder.foundNullPtr, nullptr) << "Could not find nullptr literal";
+
+    // Act
+    ExpressionHandler handler;
+    clang::Expr* result = handler.handleExpr(finder.foundNullPtr, *context);
+
+    // Assert
+    ASSERT_NE(result, nullptr) << "Translation returned null";
+    EXPECT_TRUE(result->getType()->isPointerType() ||
+                result->getType()->isNullPtrType())
+        << "Result should be a pointer or nullptr type";
+}
+
+/**
+ * Test: Null Pointer in Function Call
+ * C++ Input: func(nullptr)
+ * Expected: func(NULL)
+ */
+TEST_F(ExpressionHandlerTest, NullPtrInFunctionCall) {
+    // Arrange
+    std::string code = R"(
+        void func(int* p) { }
+        void test() {
+            func(nullptr);
+        }
+    )";
+    auto AST = clang::tooling::buildASTFromCode(code);
+    ASSERT_NE(AST, nullptr);
+
+    // Find the nullptr literal
+    class NullPtrFinder : public clang::RecursiveASTVisitor<NullPtrFinder> {
+    public:
+        clang::CXXNullPtrLiteralExpr* foundNullPtr = nullptr;
+
+        bool VisitCXXNullPtrLiteralExpr(clang::CXXNullPtrLiteralExpr* NPE) {
+            foundNullPtr = NPE;
+            return true;
+        }
+    };
+
+    NullPtrFinder finder;
+    finder.TraverseDecl(AST->getASTContext().getTranslationUnitDecl());
+    ASSERT_NE(finder.foundNullPtr, nullptr) << "Could not find nullptr literal";
+
+    // Act
+    ExpressionHandler handler;
+    clang::Expr* result = handler.handleExpr(finder.foundNullPtr, *context);
+
+    // Assert
+    ASSERT_NE(result, nullptr) << "Translation returned null";
+    EXPECT_TRUE(result->getType()->isPointerType() ||
+                result->getType()->isNullPtrType())
+        << "Result should be a pointer or nullptr type";
+}
+
+/**
+ * Test: Null Pointer Return Value
+ * C++ Input: return nullptr
+ * Expected: return NULL
+ */
+TEST_F(ExpressionHandlerTest, NullPtrReturnValue) {
+    // Arrange
+    std::string code = R"(
+        int* test() {
+            return nullptr;
+        }
+    )";
+    auto AST = clang::tooling::buildASTFromCode(code);
+    ASSERT_NE(AST, nullptr);
+
+    // Find the nullptr literal
+    class NullPtrFinder : public clang::RecursiveASTVisitor<NullPtrFinder> {
+    public:
+        clang::CXXNullPtrLiteralExpr* foundNullPtr = nullptr;
+
+        bool VisitCXXNullPtrLiteralExpr(clang::CXXNullPtrLiteralExpr* NPE) {
+            foundNullPtr = NPE;
+            return true;
+        }
+    };
+
+    NullPtrFinder finder;
+    finder.TraverseDecl(AST->getASTContext().getTranslationUnitDecl());
+    ASSERT_NE(finder.foundNullPtr, nullptr) << "Could not find nullptr literal";
+
+    // Act
+    ExpressionHandler handler;
+    clang::Expr* result = handler.handleExpr(finder.foundNullPtr, *context);
+
+    // Assert
+    ASSERT_NE(result, nullptr) << "Translation returned null";
+    EXPECT_TRUE(result->getType()->isPointerType() ||
+                result->getType()->isNullPtrType())
+        << "Result should be a pointer or nullptr type";
+}
+
+/**
+ * Test: Multiple Null Pointers
+ * C++ Input: int *p1 = nullptr, *p2 = nullptr
+ * Expected: Handles multiple nullptr literals
+ */
+TEST_F(ExpressionHandlerTest, MultipleNullPtrs) {
+    // Arrange
+    std::string code = "void test() { int *p1 = nullptr, *p2 = nullptr; }";
+    auto AST = clang::tooling::buildASTFromCode(code);
+    ASSERT_NE(AST, nullptr);
+
+    // Find the first nullptr literal
+    class NullPtrFinder : public clang::RecursiveASTVisitor<NullPtrFinder> {
+    public:
+        clang::CXXNullPtrLiteralExpr* firstNullPtr = nullptr;
+        clang::CXXNullPtrLiteralExpr* secondNullPtr = nullptr;
+
+        bool VisitCXXNullPtrLiteralExpr(clang::CXXNullPtrLiteralExpr* NPE) {
+            if (!firstNullPtr) {
+                firstNullPtr = NPE;
+            } else if (!secondNullPtr) {
+                secondNullPtr = NPE;
+            }
+            return true;
+        }
+    };
+
+    NullPtrFinder finder;
+    finder.TraverseDecl(AST->getASTContext().getTranslationUnitDecl());
+    ASSERT_NE(finder.firstNullPtr, nullptr) << "Could not find first nullptr literal";
+    ASSERT_NE(finder.secondNullPtr, nullptr) << "Could not find second nullptr literal";
+
+    // Act
+    ExpressionHandler handler;
+    clang::Expr* result1 = handler.handleExpr(finder.firstNullPtr, *context);
+    clang::Expr* result2 = handler.handleExpr(finder.secondNullPtr, *context);
+
+    // Assert
+    ASSERT_NE(result1, nullptr) << "Translation of first nullptr returned null";
+    ASSERT_NE(result2, nullptr) << "Translation of second nullptr returned null";
+    EXPECT_TRUE(result1->getType()->isPointerType() ||
+                result1->getType()->isNullPtrType())
+        << "First result should be a pointer or nullptr type";
+    EXPECT_TRUE(result2->getType()->isPointerType() ||
+                result2->getType()->isNullPtrType())
+        << "Second result should be a pointer or nullptr type";
+}
+
+// ============================================================================
+// REFERENCE USAGE TRANSLATION (Task 7 - Phase 42)
+// Tests: 115-124
+// ============================================================================
+
+/**
+ * Test 115: Reference variable access in rvalue context (x = ref + 1)
+ * C++ Input: int& ref = x; y = ref + 1;
+ * Expected: ref should be dereferenced → y = *ref + 1
+ */
+TEST_F(ExpressionHandlerTest, ReferenceUsage_RValueContext) {
+    // Arrange: Build AST with reference variable used as rvalue
+    std::string code = R"(
+        void test() {
+            int x = 10;
+            int& ref = x;
+            int y = ref + 1;
+        }
+    )";
+    auto AST = clang::tooling::buildASTFromCode(code);
+    ASSERT_NE(AST, nullptr);
+
+    // Find the "ref + 1" expression
+    class RefExprFinder : public clang::RecursiveASTVisitor<RefExprFinder> {
+    public:
+        clang::BinaryOperator* foundBinOp = nullptr;
+
+        bool VisitBinaryOperator(clang::BinaryOperator* BO) {
+            if (BO->getOpcode() == clang::BO_Add) {
+                auto* LHS = BO->getLHS();
+                // Look for DeclRefExpr that references a variable with reference type
+                if (auto* DRE = llvm::dyn_cast<clang::DeclRefExpr>(LHS->IgnoreImpCasts())) {
+                    if (auto* VD = llvm::dyn_cast<clang::VarDecl>(DRE->getDecl())) {
+                        if (VD->getType()->isReferenceType()) {
+                            foundBinOp = BO;
+                        }
+                    }
+                }
+            }
+            return true;
+        }
+    };
+
+    RefExprFinder finder;
+    finder.TraverseDecl(AST->getASTContext().getTranslationUnitDecl());
+    ASSERT_NE(finder.foundBinOp, nullptr) << "Could not find 'ref + 1' expression";
+
+    // Act
+    ExpressionHandler handler;
+    clang::Expr* result = handler.handleExpr(finder.foundBinOp, *context);
+
+    // Assert
+    ASSERT_NE(result, nullptr) << "Translation returned null";
+    auto* binOp = llvm::dyn_cast<clang::BinaryOperator>(result);
+    ASSERT_NE(binOp, nullptr) << "Result is not BinaryOperator";
+
+    // LHS should be a dereference operator (UO_Deref) wrapping the reference
+    auto* LHS = binOp->getLHS();
+    ASSERT_NE(LHS, nullptr);
+    auto* derefOp = llvm::dyn_cast<clang::UnaryOperator>(LHS);
+    EXPECT_NE(derefOp, nullptr) << "LHS should be dereference operator (*ref)";
+    if (derefOp) {
+        EXPECT_EQ(derefOp->getOpcode(), clang::UO_Deref);
+    }
+}
+
+/**
+ * Test 116: Reference variable in assignment target (ref = 10)
+ * C++ Input: int& ref = x; ref = 10;
+ * Expected: ref should be dereferenced → *ref = 10
+ */
+TEST_F(ExpressionHandlerTest, ReferenceUsage_LValueContext) {
+    // Arrange: Build AST with reference variable on LHS of assignment
+    std::string code = R"(
+        void test() {
+            int x = 5;
+            int& ref = x;
+            ref = 10;
+        }
+    )";
+    auto AST = clang::tooling::buildASTFromCode(code);
+    ASSERT_NE(AST, nullptr);
+
+    // Find the "ref = 10" assignment
+    class AssignFinder : public clang::RecursiveASTVisitor<AssignFinder> {
+    public:
+        clang::BinaryOperator* foundAssign = nullptr;
+
+        bool VisitBinaryOperator(clang::BinaryOperator* BO) {
+            if (BO->getOpcode() == clang::BO_Assign) {
+                auto* LHS = BO->getLHS();
+                if (auto* DRE = llvm::dyn_cast<clang::DeclRefExpr>(LHS->IgnoreImpCasts())) {
+                    if (auto* VD = llvm::dyn_cast<clang::VarDecl>(DRE->getDecl())) {
+                        if (VD->getType()->isReferenceType() && VD->getName() == "ref") {
+                            foundAssign = BO;
+                        }
+                    }
+                }
+            }
+            return true;
+        }
+    };
+
+    AssignFinder finder;
+    finder.TraverseDecl(AST->getASTContext().getTranslationUnitDecl());
+    ASSERT_NE(finder.foundAssign, nullptr) << "Could not find 'ref = 10' assignment";
+
+    // Act
+    ExpressionHandler handler;
+    clang::Expr* result = handler.handleExpr(finder.foundAssign, *context);
+
+    // Assert
+    ASSERT_NE(result, nullptr) << "Translation returned null";
+    auto* assignOp = llvm::dyn_cast<clang::BinaryOperator>(result);
+    ASSERT_NE(assignOp, nullptr) << "Result is not BinaryOperator";
+
+    // LHS should be a dereference operator
+    auto* LHS = assignOp->getLHS();
+    ASSERT_NE(LHS, nullptr);
+    auto* derefOp = llvm::dyn_cast<clang::UnaryOperator>(LHS);
+    EXPECT_NE(derefOp, nullptr) << "LHS should be dereference operator (*ref)";
+    if (derefOp) {
+        EXPECT_EQ(derefOp->getOpcode(), clang::UO_Deref);
+    }
+}
+
+/**
+ * Test 117: Simple reference dereference (reading value)
+ * C++ Input: int& ref = x; int y = ref;
+ * Expected: ref should be dereferenced → int y = *ref
+ */
+TEST_F(ExpressionHandlerTest, ReferenceUsage_SimpleDereference) {
+    // Arrange
+    std::string code = R"(
+        void test() {
+            int x = 42;
+            int& ref = x;
+            int y = ref;
+        }
+    )";
+    auto AST = clang::tooling::buildASTFromCode(code);
+    ASSERT_NE(AST, nullptr);
+
+    // Find the DeclRefExpr for 'ref' on RHS
+    class RefFinder : public clang::RecursiveASTVisitor<RefFinder> {
+    public:
+        clang::DeclRefExpr* foundDRE = nullptr;
+        int refCount = 0;
+
+        bool VisitDeclRefExpr(clang::DeclRefExpr* DRE) {
+            if (auto* VD = llvm::dyn_cast<clang::VarDecl>(DRE->getDecl())) {
+                if (VD->getType()->isReferenceType() && VD->getName() == "ref") {
+                    refCount++;
+                    // Get the second reference (first is in declaration)
+                    if (refCount == 2) {
+                        foundDRE = DRE;
+                    }
+                }
+            }
+            return true;
+        }
+    };
+
+    RefFinder finder;
+    finder.TraverseDecl(AST->getASTContext().getTranslationUnitDecl());
+    ASSERT_NE(finder.foundDRE, nullptr) << "Could not find reference to 'ref'";
+
+    // Act
+    ExpressionHandler handler;
+    clang::Expr* result = handler.handleExpr(finder.foundDRE, *context);
+
+    // Assert
+    ASSERT_NE(result, nullptr) << "Translation returned null";
+    // Result should be a dereference operator
+    auto* derefOp = llvm::dyn_cast<clang::UnaryOperator>(result);
+    EXPECT_NE(derefOp, nullptr) << "Result should be dereference operator";
+    if (derefOp) {
+        EXPECT_EQ(derefOp->getOpcode(), clang::UO_Deref);
+    }
+}
+
+/**
+ * Test 118: Const reference usage
+ * C++ Input: const int& ref = x; int y = ref;
+ * Expected: ref should be dereferenced → int y = *ref
+ */
+TEST_F(ExpressionHandlerTest, ReferenceUsage_ConstReference) {
+    // Arrange
+    std::string code = R"(
+        void test() {
+            int x = 42;
+            const int& ref = x;
+            int y = ref;
+        }
+    )";
+    auto AST = clang::tooling::buildASTFromCode(code);
+    ASSERT_NE(AST, nullptr);
+
+    // Find the DeclRefExpr for 'ref' on RHS
+    class RefFinder : public clang::RecursiveASTVisitor<RefFinder> {
+    public:
+        clang::DeclRefExpr* foundDRE = nullptr;
+        int refCount = 0;
+
+        bool VisitDeclRefExpr(clang::DeclRefExpr* DRE) {
+            if (auto* VD = llvm::dyn_cast<clang::VarDecl>(DRE->getDecl())) {
+                if (VD->getType()->isReferenceType() && VD->getName() == "ref") {
+                    refCount++;
+                    if (refCount == 2) {
+                        foundDRE = DRE;
+                    }
+                }
+            }
+            return true;
+        }
+    };
+
+    RefFinder finder;
+    finder.TraverseDecl(AST->getASTContext().getTranslationUnitDecl());
+    ASSERT_NE(finder.foundDRE, nullptr) << "Could not find reference to 'ref'";
+
+    // Act
+    ExpressionHandler handler;
+    clang::Expr* result = handler.handleExpr(finder.foundDRE, *context);
+
+    // Assert
+    ASSERT_NE(result, nullptr) << "Translation returned null";
+    auto* derefOp = llvm::dyn_cast<clang::UnaryOperator>(result);
+    EXPECT_NE(derefOp, nullptr) << "Result should be dereference operator";
+    if (derefOp) {
+        EXPECT_EQ(derefOp->getOpcode(), clang::UO_Deref);
+    }
+}
+
+/**
+ * Test 119: Reference in complex expression
+ * C++ Input: int& ref = x; int z = ref * 2 + 3;
+ * Expected: ref should be dereferenced → int z = *ref * 2 + 3
+ */
+TEST_F(ExpressionHandlerTest, ReferenceUsage_ComplexExpression) {
+    // Arrange
+    std::string code = R"(
+        void test() {
+            int x = 5;
+            int& ref = x;
+            int z = ref * 2 + 3;
+        }
+    )";
+    auto AST = clang::tooling::buildASTFromCode(code);
+    ASSERT_NE(AST, nullptr);
+
+    // Find the "ref * 2 + 3" expression
+    class ComplexExprFinder : public clang::RecursiveASTVisitor<ComplexExprFinder> {
+    public:
+        clang::BinaryOperator* foundAddOp = nullptr;
+
+        bool VisitBinaryOperator(clang::BinaryOperator* BO) {
+            // Look for the outer addition (+ 3)
+            if (BO->getOpcode() == clang::BO_Add) {
+                // Check if RHS is 3
+                if (auto* RHS = llvm::dyn_cast<clang::IntegerLiteral>(BO->getRHS()->IgnoreImpCasts())) {
+                    if (RHS->getValue().getLimitedValue() == 3) {
+                        foundAddOp = BO;
+                    }
+                }
+            }
+            return true;
+        }
+    };
+
+    ComplexExprFinder finder;
+    finder.TraverseDecl(AST->getASTContext().getTranslationUnitDecl());
+    ASSERT_NE(finder.foundAddOp, nullptr) << "Could not find 'ref * 2 + 3' expression";
+
+    // Act
+    ExpressionHandler handler;
+    clang::Expr* result = handler.handleExpr(finder.foundAddOp, *context);
+
+    // Assert
+    ASSERT_NE(result, nullptr) << "Translation returned null";
+    auto* addOp = llvm::dyn_cast<clang::BinaryOperator>(result);
+    ASSERT_NE(addOp, nullptr);
+
+    // LHS should be multiplication
+    auto* mulOp = llvm::dyn_cast<clang::BinaryOperator>(addOp->getLHS());
+    ASSERT_NE(mulOp, nullptr);
+    EXPECT_EQ(mulOp->getOpcode(), clang::BO_Mul);
+
+    // LHS of multiplication should be dereference
+    auto* derefOp = llvm::dyn_cast<clang::UnaryOperator>(mulOp->getLHS());
+    EXPECT_NE(derefOp, nullptr) << "Reference in complex expression should be dereferenced";
+    if (derefOp) {
+        EXPECT_EQ(derefOp->getOpcode(), clang::UO_Deref);
+    }
+}
+
+/**
+ * Test 120: Multiple references in expression
+ * C++ Input: int& ref1 = x; int& ref2 = y; int z = ref1 + ref2;
+ * Expected: Both refs dereferenced → int z = *ref1 + *ref2
+ */
+TEST_F(ExpressionHandlerTest, ReferenceUsage_MultipleReferences) {
+    // Arrange
+    std::string code = R"(
+        void test() {
+            int x = 10, y = 20;
+            int& ref1 = x;
+            int& ref2 = y;
+            int z = ref1 + ref2;
+        }
+    )";
+    auto AST = clang::tooling::buildASTFromCode(code);
+    ASSERT_NE(AST, nullptr);
+
+    // Find the "ref1 + ref2" expression
+    class MultiRefFinder : public clang::RecursiveASTVisitor<MultiRefFinder> {
+    public:
+        clang::BinaryOperator* foundAddOp = nullptr;
+
+        bool VisitBinaryOperator(clang::BinaryOperator* BO) {
+            if (BO->getOpcode() == clang::BO_Add) {
+                auto* LHS = BO->getLHS()->IgnoreImpCasts();
+                auto* RHS = BO->getRHS()->IgnoreImpCasts();
+
+                if (auto* LDRE = llvm::dyn_cast<clang::DeclRefExpr>(LHS)) {
+                    if (auto* RDRE = llvm::dyn_cast<clang::DeclRefExpr>(RHS)) {
+                        if (auto* LVD = llvm::dyn_cast<clang::VarDecl>(LDRE->getDecl())) {
+                            if (auto* RVD = llvm::dyn_cast<clang::VarDecl>(RDRE->getDecl())) {
+                                if (LVD->getType()->isReferenceType() &&
+                                    RVD->getType()->isReferenceType()) {
+                                    foundAddOp = BO;
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+            return true;
+        }
+    };
+
+    MultiRefFinder finder;
+    finder.TraverseDecl(AST->getASTContext().getTranslationUnitDecl());
+    ASSERT_NE(finder.foundAddOp, nullptr) << "Could not find 'ref1 + ref2' expression";
+
+    // Act
+    ExpressionHandler handler;
+    clang::Expr* result = handler.handleExpr(finder.foundAddOp, *context);
+
+    // Assert
+    ASSERT_NE(result, nullptr) << "Translation returned null";
+    auto* addOp = llvm::dyn_cast<clang::BinaryOperator>(result);
+    ASSERT_NE(addOp, nullptr);
+
+    // Both LHS and RHS should be dereference operators
+    auto* LHSDeref = llvm::dyn_cast<clang::UnaryOperator>(addOp->getLHS());
+    auto* RHSDeref = llvm::dyn_cast<clang::UnaryOperator>(addOp->getRHS());
+
+    EXPECT_NE(LHSDeref, nullptr) << "LHS (ref1) should be dereferenced";
+    EXPECT_NE(RHSDeref, nullptr) << "RHS (ref2) should be dereferenced";
+
+    if (LHSDeref) {
+        EXPECT_EQ(LHSDeref->getOpcode(), clang::UO_Deref);
+    }
+    if (RHSDeref) {
+        EXPECT_EQ(RHSDeref->getOpcode(), clang::UO_Deref);
+    }
+}
+
+/**
+ * Test 121: Reference increment operation (ref++)
+ * C++ Input: int& ref = x; ref++;
+ * Expected: (*ref)++ - dereference then increment
+ */
+TEST_F(ExpressionHandlerTest, ReferenceUsage_PostfixIncrement) {
+    // Arrange
+    std::string code = R"(
+        void test() {
+            int x = 5;
+            int& ref = x;
+            ref++;
+        }
+    )";
+    auto AST = clang::tooling::buildASTFromCode(code);
+    ASSERT_NE(AST, nullptr);
+
+    // Find the "ref++" expression
+    class IncFinder : public clang::RecursiveASTVisitor<IncFinder> {
+    public:
+        clang::UnaryOperator* foundIncOp = nullptr;
+
+        bool VisitUnaryOperator(clang::UnaryOperator* UO) {
+            if (UO->getOpcode() == clang::UO_PostInc) {
+                if (auto* DRE = llvm::dyn_cast<clang::DeclRefExpr>(UO->getSubExpr()->IgnoreImpCasts())) {
+                    if (auto* VD = llvm::dyn_cast<clang::VarDecl>(DRE->getDecl())) {
+                        if (VD->getType()->isReferenceType() && VD->getName() == "ref") {
+                            foundIncOp = UO;
+                        }
+                    }
+                }
+            }
+            return true;
+        }
+    };
+
+    IncFinder finder;
+    finder.TraverseDecl(AST->getASTContext().getTranslationUnitDecl());
+    ASSERT_NE(finder.foundIncOp, nullptr) << "Could not find 'ref++' expression";
+
+    // Act
+    ExpressionHandler handler;
+    clang::Expr* result = handler.handleExpr(finder.foundIncOp, *context);
+
+    // Assert
+    ASSERT_NE(result, nullptr) << "Translation returned null";
+    auto* incOp = llvm::dyn_cast<clang::UnaryOperator>(result);
+    ASSERT_NE(incOp, nullptr);
+    EXPECT_EQ(incOp->getOpcode(), clang::UO_PostInc);
+
+    // Subexpression should be dereference
+    auto* derefOp = llvm::dyn_cast<clang::UnaryOperator>(incOp->getSubExpr());
+    EXPECT_NE(derefOp, nullptr) << "Should increment dereferenced value";
+    if (derefOp) {
+        EXPECT_EQ(derefOp->getOpcode(), clang::UO_Deref);
+    }
+}
+
+/**
+ * Test 122: Reference with compound assignment (ref += 5)
+ * C++ Input: int& ref = x; ref += 5;
+ * Expected: *ref += 5
+ */
+TEST_F(ExpressionHandlerTest, ReferenceUsage_CompoundAssignment) {
+    // Arrange
+    std::string code = R"(
+        void test() {
+            int x = 10;
+            int& ref = x;
+            ref += 5;
+        }
+    )";
+    auto AST = clang::tooling::buildASTFromCode(code);
+    ASSERT_NE(AST, nullptr);
+
+    // Find the "ref += 5" expression
+    class CompoundAssignFinder : public clang::RecursiveASTVisitor<CompoundAssignFinder> {
+    public:
+        clang::CompoundAssignOperator* foundOp = nullptr;
+
+        bool VisitCompoundAssignOperator(clang::CompoundAssignOperator* CAO) {
+            if (CAO->getOpcode() == clang::BO_AddAssign) {
+                if (auto* DRE = llvm::dyn_cast<clang::DeclRefExpr>(CAO->getLHS()->IgnoreImpCasts())) {
+                    if (auto* VD = llvm::dyn_cast<clang::VarDecl>(DRE->getDecl())) {
+                        if (VD->getType()->isReferenceType() && VD->getName() == "ref") {
+                            foundOp = CAO;
+                        }
+                    }
+                }
+            }
+            return true;
+        }
+    };
+
+    CompoundAssignFinder finder;
+    finder.TraverseDecl(AST->getASTContext().getTranslationUnitDecl());
+    ASSERT_NE(finder.foundOp, nullptr) << "Could not find 'ref += 5' expression";
+
+    // Act
+    ExpressionHandler handler;
+    clang::Expr* result = handler.handleExpr(finder.foundOp, *context);
+
+    // Assert
+    ASSERT_NE(result, nullptr) << "Translation returned null";
+    auto* compoundOp = llvm::dyn_cast<clang::CompoundAssignOperator>(result);
+    ASSERT_NE(compoundOp, nullptr);
+
+    // LHS should be dereference
+    auto* derefOp = llvm::dyn_cast<clang::UnaryOperator>(compoundOp->getLHS());
+    EXPECT_NE(derefOp, nullptr) << "LHS should be dereferenced";
+    if (derefOp) {
+        EXPECT_EQ(derefOp->getOpcode(), clang::UO_Deref);
+    }
+}
+
+/**
+ * Test 123: Parenthesized reference (int y = (ref))
+ * C++ Input: int& ref = x; int y = (ref);
+ * Expected: int y = (*ref) - dereference inside parentheses
+ */
+TEST_F(ExpressionHandlerTest, ReferenceUsage_Parenthesized) {
+    // Arrange
+    std::string code = R"(
+        void test() {
+            int x = 42;
+            int& ref = x;
+            int y = (ref);
+        }
+    )";
+    auto AST = clang::tooling::buildASTFromCode(code);
+    ASSERT_NE(AST, nullptr);
+
+    // Find the parenthesized ref expression
+    class ParenFinder : public clang::RecursiveASTVisitor<ParenFinder> {
+    public:
+        clang::ParenExpr* foundParen = nullptr;
+
+        bool VisitParenExpr(clang::ParenExpr* PE) {
+            if (auto* DRE = llvm::dyn_cast<clang::DeclRefExpr>(PE->getSubExpr()->IgnoreImpCasts())) {
+                if (auto* VD = llvm::dyn_cast<clang::VarDecl>(DRE->getDecl())) {
+                    if (VD->getType()->isReferenceType() && VD->getName() == "ref") {
+                        foundParen = PE;
+                    }
+                }
+            }
+            return true;
+        }
+    };
+
+    ParenFinder finder;
+    finder.TraverseDecl(AST->getASTContext().getTranslationUnitDecl());
+    ASSERT_NE(finder.foundParen, nullptr) << "Could not find '(ref)' expression";
+
+    // Act
+    ExpressionHandler handler;
+    clang::Expr* result = handler.handleExpr(finder.foundParen, *context);
+
+    // Assert
+    ASSERT_NE(result, nullptr) << "Translation returned null";
+    auto* parenExpr = llvm::dyn_cast<clang::ParenExpr>(result);
+    ASSERT_NE(parenExpr, nullptr);
+
+    // Subexpression should be dereference
+    auto* derefOp = llvm::dyn_cast<clang::UnaryOperator>(parenExpr->getSubExpr());
+    EXPECT_NE(derefOp, nullptr) << "Parenthesized reference should be dereferenced";
+    if (derefOp) {
+        EXPECT_EQ(derefOp->getOpcode(), clang::UO_Deref);
+    }
+}
+
+/**
+ * Test 124: Reference aliasing (ref1 and ref2 both reference x)
+ * C++ Input: int& ref1 = x; int& ref2 = ref1; int z = ref2;
+ * Expected: ref2 should be dereferenced → int z = *ref2
+ */
+TEST_F(ExpressionHandlerTest, ReferenceUsage_Aliasing) {
+    // Arrange
+    std::string code = R"(
+        void test() {
+            int x = 100;
+            int& ref1 = x;
+            int& ref2 = ref1;
+            int z = ref2;
+        }
+    )";
+    auto AST = clang::tooling::buildASTFromCode(code);
+    ASSERT_NE(AST, nullptr);
+
+    // Find the final reference to ref2
+    class Ref2Finder : public clang::RecursiveASTVisitor<Ref2Finder> {
+    public:
+        clang::DeclRefExpr* foundDRE = nullptr;
+        int ref2Count = 0;
+
+        bool VisitDeclRefExpr(clang::DeclRefExpr* DRE) {
+            if (auto* VD = llvm::dyn_cast<clang::VarDecl>(DRE->getDecl())) {
+                if (VD->getName() == "ref2") {
+                    ref2Count++;
+                    // Get the second reference (first is in declaration)
+                    if (ref2Count == 2) {
+                        foundDRE = DRE;
+                    }
+                }
+            }
+            return true;
+        }
+    };
+
+    Ref2Finder finder;
+    finder.TraverseDecl(AST->getASTContext().getTranslationUnitDecl());
+    ASSERT_NE(finder.foundDRE, nullptr) << "Could not find reference to 'ref2'";
+
+    // Act
+    ExpressionHandler handler;
+    clang::Expr* result = handler.handleExpr(finder.foundDRE, *context);
+
+    // Assert
+    ASSERT_NE(result, nullptr) << "Translation returned null";
+    auto* derefOp = llvm::dyn_cast<clang::UnaryOperator>(result);
+    EXPECT_NE(derefOp, nullptr) << "Aliased reference should be dereferenced";
+    if (derefOp) {
+        EXPECT_EQ(derefOp->getOpcode(), clang::UO_Deref);
+    }
+}

@@ -38,9 +38,8 @@ clang::Decl* VariableHandler::handleDecl(const clang::Decl* D, HandlerContext& c
     clang::StorageClass storageClass = cppVar->getStorageClass();
 
     // Step 2: Translate type
-    // For Phase 1, we'll use the type directly
-    // Phase 2 will add reference-to-pointer translation via ctx.translateType()
-    clang::QualType cType = cppType;
+    // Transform reference types to pointer types
+    clang::QualType cType = translateType(cppType, ctx);
 
     // Step 3: Translate storage class
     clang::StorageClass cStorageClass = translateStorageClass(storageClass);
@@ -119,6 +118,33 @@ clang::Decl* VariableHandler::handleDecl(const clang::Decl* D, HandlerContext& c
     ctx.registerDecl(cppVar, cVar);
 
     return cVar;
+}
+
+clang::QualType VariableHandler::translateType(
+    clang::QualType cppType,
+    HandlerContext& ctx
+) {
+    clang::ASTContext& cCtx = ctx.getCContext();
+
+    // Check for lvalue reference (T&)
+    if (const auto* lvalRefType = llvm::dyn_cast<clang::LValueReferenceType>(cppType.getTypePtr())) {
+        // Transform T& → T*
+        clang::QualType pointeeType = lvalRefType->getPointeeType();
+        return cCtx.getPointerType(pointeeType);
+    }
+
+    // Check for rvalue reference (T&&)
+    if (const auto* rvalRefType = llvm::dyn_cast<clang::RValueReferenceType>(cppType.getTypePtr())) {
+        // Transform T&& → T*
+        // Note: C has no equivalent for move semantics, but we translate to pointer
+        clang::QualType pointeeType = rvalRefType->getPointeeType();
+        return cCtx.getPointerType(pointeeType);
+    }
+
+    // Preserve const qualifiers on top level (e.g., const T → const T)
+    // For reference types, the const was already transferred to the pointee above
+    // For non-reference types, pass through unchanged
+    return cppType;
 }
 
 clang::Expr* VariableHandler::translateInitializer(

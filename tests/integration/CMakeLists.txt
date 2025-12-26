@@ -59,6 +59,15 @@ target_link_libraries(test_error_handling_gtest GTest::gtest GTest::gtest_main $
 add_executable(test_move_semantic_integration MoveSemanticIntegrationTest.cpp)
 target_link_libraries(test_move_semantic_integration GTest::gtest GTest::gtest_main ${CLANG_LIBS})
 
+# Phase 42: Pointers and References Integration Tests
+add_executable(PointersIntegrationTest handlers/PointersIntegrationTest.cpp)
+target_link_libraries(PointersIntegrationTest GTest::gtest GTest::gtest_main ${CLANG_LIBS})
+target_include_directories(PointersIntegrationTest PRIVATE
+    ${CMAKE_SOURCE_DIR}/../../include
+    ${CMAKE_SOURCE_DIR}/../../include/handlers
+    ${CMAKE_SOURCE_DIR}/../../src
+)
+
 # Enable testing
 enable_testing()
 include(GoogleTest)
@@ -73,6 +82,10 @@ gtest_discover_tests(test_move_semantic_integration
     WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
     PROPERTIES LABELS "integration;move_semantics;epic18"
 )
+gtest_discover_tests(PointersIntegrationTest
+    WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
+    PROPERTIES LABELS "integration;pointers;phase42"
+)
 
 message(STATUS "Integration tests configured:")
 message(STATUS "  - FeatureInteractionTest: 30 tests")
@@ -81,4 +94,5 @@ message(STATUS "  - EdgeCasesTest: 30 tests")
 message(STATUS "  - ErrorHandlingTest: 25 tests (legacy)")
 message(STATUS "  - ErrorHandlingTest_gtest: 25 tests (Google Test)")
 message(STATUS "  - MoveSemanticIntegrationTest: 16 tests (Google Test)")
-message(STATUS "  Total: 146 integration tests")
+message(STATUS "  - PointersIntegrationTest: 24 tests (Phase 42)")
+message(STATUS "  Total: 170 integration tests")

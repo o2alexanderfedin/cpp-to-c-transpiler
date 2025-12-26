@@ -4090,6 +4090,35 @@ gtest_discover_tests(GlobalVariablesIntegrationTest
 )
 
 # ============================================================================
+# Phase 42-01: Pointers & References Integration Tests
+# ============================================================================
+
+add_executable(PointersIntegrationTest
+    tests/integration/handlers/PointersIntegrationTest.cpp
+)
+
+target_include_directories(PointersIntegrationTest PRIVATE
+    ${CMAKE_SOURCE_DIR}/tests/fixtures
+    ${CMAKE_SOURCE_DIR}/include
+    ${LLVM_INCLUDE_DIRS}
+    ${CLANG_INCLUDE_DIRS}
+)
+
+target_link_libraries(PointersIntegrationTest PRIVATE
+    test_fixtures
+    cpptoc_core
+    clangTooling
+    clangAST
+    clangBasic
+    GTest::gtest
+    GTest::gtest_main
+)
+
+gtest_discover_tests(PointersIntegrationTest
+    WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
+)
+
+# ============================================================================
 # Phase 40-01: Control Flow E2E Tests
 # ============================================================================
 
@@ -4140,6 +4169,33 @@ target_link_libraries(GlobalVariablesE2ETest PRIVATE
 )
 
 gtest_discover_tests(GlobalVariablesE2ETest
+    WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
+)
+
+# ============================================================================
+# Phase 42-01: Pointers & References E2E Tests
+# ============================================================================
+
+add_executable(PointersE2ETest
+    tests/e2e/phase4/PointersE2ETest.cpp
+)
+
+target_include_directories(PointersE2ETest PRIVATE
+    ${CMAKE_SOURCE_DIR}/include
+    ${LLVM_INCLUDE_DIRS}
+    ${CLANG_INCLUDE_DIRS}
+)
+
+target_link_libraries(PointersE2ETest PRIVATE
+    cpptoc_core
+    clangTooling
+    clangAST
+    clangBasic
+    GTest::gtest
+    GTest::gtest_main
+)
+
+gtest_discover_tests(PointersE2ETest
     WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
 )
 

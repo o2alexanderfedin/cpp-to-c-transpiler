@@ -26,7 +26,10 @@ clang::Decl* FunctionHandler::handleDecl(const clang::Decl* D, HandlerContext& c
 
     // Get function properties
     std::string name = cppFunc->getNameAsString();
-    clang::QualType returnType = cppFunc->getReturnType();
+    clang::QualType cppReturnType = cppFunc->getReturnType();
+
+    // Translate return type (convert references to pointers)
+    clang::QualType cReturnType = translateType(cppReturnType, ctx);
 
     // Translate parameters
     std::vector<clang::ParmVarDecl*> cParams = translateParameters(cppFunc, ctx);
@@ -35,7 +38,7 @@ clang::Decl* FunctionHandler::handleDecl(const clang::Decl* D, HandlerContext& c
     clang::CNodeBuilder& builder = ctx.getBuilder();
     clang::FunctionDecl* cFunc = builder.funcDecl(
         name,
-        returnType,  // For now, pass through return type
+        cReturnType,
         cParams,
         nullptr      // No body yet
     );
@@ -44,6 +47,31 @@ clang::Decl* FunctionHandler::handleDecl(const clang::Decl* D, HandlerContext& c
     ctx.registerDecl(cppFunc, cFunc);
 
     return cFunc;
+}
+
+clang::QualType FunctionHandler::translateType(
+    clang::QualType cppType,
+    HandlerContext& ctx
+) {
+    clang::ASTContext& cCtx = ctx.getCContext();
+
+    // Check for lvalue reference (T&)
+    if (const auto* lvalRefType = llvm::dyn_cast<clang::LValueReferenceType>(cppType.getTypePtr())) {
+        // Transform T& → T*
+        clang::QualType pointeeType = lvalRefType->getPointeeType();
+        return cCtx.getPointerType(pointeeType);
+    }
+
+    // Check for rvalue reference (T&&)
+    if (const auto* rvalRefType = llvm::dyn_cast<clang::RValueReferenceType>(cppType.getTypePtr())) {
+        // Transform T&& → T*
+        // Note: C has no equivalent for move semantics, but we translate to pointer
+        clang::QualType pointeeType = rvalRefType->getPointeeType();
+        return cCtx.getPointerType(pointeeType);
+    }
+
+    // For non-reference types, pass through unchanged
+    return cppType;
 }
 
 std::vector<clang::ParmVarDecl*> FunctionHandler::translateParameters(
@@ -58,15 +86,19 @@ std::vector<clang::ParmVarDecl*> FunctionHandler::translateParameters(
         // Create identifier for parameter name
         clang::IdentifierInfo& II = cContext.Idents.get(cppParam->getNameAsString());
 
-        // Create C parameter with same name and type
+        // Translate parameter type (convert references to pointers)
+        clang::QualType cppParamType = cppParam->getType();
+        clang::QualType cParamType = translateType(cppParamType, ctx);
+
+        // Create C parameter with translated type
         clang::ParmVarDecl* cParam = clang::ParmVarDecl::Create(
             cContext,
             cContext.getTranslationUnitDecl(),
             clang::SourceLocation(),
             clang::SourceLocation(),
             &II,
-            cppParam->getType(),
-            cContext.getTrivialTypeSourceInfo(cppParam->getType()),
+            cParamType,
+            cContext.getTrivialTypeSourceInfo(cParamType),
             clang::SC_None,
             nullptr  // No default argument
         );

@@ -26,6 +26,7 @@
 #pragma once
 
 #include "handlers/ASTHandler.h"
+#include "clang/AST/ExprCXX.h"
 
 namespace cpptoc {
 
@@ -152,6 +153,14 @@ private:
      */
     clang::Expr* translateCStyleCastExpr(
         const clang::CStyleCastExpr* CCE,
+        HandlerContext& ctx
+    );
+
+    /**
+     * @brief Translate nullptr literal (C++11) to NULL (C)
+     */
+    clang::Expr* translateNullPtrLiteral(
+        const clang::CXXNullPtrLiteralExpr* NPE,
         HandlerContext& ctx
     );
 };

@@ -69,6 +69,24 @@ public:
 
 private:
     /**
+     * @brief Translate C++ type to C type
+     * @param cppType C++ type
+     * @param ctx Handler context
+     * @return C type (with reference types converted to pointers)
+     *
+     * Translation rules:
+     * - T& (lvalue reference) → T*
+     * - T&& (rvalue reference) → T*
+     * - const T& → const T*
+     * - T*& → T**
+     * - All other types → unchanged
+     */
+    clang::QualType translateType(
+        clang::QualType cppType,
+        HandlerContext& ctx
+    );
+
+    /**
      * @brief Translate variable initialization expression
      * @param init C++ initialization expression
      * @param ctx Handler context

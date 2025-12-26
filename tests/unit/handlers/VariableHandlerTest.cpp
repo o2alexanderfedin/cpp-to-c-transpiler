@@ -1780,9 +1780,911 @@ TEST_F(VariableHandlerTest, ConstArrayElements) {
     EXPECT_EQ(cArrayType->getSize().getZExtValue(), 5);
 }
 
-// TODO: Additional tests for Phase 3+:
-// - Test 44: Reference variable (int& ref = x) → int* ref = &x
-// - Test 45: Reference parameter translation
-// - Test 46: Array initialization with InitListExpr
-// - Test 47: Complex initialization expressions
-// - Test 48: Variable with cast expression init
+// ============================================================================
+// Phase 42 Tests: Pointer Type Declarations (Task 1)
+// ============================================================================
+
+/**
+ * Test 44: Simple pointer declaration
+ *
+ * C++ Input:  int* ptr;
+ * C Output:   int* ptr;
+ *
+ * Basic pointer type - should work already via QualType abstraction
+ */
+TEST_F(VariableHandlerTest, SimplePointerDeclaration) {
+    // Arrange
+    clang::ASTContext& ctx = cppAST->getASTContext();
+    clang::QualType ptrType = ctx.getPointerType(ctx.IntTy);
+
+    clang::IdentifierInfo& II = ctx.Idents.get("ptr");
+    clang::VarDecl* cppVar = clang::VarDecl::Create(
+        ctx,
+        ctx.getTranslationUnitDecl(),
+        clang::SourceLocation(),
+        clang::SourceLocation(),
+        &II,
+        ptrType,
+        ctx.getTrivialTypeSourceInfo(ptrType),
+        clang::SC_None
+    );
+
+    // Act
+    VariableHandler handler;
+    clang::Decl* result = handler.handleDecl(cppVar, *context);
+
+    // Assert
+    ASSERT_NE(result, nullptr) << "Translation returned null";
+    auto* cVar = llvm::dyn_cast<clang::VarDecl>(result);
+    ASSERT_NE(cVar, nullptr) << "Result is not a VarDecl";
+
+    EXPECT_EQ(cVar->getNameAsString(), "ptr") << "Variable name mismatch";
+    EXPECT_TRUE(cVar->getType()->isPointerType()) << "Type should be pointer";
+    EXPECT_FALSE(cVar->hasInit()) << "Should have no initializer";
+
+    // Verify pointee type
+    clang::QualType pointeeType = cVar->getType()->getPointeeType();
+    EXPECT_TRUE(pointeeType->isIntegerType()) << "Pointee should be int";
+}
+
+/**
+ * Test 45: Pointer with initialization
+ *
+ * C++ Input:  int* ptr = nullptr;
+ * C Output:   int* ptr = NULL;
+ *
+ * Note: For now we test pointer type preservation with simple init.
+ * nullptr handling will be tested in Task 6.
+ */
+TEST_F(VariableHandlerTest, PointerWithInitialization) {
+    // Arrange
+    clang::ASTContext& ctx = cppAST->getASTContext();
+    clang::QualType ptrType = ctx.getPointerType(ctx.IntTy);
+
+    // Create a simple integer literal as placeholder init (0 for NULL)
+    clang::IntegerLiteral* initExpr = createIntLiteral(0);
+
+    clang::IdentifierInfo& II = ctx.Idents.get("ptr");
+    clang::VarDecl* cppVar = clang::VarDecl::Create(
+        ctx,
+        ctx.getTranslationUnitDecl(),
+        clang::SourceLocation(),
+        clang::SourceLocation(),
+        &II,
+        ptrType,
+        ctx.getTrivialTypeSourceInfo(ptrType),
+        clang::SC_None
+    );
+    cppVar->setInit(initExpr);
+
+    // Act
+    VariableHandler handler;
+    clang::Decl* result = handler.handleDecl(cppVar, *context);
+
+    // Assert
+    ASSERT_NE(result, nullptr);
+    auto* cVar = llvm::dyn_cast<clang::VarDecl>(result);
+    ASSERT_NE(cVar, nullptr);
+
+    EXPECT_EQ(cVar->getNameAsString(), "ptr");
+    EXPECT_TRUE(cVar->getType()->isPointerType());
+    EXPECT_TRUE(cVar->hasInit()) << "Should have initializer";
+}
+
+/**
+ * Test 46: Pointer-to-pointer (double pointer)
+ *
+ * C++ Input:  int** pp;
+ * C Output:   int** pp;
+ */
+TEST_F(VariableHandlerTest, PointerToPointer) {
+    // Arrange
+    clang::ASTContext& ctx = cppAST->getASTContext();
+    clang::QualType intPtrType = ctx.getPointerType(ctx.IntTy);
+    clang::QualType ptrPtrType = ctx.getPointerType(intPtrType);
+
+    clang::IdentifierInfo& II = ctx.Idents.get("pp");
+    clang::VarDecl* cppVar = clang::VarDecl::Create(
+        ctx,
+        ctx.getTranslationUnitDecl(),
+        clang::SourceLocation(),
+        clang::SourceLocation(),
+        &II,
+        ptrPtrType,
+        ctx.getTrivialTypeSourceInfo(ptrPtrType),
+        clang::SC_None
+    );
+
+    // Act
+    VariableHandler handler;
+    clang::Decl* result = handler.handleDecl(cppVar, *context);
+
+    // Assert
+    ASSERT_NE(result, nullptr);
+    auto* cVar = llvm::dyn_cast<clang::VarDecl>(result);
+    ASSERT_NE(cVar, nullptr);
+
+    EXPECT_EQ(cVar->getNameAsString(), "pp");
+    EXPECT_TRUE(cVar->getType()->isPointerType()) << "Top level should be pointer";
+
+    // Verify it's pointer to pointer
+    clang::QualType pointeeType = cVar->getType()->getPointeeType();
+    EXPECT_TRUE(pointeeType->isPointerType()) << "Pointee should also be pointer";
+
+    // Verify ultimate pointee is int
+    clang::QualType ultimatePointee = pointeeType->getPointeeType();
+    EXPECT_TRUE(ultimatePointee->isIntegerType()) << "Ultimate pointee should be int";
+}
+
+/**
+ * Test 47: Const pointer (int* const ptr)
+ *
+ * C++ Input:  int* const ptr;
+ * C Output:   int* const ptr;
+ *
+ * Const qualifier on pointer itself, not pointee
+ */
+TEST_F(VariableHandlerTest, ConstPointerDeclaration) {
+    // Arrange
+    clang::ASTContext& ctx = cppAST->getASTContext();
+    clang::QualType intPtrType = ctx.getPointerType(ctx.IntTy);
+    clang::QualType constIntPtrType = intPtrType.withConst();
+
+    clang::IdentifierInfo& II = ctx.Idents.get("ptr");
+    clang::VarDecl* cppVar = clang::VarDecl::Create(
+        ctx,
+        ctx.getTranslationUnitDecl(),
+        clang::SourceLocation(),
+        clang::SourceLocation(),
+        &II,
+        constIntPtrType,
+        ctx.getTrivialTypeSourceInfo(constIntPtrType),
+        clang::SC_None
+    );
+
+    // Act
+    VariableHandler handler;
+    clang::Decl* result = handler.handleDecl(cppVar, *context);
+
+    // Assert
+    ASSERT_NE(result, nullptr);
+    auto* cVar = llvm::dyn_cast<clang::VarDecl>(result);
+    ASSERT_NE(cVar, nullptr);
+
+    EXPECT_EQ(cVar->getNameAsString(), "ptr");
+    EXPECT_TRUE(cVar->getType()->isPointerType());
+    EXPECT_TRUE(cVar->getType().isConstQualified()) << "Pointer itself should be const";
+
+    // Pointee should NOT be const
+    clang::QualType pointeeType = cVar->getType()->getPointeeType();
+    EXPECT_FALSE(pointeeType.isConstQualified()) << "Pointee should not be const";
+    EXPECT_TRUE(pointeeType->isIntegerType());
+}
+
+/**
+ * Test 48: Pointer to const (const int* ptr)
+ *
+ * C++ Input:  const int* ptr;
+ * C Output:   const int* ptr;
+ *
+ * Const qualifier on pointee, not pointer
+ */
+TEST_F(VariableHandlerTest, PointerToConstDeclaration) {
+    // Arrange
+    clang::ASTContext& ctx = cppAST->getASTContext();
+    clang::QualType constIntType = ctx.IntTy.withConst();
+    clang::QualType ptrToConstIntType = ctx.getPointerType(constIntType);
+
+    clang::IdentifierInfo& II = ctx.Idents.get("ptr");
+    clang::VarDecl* cppVar = clang::VarDecl::Create(
+        ctx,
+        ctx.getTranslationUnitDecl(),
+        clang::SourceLocation(),
+        clang::SourceLocation(),
+        &II,
+        ptrToConstIntType,
+        ctx.getTrivialTypeSourceInfo(ptrToConstIntType),
+        clang::SC_None
+    );
+
+    // Act
+    VariableHandler handler;
+    clang::Decl* result = handler.handleDecl(cppVar, *context);
+
+    // Assert
+    ASSERT_NE(result, nullptr);
+    auto* cVar = llvm::dyn_cast<clang::VarDecl>(result);
+    ASSERT_NE(cVar, nullptr);
+
+    EXPECT_EQ(cVar->getNameAsString(), "ptr");
+    EXPECT_TRUE(cVar->getType()->isPointerType());
+    EXPECT_FALSE(cVar->getType().isConstQualified()) << "Pointer itself should not be const";
+
+    // Pointee SHOULD be const
+    clang::QualType pointeeType = cVar->getType()->getPointeeType();
+    EXPECT_TRUE(pointeeType.isConstQualified()) << "Pointee should be const";
+    EXPECT_TRUE(pointeeType->isIntegerType());
+}
+
+/**
+ * Test 49: Const pointer to const (const int* const ptr)
+ *
+ * C++ Input:  const int* const ptr;
+ * C Output:   const int* const ptr;
+ *
+ * Both pointer and pointee are const
+ */
+TEST_F(VariableHandlerTest, ConstPointerToConstDeclaration) {
+    // Arrange
+    clang::ASTContext& ctx = cppAST->getASTContext();
+    clang::QualType constIntType = ctx.IntTy.withConst();
+    clang::QualType ptrToConstIntType = ctx.getPointerType(constIntType);
+    clang::QualType constPtrToConstIntType = ptrToConstIntType.withConst();
+
+    clang::IdentifierInfo& II = ctx.Idents.get("ptr");
+    clang::VarDecl* cppVar = clang::VarDecl::Create(
+        ctx,
+        ctx.getTranslationUnitDecl(),
+        clang::SourceLocation(),
+        clang::SourceLocation(),
+        &II,
+        constPtrToConstIntType,
+        ctx.getTrivialTypeSourceInfo(constPtrToConstIntType),
+        clang::SC_None
+    );
+
+    // Act
+    VariableHandler handler;
+    clang::Decl* result = handler.handleDecl(cppVar, *context);
+
+    // Assert
+    ASSERT_NE(result, nullptr);
+    auto* cVar = llvm::dyn_cast<clang::VarDecl>(result);
+    ASSERT_NE(cVar, nullptr);
+
+    EXPECT_EQ(cVar->getNameAsString(), "ptr");
+    EXPECT_TRUE(cVar->getType()->isPointerType());
+    EXPECT_TRUE(cVar->getType().isConstQualified()) << "Pointer itself should be const";
+
+    // Pointee should also be const
+    clang::QualType pointeeType = cVar->getType()->getPointeeType();
+    EXPECT_TRUE(pointeeType.isConstQualified()) << "Pointee should be const";
+    EXPECT_TRUE(pointeeType->isIntegerType());
+}
+
+/**
+ * Test 50: Void pointer
+ *
+ * C++ Input:  void* ptr;
+ * C Output:   void* ptr;
+ */
+TEST_F(VariableHandlerTest, VoidPointer) {
+    // Arrange
+    clang::ASTContext& ctx = cppAST->getASTContext();
+    clang::QualType voidPtrType = ctx.getPointerType(ctx.VoidTy);
+
+    clang::IdentifierInfo& II = ctx.Idents.get("ptr");
+    clang::VarDecl* cppVar = clang::VarDecl::Create(
+        ctx,
+        ctx.getTranslationUnitDecl(),
+        clang::SourceLocation(),
+        clang::SourceLocation(),
+        &II,
+        voidPtrType,
+        ctx.getTrivialTypeSourceInfo(voidPtrType),
+        clang::SC_None
+    );
+
+    // Act
+    VariableHandler handler;
+    clang::Decl* result = handler.handleDecl(cppVar, *context);
+
+    // Assert
+    ASSERT_NE(result, nullptr);
+    auto* cVar = llvm::dyn_cast<clang::VarDecl>(result);
+    ASSERT_NE(cVar, nullptr);
+
+    EXPECT_EQ(cVar->getNameAsString(), "ptr");
+    EXPECT_TRUE(cVar->getType()->isPointerType());
+
+    // Verify pointee is void
+    clang::QualType pointeeType = cVar->getType()->getPointeeType();
+    EXPECT_TRUE(pointeeType->isVoidType()) << "Pointee should be void";
+}
+
+/**
+ * Test 51: Char pointer (common for strings)
+ *
+ * C++ Input:  char* str;
+ * C Output:   char* str;
+ */
+TEST_F(VariableHandlerTest, CharPointer) {
+    // Arrange
+    clang::ASTContext& ctx = cppAST->getASTContext();
+    clang::QualType charPtrType = ctx.getPointerType(ctx.CharTy);
+
+    clang::IdentifierInfo& II = ctx.Idents.get("str");
+    clang::VarDecl* cppVar = clang::VarDecl::Create(
+        ctx,
+        ctx.getTranslationUnitDecl(),
+        clang::SourceLocation(),
+        clang::SourceLocation(),
+        &II,
+        charPtrType,
+        ctx.getTrivialTypeSourceInfo(charPtrType),
+        clang::SC_None
+    );
+
+    // Act
+    VariableHandler handler;
+    clang::Decl* result = handler.handleDecl(cppVar, *context);
+
+    // Assert
+    ASSERT_NE(result, nullptr);
+    auto* cVar = llvm::dyn_cast<clang::VarDecl>(result);
+    ASSERT_NE(cVar, nullptr);
+
+    EXPECT_EQ(cVar->getNameAsString(), "str");
+    EXPECT_TRUE(cVar->getType()->isPointerType());
+
+    // Verify pointee is char
+    clang::QualType pointeeType = cVar->getType()->getPointeeType();
+    EXPECT_TRUE(pointeeType->isCharType()) << "Pointee should be char";
+}
+
+/**
+ * Test 52: Float pointer
+ *
+ * C++ Input:  float* fptr;
+ * C Output:   float* fptr;
+ */
+TEST_F(VariableHandlerTest, FloatPointer) {
+    // Arrange
+    clang::ASTContext& ctx = cppAST->getASTContext();
+    clang::QualType floatPtrType = ctx.getPointerType(ctx.FloatTy);
+
+    clang::IdentifierInfo& II = ctx.Idents.get("fptr");
+    clang::VarDecl* cppVar = clang::VarDecl::Create(
+        ctx,
+        ctx.getTranslationUnitDecl(),
+        clang::SourceLocation(),
+        clang::SourceLocation(),
+        &II,
+        floatPtrType,
+        ctx.getTrivialTypeSourceInfo(floatPtrType),
+        clang::SC_None
+    );
+
+    // Act
+    VariableHandler handler;
+    clang::Decl* result = handler.handleDecl(cppVar, *context);
+
+    // Assert
+    ASSERT_NE(result, nullptr);
+    auto* cVar = llvm::dyn_cast<clang::VarDecl>(result);
+    ASSERT_NE(cVar, nullptr);
+
+    EXPECT_EQ(cVar->getNameAsString(), "fptr");
+    EXPECT_TRUE(cVar->getType()->isPointerType());
+
+    // Verify pointee is float
+    clang::QualType pointeeType = cVar->getType()->getPointeeType();
+    EXPECT_TRUE(pointeeType->isFloatingType()) << "Pointee should be float";
+}
+
+/**
+ * Test 53: Global static pointer
+ *
+ * C++ Input:  static int* globalPtr;
+ * C Output:   static int* globalPtr;
+ */
+TEST_F(VariableHandlerTest, GlobalStaticPointer) {
+    // Arrange
+    clang::ASTContext& ctx = cppAST->getASTContext();
+    clang::QualType ptrType = ctx.getPointerType(ctx.IntTy);
+
+    clang::IdentifierInfo& II = ctx.Idents.get("globalPtr");
+    clang::VarDecl* cppVar = clang::VarDecl::Create(
+        ctx,
+        ctx.getTranslationUnitDecl(),
+        clang::SourceLocation(),
+        clang::SourceLocation(),
+        &II,
+        ptrType,
+        ctx.getTrivialTypeSourceInfo(ptrType),
+        clang::SC_Static
+    );
+
+    // Act
+    VariableHandler handler;
+    clang::Decl* result = handler.handleDecl(cppVar, *context);
+
+    // Assert
+    ASSERT_NE(result, nullptr);
+    auto* cVar = llvm::dyn_cast<clang::VarDecl>(result);
+    ASSERT_NE(cVar, nullptr);
+
+    EXPECT_EQ(cVar->getNameAsString(), "globalPtr");
+    EXPECT_TRUE(cVar->getType()->isPointerType());
+    EXPECT_EQ(cVar->getStorageClass(), clang::SC_Static) << "Storage class should be static";
+}
+
+/**
+ * Test 54: Triple pointer (int***)
+ *
+ * C++ Input:  int*** ppp;
+ * C Output:   int*** ppp;
+ *
+ * Tests deep pointer nesting
+ */
+TEST_F(VariableHandlerTest, TriplePointer) {
+    // Arrange
+    clang::ASTContext& ctx = cppAST->getASTContext();
+    clang::QualType intPtrType = ctx.getPointerType(ctx.IntTy);
+    clang::QualType ptrPtrType = ctx.getPointerType(intPtrType);
+    clang::QualType ptrPtrPtrType = ctx.getPointerType(ptrPtrType);
+
+    clang::IdentifierInfo& II = ctx.Idents.get("ppp");
+    clang::VarDecl* cppVar = clang::VarDecl::Create(
+        ctx,
+        ctx.getTranslationUnitDecl(),
+        clang::SourceLocation(),
+        clang::SourceLocation(),
+        &II,
+        ptrPtrPtrType,
+        ctx.getTrivialTypeSourceInfo(ptrPtrPtrType),
+        clang::SC_None
+    );
+
+    // Act
+    VariableHandler handler;
+    clang::Decl* result = handler.handleDecl(cppVar, *context);
+
+    // Assert
+    ASSERT_NE(result, nullptr);
+    auto* cVar = llvm::dyn_cast<clang::VarDecl>(result);
+    ASSERT_NE(cVar, nullptr);
+
+    EXPECT_EQ(cVar->getNameAsString(), "ppp");
+    EXPECT_TRUE(cVar->getType()->isPointerType()) << "Level 1 should be pointer";
+
+    // Verify level 2
+    clang::QualType level2 = cVar->getType()->getPointeeType();
+    EXPECT_TRUE(level2->isPointerType()) << "Level 2 should be pointer";
+
+    // Verify level 3
+    clang::QualType level3 = level2->getPointeeType();
+    EXPECT_TRUE(level3->isPointerType()) << "Level 3 should be pointer";
+
+    // Verify ultimate pointee is int
+    clang::QualType ultimatePointee = level3->getPointeeType();
+    EXPECT_TRUE(ultimatePointee->isIntegerType()) << "Ultimate pointee should be int";
+}
+
+/**
+ * Test 55: Pointer to array
+ *
+ * C++ Input:  int (*ptr)[10];
+ * C Output:   int (*ptr)[10];
+ *
+ * Pointer to array (not array of pointers)
+ */
+TEST_F(VariableHandlerTest, PointerToArray) {
+    // Arrange
+    clang::ASTContext& ctx = cppAST->getASTContext();
+
+    // Create array type: int[10]
+    llvm::APInt arraySize(32, 10);
+    clang::QualType arrayType = ctx.getConstantArrayType(
+        ctx.IntTy,
+        arraySize,
+        nullptr,
+        clang::ArraySizeModifier::Normal,
+        0
+    );
+
+    // Create pointer to array: int (*)[10]
+    clang::QualType ptrToArrayType = ctx.getPointerType(arrayType);
+
+    clang::IdentifierInfo& II = ctx.Idents.get("ptr");
+    clang::VarDecl* cppVar = clang::VarDecl::Create(
+        ctx,
+        ctx.getTranslationUnitDecl(),
+        clang::SourceLocation(),
+        clang::SourceLocation(),
+        &II,
+        ptrToArrayType,
+        ctx.getTrivialTypeSourceInfo(ptrToArrayType),
+        clang::SC_None
+    );
+
+    // Act
+    VariableHandler handler;
+    clang::Decl* result = handler.handleDecl(cppVar, *context);
+
+    // Assert
+    ASSERT_NE(result, nullptr);
+    auto* cVar = llvm::dyn_cast<clang::VarDecl>(result);
+    ASSERT_NE(cVar, nullptr);
+
+    EXPECT_EQ(cVar->getNameAsString(), "ptr");
+    EXPECT_TRUE(cVar->getType()->isPointerType()) << "Should be pointer";
+
+    // Verify pointee is array
+    clang::QualType pointeeType = cVar->getType()->getPointeeType();
+    EXPECT_TRUE(pointeeType->isArrayType()) << "Pointee should be array";
+
+    // Verify array dimensions
+    const auto* arrType = llvm::dyn_cast<clang::ConstantArrayType>(pointeeType.getTypePtr());
+    ASSERT_NE(arrType, nullptr);
+    EXPECT_EQ(arrType->getSize().getZExtValue(), 10);
+    EXPECT_TRUE(arrType->getElementType()->isIntegerType());
+}
+
+// ============================================================================
+// Phase 42 Tests: Reference Type Translation (Task 2)
+// ============================================================================
+
+/**
+ * Test 44: Lvalue reference local variable
+ *
+ * C++ Input:  int& ref = x;
+ * C Output:   int* ref = &x;
+ *
+ * Tests basic lvalue reference transformation to pointer.
+ * Note: This test focuses on TYPE translation only. The initialization
+ * transformation (x → &x) will be handled in Task 7 (Reference Usage).
+ */
+TEST_F(VariableHandlerTest, LValueReferenceLocal) {
+    // Arrange: Create int& ref
+    clang::ASTContext& ctx = cppAST->getASTContext();
+
+    // Create lvalue reference type: int&
+    clang::QualType intRefType = ctx.getLValueReferenceType(ctx.IntTy);
+
+    clang::IdentifierInfo& II = ctx.Idents.get("ref");
+    clang::VarDecl* cppVar = clang::VarDecl::Create(
+        ctx,
+        ctx.getTranslationUnitDecl(),
+        clang::SourceLocation(),
+        clang::SourceLocation(),
+        &II,
+        intRefType,
+        ctx.getTrivialTypeSourceInfo(intRefType),
+        clang::SC_None
+    );
+
+    // Act
+    VariableHandler handler;
+    clang::Decl* result = handler.handleDecl(cppVar, *context);
+
+    // Assert
+    ASSERT_NE(result, nullptr) << "Translation returned null";
+    auto* cVar = llvm::dyn_cast<clang::VarDecl>(result);
+    ASSERT_NE(cVar, nullptr) << "Result is not a VarDecl";
+
+    EXPECT_EQ(cVar->getNameAsString(), "ref") << "Variable name mismatch";
+    EXPECT_TRUE(cVar->getType()->isPointerType()) << "Reference should be translated to pointer";
+
+    // Verify pointee type is int
+    clang::QualType pointeeType = cVar->getType()->getPointeeType();
+    EXPECT_TRUE(pointeeType->isIntegerType()) << "Pointee should be int";
+}
+
+/**
+ * Test 45: Const lvalue reference
+ *
+ * C++ Input:  const int& ref = x;
+ * C Output:   const int* ref = &x;
+ *
+ * Tests const lvalue reference transformation.
+ */
+TEST_F(VariableHandlerTest, ConstLValueReference) {
+    // Arrange: Create const int& ref
+    clang::ASTContext& ctx = cppAST->getASTContext();
+
+    // Create const int& type
+    clang::QualType constIntType = ctx.IntTy.withConst();
+    clang::QualType constIntRefType = ctx.getLValueReferenceType(constIntType);
+
+    clang::IdentifierInfo& II = ctx.Idents.get("ref");
+    clang::VarDecl* cppVar = clang::VarDecl::Create(
+        ctx,
+        ctx.getTranslationUnitDecl(),
+        clang::SourceLocation(),
+        clang::SourceLocation(),
+        &II,
+        constIntRefType,
+        ctx.getTrivialTypeSourceInfo(constIntRefType),
+        clang::SC_None
+    );
+
+    // Act
+    VariableHandler handler;
+    clang::Decl* result = handler.handleDecl(cppVar, *context);
+
+    // Assert
+    ASSERT_NE(result, nullptr);
+    auto* cVar = llvm::dyn_cast<clang::VarDecl>(result);
+    ASSERT_NE(cVar, nullptr);
+
+    EXPECT_EQ(cVar->getNameAsString(), "ref");
+    EXPECT_TRUE(cVar->getType()->isPointerType()) << "Reference should be translated to pointer";
+
+    // Verify pointee is const int
+    clang::QualType pointeeType = cVar->getType()->getPointeeType();
+    EXPECT_TRUE(pointeeType.isConstQualified()) << "Pointee should be const";
+    EXPECT_TRUE(pointeeType->isIntegerType()) << "Pointee should be int";
+}
+
+/**
+ * Test 46: Reference to pointer
+ *
+ * C++ Input:  int*& ref = ptr;
+ * C Output:   int** ref = &ptr;
+ *
+ * Tests reference to pointer transformation (becomes pointer-to-pointer).
+ */
+TEST_F(VariableHandlerTest, ReferenceToPointer) {
+    // Arrange: Create int*& ref
+    clang::ASTContext& ctx = cppAST->getASTContext();
+
+    // Create int*& type
+    clang::QualType intPtrType = ctx.getPointerType(ctx.IntTy);
+    clang::QualType intPtrRefType = ctx.getLValueReferenceType(intPtrType);
+
+    clang::IdentifierInfo& II = ctx.Idents.get("ref");
+    clang::VarDecl* cppVar = clang::VarDecl::Create(
+        ctx,
+        ctx.getTranslationUnitDecl(),
+        clang::SourceLocation(),
+        clang::SourceLocation(),
+        &II,
+        intPtrRefType,
+        ctx.getTrivialTypeSourceInfo(intPtrRefType),
+        clang::SC_None
+    );
+
+    // Act
+    VariableHandler handler;
+    clang::Decl* result = handler.handleDecl(cppVar, *context);
+
+    // Assert
+    ASSERT_NE(result, nullptr);
+    auto* cVar = llvm::dyn_cast<clang::VarDecl>(result);
+    ASSERT_NE(cVar, nullptr);
+
+    EXPECT_EQ(cVar->getNameAsString(), "ref");
+    EXPECT_TRUE(cVar->getType()->isPointerType()) << "Reference should be translated to pointer";
+
+    // Verify it's pointer-to-pointer (int**)
+    clang::QualType pointeeType = cVar->getType()->getPointeeType();
+    EXPECT_TRUE(pointeeType->isPointerType()) << "Should be pointer-to-pointer";
+
+    // Verify inner pointee is int
+    clang::QualType innerPointeeType = pointeeType->getPointeeType();
+    EXPECT_TRUE(innerPointeeType->isIntegerType()) << "Inner pointee should be int";
+}
+
+/**
+ * Test 47: Float reference
+ *
+ * C++ Input:  float& ref = val;
+ * C Output:   float* ref = &val;
+ *
+ * Tests reference to float type.
+ */
+TEST_F(VariableHandlerTest, FloatReference) {
+    // Arrange: Create float& ref
+    clang::ASTContext& ctx = cppAST->getASTContext();
+
+    clang::QualType floatRefType = ctx.getLValueReferenceType(ctx.FloatTy);
+
+    clang::IdentifierInfo& II = ctx.Idents.get("ref");
+    clang::VarDecl* cppVar = clang::VarDecl::Create(
+        ctx,
+        ctx.getTranslationUnitDecl(),
+        clang::SourceLocation(),
+        clang::SourceLocation(),
+        &II,
+        floatRefType,
+        ctx.getTrivialTypeSourceInfo(floatRefType),
+        clang::SC_None
+    );
+
+    // Act
+    VariableHandler handler;
+    clang::Decl* result = handler.handleDecl(cppVar, *context);
+
+    // Assert
+    ASSERT_NE(result, nullptr);
+    auto* cVar = llvm::dyn_cast<clang::VarDecl>(result);
+    ASSERT_NE(cVar, nullptr);
+
+    EXPECT_EQ(cVar->getNameAsString(), "ref");
+    EXPECT_TRUE(cVar->getType()->isPointerType()) << "Reference should be translated to pointer";
+
+    clang::QualType pointeeType = cVar->getType()->getPointeeType();
+    EXPECT_TRUE(pointeeType->isFloatingType()) << "Pointee should be float";
+}
+
+/**
+ * Test 48: Rvalue reference (move semantics)
+ *
+ * C++ Input:  int&& ref = std::move(x);
+ * C Output:   int* ref = &x;  (or may be unsupported)
+ *
+ * Tests rvalue reference transformation. C has no equivalent for move semantics,
+ * so we translate to pointer or may choose to error/warn.
+ */
+TEST_F(VariableHandlerTest, RValueReference) {
+    // Arrange: Create int&& ref
+    clang::ASTContext& ctx = cppAST->getASTContext();
+
+    // Create rvalue reference type: int&&
+    clang::QualType intRValueRefType = ctx.getRValueReferenceType(ctx.IntTy);
+
+    clang::IdentifierInfo& II = ctx.Idents.get("ref");
+    clang::VarDecl* cppVar = clang::VarDecl::Create(
+        ctx,
+        ctx.getTranslationUnitDecl(),
+        clang::SourceLocation(),
+        clang::SourceLocation(),
+        &II,
+        intRValueRefType,
+        ctx.getTrivialTypeSourceInfo(intRValueRefType),
+        clang::SC_None
+    );
+
+    // Act
+    VariableHandler handler;
+    clang::Decl* result = handler.handleDecl(cppVar, *context);
+
+    // Assert
+    ASSERT_NE(result, nullptr);
+    auto* cVar = llvm::dyn_cast<clang::VarDecl>(result);
+    ASSERT_NE(cVar, nullptr);
+
+    EXPECT_EQ(cVar->getNameAsString(), "ref");
+    EXPECT_TRUE(cVar->getType()->isPointerType()) << "Rvalue reference should be translated to pointer";
+
+    clang::QualType pointeeType = cVar->getType()->getPointeeType();
+    EXPECT_TRUE(pointeeType->isIntegerType()) << "Pointee should be int";
+}
+
+/**
+ * Test 49: Static reference variable
+ *
+ * C++ Input:  static int& ref = global;
+ * C Output:   static int* ref = &global;
+ *
+ * Tests static storage class with reference.
+ */
+TEST_F(VariableHandlerTest, StaticReference) {
+    // Arrange: Create static int& ref
+    clang::ASTContext& ctx = cppAST->getASTContext();
+
+    clang::QualType intRefType = ctx.getLValueReferenceType(ctx.IntTy);
+
+    clang::IdentifierInfo& II = ctx.Idents.get("ref");
+    clang::VarDecl* cppVar = clang::VarDecl::Create(
+        ctx,
+        ctx.getTranslationUnitDecl(),
+        clang::SourceLocation(),
+        clang::SourceLocation(),
+        &II,
+        intRefType,
+        ctx.getTrivialTypeSourceInfo(intRefType),
+        clang::SC_Static
+    );
+
+    // Act
+    VariableHandler handler;
+    clang::Decl* result = handler.handleDecl(cppVar, *context);
+
+    // Assert
+    ASSERT_NE(result, nullptr);
+    auto* cVar = llvm::dyn_cast<clang::VarDecl>(result);
+    ASSERT_NE(cVar, nullptr);
+
+    EXPECT_EQ(cVar->getNameAsString(), "ref");
+    EXPECT_EQ(cVar->getStorageClass(), clang::SC_Static) << "Storage class should be preserved";
+    EXPECT_TRUE(cVar->getType()->isPointerType()) << "Reference should be translated to pointer";
+}
+
+/**
+ * Test 50: Char reference
+ *
+ * C++ Input:  char& c = ch;
+ * C Output:   char* c = &ch;
+ *
+ * Tests reference to char type.
+ */
+TEST_F(VariableHandlerTest, CharReference) {
+    // Arrange: Create char& c
+    clang::ASTContext& ctx = cppAST->getASTContext();
+
+    clang::QualType charRefType = ctx.getLValueReferenceType(ctx.CharTy);
+
+    clang::IdentifierInfo& II = ctx.Idents.get("c");
+    clang::VarDecl* cppVar = clang::VarDecl::Create(
+        ctx,
+        ctx.getTranslationUnitDecl(),
+        clang::SourceLocation(),
+        clang::SourceLocation(),
+        &II,
+        charRefType,
+        ctx.getTrivialTypeSourceInfo(charRefType),
+        clang::SC_None
+    );
+
+    // Act
+    VariableHandler handler;
+    clang::Decl* result = handler.handleDecl(cppVar, *context);
+
+    // Assert
+    ASSERT_NE(result, nullptr);
+    auto* cVar = llvm::dyn_cast<clang::VarDecl>(result);
+    ASSERT_NE(cVar, nullptr);
+
+    EXPECT_EQ(cVar->getNameAsString(), "c");
+    EXPECT_TRUE(cVar->getType()->isPointerType()) << "Reference should be translated to pointer";
+
+    clang::QualType pointeeType = cVar->getType()->getPointeeType();
+    EXPECT_TRUE(pointeeType->isCharType()) << "Pointee should be char";
+}
+
+/**
+ * Test 51: Const reference to const
+ *
+ * C++ Input:  const int& const ref = x;  (unusual but valid in some contexts)
+ * C Output:   const int* const ref = &x;
+ *
+ * Tests double const (const reference to const int).
+ * Note: References are inherently const (can't be reseated), but we test
+ * for completeness.
+ */
+TEST_F(VariableHandlerTest, ConstReferenceToConst) {
+    // Arrange: Create const int& ref (with const reference type)
+    clang::ASTContext& ctx = cppAST->getASTContext();
+
+    // Create const int& type
+    clang::QualType constIntType = ctx.IntTy.withConst();
+    clang::QualType constIntRefType = ctx.getLValueReferenceType(constIntType);
+    // Add const to reference type itself (rare but possible in some contexts)
+    clang::QualType constRefToConstInt = constIntRefType.withConst();
+
+    clang::IdentifierInfo& II = ctx.Idents.get("ref");
+    clang::VarDecl* cppVar = clang::VarDecl::Create(
+        ctx,
+        ctx.getTranslationUnitDecl(),
+        clang::SourceLocation(),
+        clang::SourceLocation(),
+        &II,
+        constRefToConstInt,
+        ctx.getTrivialTypeSourceInfo(constRefToConstInt),
+        clang::SC_None
+    );
+
+    // Act
+    VariableHandler handler;
+    clang::Decl* result = handler.handleDecl(cppVar, *context);
+
+    // Assert
+    ASSERT_NE(result, nullptr);
+    auto* cVar = llvm::dyn_cast<clang::VarDecl>(result);
+    ASSERT_NE(cVar, nullptr);
+
+    EXPECT_EQ(cVar->getNameAsString(), "ref");
+    EXPECT_TRUE(cVar->getType()->isPointerType()) << "Reference should be translated to pointer";
+
+    // May or may not preserve top-level const on pointer
+    // At minimum, pointee should be const
+    clang::QualType pointeeType = cVar->getType()->getPointeeType();
+    EXPECT_TRUE(pointeeType.isConstQualified()) << "Pointee should be const";
+}
+
+// TODO: Additional tests for Phase 42+:
+// - Test 52: Array initialization with InitListExpr
+// - Test 53: Complex initialization expressions
+// - Test 54: Variable with cast expression init
