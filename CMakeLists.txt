@@ -254,6 +254,10 @@ add_library(cpptoc_core STATIC
     src/handlers/ExpressionHandler.cpp
     # Phase 43-01: Struct handlers
     src/handlers/RecordHandler.cpp
+    # Phase 44-01: Class handlers
+    src/handlers/MethodHandler.cpp
+    src/handlers/ConstructorHandler.cpp
+    src/handlers/DestructorHandler.cpp
 )
 
 target_compile_definitions(cpptoc_core PRIVATE ${LLVM_DEFINITIONS})
@@ -3870,6 +3874,58 @@ gtest_discover_tests(FunctionHandlerTest
     WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
 )
 
+# ConstructorHandler unit tests
+add_executable(ConstructorHandlerTest
+    tests/unit/handlers/ConstructorHandlerTest.cpp
+)
+
+target_include_directories(ConstructorHandlerTest PRIVATE
+    ${CMAKE_SOURCE_DIR}/tests/fixtures
+    ${CMAKE_SOURCE_DIR}/include
+    ${LLVM_INCLUDE_DIRS}
+    ${CLANG_INCLUDE_DIRS}
+)
+
+target_link_libraries(ConstructorHandlerTest PRIVATE
+    test_fixtures
+    cpptoc_core
+    clangTooling
+    clangAST
+    clangBasic
+    GTest::gtest
+    GTest::gtest_main
+)
+
+gtest_discover_tests(ConstructorHandlerTest
+    WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
+)
+
+# DestructorHandler unit tests (Phase 44, Task 5)
+add_executable(DestructorHandlerTest
+    tests/unit/handlers/DestructorHandlerTest.cpp
+)
+
+target_include_directories(DestructorHandlerTest PRIVATE
+    ${CMAKE_SOURCE_DIR}/tests/fixtures
+    ${CMAKE_SOURCE_DIR}/include
+    ${LLVM_INCLUDE_DIRS}
+    ${CLANG_INCLUDE_DIRS}
+)
+
+target_link_libraries(DestructorHandlerTest PRIVATE
+    test_fixtures
+    cpptoc_core
+    clangTooling
+    clangAST
+    clangBasic
+    GTest::gtest
+    GTest::gtest_main
+)
+
+gtest_discover_tests(DestructorHandlerTest
+    WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
+)
+
 # ExpressionHandler unit tests
 add_executable(ExpressionHandlerTest
     tests/unit/handlers/ExpressionHandlerTest.cpp
@@ -3893,6 +3949,58 @@ target_link_libraries(ExpressionHandlerTest PRIVATE
 )
 
 gtest_discover_tests(ExpressionHandlerTest
+    WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
+)
+
+# ExpressionHandler Member Access unit tests (Phase 44 Task 7)
+add_executable(ExpressionHandlerTest_MemberAccess
+    tests/unit/handlers/ExpressionHandlerTest_MemberAccess.cpp
+)
+
+target_include_directories(ExpressionHandlerTest_MemberAccess PRIVATE
+    ${CMAKE_SOURCE_DIR}/tests/fixtures
+    ${CMAKE_SOURCE_DIR}/include
+    ${LLVM_INCLUDE_DIRS}
+    ${CLANG_INCLUDE_DIRS}
+)
+
+target_link_libraries(ExpressionHandlerTest_MemberAccess PRIVATE
+    test_fixtures
+    cpptoc_core
+    clangTooling
+    clangAST
+    clangBasic
+    GTest::gtest
+    GTest::gtest_main
+)
+
+gtest_discover_tests(ExpressionHandlerTest_MemberAccess
+    WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
+)
+
+# ExpressionHandler This Expression unit tests (Phase 44 Task 6)
+add_executable(ExpressionHandlerTest_This
+    tests/unit/handlers/ExpressionHandlerTest_This.cpp
+)
+
+target_include_directories(ExpressionHandlerTest_This PRIVATE
+    ${CMAKE_SOURCE_DIR}/tests/fixtures
+    ${CMAKE_SOURCE_DIR}/include
+    ${LLVM_INCLUDE_DIRS}
+    ${CLANG_INCLUDE_DIRS}
+)
+
+target_link_libraries(ExpressionHandlerTest_This PRIVATE
+    test_fixtures
+    cpptoc_core
+    clangTooling
+    clangAST
+    clangBasic
+    GTest::gtest
+    GTest::gtest_main
+)
+
+gtest_discover_tests(ExpressionHandlerTest_This
     WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
 )
 
@@ -4000,6 +4108,32 @@ target_link_libraries(RecordHandlerTest PRIVATE
 )
 
 gtest_discover_tests(RecordHandlerTest
+    WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
+)
+
+# Phase 44-01 Task 3: MethodHandler Tests
+add_executable(MethodHandlerTest
+    tests/unit/handlers/MethodHandlerTest.cpp
+)
+
+target_include_directories(MethodHandlerTest PRIVATE
+    ${CMAKE_SOURCE_DIR}/tests/fixtures
+    ${CMAKE_SOURCE_DIR}/include
+    ${LLVM_INCLUDE_DIRS}
+    ${CLANG_INCLUDE_DIRS}
+)
+
+target_link_libraries(MethodHandlerTest PRIVATE
+    test_fixtures
+    cpptoc_core
+    clangTooling
+    clangAST
+    clangBasic
+    GTest::gtest
+    GTest::gtest_main
+)
+
+gtest_discover_tests(MethodHandlerTest
     WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
 )
 

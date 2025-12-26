@@ -52,6 +52,9 @@ private:
     /// Type translation cache: C++ type → C type
     std::map<clang::QualType, clang::QualType> typeMap_;
 
+    /// Current function being translated (for context-dependent translations)
+    clang::FunctionDecl* currentFunction_ = nullptr;
+
 public:
     /**
      * @brief Construct handler context
@@ -148,6 +151,30 @@ public:
      * @endcode
      */
     clang::QualType translateType(clang::QualType cppType);
+
+    // ========================================================================
+    // Function Context Management
+    // ========================================================================
+
+    /**
+     * @brief Set the current function being translated
+     * @param func C function declaration (translated version)
+     *
+     * Used by MethodHandler, ConstructorHandler, DestructorHandler to set
+     * context for translating function bodies. This allows expression handlers
+     * to access function parameters (e.g., 'this' parameter for CXXThisExpr).
+     */
+    void setCurrentFunction(clang::FunctionDecl* func) {
+        currentFunction_ = func;
+    }
+
+    /**
+     * @brief Get the current function being translated
+     * @return Current C function declaration, or nullptr if not in function
+     */
+    clang::FunctionDecl* getCurrentFunction() const {
+        return currentFunction_;
+    }
 };
 
 } // namespace cpptoc

@@ -36,7 +36,8 @@ bool ExpressionHandler::canHandle(const clang::Expr* E) const {
            llvm::isa<clang::ArraySubscriptExpr>(E) ||
            llvm::isa<clang::InitListExpr>(E) ||
            llvm::isa<clang::CXXNullPtrLiteralExpr>(E) ||
-           llvm::isa<clang::MemberExpr>(E);
+           llvm::isa<clang::MemberExpr>(E) ||
+           llvm::isa<clang::CXXThisExpr>(E);
 }
 
 clang::Expr* ExpressionHandler::handleExpr(const clang::Expr* E, HandlerContext& ctx) {
@@ -84,6 +85,9 @@ clang::Expr* ExpressionHandler::handleExpr(const clang::Expr* E, HandlerContext&
     }
     if (auto* ME = llvm::dyn_cast<clang::MemberExpr>(E)) {
         return translateMemberExpr(ME, ctx);
+    }
+    if (auto* TE = llvm::dyn_cast<clang::CXXThisExpr>(E)) {
+        return translateCXXThisExpr(TE, ctx);
     }
 
     // Unsupported expression type
@@ -552,6 +556,85 @@ clang::Expr* ExpressionHandler::translateMemberExpr(
         ME->getValueKind(),             // Value kind (lvalue/rvalue)
         ME->getObjectKind(),            // Object kind
         ME->isNonOdrUse()               // Non-ODR use
+    );
+}
+
+// ============================================================================
+// This Expression Translation (Phase 44, Task 6)
+// ============================================================================
+
+clang::Expr* ExpressionHandler::translateCXXThisExpr(
+    const clang::CXXThisExpr* TE,
+    HandlerContext& ctx
+) {
+    // C++ 'this' keyword → C DeclRefExpr referring to 'this' parameter
+    //
+    // In C++, 'this' is an implicit pointer to the current object.
+    // In C, we make it explicit as the first parameter of methods.
+    //
+    // Translation strategy:
+    // 1. Get current function from context (set by MethodHandler/ConstructorHandler)
+    // 2. Get first parameter (which should be 'this' for non-static methods)
+    // 3. Create DeclRefExpr referring to that parameter
+    //
+    // Example:
+    // C++: void Counter::increment() { this->count++; }
+    // C:   void Counter_increment(struct Counter* this) { this->count++; }
+
+    clang::ASTContext& cCtx = ctx.getCContext();
+
+    // Get current function from context
+    clang::FunctionDecl* currentFunc = ctx.getCurrentFunction();
+    if (!currentFunc) {
+        // No current function - this shouldn't happen in well-formed code
+        // 'this' can only appear inside method bodies
+        return nullptr;
+    }
+
+    // Get first parameter (should be 'this')
+    // For methods translated to C functions, 'this' is always the first parameter
+    if (currentFunc->param_empty()) {
+        // No parameters - this must be a static method
+        // Static methods don't have 'this' parameter
+        return nullptr;
+    }
+
+    clang::ParmVarDecl* thisParam = currentFunc->getParamDecl(0);
+
+    // Verify it's actually named 'this'
+    // This is a sanity check - if we're translating correctly,
+    // the first parameter should always be named 'this' for non-static methods
+    if (thisParam->getName() != "this") {
+        // First parameter is not 'this' - might be a regular function or static method
+        return nullptr;
+    }
+
+    // Create DeclRefExpr referring to 'this' parameter
+    // DeclRefExpr::Create parameters:
+    // - ASTContext
+    // - NestedNameSpecifierLoc (none for simple parameter reference)
+    // - TemplateKeywordLoc (invalid for parameter reference)
+    // - ValueDecl (the 'this' parameter)
+    // - RefersToEnclosingVariableOrCapture (false for parameters)
+    // - NameInfo (location and name)
+    // - QualType (type of the parameter)
+    // - ValueKind (LValue for parameter references)
+    // - NonOdrUseReason (for ODR-use tracking)
+
+    clang::DeclarationNameInfo nameInfo(
+        thisParam->getDeclName(),
+        TE->getLocation()
+    );
+
+    return clang::DeclRefExpr::Create(
+        cCtx,
+        clang::NestedNameSpecifierLoc(),      // No nested name specifier
+        clang::SourceLocation(),              // No template keyword
+        thisParam,                            // The 'this' parameter
+        false,                                // Not refersToEnclosingVariableOrCapture
+        nameInfo,                             // Name and location
+        thisParam->getType(),                 // Type: struct ClassName*
+        clang::VK_LValue                      // Value kind: lvalue
     );
 }
 

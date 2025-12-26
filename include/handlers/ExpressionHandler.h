@@ -171,6 +171,26 @@ private:
         const clang::MemberExpr* ME,
         HandlerContext& ctx
     );
+
+    /**
+     * @brief Translate CXXThisExpr (C++ 'this' keyword) to C DeclRefExpr
+     * @param TE C++ CXXThisExpr
+     * @param ctx Handler context
+     * @return C DeclRefExpr referring to 'this' parameter
+     *
+     * Translates C++ 'this' keyword to a reference to the 'this' parameter
+     * that was added by MethodHandler/ConstructorHandler/DestructorHandler.
+     *
+     * Example:
+     * C++: this->field = 42;
+     * C:   this->field = 42;  (where 'this' is a parameter)
+     *
+     * The type should be: struct ClassName* this
+     */
+    clang::Expr* translateCXXThisExpr(
+        const clang::CXXThisExpr* TE,
+        HandlerContext& ctx
+    );
 };
 
 } // namespace cpptoc
