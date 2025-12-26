@@ -418,6 +418,19 @@ flowchart LR
 
 ---
 
+## Detailed Documentation
+
+For complete specifications of each stage, see:
+
+- **Stage 1 (Clang Frontend)**: Standard Clang documentation
+- **Stage 2 (Handler Chain)**:
+  - [Handler Chain Pattern](02-handler-chain-pattern.md) - Complete architecture with interfaces
+  - [Handler Specifications](handlers/) - Individual handler specs (9 handlers)
+  - [Test Strategy](03-test-strategy.md) - TDD approach for handlers
+- **Stage 3 (Code Generator)**: [Code Generator Specification](04-code-generator.md) - C AST visitor
+
+---
+
 ## Summary
 
 | Stage | Input | Output | Responsibility | Key Principle |

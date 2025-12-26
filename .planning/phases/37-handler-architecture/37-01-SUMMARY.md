@@ -58,7 +58,28 @@ Key principle documented: **"Stage 2 decides WHAT to emit, Stage 3 decides HOW t
 - CI pipeline configuration
 - Test organization structure
 
-### 4. Handler Specifications (9 Handlers)
+### 4. Code Generator Specification
+
+**`docs/architecture/04-code-generator.md`** (21K)
+- Complete Stage 3 specification: C AST visitor
+- Pure emission component (no translation decisions)
+- Class structure: CodeGenerator with visitor methods
+- Mermaid sequence diagram showing emission flow
+- Header vs implementation split logic
+- Emission examples for all C constructs:
+  - Struct declarations
+  - Function declarations and definitions
+  - Enum declarations
+  - Expressions and statements
+- Anti-patterns: What NOT to do (no translation in Stage 3)
+- Type emission helpers
+- Indentation management
+- Testing strategy for code generator
+- Performance considerations
+
+Key principle: **"Just print what's in the AST - don't think"**
+
+### 5. Handler Specifications (9 Handlers)
 
 Created detailed specifications for each handler in `docs/architecture/handlers/`:
 
@@ -295,9 +316,10 @@ EnumHandler
 ## Statistics
 
 - **Time**: ~3 hours
-- **Files created**: 12 (3 architecture docs + 9 handler specs)
+- **Files created**: 13 (4 architecture docs + 9 handler specs)
+- **Architecture documents**: 4 (Pipeline, Handler Chain, Test Strategy, Code Generator)
 - **Handlers documented**: 9
-- **Mermaid diagrams**: 3
-- **LOC**: ~50,000 (documentation)
+- **Mermaid diagrams**: 4 (Pipeline, Handler Class, Handler Sequence, Code Generator Flow)
+- **LOC**: ~71,000 (documentation)
 - **Test cases defined**: 45+ across all handlers
 - **Edge cases documented**: 50+ across all handlers
