@@ -112,16 +112,13 @@ void CodeGenerator::printDecl(Decl *D, bool declarationOnly) {
         }
         // When declarationOnly=false, skip struct definitions (already in header)
     } else if (auto *VD = dyn_cast<VarDecl>(D)) {
-        // Bug #35 FIX: Variable declarations should NOT appear in headers
-        // Local variables are part of function bodies, not top-level declarations
-        // Global variables (if any) would need special handling, but for now skip all VarDecl in headers
-        if (declarationOnly) {
-            // Skip variable declarations in header files
-            return;
-        }
-        // In implementation files, print the variable declaration
-        D->print(OS, Policy);
-        OS << ";\n";
+        // Bug #35 FIX: Variable declarations should NOT appear as top-level declarations
+        // Local variables belong inside function bodies (handled by printStmt)
+        // Top-level VarDecl nodes are orphaned and should be skipped entirely
+        // This prevents malloc statements from appearing in both headers and implementation files
+        llvm::outs() << "[Bug #35] Skipping orphaned top-level VarDecl: "
+                     << VD->getNameAsString() << "\n";
+        return;
     } else {
         // Other declarations
         D->print(OS, Policy);
