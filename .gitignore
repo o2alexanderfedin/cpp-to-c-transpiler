@@ -56,6 +56,7 @@ bin/
 lib/
 dist/
 *.dSYM/
+build_working/
 build_working_new/
 emsdk/
 
