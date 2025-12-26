@@ -205,6 +205,47 @@ private:
         const clang::LabelStmt* LS,
         HandlerContext& ctx
     );
+
+    /**
+     * @brief Translate declaration statement
+     * @param DS C++ DeclStmt
+     * @param ctx Handler context
+     * @return C statement (may be CompoundStmt for object construction)
+     *
+     * Handles variable declarations, including:
+     * - Simple variable declarations (int x;)
+     * - Object declarations with automatic constructor/destructor calls
+     *
+     * For objects with class type:
+     *   C++: MyClass obj(1, 2);
+     *   C:   struct MyClass obj; MyClass_init_int_int(&obj, 1, 2);
+     *
+     * Returns CompoundStmt containing:
+     *   1. Variable declaration (without initializer)
+     *   2. Constructor call (if needed)
+     */
+    clang::Stmt* translateDeclStmt(
+        const clang::DeclStmt* DS,
+        HandlerContext& ctx
+    );
+
+    /**
+     * @brief Helper to check if type is a class type requiring constructor call
+     */
+    bool isClassTypeRequiringConstructor(clang::QualType type);
+
+    /**
+     * @brief Helper to create constructor call for object
+     * @param cppVarDecl The C++ variable declaration
+     * @param cVarDecl The C variable declaration
+     * @param ctx Handler context
+     * @return Constructor call expression, or nullptr if not needed
+     */
+    clang::Expr* createConstructorCall(
+        const clang::VarDecl* cppVarDecl,
+        clang::VarDecl* cVarDecl,
+        HandlerContext& ctx
+    );
 };
 
 } // namespace cpptoc

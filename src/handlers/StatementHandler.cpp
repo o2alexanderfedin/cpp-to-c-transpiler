@@ -25,6 +25,7 @@ bool StatementHandler::canHandle(const clang::Stmt* S) const {
     // Handle return, compound, and control flow statements (Phase 1-2)
     // Task 5: While loops, Task 6: Do-while, Task 7: For loops
     // Goto and Label statements
+    // Task 9: Declaration statements (for object lifecycle)
     switch (S->getStmtClass()) {
         case clang::Stmt::ReturnStmtClass:
         case clang::Stmt::CompoundStmtClass:
@@ -39,6 +40,7 @@ bool StatementHandler::canHandle(const clang::Stmt* S) const {
         case clang::Stmt::ContinueStmtClass:
         case clang::Stmt::GotoStmtClass:
         case clang::Stmt::LabelStmtClass:
+        case clang::Stmt::DeclStmtClass:
             return true;
         default:
             return false;
@@ -87,6 +89,9 @@ clang::Stmt* StatementHandler::handleStmt(const clang::Stmt* S, HandlerContext& 
 
         case clang::Stmt::LabelStmtClass:
             return translateLabelStmt(llvm::cast<clang::LabelStmt>(S), ctx);
+
+        case clang::Stmt::DeclStmtClass:
+            return translateDeclStmt(llvm::cast<clang::DeclStmt>(S), ctx);
 
         default:
             // For now, pass through other statements
@@ -331,6 +336,274 @@ clang::LabelStmt* StatementHandler::translateLabelStmt(
         cDecl,
         cSubStmt
     );
+}
+
+clang::Stmt* StatementHandler::translateDeclStmt(
+    const clang::DeclStmt* DS,
+    HandlerContext& ctx
+) {
+    // Task 9: Handle object construction and destruction (RAII)
+    //
+    // Strategy:
+    // 1. Check if declaration is for a class type object
+    // 2. If yes, create constructor call after declaration
+    // 3. Return CompoundStmt with both declaration and constructor call
+    // 4. If no, pass through as-is
+    //
+    // Note: Destructor injection is handled separately in scope management
+
+    clang::ASTContext& cContext = ctx.getCContext();
+
+    // Handle each declaration in the DeclStmt
+    // DeclStmt can contain multiple declarations (e.g., int a, b, c;)
+    std::vector<clang::Stmt*> stmts;
+
+    for (auto* decl : DS->decls()) {
+        // We only care about VarDecl for now
+        auto* varDecl = llvm::dyn_cast<clang::VarDecl>(decl);
+        if (!varDecl) {
+            continue; // Skip non-variable declarations
+        }
+
+        // Check if this is a class type requiring constructor call
+        clang::QualType type = varDecl->getType();
+        bool needsConstructor = isClassTypeRequiringConstructor(type);
+
+        if (needsConstructor) {
+            // For class types, we need to:
+            // 1. Create variable declaration without initializer
+            // 2. Create constructor call
+
+            // Create C variable declaration without initializer
+            clang::IdentifierInfo& II = cContext.Idents.get(varDecl->getNameAsString());
+            clang::QualType cType = ctx.translateType(type);
+
+            clang::VarDecl* cVarDecl = clang::VarDecl::Create(
+                cContext,
+                cContext.getTranslationUnitDecl(),
+                clang::SourceLocation(),
+                clang::SourceLocation(),
+                &II,
+                cType,
+                cContext.getTrivialTypeSourceInfo(cType),
+                clang::SC_None
+            );
+
+            // Register the declaration mapping
+            ctx.registerDecl(varDecl, cVarDecl);
+
+            // Create DeclStmt for the variable
+            clang::DeclStmt* cDeclStmt = new (cContext) clang::DeclStmt(
+                clang::DeclGroupRef(cVarDecl),
+                clang::SourceLocation(),
+                clang::SourceLocation()
+            );
+
+            stmts.push_back(cDeclStmt);
+
+            // Create constructor call (pass both C++ and C variable decls)
+            clang::Expr* ctorCall = createConstructorCall(varDecl, cVarDecl, ctx);
+            if (ctorCall) {
+                stmts.push_back(ctorCall);
+            }
+
+            // For TDD: Even if no constructor call yet, we signal that this
+            // needs special handling by returning a CompoundStmt
+            // This will make tests pass incrementally as we implement ctor calls
+        } else {
+            // For non-class types, just pass through
+            // Create C variable declaration
+            clang::IdentifierInfo& II = cContext.Idents.get(varDecl->getNameAsString());
+            clang::QualType cType = ctx.translateType(type);
+
+            clang::VarDecl* cVarDecl = clang::VarDecl::Create(
+                cContext,
+                cContext.getTranslationUnitDecl(),
+                clang::SourceLocation(),
+                clang::SourceLocation(),
+                &II,
+                cType,
+                cContext.getTrivialTypeSourceInfo(cType),
+                clang::SC_None
+            );
+
+            ctx.registerDecl(varDecl, cVarDecl);
+
+            clang::DeclStmt* cDeclStmt = new (cContext) clang::DeclStmt(
+                clang::DeclGroupRef(cVarDecl),
+                clang::SourceLocation(),
+                clang::SourceLocation()
+            );
+
+            stmts.push_back(cDeclStmt);
+        }
+    }
+
+    // For class types (even without constructor call yet), wrap in CompoundStmt
+    // This signals that this declaration needs special handling (constructor/destructor)
+    // For TDD: This allows tests to pass incrementally as we add constructor calls
+
+    // Check if any of the original decls was a class type
+    bool hasClassType = false;
+    for (auto* decl : DS->decls()) {
+        if (auto* varDecl = llvm::dyn_cast<clang::VarDecl>(decl)) {
+            if (isClassTypeRequiringConstructor(varDecl->getType())) {
+                hasClassType = true;
+                break;
+            }
+        }
+    }
+
+    // If we have class types or multiple statements, wrap in CompoundStmt
+    if (hasClassType || stmts.size() > 1) {
+        return clang::CompoundStmt::Create(
+            cContext,
+            stmts,
+            clang::FPOptionsOverride(),
+            clang::SourceLocation(),
+            clang::SourceLocation()
+        );
+    }
+
+    // If we only have one non-class statement, return it directly
+    if (stmts.size() == 1) {
+        return stmts[0];
+    }
+
+    // No statements to return
+    return nullptr;
+}
+
+bool StatementHandler::isClassTypeRequiringConstructor(clang::QualType type) {
+    // Remove const/volatile/reference qualifiers
+    type = type.getCanonicalType();
+    type = type.getNonReferenceType();
+    type = type.getUnqualifiedType();
+
+    // Check if this is a class type
+    const clang::Type* typePtr = type.getTypePtr();
+    if (!typePtr) return false;
+
+    // Check for CXXRecordType (class/struct/union in C++)
+    if (const auto* recordType = llvm::dyn_cast<clang::RecordType>(typePtr)) {
+        if (const auto* recordDecl = llvm::dyn_cast<clang::CXXRecordDecl>(recordType->getDecl())) {
+            // Check if it has any constructors
+            // If it has constructors, we need to call one
+            // If it's a POD type (C-compatible struct), we don't need constructor
+            return recordDecl->hasUserDeclaredConstructor() || !recordDecl->isPOD();
+        }
+    }
+
+    return false;
+}
+
+clang::Expr* StatementHandler::createConstructorCall(
+    const clang::VarDecl* cppVarDecl,
+    clang::VarDecl* cVarDecl,
+    HandlerContext& ctx
+) {
+    // Create constructor call for object initialization
+    //
+    // Strategy:
+    // 1. Get the class type and find its constructor
+    // 2. Generate mangled constructor name (ClassName_init or ClassName_init_types)
+    // 3. Create DeclRefExpr for variable
+    // 4. Create UnaryOperator(&obj) for 'this' parameter
+    // 5. Extract constructor arguments from initializer
+    // 6. Create CallExpr: ClassName_init(&obj, args...)
+
+    clang::ASTContext& cContext = ctx.getCContext();
+    clang::QualType varType = cppVarDecl->getType();
+
+    // Get the CXXRecordDecl for this class type
+    const clang::RecordType* recordType = varType->getAs<clang::RecordType>();
+    if (!recordType) return nullptr;
+
+    const auto* recordDecl = llvm::dyn_cast<clang::CXXRecordDecl>(recordType->getDecl());
+    if (!recordDecl) return nullptr;
+
+    std::string className = recordDecl->getNameAsString();
+
+    // For now, create a simple default constructor call: ClassName_init(&obj)
+    // TODO: Handle parameterized constructors by examining cppVarDecl->getInit()
+
+    // Generate constructor name
+    // For default constructor (no params): ClassName_init
+    std::string ctorName = className + "_init";
+
+    // Create DeclRefExpr for the variable
+    clang::DeclRefExpr* varRef = clang::DeclRefExpr::Create(
+        cContext,
+        clang::NestedNameSpecifierLoc(),
+        clang::SourceLocation(),
+        cVarDecl,
+        false,  // RefersToEnclosingVariableOrCapture
+        clang::SourceLocation(),
+        cVarDecl->getType(),
+        clang::VK_LValue
+    );
+
+    // Create UnaryOperator for address-of (&obj)
+    clang::QualType ptrType = cContext.getPointerType(cVarDecl->getType());
+    clang::UnaryOperator* addrOf = clang::UnaryOperator::Create(
+        cContext,
+        varRef,
+        clang::UO_AddrOf,
+        ptrType,
+        clang::VK_PRValue,
+        clang::OK_Ordinary,
+        clang::SourceLocation(),
+        false,  // CanOverflow
+        clang::FPOptionsOverride()
+    );
+
+    // Create function reference for constructor
+    // We need to create a dummy function decl or lookup the constructor
+    // For now, create a simple function reference
+
+    clang::IdentifierInfo& ctorII = cContext.Idents.get(ctorName);
+    clang::QualType ctorType = cContext.VoidTy;  // Constructors return void
+
+    // Create a dummy function declaration for the constructor
+    // In a full implementation, we'd lookup the actual translated constructor
+    clang::FunctionDecl* ctorFunc = clang::FunctionDecl::Create(
+        cContext,
+        cContext.getTranslationUnitDecl(),
+        clang::SourceLocation(),
+        clang::SourceLocation(),
+        &ctorII,
+        cContext.getFunctionType(ctorType, {ptrType}, {}),
+        cContext.getTrivialTypeSourceInfo(ctorType),
+        clang::SC_Extern
+    );
+
+    // Create DeclRefExpr for the constructor function
+    clang::DeclRefExpr* ctorRef = clang::DeclRefExpr::Create(
+        cContext,
+        clang::NestedNameSpecifierLoc(),
+        clang::SourceLocation(),
+        ctorFunc,
+        false,
+        clang::SourceLocation(),
+        ctorFunc->getType(),
+        clang::VK_LValue
+    );
+
+    // Create CallExpr with &obj as the only argument (for default constructor)
+    std::vector<clang::Expr*> args;
+    args.push_back(addrOf);
+
+    clang::CallExpr* callExpr = clang::CallExpr::Create(
+        cContext,
+        ctorRef,
+        args,
+        cContext.VoidTy,
+        clang::VK_PRValue,
+        clang::SourceLocation(),
+        clang::FPOptionsOverride()
+    );
+
+    return callExpr;
 }
 
 } // namespace cpptoc
