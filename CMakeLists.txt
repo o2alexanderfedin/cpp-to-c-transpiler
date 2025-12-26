@@ -3979,6 +3979,33 @@ gtest_discover_tests(HandlerIntegrationTest
 )
 
 # ============================================================================
+# Phase 39-01d: E2E Tests - Full Pipeline Validation
+# ============================================================================
+
+add_executable(E2EPhase1Test
+    tests/e2e/phase1/E2EPhase1Test.cpp
+)
+
+target_include_directories(E2EPhase1Test PRIVATE
+    ${CMAKE_SOURCE_DIR}/include
+    ${LLVM_INCLUDE_DIRS}
+    ${CLANG_INCLUDE_DIRS}
+)
+
+target_link_libraries(E2EPhase1Test PRIVATE
+    cpptoc_core
+    clangTooling
+    clangAST
+    clangBasic
+    GTest::gtest
+    GTest::gtest_main
+)
+
+gtest_discover_tests(E2EPhase1Test
+    WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
+)
+
+# ============================================================================
 # Phase 15-04: Unified Test Execution - Convenience Test Targets
 # ============================================================================
 
