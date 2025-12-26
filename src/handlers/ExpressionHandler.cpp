@@ -31,7 +31,10 @@ bool ExpressionHandler::canHandle(const clang::Expr* E) const {
            llvm::isa<clang::UnaryOperator>(E) ||
            llvm::isa<clang::DeclRefExpr>(E) ||
            llvm::isa<clang::ParenExpr>(E) ||
-           llvm::isa<clang::ImplicitCastExpr>(E);
+           llvm::isa<clang::ImplicitCastExpr>(E) ||
+           llvm::isa<clang::CStyleCastExpr>(E) ||
+           llvm::isa<clang::ArraySubscriptExpr>(E) ||
+           llvm::isa<clang::InitListExpr>(E);
 }
 
 clang::Expr* ExpressionHandler::handleExpr(const clang::Expr* E, HandlerContext& ctx) {
@@ -64,6 +67,15 @@ clang::Expr* ExpressionHandler::handleExpr(const clang::Expr* E, HandlerContext&
     }
     if (auto* ICE = llvm::dyn_cast<clang::ImplicitCastExpr>(E)) {
         return translateImplicitCastExpr(ICE, ctx);
+    }
+    if (auto* CCE = llvm::dyn_cast<clang::CStyleCastExpr>(E)) {
+        return translateCStyleCastExpr(CCE, ctx);
+    }
+    if (auto* ASE = llvm::dyn_cast<clang::ArraySubscriptExpr>(E)) {
+        return translateArraySubscriptExpr(ASE, ctx);
+    }
+    if (auto* ILE = llvm::dyn_cast<clang::InitListExpr>(E)) {
+        return translateInitListExpr(ILE, ctx);
     }
 
     // Unsupported expression type
@@ -293,6 +305,109 @@ clang::Expr* ExpressionHandler::translateImplicitCastExpr(
             // (though in practice, C compiler will re-insert them)
             return SubExpr;
     }
+}
+
+// ============================================================================
+// Array Access Translations
+// ============================================================================
+
+clang::Expr* ExpressionHandler::translateArraySubscriptExpr(
+    const clang::ArraySubscriptExpr* ASE,
+    HandlerContext& ctx
+) {
+    // Recursively translate base and index expressions
+    clang::Expr* Base = handleExpr(ASE->getBase(), ctx);
+    clang::Expr* Idx = handleExpr(ASE->getIdx(), ctx);
+
+    if (!Base || !Idx) {
+        return nullptr;
+    }
+
+    clang::ASTContext& cCtx = ctx.getCContext();
+
+    // Create C array subscript expression
+    // Array subscript syntax is identical in C and C++
+    // ArraySubscriptExpr expects (lhs, rhs, type, VK, OK, rbracket)
+    // where lhs is the base and rhs is the index
+    return new (cCtx) clang::ArraySubscriptExpr(
+        Base,
+        Idx,
+        ASE->getType(),
+        ASE->getValueKind(),
+        ASE->getObjectKind(),
+        ASE->getRBracketLoc()
+    );
+}
+
+// ============================================================================
+// Initializer List Translation
+// ============================================================================
+
+clang::Expr* ExpressionHandler::translateInitListExpr(
+    const clang::InitListExpr* ILE,
+    HandlerContext& ctx
+) {
+    // Initializer lists are identical in C and C++
+    // Recursively translate all initialization expressions
+    clang::ASTContext& cCtx = ctx.getCContext();
+
+    // Translate each initializer expression
+    llvm::SmallVector<clang::Expr*, 8> translatedInits;
+    for (unsigned i = 0; i < ILE->getNumInits(); ++i) {
+        clang::Expr* init = handleExpr(ILE->getInit(i), ctx);
+        if (!init) {
+            return nullptr;  // Translation failed
+        }
+        translatedInits.push_back(init);
+    }
+
+    // Create C InitListExpr
+    // Note: InitListExpr constructor takes an array of initializers
+    clang::InitListExpr* result = new (cCtx) clang::InitListExpr(
+        cCtx,
+        ILE->getLBraceLoc(),
+        translatedInits,
+        ILE->getRBraceLoc()
+    );
+
+    // Set the type of the initializer list
+    result->setType(ILE->getType());
+
+    return result;
+}
+
+// ============================================================================
+// Cast Expression Translations
+// ============================================================================
+
+clang::Expr* ExpressionHandler::translateCStyleCastExpr(
+    const clang::CStyleCastExpr* CCE,
+    HandlerContext& ctx
+) {
+    // C-style casts are identical in C and C++
+    // Recursively translate the subexpression
+    clang::Expr* SubExpr = handleExpr(CCE->getSubExpr(), ctx);
+
+    if (!SubExpr) {
+        return nullptr;
+    }
+
+    clang::ASTContext& cCtx = ctx.getCContext();
+
+    // Create C CStyleCastExpr
+    // We need to create the cast using CStyleCastExpr::Create
+    return clang::CStyleCastExpr::Create(
+        cCtx,
+        CCE->getType(),                    // Target type
+        CCE->getValueKind(),               // Value kind
+        CCE->getCastKind(),                // Cast kind
+        SubExpr,                           // Subexpression
+        nullptr,                           // Base path (for pointer-to-member casts)
+        CCE->getFPFeatures(),              // Floating point features
+        CCE->getTypeInfoAsWritten(),       // Type info as written
+        CCE->getLParenLoc(),               // Left paren location
+        CCE->getRParenLoc()                // Right paren location
+    );
 }
 
 } // namespace cpptoc

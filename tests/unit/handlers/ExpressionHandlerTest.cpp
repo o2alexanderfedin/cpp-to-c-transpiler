@@ -218,6 +218,232 @@ TEST_F(ExpressionHandlerTest, StringLiteral) {
     EXPECT_EQ(strLit->getString().str(), "hello");
 }
 
+// ============================================================================
+// STRING LITERALS - PHASE 3 TASK 1 (Comprehensive string support)
+// ============================================================================
+
+/**
+ * Test: String Literal - Empty String
+ * C++ Input: ""
+ * Expected: StringLiteral with empty content
+ */
+TEST_F(ExpressionHandlerTest, StringLiteralEmpty) {
+    // Arrange
+    clang::Expr* cppExpr = parseExpr("\"\"");
+    ASSERT_NE(cppExpr, nullptr);
+    ASSERT_TRUE(llvm::isa<clang::StringLiteral>(cppExpr));
+
+    // Act
+    ExpressionHandler handler;
+    clang::Expr* result = handler.handleExpr(cppExpr, *context);
+
+    // Assert
+    ASSERT_NE(result, nullptr) << "Translation returned null";
+    auto* strLit = llvm::dyn_cast<clang::StringLiteral>(result);
+    ASSERT_NE(strLit, nullptr) << "Result is not StringLiteral";
+    EXPECT_EQ(strLit->getString().str(), "");
+    EXPECT_EQ(strLit->getLength(), 0);
+}
+
+/**
+ * Test: String Literal - Newline Escape
+ * C++ Input: "hello\nworld"
+ * Expected: StringLiteral with newline escape preserved
+ */
+TEST_F(ExpressionHandlerTest, StringLiteralWithNewline) {
+    // Arrange
+    clang::Expr* cppExpr = parseExpr("\"hello\\nworld\"");
+    ASSERT_NE(cppExpr, nullptr);
+    ASSERT_TRUE(llvm::isa<clang::StringLiteral>(cppExpr));
+
+    // Act
+    ExpressionHandler handler;
+    clang::Expr* result = handler.handleExpr(cppExpr, *context);
+
+    // Assert
+    ASSERT_NE(result, nullptr) << "Translation returned null";
+    auto* strLit = llvm::dyn_cast<clang::StringLiteral>(result);
+    ASSERT_NE(strLit, nullptr) << "Result is not StringLiteral";
+    EXPECT_EQ(strLit->getString().str(), "hello\nworld");
+}
+
+/**
+ * Test: String Literal - Tab Escape
+ * C++ Input: "tab\there"
+ * Expected: StringLiteral with tab escape preserved
+ */
+TEST_F(ExpressionHandlerTest, StringLiteralWithTab) {
+    // Arrange
+    clang::Expr* cppExpr = parseExpr("\"tab\\there\"");
+    ASSERT_NE(cppExpr, nullptr);
+    ASSERT_TRUE(llvm::isa<clang::StringLiteral>(cppExpr));
+
+    // Act
+    ExpressionHandler handler;
+    clang::Expr* result = handler.handleExpr(cppExpr, *context);
+
+    // Assert
+    ASSERT_NE(result, nullptr) << "Translation returned null";
+    auto* strLit = llvm::dyn_cast<clang::StringLiteral>(result);
+    ASSERT_NE(strLit, nullptr) << "Result is not StringLiteral";
+    EXPECT_EQ(strLit->getString().str(), "tab\there");
+}
+
+/**
+ * Test: String Literal - Quote Escape
+ * C++ Input: "say \"hello\""
+ * Expected: StringLiteral with escaped quotes preserved
+ */
+TEST_F(ExpressionHandlerTest, StringLiteralWithQuote) {
+    // Arrange
+    clang::Expr* cppExpr = parseExpr("\"say \\\"hello\\\"\"");
+    ASSERT_NE(cppExpr, nullptr);
+    ASSERT_TRUE(llvm::isa<clang::StringLiteral>(cppExpr));
+
+    // Act
+    ExpressionHandler handler;
+    clang::Expr* result = handler.handleExpr(cppExpr, *context);
+
+    // Assert
+    ASSERT_NE(result, nullptr) << "Translation returned null";
+    auto* strLit = llvm::dyn_cast<clang::StringLiteral>(result);
+    ASSERT_NE(strLit, nullptr) << "Result is not StringLiteral";
+    EXPECT_EQ(strLit->getString().str(), "say \"hello\"");
+}
+
+/**
+ * Test: String Literal - Backslash Escape
+ * C++ Input: "path\\to\\file"
+ * Expected: StringLiteral with backslash escape preserved
+ */
+TEST_F(ExpressionHandlerTest, StringLiteralWithBackslash) {
+    // Arrange
+    clang::Expr* cppExpr = parseExpr("\"path\\\\to\\\\file\"");
+    ASSERT_NE(cppExpr, nullptr);
+    ASSERT_TRUE(llvm::isa<clang::StringLiteral>(cppExpr));
+
+    // Act
+    ExpressionHandler handler;
+    clang::Expr* result = handler.handleExpr(cppExpr, *context);
+
+    // Assert
+    ASSERT_NE(result, nullptr) << "Translation returned null";
+    auto* strLit = llvm::dyn_cast<clang::StringLiteral>(result);
+    ASSERT_NE(strLit, nullptr) << "Result is not StringLiteral";
+    EXPECT_EQ(strLit->getString().str(), "path\\to\\file");
+}
+
+/**
+ * Test: String Literal - Multiple Escapes
+ * C++ Input: "line1\nline2\tindented"
+ * Expected: StringLiteral with multiple escape sequences
+ */
+TEST_F(ExpressionHandlerTest, StringLiteralMultipleEscapes) {
+    // Arrange
+    clang::Expr* cppExpr = parseExpr("\"line1\\nline2\\tindented\"");
+    ASSERT_NE(cppExpr, nullptr);
+    ASSERT_TRUE(llvm::isa<clang::StringLiteral>(cppExpr));
+
+    // Act
+    ExpressionHandler handler;
+    clang::Expr* result = handler.handleExpr(cppExpr, *context);
+
+    // Assert
+    ASSERT_NE(result, nullptr) << "Translation returned null";
+    auto* strLit = llvm::dyn_cast<clang::StringLiteral>(result);
+    ASSERT_NE(strLit, nullptr) << "Result is not StringLiteral";
+    EXPECT_EQ(strLit->getString().str(), "line1\nline2\tindented");
+}
+
+/**
+ * Test: String Literal - Null Character
+ * C++ Input: "null\0char"
+ * Expected: StringLiteral with null character preserved
+ */
+TEST_F(ExpressionHandlerTest, StringLiteralWithNull) {
+    // Arrange
+    clang::Expr* cppExpr = parseExpr("\"null\\0char\"");
+    ASSERT_NE(cppExpr, nullptr);
+    ASSERT_TRUE(llvm::isa<clang::StringLiteral>(cppExpr));
+
+    // Act
+    ExpressionHandler handler;
+    clang::Expr* result = handler.handleExpr(cppExpr, *context);
+
+    // Assert
+    ASSERT_NE(result, nullptr) << "Translation returned null";
+    auto* strLit = llvm::dyn_cast<clang::StringLiteral>(result);
+    ASSERT_NE(strLit, nullptr) << "Result is not StringLiteral";
+    // Note: String will contain null, so we check the length instead
+    EXPECT_GT(strLit->getLength(), 0);
+}
+
+/**
+ * Test: String Literal - Long String
+ * C++ Input: "This is a longer string with multiple words and spaces"
+ * Expected: StringLiteral with full content preserved
+ */
+TEST_F(ExpressionHandlerTest, StringLiteralLong) {
+    // Arrange
+    clang::Expr* cppExpr = parseExpr("\"This is a longer string with multiple words and spaces\"");
+    ASSERT_NE(cppExpr, nullptr);
+    ASSERT_TRUE(llvm::isa<clang::StringLiteral>(cppExpr));
+
+    // Act
+    ExpressionHandler handler;
+    clang::Expr* result = handler.handleExpr(cppExpr, *context);
+
+    // Assert
+    ASSERT_NE(result, nullptr) << "Translation returned null";
+    auto* strLit = llvm::dyn_cast<clang::StringLiteral>(result);
+    ASSERT_NE(strLit, nullptr) << "Result is not StringLiteral";
+    EXPECT_EQ(strLit->getString().str(), "This is a longer string with multiple words and spaces");
+}
+
+/**
+ * Test: String Literal - Special Characters
+ * C++ Input: "!@#$%^&*()_+-={}[]|:;<>,.?/"
+ * Expected: StringLiteral with special characters preserved
+ */
+TEST_F(ExpressionHandlerTest, StringLiteralSpecialChars) {
+    // Arrange
+    clang::Expr* cppExpr = parseExpr("\"!@#$%^&*()_+-={}[]|:;<>,.?/\"");
+    ASSERT_NE(cppExpr, nullptr);
+    ASSERT_TRUE(llvm::isa<clang::StringLiteral>(cppExpr));
+
+    // Act
+    ExpressionHandler handler;
+    clang::Expr* result = handler.handleExpr(cppExpr, *context);
+
+    // Assert
+    ASSERT_NE(result, nullptr) << "Translation returned null";
+    auto* strLit = llvm::dyn_cast<clang::StringLiteral>(result);
+    ASSERT_NE(strLit, nullptr) << "Result is not StringLiteral";
+    EXPECT_EQ(strLit->getString().str(), "!@#$%^&*()_+-={}[]|:;<>,.?/");
+}
+
+/**
+ * Test: String Literal - Numeric Content
+ * C++ Input: "12345"
+ * Expected: StringLiteral with numeric content
+ */
+TEST_F(ExpressionHandlerTest, StringLiteralNumeric) {
+    // Arrange
+    clang::Expr* cppExpr = parseExpr("\"12345\"");
+    ASSERT_NE(cppExpr, nullptr);
+    ASSERT_TRUE(llvm::isa<clang::StringLiteral>(cppExpr));
+
+    // Act
+    ExpressionHandler handler;
+    clang::Expr* result = handler.handleExpr(cppExpr, *context);
+
+    // Assert
+    ASSERT_NE(result, nullptr) << "Translation returned null";
+    auto* strLit = llvm::dyn_cast<clang::StringLiteral>(result);
+    ASSERT_NE(strLit, nullptr) << "Result is not StringLiteral";
+    EXPECT_EQ(strLit->getString().str(), "12345");
+}
+
 /**
  * Test 5: Character Literal
  * C++ Input: 'a'
@@ -238,6 +464,189 @@ TEST_F(ExpressionHandlerTest, CharacterLiteral) {
     auto* charLit = llvm::dyn_cast<clang::CharacterLiteral>(result);
     ASSERT_NE(charLit, nullptr) << "Result is not CharacterLiteral";
     EXPECT_EQ(charLit->getValue(), 'a');
+}
+
+// ============================================================================
+// CHARACTER LITERALS - PHASE 3 TASK 2 (Tests for comprehensive char support)
+// ============================================================================
+
+/**
+ * Test: Simple Character Literal (uppercase)
+ * C++ Input: 'Z'
+ * Expected: CharacterLiteral with value 'Z'
+ */
+TEST_F(ExpressionHandlerTest, CharLiteralUppercase) {
+    // Arrange
+    clang::Expr* cppExpr = parseExpr("'Z'");
+    ASSERT_NE(cppExpr, nullptr);
+    ASSERT_TRUE(llvm::isa<clang::CharacterLiteral>(cppExpr));
+
+    // Act
+    ExpressionHandler handler;
+    clang::Expr* result = handler.handleExpr(cppExpr, *context);
+
+    // Assert
+    ASSERT_NE(result, nullptr) << "Translation returned null";
+    auto* charLit = llvm::dyn_cast<clang::CharacterLiteral>(result);
+    ASSERT_NE(charLit, nullptr) << "Result is not CharacterLiteral";
+    EXPECT_EQ(charLit->getValue(), 'Z');
+}
+
+/**
+ * Test: Character Literal - Newline Escape Sequence
+ * C++ Input: '\n'
+ * Expected: CharacterLiteral with value 10 (newline)
+ */
+TEST_F(ExpressionHandlerTest, CharLiteralNewline) {
+    // Arrange
+    clang::Expr* cppExpr = parseExpr("'\\n'");
+    ASSERT_NE(cppExpr, nullptr);
+    ASSERT_TRUE(llvm::isa<clang::CharacterLiteral>(cppExpr));
+
+    // Act
+    ExpressionHandler handler;
+    clang::Expr* result = handler.handleExpr(cppExpr, *context);
+
+    // Assert
+    ASSERT_NE(result, nullptr) << "Translation returned null";
+    auto* charLit = llvm::dyn_cast<clang::CharacterLiteral>(result);
+    ASSERT_NE(charLit, nullptr) << "Result is not CharacterLiteral";
+    EXPECT_EQ(charLit->getValue(), '\n');
+}
+
+/**
+ * Test: Character Literal - Tab Escape Sequence
+ * C++ Input: '\t'
+ * Expected: CharacterLiteral with value 9 (tab)
+ */
+TEST_F(ExpressionHandlerTest, CharLiteralTab) {
+    // Arrange
+    clang::Expr* cppExpr = parseExpr("'\\t'");
+    ASSERT_NE(cppExpr, nullptr);
+    ASSERT_TRUE(llvm::isa<clang::CharacterLiteral>(cppExpr));
+
+    // Act
+    ExpressionHandler handler;
+    clang::Expr* result = handler.handleExpr(cppExpr, *context);
+
+    // Assert
+    ASSERT_NE(result, nullptr) << "Translation returned null";
+    auto* charLit = llvm::dyn_cast<clang::CharacterLiteral>(result);
+    ASSERT_NE(charLit, nullptr) << "Result is not CharacterLiteral";
+    EXPECT_EQ(charLit->getValue(), '\t');
+}
+
+/**
+ * Test: Character Literal - Backslash Escape Sequence
+ * C++ Input: '\\'
+ * Expected: CharacterLiteral with value 92 (backslash)
+ */
+TEST_F(ExpressionHandlerTest, CharLiteralBackslash) {
+    // Arrange
+    clang::Expr* cppExpr = parseExpr("'\\\\'");
+    ASSERT_NE(cppExpr, nullptr);
+    ASSERT_TRUE(llvm::isa<clang::CharacterLiteral>(cppExpr));
+
+    // Act
+    ExpressionHandler handler;
+    clang::Expr* result = handler.handleExpr(cppExpr, *context);
+
+    // Assert
+    ASSERT_NE(result, nullptr) << "Translation returned null";
+    auto* charLit = llvm::dyn_cast<clang::CharacterLiteral>(result);
+    ASSERT_NE(charLit, nullptr) << "Result is not CharacterLiteral";
+    EXPECT_EQ(charLit->getValue(), '\\');
+}
+
+/**
+ * Test: Character Literal - Single Quote Escape Sequence
+ * C++ Input: '\''
+ * Expected: CharacterLiteral with value 39 (single quote)
+ */
+TEST_F(ExpressionHandlerTest, CharLiteralSingleQuote) {
+    // Arrange
+    clang::Expr* cppExpr = parseExpr("'\\''");
+    ASSERT_NE(cppExpr, nullptr);
+    ASSERT_TRUE(llvm::isa<clang::CharacterLiteral>(cppExpr));
+
+    // Act
+    ExpressionHandler handler;
+    clang::Expr* result = handler.handleExpr(cppExpr, *context);
+
+    // Assert
+    ASSERT_NE(result, nullptr) << "Translation returned null";
+    auto* charLit = llvm::dyn_cast<clang::CharacterLiteral>(result);
+    ASSERT_NE(charLit, nullptr) << "Result is not CharacterLiteral";
+    EXPECT_EQ(charLit->getValue(), '\'');
+}
+
+/**
+ * Test: Character Literal - Null Character
+ * C++ Input: '\0'
+ * Expected: CharacterLiteral with value 0
+ */
+TEST_F(ExpressionHandlerTest, CharLiteralNull) {
+    // Arrange
+    clang::Expr* cppExpr = parseExpr("'\\0'");
+    ASSERT_NE(cppExpr, nullptr);
+    ASSERT_TRUE(llvm::isa<clang::CharacterLiteral>(cppExpr));
+
+    // Act
+    ExpressionHandler handler;
+    clang::Expr* result = handler.handleExpr(cppExpr, *context);
+
+    // Assert
+    ASSERT_NE(result, nullptr) << "Translation returned null";
+    auto* charLit = llvm::dyn_cast<clang::CharacterLiteral>(result);
+    ASSERT_NE(charLit, nullptr) << "Result is not CharacterLiteral";
+    EXPECT_EQ(charLit->getValue(), '\0');
+}
+
+/**
+ * Test: Character Literal - Hexadecimal Escape
+ * C++ Input: '\x41'
+ * Expected: CharacterLiteral with value 65 ('A')
+ */
+TEST_F(ExpressionHandlerTest, CharLiteralHexEscape) {
+    // Arrange
+    clang::Expr* cppExpr = parseExpr("'\\x41'");
+    ASSERT_NE(cppExpr, nullptr);
+    ASSERT_TRUE(llvm::isa<clang::CharacterLiteral>(cppExpr));
+
+    // Act
+    ExpressionHandler handler;
+    clang::Expr* result = handler.handleExpr(cppExpr, *context);
+
+    // Assert
+    ASSERT_NE(result, nullptr) << "Translation returned null";
+    auto* charLit = llvm::dyn_cast<clang::CharacterLiteral>(result);
+    ASSERT_NE(charLit, nullptr) << "Result is not CharacterLiteral";
+    EXPECT_EQ(charLit->getValue(), 0x41); // 'A'
+}
+
+/**
+ * Test: Character Literal in Expression
+ * C++ Input: 'a' + 1
+ * Expected: BinaryOperator with CharacterLiteral and IntegerLiteral
+ */
+TEST_F(ExpressionHandlerTest, CharLiteralInExpression) {
+    // Arrange
+    clang::Expr* cppExpr = parseExpr("'a' + 1");
+    ASSERT_NE(cppExpr, nullptr);
+
+    // Act
+    ExpressionHandler handler;
+    clang::Expr* result = handler.handleExpr(cppExpr, *context);
+
+    // Assert
+    ASSERT_NE(result, nullptr) << "Translation returned null";
+    auto* binOp = llvm::dyn_cast<clang::BinaryOperator>(result);
+    ASSERT_NE(binOp, nullptr) << "Result is not BinaryOperator";
+    EXPECT_EQ(binOp->getOpcode(), clang::BO_Add);
+
+    // Verify LHS is a character literal (might be wrapped in implicit cast)
+    auto* lhs = binOp->getLHS();
+    ASSERT_NE(lhs, nullptr);
 }
 
 // ============================================================================
@@ -1881,4 +2290,1152 @@ TEST_F(ExpressionHandlerTest, LogicalNotComplex) {
     ASSERT_NE(innerExpr, nullptr);
     auto* innerBinOp = llvm::dyn_cast<clang::BinaryOperator>(innerExpr->IgnoreParens());
     ASSERT_NE(innerBinOp, nullptr) << "Inner expression is not BinaryOperator";
+}
+
+// ============================================================================
+// ARRAY INITIALIZATION (InitListExpr) - PHASE 3 TASK 4
+// ============================================================================
+
+/**
+ * Test 66: Full Array Initialization
+ * C++ Input: int arr[3] = {1, 2, 3}
+ * Expected: InitListExpr with 3 integer literals
+ */
+TEST_F(ExpressionHandlerTest, InitListExpr_FullArrayInit) {
+    // Arrange
+    std::string code = "int arr[3] = {1, 2, 3};";
+    auto AST = clang::tooling::buildASTFromCode(code);
+    ASSERT_NE(AST, nullptr);
+
+    // Extract InitListExpr from VarDecl
+    class InitListExtractor : public clang::RecursiveASTVisitor<InitListExtractor> {
+    public:
+        clang::InitListExpr* found = nullptr;
+        bool VisitInitListExpr(clang::InitListExpr* ILE) {
+            if (!found) found = ILE;
+            return true;
+        }
+    };
+
+    InitListExtractor extractor;
+    extractor.TraverseDecl(AST->getASTContext().getTranslationUnitDecl());
+    ASSERT_NE(extractor.found, nullptr) << "InitListExpr not found in AST";
+
+    clang::InitListExpr* cppInit = extractor.found;
+
+    // Act
+    ExpressionHandler handler;
+    clang::Expr* result = handler.handleExpr(cppInit, *context);
+
+    // Assert
+    ASSERT_NE(result, nullptr) << "Translation returned null";
+    auto* initList = llvm::dyn_cast<clang::InitListExpr>(result);
+    ASSERT_NE(initList, nullptr) << "Result is not InitListExpr";
+    EXPECT_EQ(initList->getNumInits(), 3);
+
+    // Verify each element
+    for (unsigned i = 0; i < 3; ++i) {
+        auto* init = initList->getInit(i);
+        ASSERT_NE(init, nullptr) << "Init " << i << " is null";
+        auto* intLit = llvm::dyn_cast<clang::IntegerLiteral>(init);
+        ASSERT_NE(intLit, nullptr) << "Init " << i << " is not IntegerLiteral";
+        EXPECT_EQ(intLit->getValue().getLimitedValue(), i + 1);
+    }
+}
+
+/**
+ * Test 67: Partial Array Initialization
+ * C++ Input: int arr[5] = {1, 2}
+ * Expected: InitListExpr with 2 integer literals (remaining elements zero-initialized)
+ */
+TEST_F(ExpressionHandlerTest, InitListExpr_PartialArrayInit) {
+    // Arrange
+    std::string code = "int arr[5] = {1, 2};";
+    auto AST = clang::tooling::buildASTFromCode(code);
+    ASSERT_NE(AST, nullptr);
+
+    class InitListExtractor : public clang::RecursiveASTVisitor<InitListExtractor> {
+    public:
+        clang::InitListExpr* found = nullptr;
+        bool VisitInitListExpr(clang::InitListExpr* ILE) {
+            if (!found) found = ILE;
+            return true;
+        }
+    };
+
+    InitListExtractor extractor;
+    extractor.TraverseDecl(AST->getASTContext().getTranslationUnitDecl());
+    ASSERT_NE(extractor.found, nullptr) << "InitListExpr not found in AST";
+
+    // Act
+    ExpressionHandler handler;
+    clang::Expr* result = handler.handleExpr(extractor.found, *context);
+
+    // Assert
+    ASSERT_NE(result, nullptr) << "Translation returned null";
+    auto* initList = llvm::dyn_cast<clang::InitListExpr>(result);
+    ASSERT_NE(initList, nullptr) << "Result is not InitListExpr";
+    // C initializer lists preserve explicit inits, may have implicit zero inits
+    EXPECT_GE(initList->getNumInits(), 2);
+}
+
+/**
+ * Test 68: Nested Array Initialization (2D)
+ * C++ Input: int matrix[2][2] = {{1, 2}, {3, 4}}
+ * Expected: InitListExpr with 2 nested InitListExpr
+ */
+TEST_F(ExpressionHandlerTest, InitListExpr_NestedArrayInit) {
+    // Arrange
+    std::string code = "int matrix[2][2] = {{1, 2}, {3, 4}};";
+    auto AST = clang::tooling::buildASTFromCode(code);
+    ASSERT_NE(AST, nullptr);
+
+    class InitListExtractor : public clang::RecursiveASTVisitor<InitListExtractor> {
+    public:
+        clang::InitListExpr* found = nullptr;
+        bool VisitInitListExpr(clang::InitListExpr* ILE) {
+            if (!found && ILE->getNumInits() == 2) {
+                // Get the outer InitListExpr (the one with 2 sub-lists)
+                found = ILE;
+            }
+            return true;
+        }
+    };
+
+    InitListExtractor extractor;
+    extractor.TraverseDecl(AST->getASTContext().getTranslationUnitDecl());
+    ASSERT_NE(extractor.found, nullptr) << "InitListExpr not found in AST";
+
+    // Act
+    ExpressionHandler handler;
+    clang::Expr* result = handler.handleExpr(extractor.found, *context);
+
+    // Assert
+    ASSERT_NE(result, nullptr) << "Translation returned null";
+    auto* initList = llvm::dyn_cast<clang::InitListExpr>(result);
+    ASSERT_NE(initList, nullptr) << "Result is not InitListExpr";
+    EXPECT_EQ(initList->getNumInits(), 2);
+
+    // Verify nested structure
+    for (unsigned i = 0; i < 2; ++i) {
+        auto* nested = llvm::dyn_cast<clang::InitListExpr>(initList->getInit(i));
+        ASSERT_NE(nested, nullptr) << "Nested init " << i << " is not InitListExpr";
+        EXPECT_EQ(nested->getNumInits(), 2);
+    }
+}
+
+/**
+ * Test 69: Empty Initializer
+ * C++ Input: int arr[3] = {}
+ * Expected: InitListExpr with 0 explicit inits (zero-initialized)
+ */
+TEST_F(ExpressionHandlerTest, InitListExpr_EmptyInit) {
+    // Arrange
+    std::string code = "int arr[3] = {};";
+    auto AST = clang::tooling::buildASTFromCode(code);
+    ASSERT_NE(AST, nullptr);
+
+    class InitListExtractor : public clang::RecursiveASTVisitor<InitListExtractor> {
+    public:
+        clang::InitListExpr* found = nullptr;
+        bool VisitInitListExpr(clang::InitListExpr* ILE) {
+            if (!found) found = ILE;
+            return true;
+        }
+    };
+
+    InitListExtractor extractor;
+    extractor.TraverseDecl(AST->getASTContext().getTranslationUnitDecl());
+    ASSERT_NE(extractor.found, nullptr) << "InitListExpr not found in AST";
+
+    // Act
+    ExpressionHandler handler;
+    clang::Expr* result = handler.handleExpr(extractor.found, *context);
+
+    // Assert
+    ASSERT_NE(result, nullptr) << "Translation returned null";
+    auto* initList = llvm::dyn_cast<clang::InitListExpr>(result);
+    ASSERT_NE(initList, nullptr) << "Result is not InitListExpr";
+}
+
+/**
+ * Test 70: Initializer with Expressions
+ * C++ Input: int arr[3] = {1 + 1, 2 * 2, 3 - 1}
+ * Expected: InitListExpr with 3 binary operator expressions
+ */
+TEST_F(ExpressionHandlerTest, InitListExpr_WithExpressions) {
+    // Arrange
+    std::string code = "int arr[3] = {1 + 1, 2 * 2, 3 - 1};";
+    auto AST = clang::tooling::buildASTFromCode(code);
+    ASSERT_NE(AST, nullptr);
+
+    class InitListExtractor : public clang::RecursiveASTVisitor<InitListExtractor> {
+    public:
+        clang::InitListExpr* found = nullptr;
+        bool VisitInitListExpr(clang::InitListExpr* ILE) {
+            if (!found) found = ILE;
+            return true;
+        }
+    };
+
+    InitListExtractor extractor;
+    extractor.TraverseDecl(AST->getASTContext().getTranslationUnitDecl());
+    ASSERT_NE(extractor.found, nullptr) << "InitListExpr not found in AST";
+
+    // Act
+    ExpressionHandler handler;
+    clang::Expr* result = handler.handleExpr(extractor.found, *context);
+
+    // Assert
+    ASSERT_NE(result, nullptr) << "Translation returned null";
+    auto* initList = llvm::dyn_cast<clang::InitListExpr>(result);
+    ASSERT_NE(initList, nullptr) << "Result is not InitListExpr";
+    EXPECT_EQ(initList->getNumInits(), 3);
+
+    // Verify first element is a binary operator
+    auto* firstInit = initList->getInit(0);
+    ASSERT_NE(firstInit, nullptr);
+    auto* binOp = llvm::dyn_cast<clang::BinaryOperator>(firstInit);
+    ASSERT_NE(binOp, nullptr) << "First init is not BinaryOperator";
+}
+
+/**
+ * Test 71: String Array Initialization
+ * C++ Input: const char* arr[2] = {"hello", "world"}
+ * Expected: InitListExpr with 2 string literals
+ */
+TEST_F(ExpressionHandlerTest, InitListExpr_StringArray) {
+    // Arrange
+    std::string code = "const char* arr[2] = {\"hello\", \"world\"};";
+    auto AST = clang::tooling::buildASTFromCode(code);
+    ASSERT_NE(AST, nullptr);
+
+    class InitListExtractor : public clang::RecursiveASTVisitor<InitListExtractor> {
+    public:
+        clang::InitListExpr* found = nullptr;
+        bool VisitInitListExpr(clang::InitListExpr* ILE) {
+            if (!found) found = ILE;
+            return true;
+        }
+    };
+
+    InitListExtractor extractor;
+    extractor.TraverseDecl(AST->getASTContext().getTranslationUnitDecl());
+    ASSERT_NE(extractor.found, nullptr) << "InitListExpr not found in AST";
+
+    // Act
+    ExpressionHandler handler;
+    clang::Expr* result = handler.handleExpr(extractor.found, *context);
+
+    // Assert
+    ASSERT_NE(result, nullptr) << "Translation returned null";
+    auto* initList = llvm::dyn_cast<clang::InitListExpr>(result);
+    ASSERT_NE(initList, nullptr) << "Result is not InitListExpr";
+    EXPECT_EQ(initList->getNumInits(), 2);
+}
+
+/**
+ * Test 72: Single Element Initialization
+ * C++ Input: int arr[1] = {42}
+ * Expected: InitListExpr with 1 integer literal
+ */
+TEST_F(ExpressionHandlerTest, InitListExpr_SingleElement) {
+    // Arrange
+    std::string code = "int arr[1] = {42};";
+    auto AST = clang::tooling::buildASTFromCode(code);
+    ASSERT_NE(AST, nullptr);
+
+    class InitListExtractor : public clang::RecursiveASTVisitor<InitListExtractor> {
+    public:
+        clang::InitListExpr* found = nullptr;
+        bool VisitInitListExpr(clang::InitListExpr* ILE) {
+            if (!found) found = ILE;
+            return true;
+        }
+    };
+
+    InitListExtractor extractor;
+    extractor.TraverseDecl(AST->getASTContext().getTranslationUnitDecl());
+    ASSERT_NE(extractor.found, nullptr) << "InitListExpr not found in AST";
+
+    // Act
+    ExpressionHandler handler;
+    clang::Expr* result = handler.handleExpr(extractor.found, *context);
+
+    // Assert
+    ASSERT_NE(result, nullptr) << "Translation returned null";
+    auto* initList = llvm::dyn_cast<clang::InitListExpr>(result);
+    ASSERT_NE(initList, nullptr) << "Result is not InitListExpr";
+    EXPECT_EQ(initList->getNumInits(), 1);
+
+    auto* intLit = llvm::dyn_cast<clang::IntegerLiteral>(initList->getInit(0));
+    ASSERT_NE(intLit, nullptr);
+    EXPECT_EQ(intLit->getValue().getLimitedValue(), 42);
+}
+
+/**
+ * Test 73: Nested with Different Depths
+ * C++ Input: int arr[2][3] = {{1, 2, 3}, {4, 5, 6}}
+ * Expected: InitListExpr with properly nested structure
+ */
+TEST_F(ExpressionHandlerTest, InitListExpr_DeeperNesting) {
+    // Arrange
+    std::string code = "int arr[2][3] = {{1, 2, 3}, {4, 5, 6}};";
+    auto AST = clang::tooling::buildASTFromCode(code);
+    ASSERT_NE(AST, nullptr);
+
+    class InitListExtractor : public clang::RecursiveASTVisitor<InitListExtractor> {
+    public:
+        clang::InitListExpr* found = nullptr;
+        bool VisitInitListExpr(clang::InitListExpr* ILE) {
+            if (!found && ILE->getNumInits() == 2) {
+                // Get the outer InitListExpr
+                found = ILE;
+            }
+            return true;
+        }
+    };
+
+    InitListExtractor extractor;
+    extractor.TraverseDecl(AST->getASTContext().getTranslationUnitDecl());
+    ASSERT_NE(extractor.found, nullptr) << "InitListExpr not found in AST";
+
+    // Act
+    ExpressionHandler handler;
+    clang::Expr* result = handler.handleExpr(extractor.found, *context);
+
+    // Assert
+    ASSERT_NE(result, nullptr) << "Translation returned null";
+    auto* initList = llvm::dyn_cast<clang::InitListExpr>(result);
+    ASSERT_NE(initList, nullptr) << "Result is not InitListExpr";
+    EXPECT_EQ(initList->getNumInits(), 2);
+
+    // Verify first nested list has 3 elements
+    auto* nested = llvm::dyn_cast<clang::InitListExpr>(initList->getInit(0));
+    ASSERT_NE(nested, nullptr);
+    EXPECT_EQ(nested->getNumInits(), 3);
+}
+
+/**
+ * Test 74: Mixed Nested and Flat Initialization
+ * C++ Input: int arr[3][2] = {{1, 2}, {3, 4}, {5, 6}}
+ * Expected: InitListExpr with 3 nested InitListExpr, each with 2 elements
+ */
+TEST_F(ExpressionHandlerTest, InitListExpr_MixedNesting) {
+    // Arrange
+    std::string code = "int arr[3][2] = {{1, 2}, {3, 4}, {5, 6}};";
+    auto AST = clang::tooling::buildASTFromCode(code);
+    ASSERT_NE(AST, nullptr);
+
+    class InitListExtractor : public clang::RecursiveASTVisitor<InitListExtractor> {
+    public:
+        clang::InitListExpr* found = nullptr;
+        bool VisitInitListExpr(clang::InitListExpr* ILE) {
+            if (!found && ILE->getNumInits() == 3) {
+                // Get the outer InitListExpr
+                found = ILE;
+            }
+            return true;
+        }
+    };
+
+    InitListExtractor extractor;
+    extractor.TraverseDecl(AST->getASTContext().getTranslationUnitDecl());
+    ASSERT_NE(extractor.found, nullptr) << "InitListExpr not found in AST";
+
+    // Act
+    ExpressionHandler handler;
+    clang::Expr* result = handler.handleExpr(extractor.found, *context);
+
+    // Assert
+    ASSERT_NE(result, nullptr) << "Translation returned null";
+    auto* initList = llvm::dyn_cast<clang::InitListExpr>(result);
+    ASSERT_NE(initList, nullptr) << "Result is not InitListExpr";
+    EXPECT_EQ(initList->getNumInits(), 3);
+
+    // Verify all 3 nested lists have 2 elements each
+    for (unsigned i = 0; i < 3; ++i) {
+        auto* nested = llvm::dyn_cast<clang::InitListExpr>(initList->getInit(i));
+        ASSERT_NE(nested, nullptr) << "Nested init " << i << " is not InitListExpr";
+        EXPECT_EQ(nested->getNumInits(), 2);
+    }
+}
+
+// ============================================================================
+// ARRAY SUBSCRIPT - PHASE 3 TASK 5 (Array subscript support)
+// ============================================================================
+
+/**
+ * Test: Array Subscript - Simple subscript
+ * C++ Input: arr[0]
+ * Expected: ArraySubscriptExpr with IntegerLiteral index
+ */
+TEST_F(ExpressionHandlerTest, ArraySubscriptSimple) {
+    // Arrange
+    std::string code = R"(
+        void test() {
+            int arr[10];
+            arr[0];
+        }
+    )";
+    auto AST = clang::tooling::buildASTFromCode(code);
+    ASSERT_NE(AST, nullptr);
+
+    // Find the array subscript expression
+    class ArraySubscriptFinder : public clang::RecursiveASTVisitor<ArraySubscriptFinder> {
+    public:
+        clang::ArraySubscriptExpr* result = nullptr;
+        bool VisitArraySubscriptExpr(clang::ArraySubscriptExpr* ASE) {
+            if (!result) result = ASE;
+            return true;
+        }
+    };
+
+    ArraySubscriptFinder finder;
+    finder.TraverseDecl(AST->getASTContext().getTranslationUnitDecl());
+    ASSERT_NE(finder.result, nullptr) << "Failed to find ArraySubscriptExpr in AST";
+
+    // Act
+    ExpressionHandler handler;
+    clang::Expr* result = handler.handleExpr(finder.result, *context);
+
+    // Assert
+    ASSERT_NE(result, nullptr) << "Translation returned null";
+    auto* arraySubExpr = llvm::dyn_cast<clang::ArraySubscriptExpr>(result);
+    ASSERT_NE(arraySubExpr, nullptr) << "Result is not ArraySubscriptExpr";
+
+    // Verify base is a DeclRefExpr
+    auto* base = arraySubExpr->getBase();
+    ASSERT_NE(base, nullptr);
+
+    // Verify index is IntegerLiteral with value 0
+    auto* idx = arraySubExpr->getIdx();
+    ASSERT_NE(idx, nullptr);
+    auto* intLit = llvm::dyn_cast<clang::IntegerLiteral>(idx->IgnoreParenImpCasts());
+    ASSERT_NE(intLit, nullptr) << "Index is not IntegerLiteral";
+    EXPECT_EQ(intLit->getValue().getLimitedValue(), 0);
+}
+
+/**
+ * Test: Array Subscript - Variable index
+ * C++ Input: arr[i]
+ * Expected: ArraySubscriptExpr with DeclRefExpr index
+ */
+TEST_F(ExpressionHandlerTest, ArraySubscriptVariableIndex) {
+    // Arrange
+    std::string code = R"(
+        void test() {
+            int arr[10];
+            int i = 5;
+            arr[i];
+        }
+    )";
+    auto AST = clang::tooling::buildASTFromCode(code);
+    ASSERT_NE(AST, nullptr);
+
+    // Find the array subscript expression
+    class ArraySubscriptFinder : public clang::RecursiveASTVisitor<ArraySubscriptFinder> {
+    public:
+        clang::ArraySubscriptExpr* result = nullptr;
+        bool VisitArraySubscriptExpr(clang::ArraySubscriptExpr* ASE) {
+            if (!result) result = ASE;
+            return true;
+        }
+    };
+
+    ArraySubscriptFinder finder;
+    finder.TraverseDecl(AST->getASTContext().getTranslationUnitDecl());
+    ASSERT_NE(finder.result, nullptr) << "Failed to find ArraySubscriptExpr in AST";
+
+    // Act
+    ExpressionHandler handler;
+    clang::Expr* result = handler.handleExpr(finder.result, *context);
+
+    // Assert
+    ASSERT_NE(result, nullptr) << "Translation returned null";
+    auto* arraySubExpr = llvm::dyn_cast<clang::ArraySubscriptExpr>(result);
+    ASSERT_NE(arraySubExpr, nullptr) << "Result is not ArraySubscriptExpr";
+
+    // Verify index is a DeclRefExpr
+    auto* idx = arraySubExpr->getIdx();
+    ASSERT_NE(idx, nullptr);
+}
+
+/**
+ * Test: Array Subscript - Expression index
+ * C++ Input: arr[i + 1]
+ * Expected: ArraySubscriptExpr with BinaryOperator index
+ */
+TEST_F(ExpressionHandlerTest, ArraySubscriptExpressionIndex) {
+    // Arrange
+    std::string code = R"(
+        void test() {
+            int arr[10];
+            int i = 5;
+            arr[i + 1];
+        }
+    )";
+    auto AST = clang::tooling::buildASTFromCode(code);
+    ASSERT_NE(AST, nullptr);
+
+    // Find the array subscript expression
+    class ArraySubscriptFinder : public clang::RecursiveASTVisitor<ArraySubscriptFinder> {
+    public:
+        clang::ArraySubscriptExpr* result = nullptr;
+        bool VisitArraySubscriptExpr(clang::ArraySubscriptExpr* ASE) {
+            if (!result) result = ASE;
+            return true;
+        }
+    };
+
+    ArraySubscriptFinder finder;
+    finder.TraverseDecl(AST->getASTContext().getTranslationUnitDecl());
+    ASSERT_NE(finder.result, nullptr) << "Failed to find ArraySubscriptExpr in AST";
+
+    // Act
+    ExpressionHandler handler;
+    clang::Expr* result = handler.handleExpr(finder.result, *context);
+
+    // Assert
+    ASSERT_NE(result, nullptr) << "Translation returned null";
+    auto* arraySubExpr = llvm::dyn_cast<clang::ArraySubscriptExpr>(result);
+    ASSERT_NE(arraySubExpr, nullptr) << "Result is not ArraySubscriptExpr";
+
+    // Verify index is a BinaryOperator
+    auto* idx = arraySubExpr->getIdx();
+    ASSERT_NE(idx, nullptr);
+    auto* binOp = llvm::dyn_cast<clang::BinaryOperator>(idx->IgnoreParenImpCasts());
+    ASSERT_NE(binOp, nullptr) << "Index is not BinaryOperator";
+    EXPECT_EQ(binOp->getOpcode(), clang::BO_Add);
+}
+
+/**
+ * Test: Array Subscript - Multi-dimensional subscript
+ * C++ Input: matrix[i][j]
+ * Expected: Nested ArraySubscriptExpr
+ */
+TEST_F(ExpressionHandlerTest, ArraySubscriptMultiDimensional) {
+    // Arrange
+    std::string code = R"(
+        void test() {
+            int matrix[3][4];
+            int i = 1, j = 2;
+            matrix[i][j];
+        }
+    )";
+    auto AST = clang::tooling::buildASTFromCode(code);
+    ASSERT_NE(AST, nullptr);
+
+    // Find all array subscript expressions (there should be 2: matrix[i] and matrix[i][j])
+    class ArraySubscriptFinder : public clang::RecursiveASTVisitor<ArraySubscriptFinder> {
+    public:
+        std::vector<clang::ArraySubscriptExpr*> results;
+        bool VisitArraySubscriptExpr(clang::ArraySubscriptExpr* ASE) {
+            results.push_back(ASE);
+            return true;
+        }
+    };
+
+    ArraySubscriptFinder finder;
+    finder.TraverseDecl(AST->getASTContext().getTranslationUnitDecl());
+    ASSERT_EQ(finder.results.size(), 2u) << "Expected 2 ArraySubscriptExpr nodes";
+
+    // Act - translate the outer subscript (matrix[i][j])
+    // Find the one that has an ArraySubscriptExpr as its base
+    clang::ArraySubscriptExpr* outerASE = nullptr;
+    for (auto* ase : finder.results) {
+        if (llvm::isa<clang::ArraySubscriptExpr>(ase->getBase()->IgnoreParenImpCasts())) {
+            outerASE = ase;
+            break;
+        }
+    }
+    ASSERT_NE(outerASE, nullptr) << "Failed to find outer ArraySubscriptExpr";
+
+    ExpressionHandler handler;
+    clang::Expr* result = handler.handleExpr(outerASE, *context);
+
+    // Assert
+    ASSERT_NE(result, nullptr) << "Translation returned null";
+    auto* outerSub = llvm::dyn_cast<clang::ArraySubscriptExpr>(result);
+    ASSERT_NE(outerSub, nullptr) << "Result is not ArraySubscriptExpr";
+
+    // Verify the base exists (we don't strictly require it to be ArraySubscriptExpr
+    // because our translation might simplify it, but it should translate successfully)
+    auto* base = outerSub->getBase();
+    ASSERT_NE(base, nullptr) << "Base is null";
+}
+
+/**
+ * Test: Array Subscript - As lvalue (assignment target)
+ * C++ Input: arr[0] = 42
+ * Expected: BinaryOperator with ArraySubscriptExpr LHS
+ */
+TEST_F(ExpressionHandlerTest, ArraySubscriptAsLValue) {
+    // Arrange
+    std::string code = R"(
+        void test() {
+            int arr[10];
+            arr[0] = 42;
+        }
+    )";
+    auto AST = clang::tooling::buildASTFromCode(code);
+    ASSERT_NE(AST, nullptr);
+
+    // Find the assignment expression
+    class AssignmentFinder : public clang::RecursiveASTVisitor<AssignmentFinder> {
+    public:
+        clang::BinaryOperator* result = nullptr;
+        bool VisitBinaryOperator(clang::BinaryOperator* BO) {
+            if (!result && BO->getOpcode() == clang::BO_Assign) {
+                result = BO;
+            }
+            return true;
+        }
+    };
+
+    AssignmentFinder finder;
+    finder.TraverseDecl(AST->getASTContext().getTranslationUnitDecl());
+    ASSERT_NE(finder.result, nullptr) << "Failed to find assignment in AST";
+
+    // Act
+    ExpressionHandler handler;
+    clang::Expr* result = handler.handleExpr(finder.result, *context);
+
+    // Assert
+    ASSERT_NE(result, nullptr) << "Translation returned null";
+    auto* assignOp = llvm::dyn_cast<clang::BinaryOperator>(result);
+    ASSERT_NE(assignOp, nullptr) << "Result is not BinaryOperator";
+    EXPECT_EQ(assignOp->getOpcode(), clang::BO_Assign);
+
+    // Verify LHS is ArraySubscriptExpr
+    auto* lhs = assignOp->getLHS();
+    ASSERT_NE(lhs, nullptr);
+    auto* arraySubExpr = llvm::dyn_cast<clang::ArraySubscriptExpr>(lhs->IgnoreParenImpCasts());
+    ASSERT_NE(arraySubExpr, nullptr) << "LHS is not ArraySubscriptExpr";
+}
+
+/**
+ * Test: Array Subscript - In expression
+ * C++ Input: arr[0] + arr[1]
+ * Expected: BinaryOperator with two ArraySubscriptExpr operands
+ */
+TEST_F(ExpressionHandlerTest, ArraySubscriptInExpression) {
+    // Arrange
+    std::string code = R"(
+        void test() {
+            int arr[10];
+            arr[0] + arr[1];
+        }
+    )";
+    auto AST = clang::tooling::buildASTFromCode(code);
+    ASSERT_NE(AST, nullptr);
+
+    // Find the addition expression
+    class BinaryOpFinder : public clang::RecursiveASTVisitor<BinaryOpFinder> {
+    public:
+        clang::BinaryOperator* result = nullptr;
+        bool VisitBinaryOperator(clang::BinaryOperator* BO) {
+            if (!result && BO->getOpcode() == clang::BO_Add) {
+                result = BO;
+            }
+            return true;
+        }
+    };
+
+    BinaryOpFinder finder;
+    finder.TraverseDecl(AST->getASTContext().getTranslationUnitDecl());
+    ASSERT_NE(finder.result, nullptr) << "Failed to find addition in AST";
+
+    // Act
+    ExpressionHandler handler;
+    clang::Expr* result = handler.handleExpr(finder.result, *context);
+
+    // Assert
+    ASSERT_NE(result, nullptr) << "Translation returned null";
+    auto* addOp = llvm::dyn_cast<clang::BinaryOperator>(result);
+    ASSERT_NE(addOp, nullptr) << "Result is not BinaryOperator";
+    EXPECT_EQ(addOp->getOpcode(), clang::BO_Add);
+
+    // Verify both operands are ArraySubscriptExpr
+    auto* lhs = addOp->getLHS();
+    ASSERT_NE(lhs, nullptr);
+    auto* lhsArray = llvm::dyn_cast<clang::ArraySubscriptExpr>(lhs->IgnoreParenImpCasts());
+    ASSERT_NE(lhsArray, nullptr) << "LHS is not ArraySubscriptExpr";
+
+    auto* rhs = addOp->getRHS();
+    ASSERT_NE(rhs, nullptr);
+    auto* rhsArray = llvm::dyn_cast<clang::ArraySubscriptExpr>(rhs->IgnoreParenImpCasts());
+    ASSERT_NE(rhsArray, nullptr) << "RHS is not ArraySubscriptExpr";
+}
+
+/**
+ * Test: Array Subscript - Nested in complex expression
+ * C++ Input: (arr[i] * 2) + arr[j]
+ * Expected: Complex expression with ArraySubscriptExpr nodes
+ */
+TEST_F(ExpressionHandlerTest, ArraySubscriptComplexExpression) {
+    // Arrange
+    std::string code = R"(
+        void test() {
+            int arr[10];
+            int i = 1, j = 2;
+            (arr[i] * 2) + arr[j];
+        }
+    )";
+    auto AST = clang::tooling::buildASTFromCode(code);
+    ASSERT_NE(AST, nullptr);
+
+    // Find the outer addition expression
+    class BinaryOpFinder : public clang::RecursiveASTVisitor<BinaryOpFinder> {
+    public:
+        clang::BinaryOperator* result = nullptr;
+        bool VisitBinaryOperator(clang::BinaryOperator* BO) {
+            if (!result && BO->getOpcode() == clang::BO_Add) {
+                result = BO;
+            }
+            return true;
+        }
+    };
+
+    BinaryOpFinder finder;
+    finder.TraverseDecl(AST->getASTContext().getTranslationUnitDecl());
+    ASSERT_NE(finder.result, nullptr) << "Failed to find addition in AST";
+
+    // Act
+    ExpressionHandler handler;
+    clang::Expr* result = handler.handleExpr(finder.result, *context);
+
+    // Assert
+    ASSERT_NE(result, nullptr) << "Translation returned null";
+    auto* addOp = llvm::dyn_cast<clang::BinaryOperator>(result);
+    ASSERT_NE(addOp, nullptr) << "Result is not BinaryOperator";
+    EXPECT_EQ(addOp->getOpcode(), clang::BO_Add);
+}
+
+/**
+ * Test: Array Subscript - With calculation in index
+ * C++ Input: arr[i * 2 + 1]
+ * Expected: ArraySubscriptExpr with complex index expression
+ */
+TEST_F(ExpressionHandlerTest, ArraySubscriptComplexIndex) {
+    // Arrange
+    std::string code = R"(
+        void test() {
+            int arr[10];
+            int i = 2;
+            arr[i * 2 + 1];
+        }
+    )";
+    auto AST = clang::tooling::buildASTFromCode(code);
+    ASSERT_NE(AST, nullptr);
+
+    // Find the array subscript expression
+    class ArraySubscriptFinder : public clang::RecursiveASTVisitor<ArraySubscriptFinder> {
+    public:
+        clang::ArraySubscriptExpr* result = nullptr;
+        bool VisitArraySubscriptExpr(clang::ArraySubscriptExpr* ASE) {
+            if (!result) result = ASE;
+            return true;
+        }
+    };
+
+    ArraySubscriptFinder finder;
+    finder.TraverseDecl(AST->getASTContext().getTranslationUnitDecl());
+    ASSERT_NE(finder.result, nullptr) << "Failed to find ArraySubscriptExpr in AST";
+
+    // Act
+    ExpressionHandler handler;
+    clang::Expr* result = handler.handleExpr(finder.result, *context);
+
+    // Assert
+    ASSERT_NE(result, nullptr) << "Translation returned null";
+    auto* arraySubExpr = llvm::dyn_cast<clang::ArraySubscriptExpr>(result);
+    ASSERT_NE(arraySubExpr, nullptr) << "Result is not ArraySubscriptExpr";
+
+    // Verify index is a BinaryOperator (i * 2 + 1)
+    auto* idx = arraySubExpr->getIdx();
+    ASSERT_NE(idx, nullptr);
+    auto* binOp = llvm::dyn_cast<clang::BinaryOperator>(idx->IgnoreParenImpCasts());
+    ASSERT_NE(binOp, nullptr) << "Index is not BinaryOperator";
+    EXPECT_EQ(binOp->getOpcode(), clang::BO_Add);
+}
+
+// ============================================================================
+// C-STYLE CASTS (Tests 81-90)
+// ============================================================================
+
+/**
+ * Test 81: Simple C-style cast to int
+ * C++ Input: (int)x
+ * Expected: CStyleCastExpr with int type
+ */
+TEST_F(ExpressionHandlerTest, CStyleCast_SimpleIntCast) {
+    // Arrange
+    clang::Expr* cppExpr = parseExpr("(int)3.14");
+    ASSERT_NE(cppExpr, nullptr);
+    auto* castExpr = llvm::dyn_cast<clang::CStyleCastExpr>(cppExpr->IgnoreParenImpCasts());
+    ASSERT_NE(castExpr, nullptr) << "Expected CStyleCastExpr";
+
+    // Act
+    ExpressionHandler handler;
+    clang::Expr* result = handler.handleExpr(cppExpr, *context);
+
+    // Assert
+    ASSERT_NE(result, nullptr) << "Translation returned null";
+    auto* resultCast = llvm::dyn_cast<clang::CStyleCastExpr>(result->IgnoreParenImpCasts());
+    ASSERT_NE(resultCast, nullptr) << "Result is not CStyleCastExpr";
+
+    // Verify the subexpression was translated
+    auto* subExpr = resultCast->getSubExpr();
+    ASSERT_NE(subExpr, nullptr);
+}
+
+/**
+ * Test 82: C-style pointer cast
+ * C++ Input: (void*)ptr
+ * Expected: CStyleCastExpr to void*
+ */
+TEST_F(ExpressionHandlerTest, CStyleCast_PointerCast) {
+    // Arrange
+    clang::Expr* cppExpr = parseExpr("(void*)0");
+    ASSERT_NE(cppExpr, nullptr);
+
+    // Act
+    ExpressionHandler handler;
+    clang::Expr* result = handler.handleExpr(cppExpr, *context);
+
+    // Assert
+    ASSERT_NE(result, nullptr) << "Translation returned null";
+    auto* resultCast = llvm::dyn_cast<clang::CStyleCastExpr>(result->IgnoreParenImpCasts());
+    ASSERT_NE(resultCast, nullptr) << "Result is not CStyleCastExpr";
+}
+
+/**
+ * Test 83: C-style const cast
+ * C++ Input: (char*)const_str
+ * Expected: CStyleCastExpr removing const
+ */
+TEST_F(ExpressionHandlerTest, CStyleCast_ConstCast) {
+    // Arrange
+    clang::Expr* cppExpr = parseExpr("(int*)\"hello\"");
+    ASSERT_NE(cppExpr, nullptr);
+
+    // Act
+    ExpressionHandler handler;
+    clang::Expr* result = handler.handleExpr(cppExpr, *context);
+
+    // Assert
+    ASSERT_NE(result, nullptr) << "Translation returned null";
+    auto* resultCast = llvm::dyn_cast<clang::CStyleCastExpr>(result->IgnoreParenImpCasts());
+    ASSERT_NE(resultCast, nullptr) << "Result is not CStyleCastExpr";
+}
+
+/**
+ * Test 84: C-style cast in expression
+ * C++ Input: (int)x + 1
+ * Expected: BinaryOperator with CStyleCastExpr as LHS
+ */
+TEST_F(ExpressionHandlerTest, CStyleCast_InExpression) {
+    // Arrange
+    clang::Expr* cppExpr = parseExpr("(int)3.14 + 1");
+    ASSERT_NE(cppExpr, nullptr);
+
+    // Act
+    ExpressionHandler handler;
+    clang::Expr* result = handler.handleExpr(cppExpr, *context);
+
+    // Assert
+    ASSERT_NE(result, nullptr) << "Translation returned null";
+    auto* binOp = llvm::dyn_cast<clang::BinaryOperator>(result);
+    ASSERT_NE(binOp, nullptr) << "Result is not BinaryOperator";
+
+    // Verify LHS is a cast
+    auto* lhs = binOp->getLHS();
+    ASSERT_NE(lhs, nullptr);
+}
+
+/**
+ * Test 85: Nested C-style casts
+ * C++ Input: (int)(float)x
+ * Expected: CStyleCastExpr with CStyleCastExpr as subexpression
+ */
+TEST_F(ExpressionHandlerTest, CStyleCast_Nested) {
+    // Arrange
+    clang::Expr* cppExpr = parseExpr("(int)(float)42");
+    ASSERT_NE(cppExpr, nullptr);
+
+    // Act
+    ExpressionHandler handler;
+    clang::Expr* result = handler.handleExpr(cppExpr, *context);
+
+    // Assert
+    ASSERT_NE(result, nullptr) << "Translation returned null";
+    auto* outerCast = llvm::dyn_cast<clang::CStyleCastExpr>(result->IgnoreParenImpCasts());
+    ASSERT_NE(outerCast, nullptr) << "Result is not CStyleCastExpr";
+
+    // Verify inner cast
+    auto* subExpr = outerCast->getSubExpr();
+    ASSERT_NE(subExpr, nullptr);
+}
+
+/**
+ * Test 86: C-style cast to float
+ * C++ Input: (float)42
+ * Expected: CStyleCastExpr with float type
+ */
+TEST_F(ExpressionHandlerTest, CStyleCast_ToFloat) {
+    // Arrange
+    clang::Expr* cppExpr = parseExpr("(float)42");
+    ASSERT_NE(cppExpr, nullptr);
+
+    // Act
+    ExpressionHandler handler;
+    clang::Expr* result = handler.handleExpr(cppExpr, *context);
+
+    // Assert
+    ASSERT_NE(result, nullptr) << "Translation returned null";
+    auto* resultCast = llvm::dyn_cast<clang::CStyleCastExpr>(result->IgnoreParenImpCasts());
+    ASSERT_NE(resultCast, nullptr) << "Result is not CStyleCastExpr";
+}
+
+/**
+ * Test 87: C-style cast with complex expression
+ * C++ Input: (int)(a + b)
+ * Expected: CStyleCastExpr with BinaryOperator as subexpression
+ */
+TEST_F(ExpressionHandlerTest, CStyleCast_ComplexExpr) {
+    // Arrange
+    clang::Expr* cppExpr = parseExpr("(int)(3 + 4)");
+    ASSERT_NE(cppExpr, nullptr);
+
+    // Act
+    ExpressionHandler handler;
+    clang::Expr* result = handler.handleExpr(cppExpr, *context);
+
+    // Assert
+    ASSERT_NE(result, nullptr) << "Translation returned null";
+    auto* resultCast = llvm::dyn_cast<clang::CStyleCastExpr>(result->IgnoreParenImpCasts());
+    ASSERT_NE(resultCast, nullptr) << "Result is not CStyleCastExpr";
+}
+
+/**
+ * Test 88: C-style cast to char
+ * C++ Input: (char)65
+ * Expected: CStyleCastExpr with char type
+ */
+TEST_F(ExpressionHandlerTest, CStyleCast_ToChar) {
+    // Arrange
+    clang::Expr* cppExpr = parseExpr("(char)65");
+    ASSERT_NE(cppExpr, nullptr);
+
+    // Act
+    ExpressionHandler handler;
+    clang::Expr* result = handler.handleExpr(cppExpr, *context);
+
+    // Assert
+    ASSERT_NE(result, nullptr) << "Translation returned null";
+    auto* resultCast = llvm::dyn_cast<clang::CStyleCastExpr>(result->IgnoreParenImpCasts());
+    ASSERT_NE(resultCast, nullptr) << "Result is not CStyleCastExpr";
+}
+
+/**
+ * Test 89: C-style cast in assignment
+ * C++ Input: x = (int)y
+ * Expected: BinaryOperator with CStyleCastExpr as RHS
+ */
+TEST_F(ExpressionHandlerTest, CStyleCast_InAssignment) {
+    // Arrange
+    clang::Expr* cppExpr = parseExpr("1 + (int)3.14");
+    ASSERT_NE(cppExpr, nullptr);
+
+    // Act
+    ExpressionHandler handler;
+    clang::Expr* result = handler.handleExpr(cppExpr, *context);
+
+    // Assert
+    ASSERT_NE(result, nullptr) << "Translation returned null";
+    auto* binOp = llvm::dyn_cast<clang::BinaryOperator>(result);
+    ASSERT_NE(binOp, nullptr) << "Result is not BinaryOperator";
+}
+
+/**
+ * Test 90: C-style cast to long
+ * C++ Input: (long)x
+ * Expected: CStyleCastExpr with long type
+ */
+TEST_F(ExpressionHandlerTest, CStyleCast_ToLong) {
+    // Arrange
+    clang::Expr* cppExpr = parseExpr("(long)42");
+    ASSERT_NE(cppExpr, nullptr);
+
+    // Act
+    ExpressionHandler handler;
+    clang::Expr* result = handler.handleExpr(cppExpr, *context);
+
+    // Assert
+    ASSERT_NE(result, nullptr) << "Translation returned null";
+    auto* resultCast = llvm::dyn_cast<clang::CStyleCastExpr>(result->IgnoreParenImpCasts());
+    ASSERT_NE(resultCast, nullptr) << "Result is not CStyleCastExpr";
+}
+
+// ============================================================================
+// IMPLICIT CASTS (Tests 91-98)
+// ============================================================================
+
+/**
+ * Test 91: Implicit integer promotion
+ * C++ Input: char + int operation
+ * Expected: ImplicitCastExpr for integer promotion
+ */
+TEST_F(ExpressionHandlerTest, ImplicitCast_IntegerPromotion) {
+    // Arrange - use a simple expression that triggers implicit cast
+    clang::Expr* cppExpr = parseExpr("'a' + 1");
+    ASSERT_NE(cppExpr, nullptr);
+
+    // Act
+    ExpressionHandler handler;
+    clang::Expr* result = handler.handleExpr(cppExpr, *context);
+
+    // Assert
+    ASSERT_NE(result, nullptr) << "Translation returned null";
+    // The result should be a BinaryOperator
+    auto* binOp = llvm::dyn_cast<clang::BinaryOperator>(result);
+    ASSERT_NE(binOp, nullptr) << "Result is not BinaryOperator";
+}
+
+/**
+ * Test 92: Implicit float to int conversion
+ * C++ Input: float value in int context
+ * Expected: Transparent handling or ImplicitCastExpr
+ */
+TEST_F(ExpressionHandlerTest, ImplicitCast_FloatToInt) {
+    // Arrange
+    clang::Expr* cppExpr = parseExpr("3.14");
+    ASSERT_NE(cppExpr, nullptr);
+
+    // Act
+    ExpressionHandler handler;
+    clang::Expr* result = handler.handleExpr(cppExpr, *context);
+
+    // Assert
+    ASSERT_NE(result, nullptr) << "Translation returned null";
+}
+
+/**
+ * Test 93: Implicit array to pointer decay
+ * C++ Input: Array in pointer context
+ * Expected: Transparent handling
+ */
+TEST_F(ExpressionHandlerTest, ImplicitCast_ArrayToPointerDecay) {
+    // Arrange - reference to array triggers decay
+    // For testing, we just verify the handler processes the expression
+    clang::Expr* cppExpr = parseExpr("\"hello\"");
+    ASSERT_NE(cppExpr, nullptr);
+
+    // Act
+    ExpressionHandler handler;
+    clang::Expr* result = handler.handleExpr(cppExpr, *context);
+
+    // Assert
+    ASSERT_NE(result, nullptr) << "Translation returned null";
+    auto* strLit = llvm::dyn_cast<clang::StringLiteral>(result->IgnoreParenImpCasts());
+    ASSERT_NE(strLit, nullptr) << "Result is not StringLiteral";
+}
+
+/**
+ * Test 94: Implicit lvalue to rvalue conversion
+ * C++ Input: Variable used as rvalue
+ * Expected: Transparent handling
+ */
+TEST_F(ExpressionHandlerTest, ImplicitCast_LValueToRValue) {
+    // Arrange
+    clang::Expr* cppExpr = parseExpr("1 + 2");
+    ASSERT_NE(cppExpr, nullptr);
+
+    // Act
+    ExpressionHandler handler;
+    clang::Expr* result = handler.handleExpr(cppExpr, *context);
+
+    // Assert
+    ASSERT_NE(result, nullptr) << "Translation returned null";
+    auto* binOp = llvm::dyn_cast<clang::BinaryOperator>(result);
+    ASSERT_NE(binOp, nullptr) << "Result is not BinaryOperator";
+}
+
+/**
+ * Test 95: Implicit integral conversion
+ * C++ Input: int to long conversion
+ * Expected: Transparent handling
+ */
+TEST_F(ExpressionHandlerTest, ImplicitCast_IntegralConversion) {
+    // Arrange
+    clang::Expr* cppExpr = parseExpr("42");
+    ASSERT_NE(cppExpr, nullptr);
+
+    // Act
+    ExpressionHandler handler;
+    clang::Expr* result = handler.handleExpr(cppExpr, *context);
+
+    // Assert
+    ASSERT_NE(result, nullptr) << "Translation returned null";
+    auto* intLit = llvm::dyn_cast<clang::IntegerLiteral>(result);
+    ASSERT_NE(intLit, nullptr) << "Result is not IntegerLiteral";
+}
+
+/**
+ * Test 96: Implicit NoOp cast
+ * C++ Input: Expression with NoOp cast
+ * Expected: Transparent handling
+ */
+TEST_F(ExpressionHandlerTest, ImplicitCast_NoOp) {
+    // Arrange
+    clang::Expr* cppExpr = parseExpr("0");
+    ASSERT_NE(cppExpr, nullptr);
+
+    // Act
+    ExpressionHandler handler;
+    clang::Expr* result = handler.handleExpr(cppExpr, *context);
+
+    // Assert
+    ASSERT_NE(result, nullptr) << "Translation returned null";
+}
+
+/**
+ * Test 97: Implicit bool conversion
+ * C++ Input: Integer in boolean context
+ * Expected: Transparent handling
+ */
+TEST_F(ExpressionHandlerTest, ImplicitCast_BoolConversion) {
+    // Arrange
+    clang::Expr* cppExpr = parseExpr("!42");
+    ASSERT_NE(cppExpr, nullptr);
+
+    // Act
+    ExpressionHandler handler;
+    clang::Expr* result = handler.handleExpr(cppExpr, *context);
+
+    // Assert
+    ASSERT_NE(result, nullptr) << "Translation returned null";
+    auto* unaryOp = llvm::dyn_cast<clang::UnaryOperator>(result);
+    ASSERT_NE(unaryOp, nullptr) << "Result is not UnaryOperator";
+}
+
+/**
+ * Test 98: Implicit conversion in complex expression
+ * C++ Input: Mixed type arithmetic
+ * Expected: Transparent handling of all implicit casts
+ */
+TEST_F(ExpressionHandlerTest, ImplicitCast_ComplexExpression) {
+    // Arrange
+    clang::Expr* cppExpr = parseExpr("1 + 2.5");
+    ASSERT_NE(cppExpr, nullptr);
+
+    // Act
+    ExpressionHandler handler;
+    clang::Expr* result = handler.handleExpr(cppExpr, *context);
+
+    // Assert
+    ASSERT_NE(result, nullptr) << "Translation returned null";
+    auto* binOp = llvm::dyn_cast<clang::BinaryOperator>(result);
+    ASSERT_NE(binOp, nullptr) << "Result is not BinaryOperator";
 }

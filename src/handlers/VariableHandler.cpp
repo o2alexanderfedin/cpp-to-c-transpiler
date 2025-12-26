@@ -51,18 +51,71 @@ clang::Decl* VariableHandler::handleDecl(const clang::Decl* D, HandlerContext& c
         cInitExpr = translateInitializer(cppVar->getInit(), ctx);
     }
 
-    // Step 5: Create C variable using CNodeBuilder
+    // Step 5: Determine scope (global vs local)
+    // Check if the variable is at global scope (TranslationUnitDecl)
+    // or local scope (within a function)
+    const clang::DeclContext* parentContext = cppVar->getDeclContext();
+    bool isGlobalScope = llvm::isa<clang::TranslationUnitDecl>(parentContext);
+
+    // Step 6: Create C variable
+    // For global variables, use the TranslationUnitDecl
+    // For local variables, we need to create them in the appropriate function context
+    // Since we're building the C AST, we need to use the C context's TranslationUnitDecl
+    // for global variables, but preserve the local context for local variables.
+    //
+    // For Phase 3 Task 6, we focus on global variables. Local variables
+    // should be created in their appropriate function scope, but for now
+    // we'll create all variables at the TranslationUnit scope and document
+    // that local variable scope handling needs enhancement.
+
     clang::CNodeBuilder& builder = ctx.getBuilder();
+    clang::ASTContext& cCtx = ctx.getCContext();
 
-    // Use the generic var() method which handles all cases
-    clang::VarDecl* cVar = builder.var(cType, name, cInitExpr);
+    // Create the variable declaration in the C AST
+    // Note: builder.var() creates variables at TranslationUnitDecl by default
+    // We'll use VarDecl::Create directly to have full control over the scope
+    clang::IdentifierInfo& II = cCtx.Idents.get(name);
 
-    // Set storage class if not SC_None
-    if (cStorageClass != clang::SC_None) {
-        cVar->setStorageClass(cStorageClass);
+    // Use TranslationUnitDecl for global variables
+    // For local variables, look up the translated parent function context
+    clang::DeclContext* cDeclContext;
+    if (isGlobalScope) {
+        cDeclContext = cCtx.getTranslationUnitDecl();
+    } else {
+        // For local variables, find the C function they belong to
+        // Walk up the declaration context chain to find the parent function
+        const clang::Decl* parentDecl = llvm::dyn_cast<clang::Decl>(parentContext);
+        if (parentDecl) {
+            clang::Decl* translatedParent = ctx.lookupDecl(parentDecl);
+            if (translatedParent && llvm::isa<clang::DeclContext>(translatedParent)) {
+                cDeclContext = llvm::cast<clang::DeclContext>(translatedParent);
+            } else {
+                // Fallback to global scope if parent not found (shouldn't happen)
+                cDeclContext = cCtx.getTranslationUnitDecl();
+            }
+        } else {
+            // Fallback to global scope
+            cDeclContext = cCtx.getTranslationUnitDecl();
+        }
     }
 
-    // Step 6: Register mapping in context
+    clang::VarDecl* cVar = clang::VarDecl::Create(
+        cCtx,
+        cDeclContext,
+        clang::SourceLocation(),
+        clang::SourceLocation(),
+        &II,
+        cType,
+        cCtx.getTrivialTypeSourceInfo(cType),
+        cStorageClass
+    );
+
+    // Set initializer if present
+    if (cInitExpr) {
+        cVar->setInit(cInitExpr);
+    }
+
+    // Step 7: Register mapping in context
     ctx.registerDecl(cppVar, cVar);
 
     return cVar;

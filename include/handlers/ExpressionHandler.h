@@ -130,6 +130,30 @@ private:
         const clang::ImplicitCastExpr* ICE,
         HandlerContext& ctx
     );
+
+    /**
+     * @brief Translate array subscript expression
+     */
+    clang::Expr* translateArraySubscriptExpr(
+        const clang::ArraySubscriptExpr* ASE,
+        HandlerContext& ctx
+    );
+
+    /**
+     * @brief Translate initializer list expression (array initialization)
+     */
+    clang::Expr* translateInitListExpr(
+        const clang::InitListExpr* ILE,
+        HandlerContext& ctx
+    );
+
+    /**
+     * @brief Translate C-style cast expression
+     */
+    clang::Expr* translateCStyleCastExpr(
+        const clang::CStyleCastExpr* CCE,
+        HandlerContext& ctx
+    );
 };
 
 } // namespace cpptoc

@@ -3923,6 +3923,32 @@ gtest_discover_tests(VariableHandlerTest
     WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
 )
 
+# VariableHandler Global unit tests (Task 6, Phase 3)
+add_executable(VariableHandlerGlobalTest
+    tests/unit/handlers/VariableHandlerGlobalTest.cpp
+)
+
+target_include_directories(VariableHandlerGlobalTest PRIVATE
+    ${CMAKE_SOURCE_DIR}/tests/fixtures
+    ${CMAKE_SOURCE_DIR}/include
+    ${LLVM_INCLUDE_DIRS}
+    ${CLANG_INCLUDE_DIRS}
+)
+
+target_link_libraries(VariableHandlerGlobalTest PRIVATE
+    test_fixtures
+    cpptoc_core
+    clangTooling
+    clangAST
+    clangBasic
+    GTest::gtest
+    GTest::gtest_main
+)
+
+gtest_discover_tests(VariableHandlerGlobalTest
+    WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
+)
+
 # StatementHandler unit tests
 add_executable(StatementHandlerTest
     tests/unit/handlers/StatementHandlerTest.cpp
@@ -4035,6 +4061,35 @@ gtest_discover_tests(ControlFlowIntegrationTest
 )
 
 # ============================================================================
+# Phase 41-01: Global Variables Integration Tests
+# ============================================================================
+
+add_executable(GlobalVariablesIntegrationTest
+    tests/integration/handlers/GlobalVariablesIntegrationTest.cpp
+)
+
+target_include_directories(GlobalVariablesIntegrationTest PRIVATE
+    ${CMAKE_SOURCE_DIR}/tests/fixtures
+    ${CMAKE_SOURCE_DIR}/include
+    ${LLVM_INCLUDE_DIRS}
+    ${CLANG_INCLUDE_DIRS}
+)
+
+target_link_libraries(GlobalVariablesIntegrationTest PRIVATE
+    test_fixtures
+    cpptoc_core
+    clangTooling
+    clangAST
+    clangBasic
+    GTest::gtest
+    GTest::gtest_main
+)
+
+gtest_discover_tests(GlobalVariablesIntegrationTest
+    WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
+)
+
+# ============================================================================
 # Phase 40-01: Control Flow E2E Tests
 # ============================================================================
 
@@ -4058,6 +4113,33 @@ target_link_libraries(ControlFlowE2ETest PRIVATE
 )
 
 gtest_discover_tests(ControlFlowE2ETest
+    WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
+)
+
+# ============================================================================
+# Phase 41-01: Global Variables E2E Tests
+# ============================================================================
+
+add_executable(GlobalVariablesE2ETest
+    tests/e2e/phase3/GlobalVariablesE2ETest.cpp
+)
+
+target_include_directories(GlobalVariablesE2ETest PRIVATE
+    ${CMAKE_SOURCE_DIR}/include
+    ${LLVM_INCLUDE_DIRS}
+    ${CLANG_INCLUDE_DIRS}
+)
+
+target_link_libraries(GlobalVariablesE2ETest PRIVATE
+    cpptoc_core
+    clangTooling
+    clangAST
+    clangBasic
+    GTest::gtest
+    GTest::gtest_main
+)
+
+gtest_discover_tests(GlobalVariablesE2ETest
     WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
 )
 

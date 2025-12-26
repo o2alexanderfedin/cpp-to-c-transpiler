@@ -603,9 +603,1186 @@ TEST_F(VariableHandlerTest, FloatVariableNegative) {
     EXPECT_TRUE(cVar->getType()->isFloatingType());
 }
 
-// TODO: Additional tests for Phase 2+:
-// - Test 18: Reference variable (int& ref = x) → int* ref = &x
-// - Test 19: Reference parameter translation
-// - Test 20: Array variables
-// - Test 21: Complex initialization expressions
-// - Test 22: Variable with cast expression init
+// ============================================================================
+// Phase 3 Tests: Array Declarations (Task 3)
+// ============================================================================
+
+/**
+ * Test 18: Simple array declaration
+ *
+ * C++ Input:  int arr[10];
+ * C Output:   int arr[10];
+ */
+TEST_F(VariableHandlerTest, SimpleArrayDeclaration) {
+    // Arrange: Create int arr[10]
+    clang::ASTContext& ctx = cppAST->getASTContext();
+
+    // Create array type: int[10]
+    llvm::APInt arraySize(32, 10);
+    clang::QualType elementType = ctx.IntTy;
+    clang::QualType arrayType = ctx.getConstantArrayType(
+        elementType,
+        arraySize,
+        nullptr, // size expression
+        clang::ArraySizeModifier::Normal,
+        0 // index type qualifiers
+    );
+
+    clang::IdentifierInfo& II = ctx.Idents.get("arr");
+    clang::VarDecl* cppVar = clang::VarDecl::Create(
+        ctx,
+        ctx.getTranslationUnitDecl(),
+        clang::SourceLocation(),
+        clang::SourceLocation(),
+        &II,
+        arrayType,
+        ctx.getTrivialTypeSourceInfo(arrayType),
+        clang::SC_None
+    );
+
+    // Act
+    VariableHandler handler;
+    clang::Decl* result = handler.handleDecl(cppVar, *context);
+
+    // Assert
+    ASSERT_NE(result, nullptr) << "Translation returned null";
+    auto* cVar = llvm::dyn_cast<clang::VarDecl>(result);
+    ASSERT_NE(cVar, nullptr) << "Result is not a VarDecl";
+
+    EXPECT_EQ(cVar->getNameAsString(), "arr") << "Variable name mismatch";
+    EXPECT_TRUE(cVar->getType()->isArrayType()) << "Type should be array";
+
+    // Check array element type and size
+    const auto* cArrayType = llvm::dyn_cast<clang::ConstantArrayType>(cVar->getType().getTypePtr());
+    ASSERT_NE(cArrayType, nullptr) << "Should be ConstantArrayType";
+    EXPECT_TRUE(cArrayType->getElementType()->isIntegerType()) << "Element type should be int";
+    EXPECT_EQ(cArrayType->getSize().getZExtValue(), 10) << "Array size should be 10";
+}
+
+/**
+ * Test 19: Array with size expression
+ *
+ * C++ Input:  int arr[5+5];
+ * C Output:   int arr[10];
+ *
+ * Note: Clang evaluates constant expressions at compile time,
+ * so [5+5] becomes [10] in the AST.
+ */
+TEST_F(VariableHandlerTest, ArrayWithSizeExpression) {
+    // Arrange: Create int arr[10] (represents arr[5+5] after constant evaluation)
+    clang::ASTContext& ctx = cppAST->getASTContext();
+
+    llvm::APInt arraySize(32, 10); // 5+5 = 10
+    clang::QualType elementType = ctx.IntTy;
+    clang::QualType arrayType = ctx.getConstantArrayType(
+        elementType,
+        arraySize,
+        nullptr,
+        clang::ArraySizeModifier::Normal,
+        0
+    );
+
+    clang::IdentifierInfo& II = ctx.Idents.get("arr");
+    clang::VarDecl* cppVar = clang::VarDecl::Create(
+        ctx,
+        ctx.getTranslationUnitDecl(),
+        clang::SourceLocation(),
+        clang::SourceLocation(),
+        &II,
+        arrayType,
+        ctx.getTrivialTypeSourceInfo(arrayType),
+        clang::SC_None
+    );
+
+    // Act
+    VariableHandler handler;
+    clang::Decl* result = handler.handleDecl(cppVar, *context);
+
+    // Assert
+    ASSERT_NE(result, nullptr);
+    auto* cVar = llvm::dyn_cast<clang::VarDecl>(result);
+    ASSERT_NE(cVar, nullptr);
+
+    EXPECT_TRUE(cVar->getType()->isArrayType());
+    const auto* cArrayType = llvm::dyn_cast<clang::ConstantArrayType>(cVar->getType().getTypePtr());
+    ASSERT_NE(cArrayType, nullptr);
+    EXPECT_EQ(cArrayType->getSize().getZExtValue(), 10);
+}
+
+/**
+ * Test 20: Multi-dimensional array (2D)
+ *
+ * C++ Input:  int matrix[3][4];
+ * C Output:   int matrix[3][4];
+ */
+TEST_F(VariableHandlerTest, MultiDimensionalArray2D) {
+    // Arrange: Create int matrix[3][4]
+    clang::ASTContext& ctx = cppAST->getASTContext();
+
+    // Build from inner to outer: int -> int[4] -> int[3][4]
+    llvm::APInt innerSize(32, 4);
+    clang::QualType innerArrayType = ctx.getConstantArrayType(
+        ctx.IntTy,
+        innerSize,
+        nullptr,
+        clang::ArraySizeModifier::Normal,
+        0
+    );
+
+    llvm::APInt outerSize(32, 3);
+    clang::QualType outerArrayType = ctx.getConstantArrayType(
+        innerArrayType,
+        outerSize,
+        nullptr,
+        clang::ArraySizeModifier::Normal,
+        0
+    );
+
+    clang::IdentifierInfo& II = ctx.Idents.get("matrix");
+    clang::VarDecl* cppVar = clang::VarDecl::Create(
+        ctx,
+        ctx.getTranslationUnitDecl(),
+        clang::SourceLocation(),
+        clang::SourceLocation(),
+        &II,
+        outerArrayType,
+        ctx.getTrivialTypeSourceInfo(outerArrayType),
+        clang::SC_None
+    );
+
+    // Act
+    VariableHandler handler;
+    clang::Decl* result = handler.handleDecl(cppVar, *context);
+
+    // Assert
+    ASSERT_NE(result, nullptr);
+    auto* cVar = llvm::dyn_cast<clang::VarDecl>(result);
+    ASSERT_NE(cVar, nullptr);
+
+    EXPECT_EQ(cVar->getNameAsString(), "matrix");
+    EXPECT_TRUE(cVar->getType()->isArrayType());
+
+    // Check outer dimension
+    const auto* outerArray = llvm::dyn_cast<clang::ConstantArrayType>(cVar->getType().getTypePtr());
+    ASSERT_NE(outerArray, nullptr);
+    EXPECT_EQ(outerArray->getSize().getZExtValue(), 3);
+
+    // Check inner dimension
+    const auto* innerArray = llvm::dyn_cast<clang::ConstantArrayType>(
+        outerArray->getElementType().getTypePtr()
+    );
+    ASSERT_NE(innerArray, nullptr);
+    EXPECT_EQ(innerArray->getSize().getZExtValue(), 4);
+    EXPECT_TRUE(innerArray->getElementType()->isIntegerType());
+}
+
+/**
+ * Test 21: Multi-dimensional array (3D)
+ *
+ * C++ Input:  int cube[2][3][4];
+ * C Output:   int cube[2][3][4];
+ */
+TEST_F(VariableHandlerTest, MultiDimensionalArray3D) {
+    // Arrange: Create int cube[2][3][4]
+    clang::ASTContext& ctx = cppAST->getASTContext();
+
+    // Build from inner to outer: int -> int[4] -> int[3][4] -> int[2][3][4]
+    llvm::APInt size4(32, 4);
+    clang::QualType array4 = ctx.getConstantArrayType(
+        ctx.IntTy,
+        size4,
+        nullptr,
+        clang::ArraySizeModifier::Normal,
+        0
+    );
+
+    llvm::APInt size3(32, 3);
+    clang::QualType array3x4 = ctx.getConstantArrayType(
+        array4,
+        size3,
+        nullptr,
+        clang::ArraySizeModifier::Normal,
+        0
+    );
+
+    llvm::APInt size2(32, 2);
+    clang::QualType array2x3x4 = ctx.getConstantArrayType(
+        array3x4,
+        size2,
+        nullptr,
+        clang::ArraySizeModifier::Normal,
+        0
+    );
+
+    clang::IdentifierInfo& II = ctx.Idents.get("cube");
+    clang::VarDecl* cppVar = clang::VarDecl::Create(
+        ctx,
+        ctx.getTranslationUnitDecl(),
+        clang::SourceLocation(),
+        clang::SourceLocation(),
+        &II,
+        array2x3x4,
+        ctx.getTrivialTypeSourceInfo(array2x3x4),
+        clang::SC_None
+    );
+
+    // Act
+    VariableHandler handler;
+    clang::Decl* result = handler.handleDecl(cppVar, *context);
+
+    // Assert
+    ASSERT_NE(result, nullptr);
+    auto* cVar = llvm::dyn_cast<clang::VarDecl>(result);
+    ASSERT_NE(cVar, nullptr);
+
+    EXPECT_TRUE(cVar->getType()->isArrayType());
+
+    // Verify dimensions: 2x3x4
+    const auto* dim1 = llvm::dyn_cast<clang::ConstantArrayType>(cVar->getType().getTypePtr());
+    ASSERT_NE(dim1, nullptr);
+    EXPECT_EQ(dim1->getSize().getZExtValue(), 2);
+
+    const auto* dim2 = llvm::dyn_cast<clang::ConstantArrayType>(dim1->getElementType().getTypePtr());
+    ASSERT_NE(dim2, nullptr);
+    EXPECT_EQ(dim2->getSize().getZExtValue(), 3);
+
+    const auto* dim3 = llvm::dyn_cast<clang::ConstantArrayType>(dim2->getElementType().getTypePtr());
+    ASSERT_NE(dim3, nullptr);
+    EXPECT_EQ(dim3->getSize().getZExtValue(), 4);
+    EXPECT_TRUE(dim3->getElementType()->isIntegerType());
+}
+
+/**
+ * Test 22: Const array
+ *
+ * C++ Input:  const int arr[5];
+ * C Output:   const int arr[5];
+ */
+TEST_F(VariableHandlerTest, ConstArray) {
+    // Arrange: Create const int arr[5]
+    clang::ASTContext& ctx = cppAST->getASTContext();
+
+    llvm::APInt arraySize(32, 5);
+    clang::QualType elementType = ctx.IntTy.withConst();
+    clang::QualType arrayType = ctx.getConstantArrayType(
+        elementType,
+        arraySize,
+        nullptr,
+        clang::ArraySizeModifier::Normal,
+        0
+    );
+
+    clang::IdentifierInfo& II = ctx.Idents.get("arr");
+    clang::VarDecl* cppVar = clang::VarDecl::Create(
+        ctx,
+        ctx.getTranslationUnitDecl(),
+        clang::SourceLocation(),
+        clang::SourceLocation(),
+        &II,
+        arrayType,
+        ctx.getTrivialTypeSourceInfo(arrayType),
+        clang::SC_None
+    );
+
+    // Act
+    VariableHandler handler;
+    clang::Decl* result = handler.handleDecl(cppVar, *context);
+
+    // Assert
+    ASSERT_NE(result, nullptr);
+    auto* cVar = llvm::dyn_cast<clang::VarDecl>(result);
+    ASSERT_NE(cVar, nullptr);
+
+    EXPECT_TRUE(cVar->getType()->isArrayType());
+    const auto* cArrayType = llvm::dyn_cast<clang::ConstantArrayType>(cVar->getType().getTypePtr());
+    ASSERT_NE(cArrayType, nullptr);
+    EXPECT_TRUE(cArrayType->getElementType().isConstQualified()) << "Element type should be const";
+}
+
+/**
+ * Test 23: Static array
+ *
+ * C++ Input:  static int arr[8];
+ * C Output:   static int arr[8];
+ */
+TEST_F(VariableHandlerTest, StaticArray) {
+    // Arrange: Create static int arr[8]
+    clang::ASTContext& ctx = cppAST->getASTContext();
+
+    llvm::APInt arraySize(32, 8);
+    clang::QualType arrayType = ctx.getConstantArrayType(
+        ctx.IntTy,
+        arraySize,
+        nullptr,
+        clang::ArraySizeModifier::Normal,
+        0
+    );
+
+    clang::IdentifierInfo& II = ctx.Idents.get("arr");
+    clang::VarDecl* cppVar = clang::VarDecl::Create(
+        ctx,
+        ctx.getTranslationUnitDecl(),
+        clang::SourceLocation(),
+        clang::SourceLocation(),
+        &II,
+        arrayType,
+        ctx.getTrivialTypeSourceInfo(arrayType),
+        clang::SC_Static
+    );
+
+    // Act
+    VariableHandler handler;
+    clang::Decl* result = handler.handleDecl(cppVar, *context);
+
+    // Assert
+    ASSERT_NE(result, nullptr);
+    auto* cVar = llvm::dyn_cast<clang::VarDecl>(result);
+    ASSERT_NE(cVar, nullptr);
+
+    EXPECT_TRUE(cVar->getType()->isArrayType());
+    EXPECT_EQ(cVar->getStorageClass(), clang::SC_Static);
+}
+
+/**
+ * Test 24: Array of pointers
+ *
+ * C++ Input:  int* arr[5];
+ * C Output:   int* arr[5];
+ */
+TEST_F(VariableHandlerTest, ArrayOfPointers) {
+    // Arrange: Create int* arr[5]
+    clang::ASTContext& ctx = cppAST->getASTContext();
+
+    // Element type is int*
+    clang::QualType pointerType = ctx.getPointerType(ctx.IntTy);
+
+    llvm::APInt arraySize(32, 5);
+    clang::QualType arrayType = ctx.getConstantArrayType(
+        pointerType,
+        arraySize,
+        nullptr,
+        clang::ArraySizeModifier::Normal,
+        0
+    );
+
+    clang::IdentifierInfo& II = ctx.Idents.get("arr");
+    clang::VarDecl* cppVar = clang::VarDecl::Create(
+        ctx,
+        ctx.getTranslationUnitDecl(),
+        clang::SourceLocation(),
+        clang::SourceLocation(),
+        &II,
+        arrayType,
+        ctx.getTrivialTypeSourceInfo(arrayType),
+        clang::SC_None
+    );
+
+    // Act
+    VariableHandler handler;
+    clang::Decl* result = handler.handleDecl(cppVar, *context);
+
+    // Assert
+    ASSERT_NE(result, nullptr);
+    auto* cVar = llvm::dyn_cast<clang::VarDecl>(result);
+    ASSERT_NE(cVar, nullptr);
+
+    EXPECT_TRUE(cVar->getType()->isArrayType());
+    const auto* cArrayType = llvm::dyn_cast<clang::ConstantArrayType>(cVar->getType().getTypePtr());
+    ASSERT_NE(cArrayType, nullptr);
+    EXPECT_TRUE(cArrayType->getElementType()->isPointerType()) << "Element type should be pointer";
+}
+
+/**
+ * Test 25: Float array
+ *
+ * C++ Input:  float values[100];
+ * C Output:   float values[100];
+ */
+TEST_F(VariableHandlerTest, FloatArray) {
+    // Arrange: Create float values[100]
+    clang::ASTContext& ctx = cppAST->getASTContext();
+
+    llvm::APInt arraySize(32, 100);
+    clang::QualType arrayType = ctx.getConstantArrayType(
+        ctx.FloatTy,
+        arraySize,
+        nullptr,
+        clang::ArraySizeModifier::Normal,
+        0
+    );
+
+    clang::IdentifierInfo& II = ctx.Idents.get("values");
+    clang::VarDecl* cppVar = clang::VarDecl::Create(
+        ctx,
+        ctx.getTranslationUnitDecl(),
+        clang::SourceLocation(),
+        clang::SourceLocation(),
+        &II,
+        arrayType,
+        ctx.getTrivialTypeSourceInfo(arrayType),
+        clang::SC_None
+    );
+
+    // Act
+    VariableHandler handler;
+    clang::Decl* result = handler.handleDecl(cppVar, *context);
+
+    // Assert
+    ASSERT_NE(result, nullptr);
+    auto* cVar = llvm::dyn_cast<clang::VarDecl>(result);
+    ASSERT_NE(cVar, nullptr);
+
+    EXPECT_TRUE(cVar->getType()->isArrayType());
+    const auto* cArrayType = llvm::dyn_cast<clang::ConstantArrayType>(cVar->getType().getTypePtr());
+    ASSERT_NE(cArrayType, nullptr);
+    EXPECT_TRUE(cArrayType->getElementType()->isFloatingType());
+    EXPECT_EQ(cArrayType->getSize().getZExtValue(), 100);
+}
+
+/**
+ * Test 26: Char array (string buffer)
+ *
+ * C++ Input:  char buffer[256];
+ * C Output:   char buffer[256];
+ */
+TEST_F(VariableHandlerTest, CharArray) {
+    // Arrange: Create char buffer[256]
+    clang::ASTContext& ctx = cppAST->getASTContext();
+
+    llvm::APInt arraySize(32, 256);
+    clang::QualType arrayType = ctx.getConstantArrayType(
+        ctx.CharTy,
+        arraySize,
+        nullptr,
+        clang::ArraySizeModifier::Normal,
+        0
+    );
+
+    clang::IdentifierInfo& II = ctx.Idents.get("buffer");
+    clang::VarDecl* cppVar = clang::VarDecl::Create(
+        ctx,
+        ctx.getTranslationUnitDecl(),
+        clang::SourceLocation(),
+        clang::SourceLocation(),
+        &II,
+        arrayType,
+        ctx.getTrivialTypeSourceInfo(arrayType),
+        clang::SC_None
+    );
+
+    // Act
+    VariableHandler handler;
+    clang::Decl* result = handler.handleDecl(cppVar, *context);
+
+    // Assert
+    ASSERT_NE(result, nullptr);
+    auto* cVar = llvm::dyn_cast<clang::VarDecl>(result);
+    ASSERT_NE(cVar, nullptr);
+
+    EXPECT_TRUE(cVar->getType()->isArrayType());
+    const auto* cArrayType = llvm::dyn_cast<clang::ConstantArrayType>(cVar->getType().getTypePtr());
+    ASSERT_NE(cArrayType, nullptr);
+    EXPECT_TRUE(cArrayType->getElementType()->isCharType());
+    EXPECT_EQ(cArrayType->getSize().getZExtValue(), 256);
+}
+
+/**
+ * Test 27: Small array (size 1)
+ *
+ * C++ Input:  int single[1];
+ * C Output:   int single[1];
+ */
+TEST_F(VariableHandlerTest, ArraySizeOne) {
+    // Arrange: Create int single[1]
+    clang::ASTContext& ctx = cppAST->getASTContext();
+
+    llvm::APInt arraySize(32, 1);
+    clang::QualType arrayType = ctx.getConstantArrayType(
+        ctx.IntTy,
+        arraySize,
+        nullptr,
+        clang::ArraySizeModifier::Normal,
+        0
+    );
+
+    clang::IdentifierInfo& II = ctx.Idents.get("single");
+    clang::VarDecl* cppVar = clang::VarDecl::Create(
+        ctx,
+        ctx.getTranslationUnitDecl(),
+        clang::SourceLocation(),
+        clang::SourceLocation(),
+        &II,
+        arrayType,
+        ctx.getTrivialTypeSourceInfo(arrayType),
+        clang::SC_None
+    );
+
+    // Act
+    VariableHandler handler;
+    clang::Decl* result = handler.handleDecl(cppVar, *context);
+
+    // Assert
+    ASSERT_NE(result, nullptr);
+    auto* cVar = llvm::dyn_cast<clang::VarDecl>(result);
+    ASSERT_NE(cVar, nullptr);
+
+    EXPECT_TRUE(cVar->getType()->isArrayType());
+    const auto* cArrayType = llvm::dyn_cast<clang::ConstantArrayType>(cVar->getType().getTypePtr());
+    ASSERT_NE(cArrayType, nullptr);
+    EXPECT_EQ(cArrayType->getSize().getZExtValue(), 1);
+}
+
+/**
+ * Test 28: Array of const pointers
+ *
+ * C++ Input:  const int* arr[3];
+ * C Output:   const int* arr[3];
+ */
+TEST_F(VariableHandlerTest, ArrayOfConstPointers) {
+    // Arrange: Create const int* arr[3]
+    clang::ASTContext& ctx = cppAST->getASTContext();
+
+    // Element type is const int*
+    clang::QualType constIntType = ctx.IntTy.withConst();
+    clang::QualType pointerType = ctx.getPointerType(constIntType);
+
+    llvm::APInt arraySize(32, 3);
+    clang::QualType arrayType = ctx.getConstantArrayType(
+        pointerType,
+        arraySize,
+        nullptr,
+        clang::ArraySizeModifier::Normal,
+        0
+    );
+
+    clang::IdentifierInfo& II = ctx.Idents.get("arr");
+    clang::VarDecl* cppVar = clang::VarDecl::Create(
+        ctx,
+        ctx.getTranslationUnitDecl(),
+        clang::SourceLocation(),
+        clang::SourceLocation(),
+        &II,
+        arrayType,
+        ctx.getTrivialTypeSourceInfo(arrayType),
+        clang::SC_None
+    );
+
+    // Act
+    VariableHandler handler;
+    clang::Decl* result = handler.handleDecl(cppVar, *context);
+
+    // Assert
+    ASSERT_NE(result, nullptr);
+    auto* cVar = llvm::dyn_cast<clang::VarDecl>(result);
+    ASSERT_NE(cVar, nullptr);
+
+    EXPECT_TRUE(cVar->getType()->isArrayType());
+    const auto* cArrayType = llvm::dyn_cast<clang::ConstantArrayType>(cVar->getType().getTypePtr());
+    ASSERT_NE(cArrayType, nullptr);
+    EXPECT_TRUE(cArrayType->getElementType()->isPointerType());
+
+    // Verify pointee is const int
+    clang::QualType pointeeType = cArrayType->getElementType()->getPointeeType();
+    EXPECT_TRUE(pointeeType.isConstQualified());
+    EXPECT_TRUE(pointeeType->isIntegerType());
+}
+
+/**
+ * Test 29: Large array (stress test)
+ *
+ * C++ Input:  int huge[10000];
+ * C Output:   int huge[10000];
+ */
+TEST_F(VariableHandlerTest, LargeArray) {
+    // Arrange: Create int huge[10000]
+    clang::ASTContext& ctx = cppAST->getASTContext();
+
+    llvm::APInt arraySize(32, 10000);
+    clang::QualType arrayType = ctx.getConstantArrayType(
+        ctx.IntTy,
+        arraySize,
+        nullptr,
+        clang::ArraySizeModifier::Normal,
+        0
+    );
+
+    clang::IdentifierInfo& II = ctx.Idents.get("huge");
+    clang::VarDecl* cppVar = clang::VarDecl::Create(
+        ctx,
+        ctx.getTranslationUnitDecl(),
+        clang::SourceLocation(),
+        clang::SourceLocation(),
+        &II,
+        arrayType,
+        ctx.getTrivialTypeSourceInfo(arrayType),
+        clang::SC_None
+    );
+
+    // Act
+    VariableHandler handler;
+    clang::Decl* result = handler.handleDecl(cppVar, *context);
+
+    // Assert
+    ASSERT_NE(result, nullptr);
+    auto* cVar = llvm::dyn_cast<clang::VarDecl>(result);
+    ASSERT_NE(cVar, nullptr);
+
+    EXPECT_TRUE(cVar->getType()->isArrayType());
+    const auto* cArrayType = llvm::dyn_cast<clang::ConstantArrayType>(cVar->getType().getTypePtr());
+    ASSERT_NE(cArrayType, nullptr);
+    EXPECT_EQ(cArrayType->getSize().getZExtValue(), 10000);
+}
+
+// ============================================================================
+// Phase 3 Tests: Static Local Variables (Task 7)
+// ============================================================================
+
+/**
+ * Test 30: Static local variable without initialization
+ *
+ * C++ Input:  static int counter;
+ * C Output:   static int counter;
+ */
+TEST_F(VariableHandlerTest, StaticLocalVariableNoInit) {
+    // Arrange: Create static int counter (no init)
+    clang::VarDecl* cppVar = createCppVariable("int", "counter", nullptr, clang::SC_Static);
+    ASSERT_NE(cppVar, nullptr);
+
+    // Act
+    VariableHandler handler;
+    clang::Decl* result = handler.handleDecl(cppVar, *context);
+
+    // Assert
+    ASSERT_NE(result, nullptr) << "Translation returned null";
+    auto* cVar = llvm::dyn_cast<clang::VarDecl>(result);
+    ASSERT_NE(cVar, nullptr) << "Result is not a VarDecl";
+
+    EXPECT_EQ(cVar->getNameAsString(), "counter") << "Variable name mismatch";
+    EXPECT_TRUE(cVar->getType()->isIntegerType()) << "Type should be int";
+    EXPECT_EQ(cVar->getStorageClass(), clang::SC_Static) << "Storage class should be static";
+    EXPECT_FALSE(cVar->hasInit()) << "Should have no initializer";
+}
+
+/**
+ * Test 31: Static local variable with zero initialization
+ *
+ * C++ Input:  static int counter = 0;
+ * C Output:   static int counter = 0;
+ */
+TEST_F(VariableHandlerTest, StaticLocalVariableWithZeroInit) {
+    // Arrange: Create static int counter = 0
+    clang::IntegerLiteral* initExpr = createIntLiteral(0);
+    clang::VarDecl* cppVar = createCppVariable("int", "counter", initExpr, clang::SC_Static);
+    ASSERT_NE(cppVar, nullptr);
+
+    // Act
+    VariableHandler handler;
+    clang::Decl* result = handler.handleDecl(cppVar, *context);
+
+    // Assert
+    ASSERT_NE(result, nullptr);
+    auto* cVar = llvm::dyn_cast<clang::VarDecl>(result);
+    ASSERT_NE(cVar, nullptr);
+
+    EXPECT_EQ(cVar->getNameAsString(), "counter");
+    EXPECT_TRUE(cVar->getType()->isIntegerType());
+    EXPECT_EQ(cVar->getStorageClass(), clang::SC_Static) << "Storage class should be static";
+    EXPECT_TRUE(cVar->hasInit()) << "Should have initializer";
+
+    // Verify initializer
+    auto* initLit = llvm::dyn_cast<clang::IntegerLiteral>(cVar->getInit());
+    ASSERT_NE(initLit, nullptr) << "Initializer should be IntegerLiteral";
+    EXPECT_EQ(initLit->getValue().getSExtValue(), 0) << "Initializer value should be 0";
+}
+
+/**
+ * Test 32: Static local variable with non-zero initialization
+ *
+ * C++ Input:  static int next_id = 100;
+ * C Output:   static int next_id = 100;
+ */
+TEST_F(VariableHandlerTest, StaticLocalVariableWithNonZeroInit) {
+    // Arrange: Create static int next_id = 100
+    clang::IntegerLiteral* initExpr = createIntLiteral(100);
+    clang::VarDecl* cppVar = createCppVariable("int", "next_id", initExpr, clang::SC_Static);
+    ASSERT_NE(cppVar, nullptr);
+
+    // Act
+    VariableHandler handler;
+    clang::Decl* result = handler.handleDecl(cppVar, *context);
+
+    // Assert
+    ASSERT_NE(result, nullptr);
+    auto* cVar = llvm::dyn_cast<clang::VarDecl>(result);
+    ASSERT_NE(cVar, nullptr);
+
+    EXPECT_EQ(cVar->getNameAsString(), "next_id");
+    EXPECT_EQ(cVar->getStorageClass(), clang::SC_Static);
+    EXPECT_TRUE(cVar->hasInit());
+
+    auto* initLit = llvm::dyn_cast<clang::IntegerLiteral>(cVar->getInit());
+    ASSERT_NE(initLit, nullptr);
+    EXPECT_EQ(initLit->getValue().getSExtValue(), 100);
+}
+
+/**
+ * Test 33: Static float variable
+ *
+ * C++ Input:  static float value = 3.14f;
+ * C Output:   static float value = 3.14f;
+ */
+TEST_F(VariableHandlerTest, StaticFloatVariable) {
+    // Arrange: Create static float value = 3.14f
+    clang::FloatingLiteral* initExpr = createFloatLiteral(3.14f);
+    clang::VarDecl* cppVar = createCppVariable("float", "value", initExpr, clang::SC_Static);
+    ASSERT_NE(cppVar, nullptr);
+
+    // Act
+    VariableHandler handler;
+    clang::Decl* result = handler.handleDecl(cppVar, *context);
+
+    // Assert
+    ASSERT_NE(result, nullptr);
+    auto* cVar = llvm::dyn_cast<clang::VarDecl>(result);
+    ASSERT_NE(cVar, nullptr);
+
+    EXPECT_EQ(cVar->getNameAsString(), "value");
+    EXPECT_TRUE(cVar->getType()->isFloatingType());
+    EXPECT_EQ(cVar->getStorageClass(), clang::SC_Static);
+    EXPECT_TRUE(cVar->hasInit());
+
+    auto* initLit = llvm::dyn_cast<clang::FloatingLiteral>(cVar->getInit());
+    ASSERT_NE(initLit, nullptr);
+    EXPECT_NEAR(initLit->getValue().convertToFloat(), 3.14f, 0.01f);
+}
+
+/**
+ * Test 34: Static array variable
+ *
+ * C++ Input:  static int cache[10];
+ * C Output:   static int cache[10];
+ */
+TEST_F(VariableHandlerTest, StaticArrayVariable) {
+    // Arrange: Create static int cache[10]
+    clang::ASTContext& ctx = cppAST->getASTContext();
+
+    llvm::APInt arraySize(32, 10);
+    clang::QualType arrayType = ctx.getConstantArrayType(
+        ctx.IntTy,
+        arraySize,
+        nullptr,
+        clang::ArraySizeModifier::Normal,
+        0
+    );
+
+    clang::IdentifierInfo& II = ctx.Idents.get("cache");
+    clang::VarDecl* cppVar = clang::VarDecl::Create(
+        ctx,
+        ctx.getTranslationUnitDecl(),
+        clang::SourceLocation(),
+        clang::SourceLocation(),
+        &II,
+        arrayType,
+        ctx.getTrivialTypeSourceInfo(arrayType),
+        clang::SC_Static
+    );
+
+    // Act
+    VariableHandler handler;
+    clang::Decl* result = handler.handleDecl(cppVar, *context);
+
+    // Assert
+    ASSERT_NE(result, nullptr);
+    auto* cVar = llvm::dyn_cast<clang::VarDecl>(result);
+    ASSERT_NE(cVar, nullptr);
+
+    EXPECT_EQ(cVar->getNameAsString(), "cache");
+    EXPECT_TRUE(cVar->getType()->isArrayType());
+    EXPECT_EQ(cVar->getStorageClass(), clang::SC_Static) << "Storage class should be static";
+
+    const auto* cArrayType = llvm::dyn_cast<clang::ConstantArrayType>(cVar->getType().getTypePtr());
+    ASSERT_NE(cArrayType, nullptr);
+    EXPECT_EQ(cArrayType->getSize().getZExtValue(), 10);
+}
+
+/**
+ * Test 35: Static const variable
+ *
+ * C++ Input:  static const int MAX_SIZE = 1024;
+ * C Output:   static const int MAX_SIZE = 1024;
+ */
+TEST_F(VariableHandlerTest, StaticConstVariable) {
+    // Arrange: Create static const int MAX_SIZE = 1024
+    clang::IntegerLiteral* initExpr = createIntLiteral(1024);
+    clang::VarDecl* cppVar = createCppVariable("const int", "MAX_SIZE", initExpr, clang::SC_Static);
+    ASSERT_NE(cppVar, nullptr);
+
+    // Act
+    VariableHandler handler;
+    clang::Decl* result = handler.handleDecl(cppVar, *context);
+
+    // Assert
+    ASSERT_NE(result, nullptr);
+    auto* cVar = llvm::dyn_cast<clang::VarDecl>(result);
+    ASSERT_NE(cVar, nullptr);
+
+    EXPECT_EQ(cVar->getNameAsString(), "MAX_SIZE");
+    EXPECT_TRUE(cVar->getType().isConstQualified()) << "Should preserve const qualifier";
+    EXPECT_EQ(cVar->getStorageClass(), clang::SC_Static) << "Storage class should be static";
+    EXPECT_TRUE(cVar->hasInit());
+
+    auto* initLit = llvm::dyn_cast<clang::IntegerLiteral>(cVar->getInit());
+    ASSERT_NE(initLit, nullptr);
+    EXPECT_EQ(initLit->getValue().getSExtValue(), 1024);
+}
+
+/**
+ * Test 36: Static char variable
+ *
+ * C++ Input:  static char last_char = 'X';
+ * C Output:   static char last_char = 'X';
+ */
+TEST_F(VariableHandlerTest, StaticCharVariable) {
+    // Arrange: Create static char last_char = 'X'
+    clang::CharacterLiteral* initExpr = createCharLiteral('X');
+    clang::VarDecl* cppVar = createCppVariable("char", "last_char", initExpr, clang::SC_Static);
+    ASSERT_NE(cppVar, nullptr);
+
+    // Act
+    VariableHandler handler;
+    clang::Decl* result = handler.handleDecl(cppVar, *context);
+
+    // Assert
+    ASSERT_NE(result, nullptr);
+    auto* cVar = llvm::dyn_cast<clang::VarDecl>(result);
+    ASSERT_NE(cVar, nullptr);
+
+    EXPECT_EQ(cVar->getNameAsString(), "last_char");
+    EXPECT_TRUE(cVar->getType()->isCharType());
+    EXPECT_EQ(cVar->getStorageClass(), clang::SC_Static);
+    EXPECT_TRUE(cVar->hasInit());
+
+    auto* initLit = llvm::dyn_cast<clang::CharacterLiteral>(cVar->getInit());
+    ASSERT_NE(initLit, nullptr);
+    EXPECT_EQ(initLit->getValue(), 'X');
+}
+
+/**
+ * Test 37: Static pointer variable
+ *
+ * C++ Input:  static int* ptr;
+ * C Output:   static int* ptr;
+ */
+TEST_F(VariableHandlerTest, StaticPointerVariable) {
+    // Arrange: Create static int* ptr (no init)
+    clang::VarDecl* cppVar = createCppVariable("int*", "ptr", nullptr, clang::SC_Static);
+    ASSERT_NE(cppVar, nullptr);
+
+    // Act
+    VariableHandler handler;
+    clang::Decl* result = handler.handleDecl(cppVar, *context);
+
+    // Assert
+    ASSERT_NE(result, nullptr);
+    auto* cVar = llvm::dyn_cast<clang::VarDecl>(result);
+    ASSERT_NE(cVar, nullptr);
+
+    EXPECT_EQ(cVar->getNameAsString(), "ptr");
+    EXPECT_TRUE(cVar->getType()->isPointerType());
+    EXPECT_EQ(cVar->getStorageClass(), clang::SC_Static);
+    EXPECT_FALSE(cVar->hasInit());
+}
+
+// ============================================================================
+// Phase 3 Tests: Const Qualifiers (Task 8)
+// ============================================================================
+
+/**
+ * Test 38: Const local variable
+ *
+ * C++ Input:  const int MAX = 100;
+ * C Output:   const int MAX = 100;
+ */
+TEST_F(VariableHandlerTest, ConstLocalVariable) {
+    // Arrange
+    clang::ASTContext& ctx = cppAST->getASTContext();
+    clang::QualType constIntType = ctx.IntTy.withConst();
+    clang::IntegerLiteral* initExpr = createIntLiteral(100);
+
+    clang::IdentifierInfo& II = ctx.Idents.get("MAX");
+    clang::VarDecl* cppVar = clang::VarDecl::Create(
+        ctx,
+        ctx.getTranslationUnitDecl(),
+        clang::SourceLocation(),
+        clang::SourceLocation(),
+        &II,
+        constIntType,
+        ctx.getTrivialTypeSourceInfo(constIntType),
+        clang::SC_None
+    );
+    cppVar->setInit(initExpr);
+
+    // Act
+    VariableHandler handler;
+    clang::Decl* result = handler.handleDecl(cppVar, *context);
+
+    // Assert
+    ASSERT_NE(result, nullptr);
+    auto* cVar = llvm::dyn_cast<clang::VarDecl>(result);
+    ASSERT_NE(cVar, nullptr);
+
+    EXPECT_EQ(cVar->getNameAsString(), "MAX");
+    EXPECT_TRUE(cVar->getType().isConstQualified()) << "Should preserve const qualifier";
+    EXPECT_TRUE(cVar->getType()->isIntegerType());
+    EXPECT_TRUE(cVar->hasInit());
+}
+
+/**
+ * Test 39: Const global variable
+ *
+ * C++ Input:  const char* MESSAGE = "Hello";
+ * C Output:   const char* MESSAGE = "Hello";
+ *
+ * Note: We're testing the type preservation, not the string literal handling
+ */
+TEST_F(VariableHandlerTest, ConstGlobalVariable) {
+    // Arrange
+    clang::ASTContext& ctx = cppAST->getASTContext();
+
+    // Create const char* type
+    clang::QualType constCharType = ctx.CharTy.withConst();
+    clang::QualType constCharPtrType = ctx.getPointerType(constCharType);
+
+    clang::IdentifierInfo& II = ctx.Idents.get("MESSAGE");
+    clang::VarDecl* cppVar = clang::VarDecl::Create(
+        ctx,
+        ctx.getTranslationUnitDecl(),
+        clang::SourceLocation(),
+        clang::SourceLocation(),
+        &II,
+        constCharPtrType,
+        ctx.getTrivialTypeSourceInfo(constCharPtrType),
+        clang::SC_None
+    );
+
+    // Act
+    VariableHandler handler;
+    clang::Decl* result = handler.handleDecl(cppVar, *context);
+
+    // Assert
+    ASSERT_NE(result, nullptr);
+    auto* cVar = llvm::dyn_cast<clang::VarDecl>(result);
+    ASSERT_NE(cVar, nullptr);
+
+    EXPECT_EQ(cVar->getNameAsString(), "MESSAGE");
+    EXPECT_TRUE(cVar->getType()->isPointerType());
+
+    // Verify pointee is const char
+    clang::QualType pointeeType = cVar->getType()->getPointeeType();
+    EXPECT_TRUE(pointeeType.isConstQualified()) << "Pointee should be const qualified";
+    EXPECT_TRUE(pointeeType->isCharType());
+}
+
+/**
+ * Test 40: Const pointer vs pointer to const
+ *
+ * C++ Input:  int* const ptr = nullptr;  (const pointer to int)
+ * C Output:   int* const ptr = 0;
+ *
+ * Tests top-level const on pointer itself
+ */
+TEST_F(VariableHandlerTest, ConstPointer) {
+    // Arrange
+    clang::ASTContext& ctx = cppAST->getASTContext();
+
+    // Create int* const type (const pointer to int)
+    clang::QualType intPtrType = ctx.getPointerType(ctx.IntTy);
+    clang::QualType constIntPtrType = intPtrType.withConst();
+
+    clang::IdentifierInfo& II = ctx.Idents.get("ptr");
+    clang::VarDecl* cppVar = clang::VarDecl::Create(
+        ctx,
+        ctx.getTranslationUnitDecl(),
+        clang::SourceLocation(),
+        clang::SourceLocation(),
+        &II,
+        constIntPtrType,
+        ctx.getTrivialTypeSourceInfo(constIntPtrType),
+        clang::SC_None
+    );
+
+    // Act
+    VariableHandler handler;
+    clang::Decl* result = handler.handleDecl(cppVar, *context);
+
+    // Assert
+    ASSERT_NE(result, nullptr);
+    auto* cVar = llvm::dyn_cast<clang::VarDecl>(result);
+    ASSERT_NE(cVar, nullptr);
+
+    EXPECT_EQ(cVar->getNameAsString(), "ptr");
+    EXPECT_TRUE(cVar->getType().isConstQualified()) << "Pointer itself should be const";
+    EXPECT_TRUE(cVar->getType()->isPointerType());
+
+    // Pointee should NOT be const (only pointer is const)
+    clang::QualType pointeeType = cVar->getType()->getPointeeType();
+    EXPECT_FALSE(pointeeType.isConstQualified()) << "Pointee should not be const";
+    EXPECT_TRUE(pointeeType->isIntegerType());
+}
+
+/**
+ * Test 41: Pointer to const (not const pointer)
+ *
+ * C++ Input:  const int* ptr;  (pointer to const int)
+ * C Output:   const int* ptr;
+ *
+ * Tests const on pointee, not pointer
+ */
+TEST_F(VariableHandlerTest, PointerToConst) {
+    // Arrange
+    clang::ASTContext& ctx = cppAST->getASTContext();
+
+    // Create const int* type (pointer to const int)
+    clang::QualType constIntType = ctx.IntTy.withConst();
+    clang::QualType ptrToConstIntType = ctx.getPointerType(constIntType);
+
+    clang::IdentifierInfo& II = ctx.Idents.get("ptr");
+    clang::VarDecl* cppVar = clang::VarDecl::Create(
+        ctx,
+        ctx.getTranslationUnitDecl(),
+        clang::SourceLocation(),
+        clang::SourceLocation(),
+        &II,
+        ptrToConstIntType,
+        ctx.getTrivialTypeSourceInfo(ptrToConstIntType),
+        clang::SC_None
+    );
+
+    // Act
+    VariableHandler handler;
+    clang::Decl* result = handler.handleDecl(cppVar, *context);
+
+    // Assert
+    ASSERT_NE(result, nullptr);
+    auto* cVar = llvm::dyn_cast<clang::VarDecl>(result);
+    ASSERT_NE(cVar, nullptr);
+
+    EXPECT_EQ(cVar->getNameAsString(), "ptr");
+    EXPECT_FALSE(cVar->getType().isConstQualified()) << "Pointer itself should not be const";
+    EXPECT_TRUE(cVar->getType()->isPointerType());
+
+    // Pointee SHOULD be const
+    clang::QualType pointeeType = cVar->getType()->getPointeeType();
+    EXPECT_TRUE(pointeeType.isConstQualified()) << "Pointee should be const";
+    EXPECT_TRUE(pointeeType->isIntegerType());
+}
+
+/**
+ * Test 42: Const pointer to const
+ *
+ * C++ Input:  const int* const ptr;  (const pointer to const int)
+ * C Output:   const int* const ptr;
+ *
+ * Tests both top-level and pointee const
+ */
+TEST_F(VariableHandlerTest, ConstPointerToConst) {
+    // Arrange
+    clang::ASTContext& ctx = cppAST->getASTContext();
+
+    // Create const int* const type
+    clang::QualType constIntType = ctx.IntTy.withConst();
+    clang::QualType ptrToConstIntType = ctx.getPointerType(constIntType);
+    clang::QualType constPtrToConstIntType = ptrToConstIntType.withConst();
+
+    clang::IdentifierInfo& II = ctx.Idents.get("ptr");
+    clang::VarDecl* cppVar = clang::VarDecl::Create(
+        ctx,
+        ctx.getTranslationUnitDecl(),
+        clang::SourceLocation(),
+        clang::SourceLocation(),
+        &II,
+        constPtrToConstIntType,
+        ctx.getTrivialTypeSourceInfo(constPtrToConstIntType),
+        clang::SC_None
+    );
+
+    // Act
+    VariableHandler handler;
+    clang::Decl* result = handler.handleDecl(cppVar, *context);
+
+    // Assert
+    ASSERT_NE(result, nullptr);
+    auto* cVar = llvm::dyn_cast<clang::VarDecl>(result);
+    ASSERT_NE(cVar, nullptr);
+
+    EXPECT_EQ(cVar->getNameAsString(), "ptr");
+    EXPECT_TRUE(cVar->getType().isConstQualified()) << "Pointer itself should be const";
+    EXPECT_TRUE(cVar->getType()->isPointerType());
+
+    // Pointee should also be const
+    clang::QualType pointeeType = cVar->getType()->getPointeeType();
+    EXPECT_TRUE(pointeeType.isConstQualified()) << "Pointee should be const";
+    EXPECT_TRUE(pointeeType->isIntegerType());
+}
+
+/**
+ * Test 43: Const array elements
+ *
+ * C++ Input:  const int arr[5] = {1, 2, 3, 4, 5};
+ * C Output:   const int arr[5] = {1, 2, 3, 4, 5};
+ *
+ * Tests const qualifier on array elements
+ */
+TEST_F(VariableHandlerTest, ConstArrayElements) {
+    // Arrange: Create const int arr[5]
+    clang::ASTContext& ctx = cppAST->getASTContext();
+
+    // Create array type with const elements
+    clang::QualType constIntType = ctx.IntTy.withConst();
+    llvm::APInt arraySize(32, 5);
+    clang::QualType constArrayType = ctx.getConstantArrayType(
+        constIntType,
+        arraySize,
+        nullptr,
+        clang::ArraySizeModifier::Normal,
+        0
+    );
+
+    clang::IdentifierInfo& II = ctx.Idents.get("arr");
+    clang::VarDecl* cppVar = clang::VarDecl::Create(
+        ctx,
+        ctx.getTranslationUnitDecl(),
+        clang::SourceLocation(),
+        clang::SourceLocation(),
+        &II,
+        constArrayType,
+        ctx.getTrivialTypeSourceInfo(constArrayType),
+        clang::SC_None
+    );
+
+    // Act
+    VariableHandler handler;
+    clang::Decl* result = handler.handleDecl(cppVar, *context);
+
+    // Assert
+    ASSERT_NE(result, nullptr);
+    auto* cVar = llvm::dyn_cast<clang::VarDecl>(result);
+    ASSERT_NE(cVar, nullptr);
+
+    EXPECT_EQ(cVar->getNameAsString(), "arr");
+    EXPECT_TRUE(cVar->getType()->isArrayType());
+
+    // Verify array elements are const
+    const auto* cArrayType = llvm::dyn_cast<clang::ConstantArrayType>(cVar->getType().getTypePtr());
+    ASSERT_NE(cArrayType, nullptr);
+    EXPECT_TRUE(cArrayType->getElementType().isConstQualified()) << "Array elements should be const";
+    EXPECT_TRUE(cArrayType->getElementType()->isIntegerType());
+    EXPECT_EQ(cArrayType->getSize().getZExtValue(), 5);
+}
+
+// TODO: Additional tests for Phase 3+:
+// - Test 44: Reference variable (int& ref = x) → int* ref = &x
+// - Test 45: Reference parameter translation
+// - Test 46: Array initialization with InitListExpr
+// - Test 47: Complex initialization expressions
+// - Test 48: Variable with cast expression init
