@@ -51,9 +51,31 @@ std::vector<clang::ParmVarDecl*> FunctionHandler::translateParameters(
     HandlerContext& ctx
 ) {
     std::vector<clang::ParmVarDecl*> cParams;
+    clang::ASTContext& cContext = ctx.getCContext();
 
-    // For now, return empty (no parameters)
-    // Will be expanded in later TDD cycles
+    // Translate each parameter
+    for (const auto* cppParam : cppFunc->parameters()) {
+        // Create identifier for parameter name
+        clang::IdentifierInfo& II = cContext.Idents.get(cppParam->getNameAsString());
+
+        // Create C parameter with same name and type
+        clang::ParmVarDecl* cParam = clang::ParmVarDecl::Create(
+            cContext,
+            cContext.getTranslationUnitDecl(),
+            clang::SourceLocation(),
+            clang::SourceLocation(),
+            &II,
+            cppParam->getType(),
+            cContext.getTrivialTypeSourceInfo(cppParam->getType()),
+            clang::SC_None,
+            nullptr  // No default argument
+        );
+
+        cParams.push_back(cParam);
+
+        // Register parameter mapping for later reference
+        ctx.registerDecl(cppParam, cParam);
+    }
 
     return cParams;
 }

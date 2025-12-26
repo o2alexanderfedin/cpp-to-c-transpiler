@@ -3950,6 +3950,35 @@ gtest_discover_tests(StatementHandlerTest
 )
 
 # ============================================================================
+# Phase 39-01c: Integration Tests - Handler Cooperation
+# ============================================================================
+
+add_executable(HandlerIntegrationTest
+    tests/integration/handlers/HandlerIntegrationTest.cpp
+)
+
+target_include_directories(HandlerIntegrationTest PRIVATE
+    ${CMAKE_SOURCE_DIR}/tests/fixtures
+    ${CMAKE_SOURCE_DIR}/include
+    ${LLVM_INCLUDE_DIRS}
+    ${CLANG_INCLUDE_DIRS}
+)
+
+target_link_libraries(HandlerIntegrationTest PRIVATE
+    test_fixtures
+    cpptoc_core
+    clangTooling
+    clangAST
+    clangBasic
+    GTest::gtest
+    GTest::gtest_main
+)
+
+gtest_discover_tests(HandlerIntegrationTest
+    WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
+)
+
+# ============================================================================
 # Phase 15-04: Unified Test Execution - Convenience Test Targets
 # ============================================================================
 
