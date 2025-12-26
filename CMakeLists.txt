@@ -245,6 +245,9 @@ add_library(cpptoc_core STATIC
     src/AutoDecayCopyTranslator.cpp
     src/ConstexprEnhancementHandler.cpp
     src/RuntimeConfig.cpp
+    # Phase 39-01a: Handler infrastructure
+    src/handlers/HandlerContext.cpp
+    src/handlers/FunctionHandler.cpp
 )
 
 target_compile_definitions(cpptoc_core PRIVATE ${LLVM_DEFINITIONS})
@@ -3810,6 +3813,56 @@ gtest_discover_tests(MultiFileTranspilationTest
 # gtest_discover_tests(FileDiscoveryTest
 #     WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
 # )
+
+# ============================================================================
+# Phase 39-01a: Handler Infrastructure Tests
+# ============================================================================
+
+# Test fixtures library
+add_library(test_fixtures STATIC
+    tests/fixtures/HandlerTestFixture.cpp
+)
+
+target_include_directories(test_fixtures PUBLIC
+    ${CMAKE_SOURCE_DIR}/tests/fixtures
+    ${CMAKE_SOURCE_DIR}/include
+    ${LLVM_INCLUDE_DIRS}
+    ${CLANG_INCLUDE_DIRS}
+)
+
+target_link_libraries(test_fixtures PUBLIC
+    cpptoc_core
+    clangTooling
+    clangAST
+    clangBasic
+    GTest::gtest
+)
+
+# FunctionHandler unit tests
+add_executable(FunctionHandlerTest
+    tests/unit/handlers/FunctionHandlerTest.cpp
+)
+
+target_include_directories(FunctionHandlerTest PRIVATE
+    ${CMAKE_SOURCE_DIR}/tests/fixtures
+    ${CMAKE_SOURCE_DIR}/include
+    ${LLVM_INCLUDE_DIRS}
+    ${CLANG_INCLUDE_DIRS}
+)
+
+target_link_libraries(FunctionHandlerTest PRIVATE
+    test_fixtures
+    cpptoc_core
+    clangTooling
+    clangAST
+    clangBasic
+    GTest::gtest
+    GTest::gtest_main
+)
+
+gtest_discover_tests(FunctionHandlerTest
+    WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
+)
 
 # ============================================================================
 # Phase 15-04: Unified Test Execution - Convenience Test Targets
