@@ -154,6 +154,11 @@ CppToCVisitor::CppToCVisitor(ASTContext &Context, CNodeBuilder &Builder,
   m_specialOpTrans = std::make_unique<SpecialOperatorTranslator>(Builder, Mangler);
   llvm::outs() << "Special operator overloading support initialized (Phase 52)\n";
 
+  // Phase 53: Initialize type alias analyzer and typedef generator
+  m_typeAliasAnalyzer = std::make_unique<cpptoc::TypeAliasAnalyzer>(Context, Builder);
+  m_typedefGenerator = std::make_unique<cpptoc::TypedefGenerator>(Builder.getContext(), Builder);
+  llvm::outs() << "Type alias and typedef support initialized (Phase 53)\n";
+
   // Phase 35-02 (Bug #30 FIX): C_TranslationUnit passed as constructor parameter
   // Each source file has its own C_TU in the shared target context
   llvm::outs() << "[Bug #30 FIX] CppToCVisitor using C_TU @ " << (void*)C_TranslationUnit << "\n";
@@ -208,6 +213,44 @@ bool CppToCVisitor::VisitEnumDecl(EnumDecl *ED) {
   }
 
   llvm::outs() << "  -> C enum " << ED->getNameAsString() << " created via EnumTranslator\n";
+
+  return true;
+}
+
+// Phase 53: Type Alias Translation (using X = Y)
+bool CppToCVisitor::VisitTypeAliasDecl(TypeAliasDecl *TAD) {
+  // Skip declarations from non-transpilable files (system headers, etc.)
+  if (!fileOriginTracker.shouldTranspile(TAD)) {
+    return true;
+  }
+
+  // Skip compiler-generated aliases
+  if (TAD->isImplicit()) {
+    return true;
+  }
+
+  // Skip template type alias declarations (they need to be instantiated first)
+  if (TAD->getDescribedAliasTemplate() != nullptr) {
+    // This is a template type alias pattern (e.g., template<typename T> using Vec = ...)
+    // Skip it - we'll handle instantiations when they occur
+    return true;
+  }
+
+  llvm::outs() << "Translating type alias: " << TAD->getNameAsString() << "\n";
+
+  // Analyze the type alias
+  cpptoc::TypeAliasInfo info = m_typeAliasAnalyzer->analyzeTypeAlias(TAD);
+
+  // Generate C typedef
+  clang::TypedefDecl* C_Typedef = m_typedefGenerator->generateTypedef(info);
+
+  if (!C_Typedef) {
+    llvm::outs() << "  -> ERROR: TypedefGenerator returned nullptr for type alias "
+                 << TAD->getNameAsString() << "\n";
+    return false;
+  }
+
+  llvm::outs() << "  -> C typedef " << info.aliasName << " created\n";
 
   return true;
 }
