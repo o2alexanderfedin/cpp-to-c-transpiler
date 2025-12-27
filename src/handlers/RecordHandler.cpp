@@ -304,11 +304,14 @@ void RecordHandler::generateVtableStructs(
     MultipleInheritanceAnalyzer miAnalyzer(cppCtx);
     auto bases = miAnalyzer.analyzePolymorphicBases(cxxRecord);
 
+    std::string className = cxxRecord->getNameAsString();
+
     if (bases.empty()) {
+        // No polymorphic bases - this is a base class itself
+        // Generate vtable for itself (treat as its own primary base)
+        generateVtableStructForBase(cxxRecord, cxxRecord, ctx);
         return;
     }
-
-    std::string className = cxxRecord->getNameAsString();
 
     // Generate vtable struct for each polymorphic base
     for (const auto& baseInfo : bases) {
@@ -328,9 +331,31 @@ clang::RecordDecl* RecordHandler::generateVtableStructForBase(
     }
 
     clang::ASTContext& cCtx = ctx.getCContext();
+    clang::ASTContext& cppCtx = ctx.getCppContext();
     std::string className = cxxRecord->getNameAsString();
     std::string baseName = baseClass->getNameAsString();
-    std::string vtableName = className + "_" + baseName + "_vtable";
+
+    // Determine vtable naming convention:
+    // - For single inheritance (0 or 1 polymorphic base): ClassName_vtable
+    // - For multiple inheritance (2+ polymorphic bases): ClassName_BaseName_vtable
+    MultipleInheritanceAnalyzer miAnalyzer(cppCtx);
+    auto bases = miAnalyzer.analyzePolymorphicBases(cxxRecord);
+    bool usesMultipleInheritance = bases.size() > 1;
+
+    std::string vtableName = (usesMultipleInheritance && cxxRecord != baseClass)
+        ? className + "_" + baseName + "_vtable"
+        : className + "_vtable";
+
+    // Check if vtable struct already exists
+    auto* TU = cCtx.getTranslationUnitDecl();
+    for (auto* D : TU->decls()) {
+        if (auto* RD = llvm::dyn_cast<clang::RecordDecl>(D)) {
+            if (RD->getNameAsString() == vtableName && RD->isCompleteDefinition()) {
+                // Vtable struct already exists and is complete
+                return RD;
+            }
+        }
+    }
 
     // Create vtable struct identifier
     clang::IdentifierInfo& vtableII = cCtx.Idents.get(vtableName);
@@ -348,8 +373,10 @@ clang::RecordDecl* RecordHandler::generateVtableStructForBase(
     // Start vtable definition
     vtableStruct->startDefinition();
 
-    // Collect virtual methods from this base class
-    std::vector<const clang::CXXMethodDecl*> baseMethods = collectVirtualMethods(baseClass);
+    // Collect virtual methods:
+    // - For base class (cxxRecord == baseClass): collect from cxxRecord
+    // - For derived class: collect from cxxRecord to get all methods (inherited + new)
+    std::vector<const clang::CXXMethodDecl*> baseMethods = collectVirtualMethods(cxxRecord);
 
     // Create VtableTypedefGenerator for generating function pointer typedefs
     VtableTypedefGenerator typedefGen(cCtx, ctx.getBuilder());
@@ -526,15 +553,58 @@ void RecordHandler::injectLpVtblField(
     MultipleInheritanceAnalyzer miAnalyzer(cppCtx);
     auto bases = miAnalyzer.analyzePolymorphicBases(cxxRecord);
 
-    // If no polymorphic bases, nothing to inject
+    // If no polymorphic bases, inject single lpVtbl for itself
     if (bases.empty()) {
+        // Simpler naming for base classes with no polymorphic bases
+        std::string vtableName = className + "_vtable";
+
+        // Create identifier for vtable struct
+        clang::IdentifierInfo& vtableII = cCtx.Idents.get(vtableName);
+
+        // Create incomplete vtable struct declaration
+        clang::RecordDecl* vtableStruct = clang::RecordDecl::Create(
+            cCtx,
+            clang::TagTypeKind::Struct,
+            cCtx.getTranslationUnitDecl(),
+            clang::SourceLocation(),
+            clang::SourceLocation(),
+            &vtableII
+        );
+
+        // Create struct type and add const qualifier
+        clang::QualType vtableStructType = cCtx.getRecordType(vtableStruct);
+        clang::QualType constVtableStructType = vtableStructType.withConst();
+        clang::QualType lpVtblType = cCtx.getPointerType(constVtableStructType);
+
+        // Single lpVtbl field for base class
+        clang::IdentifierInfo& lpVtblII = cCtx.Idents.get("lpVtbl");
+
+        clang::FieldDecl* lpVtblField = clang::FieldDecl::Create(
+            cCtx,
+            cRecord,
+            clang::SourceLocation(),
+            clang::SourceLocation(),
+            &lpVtblII,
+            lpVtblType,
+            cCtx.getTrivialTypeSourceInfo(lpVtblType),
+            nullptr,
+            false,
+            clang::ICIS_NoInit
+        );
+
+        cRecord->addDecl(lpVtblField);
         return;
     }
 
     // Inject lpVtbl field for each polymorphic base
+    // Use consistent naming: simple for single inheritance, complex for multiple
+    bool usesMultipleInheritance = bases.size() > 1;
+
     for (const auto& baseInfo : bases) {
         std::string baseName = baseInfo.BaseDecl->getNameAsString();
-        std::string vtableName = className + "_" + baseName + "_vtable";
+        std::string vtableName = usesMultipleInheritance
+            ? className + "_" + baseName + "_vtable"
+            : className + "_vtable";
 
         // Create identifier for vtable struct
         clang::IdentifierInfo& vtableII = cCtx.Idents.get(vtableName);
@@ -598,6 +668,9 @@ void RecordHandler::generateVtableInstances(
     auto bases = miAnalyzer.analyzePolymorphicBases(cxxRecord);
 
     if (bases.empty()) {
+        // No polymorphic bases - this is a base class itself
+        // Generate vtable instance for itself (treat as its own primary base)
+        generateVtableInstanceForBase(cxxRecord, cxxRecord, true, 0, ctx);
         return;
     }
 
@@ -620,10 +693,23 @@ clang::VarDecl* RecordHandler::generateVtableInstanceForBase(
     }
 
     clang::ASTContext& cCtx = ctx.getCContext();
+    clang::ASTContext& cppCtx = ctx.getCppContext();
     std::string className = cxxRecord->getNameAsString();
     std::string baseName = baseClass->getNameAsString();
-    std::string vtableName = className + "_" + baseName + "_vtable";
-    std::string vtableInstanceName = className + "_" + baseName + "_vtable_instance";
+
+    // Determine vtable naming convention:
+    // - For single inheritance (0 or 1 polymorphic base): ClassName_vtable
+    // - For multiple inheritance (2+ polymorphic bases): ClassName_BaseName_vtable
+    MultipleInheritanceAnalyzer miAnalyzer(cppCtx);
+    auto bases = miAnalyzer.analyzePolymorphicBases(cxxRecord);
+    bool usesMultipleInheritance = bases.size() > 1;
+
+    std::string vtableName = (usesMultipleInheritance && cxxRecord != baseClass)
+        ? className + "_" + baseName + "_vtable"
+        : className + "_vtable";
+    std::string vtableInstanceName = (usesMultipleInheritance && cxxRecord != baseClass)
+        ? className + "_" + baseName + "_vtable_instance"
+        : className + "_vtable_instance";
 
     auto* TU = cCtx.getTranslationUnitDecl();
 
@@ -678,15 +764,16 @@ clang::VarDecl* RecordHandler::generateVtableInstanceForBase(
     clang::QualType constVtableStructType = vtableStructType;
     constVtableStructType.addConst();
 
-    // Step 4: Collect virtual methods from base class (not derived class)
-    std::vector<const clang::CXXMethodDecl*> baseMethods = collectVirtualMethods(baseClass);
+    // Step 4: Collect virtual methods from the derived class (cxxRecord), not the base class!
+    // The vtable for a derived class contains ALL virtual methods (inherited + new)
+    std::vector<const clang::CXXMethodDecl*> baseMethods = collectVirtualMethods(cxxRecord);
 
     // Step 5: Create initializer list with designated initializers
     std::vector<clang::Expr*> initExprs;
     std::vector<clang::FieldDecl*> initFields;
 
     // Phase 46: Use ThunkGenerator for non-primary bases
-    clang::ASTContext& cppCtx = ctx.getCppContext();
+    // (cppCtx already declared at top of function)
     ThunkGenerator thunkGen(cCtx, cppCtx);
 
     // Match virtual methods with vtable struct fields

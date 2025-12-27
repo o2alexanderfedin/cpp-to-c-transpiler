@@ -55,15 +55,21 @@ std::vector<FunctionDecl*> DeducingThisTranslator::transformMethod(
 }
 
 CallExpr* DeducingThisTranslator::transformCall(
-    CXXMemberCallExpr* Call,
+    CallExpr* Call,
     ASTContext& Ctx) {
 
     if (!Call) {
         return nullptr;
     }
 
-    // Get the method being called
-    const CXXMethodDecl* Method = Call->getMethodDecl();
+    // Get the method being called (from the DeclRefExpr callee)
+    Expr* Callee = Call->getCallee()->IgnoreImplicit();
+    auto* DRE = dyn_cast<DeclRefExpr>(Callee);
+    if (!DRE) {
+        return nullptr;
+    }
+
+    const CXXMethodDecl* Method = dyn_cast<CXXMethodDecl>(DRE->getDecl());
     if (!Method) {
         return nullptr;
     }
@@ -73,8 +79,12 @@ CallExpr* DeducingThisTranslator::transformCall(
         return nullptr;
     }
 
-    // Analyze call site to determine qualifiers
-    Expr* Object = Call->getImplicitObjectArgument();
+    // For explicit object member functions, the first argument is the object
+    if (Call->getNumArgs() == 0) {
+        return nullptr;
+    }
+
+    Expr* Object = Call->getArg(0);
     if (!Object) {
         return nullptr;
     }
@@ -116,19 +126,23 @@ CallExpr* DeducingThisTranslator::transformCall(
 
     if (!CallQuals.isValue) {
         // Pass pointer to object
-        Expr* objAddr = UnaryOperator::Create(
-            Ctx, Object, UO_AddrOf,
-            Ctx.getPointerType(Object->getType()),
-            VK_PRValue, OK_Ordinary, SourceLocation(),
-            false, FPOptionsOverride());
+        // Check if Object is already an lvalue that we can take address of
+        Expr* objAddr = Object;
+        if (Object->isLValue()) {
+            objAddr = UnaryOperator::Create(
+                Ctx, Object, UO_AddrOf,
+                Ctx.getPointerType(Object->getType()),
+                VK_PRValue, OK_Ordinary, SourceLocation(),
+                false, FPOptionsOverride());
+        }
         args.push_back(objAddr);
     } else {
         // Pass object by value
         args.push_back(Object);
     }
 
-    // Remaining arguments (skip first which is explicit object param)
-    for (unsigned i = 0; i < Call->getNumArgs(); ++i) {
+    // Remaining arguments (skip first arg which is the object)
+    for (unsigned i = 1; i < Call->getNumArgs(); ++i) {
         args.push_back(Call->getArg(i));
     }
 

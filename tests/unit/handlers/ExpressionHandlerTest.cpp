@@ -108,9 +108,22 @@ protected:
     class ExprExtractor : public clang::RecursiveASTVisitor<ExprExtractor> {
     public:
         clang::Expr* foundExpr = nullptr;
+        bool inFunctionBody = false;
+
+        bool TraverseFunctionDecl(clang::FunctionDecl* FD) {
+            // Mark when we enter a function body
+            bool wasInFunction = inFunctionBody;
+            if (FD->hasBody()) {
+                inFunctionBody = true;
+            }
+            RecursiveASTVisitor::TraverseFunctionDecl(FD);
+            inFunctionBody = wasInFunction;
+            return true;
+        }
 
         bool VisitExpr(clang::Expr* E) {
-            if (!foundExpr && !llvm::isa<clang::ImplicitCastExpr>(E)) {
+            // Only capture expressions inside function bodies
+            if (inFunctionBody && !foundExpr && !llvm::isa<clang::ImplicitCastExpr>(E)) {
                 foundExpr = E;
             }
             return true;
