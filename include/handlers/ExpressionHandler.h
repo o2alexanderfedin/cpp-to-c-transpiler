@@ -59,6 +59,35 @@ public:
      */
     clang::Expr* handleExpr(const clang::Expr* E, HandlerContext& ctx) override;
 
+    /**
+     * @brief Detect if a method call is virtual
+     * @param MCE C++ CXXMemberCallExpr
+     * @return true if the method is virtual, false otherwise
+     *
+     * Checks if the method being called through the CXXMemberCallExpr
+     * is a virtual method. This is useful for translation logic that needs
+     * to distinguish between virtual and non-virtual method calls.
+     *
+     * Virtual methods require dynamic dispatch in C through function pointers
+     * or vtable lookups, while non-virtual methods can be direct calls.
+     *
+     * Returns false if:
+     * - MCE is nullptr
+     * - Method declaration cannot be retrieved
+     * - Method is not virtual
+     *
+     * Returns true if:
+     * - Method is declared with 'virtual' keyword
+     * - Method overrides a virtual method from base class
+     * - Method is a virtual destructor
+     *
+     * Examples:
+     * virtual void process() { }      → isVirtualCall() returns true
+     * void process() { }               → isVirtualCall() returns false
+     * virtual ~Base() { }              → isVirtualCall() returns true
+     */
+    bool isVirtualCall(const clang::CXXMemberCallExpr* MCE) const;
+
 private:
     /**
      * @brief Translate integer literal
@@ -220,6 +249,34 @@ private:
      */
     clang::Expr* translateCXXMemberCallExpr(
         const clang::CXXMemberCallExpr* MCE,
+        HandlerContext& ctx
+    );
+
+    /**
+     * @brief Translate virtual method call to COM-style vtable dispatch (Phase 45 Task 7)
+     * @param MCE C++ CXXMemberCallExpr (virtual call)
+     * @param method Method being called
+     * @param ctx Handler context
+     * @return C CallExpr using vtable dispatch
+     *
+     * Translates virtual calls to COM/DCOM style vtable dispatch.
+     * Pattern: obj->lpVtbl->methodName(obj, args...)
+     *
+     * Translation rules:
+     * - ptr->draw() → ptr->lpVtbl->draw(ptr)
+     * - obj.draw() → (&obj)->lpVtbl->draw(&obj)
+     * - ref.draw() → ref->lpVtbl->draw(ref)  [ref becomes pointer in C]
+     *
+     * Examples:
+     * C++: shape->draw();
+     * C:   shape->lpVtbl->draw(shape);
+     *
+     * C++: shape->setColor(255, 128);
+     * C:   shape->lpVtbl->setColor(shape, 255, 128);
+     */
+    clang::Expr* translateVirtualCall(
+        const clang::CXXMemberCallExpr* MCE,
+        const clang::CXXMethodDecl* method,
         HandlerContext& ctx
     );
 };

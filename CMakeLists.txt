@@ -4033,6 +4033,64 @@ gtest_discover_tests(ExpressionHandlerTest_MethodCall
 )
 
 # ============================================================================
+# Phase 45 Task 6: ExpressionHandler Virtual Call Detection Unit Tests
+# ============================================================================
+
+add_executable(ExpressionHandlerTest_VirtualCallDetection
+    tests/unit/handlers/ExpressionHandlerTest_VirtualCallDetection.cpp
+)
+
+target_include_directories(ExpressionHandlerTest_VirtualCallDetection PRIVATE
+    ${CMAKE_SOURCE_DIR}/tests/fixtures
+    ${CMAKE_SOURCE_DIR}/include
+    ${LLVM_INCLUDE_DIRS}
+    ${CLANG_INCLUDE_DIRS}
+)
+
+target_link_libraries(ExpressionHandlerTest_VirtualCallDetection PRIVATE
+    test_fixtures
+    cpptoc_core
+    clangTooling
+    clangAST
+    clangBasic
+    GTest::gtest
+    GTest::gtest_main
+)
+
+gtest_discover_tests(ExpressionHandlerTest_VirtualCallDetection
+    WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
+)
+
+# ============================================================================
+# Phase 45 Task 7: ExpressionHandler Virtual Call Code Generation Unit Tests
+# ============================================================================
+
+add_executable(ExpressionHandlerTest_VirtualCall
+    tests/unit/handlers/ExpressionHandlerTest_VirtualCall.cpp
+)
+
+target_include_directories(ExpressionHandlerTest_VirtualCall PRIVATE
+    ${CMAKE_SOURCE_DIR}/tests/fixtures
+    ${CMAKE_SOURCE_DIR}/include
+    ${LLVM_INCLUDE_DIRS}
+    ${CLANG_INCLUDE_DIRS}
+)
+
+target_link_libraries(ExpressionHandlerTest_VirtualCall PRIVATE
+    test_fixtures
+    cpptoc_core
+    clangTooling
+    clangAST
+    clangBasic
+    GTest::gtest
+    GTest::gtest_main
+)
+
+gtest_discover_tests(ExpressionHandlerTest_VirtualCall
+    WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
+)
+
+# ============================================================================
 # Phase 39-01b: VariableHandler Unit Tests
 # ============================================================================
 

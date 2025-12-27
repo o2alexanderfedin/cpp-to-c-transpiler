@@ -650,9 +650,15 @@ clang::Expr* ExpressionHandler::translateCXXMemberCallExpr(
     const clang::CXXMemberCallExpr* MCE,
     HandlerContext& ctx
 ) {
-    // C++ method call → C function call with explicit 'this' parameter
+    // C++ method call → C function call or vtable dispatch
     //
-    // Translation strategy:
+    // Translation strategy for VIRTUAL calls (Phase 45 Task 7):
+    // 1. Detect virtual call using isVirtualCall()
+    // 2. Generate COM-style vtable dispatch: obj->lpVtbl->methodName(obj, args...)
+    // 3. Handle value objects: obj.method() → (&obj)->lpVtbl->methodName(&obj, ...)
+    // 4. Handle pointer objects: ptr->method() → ptr->lpVtbl->methodName(ptr, ...)
+    //
+    // Translation strategy for NON-VIRTUAL calls:
     // 1. Get the C++ method being called
     // 2. Look up the corresponding C function in context
     // 3. Get the implicit object argument (the object being called on)
@@ -662,6 +668,11 @@ clang::Expr* ExpressionHandler::translateCXXMemberCallExpr(
     // 7. Translate and add remaining arguments
     //
     // Examples:
+    // Virtual calls:
+    // C++: ptr->draw()              → C: ptr->lpVtbl->draw(ptr)
+    // C++: obj.draw()               → C: (&obj)->lpVtbl->draw(&obj)
+    //
+    // Non-virtual calls:
     // C++: obj.method(args...)      → C: ClassName_method(&obj, args...)
     // C++: ptr->method(args...)     → C: ClassName_method(ptr, args...)
     // C++: this->method(args...)    → C: ClassName_method(this, args...)
@@ -674,6 +685,16 @@ clang::Expr* ExpressionHandler::translateCXXMemberCallExpr(
         // No method declaration - shouldn't happen in well-formed code
         return nullptr;
     }
+
+    // Phase 45 Task 7: Check if this is a virtual call
+    bool isVirtual = isVirtualCall(MCE);
+
+    // For virtual calls, we need to use vtable dispatch
+    if (isVirtual) {
+        return translateVirtualCall(MCE, method, ctx);
+    }
+
+    // For non-virtual calls, use direct function call (existing logic below)
 
     // 2. Look up the corresponding C function
     clang::FunctionDecl* cFunc = ctx.lookupMethod(method);
@@ -818,6 +839,32 @@ clang::Expr* ExpressionHandler::translateCXXMemberCallExpr(
     );
 
     return callExpr;
+}
+
+// ============================================================================
+// Virtual Call Detection
+// ============================================================================
+
+bool ExpressionHandler::isVirtualCall(const clang::CXXMemberCallExpr* MCE) const {
+    // Guard: MCE cannot be nullptr
+    if (!MCE) {
+        return false;
+    }
+
+    // Get the method declaration being called
+    const clang::CXXMethodDecl* method = MCE->getMethodDecl();
+
+    // Guard: Cannot determine if nullptr
+    if (!method) {
+        return false;
+    }
+
+    // Check if the method is virtual
+    // Note: In C++, a method is virtual if:
+    // 1. It's explicitly declared with 'virtual' keyword, or
+    // 2. It overrides a virtual method from a base class
+    // The isVirtual() method checks both conditions
+    return method->isVirtual();
 }
 
 } // namespace cpptoc
