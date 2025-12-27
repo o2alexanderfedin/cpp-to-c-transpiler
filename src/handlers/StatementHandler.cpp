@@ -14,8 +14,11 @@
 #include "handlers/StatementHandler.h"
 #include "handlers/ExpressionHandler.h"
 #include "handlers/HandlerContext.h"
+#include "handlers/RangeTypeAnalyzer.h"
+#include "handlers/LoopVariableAnalyzer.h"
 #include "clang/AST/Stmt.h"
 #include "clang/AST/Expr.h"
+#include "clang/AST/ExprCXX.h"
 #include "llvm/Support/Casting.h"
 
 namespace cpptoc {
@@ -27,6 +30,7 @@ bool StatementHandler::canHandle(const clang::Stmt* S) const {
     // Task 5: While loops, Task 6: Do-while, Task 7: For loops
     // Goto and Label statements
     // Task 9: Declaration statements (for object lifecycle)
+    // Phase 54: Range-based for loops (CXXForRangeStmt)
     switch (S->getStmtClass()) {
         case clang::Stmt::ReturnStmtClass:
         case clang::Stmt::CompoundStmtClass:
@@ -34,6 +38,7 @@ bool StatementHandler::canHandle(const clang::Stmt* S) const {
         case clang::Stmt::WhileStmtClass:
         case clang::Stmt::DoStmtClass:
         case clang::Stmt::ForStmtClass:
+        case clang::Stmt::CXXForRangeStmtClass:
         case clang::Stmt::SwitchStmtClass:
         case clang::Stmt::CaseStmtClass:
         case clang::Stmt::DefaultStmtClass:
@@ -69,6 +74,9 @@ clang::Stmt* StatementHandler::handleStmt(const clang::Stmt* S, HandlerContext& 
 
         case clang::Stmt::ForStmtClass:
             return translateForStmt(llvm::cast<clang::ForStmt>(S), ctx);
+
+        case clang::Stmt::CXXForRangeStmtClass:
+            return translateCXXForRangeStmt(llvm::cast<clang::CXXForRangeStmt>(S), ctx);
 
         case clang::Stmt::SwitchStmtClass:
             return translateSwitchStmt(llvm::cast<clang::SwitchStmt>(S), ctx);
@@ -346,6 +354,231 @@ clang::ForStmt* StatementHandler::translateForStmt(
 ) {
     // TODO: Task 7 - Implement for loop translation
     return const_cast<clang::ForStmt*>(FS);
+}
+
+clang::ForStmt* StatementHandler::translateCXXForRangeStmt(
+    const clang::CXXForRangeStmt* RFS,
+    HandlerContext& ctx
+) {
+    // Phase 54: Translate range-based for loops
+    //
+    // Strategy:
+    // 1. Analyze the range type (array vs container)
+    // 2. For C arrays: Generate index-based for loop
+    // 3. For containers: Defer to future implementation (return nullptr for now)
+    //
+    // Pattern for arrays:
+    //   C++: for (int x : arr) { body }
+    //   C:   for (size_t __i = 0; __i < N; ++__i) { int x = arr[__i]; body }
+
+    if (!RFS) {
+        return nullptr;
+    }
+
+    clang::ASTContext& cContext = ctx.getCContext();
+    clang::CNodeBuilder& builder = ctx.getBuilder();
+
+    // Analyze range type
+    RangeTypeAnalyzer rangeAnalyzer;
+    RangeClassification rangeInfo = rangeAnalyzer.analyze(RFS);
+
+    // Analyze loop variable
+    LoopVariableAnalyzer loopVarAnalyzer;
+    LoopVariableInfo loopVarInfo = loopVarAnalyzer.analyze(RFS);
+
+    // Currently only support C arrays
+    if (rangeInfo.rangeType != RangeType::CArray) {
+        // TODO: Implement container support in future phases
+        // For now, return nullptr to indicate unsupported
+        return nullptr;
+    }
+
+    if (!rangeInfo.arraySize.has_value()) {
+        // Cannot determine array size at compile time
+        return nullptr;
+    }
+
+    // Generate index variable name
+    static unsigned indexCounter = 0;
+    std::string indexVarName = "__range_i_" + std::to_string(indexCounter++);
+
+    // Create index variable declaration: size_t __range_i_0 = 0;
+    clang::QualType sizeTType = cContext.getSizeType();
+    clang::IdentifierInfo& indexII = cContext.Idents.get(indexVarName);
+
+    clang::VarDecl* indexVar = clang::VarDecl::Create(
+        cContext,
+        cContext.getTranslationUnitDecl(),
+        clang::SourceLocation(),
+        clang::SourceLocation(),
+        &indexII,
+        sizeTType,
+        cContext.getTrivialTypeSourceInfo(sizeTType),
+        clang::SC_None
+    );
+
+    // Create initializer: 0
+    clang::IntegerLiteral* zeroInit = clang::IntegerLiteral::Create(
+        cContext,
+        llvm::APInt(cContext.getTypeSize(sizeTType), 0),
+        sizeTType,
+        clang::SourceLocation()
+    );
+    indexVar->setInit(zeroInit);
+
+    // Create DeclStmt for index variable
+    clang::DeclStmt* indexDeclStmt = new (cContext) clang::DeclStmt(
+        clang::DeclGroupRef(indexVar),
+        clang::SourceLocation(),
+        clang::SourceLocation()
+    );
+
+    // Create loop condition: __range_i_0 < arraySize
+    clang::DeclRefExpr* indexRef1 = clang::DeclRefExpr::Create(
+        cContext,
+        clang::NestedNameSpecifierLoc(),
+        clang::SourceLocation(),
+        indexVar,
+        false,
+        clang::SourceLocation(),
+        sizeTType,
+        clang::VK_LValue
+    );
+
+    uint64_t arraySize = rangeInfo.arraySize.value();
+    clang::IntegerLiteral* sizeExpr = clang::IntegerLiteral::Create(
+        cContext,
+        llvm::APInt(cContext.getTypeSize(sizeTType), arraySize),
+        sizeTType,
+        clang::SourceLocation()
+    );
+
+    clang::BinaryOperator* condition = clang::BinaryOperator::Create(
+        cContext,
+        indexRef1,
+        sizeExpr,
+        clang::BO_LT,
+        cContext.BoolTy,
+        clang::VK_PRValue,
+        clang::OK_Ordinary,
+        clang::SourceLocation(),
+        clang::FPOptionsOverride()
+    );
+
+    // Create loop increment: ++__range_i_0
+    clang::DeclRefExpr* indexRef2 = clang::DeclRefExpr::Create(
+        cContext,
+        clang::NestedNameSpecifierLoc(),
+        clang::SourceLocation(),
+        indexVar,
+        false,
+        clang::SourceLocation(),
+        sizeTType,
+        clang::VK_LValue
+    );
+
+    clang::UnaryOperator* increment = clang::UnaryOperator::Create(
+        cContext,
+        indexRef2,
+        clang::UO_PreInc,
+        sizeTType,
+        clang::VK_LValue,
+        clang::OK_Ordinary,
+        clang::SourceLocation(),
+        false,
+        clang::FPOptionsOverride()
+    );
+
+    // Create loop body with element access
+    // Original body: RFS->getBody()
+    const clang::Stmt* originalBody = RFS->getBody();
+    clang::Stmt* translatedBody = handleStmt(originalBody, ctx);
+
+    // Create element variable declaration: T x = arr[__i];
+    // Get the range expression (array)
+    const clang::Expr* rangeExpr = RangeTypeAnalyzer::getRangeExpr(RFS);
+
+    // Create array subscript: arr[__i]
+    clang::DeclRefExpr* indexRef3 = clang::DeclRefExpr::Create(
+        cContext,
+        clang::NestedNameSpecifierLoc(),
+        clang::SourceLocation(),
+        indexVar,
+        false,
+        clang::SourceLocation(),
+        sizeTType,
+        clang::VK_LValue
+    );
+
+    clang::Expr* translatedRange = const_cast<clang::Expr*>(rangeExpr);
+
+    clang::ArraySubscriptExpr* subscript = new (cContext) clang::ArraySubscriptExpr(
+        translatedRange,
+        indexRef3,
+        rangeInfo.elementType,
+        clang::VK_LValue,
+        clang::OK_Ordinary,
+        clang::SourceLocation()
+    );
+
+    // Create loop variable: T x = arr[__i];
+    const clang::VarDecl* cppLoopVar = loopVarInfo.varDecl;
+    clang::QualType loopVarType = loopVarInfo.type;
+
+    // Handle references: convert to value type for now (simplified)
+    if (loopVarType->isReferenceType()) {
+        loopVarType = loopVarType->getPointeeType();
+    }
+
+    clang::IdentifierInfo& loopVarII = cContext.Idents.get(loopVarInfo.name);
+    clang::VarDecl* loopVar = clang::VarDecl::Create(
+        cContext,
+        cContext.getTranslationUnitDecl(),
+        clang::SourceLocation(),
+        clang::SourceLocation(),
+        &loopVarII,
+        loopVarType,
+        cContext.getTrivialTypeSourceInfo(loopVarType),
+        clang::SC_None
+    );
+
+    loopVar->setInit(subscript);
+
+    clang::DeclStmt* loopVarDeclStmt = new (cContext) clang::DeclStmt(
+        clang::DeclGroupRef(loopVar),
+        clang::SourceLocation(),
+        clang::SourceLocation()
+    );
+
+    // Create compound body: { T x = arr[__i]; <original body> }
+    llvm::SmallVector<clang::Stmt*, 2> bodyStmts;
+    bodyStmts.push_back(loopVarDeclStmt);
+    if (translatedBody) {
+        bodyStmts.push_back(translatedBody);
+    }
+
+    clang::CompoundStmt* compoundBody = clang::CompoundStmt::Create(
+        cContext,
+        bodyStmts,
+        clang::FPOptionsOverride(),
+        clang::SourceLocation(),
+        clang::SourceLocation()
+    );
+
+    // Create ForStmt: for (size_t __i = 0; __i < N; ++__i) { ... }
+    clang::ForStmt* forStmt = new (cContext) clang::ForStmt(
+        cContext,
+        indexDeclStmt,
+        condition,
+        nullptr, // ConditionVariable
+        increment,
+        compoundBody,
+        clang::SourceLocation(),
+        clang::SourceLocation(),
+        clang::SourceLocation()
+    );
+
+    return forStmt;
 }
 
 clang::GotoStmt* StatementHandler::translateGotoStmt(

@@ -22,6 +22,7 @@
 #pragma once
 
 #include "handlers/ASTHandler.h"
+#include "clang/AST/StmtCXX.h"
 
 namespace cpptoc {
 
@@ -181,6 +182,21 @@ private:
      */
     clang::ForStmt* translateForStmt(
         const clang::ForStmt* FS,
+        HandlerContext& ctx
+    );
+
+    /**
+     * @brief Translate range-based for statement (Phase 54)
+     * @param RFS C++ CXXForRangeStmt
+     * @param ctx Handler context
+     * @return C ForStmt (index-based for arrays, iterator-based for containers)
+     *
+     * Translates range-based for loops to traditional C for loops:
+     * - C arrays: Index-based loop (for (size_t i = 0; i < N; ++i))
+     * - Containers: Iterator-based loop (deferred to future implementation)
+     */
+    clang::ForStmt* translateCXXForRangeStmt(
+        const clang::CXXForRangeStmt* RFS,
         HandlerContext& ctx
     );
 

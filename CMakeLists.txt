@@ -269,6 +269,9 @@ add_library(cpptoc_core STATIC
     # Phase 53-01: Type alias and typedef handlers
     src/handlers/TypeAliasAnalyzer.cpp
     src/handlers/TypedefGenerator.cpp
+    # Phase 54-01: Range-based for loop handlers
+    src/handlers/RangeTypeAnalyzer.cpp
+    src/handlers/LoopVariableAnalyzer.cpp
     # Phase 45-01: Helpers
     src/helpers/VtableTypedefGenerator.cpp
     # Phase 49: Static member translator
