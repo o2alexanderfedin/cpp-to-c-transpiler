@@ -146,6 +146,10 @@ CppToCVisitor::CppToCVisitor(ASTContext &Context, CNodeBuilder &Builder,
   m_arithmeticOpTrans = std::make_unique<ArithmeticOperatorTranslator>(Builder, Mangler);
   llvm::outs() << "Arithmetic operator overloading support initialized (Phase 50)\n";
 
+  // Phase 51: Initialize comparison & logical operator translator
+  m_comparisonOpTrans = std::make_unique<ComparisonOperatorTranslator>(Builder, Mangler);
+  llvm::outs() << "Comparison & logical operator overloading support initialized (Phase 51)\n";
+
   // Phase 35-02 (Bug #30 FIX): C_TranslationUnit passed as constructor parameter
   // Each source file has its own C_TU in the shared target context
   llvm::outs() << "[Bug #30 FIX] CppToCVisitor using C_TU @ " << (void*)C_TranslationUnit << "\n";
@@ -471,6 +475,19 @@ bool CppToCVisitor::VisitCXXMethodDecl(CXXMethodDecl *MD) {
       // Store in method map for later call site transformation
       methodToCFunc[MD] = C_Func;
       llvm::outs() << "  -> " << C_Func->getNameAsString() << "\n";
+    }
+    return true;
+  }
+
+  // Phase 51: Handle comparison & logical operator overloading (v2.11.0)
+  if (MD->isOverloadedOperator() && m_comparisonOpTrans->isComparisonOperator(MD->getOverloadedOperator())) {
+    llvm::outs() << "Translating comparison/logical operator: "
+                 << MD->getQualifiedNameAsString() << "\n";
+    auto* C_Func = m_comparisonOpTrans->transformMethod(MD, Context, C_TranslationUnit);
+    if (C_Func) {
+      // Store in method map for later call site transformation
+      methodToCFunc[MD] = C_Func;
+      llvm::outs() << "  -> " << C_Func->getNameAsString() << " (returns bool)\n";
     }
     return true;
   }
@@ -4248,6 +4265,18 @@ bool CppToCVisitor::VisitCXXOperatorCallExpr(CXXOperatorCallExpr *E) {
       // Translation successful
       // Note: AST replacement would happen here in a full implementation
       llvm::outs() << "     Generated arithmetic operator call\n";
+    }
+    return true;
+  }
+
+  // Phase 51: Handle comparison & logical operator call sites (v2.11.0)
+  if (m_comparisonOpTrans->isComparisonOperator(E->getOperator())) {
+    llvm::outs() << "  -> Translating comparison/logical operator call\n";
+    auto* C_Call = m_comparisonOpTrans->transformCall(E, Context);
+    if (C_Call) {
+      // Translation successful
+      // Note: AST replacement would happen here in a full implementation
+      llvm::outs() << "     Generated comparison/logical operator call (returns bool)\n";
     }
     return true;
   }

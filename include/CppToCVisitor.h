@@ -25,6 +25,7 @@
 #include "NameMangler.h"
 #include "StaticOperatorTranslator.h"
 #include "ArithmeticOperatorTranslator.h"
+#include "ComparisonOperatorTranslator.h"
 #include "OverrideResolver.h"
 #include "RvalueRefParamTranslator.h"
 #include "TemplateExtractor.h"
@@ -151,6 +152,9 @@ class CppToCVisitor : public clang::RecursiveASTVisitor<CppToCVisitor> {
 
   // Phase 50: Arithmetic operator overloading support (v2.10.0)
   std::unique_ptr<ArithmeticOperatorTranslator> m_arithmeticOpTrans;
+
+  // Phase 51: Comparison & logical operator overloading support (v2.11.0)
+  std::unique_ptr<ComparisonOperatorTranslator> m_comparisonOpTrans;
 
   // Current translation context (Story #19)
   clang::ParmVarDecl *currentThisParam = nullptr;

@@ -243,6 +243,7 @@ add_library(cpptoc_core STATIC
     src/MultidimSubscriptTranslator.cpp
     src/StaticOperatorTranslator.cpp
     src/ArithmeticOperatorTranslator.cpp
+    src/ComparisonOperatorTranslator.cpp
     src/AssumeAttributeHandler.cpp
     src/DeducingThisTranslator.cpp
     src/ConstevalIfTranslator.cpp
