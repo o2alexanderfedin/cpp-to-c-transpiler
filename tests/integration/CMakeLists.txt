@@ -97,6 +97,35 @@ target_include_directories(ClassesIntegrationTest PRIVATE
     ${CMAKE_SOURCE_DIR}/../../src
 )
 
+# Phase 45: Virtual Methods Integration Tests
+add_executable(VirtualMethodsIntegrationTest
+    handlers/VirtualMethodsIntegrationTest.cpp
+    ${CMAKE_SOURCE_DIR}/../../src/handlers/HandlerContext.cpp
+    ${CMAKE_SOURCE_DIR}/../../src/handlers/FunctionHandler.cpp
+    ${CMAKE_SOURCE_DIR}/../../src/handlers/VariableHandler.cpp
+    ${CMAKE_SOURCE_DIR}/../../src/handlers/ExpressionHandler.cpp
+    ${CMAKE_SOURCE_DIR}/../../src/handlers/StatementHandler.cpp
+    ${CMAKE_SOURCE_DIR}/../../src/handlers/RecordHandler.cpp
+    ${CMAKE_SOURCE_DIR}/../../src/handlers/MethodHandler.cpp
+    ${CMAKE_SOURCE_DIR}/../../src/handlers/ConstructorHandler.cpp
+    ${CMAKE_SOURCE_DIR}/../../src/handlers/DestructorHandler.cpp
+    ${CMAKE_SOURCE_DIR}/../../src/VirtualMethodAnalyzer.cpp
+    ${CMAKE_SOURCE_DIR}/../../src/VtableGenerator.cpp
+    ${CMAKE_SOURCE_DIR}/../../src/VptrInjector.cpp
+    ${CMAKE_SOURCE_DIR}/../../src/VtableInitializer.cpp
+    ${CMAKE_SOURCE_DIR}/../../src/VirtualCallTranslator.cpp
+    ${CMAKE_SOURCE_DIR}/../../src/OverrideResolver.cpp
+    ${CMAKE_SOURCE_DIR}/../../src/MethodSignatureHelper.cpp
+    ${CMAKE_SOURCE_DIR}/../../src/VirtualInheritanceAnalyzer.cpp
+    ${CMAKE_SOURCE_DIR}/../../src/helpers/VtableTypedefGenerator.cpp
+)
+target_link_libraries(VirtualMethodsIntegrationTest GTest::gtest GTest::gtest_main ${CLANG_LIBS})
+target_include_directories(VirtualMethodsIntegrationTest PRIVATE
+    ${CMAKE_SOURCE_DIR}/../../include
+    ${CMAKE_SOURCE_DIR}/../../include/handlers
+    ${CMAKE_SOURCE_DIR}/../../src
+)
+
 # Enable testing
 enable_testing()
 include(GoogleTest)
@@ -123,6 +152,10 @@ gtest_discover_tests(ClassesIntegrationTest
     WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
     PROPERTIES LABELS "integration;classes;phase44"
 )
+gtest_discover_tests(VirtualMethodsIntegrationTest
+    WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
+    PROPERTIES LABELS "integration;virtual_methods;phase45"
+)
 
 message(STATUS "Integration tests configured:")
 message(STATUS "  - FeatureInteractionTest: 30 tests")
@@ -134,4 +167,5 @@ message(STATUS "  - MoveSemanticIntegrationTest: 16 tests (Google Test)")
 message(STATUS "  - PointersIntegrationTest: 24 tests (Phase 42)")
 message(STATUS "  - StructsIntegrationTest: 25 tests (Phase 43)")
 message(STATUS "  - ClassesIntegrationTest: 35 tests (Phase 44)")
-message(STATUS "  Total: 230 integration tests")
+message(STATUS "  - VirtualMethodsIntegrationTest: 35 tests (Phase 45)")
+message(STATUS "  Total: 265 integration tests")

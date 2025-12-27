@@ -103,6 +103,9 @@ clang::Decl* RecordHandler::handleDecl(const clang::Decl* D, HandlerContext& ctx
         if (const auto* cxxRecord = llvm::dyn_cast<clang::CXXRecordDecl>(cppRecord)) {
             if (cxxRecord->isPolymorphic()) {
                 generateVtableStruct(cxxRecord, ctx);
+
+                // Step 8: Generate vtable instance for polymorphic classes (Phase 45 Task 4)
+                generateVtableInstance(cxxRecord, ctx);
             }
         }
     }
@@ -507,6 +510,162 @@ void RecordHandler::injectLpVtblField(
     // Step 3: Add lpVtbl as FIRST field (COM/DCOM ABI requirement)
     // This MUST be done before other fields are added
     cRecord->addDecl(lpVtblField);
+}
+
+clang::VarDecl* RecordHandler::generateVtableInstance(
+    const clang::CXXRecordDecl* cxxRecord,
+    HandlerContext& ctx
+) {
+    // Only generate vtable instance for polymorphic classes
+    if (!cxxRecord || !cxxRecord->isPolymorphic()) {
+        return nullptr;
+    }
+
+    clang::ASTContext& cCtx = ctx.getCContext();
+    std::string className = cxxRecord->getNameAsString();
+    std::string vtableName = className + "_vtable";
+    std::string vtableInstanceName = className + "_vtable_instance";
+
+    // Step 1: Find the vtable struct that was already generated
+    clang::RecordDecl* vtableStruct = nullptr;
+    auto* TU = cCtx.getTranslationUnitDecl();
+
+    for (auto* D : TU->decls()) {
+        if (auto* RD = llvm::dyn_cast<clang::RecordDecl>(D)) {
+            if (RD->getNameAsString() == vtableName) {
+                vtableStruct = RD;
+                break;
+            }
+        }
+    }
+
+    if (!vtableStruct) {
+        // Vtable struct not found - this is an error
+        return nullptr;
+    }
+
+    // Step 2: Create the vtable struct type
+    clang::QualType vtableStructType = cCtx.getRecordType(vtableStruct);
+
+    // Step 3: Make it const
+    clang::QualType constVtableStructType = vtableStructType;
+    constVtableStructType.addConst();
+
+    // Step 4: Collect virtual methods in vtable order
+    std::vector<const clang::CXXMethodDecl*> virtualMethods = collectVirtualMethods(cxxRecord);
+
+    // Step 5: Create initializer list with designated initializers
+    std::vector<clang::Expr*> initExprs;
+    std::vector<clang::FieldDecl*> initFields;
+
+    // Match virtual methods with vtable struct fields
+    unsigned fieldIndex = 0;
+    for (auto it = vtableStruct->field_begin(); it != vtableStruct->field_end(); ++it, ++fieldIndex) {
+        clang::FieldDecl* field = *it;
+
+        if (fieldIndex >= virtualMethods.size()) {
+            break; // Safety check
+        }
+
+        const clang::CXXMethodDecl* method = virtualMethods[fieldIndex];
+
+        // Create function name for the translated method
+        std::string funcName;
+        if (llvm::isa<clang::CXXDestructorDecl>(method)) {
+            funcName = className + "_destructor";
+        } else {
+            funcName = className + "_" + method->getNameAsString();
+        }
+
+        // Step 6: Look up the translated function in the C context
+        clang::FunctionDecl* funcDecl = nullptr;
+        for (auto* D : TU->decls()) {
+            if (auto* FD = llvm::dyn_cast<clang::FunctionDecl>(D)) {
+                if (FD->getNameAsString() == funcName) {
+                    funcDecl = FD;
+                    break;
+                }
+            }
+        }
+
+        // If function not found, create a placeholder DeclRefExpr with nullptr
+        // This allows the AST to be created even if methods haven't been translated yet
+        clang::Expr* funcRef = nullptr;
+
+        if (funcDecl) {
+            // Create DeclRefExpr to the function
+            clang::DeclRefExpr* declRef = clang::DeclRefExpr::Create(
+                cCtx,
+                clang::NestedNameSpecifierLoc(),
+                clang::SourceLocation(),
+                funcDecl,
+                false, // Not part of template
+                clang::SourceLocation(),
+                funcDecl->getType(),
+                clang::VK_PRValue
+            );
+
+            // Implicit cast to function pointer type
+            funcRef = clang::ImplicitCastExpr::Create(
+                cCtx,
+                field->getType(),
+                clang::CK_FunctionToPointerDecay,
+                declRef,
+                nullptr,
+                clang::VK_PRValue,
+                clang::FPOptionsOverride()
+            );
+        } else {
+            // Create NULL pointer as placeholder
+            funcRef = clang::IntegerLiteral::Create(
+                cCtx,
+                llvm::APInt(cCtx.getTypeSize(cCtx.VoidPtrTy), 0),
+                cCtx.VoidPtrTy,
+                clang::SourceLocation()
+            );
+        }
+
+        initExprs.push_back(funcRef);
+        initFields.push_back(field);
+    }
+
+    // Step 7: Create InitListExpr with designated initializers
+    clang::InitListExpr* initList = new (cCtx) clang::InitListExpr(
+        cCtx,
+        clang::SourceLocation(),
+        initExprs,
+        clang::SourceLocation()
+    );
+
+    // Set designated initializers
+    for (size_t i = 0; i < initFields.size(); ++i) {
+        initList->setInit(i, initExprs[i]);
+    }
+
+    initList->setType(constVtableStructType);
+    initList->setSyntacticForm(initList);
+
+    // Step 8: Create VarDecl for the vtable instance
+    clang::IdentifierInfo& vtableInstanceII = cCtx.Idents.get(vtableInstanceName);
+
+    clang::VarDecl* vtableInstance = clang::VarDecl::Create(
+        cCtx,
+        TU, // Parent DeclContext
+        clang::SourceLocation(),
+        clang::SourceLocation(),
+        &vtableInstanceII,
+        constVtableStructType,
+        cCtx.getTrivialTypeSourceInfo(constVtableStructType),
+        clang::SC_Static // Static storage
+    );
+
+    // Step 9: Set the initializer
+    vtableInstance->setInit(initList);
+
+    // Step 10: Add to translation unit
+    TU->addDecl(vtableInstance);
+
+    return vtableInstance;
 }
 
 

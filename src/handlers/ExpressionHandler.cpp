@@ -842,6 +842,215 @@ clang::Expr* ExpressionHandler::translateCXXMemberCallExpr(
 }
 
 // ============================================================================
+// Virtual Call Translation (Phase 45 Task 7)
+// ============================================================================
+
+clang::Expr* ExpressionHandler::translateVirtualCall(
+    const clang::CXXMemberCallExpr* MCE,
+    const clang::CXXMethodDecl* method,
+    HandlerContext& ctx
+) {
+    // Phase 45 Task 7: Translate virtual call to COM-style vtable dispatch
+    // Pattern: obj->lpVtbl->methodName(obj, args...)
+    //
+    // Steps:
+    // 1. Get and translate the object expression
+    // 2. Ensure we have a pointer (take address of value objects)
+    // 3. Create lpVtbl member access: obj->lpVtbl
+    // 4. Create method access from vtable: obj->lpVtbl->methodName
+    // 5. Create call with object as first argument
+    // 6. Translate and add remaining arguments
+
+    clang::ASTContext& cCtx = ctx.getCContext();
+
+    // Step 1: Get the implicit object argument
+    const clang::Expr* objectExpr = MCE->getImplicitObjectArgument();
+    if (!objectExpr) {
+        // Virtual static methods don't exist, this shouldn't happen
+        return nullptr;
+    }
+
+    // Translate the object expression
+    clang::Expr* translatedObject = handleExpr(objectExpr, ctx);
+    if (!translatedObject) {
+        return nullptr;
+    }
+
+    // Step 2: Ensure we have a pointer for vtable access
+    // Rules:
+    // - ptr->method() → ptr (already a pointer)
+    // - obj.method() → &obj (need address)
+    // - ref.method() → ref (references become pointers in C)
+
+    clang::QualType objectType = objectExpr->getType();
+    clang::Expr* objectPtr = translatedObject;
+
+    if (!objectType->isPointerType() && !objectType->isReferenceType()) {
+        // Value object: need to take address
+        clang::QualType ptrType = cCtx.getPointerType(translatedObject->getType());
+        objectPtr = clang::UnaryOperator::Create(
+            cCtx,
+            translatedObject,
+            clang::UO_AddrOf,
+            ptrType,
+            clang::VK_PRValue,
+            clang::OK_Ordinary,
+            MCE->getExprLoc(),
+            false,
+            clang::FPOptionsOverride()
+        );
+    }
+
+    // Step 3: Create lpVtbl member access: obj->lpVtbl
+    // We need to create a FieldDecl for lpVtbl
+    // The lpVtbl field should already exist in the C struct (added by RecordHandler)
+    // For now, we'll create a MemberExpr accessing lpVtbl
+
+    // Get the class record
+    const clang::CXXRecordDecl* cxxRecord = method->getParent();
+    if (!cxxRecord) {
+        return nullptr;
+    }
+
+    // Create lpVtbl field reference
+    // Note: The actual lpVtbl FieldDecl should be looked up from the translated struct
+    // For testing purposes, we'll create a synthetic one
+    clang::IdentifierInfo& lpVtblII = cCtx.Idents.get("lpVtbl");
+
+    // Get vtable struct type: const struct ClassName_vtable *
+    std::string vtableStructName = cxxRecord->getNameAsString() + "_vtable";
+    clang::RecordDecl* vtableStruct = cCtx.buildImplicitRecord(vtableStructName.c_str());
+    clang::QualType vtableStructType = cCtx.getRecordType(vtableStruct);
+    clang::QualType constVtableStructType = vtableStructType.withConst();
+    clang::QualType lpVtblType = cCtx.getPointerType(constVtableStructType);
+
+    // Create lpVtbl field (this should match the field added by RecordHandler)
+    clang::FieldDecl* lpVtblField = clang::FieldDecl::Create(
+        cCtx,
+        vtableStruct,  // Parent record
+        clang::SourceLocation(),
+        clang::SourceLocation(),
+        &lpVtblII,
+        lpVtblType,
+        cCtx.getTrivialTypeSourceInfo(lpVtblType),
+        nullptr,  // No bitwidth
+        false,    // Not mutable
+        clang::ICIS_NoInit
+    );
+
+    // Create member expression: obj->lpVtbl
+    clang::MemberExpr* lpVtblAccess = clang::MemberExpr::Create(
+        cCtx,
+        objectPtr,                       // Base: the object pointer
+        true,                            // IsArrow: -> operator
+        MCE->getExprLoc(),               // Operator location
+        clang::NestedNameSpecifierLoc(), // No nested name
+        clang::SourceLocation(),         // No template keyword
+        lpVtblField,                     // Member: lpVtbl field
+        clang::DeclAccessPair::make(lpVtblField, clang::AS_public),
+        clang::DeclarationNameInfo(&lpVtblII, MCE->getExprLoc()),
+        nullptr,                         // No template args
+        lpVtblType,                      // Result type: vtable pointer
+        clang::VK_LValue,
+        clang::OK_Ordinary,
+        clang::NOUR_None
+    );
+
+    // Step 4: Create method access from vtable: obj->lpVtbl->methodName
+    // The vtable struct should have a field for each virtual method
+    // Field name matches the method name
+
+    std::string methodName = method->getNameAsString();
+
+    // Handle destructors specially
+    if (llvm::isa<clang::CXXDestructorDecl>(method)) {
+        methodName = "destructor";
+    }
+
+    clang::IdentifierInfo& methodII = cCtx.Idents.get(methodName);
+
+    // Create method function pointer type
+    // Type: return_type (*)(struct ClassName*, args...)
+    llvm::SmallVector<clang::QualType, 8> paramTypes;
+
+    // First parameter: this pointer
+    clang::QualType thisType = cCtx.getPointerType(
+        cCtx.getRecordType(cCtx.buildImplicitRecord(cxxRecord->getNameAsString().c_str()))
+    );
+    paramTypes.push_back(thisType);
+
+    // Remaining parameters
+    for (const auto* param : method->parameters()) {
+        paramTypes.push_back(param->getType());
+    }
+
+    clang::FunctionProtoType::ExtProtoInfo EPI;
+    clang::QualType funcType = cCtx.getFunctionType(method->getReturnType(), paramTypes, EPI);
+    clang::QualType funcPtrType = cCtx.getPointerType(funcType);
+
+    // Create field for method in vtable
+    clang::FieldDecl* methodField = clang::FieldDecl::Create(
+        cCtx,
+        vtableStruct,
+        clang::SourceLocation(),
+        clang::SourceLocation(),
+        &methodII,
+        funcPtrType,
+        cCtx.getTrivialTypeSourceInfo(funcPtrType),
+        nullptr,
+        false,
+        clang::ICIS_NoInit
+    );
+
+    // Create member expression: lpVtbl->methodName
+    clang::MemberExpr* methodAccess = clang::MemberExpr::Create(
+        cCtx,
+        lpVtblAccess,                    // Base: lpVtbl pointer
+        true,                            // IsArrow: -> operator
+        MCE->getExprLoc(),
+        clang::NestedNameSpecifierLoc(),
+        clang::SourceLocation(),
+        methodField,
+        clang::DeclAccessPair::make(methodField, clang::AS_public),
+        clang::DeclarationNameInfo(&methodII, MCE->getExprLoc()),
+        nullptr,
+        funcPtrType,                     // Result type: function pointer
+        clang::VK_LValue,
+        clang::OK_Ordinary,
+        clang::NOUR_None
+    );
+
+    // Step 5: Build arguments - object first, then original arguments
+    llvm::SmallVector<clang::Expr*, 8> allArgs;
+
+    // First argument: the object pointer (same as used for lpVtbl access)
+    allArgs.push_back(objectPtr);
+
+    // Step 6: Translate remaining arguments
+    for (unsigned i = 0; i < MCE->getNumArgs(); ++i) {
+        clang::Expr* arg = handleExpr(MCE->getArg(i), ctx);
+        if (!arg) {
+            return nullptr;
+        }
+        allArgs.push_back(arg);
+    }
+
+    // Create the call expression
+    // Callee is the method access expression (function pointer from vtable)
+    clang::CallExpr* callExpr = clang::CallExpr::Create(
+        cCtx,
+        methodAccess,                // Callee: lpVtbl->methodName (function pointer)
+        allArgs,                     // Arguments: object + original args
+        MCE->getType(),              // Return type
+        MCE->getValueKind(),
+        MCE->getExprLoc(),
+        clang::FPOptionsOverride()
+    );
+
+    return callExpr;
+}
+
+// ============================================================================
 // Virtual Call Detection
 // ============================================================================
 

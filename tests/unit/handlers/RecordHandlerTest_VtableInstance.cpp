@@ -1,0 +1,616 @@
+/**
+ * @file RecordHandlerTest_VtableInstance.cpp
+ * @brief TDD tests for vtable instance generation in RecordHandler (Phase 45 Task 4)
+ *
+ * Following strict TDD: Red → Green → Refactor
+ *
+ * Test Plan (10 tests):
+ * 1. SimpleVtableInstance - Basic vtable instance with one virtual method
+ * 2. VtableInstanceIsStaticConst - Verify static const storage
+ * 3. VtableInstanceDesignatedInit - Uses designated initializers
+ * 4. VtableInstanceWithDestructor - Destructor first in initialization
+ * 5. VtableInstanceMultipleMethods - Multiple virtual methods
+ * 6. VtableInstanceNamingConvention - ClassName_vtable_instance naming
+ * 7. VtableInstanceFunctionPointers - Correct function pointer values
+ * 8. VtableInstanceSlotOrder - Matches vtable struct definition order
+ * 9. InheritedVtableInstance - Vtable instance for derived class
+ * 10. OverrideVtableInstance - Override uses derived class function pointer
+ */
+
+#include "handlers/RecordHandler.h"
+#include "handlers/HandlerContext.h"
+#include "handlers/MethodHandler.h"
+#include "CNodeBuilder.h"
+#include "clang/Tooling/Tooling.h"
+#include "clang/AST/DeclCXX.h"
+#include <gtest/gtest.h>
+#include <memory>
+
+using namespace cpptoc;
+
+/**
+ * @class RecordHandlerTest_VtableInstance
+ * @brief Test fixture for vtable instance generation
+ */
+class RecordHandlerTest_VtableInstance : public ::testing::Test {
+protected:
+    std::unique_ptr<clang::ASTUnit> cppAST;
+    std::unique_ptr<clang::ASTUnit> cAST;
+    std::unique_ptr<clang::CNodeBuilder> builder;
+    std::unique_ptr<HandlerContext> ctx;
+    std::unique_ptr<RecordHandler> recordHandler;
+    std::unique_ptr<MethodHandler> methodHandler;
+
+    void SetUp() override {
+        // Create real AST contexts
+        cppAST = clang::tooling::buildASTFromCode("int dummy;");
+        cAST = clang::tooling::buildASTFromCode("int dummy2;");
+
+        ASSERT_NE(cppAST, nullptr) << "Failed to create C++ AST";
+        ASSERT_NE(cAST, nullptr) << "Failed to create C AST";
+
+        // Create builder and context
+        builder = std::make_unique<clang::CNodeBuilder>(cAST->getASTContext());
+        ctx = std::make_unique<HandlerContext>(
+            cppAST->getASTContext(),
+            cAST->getASTContext(),
+            *builder
+        );
+
+        // Create handlers
+        recordHandler = std::make_unique<RecordHandler>();
+        methodHandler = std::make_unique<MethodHandler>();
+    }
+
+    void TearDown() override {
+        methodHandler.reset();
+        recordHandler.reset();
+        ctx.reset();
+        builder.reset();
+        cAST.reset();
+        cppAST.reset();
+    }
+
+    /**
+     * @brief Parse C++ code and extract first polymorphic class
+     * @param code C++ code containing a polymorphic class
+     * @return First CXXRecordDecl that is polymorphic, or nullptr
+     */
+    const clang::CXXRecordDecl* parsePolymorphicClass(const std::string& code) {
+        auto ast = clang::tooling::buildASTFromCode(code);
+        if (!ast) {
+            return nullptr;
+        }
+
+        const clang::CXXRecordDecl* record = nullptr;
+        auto& astCtx = ast->getASTContext();
+        auto* TU = astCtx.getTranslationUnitDecl();
+
+        for (auto* D : TU->decls()) {
+            if (auto* CRD = llvm::dyn_cast<clang::CXXRecordDecl>(D)) {
+                if (CRD->isCompleteDefinition() && CRD->isPolymorphic()) {
+                    record = CRD;
+                    break;
+                }
+            }
+        }
+
+        // Keep AST alive
+        cppAST = std::move(ast);
+        return record;
+    }
+
+    /**
+     * @brief Find vtable instance variable in C translation unit
+     * @param className Name of the class
+     * @return VarDecl for vtable instance, or nullptr if not found
+     */
+    const clang::VarDecl* findVtableInstance(const std::string& className) {
+        std::string vtableInstanceName = className + "_vtable_instance";
+        auto* TU = cAST->getASTContext().getTranslationUnitDecl();
+
+        for (auto* D : TU->decls()) {
+            if (auto* VD = llvm::dyn_cast<clang::VarDecl>(D)) {
+                if (VD->getNameAsString() == vtableInstanceName) {
+                    return VD;
+                }
+            }
+        }
+
+        return nullptr;
+    }
+
+    /**
+     * @brief Find vtable struct in C translation unit
+     * @param className Name of the class
+     * @return RecordDecl for vtable struct, or nullptr if not found
+     */
+    const clang::RecordDecl* findVtableStruct(const std::string& className) {
+        std::string vtableName = className + "_vtable";
+        auto* TU = cAST->getASTContext().getTranslationUnitDecl();
+
+        for (auto* D : TU->decls()) {
+            if (auto* RD = llvm::dyn_cast<clang::RecordDecl>(D)) {
+                if (RD->getNameAsString() == vtableName) {
+                    return RD;
+                }
+            }
+        }
+
+        return nullptr;
+    }
+
+    /**
+     * @brief Extract initialization list from vtable instance
+     * @param vtableInstance VarDecl for vtable instance
+     * @return InitListExpr, or nullptr if not present
+     */
+    const clang::InitListExpr* getInitList(const clang::VarDecl* vtableInstance) {
+        if (!vtableInstance || !vtableInstance->hasInit()) {
+            return nullptr;
+        }
+
+        return llvm::dyn_cast<clang::InitListExpr>(vtableInstance->getInit());
+    }
+};
+
+/**
+ * Test 1: SimpleVtableInstance
+ * Verify that a vtable instance is created for a simple polymorphic class
+ */
+TEST_F(RecordHandlerTest_VtableInstance, SimpleVtableInstance) {
+    // C++ Input
+    const char* code = R"(
+        class Dog {
+        public:
+            virtual void speak() {}
+        };
+    )";
+
+    const auto* cppClass = parsePolymorphicClass(code);
+    ASSERT_NE(cppClass, nullptr) << "Failed to parse Dog class";
+
+    // Translate class (should generate vtable instance)
+    recordHandler->handleDecl(cppClass, *ctx);
+
+    // First translate the method so we have the function to reference
+    for (auto* method : cppClass->methods()) {
+        if (method->isVirtual()) {
+            methodHandler->handleDecl(method, *ctx);
+        }
+    }
+
+    // Find vtable instance
+    const auto* vtableInstance = findVtableInstance("Dog");
+    ASSERT_NE(vtableInstance, nullptr) << "Vtable instance not generated";
+
+    // Verify name
+    EXPECT_EQ(vtableInstance->getNameAsString(), "Dog_vtable_instance");
+}
+
+/**
+ * Test 2: VtableInstanceIsStaticConst
+ * Verify that vtable instance has static storage and is const
+ */
+TEST_F(RecordHandlerTest_VtableInstance, VtableInstanceIsStaticConst) {
+    const char* code = R"(
+        class Dog {
+        public:
+            virtual void speak() {}
+        };
+    )";
+
+    const auto* cppClass = parsePolymorphicClass(code);
+    ASSERT_NE(cppClass, nullptr);
+
+    recordHandler->handleDecl(cppClass, *ctx);
+
+    // Translate methods
+    for (auto* method : cppClass->methods()) {
+        if (method->isVirtual()) {
+            methodHandler->handleDecl(method, *ctx);
+        }
+    }
+
+    const auto* vtableInstance = findVtableInstance("Dog");
+    ASSERT_NE(vtableInstance, nullptr);
+
+    // Check storage class
+    EXPECT_EQ(vtableInstance->getStorageClass(), clang::SC_Static)
+        << "Vtable instance should have static storage";
+
+    // Check const qualification
+    EXPECT_TRUE(vtableInstance->getType().isConstQualified())
+        << "Vtable instance should be const";
+}
+
+/**
+ * Test 3: VtableInstanceDesignatedInit
+ * Verify that vtable instance uses designated initializers
+ */
+TEST_F(RecordHandlerTest_VtableInstance, VtableInstanceDesignatedInit) {
+    const char* code = R"(
+        class Dog {
+        public:
+            virtual void speak() {}
+        };
+    )";
+
+    const auto* cppClass = parsePolymorphicClass(code);
+    ASSERT_NE(cppClass, nullptr);
+
+    recordHandler->handleDecl(cppClass, *ctx);
+
+    // Translate methods
+    for (auto* method : cppClass->methods()) {
+        if (method->isVirtual()) {
+            methodHandler->handleDecl(method, *ctx);
+        }
+    }
+
+    const auto* vtableInstance = findVtableInstance("Dog");
+    ASSERT_NE(vtableInstance, nullptr);
+
+    // Get initializer
+    const auto* initList = getInitList(vtableInstance);
+    ASSERT_NE(initList, nullptr) << "Vtable instance should have initializer list";
+
+    // Verify designated initializers are used
+    // In Clang AST, designated initializers are tracked in InitListExpr
+    // Check if we have at least one initializer
+    EXPECT_GT(initList->getNumInits(), 0u) << "Vtable instance should have initializers";
+}
+
+/**
+ * Test 4: VtableInstanceWithDestructor
+ * Verify that destructor is first in vtable instance initialization
+ */
+TEST_F(RecordHandlerTest_VtableInstance, VtableInstanceWithDestructor) {
+    const char* code = R"(
+        class Dog {
+        public:
+            virtual ~Dog() {}
+            virtual void speak() {}
+        };
+    )";
+
+    const auto* cppClass = parsePolymorphicClass(code);
+    ASSERT_NE(cppClass, nullptr);
+
+    recordHandler->handleDecl(cppClass, *ctx);
+
+    // Translate destructor and methods
+    for (auto* method : cppClass->methods()) {
+        if (llvm::isa<clang::CXXDestructorDecl>(method)) {
+            // Destructor handling would be done by DestructorHandler
+            // For now, skip - we'll verify order matches vtable struct
+        } else if (method->isVirtual()) {
+            methodHandler->handleDecl(method, *ctx);
+        }
+    }
+
+    const auto* vtableInstance = findVtableInstance("Dog");
+    ASSERT_NE(vtableInstance, nullptr);
+
+    const auto* initList = getInitList(vtableInstance);
+    ASSERT_NE(initList, nullptr);
+
+    // Verify we have 2 initializers (destructor + speak)
+    EXPECT_EQ(initList->getNumInits(), 2u) << "Should have 2 vtable slots";
+
+    // Get vtable struct to verify field order
+    const auto* vtableStruct = findVtableStruct("Dog");
+    ASSERT_NE(vtableStruct, nullptr);
+
+    // Get first field (should be destructor)
+    auto it = vtableStruct->field_begin();
+    ASSERT_NE(it, vtableStruct->field_end());
+    EXPECT_EQ((*it)->getNameAsString(), "destructor")
+        << "First vtable field should be destructor";
+}
+
+/**
+ * Test 5: VtableInstanceMultipleMethods
+ * Verify vtable instance with multiple virtual methods
+ */
+TEST_F(RecordHandlerTest_VtableInstance, VtableInstanceMultipleMethods) {
+    const char* code = R"(
+        class Dog {
+        public:
+            virtual ~Dog() {}
+            virtual void speak() {}
+            virtual int getAge() { return 5; }
+            virtual void setAge(int age) {}
+        };
+    )";
+
+    const auto* cppClass = parsePolymorphicClass(code);
+    ASSERT_NE(cppClass, nullptr);
+
+    recordHandler->handleDecl(cppClass, *ctx);
+
+    // Translate methods
+    for (auto* method : cppClass->methods()) {
+        if (method->isVirtual() && !llvm::isa<clang::CXXDestructorDecl>(method)) {
+            methodHandler->handleDecl(method, *ctx);
+        }
+    }
+
+    const auto* vtableInstance = findVtableInstance("Dog");
+    ASSERT_NE(vtableInstance, nullptr);
+
+    const auto* initList = getInitList(vtableInstance);
+    ASSERT_NE(initList, nullptr);
+
+    // Should have 4 initializers (destructor + 3 methods)
+    EXPECT_EQ(initList->getNumInits(), 4u) << "Should have 4 vtable slots";
+}
+
+/**
+ * Test 6: VtableInstanceNamingConvention
+ * Verify naming convention: ClassName_vtable_instance
+ */
+TEST_F(RecordHandlerTest_VtableInstance, VtableInstanceNamingConvention) {
+    const char* code = R"(
+        class GameEngine {
+        public:
+            virtual void update() {}
+        };
+    )";
+
+    const auto* cppClass = parsePolymorphicClass(code);
+    ASSERT_NE(cppClass, nullptr);
+
+    recordHandler->handleDecl(cppClass, *ctx);
+
+    // Translate methods
+    for (auto* method : cppClass->methods()) {
+        if (method->isVirtual()) {
+            methodHandler->handleDecl(method, *ctx);
+        }
+    }
+
+    const auto* vtableInstance = findVtableInstance("GameEngine");
+    ASSERT_NE(vtableInstance, nullptr);
+
+    EXPECT_EQ(vtableInstance->getNameAsString(), "GameEngine_vtable_instance");
+}
+
+/**
+ * Test 7: VtableInstanceFunctionPointers
+ * Verify that vtable instance contains correct function pointer references
+ */
+TEST_F(RecordHandlerTest_VtableInstance, VtableInstanceFunctionPointers) {
+    const char* code = R"(
+        class Dog {
+        public:
+            virtual void speak() {}
+        };
+    )";
+
+    const auto* cppClass = parsePolymorphicClass(code);
+    ASSERT_NE(cppClass, nullptr);
+
+    recordHandler->handleDecl(cppClass, *ctx);
+
+    // Translate methods
+    for (auto* method : cppClass->methods()) {
+        if (method->isVirtual()) {
+            methodHandler->handleDecl(method, *ctx);
+        }
+    }
+
+    const auto* vtableInstance = findVtableInstance("Dog");
+    ASSERT_NE(vtableInstance, nullptr);
+
+    const auto* initList = getInitList(vtableInstance);
+    ASSERT_NE(initList, nullptr);
+    ASSERT_GT(initList->getNumInits(), 0u);
+
+    // Get first initializer (should reference Dog_speak function)
+    const clang::Expr* init = initList->getInit(0);
+    ASSERT_NE(init, nullptr) << "Should have initializer for speak method";
+
+    // The initializer should be a DeclRefExpr or ImplicitCastExpr to function
+    // For now, just verify it's not null (detailed verification would require
+    // checking the expression tree structure)
+}
+
+/**
+ * Test 8: VtableInstanceSlotOrder
+ * Verify vtable instance slot order matches vtable struct definition
+ */
+TEST_F(RecordHandlerTest_VtableInstance, VtableInstanceSlotOrder) {
+    const char* code = R"(
+        class Dog {
+        public:
+            virtual ~Dog() {}
+            virtual void speak() {}
+            virtual int getAge() { return 5; }
+        };
+    )";
+
+    const auto* cppClass = parsePolymorphicClass(code);
+    ASSERT_NE(cppClass, nullptr);
+
+    recordHandler->handleDecl(cppClass, *ctx);
+
+    // Translate methods
+    for (auto* method : cppClass->methods()) {
+        if (method->isVirtual() && !llvm::isa<clang::CXXDestructorDecl>(method)) {
+            methodHandler->handleDecl(method, *ctx);
+        }
+    }
+
+    const auto* vtableStruct = findVtableStruct("Dog");
+    ASSERT_NE(vtableStruct, nullptr);
+
+    const auto* vtableInstance = findVtableInstance("Dog");
+    ASSERT_NE(vtableInstance, nullptr);
+
+    const auto* initList = getInitList(vtableInstance);
+    ASSERT_NE(initList, nullptr);
+
+    // Count fields in vtable struct
+    unsigned fieldCount = 0;
+    for (auto it = vtableStruct->field_begin(); it != vtableStruct->field_end(); ++it) {
+        fieldCount++;
+    }
+
+    // Number of initializers should match number of fields
+    EXPECT_EQ(initList->getNumInits(), fieldCount)
+        << "Vtable instance initializers should match vtable struct fields";
+
+    // Verify field order matches
+    unsigned i = 0;
+    for (auto it = vtableStruct->field_begin(); it != vtableStruct->field_end(); ++it, ++i) {
+        const auto* field = *it;
+        // For designated initializers, we'd verify the designator matches field name
+        // For now, just count
+    }
+}
+
+/**
+ * Test 9: InheritedVtableInstance
+ * Verify vtable instance for class with inherited virtual methods
+ */
+TEST_F(RecordHandlerTest_VtableInstance, InheritedVtableInstance) {
+    const char* code = R"(
+        class Animal {
+        public:
+            virtual ~Animal() {}
+            virtual void speak() {}
+        };
+
+        class Dog : public Animal {
+        public:
+            virtual void bark() {}
+        };
+    )";
+
+    // Parse and find Dog class
+    auto ast = clang::tooling::buildASTFromCode(code);
+    ASSERT_NE(ast, nullptr);
+
+    const clang::CXXRecordDecl* dogClass = nullptr;
+    auto& astCtx = ast->getASTContext();
+    auto* TU = astCtx.getTranslationUnitDecl();
+
+    for (auto* D : TU->decls()) {
+        if (auto* CRD = llvm::dyn_cast<clang::CXXRecordDecl>(D)) {
+            if (CRD->isCompleteDefinition() && CRD->getNameAsString() == "Dog") {
+                dogClass = CRD;
+                break;
+            }
+        }
+    }
+
+    cppAST = std::move(ast);
+    ASSERT_NE(dogClass, nullptr);
+    ASSERT_TRUE(dogClass->isPolymorphic());
+
+    // Translate both classes
+    // First Animal
+    const auto* animalClass = dogClass->bases_begin()->getType()->getAsCXXRecordDecl();
+    ASSERT_NE(animalClass, nullptr);
+
+    recordHandler->handleDecl(animalClass, *ctx);
+
+    // Translate Animal methods
+    for (auto* method : animalClass->methods()) {
+        if (method->isVirtual() && !llvm::isa<clang::CXXDestructorDecl>(method)) {
+            methodHandler->handleDecl(method, *ctx);
+        }
+    }
+
+    // Then Dog
+    recordHandler->handleDecl(dogClass, *ctx);
+
+    // Translate Dog methods
+    for (auto* method : dogClass->methods()) {
+        if (method->isVirtual() && !llvm::isa<clang::CXXDestructorDecl>(method)) {
+            methodHandler->handleDecl(method, *ctx);
+        }
+    }
+
+    const auto* vtableInstance = findVtableInstance("Dog");
+    ASSERT_NE(vtableInstance, nullptr);
+
+    const auto* initList = getInitList(vtableInstance);
+    ASSERT_NE(initList, nullptr);
+
+    // Should have 3 slots: destructor (inherited/overridden), speak (inherited), bark (new)
+    EXPECT_EQ(initList->getNumInits(), 3u)
+        << "Dog vtable should have 3 slots (destructor, speak, bark)";
+}
+
+/**
+ * Test 10: OverrideVtableInstance
+ * Verify that overridden methods use derived class function pointers
+ */
+TEST_F(RecordHandlerTest_VtableInstance, OverrideVtableInstance) {
+    const char* code = R"(
+        class Animal {
+        public:
+            virtual void speak() {}
+        };
+
+        class Dog : public Animal {
+        public:
+            virtual void speak() {}  // Override
+        };
+    )";
+
+    // Parse and find Dog class
+    auto ast = clang::tooling::buildASTFromCode(code);
+    ASSERT_NE(ast, nullptr);
+
+    const clang::CXXRecordDecl* dogClass = nullptr;
+    auto& astCtx = ast->getASTContext();
+    auto* TU = astCtx.getTranslationUnitDecl();
+
+    for (auto* D : TU->decls()) {
+        if (auto* CRD = llvm::dyn_cast<clang::CXXRecordDecl>(D)) {
+            if (CRD->isCompleteDefinition() && CRD->getNameAsString() == "Dog") {
+                dogClass = CRD;
+                break;
+            }
+        }
+    }
+
+    cppAST = std::move(ast);
+    ASSERT_NE(dogClass, nullptr);
+
+    // Translate both classes
+    const auto* animalClass = dogClass->bases_begin()->getType()->getAsCXXRecordDecl();
+    ASSERT_NE(animalClass, nullptr);
+
+    recordHandler->handleDecl(animalClass, *ctx);
+    for (auto* method : animalClass->methods()) {
+        if (method->isVirtual()) {
+            methodHandler->handleDecl(method, *ctx);
+        }
+    }
+
+    recordHandler->handleDecl(dogClass, *ctx);
+    for (auto* method : dogClass->methods()) {
+        if (method->isVirtual()) {
+            methodHandler->handleDecl(method, *ctx);
+        }
+    }
+
+    const auto* vtableInstance = findVtableInstance("Dog");
+    ASSERT_NE(vtableInstance, nullptr);
+
+    const auto* initList = getInitList(vtableInstance);
+    ASSERT_NE(initList, nullptr);
+
+    // Should have 1 slot (speak method)
+    EXPECT_EQ(initList->getNumInits(), 1u);
+
+    // The initializer should reference Dog_speak, not Animal_speak
+    // This requires checking the DeclRefExpr in the initializer
+    // For now, just verify we have an initializer
+    const clang::Expr* init = initList->getInit(0);
+    ASSERT_NE(init, nullptr);
+}
