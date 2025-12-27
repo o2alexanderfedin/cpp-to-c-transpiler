@@ -266,6 +266,9 @@ add_library(cpptoc_core STATIC
     src/handlers/DestructorHandler.cpp
     # Phase 47-01: Enum translator
     src/handlers/EnumTranslator.cpp
+    # Phase 53-01: Type alias and typedef handlers
+    src/handlers/TypeAliasAnalyzer.cpp
+    src/handlers/TypedefGenerator.cpp
     # Phase 45-01: Helpers
     src/helpers/VtableTypedefGenerator.cpp
     # Phase 49: Static member translator
@@ -4765,6 +4768,58 @@ target_link_libraries(EnumTranslatorTest PRIVATE
 )
 
 gtest_discover_tests(EnumTranslatorTest
+    WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
+)
+
+# Phase 53-01 Group 1 Task 1: TypeAliasAnalyzer Unit Tests
+add_executable(TypeAliasAnalyzerTest
+    tests/unit/handlers/TypeAliasAnalyzerTest.cpp
+)
+
+target_include_directories(TypeAliasAnalyzerTest PRIVATE
+    ${CMAKE_SOURCE_DIR}/tests/fixtures
+    ${CMAKE_SOURCE_DIR}/include
+    ${LLVM_INCLUDE_DIRS}
+    ${CLANG_INCLUDE_DIRS}
+)
+
+target_link_libraries(TypeAliasAnalyzerTest PRIVATE
+    test_fixtures
+    cpptoc_core
+    clangTooling
+    clangAST
+    clangBasic
+    GTest::gtest
+    GTest::gtest_main
+)
+
+gtest_discover_tests(TypeAliasAnalyzerTest
+    WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
+)
+
+# Phase 53-01 Group 1 Task 2: TypedefGenerator Unit Tests
+add_executable(TypedefGeneratorTest
+    tests/unit/handlers/TypedefGeneratorTest.cpp
+)
+
+target_include_directories(TypedefGeneratorTest PRIVATE
+    ${CMAKE_SOURCE_DIR}/tests/fixtures
+    ${CMAKE_SOURCE_DIR}/include
+    ${LLVM_INCLUDE_DIRS}
+    ${CLANG_INCLUDE_DIRS}
+)
+
+target_link_libraries(TypedefGeneratorTest PRIVATE
+    test_fixtures
+    cpptoc_core
+    clangTooling
+    clangAST
+    clangBasic
+    GTest::gtest
+    GTest::gtest_main
+)
+
+gtest_discover_tests(TypedefGeneratorTest
     WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
 )
 

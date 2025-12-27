@@ -27,6 +27,8 @@
 #include "ArithmeticOperatorTranslator.h"
 #include "ComparisonOperatorTranslator.h"
 #include "SpecialOperatorTranslator.h"
+#include "handlers/TypeAliasAnalyzer.h"
+#include "handlers/TypedefGenerator.h"
 #include "OverrideResolver.h"
 #include "RvalueRefParamTranslator.h"
 #include "TemplateExtractor.h"
@@ -160,6 +162,10 @@ class CppToCVisitor : public clang::RecursiveASTVisitor<CppToCVisitor> {
   // Phase 52: Special operator overloading support (v2.12.0)
   std::unique_ptr<SpecialOperatorTranslator> m_specialOpTrans;
 
+  // Phase 53: Using declarations and type aliases (v2.13.0)
+  std::unique_ptr<cpptoc::TypeAliasAnalyzer> m_typeAliasAnalyzer;
+  std::unique_ptr<cpptoc::TypedefGenerator> m_typedefGenerator;
+
   // Current translation context (Story #19)
   clang::ParmVarDecl *currentThisParam = nullptr;
   clang::CXXMethodDecl *currentMethod = nullptr;
@@ -278,6 +284,9 @@ public:
   // Returns the underlying integer type of an enum (e.g., uint8_t, int32_t)
   // Returns QualType() if no explicit type is specified
   clang::QualType extractUnderlyingType(const clang::EnumDecl *ED) const;
+
+  // Phase 53-01: Visit type alias declarations (using X = Y)
+  bool VisitTypeAliasDecl(clang::TypeAliasDecl *TAD);
 
   // Visit compound statements for scope tracking (Story #46)
   bool VisitCompoundStmt(clang::CompoundStmt *CS);
