@@ -4191,6 +4191,58 @@ gtest_discover_tests(RecordHandlerTest_Vtable
     WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
 )
 
+# RecordHandler lpVtbl unit tests (Phase 45, Group 1 Task 3)
+add_executable(RecordHandlerTest_lpVtbl
+    tests/unit/handlers/RecordHandlerTest_lpVtbl.cpp
+)
+
+target_include_directories(RecordHandlerTest_lpVtbl PRIVATE
+    ${CMAKE_SOURCE_DIR}/tests/fixtures
+    ${CMAKE_SOURCE_DIR}/include
+    ${LLVM_INCLUDE_DIRS}
+    ${CLANG_INCLUDE_DIRS}
+)
+
+target_link_libraries(RecordHandlerTest_lpVtbl PRIVATE
+    test_fixtures
+    cpptoc_core
+    clangTooling
+    clangAST
+    clangBasic
+    GTest::gtest
+    GTest::gtest_main
+)
+
+gtest_discover_tests(RecordHandlerTest_lpVtbl
+    WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
+)
+
+# RecordHandler vtable instance unit tests (Phase 45, Task 4)
+add_executable(RecordHandlerTest_VtableInstance
+    tests/unit/handlers/RecordHandlerTest_VtableInstance.cpp
+)
+
+target_include_directories(RecordHandlerTest_VtableInstance PRIVATE
+    ${CMAKE_SOURCE_DIR}/tests/fixtures
+    ${CMAKE_SOURCE_DIR}/include
+    ${LLVM_INCLUDE_DIRS}
+    ${CLANG_INCLUDE_DIRS}
+)
+
+target_link_libraries(RecordHandlerTest_VtableInstance PRIVATE
+    test_fixtures
+    cpptoc_core
+    clangTooling
+    clangAST
+    clangBasic
+    GTest::gtest
+    GTest::gtest_main
+)
+
+gtest_discover_tests(RecordHandlerTest_VtableInstance
+    WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
+)
+
 # Phase 44-01 Task 3: MethodHandler Tests
 add_executable(MethodHandlerTest
     tests/unit/handlers/MethodHandlerTest.cpp

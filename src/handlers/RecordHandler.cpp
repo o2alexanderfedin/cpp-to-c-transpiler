@@ -85,7 +85,15 @@ clang::Decl* RecordHandler::handleDecl(const clang::Decl* D, HandlerContext& ctx
         // Translate nested records first (they may be referenced by fields)
         translateNestedRecords(cppRecord, cRecord, ctx);
 
-        // Translate fields
+        // Step 6a: Inject lpVtbl field for polymorphic classes (Phase 45 Task 3)
+        // Must be FIRST field for COM/DCOM ABI compatibility
+        if (const auto* cxxRecord = llvm::dyn_cast<clang::CXXRecordDecl>(cppRecord)) {
+            if (cxxRecord->isPolymorphic()) {
+                injectLpVtblField(cxxRecord, cRecord, ctx);
+            }
+        }
+
+        // Translate fields (after lpVtbl injection)
         translateFields(cppRecord, cRecord, ctx);
 
         // Complete the definition
@@ -438,6 +446,67 @@ std::vector<const clang::CXXMethodDecl*> RecordHandler::collectVirtualMethods(
     }
 
     return virtualMethods;
+}
+
+void RecordHandler::injectLpVtblField(
+    const clang::CXXRecordDecl* cxxRecord,
+    clang::RecordDecl* cRecord,
+    HandlerContext& ctx
+) {
+    // Only inject lpVtbl for polymorphic classes
+    if (!cxxRecord || !cxxRecord->isPolymorphic()) {
+        return;
+    }
+
+    clang::ASTContext& cCtx = ctx.getCContext();
+    std::string className = cxxRecord->getNameAsString();
+
+    // Step 1: Create vtable struct type
+    // Type: const struct ClassName_vtable *
+    std::string vtableName = className + "_vtable";
+
+    // Create identifier for vtable struct
+    clang::IdentifierInfo& vtableII = cCtx.Idents.get(vtableName);
+
+    // Create incomplete vtable struct declaration (will be completed by generateVtableStruct)
+    // We need to create it here so we can reference it in the pointer type
+    clang::RecordDecl* vtableStruct = clang::RecordDecl::Create(
+        cCtx,
+        clang::TagTypeKind::Struct,
+        cCtx.getTranslationUnitDecl(),
+        clang::SourceLocation(),
+        clang::SourceLocation(),
+        &vtableII
+    );
+
+    // Create struct type: struct ClassName_vtable
+    clang::QualType vtableStructType = cCtx.getRecordType(vtableStruct);
+
+    // Add const qualifier: const struct ClassName_vtable
+    clang::QualType constVtableStructType = vtableStructType.withConst();
+
+    // Create pointer type: const struct ClassName_vtable *
+    clang::QualType lpVtblType = cCtx.getPointerType(constVtableStructType);
+
+    // Step 2: Create lpVtbl field
+    clang::IdentifierInfo& lpVtblII = cCtx.Idents.get("lpVtbl");
+
+    clang::FieldDecl* lpVtblField = clang::FieldDecl::Create(
+        cCtx,
+        cRecord,
+        clang::SourceLocation(),
+        clang::SourceLocation(),
+        &lpVtblII,
+        lpVtblType,
+        cCtx.getTrivialTypeSourceInfo(lpVtblType),
+        nullptr, // No bitwidth
+        false,   // Not mutable
+        clang::ICIS_NoInit
+    );
+
+    // Step 3: Add lpVtbl as FIRST field (COM/DCOM ABI requirement)
+    // This MUST be done before other fields are added
+    cRecord->addDecl(lpVtblField);
 }
 
 

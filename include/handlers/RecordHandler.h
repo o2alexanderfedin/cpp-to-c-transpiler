@@ -118,6 +118,51 @@ private:
     std::vector<const clang::CXXMethodDecl*> collectVirtualMethods(
         const clang::CXXRecordDecl* cxxRecord
     );
+
+    /**
+     * @brief Inject lpVtbl field as first member for polymorphic classes (Phase 45 Task 3)
+     * @param cxxRecord C++ CXXRecordDecl (must be polymorphic)
+     * @param cRecord C RecordDecl to inject lpVtbl into
+     * @param ctx Handler context
+     *
+     * Injects: const struct ClassName_vtable *lpVtbl;
+     *
+     * COM/DCOM ABI Requirement: lpVtbl MUST be the first field for binary compatibility.
+     * This allows C code to cast between base and derived classes and access vtable.
+     *
+     * Only injects for polymorphic classes (classes with virtual methods).
+     */
+    void injectLpVtblField(
+        const clang::CXXRecordDecl* cxxRecord,
+        clang::RecordDecl* cRecord,
+        HandlerContext& ctx
+    );
+
+    /**
+     * @brief Generate vtable instance for polymorphic class (Phase 45 Task 4)
+     * @param cxxRecord C++ CXXRecordDecl (must be polymorphic)
+     * @param ctx Handler context
+     * @return C VarDecl representing vtable instance, or nullptr if not polymorphic
+     *
+     * Generates: static const struct ClassName_vtable ClassName_vtable_instance = {
+     *   .destructor = ClassName_destructor,
+     *   .methodName = ClassName_methodName,
+     *   ...
+     * };
+     *
+     * COM Pattern Requirements:
+     * - Vtable instance must be static const
+     * - Uses designated initializers (C99)
+     * - Destructor slot first (if virtual)
+     * - Slot order matches vtable struct definition
+     * - Function pointers reference translated C functions
+     *
+     * Only generates vtable instance for polymorphic classes.
+     */
+    clang::VarDecl* generateVtableInstance(
+        const clang::CXXRecordDecl* cxxRecord,
+        HandlerContext& ctx
+    );
 };
 
 } // namespace cpptoc
