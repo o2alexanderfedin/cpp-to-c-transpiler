@@ -91,9 +91,34 @@ clang::Decl* ConstructorHandler::handleDecl(const clang::Decl* D, HandlerContext
     // Register mapping
     ctx.registerDecl(ctor, cFunc);
 
-    // TODO: Handle member initializer list (convert : field(value) to assignments)
-    // This will be implemented when StatementHandler/ExpressionHandler integration is done
-    // For now, we just create the function signature
+    // Step 7: Inject lpVtbl initialization as first statement in body (Phase 45 Group 3)
+    clang::Stmt* lpVtblInitStmt = nullptr;
+    if (parentClass->isPolymorphic()) {
+        lpVtblInitStmt = injectLpVtblInit(parentClass, thisParam, ctx);
+    }
+
+    // Step 8: Build constructor body
+    // Start with lpVtbl init (if polymorphic), then add member initializers
+    std::vector<clang::Stmt*> bodyStmts;
+
+    if (lpVtblInitStmt) {
+        bodyStmts.push_back(lpVtblInitStmt);
+    }
+
+    // TODO: Add member initializer list translations here
+    // For now, we have the lpVtbl init as the only statement
+
+    // Create CompoundStmt (constructor body)
+    clang::CompoundStmt* body = clang::CompoundStmt::Create(
+        cContext,
+        bodyStmts,
+        clang::FPOptionsOverride(),
+        clang::SourceLocation(),
+        clang::SourceLocation()
+    );
+
+    // Set the function body
+    cFunc->setBody(body);
 
     return cFunc;
 }
@@ -284,6 +309,184 @@ std::string ConstructorHandler::getSimpleTypeName(clang::QualType type) const {
 
     // Default: use type as string
     return type.getAsString();
+}
+
+clang::Stmt* ConstructorHandler::injectLpVtblInit(
+    const clang::CXXRecordDecl* parentClass,
+    clang::ParmVarDecl* thisParam,
+    HandlerContext& ctx
+) {
+    // Only inject for polymorphic classes
+    if (!parentClass || !parentClass->isPolymorphic()) {
+        return nullptr;
+    }
+
+    clang::ASTContext& cCtx = ctx.getCContext();
+    std::string className = parentClass->getNameAsString();
+
+    // Step 1: Find the lpVtbl field in the C struct
+    // The C struct should have been created by RecordHandler
+    clang::RecordDecl* cRecordDecl = nullptr;
+    auto* TU = cCtx.getTranslationUnitDecl();
+    for (auto* D : TU->decls()) {
+        if (auto* RD = llvm::dyn_cast<clang::RecordDecl>(D)) {
+            if (RD->getName() == className) {
+                cRecordDecl = RD;
+                break;
+            }
+        }
+    }
+
+    if (!cRecordDecl) {
+        return nullptr;  // C struct not found (shouldn't happen)
+    }
+
+    // Find the lpVtbl field
+    clang::FieldDecl* lpVtblField = nullptr;
+    for (auto* field : cRecordDecl->fields()) {
+        if (field->getNameAsString() == "lpVtbl") {
+            lpVtblField = field;
+            break;
+        }
+    }
+
+    if (!lpVtblField) {
+        return nullptr;  // No lpVtbl field (non-polymorphic class)
+    }
+
+    // Step 2: Create LHS: this->lpVtbl
+    // Create DeclRefExpr for 'this'
+    clang::DeclRefExpr* thisExpr = clang::DeclRefExpr::Create(
+        cCtx,
+        clang::NestedNameSpecifierLoc(),
+        clang::SourceLocation(),
+        thisParam,
+        false,  // refersToEnclosingVariableOrCapture
+        clang::SourceLocation(),
+        thisParam->getType(),
+        clang::VK_LValue
+    );
+
+    // Create MemberExpr: this->lpVtbl
+    clang::MemberExpr* lpVtblMemberExpr = clang::MemberExpr::Create(
+        cCtx,
+        thisExpr,
+        true,  // isArrow (this is a pointer)
+        clang::SourceLocation(),
+        clang::NestedNameSpecifierLoc(),
+        clang::SourceLocation(),
+        lpVtblField,
+        clang::DeclAccessPair::make(lpVtblField, clang::AS_public),
+        clang::DeclarationNameInfo(lpVtblField->getDeclName(), clang::SourceLocation()),
+        nullptr,  // TemplateArgumentListInfo
+        lpVtblField->getType(),
+        clang::VK_LValue,
+        clang::OK_Ordinary,
+        clang::NOUR_None
+    );
+
+    // Step 3: Create RHS: &ClassName_vtable_instance
+    std::string vtableInstanceName = className + "_vtable_instance";
+
+    // Find or create the vtable instance variable
+    clang::VarDecl* vtableInstanceVar = nullptr;
+    for (auto* D : TU->decls()) {
+        if (auto* VD = llvm::dyn_cast<clang::VarDecl>(D)) {
+            if (VD->getNameAsString() == vtableInstanceName) {
+                vtableInstanceVar = VD;
+                break;
+            }
+        }
+    }
+
+    // If vtable instance doesn't exist yet, create a forward declaration
+    if (!vtableInstanceVar) {
+        // Get the vtable struct type
+        std::string vtableStructName = className + "_vtable";
+        clang::RecordDecl* vtableStruct = nullptr;
+        for (auto* D : TU->decls()) {
+            if (auto* RD = llvm::dyn_cast<clang::RecordDecl>(D)) {
+                if (RD->getNameAsString() == vtableStructName) {
+                    vtableStruct = RD;
+                    break;
+                }
+            }
+        }
+
+        if (!vtableStruct) {
+            // Create vtable struct declaration if it doesn't exist
+            clang::IdentifierInfo& vtableII = cCtx.Idents.get(vtableStructName);
+            vtableStruct = clang::RecordDecl::Create(
+                cCtx,
+                clang::TagTypeKind::Struct,
+                TU,
+                clang::SourceLocation(),
+                clang::SourceLocation(),
+                &vtableII
+            );
+            vtableStruct->startDefinition();
+            vtableStruct->completeDefinition();
+        }
+
+        // Create vtable instance variable
+        clang::QualType vtableType = cCtx.getRecordType(vtableStruct);
+        clang::QualType constVtableType = cCtx.getConstType(vtableType);
+
+        clang::IdentifierInfo& instanceII = cCtx.Idents.get(vtableInstanceName);
+        vtableInstanceVar = clang::VarDecl::Create(
+            cCtx,
+            TU,
+            clang::SourceLocation(),
+            clang::SourceLocation(),
+            &instanceII,
+            constVtableType,
+            cCtx.getTrivialTypeSourceInfo(constVtableType),
+            clang::SC_Extern  // External linkage (defined elsewhere)
+        );
+
+        TU->addDecl(vtableInstanceVar);
+    }
+
+    // Create DeclRefExpr for vtable_instance
+    clang::DeclRefExpr* vtableInstanceExpr = clang::DeclRefExpr::Create(
+        cCtx,
+        clang::NestedNameSpecifierLoc(),
+        clang::SourceLocation(),
+        vtableInstanceVar,
+        false,
+        clang::SourceLocation(),
+        vtableInstanceVar->getType(),
+        clang::VK_LValue
+    );
+
+    // Create UnaryOperator: &vtable_instance
+    clang::QualType ptrType = cCtx.getPointerType(vtableInstanceVar->getType());
+    clang::UnaryOperator* addrOfExpr = clang::UnaryOperator::Create(
+        cCtx,
+        vtableInstanceExpr,
+        clang::UO_AddrOf,
+        ptrType,
+        clang::VK_PRValue,
+        clang::OK_Ordinary,
+        clang::SourceLocation(),
+        false,  // canOverflow
+        clang::FPOptionsOverride()
+    );
+
+    // Step 4: Create BinaryOperator: this->lpVtbl = &vtable_instance
+    clang::BinaryOperator* assignExpr = clang::BinaryOperator::Create(
+        cCtx,
+        lpVtblMemberExpr,
+        addrOfExpr,
+        clang::BO_Assign,
+        lpVtblField->getType(),
+        clang::VK_LValue,
+        clang::OK_Ordinary,
+        clang::SourceLocation(),
+        clang::FPOptionsOverride()
+    );
+
+    return assignExpr;
 }
 
 } // namespace cpptoc

@@ -4243,6 +4243,32 @@ gtest_discover_tests(RecordHandlerTest_VtableInstance
     WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
 )
 
+# ConstructorHandler lpVtbl initialization unit tests (Phase 45, Group 3)
+add_executable(ConstructorHandlerTest_lpVtbl
+    tests/unit/handlers/ConstructorHandlerTest_lpVtbl.cpp
+)
+
+target_include_directories(ConstructorHandlerTest_lpVtbl PRIVATE
+    ${CMAKE_SOURCE_DIR}/tests/fixtures
+    ${CMAKE_SOURCE_DIR}/include
+    ${LLVM_INCLUDE_DIRS}
+    ${CLANG_INCLUDE_DIRS}
+)
+
+target_link_libraries(ConstructorHandlerTest_lpVtbl PRIVATE
+    test_fixtures
+    cpptoc_core
+    clangTooling
+    clangAST
+    clangBasic
+    GTest::gtest
+    GTest::gtest_main
+)
+
+gtest_discover_tests(ConstructorHandlerTest_lpVtbl
+    WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
+)
+
 # Phase 44-01 Task 3: MethodHandler Tests
 add_executable(MethodHandlerTest
     tests/unit/handlers/MethodHandlerTest.cpp

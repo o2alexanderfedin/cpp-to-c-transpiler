@@ -121,6 +121,25 @@ private:
      * Used for constructor name mangling.
      */
     std::string getSimpleTypeName(clang::QualType type) const;
+
+    /**
+     * @brief Inject lpVtbl initialization as first statement in constructor body
+     * @param parentClass C++ class (CXXRecordDecl)
+     * @param thisParam C this parameter (struct ClassName* this)
+     * @param ctx Handler context
+     * @return Statement: this->lpVtbl = &ClassName_vtable_instance;
+     *
+     * Only injects if class is polymorphic (has virtual methods).
+     * Pattern (COM/DCOM ABI):
+     *   this->lpVtbl = &ClassName_vtable_instance;
+     *
+     * This MUST be the first statement in the constructor body.
+     */
+    clang::Stmt* injectLpVtblInit(
+        const clang::CXXRecordDecl* parentClass,
+        clang::ParmVarDecl* thisParam,
+        HandlerContext& ctx
+    );
 };
 
 } // namespace cpptoc
