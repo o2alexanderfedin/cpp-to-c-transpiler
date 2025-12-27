@@ -334,27 +334,30 @@ mkdir -p /output/dir
 
 ---
 
-### W012: Skipping Orphaned Top-Level VarDecl
+### W012: Skipping Local VarDecl at Top Level
 
 **Severity**: INFO
-**Message**: `[Bug #35] Skipping orphaned top-level VarDecl: <variable name>`
+**Message**: `[Bug #35] Skipping local VarDecl at top level: <variable name>`
 
-**Cause**: The transpiler encountered a global variable declaration that couldn't be properly categorized for output (header vs implementation file).
+**Cause**: The transpiler encountered a local variable (function-scoped) that mistakenly appears at the top level of the translation unit. This should not happen in normal C++ code, but may occur during AST construction or when translating malformed code.
 
 **Solution**:
-This is usually informational and not an error. The variable may be:
-1. A static variable (kept in implementation file)
-2. An extern variable (declared in header)
-3. A system library variable (skipped)
+This is informational. Local variables should only appear inside function bodies, not at global scope. The transpiler correctly skips these orphaned local variables.
 
-If this variable should be transpiled, report as a bug.
+**What is emitted**:
+- Global variables (with `isLocalVarDecl() == false`) ARE emitted
+- Local variables (with `isLocalVarDecl() == true`) are skipped with this warning
 
 **Example**:
 ```cpp
-// May trigger info message
-extern int globalVar;  // Extern declaration
+int globalVar = 42;  // ✓ Emitted (global variable)
 
-static int fileLocalVar;  // File-local variable
+void foo() {
+    int localVar = 0;  // ✓ Emitted inside function body
+}
+
+// Hypothetical malformed AST:
+// int orphanedLocal;  // ✗ Skipped with warning (shouldn't happen)
 ```
 
 **Related**: Multi-file transpilation, global variables

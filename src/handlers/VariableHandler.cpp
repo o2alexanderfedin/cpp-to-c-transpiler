@@ -114,6 +114,9 @@ clang::Decl* VariableHandler::handleDecl(const clang::Decl* D, HandlerContext& c
         cVar->setInit(cInitExpr);
     }
 
+    // Add to parent DeclContext (CRITICAL: makes variable visible in AST)
+    cDeclContext->addDecl(cVar);
+
     // Step 7: Register mapping in context
     ctx.registerDecl(cppVar, cVar);
 

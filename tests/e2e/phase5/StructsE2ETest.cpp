@@ -80,8 +80,18 @@ protected:
                 recordHandler->handleDecl(record, context);
             } else if (auto* func = llvm::dyn_cast<clang::FunctionDecl>(decl)) {
                 if (!llvm::isa<clang::CXXMethodDecl>(func)) {
-                    funcHandler->handleDecl(func, context);
+                    // Translate function signature
+                    clang::Decl* cFuncDecl = funcHandler->handleDecl(func, context);
+                    clang::FunctionDecl* cFunc = llvm::cast<clang::FunctionDecl>(cFuncDecl);
+
+                    // Translate function body if present
+                    if (func->hasBody()) {
+                        clang::Stmt* cBody = stmtHandler->handleStmt(func->getBody(), context);
+                        cFunc->setBody(cBody);
+                    }
                 }
+            } else if (auto* var = llvm::dyn_cast<clang::VarDecl>(decl)) {
+                varHandler->handleDecl(var, context);
             }
         }
 

@@ -113,13 +113,37 @@ void CodeGenerator::printDecl(Decl *D, bool declarationOnly) {
         }
         // When declarationOnly=false, skip struct definitions (already in header)
     } else if (auto *VD = dyn_cast<VarDecl>(D)) {
-        // Bug #35 FIX: Variable declarations should NOT appear as top-level declarations
-        // Local variables belong inside function bodies (handled by printStmt)
-        // Top-level VarDecl nodes are orphaned and should be skipped entirely
-        // This prevents malloc statements from appearing in both headers and implementation files
-        llvm::outs() << "[Bug #35] Skipping orphaned top-level VarDecl: "
-                     << VD->getNameAsString() << "\n";
-        return;
+        // Bug #35 FIX: Skip ONLY local variables (they belong in function bodies)
+        // Global variables MUST be emitted
+        if (VD->isLocalVarDecl()) {
+            llvm::outs() << "[Bug #35] Skipping local VarDecl at top level: "
+                         << VD->getNameAsString() << "\n";
+            return;
+        }
+
+        // Emit global variable
+        if (declarationOnly) {
+            // Header file: emit extern declaration (only if not static)
+            if (VD->getStorageClass() != SC_Static) {
+                OS << "extern ";
+                printCType(VD->getType());
+                OS << " " << VD->getNameAsString() << ";\n";
+            }
+        } else {
+            // Implementation file: emit full definition with initializer
+            if (VD->getStorageClass() == SC_Static) {
+                OS << "static ";
+            }
+            printCType(VD->getType());
+            OS << " " << VD->getNameAsString();
+
+            // Print initializer if present
+            if (VD->hasInit()) {
+                OS << " = ";
+                printExpr(VD->getInit());
+            }
+            OS << ";\n";
+        }
     } else {
         // Other declarations
         D->print(OS, Policy);
