@@ -77,6 +77,26 @@ target_include_directories(StructsIntegrationTest PRIVATE
     ${CMAKE_SOURCE_DIR}/../../src
 )
 
+# Phase 44: Classes (C++ classes) Integration Tests
+add_executable(ClassesIntegrationTest
+    handlers/ClassesIntegrationTest.cpp
+    ${CMAKE_SOURCE_DIR}/../../src/handlers/HandlerContext.cpp
+    ${CMAKE_SOURCE_DIR}/../../src/handlers/FunctionHandler.cpp
+    ${CMAKE_SOURCE_DIR}/../../src/handlers/VariableHandler.cpp
+    ${CMAKE_SOURCE_DIR}/../../src/handlers/ExpressionHandler.cpp
+    ${CMAKE_SOURCE_DIR}/../../src/handlers/StatementHandler.cpp
+    ${CMAKE_SOURCE_DIR}/../../src/handlers/RecordHandler.cpp
+    ${CMAKE_SOURCE_DIR}/../../src/handlers/MethodHandler.cpp
+    ${CMAKE_SOURCE_DIR}/../../src/handlers/ConstructorHandler.cpp
+    ${CMAKE_SOURCE_DIR}/../../src/handlers/DestructorHandler.cpp
+)
+target_link_libraries(ClassesIntegrationTest GTest::gtest GTest::gtest_main ${CLANG_LIBS})
+target_include_directories(ClassesIntegrationTest PRIVATE
+    ${CMAKE_SOURCE_DIR}/../../include
+    ${CMAKE_SOURCE_DIR}/../../include/handlers
+    ${CMAKE_SOURCE_DIR}/../../src
+)
+
 # Enable testing
 enable_testing()
 include(GoogleTest)
@@ -99,6 +119,10 @@ gtest_discover_tests(StructsIntegrationTest
     WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
     PROPERTIES LABELS "integration;structs;phase43"
 )
+gtest_discover_tests(ClassesIntegrationTest
+    WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
+    PROPERTIES LABELS "integration;classes;phase44"
+)
 
 message(STATUS "Integration tests configured:")
 message(STATUS "  - FeatureInteractionTest: 30 tests")
@@ -109,4 +133,5 @@ message(STATUS "  - ErrorHandlingTest_gtest: 25 tests (Google Test)")
 message(STATUS "  - MoveSemanticIntegrationTest: 16 tests (Google Test)")
 message(STATUS "  - PointersIntegrationTest: 24 tests (Phase 42)")
 message(STATUS "  - StructsIntegrationTest: 25 tests (Phase 43)")
-message(STATUS "  Total: 195 integration tests")
+message(STATUS "  - ClassesIntegrationTest: 35 tests (Phase 44)")
+message(STATUS "  Total: 230 integration tests")

@@ -925,3 +925,649 @@ TEST_F(RecordHandlerTest, ForwardDeclarationFollowedByDefinition) {
     }
     EXPECT_EQ(fieldCount, 2) << "Point definition should have 2 fields";
 }
+
+// =============================================================================
+// Task 2: Access Specifier Handling (Phase 44 Group 1 - Task 2)
+// =============================================================================
+
+/**
+ * Test 18: Class with only public members (Task 2)
+ * C++: class Data { public: int x; int y; };
+ * C:   struct Data { int x; int y; };
+ *
+ * Tests that public access specifier is properly stripped.
+ */
+TEST_F(RecordHandlerTest, AccessSpecifier_OnlyPublic) {
+    const char* code = R"(
+        class Data {
+        public:
+            int x;
+            int y;
+        };
+    )";
+
+    const auto* cppRecord = getRecordDeclFromCode(code);
+    ASSERT_NE(cppRecord, nullptr);
+    EXPECT_TRUE(cppRecord->isClass()) << "C++ should be class";
+
+    auto* cRecord = llvm::cast<clang::RecordDecl>(
+        handler->handleDecl(cppRecord, *context)
+    );
+
+    verifyRecordStructure(cRecord, "Data", 2);
+    EXPECT_TRUE(cRecord->isStruct()) << "C should be struct";
+
+    // Verify both fields are present (access specifier stripped)
+    auto it = cRecord->field_begin();
+    EXPECT_EQ((*it)->getNameAsString(), "x");
+    ++it;
+    EXPECT_EQ((*it)->getNameAsString(), "y");
+}
+
+/**
+ * Test 19: Class with only private members (Task 2)
+ * C++: class Data { private: int x; int y; };
+ * C:   struct Data { int x; int y; };
+ *
+ * Tests that private access specifier is properly stripped.
+ * Note: C has no access control - all fields are accessible.
+ */
+TEST_F(RecordHandlerTest, AccessSpecifier_OnlyPrivate) {
+    const char* code = R"(
+        class Data {
+        private:
+            int x;
+            int y;
+        };
+    )";
+
+    const auto* cppRecord = getRecordDeclFromCode(code);
+    ASSERT_NE(cppRecord, nullptr);
+
+    auto* cRecord = llvm::cast<clang::RecordDecl>(
+        handler->handleDecl(cppRecord, *context)
+    );
+
+    // All fields should be present, even though they were private in C++
+    verifyRecordStructure(cRecord, "Data", 2);
+
+    auto it = cRecord->field_begin();
+    EXPECT_EQ((*it)->getNameAsString(), "x");
+    ++it;
+    EXPECT_EQ((*it)->getNameAsString(), "y");
+}
+
+/**
+ * Test 20: Class with only protected members (Task 2)
+ * C++: class Data { protected: int x; int y; };
+ * C:   struct Data { int x; int y; };
+ *
+ * Tests that protected access specifier is properly stripped.
+ */
+TEST_F(RecordHandlerTest, AccessSpecifier_OnlyProtected) {
+    const char* code = R"(
+        class Data {
+        protected:
+            int x;
+            int y;
+        };
+    )";
+
+    const auto* cppRecord = getRecordDeclFromCode(code);
+    ASSERT_NE(cppRecord, nullptr);
+
+    auto* cRecord = llvm::cast<clang::RecordDecl>(
+        handler->handleDecl(cppRecord, *context)
+    );
+
+    verifyRecordStructure(cRecord, "Data", 2);
+
+    auto it = cRecord->field_begin();
+    EXPECT_EQ((*it)->getNameAsString(), "x");
+    ++it;
+    EXPECT_EQ((*it)->getNameAsString(), "y");
+}
+
+/**
+ * Test 21: Class with mixed access (public/private) (Task 2)
+ * C++: class Mixed { public: int pub; private: int priv; };
+ * C:   struct Mixed { int pub; int priv; };
+ *
+ * Tests that mixed access specifiers are properly stripped.
+ */
+TEST_F(RecordHandlerTest, AccessSpecifier_MixedPublicPrivate) {
+    const char* code = R"(
+        class Mixed {
+        public:
+            int pub;
+        private:
+            int priv;
+        };
+    )";
+
+    const auto* cppRecord = getRecordDeclFromCode(code);
+    ASSERT_NE(cppRecord, nullptr);
+
+    auto* cRecord = llvm::cast<clang::RecordDecl>(
+        handler->handleDecl(cppRecord, *context)
+    );
+
+    verifyRecordStructure(cRecord, "Mixed", 2);
+
+    // Verify field order is preserved
+    auto it = cRecord->field_begin();
+    EXPECT_EQ((*it)->getNameAsString(), "pub");
+    ++it;
+    EXPECT_EQ((*it)->getNameAsString(), "priv");
+}
+
+/**
+ * Test 22: Class with all three access specifiers (Task 2)
+ * C++: class All { public: int pub; private: int priv; protected: int prot; };
+ * C:   struct All { int pub; int priv; int prot; };
+ *
+ * Tests all three access specifiers in one class.
+ */
+TEST_F(RecordHandlerTest, AccessSpecifier_AllThree) {
+    const char* code = R"(
+        class All {
+        public:
+            int pub;
+        private:
+            int priv;
+        protected:
+            int prot;
+        };
+    )";
+
+    const auto* cppRecord = getRecordDeclFromCode(code);
+    ASSERT_NE(cppRecord, nullptr);
+
+    auto* cRecord = llvm::cast<clang::RecordDecl>(
+        handler->handleDecl(cppRecord, *context)
+    );
+
+    verifyRecordStructure(cRecord, "All", 3);
+
+    // Verify all fields are present in order
+    auto it = cRecord->field_begin();
+    EXPECT_EQ((*it)->getNameAsString(), "pub");
+    ++it;
+    EXPECT_EQ((*it)->getNameAsString(), "priv");
+    ++it;
+    EXPECT_EQ((*it)->getNameAsString(), "prot");
+}
+
+/**
+ * Test 23: Class with default access (private for class) (Task 2)
+ * C++: class Data { int x; public: int y; };
+ * C:   struct Data { int x; int y; };
+ *
+ * Tests default access (private for class, before first access specifier).
+ */
+TEST_F(RecordHandlerTest, AccessSpecifier_DefaultPrivate) {
+    const char* code = R"(
+        class Data {
+            int x;  // Implicitly private (no access specifier)
+        public:
+            int y;
+        };
+    )";
+
+    const auto* cppRecord = getRecordDeclFromCode(code);
+    ASSERT_NE(cppRecord, nullptr);
+
+    auto* cRecord = llvm::cast<clang::RecordDecl>(
+        handler->handleDecl(cppRecord, *context)
+    );
+
+    verifyRecordStructure(cRecord, "Data", 2);
+
+    auto it = cRecord->field_begin();
+    EXPECT_EQ((*it)->getNameAsString(), "x") << "Implicitly private field";
+    ++it;
+    EXPECT_EQ((*it)->getNameAsString(), "y") << "Explicitly public field";
+}
+
+/**
+ * Test 24: Struct with default access (public for struct) (Task 2)
+ * C++: struct Data { int x; private: int y; };
+ * C:   struct Data { int x; int y; };
+ *
+ * Tests default access (public for struct, before first access specifier).
+ */
+TEST_F(RecordHandlerTest, AccessSpecifier_DefaultPublic) {
+    const char* code = R"(
+        struct Data {
+            int x;  // Implicitly public (no access specifier)
+        private:
+            int y;
+        };
+    )";
+
+    const auto* cppRecord = getRecordDeclFromCode(code);
+    ASSERT_NE(cppRecord, nullptr);
+
+    auto* cRecord = llvm::cast<clang::RecordDecl>(
+        handler->handleDecl(cppRecord, *context)
+    );
+
+    verifyRecordStructure(cRecord, "Data", 2);
+
+    auto it = cRecord->field_begin();
+    EXPECT_EQ((*it)->getNameAsString(), "x") << "Implicitly public field";
+    ++it;
+    EXPECT_EQ((*it)->getNameAsString(), "y") << "Explicitly private field";
+}
+
+/**
+ * Test 25: Access specifiers interleaved with members (Task 2)
+ * C++: class Data { public: int a; private: int b; public: int c; private: int d; };
+ * C:   struct Data { int a; int b; int c; int d; };
+ *
+ * Tests multiple access specifiers interleaved with fields.
+ */
+TEST_F(RecordHandlerTest, AccessSpecifier_Interleaved) {
+    const char* code = R"(
+        class Data {
+        public:
+            int a;
+        private:
+            int b;
+        public:
+            int c;
+        private:
+            int d;
+        };
+    )";
+
+    const auto* cppRecord = getRecordDeclFromCode(code);
+    ASSERT_NE(cppRecord, nullptr);
+
+    auto* cRecord = llvm::cast<clang::RecordDecl>(
+        handler->handleDecl(cppRecord, *context)
+    );
+
+    verifyRecordStructure(cRecord, "Data", 4);
+
+    // Verify all fields are present in order
+    auto it = cRecord->field_begin();
+    EXPECT_EQ((*it)->getNameAsString(), "a");
+    ++it;
+    EXPECT_EQ((*it)->getNameAsString(), "b");
+    ++it;
+    EXPECT_EQ((*it)->getNameAsString(), "c");
+    ++it;
+    EXPECT_EQ((*it)->getNameAsString(), "d");
+}
+
+// =============================================================================
+// Phase 44 Task 1: CXXRecordDecl Translation - Additional Tests
+// =============================================================================
+
+/**
+ * Test 26: Empty class
+ * C++: class Empty {};
+ * C:   struct Empty {};
+ */
+TEST_F(RecordHandlerTest, CXXRecordDecl_EmptyClass) {
+    const char* code = R"(
+        class Empty {};
+    )";
+
+    const auto* cppRecord = getRecordDeclFromCode(code);
+    ASSERT_NE(cppRecord, nullptr);
+    EXPECT_TRUE(llvm::isa<clang::CXXRecordDecl>(cppRecord)) << "Should be CXXRecordDecl";
+    EXPECT_TRUE(handler->canHandle(cppRecord));
+
+    auto* cRecord = llvm::cast<clang::RecordDecl>(
+        handler->handleDecl(cppRecord, *context)
+    );
+
+    verifyRecordStructure(cRecord, "Empty", 0);
+    EXPECT_TRUE(cRecord->isStruct()) << "Class should be translated to struct";
+}
+
+/**
+ * Test 27: Class with all primitive types
+ * C++: class AllTypes { public: int i; float f; double d; char c; bool b; };
+ * C:   struct AllTypes { int i; float f; double d; char c; _Bool b; };
+ */
+TEST_F(RecordHandlerTest, CXXRecordDecl_AllPrimitiveTypes) {
+    const char* code = R"(
+        class AllTypes {
+        public:
+            int i;
+            float f;
+            double d;
+            char c;
+            bool b;
+        };
+    )";
+
+    const auto* cppRecord = getRecordDeclFromCode(code);
+    ASSERT_NE(cppRecord, nullptr);
+    EXPECT_TRUE(llvm::isa<clang::CXXRecordDecl>(cppRecord));
+
+    auto* cRecord = llvm::cast<clang::RecordDecl>(
+        handler->handleDecl(cppRecord, *context)
+    );
+
+    verifyRecordStructure(cRecord, "AllTypes", 5);
+
+    // Verify field types
+    auto it = cRecord->field_begin();
+    EXPECT_EQ((*it)->getNameAsString(), "i");
+    EXPECT_TRUE((*it)->getType()->isIntegerType());
+    ++it;
+    EXPECT_EQ((*it)->getNameAsString(), "f");
+    EXPECT_TRUE((*it)->getType()->isFloatingType());
+    ++it;
+    EXPECT_EQ((*it)->getNameAsString(), "d");
+    EXPECT_TRUE((*it)->getType()->isFloatingType());
+    ++it;
+    EXPECT_EQ((*it)->getNameAsString(), "c");
+    EXPECT_TRUE((*it)->getType()->isCharType());
+    ++it;
+    EXPECT_EQ((*it)->getNameAsString(), "b");
+    // bool in C++ becomes _Bool in C (also considered integer type)
+    EXPECT_TRUE((*it)->getType()->isBooleanType() || (*it)->getType()->isIntegerType());
+}
+
+/**
+ * Test 28: Class with pointers
+ * C++: class WithPointer { public: int* ptr; char* str; };
+ * C:   struct WithPointer { int* ptr; char* str; };
+ */
+TEST_F(RecordHandlerTest, CXXRecordDecl_WithPointers) {
+    const char* code = R"(
+        class WithPointer {
+        public:
+            int* ptr;
+            char* str;
+        };
+    )";
+
+    const auto* cppRecord = getRecordDeclFromCode(code);
+    ASSERT_NE(cppRecord, nullptr);
+    EXPECT_TRUE(llvm::isa<clang::CXXRecordDecl>(cppRecord));
+
+    auto* cRecord = llvm::cast<clang::RecordDecl>(
+        handler->handleDecl(cppRecord, *context)
+    );
+
+    verifyRecordStructure(cRecord, "WithPointer", 2);
+
+    // Verify pointer types
+    auto it = cRecord->field_begin();
+    EXPECT_EQ((*it)->getNameAsString(), "ptr");
+    EXPECT_TRUE((*it)->getType()->isPointerType());
+    ++it;
+    EXPECT_EQ((*it)->getNameAsString(), "str");
+    EXPECT_TRUE((*it)->getType()->isPointerType());
+}
+
+/**
+ * Test 29: Class with arrays
+ * C++: class WithArray { public: int arr[10]; char buf[256]; };
+ * C:   struct WithArray { int arr[10]; char buf[256]; };
+ */
+TEST_F(RecordHandlerTest, CXXRecordDecl_WithArrays) {
+    const char* code = R"(
+        class WithArray {
+        public:
+            int arr[10];
+            char buf[256];
+        };
+    )";
+
+    const auto* cppRecord = getRecordDeclFromCode(code);
+    ASSERT_NE(cppRecord, nullptr);
+    EXPECT_TRUE(llvm::isa<clang::CXXRecordDecl>(cppRecord));
+
+    auto* cRecord = llvm::cast<clang::RecordDecl>(
+        handler->handleDecl(cppRecord, *context)
+    );
+
+    verifyRecordStructure(cRecord, "WithArray", 2);
+
+    // Verify array types
+    auto it = cRecord->field_begin();
+    EXPECT_EQ((*it)->getNameAsString(), "arr");
+    EXPECT_TRUE((*it)->getType()->isArrayType());
+    ++it;
+    EXPECT_EQ((*it)->getNameAsString(), "buf");
+    EXPECT_TRUE((*it)->getType()->isArrayType());
+}
+
+/**
+ * Test 30: Class with struct members
+ * C++: struct Point { int x; int y; }; class Rect { public: Point topLeft; Point bottomRight; };
+ * C:   struct Point { int x; int y; }; struct Rect { struct Point topLeft; struct Point bottomRight; };
+ */
+TEST_F(RecordHandlerTest, CXXRecordDecl_WithStructMembers) {
+    const char* code = R"(
+        struct Point {
+            int x;
+            int y;
+        };
+
+        class Rect {
+        public:
+            Point topLeft;
+            Point bottomRight;
+        };
+    )";
+
+    cppAST = clang::tooling::buildASTFromCode(code);
+    ASSERT_NE(cppAST, nullptr);
+
+    // Recreate builder and context
+    builder = std::make_unique<clang::CNodeBuilder>(cAST->getASTContext());
+    context = std::make_unique<HandlerContext>(
+        cppAST->getASTContext(),
+        cAST->getASTContext(),
+        *builder
+    );
+
+    auto& ctx = cppAST->getASTContext();
+    auto* TU = ctx.getTranslationUnitDecl();
+
+    const clang::RecordDecl* cppPoint = nullptr;
+    const clang::RecordDecl* cppRect = nullptr;
+
+    for (auto* decl : TU->decls()) {
+        if (auto* recordDecl = llvm::dyn_cast<clang::RecordDecl>(decl)) {
+            if (recordDecl->getNameAsString() == "Point") {
+                cppPoint = recordDecl;
+            } else if (recordDecl->getNameAsString() == "Rect") {
+                cppRect = recordDecl;
+            }
+        }
+    }
+
+    ASSERT_NE(cppPoint, nullptr);
+    ASSERT_NE(cppRect, nullptr);
+    EXPECT_TRUE(llvm::isa<clang::CXXRecordDecl>(cppRect)) << "Rect should be CXXRecordDecl";
+
+    // Translate Point first
+    auto* cPoint = llvm::cast<clang::RecordDecl>(
+        handler->handleDecl(cppPoint, *context)
+    );
+    ASSERT_NE(cPoint, nullptr);
+
+    // Translate Rect
+    auto* cRect = llvm::cast<clang::RecordDecl>(
+        handler->handleDecl(cppRect, *context)
+    );
+
+    verifyRecordStructure(cRect, "Rect", 2);
+
+    // Verify struct fields
+    auto it = cRect->field_begin();
+    EXPECT_EQ((*it)->getNameAsString(), "topLeft");
+    EXPECT_TRUE((*it)->getType()->isStructureType());
+    ++it;
+    EXPECT_EQ((*it)->getNameAsString(), "bottomRight");
+    EXPECT_TRUE((*it)->getType()->isStructureType());
+}
+
+/**
+ * Test 31: Forward class declaration
+ * C++: class Node;
+ * C:   struct Node;
+ */
+TEST_F(RecordHandlerTest, CXXRecordDecl_ForwardDeclaration) {
+    const char* code = R"(
+        class Node;
+    )";
+
+    const auto* cppRecord = getRecordDeclFromCode(code);
+    ASSERT_NE(cppRecord, nullptr);
+    EXPECT_TRUE(llvm::isa<clang::CXXRecordDecl>(cppRecord));
+    EXPECT_FALSE(cppRecord->isCompleteDefinition());
+
+    auto* cRecord = llvm::cast<clang::RecordDecl>(
+        handler->handleDecl(cppRecord, *context)
+    );
+
+    ASSERT_NE(cRecord, nullptr);
+    EXPECT_EQ(cRecord->getNameAsString(), "Node");
+    EXPECT_FALSE(cRecord->isCompleteDefinition());
+    EXPECT_TRUE(cRecord->isStruct()) << "Forward class should be translated to struct";
+}
+
+/**
+ * Test 32: Multiple classes
+ * C++: class A { public: int x; }; class B { public: float y; };
+ * C:   struct A { int x; }; struct B { float y; };
+ */
+TEST_F(RecordHandlerTest, CXXRecordDecl_MultipleClasses) {
+    const char* code = R"(
+        class A {
+        public:
+            int x;
+        };
+
+        class B {
+        public:
+            float y;
+        };
+    )";
+
+    cppAST = clang::tooling::buildASTFromCode(code);
+    ASSERT_NE(cppAST, nullptr);
+
+    // Recreate builder and context
+    builder = std::make_unique<clang::CNodeBuilder>(cAST->getASTContext());
+    context = std::make_unique<HandlerContext>(
+        cppAST->getASTContext(),
+        cAST->getASTContext(),
+        *builder
+    );
+
+    auto& ctx = cppAST->getASTContext();
+    auto* TU = ctx.getTranslationUnitDecl();
+
+    const clang::RecordDecl* cppA = nullptr;
+    const clang::RecordDecl* cppB = nullptr;
+
+    for (auto* decl : TU->decls()) {
+        if (auto* recordDecl = llvm::dyn_cast<clang::RecordDecl>(decl)) {
+            if (recordDecl->getNameAsString() == "A") {
+                cppA = recordDecl;
+            } else if (recordDecl->getNameAsString() == "B") {
+                cppB = recordDecl;
+            }
+        }
+    }
+
+    ASSERT_NE(cppA, nullptr);
+    ASSERT_NE(cppB, nullptr);
+    EXPECT_TRUE(llvm::isa<clang::CXXRecordDecl>(cppA));
+    EXPECT_TRUE(llvm::isa<clang::CXXRecordDecl>(cppB));
+
+    // Translate both classes
+    auto* cA = llvm::cast<clang::RecordDecl>(
+        handler->handleDecl(cppA, *context)
+    );
+    auto* cB = llvm::cast<clang::RecordDecl>(
+        handler->handleDecl(cppB, *context)
+    );
+
+    verifyRecordStructure(cA, "A", 1);
+    verifyRecordStructure(cB, "B", 1);
+
+    // Verify fields
+    auto itA = cA->field_begin();
+    EXPECT_EQ((*itA)->getNameAsString(), "x");
+    EXPECT_TRUE((*itA)->getType()->isIntegerType());
+
+    auto itB = cB->field_begin();
+    EXPECT_EQ((*itB)->getNameAsString(), "y");
+    EXPECT_TRUE((*itB)->getType()->isFloatingType());
+}
+
+/**
+ * Test 33: Class vs struct - both should translate to struct
+ * C++: class MyClass { public: int x; }; struct MyStruct { int y; };
+ * C:   struct MyClass { int x; }; struct MyStruct { int y; };
+ */
+TEST_F(RecordHandlerTest, CXXRecordDecl_ClassVsStruct) {
+    const char* code = R"(
+        class MyClass {
+        public:
+            int x;
+        };
+
+        struct MyStruct {
+            int y;
+        };
+    )";
+
+    cppAST = clang::tooling::buildASTFromCode(code);
+    ASSERT_NE(cppAST, nullptr);
+
+    // Recreate builder and context
+    builder = std::make_unique<clang::CNodeBuilder>(cAST->getASTContext());
+    context = std::make_unique<HandlerContext>(
+        cppAST->getASTContext(),
+        cAST->getASTContext(),
+        *builder
+    );
+
+    auto& ctx = cppAST->getASTContext();
+    auto* TU = ctx.getTranslationUnitDecl();
+
+    const clang::RecordDecl* cppClass = nullptr;
+    const clang::RecordDecl* cppStruct = nullptr;
+
+    for (auto* decl : TU->decls()) {
+        if (auto* recordDecl = llvm::dyn_cast<clang::RecordDecl>(decl)) {
+            if (recordDecl->getNameAsString() == "MyClass") {
+                cppClass = recordDecl;
+            } else if (recordDecl->getNameAsString() == "MyStruct") {
+                cppStruct = recordDecl;
+            }
+        }
+    }
+
+    ASSERT_NE(cppClass, nullptr);
+    ASSERT_NE(cppStruct, nullptr);
+    EXPECT_TRUE(llvm::isa<clang::CXXRecordDecl>(cppClass));
+
+    // Translate both
+    auto* cClass = llvm::cast<clang::RecordDecl>(
+        handler->handleDecl(cppClass, *context)
+    );
+    auto* cStruct = llvm::cast<clang::RecordDecl>(
+        handler->handleDecl(cppStruct, *context)
+    );
+
+    verifyRecordStructure(cClass, "MyClass", 1);
+    verifyRecordStructure(cStruct, "MyStruct", 1);
+
+    // Both should be struct in C
+    EXPECT_TRUE(cClass->isStruct());
+    EXPECT_TRUE(cStruct->isStruct());
+}

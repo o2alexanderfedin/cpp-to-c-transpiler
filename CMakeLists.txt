@@ -4470,6 +4470,33 @@ gtest_discover_tests(StructsE2ETest
 )
 
 # ============================================================================
+# Phase 6: Classes E2E Tests
+# ============================================================================
+
+add_executable(ClassesE2ETest
+    tests/e2e/phase6/ClassesE2ETest.cpp
+)
+
+target_include_directories(ClassesE2ETest PRIVATE
+    ${CMAKE_SOURCE_DIR}/include
+    ${LLVM_INCLUDE_DIRS}
+    ${CLANG_INCLUDE_DIRS}
+)
+
+target_link_libraries(ClassesE2ETest PRIVATE
+    cpptoc_core
+    clangTooling
+    clangAST
+    clangBasic
+    GTest::gtest
+    GTest::gtest_main
+)
+
+gtest_discover_tests(ClassesE2ETest
+    WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
+)
+
+# ============================================================================
 # Phase 15-04: Unified Test Execution - Convenience Test Targets
 # ============================================================================
 

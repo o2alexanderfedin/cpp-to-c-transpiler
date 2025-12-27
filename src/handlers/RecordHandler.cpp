@@ -98,6 +98,9 @@ void RecordHandler::translateFields(
     clang::ASTContext& cppCtx = ctx.getCppContext();
 
     // Translate each field
+    // Note: Access specifiers (public/private/protected) are automatically stripped
+    // because cppRecord->fields() only iterates over FieldDecl nodes,
+    // skipping AccessSpecDecl nodes. C has no access control - all fields are accessible.
     for (const auto* cppField : cppRecord->fields()) {
         // Extract field properties
         std::string name = cppField->getNameAsString();

@@ -5,12 +5,13 @@
  * Translates C-style struct declarations (without methods) to C structs.
  * Handles basic structs, nested structs, and forward declarations.
  *
- * Scope (Phase 43):
+ * Scope (Phase 43 + Phase 44 Task 2):
  * - C-style struct declarations (no methods)
  * - Field declarations
  * - Nested struct declarations
  * - Forward struct declarations
  * - Class keyword normalization to struct
+ * - Access specifier stripping (public/private/protected ignored, C has no access control)
  *
  * Out of Scope (Future):
  * - Methods (handled by MethodHandler in Phase 44)
