@@ -258,6 +258,8 @@ add_library(cpptoc_core STATIC
     src/handlers/MethodHandler.cpp
     src/handlers/ConstructorHandler.cpp
     src/handlers/DestructorHandler.cpp
+    # Phase 45-01: Helpers
+    src/helpers/VtableTypedefGenerator.cpp
 )
 
 target_compile_definitions(cpptoc_core PRIVATE ${LLVM_DEFINITIONS})
@@ -4186,6 +4188,32 @@ target_link_libraries(MethodHandlerTest PRIVATE
 )
 
 gtest_discover_tests(MethodHandlerTest
+    WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
+)
+
+# Phase 45-01 Task 1: VtableTypedefGenerator Tests
+add_executable(VtableTypedefGeneratorTest
+    tests/unit/helpers/VtableTypedefGeneratorTest.cpp
+)
+
+target_include_directories(VtableTypedefGeneratorTest PRIVATE
+    ${CMAKE_SOURCE_DIR}/tests/fixtures
+    ${CMAKE_SOURCE_DIR}/include
+    ${LLVM_INCLUDE_DIRS}
+    ${CLANG_INCLUDE_DIRS}
+)
+
+target_link_libraries(VtableTypedefGeneratorTest PRIVATE
+    test_fixtures
+    cpptoc_core
+    clangTooling
+    clangAST
+    clangBasic
+    GTest::gtest
+    GTest::gtest_main
+)
+
+gtest_discover_tests(VtableTypedefGeneratorTest
     WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
 )
 
