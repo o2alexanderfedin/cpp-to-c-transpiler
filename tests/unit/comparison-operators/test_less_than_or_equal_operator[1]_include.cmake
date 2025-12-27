@@ -1,0 +1,5 @@
+if(EXISTS "/Users/alexanderfedin/Projects/hapyy/hupyy-cpp-to-c/tests/unit/comparison-operators/test_less_than_or_equal_operator[1]_tests.cmake")
+  include("/Users/alexanderfedin/Projects/hapyy/hupyy-cpp-to-c/tests/unit/comparison-operators/test_less_than_or_equal_operator[1]_tests.cmake")
+else()
+  add_test(test_less_than_or_equal_operator_NOT_BUILT test_less_than_or_equal_operator_NOT_BUILT)
+endif()

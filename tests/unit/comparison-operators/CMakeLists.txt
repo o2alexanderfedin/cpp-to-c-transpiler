@@ -34,26 +34,102 @@ separate_arguments(LLVM_DEFINITIONS_LIST NATIVE_COMMAND ${LLVM_DEFINITIONS})
 add_definitions(${LLVM_DEFINITIONS_LIST})
 
 # Test executables for comparison operators
+add_executable(test_less_than_operator
+    LessThanOperatorTest.cpp
+)
+
 add_executable(test_less_than_or_equal_operator
     LessThanOrEqualOperatorTest.cpp
 )
 
-# Link libraries
-target_link_libraries(test_less_than_or_equal_operator
-    GTest::gtest
-    GTest::gtest_main
-    clangTooling
-    clangFrontend
-    clangBasic
-    clangAST
-    clangLex
+add_executable(test_greater_than_operator
+    GreaterThanOperatorTest.cpp
 )
+
+add_executable(test_greater_than_or_equal_operator
+    GreaterThanOrEqualOperatorTest.cpp
+)
+
+add_executable(test_equality_operator
+    EqualityOperatorTest.cpp
+)
+
+add_executable(test_inequality_operator
+    InequalityOperatorTest.cpp
+)
+
+add_executable(test_logical_not_operator
+    LogicalNotOperatorTest.cpp
+)
+
+add_executable(test_logical_or_operator
+    LogicalOrOperatorTest.cpp
+)
+
+# Link libraries - reusable for all test executables
+function(link_comparison_test TEST_TARGET)
+    target_link_libraries(${TEST_TARGET}
+        GTest::gtest
+        GTest::gtest_main
+        clangTooling
+        clangFrontend
+        clangBasic
+        clangAST
+        clangLex
+    )
+endfunction()
+
+# Link all test executables
+link_comparison_test(test_less_than_operator)
+link_comparison_test(test_less_than_or_equal_operator)
+link_comparison_test(test_greater_than_operator)
+link_comparison_test(test_greater_than_or_equal_operator)
+link_comparison_test(test_equality_operator)
+link_comparison_test(test_inequality_operator)
+link_comparison_test(test_logical_not_operator)
+link_comparison_test(test_logical_or_operator)
 
 # Enable testing
 enable_testing()
 include(GoogleTest)
 
+# Register tests with GoogleTest discovery
+gtest_discover_tests(test_less_than_operator
+    WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
+    PROPERTIES LABELS "unit;comparison-operators;less-than"
+)
+
 gtest_discover_tests(test_less_than_or_equal_operator
     WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
     PROPERTIES LABELS "unit;comparison-operators;less-than-or-equal"
+)
+
+gtest_discover_tests(test_greater_than_operator
+    WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
+    PROPERTIES LABELS "unit;comparison-operators;greater-than"
+)
+
+gtest_discover_tests(test_greater_than_or_equal_operator
+    WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
+    PROPERTIES LABELS "unit;comparison-operators;greater-than-or-equal"
+)
+
+gtest_discover_tests(test_equality_operator
+    WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
+    PROPERTIES LABELS "unit;comparison-operators;equality"
+)
+
+gtest_discover_tests(test_inequality_operator
+    WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
+    PROPERTIES LABELS "unit;comparison-operators;inequality"
+)
+
+gtest_discover_tests(test_logical_not_operator
+    WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
+    PROPERTIES LABELS "unit;comparison-operators;logical-not"
+)
+
+gtest_discover_tests(test_logical_or_operator
+    WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
+    PROPERTIES LABELS "unit;comparison-operators;logical-or"
 )

@@ -1,0 +1,11 @@
+LessThanOrEqualOperatorTest.BasicLessThanOrEqual 1 0.0505291
+LessThanOrEqualOperatorTest.LessThanOrEqualConstCorrectness 1 0.0329638
+LessThanOrEqualOperatorTest.FriendLessThanOrEqual 1 0.0305082
+LessThanOrEqualOperatorTest.LessThanOrEqualEquivalence 1 0.0318058
+LessThanOrEqualOperatorTest.LessThanOrEqualReflexivity 1 0.0312967
+LessThanOrEqualOperatorTest.LessThanOrEqualTransitivity 1 0.0305817
+LessThanOrEqualOperatorTest.LessThanOrEqualComplexType 1 0.0319433
+LessThanOrEqualOperatorTest.LessThanOrEqualCallSite 1 0.0315362
+LessThanOrEqualOperatorTest.LessThanOrEqualWithDifferentTypes 1 0.0306392
+LessThanOrEqualOperatorTest.LessThanOrEqualInContainer 1 0.0314365
+---
