@@ -12,6 +12,7 @@
  */
 
 #include "handlers/StatementHandler.h"
+#include "handlers/ExpressionHandler.h"
 #include "handlers/HandlerContext.h"
 #include "clang/AST/Stmt.h"
 #include "clang/AST/Expr.h"
@@ -216,16 +217,95 @@ clang::SwitchStmt* StatementHandler::translateSwitchStmt(
     const clang::SwitchStmt* SS,
     HandlerContext& ctx
 ) {
-    // TODO: Task 8 - Implement switch translation
-    return const_cast<clang::SwitchStmt*>(SS);
+    // Phase 47 Task 8: Translate switch statement
+    // Strategy: Translate condition expression and body recursively
+
+    clang::ASTContext& cCtx = ctx.getCContext();
+
+    // Translate the condition expression
+    const clang::Expr* cppCond = SS->getCond();
+    clang::Expr* cCond = nullptr;
+    if (cppCond) {
+        // Get ExpressionHandler from context
+        ExpressionHandler exprHandler;
+        cCond = exprHandler.handleExpr(cppCond, ctx);
+    }
+
+    // Translate the body (recursively handles all case/default statements)
+    const clang::Stmt* cppBody = SS->getBody();
+    clang::Stmt* cBody = nullptr;
+    if (cppBody) {
+        cBody = handleStmt(cppBody, ctx);
+    }
+
+    // Create new SwitchStmt
+    clang::SwitchStmt* cSwitch = clang::SwitchStmt::Create(
+        cCtx,
+        nullptr,  // No init statement (C99 doesn't support this)
+        nullptr,  // No condition variable
+        cCond,    // Translated condition
+        SS->getLParenLoc(),
+        SS->getRParenLoc()
+    );
+
+    // Set body
+    if (cBody) {
+        cSwitch->setBody(cBody);
+    }
+
+    return cSwitch;
 }
 
 clang::CaseStmt* StatementHandler::translateCaseStmt(
     const clang::CaseStmt* CS,
     HandlerContext& ctx
 ) {
-    // TODO: Task 8 - Implement case translation
-    return const_cast<clang::CaseStmt*>(CS);
+    // Phase 47 Task 8: Translate case statement
+    // Strategy: Translate the case value expression (e.g., GameState::Menu → GameState__Menu)
+    //           and recursively translate the sub-statement
+
+    clang::ASTContext& cCtx = ctx.getCContext();
+
+    // Translate the case value expression
+    const clang::Expr* cppLHS = CS->getLHS();
+    clang::Expr* cLHS = nullptr;
+    if (cppLHS) {
+        // Get ExpressionHandler from context
+        ExpressionHandler exprHandler;
+        cLHS = exprHandler.handleExpr(cppLHS, ctx);
+    }
+
+    // Handle RHS for case ranges (GNU extension, rare)
+    const clang::Expr* cppRHS = CS->getRHS();
+    clang::Expr* cRHS = nullptr;
+    if (cppRHS) {
+        ExpressionHandler exprHandler;
+        cRHS = exprHandler.handleExpr(cppRHS, ctx);
+    }
+
+    // Translate the sub-statement (the code under this case)
+    const clang::Stmt* cppSubStmt = CS->getSubStmt();
+    clang::Stmt* cSubStmt = nullptr;
+    if (cppSubStmt) {
+        cSubStmt = handleStmt(cppSubStmt, ctx);
+    }
+
+    // Create new CaseStmt
+    clang::CaseStmt* cCase = clang::CaseStmt::Create(
+        cCtx,
+        cLHS,                 // Translated case value
+        cRHS,                 // Translated RHS (or nullptr)
+        CS->getCaseLoc(),     // Source location
+        CS->getEllipsisLoc(), // Ellipsis location (for ranges)
+        CS->getColonLoc()     // Colon location
+    );
+
+    // Set sub-statement
+    if (cSubStmt) {
+        cCase->setSubStmt(cSubStmt);
+    }
+
+    return cCase;
 }
 
 clang::DefaultStmt* StatementHandler::translateDefaultStmt(
@@ -411,7 +491,7 @@ clang::Stmt* StatementHandler::translateDeclStmt(
             // needs special handling by returning a CompoundStmt
             // This will make tests pass incrementally as we implement ctor calls
         } else {
-            // For non-class types, just pass through
+            // For non-class types (int, enum, etc.), translate declaration and initializer
             // Create C variable declaration
             clang::IdentifierInfo& II = cContext.Idents.get(varDecl->getNameAsString());
             clang::QualType cType = ctx.translateType(type);
@@ -426,6 +506,17 @@ clang::Stmt* StatementHandler::translateDeclStmt(
                 cContext.getTrivialTypeSourceInfo(cType),
                 clang::SC_None
             );
+
+            // Phase 47: Translate initializer if present
+            if (varDecl->hasInit()) {
+                clang::Expr* cppInit = varDecl->getInit();
+                // Get ExpressionHandler from context to translate initializer
+                ExpressionHandler exprHandler;
+                clang::Expr* cInit = exprHandler.handleExpr(cppInit, ctx);
+                if (cInit) {
+                    cVarDecl->setInit(cInit);
+                }
+            }
 
             ctx.registerDecl(varDecl, cVarDecl);
 

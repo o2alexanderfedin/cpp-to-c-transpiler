@@ -19,6 +19,7 @@
 #include "FileOriginTracker.h"
 #include "FileOriginFilter.h"
 #include "MoveAssignmentTranslator.h"
+#include "handlers/EnumTranslator.h"
 #include "MoveConstructorTranslator.h"
 #include "MultidimSubscriptTranslator.h"
 #include "NameMangler.h"
@@ -144,6 +145,9 @@ class CppToCVisitor : public clang::RecursiveASTVisitor<CppToCVisitor> {
   std::unique_ptr<AutoDecayCopyTranslator> m_autoDecayTrans;
   std::unique_ptr<ConstexprEnhancementHandler> m_constexprHandler;
 
+  // Phase 47: Scoped enum translation
+  std::unique_ptr<cpptoc::EnumTranslator> m_enumTranslator;
+
   // Current translation context (Story #19)
   clang::ParmVarDecl *currentThisParam = nullptr;
   clang::CXXMethodDecl *currentMethod = nullptr;
@@ -254,6 +258,11 @@ public:
 
   // Bug #23: Visit enum declarations to translate enum class to C typedef enum
   bool VisitEnumDecl(clang::EnumDecl *ED);
+
+  // Phase 47-01 Group 1 Task 1: Extract underlying type from EnumDecl
+  // Returns the underlying integer type of an enum (e.g., uint8_t, int32_t)
+  // Returns QualType() if no explicit type is specified
+  clang::QualType extractUnderlyingType(const clang::EnumDecl *ED) const;
 
   // Visit compound statements for scope tracking (Story #46)
   bool VisitCompoundStmt(clang::CompoundStmt *CS);

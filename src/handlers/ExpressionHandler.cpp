@@ -32,6 +32,7 @@ bool ExpressionHandler::canHandle(const clang::Expr* E) const {
            llvm::isa<clang::BinaryOperator>(E) ||
            llvm::isa<clang::UnaryOperator>(E) ||
            llvm::isa<clang::DeclRefExpr>(E) ||
+           llvm::isa<clang::ConstantExpr>(E) ||  // Phase 47: enum constants in case statements
            llvm::isa<clang::ParenExpr>(E) ||
            llvm::isa<clang::ImplicitCastExpr>(E) ||
            llvm::isa<clang::CStyleCastExpr>(E) ||
@@ -69,6 +70,11 @@ clang::Expr* ExpressionHandler::handleExpr(const clang::Expr* E, HandlerContext&
     }
     if (auto* DRE = llvm::dyn_cast<clang::DeclRefExpr>(E)) {
         return translateDeclRefExpr(DRE, ctx);
+    }
+    // Phase 47: Handle ConstantExpr wrapper (used for case statements, enum constants)
+    if (auto* CE = llvm::dyn_cast<clang::ConstantExpr>(E)) {
+        // ConstantExpr is just a wrapper - unwrap and translate the sub-expression
+        return handleExpr(CE->getSubExpr(), ctx);
     }
     if (auto* PE = llvm::dyn_cast<clang::ParenExpr>(E)) {
         return translateParenExpr(PE, ctx);

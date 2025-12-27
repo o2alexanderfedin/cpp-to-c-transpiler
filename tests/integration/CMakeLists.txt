@@ -158,6 +158,23 @@ target_include_directories(MultipleInheritanceIntegrationTest PRIVATE
     ${CMAKE_SOURCE_DIR}/../../src
 )
 
+# Phase 47: Scoped Enums Integration Tests
+add_executable(EnumIntegrationTest
+    handlers/EnumIntegrationTest.cpp
+    ${CMAKE_SOURCE_DIR}/../../src/handlers/HandlerContext.cpp
+    ${CMAKE_SOURCE_DIR}/../../src/handlers/FunctionHandler.cpp
+    ${CMAKE_SOURCE_DIR}/../../src/handlers/VariableHandler.cpp
+    ${CMAKE_SOURCE_DIR}/../../src/handlers/ExpressionHandler.cpp
+    ${CMAKE_SOURCE_DIR}/../../src/handlers/StatementHandler.cpp
+    ${CMAKE_SOURCE_DIR}/../../src/BaseOffsetCalculator.cpp
+)
+target_link_libraries(EnumIntegrationTest GTest::gtest GTest::gtest_main ${CLANG_LIBS})
+target_include_directories(EnumIntegrationTest PRIVATE
+    ${CMAKE_SOURCE_DIR}/../../include
+    ${CMAKE_SOURCE_DIR}/../../include/handlers
+    ${CMAKE_SOURCE_DIR}/../../src
+)
+
 # Enable testing
 enable_testing()
 include(GoogleTest)
@@ -192,6 +209,10 @@ gtest_discover_tests(MultipleInheritanceIntegrationTest
     WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
     PROPERTIES LABELS "integration;multiple_inheritance;phase46"
 )
+gtest_discover_tests(EnumIntegrationTest
+    WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
+    PROPERTIES LABELS "integration;enums;phase47"
+)
 
 message(STATUS "Integration tests configured:")
 message(STATUS "  - FeatureInteractionTest: 30 tests")
@@ -205,4 +226,5 @@ message(STATUS "  - StructsIntegrationTest: 25 tests (Phase 43)")
 message(STATUS "  - ClassesIntegrationTest: 35 tests (Phase 44)")
 message(STATUS "  - VirtualMethodsIntegrationTest: 35 tests (Phase 45)")
 message(STATUS "  - MultipleInheritanceIntegrationTest: 37 tests (Phase 46)")
-message(STATUS "  Total: 302 integration tests")
+message(STATUS "  - EnumIntegrationTest: 12 tests (Phase 47)")
+message(STATUS "  Total: 314 integration tests")

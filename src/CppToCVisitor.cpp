@@ -1,4 +1,5 @@
 #include "CppToCVisitor.h"
+#include "handlers/HandlerContext.h"
 #include "CFGAnalyzer.h"
 #include "MethodSignatureHelper.h"
 #include "TargetContext.h"
@@ -137,12 +138,16 @@ CppToCVisitor::CppToCVisitor(ASTContext &Context, CNodeBuilder &Builder,
   m_constexprHandler = std::make_unique<ConstexprEnhancementHandler>(Builder);
   llvm::outs() << "auto(x) decay-copy and partial constexpr support initialized (C++23 P0849R8)\n";
 
+  // Phase 47: Initialize scoped enum translator
+  m_enumTranslator = std::make_unique<cpptoc::EnumTranslator>();
+  llvm::outs() << "Scoped enum translation support initialized (Phase 47)\n";
+
   // Phase 35-02 (Bug #30 FIX): C_TranslationUnit passed as constructor parameter
   // Each source file has its own C_TU in the shared target context
   llvm::outs() << "[Bug #30 FIX] CppToCVisitor using C_TU @ " << (void*)C_TranslationUnit << "\n";
 }
 
-// Bug #23: Enum Class Translation - Convert C++11 enum class to C typedef enum
+// Phase 47: Enum Class Translation using EnumTranslator handler
 bool CppToCVisitor::VisitEnumDecl(EnumDecl *ED) {
   // Skip declarations from non-transpilable files (system headers, etc.)
   if (!fileOriginTracker.shouldTranspile(ED)) {
@@ -161,59 +166,36 @@ bool CppToCVisitor::VisitEnumDecl(EnumDecl *ED) {
 
   llvm::outs() << "Translating enum: " << ED->getNameAsString() << "\n";
 
-  // Bug #37 FIX: Detect scoped enums (enum class) and preserve scoping in C
-  // In C++: enum class GameState { Menu, Playing };
-  // In C: enum { GameState__Menu, GameState__Playing };
-  bool isScoped = ED->isScoped();
-  if (isScoped) {
-    llvm::outs() << "  -> Scoped enum detected, will prefix enumerators with " << ED->getNameAsString() << "__\n";
+  // Phase 47: Use EnumTranslator handler for translation
+  // Create HandlerContext for enum translation
+  cpptoc::HandlerContext ctx(Context, Builder.getContext(), Builder);
+
+  // Delegate to EnumTranslator
+  clang::Decl* C_Enum = m_enumTranslator->handleDecl(ED, ctx);
+
+  if (!C_Enum) {
+    llvm::outs() << "  -> ERROR: EnumTranslator returned nullptr for enum "
+                 << ED->getNameAsString() << "\n";
+    return false;
   }
 
-  // Create C enum using CNodeBuilder
-  // Note: C enums are not scoped, so we use plain enum (not enum class)
-  std::vector<std::pair<llvm::StringRef, int>> enumerators;
-
-  // Collect enum constants
-  for (EnumConstantDecl *ECD : ED->enumerators()) {
-    // Get the constant value
-    int value = ECD->getInitVal().getSExtValue();
-
-    // Bug #37 FIX: For scoped enums, prefix enumerator name with EnumName__
-    std::string enumeratorName;
-    if (isScoped) {
-      enumeratorName = ED->getNameAsString() + "__" + ECD->getName().str();
-      llvm::outs() << "  Enumerator: " << ECD->getName() << " -> " << enumeratorName << " = " << value << "\n";
-    } else {
-      enumeratorName = ECD->getName().str();
-      llvm::outs() << "  Enumerator: " << ECD->getName() << " = " << value << "\n";
-    }
-
-    enumerators.push_back({Context.Idents.get(enumeratorName).getName(), value});
-  }
-
-  // Create C enum with same name
-  // In C, we use typedef enum { ... } TypeName;
-  EnumDecl *CEnum = Builder.enumDecl(ED->getName(), enumerators);
-
-  // Add to C TranslationUnit
-  C_TranslationUnit->addDecl(CEnum);
-
-  // Bug #37 FIX: For scoped enums, populate enumConstantMap to translate references
-  if (isScoped) {
-    // Map C++ enum constants to C enum constants
-    auto cppEnumIt = ED->enumerator_begin();
-    auto cEnumIt = CEnum->enumerator_begin();
-    while (cppEnumIt != ED->enumerator_end() && cEnumIt != CEnum->enumerator_end()) {
-      enumConstantMap[*cppEnumIt] = *cEnumIt;
-      llvm::outs() << "    Mapped: " << (*cppEnumIt)->getName() << " (C++) -> "
-                   << (*cEnumIt)->getName() << " (C)\n";
-      ++cppEnumIt;
-      ++cEnumIt;
+  // Note: EnumTranslator already registers enum and constant mappings in ctx
+  // But CppToCVisitor still uses enumConstantMap for backward compatibility
+  // Update enumConstantMap from HandlerContext registrations
+  if (ED->isScoped()) {
+    for (const EnumConstantDecl* CPP_ECD : ED->enumerators()) {
+      // Lookup translated constant from HandlerContext
+      if (clang::Decl* C_Decl = ctx.lookupDecl(CPP_ECD)) {
+        if (auto* C_ECD = llvm::dyn_cast<EnumConstantDecl>(C_Decl)) {
+          enumConstantMap[CPP_ECD] = C_ECD;
+          llvm::outs() << "    Mapped: " << CPP_ECD->getName() << " (C++) -> "
+                       << C_ECD->getName() << " (C)\n";
+        }
+      }
     }
   }
 
-  llvm::outs() << "  -> C enum " << ED->getNameAsString() << " with "
-               << enumerators.size() << " values\n";
+  llvm::outs() << "  -> C enum " << ED->getNameAsString() << " created via EnumTranslator\n";
 
   return true;
 }

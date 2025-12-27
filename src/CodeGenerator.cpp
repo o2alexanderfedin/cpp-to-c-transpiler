@@ -101,10 +101,9 @@ void CodeGenerator::printDecl(Decl *D, bool declarationOnly) {
         }
     } else if (auto *ED = dyn_cast<EnumDecl>(D)) {
         // Bug #23: Print enum as typedef enum for C compatibility
-        if (declarationOnly) {
-            printEnumDecl(ED);
-        }
-        // When declarationOnly=false, skip enum definitions (already in header)
+        // Phase 47 fix: Always print enum definitions (they're type defs, not declarations)
+        // Enums need to be emitted in the output regardless of declarationOnly flag
+        printEnumDecl(ED);
     } else if (auto *RD = dyn_cast<RecordDecl>(D)) {
         // Bug #24: Use custom printer for struct to add 'struct' prefixes
         // Struct definitions should only be in header files
@@ -158,10 +157,6 @@ void CodeGenerator::printStmt(Stmt *S, unsigned Indent) {
     // ReturnStmt nodes created by translateReturnStmt() need manual printing
     // because printPretty() looks at source locations and prints original source
     if (ReturnStmt *RS = dyn_cast<ReturnStmt>(S)) {
-        llvm::outs() << "[DEBUG CodeGen] Manually printing ReturnStmt\n";
-        if (Expr *RetValue = RS->getRetValue()) {
-            llvm::outs() << "[DEBUG CodeGen] Return value type: " << RetValue->getStmtClassName() << "\n";
-        }
         OS << std::string(Indent, '\t') << "return";
         if (Expr *RetValue = RS->getRetValue()) {
             OS << " ";
@@ -237,6 +232,34 @@ void CodeGenerator::printStmt(Stmt *S, unsigned Indent) {
         if (Stmt *SubStmt = DS->getSubStmt()) {
             printStmt(SubStmt, Indent + 1);
         }
+        return;
+    }
+
+    // Phase 47: Handle DeclStmt manually to use custom expression printing
+    if (DeclStmt *DS = dyn_cast<DeclStmt>(S)) {
+        OS << std::string(Indent, '\t');
+        // Print each declaration in the DeclStmt
+        bool first = true;
+        for (auto *D : DS->decls()) {
+            if (!first) OS << ", ";
+            first = false;
+
+            if (VarDecl *VD = dyn_cast<VarDecl>(D)) {
+                // Print type and name
+                VD->getType().print(OS, Policy);
+                OS << " " << VD->getNameAsString();
+
+                // Print initializer if present
+                if (VD->hasInit()) {
+                    OS << " = ";
+                    printExpr(VD->getInit());  // Use custom printExpr to handle enum constants
+                }
+            } else {
+                // For other declaration types, use default printing
+                D->print(OS, Policy);
+            }
+        }
+        OS << ";\n";
         return;
     }
 
@@ -343,12 +366,22 @@ bool CodeGenerator::containsRecoveryExpr(Expr *E) {
     return false;
 }
 
-// Bug #23: Print enum as typedef enum for C compatibility
+// Bug #23 / Phase 47 Task 2: Print enum as typedef enum for C compatibility
 void CodeGenerator::printEnumDecl(EnumDecl *ED) {
     if (!ED) return;
 
-    // Print as: typedef enum { ... } TypeName;
-    OS << "typedef enum {\n";
+    // Phase 47 Group 1 Task 2: Decision - use typedef or inline enum?
+    // For C99 compatibility, always use typedef (see shouldUseTypedef())
+    bool useTypedef = shouldUseTypedef(ED);
+
+    if (useTypedef) {
+        // C99 approach: typedef enum { ... } TypeName;
+        OS << "typedef enum {\n";
+    } else {
+        // C23 approach (future): enum Name : Type { ... };
+        // Not implemented yet - would emit: enum Name : type {\n
+        OS << "enum " << ED->getNameAsString() << " {\n";
+    }
 
     // Print enumerators
     bool first = true;
@@ -367,7 +400,14 @@ void CodeGenerator::printEnumDecl(EnumDecl *ED) {
         }
     }
 
-    OS << "\n} " << ED->getNameAsString() << ";\n";
+    // Close enum declaration
+    if (useTypedef) {
+        // C99: closing brace with typedef name
+        OS << "\n} " << ED->getNameAsString() << ";\n";
+    } else {
+        // C23 (future): just closing brace
+        OS << "\n};\n";
+    }
 }
 
 // Bug #24: Print struct with 'struct' prefix for field types
@@ -651,8 +691,9 @@ void CodeGenerator::printExpr(Expr *E) {
     if (DeclRefExpr *DRE = dyn_cast<DeclRefExpr>(Unwrapped)) {
         if (EnumConstantDecl *ECD = dyn_cast<EnumConstantDecl>(DRE->getDecl())) {
             // Bug #42: Print the enum constant name (should already be prefixed for scoped enums)
+            // Phase 47: The enum constant name in C AST should already have the prefix (e.g., GameState__Playing)
+            // We just print the name, ignoring any C++ nested name specifier
             std::string enumName = ECD->getNameAsString();
-            llvm::outs() << "[DEBUG printExpr] Enum constant: " << enumName << "\n";
             OS << enumName;
             return;
         }

@@ -58,6 +58,14 @@ public:
    */
   explicit CNodeBuilder(ASTContext &Ctx) : Ctx(Ctx) {}
 
+  /**
+   * @brief Get the ASTContext used by this builder
+   * @return Reference to ASTContext
+   *
+   * Allows handlers to access context for creating nodes directly.
+   */
+  ASTContext& getContext() { return Ctx; }
+
   // ========================================================================
   // Type Helpers (Story #9)
   // ========================================================================

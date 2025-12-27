@@ -261,6 +261,8 @@ add_library(cpptoc_core STATIC
     src/handlers/MethodHandler.cpp
     src/handlers/ConstructorHandler.cpp
     src/handlers/DestructorHandler.cpp
+    # Phase 47-01: Enum translator
+    src/handlers/EnumTranslator.cpp
     # Phase 45-01: Helpers
     src/helpers/VtableTypedefGenerator.cpp
 )
@@ -2709,6 +2711,39 @@ gtest_discover_tests(CoroutineIntegrationTest
 )
 
 # ============================================================================
+# Phase 47: Scoped Enums - Group 1, Task 2 - Typedef Generation
+# ============================================================================
+
+# Phase 47 Group 1 Task 2: Enum Typedef Generation Tests
+add_executable(EnumTypedefTest
+    tests/EnumTypedefTest.cpp
+)
+
+target_compile_definitions(EnumTypedefTest PRIVATE ${LLVM_DEFINITIONS})
+
+target_include_directories(EnumTypedefTest PRIVATE
+    ${CMAKE_SOURCE_DIR}/include
+    ${LLVM_INCLUDE_DIRS}
+    ${CLANG_INCLUDE_DIRS}
+)
+
+target_link_libraries(EnumTypedefTest PRIVATE
+    cpptoc_core
+    clangTooling
+    clangFrontend
+    clangAST
+    clangBasic
+    GTest::gtest
+    GTest::gtest_main
+)
+
+# Register with CTest
+gtest_discover_tests(EnumTypedefTest
+    WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
+    PROPERTIES LABELS "unit;enum;phase47"
+)
+
+# ============================================================================
 # Epic #16: Runtime Optimization & Configuration (Story #116)
 # ============================================================================
 
@@ -4650,6 +4685,58 @@ gtest_discover_tests(MethodHandlerTest
     WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
 )
 
+# Phase 47-01 Group 1 Task 1: Enum Underlying Type Extraction Tests
+add_executable(EnumUnderlyingTypeTest
+    tests/unit/handlers/EnumUnderlyingTypeTest.cpp
+)
+
+target_include_directories(EnumUnderlyingTypeTest PRIVATE
+    ${CMAKE_SOURCE_DIR}/tests/fixtures
+    ${CMAKE_SOURCE_DIR}/include
+    ${LLVM_INCLUDE_DIRS}
+    ${CLANG_INCLUDE_DIRS}
+)
+
+target_link_libraries(EnumUnderlyingTypeTest PRIVATE
+    test_fixtures
+    cpptoc_core
+    clangTooling
+    clangAST
+    clangBasic
+    GTest::gtest
+    GTest::gtest_main
+)
+
+gtest_discover_tests(EnumUnderlyingTypeTest
+    WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
+)
+
+# Phase 47-01 Group 2 Task 3: EnumTranslator Unit Tests
+add_executable(EnumTranslatorTest
+    tests/unit/handlers/EnumTranslatorTest.cpp
+)
+
+target_include_directories(EnumTranslatorTest PRIVATE
+    ${CMAKE_SOURCE_DIR}/tests/fixtures
+    ${CMAKE_SOURCE_DIR}/include
+    ${LLVM_INCLUDE_DIRS}
+    ${CLANG_INCLUDE_DIRS}
+)
+
+target_link_libraries(EnumTranslatorTest PRIVATE
+    test_fixtures
+    cpptoc_core
+    clangTooling
+    clangAST
+    clangBasic
+    GTest::gtest
+    GTest::gtest_main
+)
+
+gtest_discover_tests(EnumTranslatorTest
+    WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
+)
+
 # Phase 45-01 Task 1: VtableTypedefGenerator Tests
 add_executable(VtableTypedefGeneratorTest
     tests/unit/helpers/VtableTypedefGeneratorTest.cpp
@@ -5007,6 +5094,33 @@ target_link_libraries(MultipleInheritanceE2ETest PRIVATE
 )
 
 gtest_discover_tests(MultipleInheritanceE2ETest
+    WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
+)
+
+# ============================================================================
+# Phase 47: Scoped Enum E2E Tests
+# ============================================================================
+
+add_executable(EnumE2ETest
+    tests/e2e/phase47/EnumE2ETest.cpp
+)
+
+target_include_directories(EnumE2ETest PRIVATE
+    ${CMAKE_SOURCE_DIR}/include
+    ${LLVM_INCLUDE_DIRS}
+    ${CLANG_INCLUDE_DIRS}
+)
+
+target_link_libraries(EnumE2ETest PRIVATE
+    cpptoc_core
+    clangTooling
+    clangAST
+    clangBasic
+    GTest::gtest
+    GTest::gtest_main
+)
+
+gtest_discover_tests(EnumE2ETest
     WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
 )
 

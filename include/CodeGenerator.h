@@ -75,10 +75,26 @@ private:
     /// BUG FIX: Prevents literal "<recovery-expr>()" from appearing in generated C code
     bool containsRecoveryExpr(clang::Expr *E);
 
+    // Phase 47 Group 1 Task 2: Typedef generation decision logic
+    /// @brief Determine if enum should use typedef (C99) or inline type (C23)
+    /// @param ED Enum declaration to check
+    /// @return true if typedef should be used (always true for C99 compatibility)
+    /// @note C99 approach: ALWAYS use typedef for maximum compatibility
+    /// @note C23 approach (future): Could use inline enum Name : Type { ... }
+    /// @note Current implementation: C99 (typedef for all enums)
+    bool shouldUseTypedef(clang::EnumDecl *ED) const {
+        // C99 compatibility: Always use typedef for all enums
+        // This ensures the enum type name can be used without "enum" prefix
+        // Example: typedef enum { Red, Green } Color; allows "Color c;" instead of "enum Color c;"
+        (void)ED; // Unused in C99 mode
+        return true;
+    }
+
     // Bug #23: Print enum as typedef enum for C compatibility
     /// @brief Print enum declaration as C typedef enum
     /// @param ED Enum declaration to print
     /// BUG FIX: Prints "typedef enum { ... } Name;" instead of "enum Name : int { ... };"
+    /// PHASE 47: Uses shouldUseTypedef() to determine typedef vs inline (always typedef in C99)
     void printEnumDecl(clang::EnumDecl *ED);
 
     // Bug #24: Print struct with 'struct' prefixes for field types
