@@ -83,6 +83,19 @@ This project implements a C++ to C transpiler that produces high-quality, human-
   - ✅ **Function behaviors** (v1.22.0) - Named behaviors with completeness/disjointness
   - ✅ **Memory predicates** (v1.23.0) - allocable, freeable, block_length, base_addr
   - ✅ **Frama-C Integration** (v2.0.0) - WP proof success ≥80%, EVA alarm reduction ≥50%
+- ✅ **Operator Overloading** (v2.11.0) - Complete operator overload support
+  - ✅ **Phase 50: Arithmetic Operators** (v2.10.0) - `+`, `-`, `*`, `/`, `%`, `++`, `--`, compound assignment
+    - ✅ **Binary arithmetic** - Addition, subtraction, multiplication, division, modulo
+    - ✅ **Unary operators** - Unary negation
+    - ✅ **Increment/Decrement** - Prefix and postfix `++` and `--`
+    - ✅ **Compound assignment** - `+=`, `-=`, `*=`, `/=`
+  - ✅ **Phase 51: Comparison & Logical Operators** (v2.11.0) - Sorting, searching, conditionals
+    - ✅ **Relational operators** - `<`, `>`, `<=`, `>=` for natural ordering
+    - ✅ **Equality operators** - `==`, `!=` for value comparison
+    - ✅ **Logical operators** - `!` (logical NOT), `&&`, `||`
+    - ✅ **Member operators** - Implicit `this` parameter
+    - ✅ **Friend operators** - Non-member symmetric operations
+  - ⏳ **Phase 52: Special Operators** (v2.12.0, planned) - `[]`, `()`, `->`, `*`, `<<`, `>>`, conversion operators
 
 ## Architecture (v1.5.1)
 
