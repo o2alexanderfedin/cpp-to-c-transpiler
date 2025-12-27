@@ -16,6 +16,8 @@
 #include "handlers/HandlerContext.h"
 #include "handlers/RangeTypeAnalyzer.h"
 #include "handlers/LoopVariableAnalyzer.h"
+#include "handlers/ContainerLoopGenerator.h"
+#include "handlers/IteratorTypeAnalyzer.h"
 #include "clang/AST/Stmt.h"
 #include "clang/AST/Expr.h"
 #include "clang/AST/ExprCXX.h"
@@ -386,12 +388,21 @@ clang::ForStmt* StatementHandler::translateCXXForRangeStmt(
     LoopVariableAnalyzer loopVarAnalyzer;
     LoopVariableInfo loopVarInfo = loopVarAnalyzer.analyze(RFS);
 
-    // Currently only support C arrays
-    if (rangeInfo.rangeType != RangeType::CArray) {
-        // TODO: Implement container support in future phases
-        // For now, return nullptr to indicate unsupported
+    // Dispatch based on range type
+    if (rangeInfo.rangeType == RangeType::CustomType) {
+        // Phase 54 Extension: Handle custom containers with iterators
+        ContainerLoopGenerator containerGen(ctx);
+        return containerGen.generate(RFS, rangeInfo, loopVarInfo);
+    } else if (rangeInfo.rangeType == RangeType::STLContainer) {
+        // STL containers deferred to Phase 35 decision
+        // For now, return nullptr (unsupported)
+        return nullptr;
+    } else if (rangeInfo.rangeType != RangeType::CArray) {
+        // Unknown range type
         return nullptr;
     }
+
+    // Handle C arrays with index-based loop (existing implementation below)
 
     if (!rangeInfo.arraySize.has_value()) {
         // Cannot determine array size at compile time

@@ -5336,3 +5336,32 @@ add_custom_target(test-verbose
     COMMENT "Running tests with verbose output"
     USES_TERMINAL
 )
+
+
+# ============================================================================
+# Phase 54: Range-For Loops E2E Tests (Container Support)
+# ============================================================================
+
+add_executable(RangeForContainerTest
+    tests/e2e/phase54/RangeForContainerTest.cpp
+)
+
+target_include_directories(RangeForContainerTest PRIVATE
+    ${CMAKE_SOURCE_DIR}/include
+    ${LLVM_INCLUDE_DIRS}
+    ${CLANG_INCLUDE_DIRS}
+)
+
+target_link_libraries(RangeForContainerTest PRIVATE
+    cpptoc_core
+    clangTooling
+    clangAST
+    clangBasic
+    GTest::gtest
+    GTest::gtest_main
+)
+
+gtest_discover_tests(RangeForContainerTest
+    WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
+)
+
