@@ -288,6 +288,9 @@ public:
   // Phase 53-01: Visit type alias declarations (using X = Y)
   bool VisitTypeAliasDecl(clang::TypeAliasDecl *TAD);
 
+  // Phase 61: Reject C++20 modules with clear error message
+  bool VisitModuleDecl(clang::Decl *MD);
+
   // Visit compound statements for scope tracking (Story #46)
   bool VisitCompoundStmt(clang::CompoundStmt *CS);
 

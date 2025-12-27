@@ -272,6 +272,9 @@ add_library(cpptoc_core STATIC
     # Phase 54-01: Range-based for loop handlers
     src/handlers/RangeTypeAnalyzer.cpp
     src/handlers/LoopVariableAnalyzer.cpp
+    # Phase 54-Extension: Container support
+    src/handlers/IteratorTypeAnalyzer.cpp
+    src/handlers/ContainerLoopGenerator.cpp
     # Phase 45-01: Helpers
     src/helpers/VtableTypedefGenerator.cpp
     # Phase 49: Static member translator
@@ -5262,6 +5265,34 @@ target_link_libraries(EnumE2ETest PRIVATE
 )
 
 gtest_discover_tests(EnumE2ETest
+    WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
+)
+
+# ============================================================================
+# Phase 61: C++20 Module Rejection Tests
+# ============================================================================
+
+add_executable(Phase61ModuleRejectionTest
+    tests/integration/Phase61ModuleRejectionTest_gtest.cpp
+)
+
+target_include_directories(Phase61ModuleRejectionTest PRIVATE
+    ${CMAKE_SOURCE_DIR}/tests/integration
+    ${CMAKE_SOURCE_DIR}/include
+    ${LLVM_INCLUDE_DIRS}
+    ${CLANG_INCLUDE_DIRS}
+)
+
+target_link_libraries(Phase61ModuleRejectionTest PRIVATE
+    cpptoc_core
+    clangTooling
+    clangAST
+    clangBasic
+    GTest::gtest
+    GTest::gtest_main
+)
+
+gtest_discover_tests(Phase61ModuleRejectionTest
     WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
 )
 

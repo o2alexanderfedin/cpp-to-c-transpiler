@@ -255,6 +255,34 @@ bool CppToCVisitor::VisitTypeAliasDecl(TypeAliasDecl *TAD) {
   return true;
 }
 
+// Phase 61: Reject C++20 modules with clear error message
+// Decision: DEFERRED INDEFINITELY (see PLAN.md for rationale)
+bool CppToCVisitor::VisitModuleDecl(Decl *MD) {
+  // C++20 modules are not supported - C has no module system
+  // Transpilation would lose all module benefits (compilation speed, encapsulation)
+  // and result in identical code to traditional headers
+
+  llvm::errs() << "\n";
+  llvm::errs() << "ERROR: C++20 modules are not supported by the transpiler\n";
+  llvm::errs() << "  Location: " << MD->getLocation().printToString(Context.getSourceManager()) << "\n";
+  llvm::errs() << "\n";
+  llvm::errs() << "  Reason: C has no module system. Modules are a C++ compilation optimization\n";
+  llvm::errs() << "          that provides no semantic benefit when transpiling to C.\n";
+  llvm::errs() << "\n";
+  llvm::errs() << "  Migration Guide:\n";
+  llvm::errs() << "  1. Convert module interfaces to traditional header files (.h)\n";
+  llvm::errs() << "  2. Convert 'export module Name;' to 'name.h' with include guards\n";
+  llvm::errs() << "  3. Convert 'export <declaration>' to public declarations in header\n";
+  llvm::errs() << "  4. Convert 'import ModuleName;' to '#include \"module_name.h\"'\n";
+  llvm::errs() << "  5. Convert non-exported declarations to 'static' in implementation\n";
+  llvm::errs() << "\n";
+  llvm::errs() << "  See docs/UNSUPPORTED_FEATURES.md for detailed migration examples.\n";
+  llvm::errs() << "\n";
+
+  // Fail transpilation cleanly
+  return false;
+}
+
 // Story #15 + Story #50: Class-to-Struct Conversion with Base Class Embedding
 bool CppToCVisitor::VisitCXXRecordDecl(CXXRecordDecl *D) {
   // Phase 34 (v2.5.0): Skip declarations from non-transpilable files (system headers, etc.)
