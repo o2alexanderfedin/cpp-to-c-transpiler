@@ -283,3 +283,48 @@ std::string NameMangler::mangleStandaloneFunction(FunctionDecl *FD) {
     usedNames.insert(finalName);
     return finalName;
 }
+
+// ============================================================================
+// Phase 49: Static Data Member Support
+// ============================================================================
+
+std::string NameMangler::mangleStaticMember(CXXRecordDecl *RD, VarDecl *VD) {
+    // Extract namespace hierarchy
+    std::vector<std::string> namespaces = extractNamespaceHierarchy(RD);
+
+    // Build fully qualified class name with namespaces and nested classes
+    std::string qualifiedClassName;
+
+    // Add namespace prefix
+    for (const auto &ns : namespaces) {
+        qualifiedClassName += ns + "__";
+    }
+
+    // Add class hierarchy (handle nested classes)
+    // Walk up the parent chain to build: Outer__Inner__...
+    std::vector<std::string> classHierarchy;
+    const DeclContext *DC = RD;
+    while (DC && !DC->isTranslationUnit()) {
+        if (auto *parentRecord = dyn_cast<CXXRecordDecl>(DC)) {
+            classHierarchy.push_back(parentRecord->getNameAsString());
+        }
+        DC = DC->getParent();
+    }
+
+    // Reverse to get outermost-to-innermost order
+    std::reverse(classHierarchy.begin(), classHierarchy.end());
+
+    // Build class hierarchy: Outer__Inner__...
+    for (size_t i = 0; i < classHierarchy.size(); ++i) {
+        qualifiedClassName += classHierarchy[i];
+        if (i < classHierarchy.size() - 1) {
+            qualifiedClassName += "__";
+        }
+    }
+
+    // Add member name with double underscore separator
+    // Pattern: [ns__]Class__member or [ns__]Outer__Inner__member
+    std::string mangledName = qualifiedClassName + "__" + VD->getNameAsString();
+
+    return mangledName;
+}

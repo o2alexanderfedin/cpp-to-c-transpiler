@@ -265,6 +265,8 @@ add_library(cpptoc_core STATIC
     src/handlers/EnumTranslator.cpp
     # Phase 45-01: Helpers
     src/helpers/VtableTypedefGenerator.cpp
+    # Phase 49: Static member translator
+    src/helpers/StaticMemberTranslator.cpp
 )
 
 target_compile_definitions(cpptoc_core PRIVATE ${LLVM_DEFINITIONS})
@@ -436,6 +438,32 @@ target_link_libraries(NameManglerTest PRIVATE cpptoc_core
 
 # Register with CTest
 gtest_discover_tests(NameManglerTest
+    WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
+)
+
+# Phase 49 Task 1C: Static Member Name Mangling tests
+add_executable(NameManglerStaticMemberTest
+    tests/unit/helpers/NameManglerStaticMemberTest.cpp
+)
+
+target_compile_definitions(NameManglerStaticMemberTest PRIVATE ${LLVM_DEFINITIONS})
+
+target_include_directories(NameManglerStaticMemberTest PRIVATE
+    ${CMAKE_SOURCE_DIR}/include
+    ${LLVM_INCLUDE_DIRS}
+    ${CLANG_INCLUDE_DIRS}
+)
+
+target_link_libraries(NameManglerStaticMemberTest PRIVATE cpptoc_core
+    clangTooling
+    clangFrontend
+    clangAST
+    clangBasic
+    GTest::gtest
+    GTest::gtest_main)
+
+# Register with CTest
+gtest_discover_tests(NameManglerStaticMemberTest
     WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
 )
 
@@ -4760,6 +4788,58 @@ target_link_libraries(VtableTypedefGeneratorTest PRIVATE
 )
 
 gtest_discover_tests(VtableTypedefGeneratorTest
+    WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
+)
+
+# Phase 49: StaticMemberTranslator Tests
+add_executable(StaticMemberTranslatorTest
+    tests/unit/helpers/StaticMemberTranslatorTest.cpp
+)
+
+target_include_directories(StaticMemberTranslatorTest PRIVATE
+    ${CMAKE_SOURCE_DIR}/tests/fixtures
+    ${CMAKE_SOURCE_DIR}/include
+    ${LLVM_INCLUDE_DIRS}
+    ${CLANG_INCLUDE_DIRS}
+)
+
+target_link_libraries(StaticMemberTranslatorTest PRIVATE
+    test_fixtures
+    cpptoc_core
+    clangTooling
+    clangAST
+    clangBasic
+    GTest::gtest
+    GTest::gtest_main
+)
+
+gtest_discover_tests(StaticMemberTranslatorTest
+    WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
+)
+
+# Phase 49: Static Member Integration Tests
+add_executable(StaticMemberIntegrationTest
+    tests/integration/handlers/StaticMemberIntegrationTest.cpp
+)
+
+target_include_directories(StaticMemberIntegrationTest PRIVATE
+    ${CMAKE_SOURCE_DIR}/tests/fixtures
+    ${CMAKE_SOURCE_DIR}/include
+    ${LLVM_INCLUDE_DIRS}
+    ${CLANG_INCLUDE_DIRS}
+)
+
+target_link_libraries(StaticMemberIntegrationTest PRIVATE
+    test_fixtures
+    cpptoc_core
+    clangTooling
+    clangAST
+    clangBasic
+    GTest::gtest
+    GTest::gtest_main
+)
+
+gtest_discover_tests(StaticMemberIntegrationTest
     WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
 )
 
