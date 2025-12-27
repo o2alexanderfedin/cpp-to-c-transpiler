@@ -12,6 +12,7 @@
 #include "handlers/HandlerContext.h"
 #include "helpers/VtableTypedefGenerator.h"
 #include "MultipleInheritanceAnalyzer.h"
+#include "ThunkGenerator.h"
 #include "clang/AST/Decl.h"
 #include "clang/AST/DeclCXX.h"
 #include "clang/AST/VTableBuilder.h"
@@ -100,13 +101,15 @@ clang::Decl* RecordHandler::handleDecl(const clang::Decl* D, HandlerContext& ctx
         // Complete the definition
         cRecord->completeDefinition();
 
-        // Step 7: Generate vtable struct for polymorphic classes (Phase 45)
+        // Step 7: Generate vtable structs for polymorphic classes
+        // Phase 46: Generate separate vtable struct per polymorphic base
         if (const auto* cxxRecord = llvm::dyn_cast<clang::CXXRecordDecl>(cppRecord)) {
             if (cxxRecord->isPolymorphic()) {
-                generateVtableStruct(cxxRecord, ctx);
+                generateVtableStructs(cxxRecord, ctx);
 
-                // Step 8: Generate vtable instance for polymorphic classes (Phase 45 Task 4)
-                generateVtableInstance(cxxRecord, ctx);
+                // Step 8: Generate vtable instances for polymorphic classes
+                // Phase 46: Generate separate vtable instance per polymorphic base
+                generateVtableInstances(cxxRecord, ctx);
             }
         }
     }
@@ -285,18 +288,49 @@ void RecordHandler::translateNestedRecords(
     }
 }
 
-clang::RecordDecl* RecordHandler::generateVtableStruct(
+// Phase 46: Generate multiple vtable structs (one per polymorphic base)
+void RecordHandler::generateVtableStructs(
     const clang::CXXRecordDecl* cxxRecord,
     HandlerContext& ctx
 ) {
-    // Only generate vtable for polymorphic classes
     if (!cxxRecord || !cxxRecord->isPolymorphic()) {
+        return;
+    }
+
+    clang::ASTContext& cCtx = ctx.getCContext();
+    clang::ASTContext& cppCtx = ctx.getCppContext();
+
+    // Use MultipleInheritanceAnalyzer to identify polymorphic bases
+    MultipleInheritanceAnalyzer miAnalyzer(cppCtx);
+    auto bases = miAnalyzer.analyzePolymorphicBases(cxxRecord);
+
+    if (bases.empty()) {
+        return;
+    }
+
+    std::string className = cxxRecord->getNameAsString();
+
+    // Generate vtable struct for each polymorphic base
+    for (const auto& baseInfo : bases) {
+        std::string baseName = baseInfo.BaseDecl->getNameAsString();
+        generateVtableStructForBase(cxxRecord, baseInfo.BaseDecl, ctx);
+    }
+}
+
+// Generate vtable struct for a specific base class
+clang::RecordDecl* RecordHandler::generateVtableStructForBase(
+    const clang::CXXRecordDecl* cxxRecord,
+    const clang::CXXRecordDecl* baseClass,
+    HandlerContext& ctx
+) {
+    if (!cxxRecord || !baseClass) {
         return nullptr;
     }
 
     clang::ASTContext& cCtx = ctx.getCContext();
     std::string className = cxxRecord->getNameAsString();
-    std::string vtableName = className + "_vtable";
+    std::string baseName = baseClass->getNameAsString();
+    std::string vtableName = className + "_" + baseName + "_vtable";
 
     // Create vtable struct identifier
     clang::IdentifierInfo& vtableII = cCtx.Idents.get(vtableName);
@@ -314,22 +348,22 @@ clang::RecordDecl* RecordHandler::generateVtableStruct(
     // Start vtable definition
     vtableStruct->startDefinition();
 
-    // Collect virtual methods in vtable order
-    std::vector<const clang::CXXMethodDecl*> virtualMethods = collectVirtualMethods(cxxRecord);
+    // Collect virtual methods from this base class
+    std::vector<const clang::CXXMethodDecl*> baseMethods = collectVirtualMethods(baseClass);
 
     // Create VtableTypedefGenerator for generating function pointer typedefs
     VtableTypedefGenerator typedefGen(cCtx, ctx.getBuilder());
 
     // Generate function pointer field for each virtual method
-    for (const auto* method : virtualMethods) {
+    for (const auto* baseMethod : baseMethods) {
         std::string fieldName;
         clang::QualType funcPtrType;
 
         // Check if this is a destructor
-        if (const auto* dtor = llvm::dyn_cast<clang::CXXDestructorDecl>(method)) {
+        if (const auto* dtor = llvm::dyn_cast<clang::CXXDestructorDecl>(baseMethod)) {
             fieldName = "destructor";
 
-            // Generate typedef for destructor
+            // Generate typedef for destructor (using derived class name)
             clang::TypedefDecl* typedefDecl = typedefGen.generateTypedefForDestructor(dtor, className);
             if (!typedefDecl) {
                 continue; // Skip on error
@@ -338,10 +372,10 @@ clang::RecordDecl* RecordHandler::generateVtableStruct(
             // Use the typedef as the field type
             funcPtrType = cCtx.getTypedefType(typedefDecl);
         } else {
-            fieldName = method->getNameAsString();
+            fieldName = baseMethod->getNameAsString();
 
-            // Generate typedef for method
-            clang::TypedefDecl* typedefDecl = typedefGen.generateTypedef(method, className);
+            // Generate typedef for method (using derived class name for 'this' parameter)
+            clang::TypedefDecl* typedefDecl = typedefGen.generateTypedef(baseMethod, className);
             if (!typedefDecl) {
                 continue; // Skip on error
             }
@@ -378,6 +412,28 @@ clang::RecordDecl* RecordHandler::generateVtableStruct(
     cCtx.getTranslationUnitDecl()->addDecl(vtableStruct);
 
     return vtableStruct;
+}
+
+// Legacy method - kept for backward compatibility
+clang::RecordDecl* RecordHandler::generateVtableStruct(
+    const clang::CXXRecordDecl* cxxRecord,
+    HandlerContext& ctx
+) {
+    // Delegate to new implementation
+    if (!cxxRecord || !cxxRecord->isPolymorphic()) {
+        return nullptr;
+    }
+
+    clang::ASTContext& cppCtx = ctx.getCppContext();
+    MultipleInheritanceAnalyzer miAnalyzer(cppCtx);
+    auto bases = miAnalyzer.analyzePolymorphicBases(cxxRecord);
+
+    if (bases.empty()) {
+        return nullptr;
+    }
+
+    // Generate for primary base (backward compatibility)
+    return generateVtableStructForBase(cxxRecord, bases[0].BaseDecl, ctx);
 }
 
 std::vector<const clang::CXXMethodDecl*> RecordHandler::collectVirtualMethods(
@@ -526,23 +582,80 @@ void RecordHandler::injectLpVtblField(
     }
 }
 
-clang::VarDecl* RecordHandler::generateVtableInstance(
+// Phase 46: Generate multiple vtable instances (one per polymorphic base)
+void RecordHandler::generateVtableInstances(
     const clang::CXXRecordDecl* cxxRecord,
     HandlerContext& ctx
 ) {
-    // Only generate vtable instance for polymorphic classes
     if (!cxxRecord || !cxxRecord->isPolymorphic()) {
+        return;
+    }
+
+    clang::ASTContext& cppCtx = ctx.getCppContext();
+
+    // Use MultipleInheritanceAnalyzer to identify polymorphic bases
+    MultipleInheritanceAnalyzer miAnalyzer(cppCtx);
+    auto bases = miAnalyzer.analyzePolymorphicBases(cxxRecord);
+
+    if (bases.empty()) {
+        return;
+    }
+
+    // Generate vtable instance for each polymorphic base
+    for (const auto& baseInfo : bases) {
+        generateVtableInstanceForBase(cxxRecord, baseInfo.BaseDecl, baseInfo.IsPrimary, baseInfo.Offset, ctx);
+    }
+}
+
+// Generate vtable instance for a specific base class
+clang::VarDecl* RecordHandler::generateVtableInstanceForBase(
+    const clang::CXXRecordDecl* cxxRecord,
+    const clang::CXXRecordDecl* baseClass,
+    bool isPrimaryBase,
+    unsigned baseOffset,
+    HandlerContext& ctx
+) {
+    if (!cxxRecord || !baseClass) {
         return nullptr;
     }
 
     clang::ASTContext& cCtx = ctx.getCContext();
     std::string className = cxxRecord->getNameAsString();
-    std::string vtableName = className + "_vtable";
-    std::string vtableInstanceName = className + "_vtable_instance";
+    std::string baseName = baseClass->getNameAsString();
+    std::string vtableName = className + "_" + baseName + "_vtable";
+    std::string vtableInstanceName = className + "_" + baseName + "_vtable_instance";
+
+    auto* TU = cCtx.getTranslationUnitDecl();
+
+    // Step 0: Check if vtable instance already exists
+    // If it exists and has valid function pointers, return it (already generated with methods)
+    // If it has NULL placeholders, we'll regenerate later
+    clang::VarDecl* existingInstance = nullptr;
+    for (auto* D : TU->decls()) {
+        if (auto* VD = llvm::dyn_cast<clang::VarDecl>(D)) {
+            if (VD->getNameAsString() == vtableInstanceName) {
+                existingInstance = VD;
+                // Check if it has real function pointers (not NULL placeholders)
+                if (VD->hasInit()) {
+                    if (auto* initList = llvm::dyn_cast<clang::InitListExpr>(VD->getInit())) {
+                        if (initList->getNumInits() > 0) {
+                            // Check first initializer - if it's not a NULL literal, assume it's valid
+                            auto* firstInit = initList->getInit(0)->IgnoreImpCasts();
+                            if (!llvm::isa<clang::IntegerLiteral>(firstInit)) {
+                                // Has real function references, return existing
+                                return VD;
+                            }
+                        }
+                    }
+                }
+                // Has NULL placeholders, will regenerate below
+                break;
+            }
+        }
+    }
 
     // Step 1: Find the vtable struct that was already generated
     clang::RecordDecl* vtableStruct = nullptr;
-    auto* TU = cCtx.getTranslationUnitDecl();
 
     for (auto* D : TU->decls()) {
         if (auto* RD = llvm::dyn_cast<clang::RecordDecl>(D)) {
@@ -565,30 +678,55 @@ clang::VarDecl* RecordHandler::generateVtableInstance(
     clang::QualType constVtableStructType = vtableStructType;
     constVtableStructType.addConst();
 
-    // Step 4: Collect virtual methods in vtable order
-    std::vector<const clang::CXXMethodDecl*> virtualMethods = collectVirtualMethods(cxxRecord);
+    // Step 4: Collect virtual methods from base class (not derived class)
+    std::vector<const clang::CXXMethodDecl*> baseMethods = collectVirtualMethods(baseClass);
 
     // Step 5: Create initializer list with designated initializers
     std::vector<clang::Expr*> initExprs;
     std::vector<clang::FieldDecl*> initFields;
+
+    // Phase 46: Use ThunkGenerator for non-primary bases
+    clang::ASTContext& cppCtx = ctx.getCppContext();
+    ThunkGenerator thunkGen(cCtx, cppCtx);
 
     // Match virtual methods with vtable struct fields
     unsigned fieldIndex = 0;
     for (auto it = vtableStruct->field_begin(); it != vtableStruct->field_end(); ++it, ++fieldIndex) {
         clang::FieldDecl* field = *it;
 
-        if (fieldIndex >= virtualMethods.size()) {
+        if (fieldIndex >= baseMethods.size()) {
             break; // Safety check
         }
 
-        const clang::CXXMethodDecl* method = virtualMethods[fieldIndex];
+        const clang::CXXMethodDecl* baseMethod = baseMethods[fieldIndex];
 
-        // Create function name for the translated method
+        // Create function name for the method
+        // For primary base: use real implementation
+        // For non-primary base: use thunk
         std::string funcName;
-        if (llvm::isa<clang::CXXDestructorDecl>(method)) {
-            funcName = className + "_destructor";
+        if (isPrimaryBase) {
+            // Primary base: use real implementation (e.g., Shape_draw)
+            if (llvm::isa<clang::CXXDestructorDecl>(baseMethod)) {
+                funcName = className + "_destructor";
+            } else {
+                funcName = className + "_" + baseMethod->getNameAsString();
+            }
         } else {
-            funcName = className + "_" + method->getNameAsString();
+            // Non-primary base: use thunk (e.g., Shape_serialize_ISerializable_thunk)
+            funcName = thunkGen.getThunkName(cxxRecord, baseMethod, baseClass);
+
+            // Generate the thunk function if it doesn't exist yet
+            clang::FunctionDecl* thunkDecl = thunkGen.generateThunk(
+                cxxRecord,
+                baseMethod,
+                baseClass,
+                baseOffset
+            );
+
+            // Add thunk to translation unit if generated
+            if (thunkDecl) {
+                TU->addDecl(thunkDecl);
+            }
         }
 
         // Step 6: Look up the translated function in the C context
@@ -659,27 +797,54 @@ clang::VarDecl* RecordHandler::generateVtableInstance(
     initList->setType(constVtableStructType);
     initList->setSyntacticForm(initList);
 
-    // Step 8: Create VarDecl for the vtable instance
-    clang::IdentifierInfo& vtableInstanceII = cCtx.Idents.get(vtableInstanceName);
+    // Step 8: Create or update VarDecl for the vtable instance
+    clang::VarDecl* vtableInstance = existingInstance;
 
-    clang::VarDecl* vtableInstance = clang::VarDecl::Create(
-        cCtx,
-        TU, // Parent DeclContext
-        clang::SourceLocation(),
-        clang::SourceLocation(),
-        &vtableInstanceII,
-        constVtableStructType,
-        cCtx.getTrivialTypeSourceInfo(constVtableStructType),
-        clang::SC_Static // Static storage
-    );
+    if (!vtableInstance) {
+        // No existing instance, create new one
+        clang::IdentifierInfo& vtableInstanceII = cCtx.Idents.get(vtableInstanceName);
 
-    // Step 9: Set the initializer
+        vtableInstance = clang::VarDecl::Create(
+            cCtx,
+            TU, // Parent DeclContext
+            clang::SourceLocation(),
+            clang::SourceLocation(),
+            &vtableInstanceII,
+            constVtableStructType,
+            cCtx.getTrivialTypeSourceInfo(constVtableStructType),
+            clang::SC_Static // Static storage
+        );
+
+        // Step 10: Add to translation unit
+        TU->addDecl(vtableInstance);
+    }
+
+    // Step 9: Set (or update) the initializer
     vtableInstance->setInit(initList);
 
-    // Step 10: Add to translation unit
-    TU->addDecl(vtableInstance);
-
     return vtableInstance;
+}
+
+// Legacy method - kept for backward compatibility
+clang::VarDecl* RecordHandler::generateVtableInstance(
+    const clang::CXXRecordDecl* cxxRecord,
+    HandlerContext& ctx
+) {
+    // Delegate to new implementation for primary base
+    if (!cxxRecord || !cxxRecord->isPolymorphic()) {
+        return nullptr;
+    }
+
+    clang::ASTContext& cppCtx = ctx.getCppContext();
+    MultipleInheritanceAnalyzer miAnalyzer(cppCtx);
+    auto bases = miAnalyzer.analyzePolymorphicBases(cxxRecord);
+
+    if (bases.empty()) {
+        return nullptr;
+    }
+
+    // Generate for primary base (backward compatibility)
+    return generateVtableInstanceForBase(cxxRecord, bases[0].BaseDecl, bases[0].IsPrimary, bases[0].Offset, ctx);
 }
 
 

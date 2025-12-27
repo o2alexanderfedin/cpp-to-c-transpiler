@@ -1,0 +1,795 @@
+/**
+ * @file RecordHandlerTest_VtableInstanceThunks.cpp
+ * @brief TDD tests for vtable instance generation with thunks (Phase 46 Group 2 Task 6)
+ *
+ * Following strict TDD: Red → Green → Refactor
+ *
+ * Test Plan (10 tests):
+ * 1. PrimaryBaseVtableUsesRealImplementation - Primary base vtable uses real method pointers
+ * 2. NonPrimaryBaseVtableUsesThunks - Non-primary base vtable uses thunk function pointers
+ * 3. MultipleNonPrimaryBasesGetCorrectThunks - Multiple non-primary bases each get correct thunks
+ * 4. VtableInitializerSyntaxCorrect - Vtable initializer uses correct C syntax
+ * 5. OverriddenMethodUsesDerivedViaThunk - Overridden methods use derived implementation via thunk
+ * 6. InheritedMethodUsesBaseViaThunk - Inherited methods use base implementation via thunk
+ * 7. MultipleMethodsPerBaseAllGetThunks - Each method in non-primary base gets thunk
+ * 8. EdgeCasePrimaryBaseOnly - Primary base only (no thunks needed) - unchanged behavior
+ * 9. ThunkNamingConvention - Thunk names follow pattern: ClassName_methodName_BaseName_thunk
+ * 10. MultipleVtableInstances - Generate separate vtable instance per base
+ *
+ * Expected Pattern (from Phase 46 plan):
+ * ```c
+ * // Primary base vtable (existing behavior)
+ * const struct Derived_Base1_vtable Derived_Base1_vtable_instance = {
+ *     .method1 = Derived_method1_impl,  // Real implementation
+ *     .method2 = Derived_method2_impl
+ * };
+ *
+ * // Non-primary base vtable (NEW - uses thunks)
+ * const struct Derived_Base2_vtable Derived_Base2_vtable_instance = {
+ *     .method1 = Derived_method1_Base2_thunk,  // Thunk adjusts this
+ *     .method2 = Derived_method2_Base2_thunk
+ * };
+ * ```
+ */
+
+#include "handlers/RecordHandler.h"
+#include "handlers/HandlerContext.h"
+#include "handlers/MethodHandler.h"
+#include "CNodeBuilder.h"
+#include "MultipleInheritanceAnalyzer.h"
+#include "clang/Tooling/Tooling.h"
+#include "clang/AST/DeclCXX.h"
+#include <gtest/gtest.h>
+#include <memory>
+
+using namespace cpptoc;
+
+/**
+ * @class RecordHandlerTest_VtableInstanceThunks
+ * @brief Test fixture for vtable instance generation with thunks for multiple inheritance
+ */
+class RecordHandlerTest_VtableInstanceThunks : public ::testing::Test {
+protected:
+    std::unique_ptr<clang::ASTUnit> cppAST;
+    std::unique_ptr<clang::ASTUnit> cAST;
+    std::unique_ptr<clang::CNodeBuilder> builder;
+    std::unique_ptr<HandlerContext> ctx;
+    std::unique_ptr<RecordHandler> recordHandler;
+    std::unique_ptr<MethodHandler> methodHandler;
+
+    void SetUp() override {
+        // Create real AST contexts
+        cppAST = clang::tooling::buildASTFromCode("int dummy;");
+        cAST = clang::tooling::buildASTFromCode("int dummy2;");
+
+        ASSERT_NE(cppAST, nullptr) << "Failed to create C++ AST";
+        ASSERT_NE(cAST, nullptr) << "Failed to create C AST";
+
+        // Create builder and context
+        builder = std::make_unique<clang::CNodeBuilder>(cAST->getASTContext());
+        ctx = std::make_unique<HandlerContext>(
+            cppAST->getASTContext(),
+            cAST->getASTContext(),
+            *builder
+        );
+
+        // Create handlers
+        recordHandler = std::make_unique<RecordHandler>();
+        methodHandler = std::make_unique<MethodHandler>();
+    }
+
+    void TearDown() override {
+        methodHandler.reset();
+        recordHandler.reset();
+        ctx.reset();
+        builder.reset();
+        cAST.reset();
+        cppAST.reset();
+    }
+
+    /**
+     * @brief Parse C++ code once and cache the AST
+     * @param code C++ code containing classes
+     * @return true if parsing succeeded
+     */
+    bool parseCode(const std::string& code) {
+        auto ast = clang::tooling::buildASTFromCode(code);
+        if (!ast) {
+            return false;
+        }
+        cppAST = std::move(ast);
+
+        // CRITICAL: Recreate context with new AST context
+        // The old ctx has references to the dummy AST that we just replaced
+        ctx = std::make_unique<HandlerContext>(
+            cppAST->getASTContext(),
+            cAST->getASTContext(),
+            *builder
+        );
+
+        return true;
+    }
+
+    /**
+     * @brief Find a class by name in the parsed AST
+     * @param className Name of class to find
+     * @return CXXRecordDecl for the class, or nullptr
+     */
+    const clang::CXXRecordDecl* findClass(const std::string& className) {
+        if (!cppAST) {
+            return nullptr;
+        }
+
+        auto& astCtx = cppAST->getASTContext();
+        auto* TU = astCtx.getTranslationUnitDecl();
+
+        for (auto* D : TU->decls()) {
+            if (auto* CRD = llvm::dyn_cast<clang::CXXRecordDecl>(D)) {
+                if (CRD->isCompleteDefinition() && CRD->getNameAsString() == className) {
+                    return CRD;
+                }
+            }
+        }
+
+        return nullptr;
+    }
+
+    /**
+     * @brief Find vtable instance variable in C translation unit
+     * @param vtableInstanceName Name of the vtable instance (e.g., "Derived_Base1_vtable_instance")
+     * @return VarDecl for vtable instance, or nullptr if not found
+     */
+    const clang::VarDecl* findVtableInstance(const std::string& vtableInstanceName) {
+        auto* TU = cAST->getASTContext().getTranslationUnitDecl();
+
+        for (auto* D : TU->decls()) {
+            if (auto* VD = llvm::dyn_cast<clang::VarDecl>(D)) {
+                if (VD->getNameAsString() == vtableInstanceName) {
+                    return VD;
+                }
+            }
+        }
+
+        return nullptr;
+    }
+
+    /**
+     * @brief Find function declaration in C translation unit
+     * @param functionName Name of the function
+     * @return FunctionDecl, or nullptr if not found
+     */
+    const clang::FunctionDecl* findFunction(const std::string& functionName) {
+        auto* TU = cAST->getASTContext().getTranslationUnitDecl();
+
+        for (auto* D : TU->decls()) {
+            if (auto* FD = llvm::dyn_cast<clang::FunctionDecl>(D)) {
+                if (FD->getNameAsString() == functionName) {
+                    return FD;
+                }
+            }
+        }
+
+        return nullptr;
+    }
+
+    /**
+     * @brief Extract initialization list from vtable instance
+     * @param vtableInstance VarDecl for vtable instance
+     * @return InitListExpr, or nullptr if not present
+     */
+    const clang::InitListExpr* getInitList(const clang::VarDecl* vtableInstance) {
+        if (!vtableInstance || !vtableInstance->hasInit()) {
+            return nullptr;
+        }
+
+        return llvm::dyn_cast<clang::InitListExpr>(vtableInstance->getInit());
+    }
+
+    /**
+     * @brief Get function name from an initializer expression
+     * @param init Initializer expression (should be DeclRefExpr or cast thereof)
+     * @return Function name, or empty string if not a function reference
+     */
+    std::string getFunctionNameFromInit(const clang::Expr* init) {
+        if (!init) {
+            return "";
+        }
+
+        // Strip implicit casts
+        init = init->IgnoreImpCasts();
+
+        // Should be DeclRefExpr pointing to function
+        if (auto* DRE = llvm::dyn_cast<clang::DeclRefExpr>(init)) {
+            if (auto* FD = llvm::dyn_cast<clang::FunctionDecl>(DRE->getDecl())) {
+                return FD->getNameAsString();
+            }
+        }
+
+        return "";
+    }
+};
+
+/**
+ * Test 1: PrimaryBaseVtableUsesRealImplementation
+ * Verify that primary base vtable uses real method implementations, not thunks
+ */
+TEST_F(RecordHandlerTest_VtableInstanceThunks, PrimaryBaseVtableUsesRealImplementation) {
+    // C++ Input: Multiple inheritance with IDrawable as primary base
+    const char* code = R"(
+        class IDrawable {
+        public:
+            virtual void draw() = 0;
+        };
+
+        class ISerializable {
+        public:
+            virtual void serialize() = 0;
+        };
+
+        class Shape : public IDrawable, public ISerializable {
+        public:
+            void draw() override {}
+            void serialize() override {}
+        };
+    )";
+
+    ASSERT_TRUE(parseCode(code)) << "Failed to parse code";
+
+    const auto* shapeClass = findClass("Shape");
+    ASSERT_NE(shapeClass, nullptr) << "Failed to find Shape class";
+    ASSERT_TRUE(shapeClass->isPolymorphic());
+
+    // Translate all classes
+    const auto* drawableClass = findClass("IDrawable");
+    const auto* serializableClass = findClass("ISerializable");
+
+    recordHandler->handleDecl(drawableClass, *ctx);
+    recordHandler->handleDecl(serializableClass, *ctx);
+    recordHandler->handleDecl(shapeClass, *ctx);
+
+    // Translate methods from ALL classes so they can be referenced in vtables
+    for (auto* method : drawableClass->methods()) {
+        if (method->isVirtual()) {
+            methodHandler->handleDecl(method, *ctx);
+        }
+    }
+    for (auto* method : serializableClass->methods()) {
+        if (method->isVirtual()) {
+            methodHandler->handleDecl(method, *ctx);
+        }
+    }
+    for (auto* method : shapeClass->methods()) {
+        if (method->isVirtual()) {
+            methodHandler->handleDecl(method, *ctx);
+        }
+    }
+
+    // Regenerate vtable instances now that methods are translated
+    recordHandler->generateVtableInstances(shapeClass, *ctx);
+
+    // Find primary base vtable instance (Shape_IDrawable_vtable_instance)
+    const auto* primaryVtableInstance = findVtableInstance("Shape_IDrawable_vtable_instance");
+    ASSERT_NE(primaryVtableInstance, nullptr)
+        << "Primary base vtable instance not generated";
+
+    const auto* initList = getInitList(primaryVtableInstance);
+    ASSERT_NE(initList, nullptr);
+    ASSERT_GT(initList->getNumInits(), 0u);
+
+    // First init should be real implementation (Shape_draw), NOT a thunk
+    std::string funcName = getFunctionNameFromInit(initList->getInit(0));
+    EXPECT_EQ(funcName, "Shape_draw")
+        << "Primary base should use real implementation, not thunk";
+    EXPECT_TRUE(funcName.find("thunk") == std::string::npos)
+        << "Primary base vtable should NOT use thunks";
+}
+
+/**
+ * Test 2: NonPrimaryBaseVtableUsesThunks
+ * Verify that non-primary base vtable uses thunk function pointers
+ */
+TEST_F(RecordHandlerTest_VtableInstanceThunks, NonPrimaryBaseVtableUsesThunks) {
+    const char* code = R"(
+        class IDrawable {
+        public:
+            virtual void draw() = 0;
+        };
+
+        class ISerializable {
+        public:
+            virtual void serialize() = 0;
+        };
+
+        class Shape : public IDrawable, public ISerializable {
+        public:
+            void draw() override {}
+            void serialize() override {}
+        };
+    )";
+
+    ASSERT_TRUE(parseCode(code)) << "Failed to parse code";
+
+    const auto* shapeClass = findClass("Shape");
+    ASSERT_NE(shapeClass, nullptr);
+
+    const auto* drawableClass = findClass("IDrawable");
+    const auto* serializableClass = findClass("ISerializable");
+
+    recordHandler->handleDecl(drawableClass, *ctx);
+    recordHandler->handleDecl(serializableClass, *ctx);
+    recordHandler->handleDecl(shapeClass, *ctx);
+
+    // Find non-primary base vtable instance (Shape_ISerializable_vtable_instance)
+    const auto* nonPrimaryVtableInstance = findVtableInstance("Shape_ISerializable_vtable_instance");
+    ASSERT_NE(nonPrimaryVtableInstance, nullptr)
+        << "Non-primary base vtable instance not generated";
+
+    const auto* initList = getInitList(nonPrimaryVtableInstance);
+    ASSERT_NE(initList, nullptr);
+    ASSERT_GT(initList->getNumInits(), 0u);
+
+    // First init should be thunk (Shape_serialize_ISerializable_thunk)
+    std::string funcName = getFunctionNameFromInit(initList->getInit(0));
+    EXPECT_TRUE(funcName.find("thunk") != std::string::npos)
+        << "Non-primary base vtable MUST use thunks, got: " << funcName;
+    EXPECT_TRUE(funcName.find("ISerializable") != std::string::npos)
+        << "Thunk should include base name (ISerializable)";
+}
+
+/**
+ * Test 3: MultipleNonPrimaryBasesGetCorrectThunks
+ * Verify that multiple non-primary bases each get correct thunks
+ */
+TEST_F(RecordHandlerTest_VtableInstanceThunks, MultipleNonPrimaryBasesGetCorrectThunks) {
+    const char* code = R"(
+        class IDrawable {
+        public:
+            virtual void draw() = 0;
+        };
+
+        class ISerializable {
+        public:
+            virtual void serialize() = 0;
+        };
+
+        class IUpdatable {
+        public:
+            virtual void update() = 0;
+        };
+
+        class Shape : public IDrawable, public ISerializable, public IUpdatable {
+        public:
+            void draw() override {}
+            void serialize() override {}
+            void update() override {}
+        };
+    )";
+
+    ASSERT_TRUE(parseCode(code)) << "Failed to parse code";
+
+    const auto* shapeClass = findClass("Shape");
+    ASSERT_NE(shapeClass, nullptr);
+
+    // Parse and translate all classes
+    const auto* drawableClass = findClass("IDrawable");
+    const auto* serializableClass = findClass("ISerializable");
+    const auto* updatableClass = findClass("IUpdatable");
+
+    recordHandler->handleDecl(drawableClass, *ctx);
+    recordHandler->handleDecl(serializableClass, *ctx);
+    recordHandler->handleDecl(updatableClass, *ctx);
+    recordHandler->handleDecl(shapeClass, *ctx);
+
+    // Check non-primary base 1 (ISerializable)
+    const auto* serializable_vtable = findVtableInstance("Shape_ISerializable_vtable_instance");
+    ASSERT_NE(serializable_vtable, nullptr);
+    const auto* serializableInit = getInitList(serializable_vtable);
+    ASSERT_NE(serializableInit, nullptr);
+
+    std::string serializableFunc = getFunctionNameFromInit(serializableInit->getInit(0));
+    EXPECT_TRUE(serializableFunc.find("ISerializable") != std::string::npos);
+    EXPECT_TRUE(serializableFunc.find("thunk") != std::string::npos);
+
+    // Check non-primary base 2 (IUpdatable)
+    const auto* updatable_vtable = findVtableInstance("Shape_IUpdatable_vtable_instance");
+    ASSERT_NE(updatable_vtable, nullptr);
+    const auto* updatableInit = getInitList(updatable_vtable);
+    ASSERT_NE(updatableInit, nullptr);
+
+    std::string updatableFunc = getFunctionNameFromInit(updatableInit->getInit(0));
+    EXPECT_TRUE(updatableFunc.find("IUpdatable") != std::string::npos);
+    EXPECT_TRUE(updatableFunc.find("thunk") != std::string::npos);
+
+    // Verify they're different thunks
+    EXPECT_NE(serializableFunc, updatableFunc)
+        << "Different bases should have different thunks";
+}
+
+/**
+ * Test 4: VtableInitializerSyntaxCorrect
+ * Verify that vtable initializer uses correct C syntax (designated initializers)
+ */
+TEST_F(RecordHandlerTest_VtableInstanceThunks, VtableInitializerSyntaxCorrect) {
+    const char* code = R"(
+        class IDrawable {
+        public:
+            virtual void draw() = 0;
+        };
+
+        class ISerializable {
+        public:
+            virtual void serialize() = 0;
+        };
+
+        class Shape : public IDrawable, public ISerializable {
+        public:
+            void draw() override {}
+            void serialize() override {}
+        };
+    )";
+
+    ASSERT_TRUE(parseCode(code)) << "Failed to parse code";
+
+    const auto* shapeClass = findClass("Shape");
+    ASSERT_NE(shapeClass, nullptr);
+
+    const auto* drawableClass = findClass("IDrawable");
+    const auto* serializableClass = findClass("ISerializable");
+
+    recordHandler->handleDecl(drawableClass, *ctx);
+    recordHandler->handleDecl(serializableClass, *ctx);
+    recordHandler->handleDecl(shapeClass, *ctx);
+
+    const auto* vtableInstance = findVtableInstance("Shape_IDrawable_vtable_instance");
+    ASSERT_NE(vtableInstance, nullptr);
+
+    // Verify storage class is static
+    EXPECT_EQ(vtableInstance->getStorageClass(), clang::SC_Static);
+
+    // Verify type is const
+    EXPECT_TRUE(vtableInstance->getType().isConstQualified());
+
+    // Verify has initializer list
+    const auto* initList = getInitList(vtableInstance);
+    ASSERT_NE(initList, nullptr);
+
+    // Verify type name matches expected vtable struct
+    std::string typeName = vtableInstance->getType().getAsString();
+    EXPECT_TRUE(typeName.find("Shape_IDrawable_vtable") != std::string::npos);
+}
+
+/**
+ * Test 5: OverriddenMethodUsesDerivedViaThunk
+ * Verify that overridden methods use derived implementation (via thunk for non-primary)
+ */
+TEST_F(RecordHandlerTest_VtableInstanceThunks, OverriddenMethodUsesDerivedViaThunk) {
+    const char* code = R"(
+        class Base1 {
+        public:
+            virtual void method1() {}
+        };
+
+        class Base2 {
+        public:
+            virtual void method1() {}
+        };
+
+        class Derived : public Base1, public Base2 {
+        public:
+            void method1() override {}  // Overrides both
+        };
+    )";
+
+    ASSERT_TRUE(parseCode(code)) << "Failed to parse code";
+
+    const auto* derivedClass = findClass("Derived");
+    ASSERT_NE(derivedClass, nullptr);
+
+    const auto* base1Class = findClass("Base1");
+    const auto* base2Class = findClass("Base2");
+
+    recordHandler->handleDecl(base1Class, *ctx);
+    recordHandler->handleDecl(base2Class, *ctx);
+    recordHandler->handleDecl(derivedClass, *ctx);
+
+    // Non-primary base (Base2) should use thunk that calls Derived_method1
+    const auto* base2Vtable = findVtableInstance("Derived_Base2_vtable_instance");
+    ASSERT_NE(base2Vtable, nullptr);
+
+    const auto* initList = getInitList(base2Vtable);
+    ASSERT_NE(initList, nullptr);
+
+    std::string funcName = getFunctionNameFromInit(initList->getInit(0));
+
+    // Should be Derived_method1_Base2_thunk (thunk that calls Derived's override)
+    EXPECT_TRUE(funcName.find("Derived") != std::string::npos);
+    EXPECT_TRUE(funcName.find("method1") != std::string::npos);
+    EXPECT_TRUE(funcName.find("thunk") != std::string::npos);
+}
+
+/**
+ * Test 6: InheritedMethodUsesBaseViaThunk
+ * Verify that inherited (not overridden) methods use base implementation via thunk
+ */
+TEST_F(RecordHandlerTest_VtableInstanceThunks, InheritedMethodUsesBaseViaThunk) {
+    const char* code = R"(
+        class Base1 {
+        public:
+            virtual void method1() {}
+        };
+
+        class Base2 {
+        public:
+            virtual void method2() {}
+        };
+
+        class Derived : public Base1, public Base2 {
+        public:
+            // Inherits method1 from Base1
+            // Inherits method2 from Base2
+            // No overrides
+        };
+    )";
+
+    ASSERT_TRUE(parseCode(code)) << "Failed to parse code";
+
+    const auto* derivedClass = findClass("Derived");
+    ASSERT_NE(derivedClass, nullptr);
+
+    const auto* base1Class = findClass("Base1");
+    const auto* base2Class = findClass("Base2");
+
+    recordHandler->handleDecl(base1Class, *ctx);
+    recordHandler->handleDecl(base2Class, *ctx);
+    recordHandler->handleDecl(derivedClass, *ctx);
+
+    // Non-primary base (Base2) should use thunk even for inherited method
+    const auto* base2Vtable = findVtableInstance("Derived_Base2_vtable_instance");
+    ASSERT_NE(base2Vtable, nullptr);
+
+    const auto* initList = getInitList(base2Vtable);
+    ASSERT_NE(initList, nullptr);
+
+    std::string funcName = getFunctionNameFromInit(initList->getInit(0));
+
+    // Should use thunk (method2_Base2_thunk) even though not overridden
+    EXPECT_TRUE(funcName.find("thunk") != std::string::npos)
+        << "Non-primary base must use thunk even for inherited methods";
+}
+
+/**
+ * Test 7: MultipleMethodsPerBaseAllGetThunks
+ * Verify that each method in non-primary base gets a thunk
+ */
+TEST_F(RecordHandlerTest_VtableInstanceThunks, MultipleMethodsPerBaseAllGetThunks) {
+    const char* code = R"(
+        class IDrawable {
+        public:
+            virtual void draw() = 0;
+        };
+
+        class ISerializable {
+        public:
+            virtual void serialize() = 0;
+            virtual void deserialize() = 0;
+            virtual void save() = 0;
+        };
+
+        class Shape : public IDrawable, public ISerializable {
+        public:
+            void draw() override {}
+            void serialize() override {}
+            void deserialize() override {}
+            void save() override {}
+        };
+    )";
+
+    ASSERT_TRUE(parseCode(code)) << "Failed to parse code";
+
+    const auto* shapeClass = findClass("Shape");
+    ASSERT_NE(shapeClass, nullptr);
+
+    const auto* drawableClass = findClass("IDrawable");
+    const auto* serializableClass = findClass("ISerializable");
+
+    recordHandler->handleDecl(drawableClass, *ctx);
+    recordHandler->handleDecl(serializableClass, *ctx);
+    recordHandler->handleDecl(shapeClass, *ctx);
+
+    // Non-primary base (ISerializable) has 3 methods
+    const auto* serializableVtable = findVtableInstance("Shape_ISerializable_vtable_instance");
+    ASSERT_NE(serializableVtable, nullptr);
+
+    const auto* initList = getInitList(serializableVtable);
+    ASSERT_NE(initList, nullptr);
+
+    // Should have 3 initializers (one per method)
+    EXPECT_EQ(initList->getNumInits(), 3u)
+        << "ISerializable has 3 methods, should have 3 vtable slots";
+
+    // All should be thunks
+    for (unsigned i = 0; i < initList->getNumInits(); ++i) {
+        std::string funcName = getFunctionNameFromInit(initList->getInit(i));
+        EXPECT_TRUE(funcName.find("thunk") != std::string::npos)
+            << "Method " << i << " should use thunk, got: " << funcName;
+    }
+}
+
+/**
+ * Test 8: EdgeCasePrimaryBaseOnly
+ * Verify that single inheritance (primary base only) has unchanged behavior (no thunks)
+ */
+TEST_F(RecordHandlerTest_VtableInstanceThunks, EdgeCasePrimaryBaseOnly) {
+    const char* code = R"(
+        class Base {
+        public:
+            virtual void method() {}
+        };
+
+        class Derived : public Base {
+        public:
+            void method() override {}
+        };
+    )";
+
+    ASSERT_TRUE(parseCode(code)) << "Failed to parse code";
+
+    const auto* derivedClass = findClass("Derived");
+    ASSERT_NE(derivedClass, nullptr);
+
+    const auto* baseClass = findClass("Base");
+
+    recordHandler->handleDecl(baseClass, *ctx);
+    recordHandler->handleDecl(derivedClass, *ctx);
+
+    // Translate methods from ALL classes so they can be referenced in vtables
+    for (auto* method : baseClass->methods()) {
+        if (method->isVirtual()) {
+            methodHandler->handleDecl(method, *ctx);
+        }
+    }
+    for (auto* method : derivedClass->methods()) {
+        if (method->isVirtual()) {
+            methodHandler->handleDecl(method, *ctx);
+        }
+    }
+
+    // Regenerate vtable instances now that methods are translated
+    recordHandler->generateVtableInstances(derivedClass, *ctx);
+
+    // For single inheritance, should use normal vtable (no base name suffix)
+    // OR if using new naming: Derived_Base_vtable_instance
+    // Either way, should NOT use thunks
+    const auto* vtableInstance = findVtableInstance("Derived_vtable_instance");
+    // If not found, try with base name
+    if (!vtableInstance) {
+        vtableInstance = findVtableInstance("Derived_Base_vtable_instance");
+    }
+
+    ASSERT_NE(vtableInstance, nullptr) << "Vtable instance should be generated";
+
+    const auto* initList = getInitList(vtableInstance);
+    ASSERT_NE(initList, nullptr);
+
+    // Should use real implementation, NOT thunk (this is primary/only base)
+    std::string funcName = getFunctionNameFromInit(initList->getInit(0));
+    EXPECT_TRUE(funcName.find("thunk") == std::string::npos)
+        << "Single inheritance (primary base only) should NOT use thunks";
+    EXPECT_TRUE(funcName.find("Derived") != std::string::npos ||
+                funcName.find("method") != std::string::npos);
+}
+
+/**
+ * Test 9: ThunkNamingConvention
+ * Verify thunk names follow pattern: ClassName_methodName_BaseName_thunk
+ */
+TEST_F(RecordHandlerTest_VtableInstanceThunks, ThunkNamingConvention) {
+    const char* code = R"(
+        class IDrawable {
+        public:
+            virtual void draw() = 0;
+        };
+
+        class ISerializable {
+        public:
+            virtual void serialize() = 0;
+        };
+
+        class Shape : public IDrawable, public ISerializable {
+        public:
+            void draw() override {}
+            void serialize() override {}
+        };
+    )";
+
+    ASSERT_TRUE(parseCode(code)) << "Failed to parse code";
+
+    const auto* shapeClass = findClass("Shape");
+    ASSERT_NE(shapeClass, nullptr);
+
+    const auto* drawableClass = findClass("IDrawable");
+    const auto* serializableClass = findClass("ISerializable");
+
+    recordHandler->handleDecl(drawableClass, *ctx);
+    recordHandler->handleDecl(serializableClass, *ctx);
+    recordHandler->handleDecl(shapeClass, *ctx);
+
+    // Check non-primary base thunk naming
+    const auto* serializableVtable = findVtableInstance("Shape_ISerializable_vtable_instance");
+    ASSERT_NE(serializableVtable, nullptr);
+
+    const auto* initList = getInitList(serializableVtable);
+    ASSERT_NE(initList, nullptr);
+
+    std::string funcName = getFunctionNameFromInit(initList->getInit(0));
+
+    // Pattern: Shape_serialize_ISerializable_thunk
+    // Must contain: class name, method name, base name, "thunk"
+    EXPECT_TRUE(funcName.find("Shape") != std::string::npos)
+        << "Thunk should contain derived class name";
+    EXPECT_TRUE(funcName.find("serialize") != std::string::npos)
+        << "Thunk should contain method name";
+    EXPECT_TRUE(funcName.find("ISerializable") != std::string::npos)
+        << "Thunk should contain base class name";
+    EXPECT_TRUE(funcName.find("thunk") != std::string::npos)
+        << "Thunk should contain 'thunk' keyword";
+
+    // Verify thunk function actually exists
+    const auto* thunkFunc = findFunction(funcName);
+    EXPECT_NE(thunkFunc, nullptr) << "Thunk function should be declared: " << funcName;
+}
+
+/**
+ * Test 10: MultipleVtableInstances
+ * Verify that separate vtable instance is generated per base
+ */
+TEST_F(RecordHandlerTest_VtableInstanceThunks, MultipleVtableInstances) {
+    const char* code = R"(
+        class IDrawable {
+        public:
+            virtual void draw() = 0;
+        };
+
+        class ISerializable {
+        public:
+            virtual void serialize() = 0;
+        };
+
+        class Shape : public IDrawable, public ISerializable {
+        public:
+            void draw() override {}
+            void serialize() override {}
+        };
+    )";
+
+    ASSERT_TRUE(parseCode(code)) << "Failed to parse code";
+
+    const auto* shapeClass = findClass("Shape");
+    ASSERT_NE(shapeClass, nullptr);
+
+    const auto* drawableClass = findClass("IDrawable");
+    const auto* serializableClass = findClass("ISerializable");
+
+    recordHandler->handleDecl(drawableClass, *ctx);
+    recordHandler->handleDecl(serializableClass, *ctx);
+    recordHandler->handleDecl(shapeClass, *ctx);
+
+    // Should have 2 vtable instances (one per base)
+    const auto* drawableVtable = findVtableInstance("Shape_IDrawable_vtable_instance");
+    const auto* serializableVtable = findVtableInstance("Shape_ISerializable_vtable_instance");
+
+    ASSERT_NE(drawableVtable, nullptr)
+        << "Should generate vtable instance for primary base (IDrawable)";
+    ASSERT_NE(serializableVtable, nullptr)
+        << "Should generate vtable instance for non-primary base (ISerializable)";
+
+    // Verify they're different instances
+    EXPECT_NE(drawableVtable, serializableVtable)
+        << "Should be separate vtable instances";
+
+    // Verify both are static const
+    EXPECT_EQ(drawableVtable->getStorageClass(), clang::SC_Static);
+    EXPECT_EQ(serializableVtable->getStorageClass(), clang::SC_Static);
+    EXPECT_TRUE(drawableVtable->getType().isConstQualified());
+    EXPECT_TRUE(serializableVtable->getType().isConstQualified());
+}

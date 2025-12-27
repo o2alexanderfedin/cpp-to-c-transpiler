@@ -57,6 +57,63 @@ public:
      */
     clang::Decl* handleDecl(const clang::Decl* D, HandlerContext& ctx) override;
 
+    /**
+     * @brief Generate multiple vtable structs (one per polymorphic base) - Phase 46
+     * @param cxxRecord C++ CXXRecordDecl (must be polymorphic)
+     * @param ctx Handler context
+     *
+     * Uses MultipleInheritanceAnalyzer to identify polymorphic bases and generates
+     * separate vtable struct for each base.
+     */
+    void generateVtableStructs(
+        const clang::CXXRecordDecl* cxxRecord,
+        HandlerContext& ctx
+    );
+
+    /**
+     * @brief Generate vtable struct for a specific base class - Phase 46
+     * @param cxxRecord Derived class
+     * @param baseClass Base class to generate vtable for
+     * @param ctx Handler context
+     * @return C RecordDecl for vtable struct
+     */
+    clang::RecordDecl* generateVtableStructForBase(
+        const clang::CXXRecordDecl* cxxRecord,
+        const clang::CXXRecordDecl* baseClass,
+        HandlerContext& ctx
+    );
+
+    /**
+     * @brief Generate multiple vtable instances (one per polymorphic base) - Phase 46
+     * @param cxxRecord C++ CXXRecordDecl (must be polymorphic)
+     * @param ctx Handler context
+     *
+     * Uses MultipleInheritanceAnalyzer to identify polymorphic bases and generates
+     * separate vtable instance for each base. For non-primary bases, uses ThunkGenerator
+     * to create thunk functions.
+     */
+    void generateVtableInstances(
+        const clang::CXXRecordDecl* cxxRecord,
+        HandlerContext& ctx
+    );
+
+    /**
+     * @brief Generate vtable instance for a specific base class - Phase 46
+     * @param cxxRecord Derived class
+     * @param baseClass Base class to generate vtable instance for
+     * @param isPrimaryBase True if this is the primary base
+     * @param baseOffset Offset of base class within derived class
+     * @param ctx Handler context
+     * @return C VarDecl for vtable instance
+     */
+    clang::VarDecl* generateVtableInstanceForBase(
+        const clang::CXXRecordDecl* cxxRecord,
+        const clang::CXXRecordDecl* baseClass,
+        bool isPrimaryBase,
+        unsigned baseOffset,
+        HandlerContext& ctx
+    );
+
 private:
     /**
      * @brief Translate field declarations
@@ -158,6 +215,8 @@ private:
      * - Function pointers reference translated C functions
      *
      * Only generates vtable instance for polymorphic classes.
+     *
+     * NOTE: For backward compatibility only. Phase 46+ should use generateVtableInstances().
      */
     clang::VarDecl* generateVtableInstance(
         const clang::CXXRecordDecl* cxxRecord,

@@ -219,6 +219,8 @@ add_library(cpptoc_core STATIC
     src/VptrInjector.cpp
     src/VirtualInheritanceAnalyzer.cpp
     src/MultipleInheritanceAnalyzer.cpp
+    src/BaseOffsetCalculator.cpp
+    src/ThunkGenerator.cpp
     src/MoveConstructorTranslator.cpp
     src/MoveAssignmentTranslator.cpp
     src/StdMoveTranslator.cpp
@@ -1306,6 +1308,58 @@ target_link_libraries(MultipleInheritanceAnalyzerTest PRIVATE cpptoc_core
 
 # Register with CTest
 gtest_discover_tests(MultipleInheritanceAnalyzerTest
+    WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
+)
+
+# Phase 46 Group 2 Task 4: Base Offset Calculator Tests
+add_executable(BaseOffsetCalculatorTest
+    tests/unit/BaseOffsetCalculatorTest.cpp
+)
+
+target_compile_definitions(BaseOffsetCalculatorTest PRIVATE ${LLVM_DEFINITIONS})
+
+target_include_directories(BaseOffsetCalculatorTest PRIVATE
+    ${CMAKE_SOURCE_DIR}/include
+    ${LLVM_INCLUDE_DIRS}
+    ${CLANG_INCLUDE_DIRS}
+)
+
+target_link_libraries(BaseOffsetCalculatorTest PRIVATE cpptoc_core
+    clangTooling
+    clangFrontend
+    clangAST
+    clangBasic
+    GTest::gtest
+    GTest::gtest_main)
+
+# Register with CTest
+gtest_discover_tests(BaseOffsetCalculatorTest
+    WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
+)
+
+# Phase 46 Group 2 Task 5: Thunk Generator Tests
+add_executable(ThunkGeneratorTest
+    tests/unit/ThunkGeneratorTest.cpp
+)
+
+target_compile_definitions(ThunkGeneratorTest PRIVATE ${LLVM_DEFINITIONS})
+
+target_include_directories(ThunkGeneratorTest PRIVATE
+    ${CMAKE_SOURCE_DIR}/include
+    ${LLVM_INCLUDE_DIRS}
+    ${CLANG_INCLUDE_DIRS}
+)
+
+target_link_libraries(ThunkGeneratorTest PRIVATE cpptoc_core
+    clangTooling
+    clangFrontend
+    clangAST
+    clangBasic
+    GTest::gtest
+    GTest::gtest_main)
+
+# Register with CTest
+gtest_discover_tests(ThunkGeneratorTest
     WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
 )
 
@@ -4375,6 +4429,32 @@ target_link_libraries(RecordHandlerTest_VtableInstance PRIVATE
 )
 
 gtest_discover_tests(RecordHandlerTest_VtableInstance
+    WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
+)
+
+# RecordHandler vtable instance with thunks unit tests (Phase 46, Group 2, Task 6)
+add_executable(RecordHandlerTest_VtableInstanceThunks
+    tests/unit/handlers/RecordHandlerTest_VtableInstanceThunks.cpp
+)
+
+target_include_directories(RecordHandlerTest_VtableInstanceThunks PRIVATE
+    ${CMAKE_SOURCE_DIR}/tests/fixtures
+    ${CMAKE_SOURCE_DIR}/include
+    ${LLVM_INCLUDE_DIRS}
+    ${CLANG_INCLUDE_DIRS}
+)
+
+target_link_libraries(RecordHandlerTest_VtableInstanceThunks PRIVATE
+    test_fixtures
+    cpptoc_core
+    clangTooling
+    clangAST
+    clangBasic
+    GTest::gtest
+    GTest::gtest_main
+)
+
+gtest_discover_tests(RecordHandlerTest_VtableInstanceThunks
     WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
 )
 
