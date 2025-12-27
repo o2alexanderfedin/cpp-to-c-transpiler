@@ -8,6 +8,7 @@
 
 #include "CppToCVisitor.h"
 #include "CNodeBuilder.h"
+#include "FileOriginTracker.h"
 #include "clang/Tooling/Tooling.h"
 #include "clang/Frontend/ASTUnit.h"
 #include "clang/AST/RecursiveASTVisitor.h"
@@ -410,7 +411,10 @@ void test_InjectBeforeEarlyReturn() {
 
     // Create visitor and process
     CNodeBuilder builder(Ctx);
-    CppToCVisitor visitor(Ctx, builder);
+    cpptoc::FileOriginTracker tracker(Ctx.getSourceManager());
+    tracker.addUserHeaderPath("<stdin>");
+    clang::TranslationUnitDecl *C_TU = clang::TranslationUnitDecl::Create(Ctx);
+    CppToCVisitor visitor(Ctx, builder, tracker, C_TU);
     visitor.TraverseDecl(Ctx.getTranslationUnitDecl());
 
     // Verify destructor was generated
@@ -452,7 +456,10 @@ void test_MaintainLIFOOrder() {
     ASTContext &Ctx = AST->getASTContext();
 
     CNodeBuilder builder(Ctx);
-    CppToCVisitor visitor(Ctx, builder);
+    cpptoc::FileOriginTracker tracker(Ctx.getSourceManager());
+    tracker.addUserHeaderPath("<stdin>");
+    clang::TranslationUnitDecl *C_TU = clang::TranslationUnitDecl::Create(Ctx);
+    CppToCVisitor visitor(Ctx, builder, tracker, C_TU);
     visitor.TraverseDecl(Ctx.getTranslationUnitDecl());
 
     // Verify destructors were generated
@@ -500,7 +507,10 @@ void test_MultipleReturnsWithDifferentSets() {
     ASTContext &Ctx = AST->getASTContext();
 
     CNodeBuilder builder(Ctx);
-    CppToCVisitor visitor(Ctx, builder);
+    cpptoc::FileOriginTracker tracker(Ctx.getSourceManager());
+    tracker.addUserHeaderPath("<stdin>");
+    clang::TranslationUnitDecl *C_TU = clang::TranslationUnitDecl::Create(Ctx);
+    CppToCVisitor visitor(Ctx, builder, tracker, C_TU);
     visitor.TraverseDecl(Ctx.getTranslationUnitDecl());
 
     FunctionDecl *Dtor = visitor.getDtor("Obj__dtor");
@@ -534,7 +544,10 @@ void test_NoDuplicateDestructorCalls() {
     ASTContext &Ctx = AST->getASTContext();
 
     CNodeBuilder builder(Ctx);
-    CppToCVisitor visitor(Ctx, builder);
+    cpptoc::FileOriginTracker tracker(Ctx.getSourceManager());
+    tracker.addUserHeaderPath("<stdin>");
+    clang::TranslationUnitDecl *C_TU = clang::TranslationUnitDecl::Create(Ctx);
+    CppToCVisitor visitor(Ctx, builder, tracker, C_TU);
     visitor.TraverseDecl(Ctx.getTranslationUnitDecl());
 
     FunctionDecl *Dtor = visitor.getDtor("Unique__dtor");
@@ -616,7 +629,10 @@ void test_EarlyReturnPlusNormalExit() {
     ASTContext &Ctx = AST->getASTContext();
 
     CNodeBuilder builder(Ctx);
-    CppToCVisitor visitor(Ctx, builder);
+    cpptoc::FileOriginTracker tracker(Ctx.getSourceManager());
+    tracker.addUserHeaderPath("<stdin>");
+    clang::TranslationUnitDecl *C_TU = clang::TranslationUnitDecl::Create(Ctx);
+    CppToCVisitor visitor(Ctx, builder, tracker, C_TU);
     visitor.TraverseDecl(Ctx.getTranslationUnitDecl());
 
     FunctionDecl *Dtor = visitor.getDtor("Guard__dtor");
@@ -690,7 +706,10 @@ void test_ReturnWithValueAndObjects() {
     ASTContext &Ctx = AST->getASTContext();
 
     CNodeBuilder builder(Ctx);
-    CppToCVisitor visitor(Ctx, builder);
+    cpptoc::FileOriginTracker tracker(Ctx.getSourceManager());
+    tracker.addUserHeaderPath("<stdin>");
+    clang::TranslationUnitDecl *C_TU = clang::TranslationUnitDecl::Create(Ctx);
+    CppToCVisitor visitor(Ctx, builder, tracker, C_TU);
     visitor.TraverseDecl(Ctx.getTranslationUnitDecl());
 
     FunctionDecl *Dtor = visitor.getDtor("Processor__dtor");

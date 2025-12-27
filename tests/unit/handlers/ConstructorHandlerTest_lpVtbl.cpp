@@ -514,10 +514,19 @@ TEST_F(ConstructorHandlerLpVtblTest, lpVtblInitDerivedClass) {
     auto* compoundStmt = llvm::dyn_cast<clang::CompoundStmt>(body);
     ASSERT_NE(compoundStmt, nullptr);
 
-    // First statement should be lpVtbl = &Derived_vtable_instance
-    auto* firstStmt = compoundStmt->body_front();
-    auto* binOp = llvm::dyn_cast<clang::BinaryOperator>(firstStmt);
-    ASSERT_NE(binOp, nullptr);
+    // Find lpVtbl assignment (may not be first statement due to base constructor calls)
+    clang::BinaryOperator* binOp = nullptr;
+    for (auto* stmt : compoundStmt->body()) {
+        if (auto* bo = llvm::dyn_cast<clang::BinaryOperator>(stmt)) {
+            if (auto* memberExpr = llvm::dyn_cast<clang::MemberExpr>(bo->getLHS())) {
+                if (memberExpr->getMemberDecl()->getNameAsString() == "lpVtbl") {
+                    binOp = bo;
+                    break;
+                }
+            }
+        }
+    }
+    ASSERT_NE(binOp, nullptr) << "Should have lpVtbl assignment";
 
     // RHS should reference Derived_vtable_instance
     auto* rhs = binOp->getRHS();

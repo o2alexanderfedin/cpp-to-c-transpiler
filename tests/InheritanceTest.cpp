@@ -4,6 +4,7 @@
 #include <gtest/gtest.h>
 #include "CppToCVisitor.h"
 #include "CNodeBuilder.h"
+#include "FileOriginTracker.h"
 #include "clang/Tooling/Tooling.h"
 #include "clang/AST/RecordLayout.h"
 
@@ -49,7 +50,10 @@ TEST_F(InheritanceTest, EmptyBaseClass) {
         ASSERT_TRUE(AST) << "Failed to parse C++ code";
 
         CNodeBuilder builder(AST->getASTContext());
-        CppToCVisitor visitor(AST->getASTContext(), builder);
+        cpptoc::FileOriginTracker tracker(AST->getASTContext().getSourceManager());
+    tracker.addUserHeaderPath("<stdin>");
+    clang::TranslationUnitDecl *C_TU = clang::TranslationUnitDecl::Create(AST->getASTContext());
+    CppToCVisitor visitor(AST->getASTContext(), builder, tracker, C_TU);
 
         // Run visitor on AST
         visitor.TraverseDecl(AST->getASTContext().getTranslationUnitDecl());
@@ -81,7 +85,10 @@ TEST_F(InheritanceTest, SingleBaseWithFields) {
         ASSERT_TRUE(AST) << "Failed to parse C++ code";
 
         CNodeBuilder builder(AST->getASTContext());
-        CppToCVisitor visitor(AST->getASTContext(), builder);
+        cpptoc::FileOriginTracker tracker(AST->getASTContext().getSourceManager());
+    tracker.addUserHeaderPath("<stdin>");
+    clang::TranslationUnitDecl *C_TU = clang::TranslationUnitDecl::Create(AST->getASTContext());
+    CppToCVisitor visitor(AST->getASTContext(), builder, tracker, C_TU);
 
         // Run visitor on AST
         visitor.TraverseDecl(AST->getASTContext().getTranslationUnitDecl());
@@ -142,7 +149,10 @@ TEST_F(InheritanceTest, MultiLevelInheritance) {
         ASSERT_TRUE(AST) << "Failed to parse C++ code";
 
         CNodeBuilder builder(AST->getASTContext());
-        CppToCVisitor visitor(AST->getASTContext(), builder);
+        cpptoc::FileOriginTracker tracker(AST->getASTContext().getSourceManager());
+    tracker.addUserHeaderPath("<stdin>");
+    clang::TranslationUnitDecl *C_TU = clang::TranslationUnitDecl::Create(AST->getASTContext());
+    CppToCVisitor visitor(AST->getASTContext(), builder, tracker, C_TU);
 
         // Run visitor on AST
         visitor.TraverseDecl(AST->getASTContext().getTranslationUnitDecl());
@@ -226,7 +236,10 @@ TEST_F(InheritanceTest, SimpleConstructorChaining) {
         ASSERT_TRUE(AST) << "Failed to parse C++ code";
 
         CNodeBuilder builder(AST->getASTContext());
-        CppToCVisitor visitor(AST->getASTContext(), builder);
+        cpptoc::FileOriginTracker tracker(AST->getASTContext().getSourceManager());
+    tracker.addUserHeaderPath("<stdin>");
+    clang::TranslationUnitDecl *C_TU = clang::TranslationUnitDecl::Create(AST->getASTContext());
+    CppToCVisitor visitor(AST->getASTContext(), builder, tracker, C_TU);
         visitor.TraverseDecl(AST->getASTContext().getTranslationUnitDecl());
 
         // Get generated C constructor for Derived
@@ -273,7 +286,10 @@ TEST_F(InheritanceTest, ConstructorChainingWithArgs) {
         ASSERT_TRUE(AST) << "Failed to parse C++ code";
 
         CNodeBuilder builder(AST->getASTContext());
-        CppToCVisitor visitor(AST->getASTContext(), builder);
+        cpptoc::FileOriginTracker tracker(AST->getASTContext().getSourceManager());
+    tracker.addUserHeaderPath("<stdin>");
+    clang::TranslationUnitDecl *C_TU = clang::TranslationUnitDecl::Create(AST->getASTContext());
+    CppToCVisitor visitor(AST->getASTContext(), builder, tracker, C_TU);
         visitor.TraverseDecl(AST->getASTContext().getTranslationUnitDecl());
 
         FunctionDecl *DerivedCtor = visitor.getCtor("Derived__ctor");
@@ -312,7 +328,10 @@ TEST_F(InheritanceTest, MultiLevelConstructorChaining) {
         ASSERT_TRUE(AST) << "Failed to parse C++ code";
 
         CNodeBuilder builder(AST->getASTContext());
-        CppToCVisitor visitor(AST->getASTContext(), builder);
+        cpptoc::FileOriginTracker tracker(AST->getASTContext().getSourceManager());
+    tracker.addUserHeaderPath("<stdin>");
+    clang::TranslationUnitDecl *C_TU = clang::TranslationUnitDecl::Create(AST->getASTContext());
+    CppToCVisitor visitor(AST->getASTContext(), builder, tracker, C_TU);
         visitor.TraverseDecl(AST->getASTContext().getTranslationUnitDecl());
 
         // Check Derived2 constructor calls Derived1 constructor (not Base)
@@ -349,7 +368,10 @@ TEST_F(InheritanceTest, SimpleDestructorChaining) {
         ASSERT_TRUE(AST) << "Failed to parse C++ code";
 
         CNodeBuilder builder(AST->getASTContext());
-        CppToCVisitor visitor(AST->getASTContext(), builder);
+        cpptoc::FileOriginTracker tracker(AST->getASTContext().getSourceManager());
+    tracker.addUserHeaderPath("<stdin>");
+    clang::TranslationUnitDecl *C_TU = clang::TranslationUnitDecl::Create(AST->getASTContext());
+    CppToCVisitor visitor(AST->getASTContext(), builder, tracker, C_TU);
         visitor.TraverseDecl(AST->getASTContext().getTranslationUnitDecl());
 
         // Get generated C destructor for Derived
@@ -395,7 +417,10 @@ TEST_F(InheritanceTest, DestructorChainingWithBody) {
         ASSERT_TRUE(AST) << "Failed to parse C++ code";
 
         CNodeBuilder builder(AST->getASTContext());
-        CppToCVisitor visitor(AST->getASTContext(), builder);
+        cpptoc::FileOriginTracker tracker(AST->getASTContext().getSourceManager());
+    tracker.addUserHeaderPath("<stdin>");
+    clang::TranslationUnitDecl *C_TU = clang::TranslationUnitDecl::Create(AST->getASTContext());
+    CppToCVisitor visitor(AST->getASTContext(), builder, tracker, C_TU);
         visitor.TraverseDecl(AST->getASTContext().getTranslationUnitDecl());
 
         FunctionDecl *DerivedDtor = visitor.getDtor("Derived__dtor");
@@ -435,7 +460,10 @@ TEST_F(InheritanceTest, MultiLevelDestructorChaining) {
         ASSERT_TRUE(AST) << "Failed to parse C++ code";
 
         CNodeBuilder builder(AST->getASTContext());
-        CppToCVisitor visitor(AST->getASTContext(), builder);
+        cpptoc::FileOriginTracker tracker(AST->getASTContext().getSourceManager());
+    tracker.addUserHeaderPath("<stdin>");
+    clang::TranslationUnitDecl *C_TU = clang::TranslationUnitDecl::Create(AST->getASTContext());
+    CppToCVisitor visitor(AST->getASTContext(), builder, tracker, C_TU);
         visitor.TraverseDecl(AST->getASTContext().getTranslationUnitDecl());
 
         // Check Derived2 destructor calls Derived1 destructor (not Base)
@@ -476,7 +504,10 @@ TEST_F(InheritanceTest, MemberAccessInDerivedMethods) {
         ASSERT_TRUE(AST) << "Failed to parse C++ code";
 
         CNodeBuilder builder(AST->getASTContext());
-        CppToCVisitor visitor(AST->getASTContext(), builder);
+        cpptoc::FileOriginTracker tracker(AST->getASTContext().getSourceManager());
+    tracker.addUserHeaderPath("<stdin>");
+    clang::TranslationUnitDecl *C_TU = clang::TranslationUnitDecl::Create(AST->getASTContext());
+    CppToCVisitor visitor(AST->getASTContext(), builder, tracker, C_TU);
         visitor.TraverseDecl(AST->getASTContext().getTranslationUnitDecl());
 
         // Verify Derived struct has both x and y fields
@@ -508,7 +539,10 @@ TEST_F(InheritanceTest, BasicUpcasting) {
         ASSERT_TRUE(AST) << "Failed to parse C++ code";
 
         CNodeBuilder builder(AST->getASTContext());
-        CppToCVisitor visitor(AST->getASTContext(), builder);
+        cpptoc::FileOriginTracker tracker(AST->getASTContext().getSourceManager());
+    tracker.addUserHeaderPath("<stdin>");
+    clang::TranslationUnitDecl *C_TU = clang::TranslationUnitDecl::Create(AST->getASTContext());
+    CppToCVisitor visitor(AST->getASTContext(), builder, tracker, C_TU);
         visitor.TraverseDecl(AST->getASTContext().getTranslationUnitDecl());
 
         // Verify Base struct exists
@@ -563,7 +597,10 @@ TEST_F(InheritanceTest, MultiLevelUpcasting) {
         ASSERT_TRUE(AST) << "Failed to parse C++ code";
 
         CNodeBuilder builder(AST->getASTContext());
-        CppToCVisitor visitor(AST->getASTContext(), builder);
+        cpptoc::FileOriginTracker tracker(AST->getASTContext().getSourceManager());
+    tracker.addUserHeaderPath("<stdin>");
+    clang::TranslationUnitDecl *C_TU = clang::TranslationUnitDecl::Create(AST->getASTContext());
+    CppToCVisitor visitor(AST->getASTContext(), builder, tracker, C_TU);
         visitor.TraverseDecl(AST->getASTContext().getTranslationUnitDecl());
 
         // Verify all structs exist
@@ -619,7 +656,10 @@ TEST_F(InheritanceTest, SimpleMethodOverriding) {
         ASSERT_TRUE(AST) << "Failed to parse C++ code";
 
         CNodeBuilder builder(AST->getASTContext());
-        CppToCVisitor visitor(AST->getASTContext(), builder);
+        cpptoc::FileOriginTracker tracker(AST->getASTContext().getSourceManager());
+    tracker.addUserHeaderPath("<stdin>");
+    clang::TranslationUnitDecl *C_TU = clang::TranslationUnitDecl::Create(AST->getASTContext());
+    CppToCVisitor visitor(AST->getASTContext(), builder, tracker, C_TU);
         visitor.TraverseDecl(AST->getASTContext().getTranslationUnitDecl());
 
         // Verify Base::print exists as Base_print
@@ -661,7 +701,10 @@ TEST_F(InheritanceTest, MethodOverridingWithReturn) {
         ASSERT_TRUE(AST) << "Failed to parse C++ code";
 
         CNodeBuilder builder(AST->getASTContext());
-        CppToCVisitor visitor(AST->getASTContext(), builder);
+        cpptoc::FileOriginTracker tracker(AST->getASTContext().getSourceManager());
+    tracker.addUserHeaderPath("<stdin>");
+    clang::TranslationUnitDecl *C_TU = clang::TranslationUnitDecl::Create(AST->getASTContext());
+    CppToCVisitor visitor(AST->getASTContext(), builder, tracker, C_TU);
         visitor.TraverseDecl(AST->getASTContext().getTranslationUnitDecl());
 
         // Verify Animal::getLegs exists
@@ -699,7 +742,10 @@ TEST_F(InheritanceTest, MethodOverridingWithParameters) {
         ASSERT_TRUE(AST) << "Failed to parse C++ code";
 
         CNodeBuilder builder(AST->getASTContext());
-        CppToCVisitor visitor(AST->getASTContext(), builder);
+        cpptoc::FileOriginTracker tracker(AST->getASTContext().getSourceManager());
+    tracker.addUserHeaderPath("<stdin>");
+    clang::TranslationUnitDecl *C_TU = clang::TranslationUnitDecl::Create(AST->getASTContext());
+    CppToCVisitor visitor(AST->getASTContext(), builder, tracker, C_TU);
         visitor.TraverseDecl(AST->getASTContext().getTranslationUnitDecl());
 
         // Verify Shape::setSize exists
@@ -751,7 +797,10 @@ TEST_F(InheritanceTest, ComprehensiveMultiLevelInheritance) {
         ASSERT_TRUE(AST) << "Failed to parse C++ code";
 
         CNodeBuilder builder(AST->getASTContext());
-        CppToCVisitor visitor(AST->getASTContext(), builder);
+        cpptoc::FileOriginTracker tracker(AST->getASTContext().getSourceManager());
+    tracker.addUserHeaderPath("<stdin>");
+    clang::TranslationUnitDecl *C_TU = clang::TranslationUnitDecl::Create(AST->getASTContext());
+    CppToCVisitor visitor(AST->getASTContext(), builder, tracker, C_TU);
         visitor.TraverseDecl(AST->getASTContext().getTranslationUnitDecl());
 
         // ========================================================================
@@ -856,7 +905,10 @@ TEST_F(InheritanceTest, EmptyMemberInitList) {
         ASSERT_TRUE(AST) << "Failed to parse C++ code";
 
         CNodeBuilder builder(AST->getASTContext());
-        CppToCVisitor visitor(AST->getASTContext(), builder);
+        cpptoc::FileOriginTracker tracker(AST->getASTContext().getSourceManager());
+    tracker.addUserHeaderPath("<stdin>");
+    clang::TranslationUnitDecl *C_TU = clang::TranslationUnitDecl::Create(AST->getASTContext());
+    CppToCVisitor visitor(AST->getASTContext(), builder, tracker, C_TU);
 
         visitor.TraverseDecl(AST->getASTContext().getTranslationUnitDecl());
 
@@ -882,7 +934,10 @@ TEST_F(InheritanceTest, NoImplicitDefaultWithExplicitCtor) {
         ASSERT_TRUE(AST) << "Failed to parse C++ code";
 
         CNodeBuilder builder(AST->getASTContext());
-        CppToCVisitor visitor(AST->getASTContext(), builder);
+        cpptoc::FileOriginTracker tracker(AST->getASTContext().getSourceManager());
+    tracker.addUserHeaderPath("<stdin>");
+    clang::TranslationUnitDecl *C_TU = clang::TranslationUnitDecl::Create(AST->getASTContext());
+    CppToCVisitor visitor(AST->getASTContext(), builder, tracker, C_TU);
 
         visitor.TraverseDecl(AST->getASTContext().getTranslationUnitDecl());
 
@@ -925,7 +980,10 @@ TEST_F(InheritanceTest, SimpleMemberConstructorCalls) {
         std::cout << "DEBUG: AST built successfully\n";
         std::cout.flush();
         CNodeBuilder builder(AST->getASTContext());
-        CppToCVisitor visitor(AST->getASTContext(), builder);
+        cpptoc::FileOriginTracker tracker(AST->getASTContext().getSourceManager());
+    tracker.addUserHeaderPath("<stdin>");
+    clang::TranslationUnitDecl *C_TU = clang::TranslationUnitDecl::Create(AST->getASTContext());
+    CppToCVisitor visitor(AST->getASTContext(), builder, tracker, C_TU);
 
         std::cout << "DEBUG: About to TraverseDecl\n";
         std::cout.flush();
@@ -985,7 +1043,10 @@ TEST_F(InheritanceTest, MemberDestructorCalls) {
         ASSERT_TRUE(AST) << "Failed to parse C++ code";
 
         CNodeBuilder builder(AST->getASTContext());
-        CppToCVisitor visitor(AST->getASTContext(), builder);
+        cpptoc::FileOriginTracker tracker(AST->getASTContext().getSourceManager());
+    tracker.addUserHeaderPath("<stdin>");
+    clang::TranslationUnitDecl *C_TU = clang::TranslationUnitDecl::Create(AST->getASTContext());
+    CppToCVisitor visitor(AST->getASTContext(), builder, tracker, C_TU);
 
         visitor.TraverseDecl(AST->getASTContext().getTranslationUnitDecl());
 
@@ -1050,7 +1111,10 @@ TEST_F(InheritanceTest, CompleteChaining_BaseAndMembers) {
         ASSERT_TRUE(AST) << "Failed to parse C++ code";
 
         CNodeBuilder builder(AST->getASTContext());
-        CppToCVisitor visitor(AST->getASTContext(), builder);
+        cpptoc::FileOriginTracker tracker(AST->getASTContext().getSourceManager());
+    tracker.addUserHeaderPath("<stdin>");
+    clang::TranslationUnitDecl *C_TU = clang::TranslationUnitDecl::Create(AST->getASTContext());
+    CppToCVisitor visitor(AST->getASTContext(), builder, tracker, C_TU);
 
         visitor.TraverseDecl(AST->getASTContext().getTranslationUnitDecl());
 
@@ -1137,7 +1201,10 @@ TEST_F(InheritanceTest, ConstMemberInitialization) {
         ASSERT_TRUE(AST) << "Failed to parse C++ code";
 
         CNodeBuilder builder(AST->getASTContext());
-        CppToCVisitor visitor(AST->getASTContext(), builder);
+        cpptoc::FileOriginTracker tracker(AST->getASTContext().getSourceManager());
+    tracker.addUserHeaderPath("<stdin>");
+    clang::TranslationUnitDecl *C_TU = clang::TranslationUnitDecl::Create(AST->getASTContext());
+    CppToCVisitor visitor(AST->getASTContext(), builder, tracker, C_TU);
 
         visitor.TraverseDecl(AST->getASTContext().getTranslationUnitDecl());
 
@@ -1179,7 +1246,10 @@ TEST_F(InheritanceTest, ReferenceMemberInitialization) {
         ASSERT_TRUE(AST) << "Failed to parse C++ code";
 
         CNodeBuilder builder(AST->getASTContext());
-        CppToCVisitor visitor(AST->getASTContext(), builder);
+        cpptoc::FileOriginTracker tracker(AST->getASTContext().getSourceManager());
+    tracker.addUserHeaderPath("<stdin>");
+    clang::TranslationUnitDecl *C_TU = clang::TranslationUnitDecl::Create(AST->getASTContext());
+    CppToCVisitor visitor(AST->getASTContext(), builder, tracker, C_TU);
 
         visitor.TraverseDecl(AST->getASTContext().getTranslationUnitDecl());
 
@@ -1209,7 +1279,10 @@ TEST_F(InheritanceTest, SimpleDelegatingConstructor) {
         ASSERT_TRUE(AST) << "Failed to parse C++ code";
 
         CNodeBuilder builder(AST->getASTContext());
-        CppToCVisitor visitor(AST->getASTContext(), builder);
+        cpptoc::FileOriginTracker tracker(AST->getASTContext().getSourceManager());
+    tracker.addUserHeaderPath("<stdin>");
+    clang::TranslationUnitDecl *C_TU = clang::TranslationUnitDecl::Create(AST->getASTContext());
+    CppToCVisitor visitor(AST->getASTContext(), builder, tracker, C_TU);
         visitor.TraverseDecl(AST->getASTContext().getTranslationUnitDecl());
 
         // Get delegating constructor: Point(int) → Point__ctor_1
@@ -1249,7 +1322,10 @@ TEST_F(InheritanceTest, DelegationChain) {
         ASSERT_TRUE(AST) << "Failed to parse C++ code";
 
         CNodeBuilder builder(AST->getASTContext());
-        CppToCVisitor visitor(AST->getASTContext(), builder);
+        cpptoc::FileOriginTracker tracker(AST->getASTContext().getSourceManager());
+    tracker.addUserHeaderPath("<stdin>");
+    clang::TranslationUnitDecl *C_TU = clang::TranslationUnitDecl::Create(AST->getASTContext());
+    CppToCVisitor visitor(AST->getASTContext(), builder, tracker, C_TU);
         visitor.TraverseDecl(AST->getASTContext().getTranslationUnitDecl());
 
         // Verify Data() delegates to Data(int) → Data__ctor_0 delegates to Data__ctor_1
@@ -1310,7 +1386,10 @@ TEST_F(InheritanceTest, EntitySystemScenario) {
         ASSERT_TRUE(AST) << "Failed to parse C++ code";
 
         CNodeBuilder builder(AST->getASTContext());
-        CppToCVisitor visitor(AST->getASTContext(), builder);
+        cpptoc::FileOriginTracker tracker(AST->getASTContext().getSourceManager());
+    tracker.addUserHeaderPath("<stdin>");
+    clang::TranslationUnitDecl *C_TU = clang::TranslationUnitDecl::Create(AST->getASTContext());
+    CppToCVisitor visitor(AST->getASTContext(), builder, tracker, C_TU);
 
         visitor.TraverseDecl(AST->getASTContext().getTranslationUnitDecl());
 
@@ -1375,7 +1454,10 @@ TEST_F(InheritanceTest, ResourceManagerScenario) {
         ASSERT_TRUE(AST) << "Failed to parse C++ code";
 
         CNodeBuilder builder(AST->getASTContext());
-        CppToCVisitor visitor(AST->getASTContext(), builder);
+        cpptoc::FileOriginTracker tracker(AST->getASTContext().getSourceManager());
+    tracker.addUserHeaderPath("<stdin>");
+    clang::TranslationUnitDecl *C_TU = clang::TranslationUnitDecl::Create(AST->getASTContext());
+    CppToCVisitor visitor(AST->getASTContext(), builder, tracker, C_TU);
 
         visitor.TraverseDecl(AST->getASTContext().getTranslationUnitDecl());
 

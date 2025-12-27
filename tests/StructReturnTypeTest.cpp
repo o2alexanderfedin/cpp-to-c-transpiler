@@ -4,6 +4,7 @@
 #include <gtest/gtest.h>
 #include "CodeGenerator.h"
 #include "CNodeBuilder.h"
+#include "FileOriginTracker.h"
 #include "CppToCVisitor.h"
 #include "FileOriginTracker.h"
 #include "clang/Tooling/Tooling.h"
@@ -29,8 +30,9 @@ std::string transpileToCCode(const std::string &cppCode) {
     CNodeBuilder builder(Context);
     cpptoc::FileOriginTracker tracker(Context.getSourceManager());
     tracker.addUserHeaderPath(".");
+    clang::TranslationUnitDecl *C_TU = clang::TranslationUnitDecl::Create(Context);
 
-    CppToCVisitor visitor(Context, builder, tracker);
+    CppToCVisitor visitor(Context, builder, tracker, C_TU);
     visitor.TraverseDecl(Context.getTranslationUnitDecl());
 
     // Generate C code output from AST

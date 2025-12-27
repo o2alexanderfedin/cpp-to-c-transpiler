@@ -112,7 +112,10 @@ clang::Decl* MethodHandler::handleDecl(const clang::Decl* D, HandlerContext& ctx
         cFunc->setBody(emptyBody);
     }
 
-    // Step 9: Register mapping in context
+    // Step 9: Add function to translation unit
+    cCtx.getTranslationUnitDecl()->addDecl(cFunc);
+
+    // Step 10: Register mapping in context
     ctx.registerDecl(cppMethod, cFunc);
 
     return cFunc;

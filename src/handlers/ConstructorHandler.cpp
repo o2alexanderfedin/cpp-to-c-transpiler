@@ -93,25 +93,23 @@ clang::Decl* ConstructorHandler::handleDecl(const clang::Decl* D, HandlerContext
     // Register mapping
     ctx.registerDecl(ctor, cFunc);
 
-    // Step 7: Prepare lpVtbl initialization (Phase 45 Group 3, Phase 46 Group 3)
+    // Step 7: Build constructor body
+    // Order (Phase 46 Group 3):
+    // Task 8: Base constructor calls MUST be FIRST (they initialize base vtables)
+    // Task 7: Then lpVtbl initialization (override base vtables with derived vtables)
+    // Then: Member initializers
+    std::vector<clang::Stmt*> bodyStmts;
+
+    // Step 8a: Add base constructor calls FIRST (Task 8)
+    auto baseCtorCalls = generateBaseConstructorCalls(ctor, thisParam, ctx);
+    bodyStmts.insert(bodyStmts.end(), baseCtorCalls.begin(), baseCtorCalls.end());
+
+    // Step 8b: Add lpVtbl initialization(s) AFTER base constructors (Task 7)
     std::vector<clang::Stmt*> lpVtblInitStmts;
     if (parentClass->isPolymorphic()) {
         lpVtblInitStmts = injectLpVtblInit(parentClass, thisParam, ctx);
     }
-
-    // Step 8: Build constructor body
-    // Order (Phase 46 Group 3):
-    // Task 7: lpVtbl initialization MUST be FIRST (before any other initialization)
-    // Task 8: Then base constructor calls (they initialize base vtables)
-    // Then: Member initializers
-    std::vector<clang::Stmt*> bodyStmts;
-
-    // Step 8a: Add lpVtbl initialization(s) FIRST (Task 7)
     bodyStmts.insert(bodyStmts.end(), lpVtblInitStmts.begin(), lpVtblInitStmts.end());
-
-    // Step 8b: Add base constructor calls AFTER lpVtbl init (Task 8)
-    auto baseCtorCalls = generateBaseConstructorCalls(ctor, thisParam, ctx);
-    bodyStmts.insert(bodyStmts.end(), baseCtorCalls.begin(), baseCtorCalls.end());
 
     // TODO: Add member initializer list translations here
     // For now, we have base calls and lpVtbl init
@@ -408,8 +406,16 @@ std::vector<clang::Stmt*> ConstructorHandler::injectLpVtblInit(
             clang::NOUR_None
         );
 
-        // Create RHS: &ClassName_BaseName_vtable_instance
-        std::string vtableInstanceName = className + "_" + baseName + "_vtable_instance";
+        // Create RHS: &ClassName_BaseName_vtable_instance (multiple inheritance)
+        //         or: &ClassName_vtable_instance (single inheritance with primary base)
+        std::string vtableInstanceName;
+        if (bases.size() == 1 && baseInfo.IsPrimary) {
+            // Single inheritance: use simpler naming
+            vtableInstanceName = className + "_vtable_instance";
+        } else {
+            // Multiple inheritance or non-primary base: use detailed naming
+            vtableInstanceName = className + "_" + baseName + "_vtable_instance";
+        }
 
         // Find or create vtable instance variable
         clang::VarDecl* vtableInstanceVar = nullptr;
@@ -424,7 +430,14 @@ std::vector<clang::Stmt*> ConstructorHandler::injectLpVtblInit(
 
         if (!vtableInstanceVar) {
             // Create forward declaration for vtable instance
-            std::string vtableStructName = className + "_" + baseName + "_vtable";
+            std::string vtableStructName;
+            if (bases.size() == 1 && baseInfo.IsPrimary) {
+                // Single inheritance: use simpler naming
+                vtableStructName = className + "_vtable";
+            } else {
+                // Multiple inheritance or non-primary base: use detailed naming
+                vtableStructName = className + "_" + baseName + "_vtable";
+            }
             clang::RecordDecl* vtableStruct = nullptr;
 
             for (auto* D : TU->decls()) {

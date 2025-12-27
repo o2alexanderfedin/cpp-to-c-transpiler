@@ -14,6 +14,7 @@
 
 #include <gtest/gtest.h>
 #include "CNodeBuilder.h"
+#include "FileOriginTracker.h"
 #include "CppToCVisitor.h"
 #include "NameMangler.h"
 #include "clang/Tooling/Tooling.h"
@@ -47,7 +48,10 @@ TEST_F(StandaloneFunctionTranslationTest, SimpleFunctionDeclaration) {
       ASSERT_TRUE(AST) << "Failed to parse C++ code";
 
       CNodeBuilder builder(AST->getASTContext());
-      CppToCVisitor visitor(AST->getASTContext(), builder);
+      cpptoc::FileOriginTracker tracker(AST->getASTContext().getSourceManager());
+    tracker.addUserHeaderPath("<stdin>");
+    clang::TranslationUnitDecl *C_TU = clang::TranslationUnitDecl::Create(AST->getASTContext());
+    CppToCVisitor visitor(AST->getASTContext(), builder, tracker, C_TU);
 
       // Run visitor on AST
       visitor.TraverseDecl(AST->getASTContext().getTranslationUnitDecl());
@@ -71,7 +75,10 @@ TEST_F(StandaloneFunctionTranslationTest, FunctionWithPointerReturn) {
       ASSERT_TRUE(AST) << "Failed to parse C++ code";
 
       CNodeBuilder builder(AST->getASTContext());
-      CppToCVisitor visitor(AST->getASTContext(), builder);
+      cpptoc::FileOriginTracker tracker(AST->getASTContext().getSourceManager());
+    tracker.addUserHeaderPath("<stdin>");
+    clang::TranslationUnitDecl *C_TU = clang::TranslationUnitDecl::Create(AST->getASTContext());
+    CppToCVisitor visitor(AST->getASTContext(), builder, tracker, C_TU);
 
       visitor.TraverseDecl(AST->getASTContext().getTranslationUnitDecl());
 
@@ -96,7 +103,10 @@ TEST_F(StandaloneFunctionTranslationTest, OverloadedFunctions) {
       ASSERT_TRUE(AST) << "Failed to parse C++ code";
 
       CNodeBuilder builder(AST->getASTContext());
-      CppToCVisitor visitor(AST->getASTContext(), builder);
+      cpptoc::FileOriginTracker tracker(AST->getASTContext().getSourceManager());
+    tracker.addUserHeaderPath("<stdin>");
+    clang::TranslationUnitDecl *C_TU = clang::TranslationUnitDecl::Create(AST->getASTContext());
+    CppToCVisitor visitor(AST->getASTContext(), builder, tracker, C_TU);
 
       visitor.TraverseDecl(AST->getASTContext().getTranslationUnitDecl());
 
@@ -122,7 +132,10 @@ TEST_F(StandaloneFunctionTranslationTest, RecursiveFunction) {
       ASSERT_TRUE(AST) << "Failed to parse C++ code";
 
       CNodeBuilder builder(AST->getASTContext());
-      CppToCVisitor visitor(AST->getASTContext(), builder);
+      cpptoc::FileOriginTracker tracker(AST->getASTContext().getSourceManager());
+    tracker.addUserHeaderPath("<stdin>");
+    clang::TranslationUnitDecl *C_TU = clang::TranslationUnitDecl::Create(AST->getASTContext());
+    CppToCVisitor visitor(AST->getASTContext(), builder, tracker, C_TU);
 
       visitor.TraverseDecl(AST->getASTContext().getTranslationUnitDecl());
 
@@ -142,7 +155,10 @@ TEST_F(StandaloneFunctionTranslationTest, MainFunction) {
       ASSERT_TRUE(AST) << "Failed to parse C++ code";
 
       CNodeBuilder builder(AST->getASTContext());
-      CppToCVisitor visitor(AST->getASTContext(), builder);
+      cpptoc::FileOriginTracker tracker(AST->getASTContext().getSourceManager());
+    tracker.addUserHeaderPath("<stdin>");
+    clang::TranslationUnitDecl *C_TU = clang::TranslationUnitDecl::Create(AST->getASTContext());
+    CppToCVisitor visitor(AST->getASTContext(), builder, tracker, C_TU);
 
       visitor.TraverseDecl(AST->getASTContext().getTranslationUnitDecl());
 
@@ -164,7 +180,10 @@ TEST_F(StandaloneFunctionTranslationTest, StaticFunction) {
       ASSERT_TRUE(AST) << "Failed to parse C++ code";
 
       CNodeBuilder builder(AST->getASTContext());
-      CppToCVisitor visitor(AST->getASTContext(), builder);
+      cpptoc::FileOriginTracker tracker(AST->getASTContext().getSourceManager());
+    tracker.addUserHeaderPath("<stdin>");
+    clang::TranslationUnitDecl *C_TU = clang::TranslationUnitDecl::Create(AST->getASTContext());
+    CppToCVisitor visitor(AST->getASTContext(), builder, tracker, C_TU);
 
       visitor.TraverseDecl(AST->getASTContext().getTranslationUnitDecl());
 
@@ -187,7 +206,10 @@ TEST_F(StandaloneFunctionTranslationTest, ExternFunction) {
       ASSERT_TRUE(AST) << "Failed to parse C++ code";
 
       CNodeBuilder builder(AST->getASTContext());
-      CppToCVisitor visitor(AST->getASTContext(), builder);
+      cpptoc::FileOriginTracker tracker(AST->getASTContext().getSourceManager());
+    tracker.addUserHeaderPath("<stdin>");
+    clang::TranslationUnitDecl *C_TU = clang::TranslationUnitDecl::Create(AST->getASTContext());
+    CppToCVisitor visitor(AST->getASTContext(), builder, tracker, C_TU);
 
       visitor.TraverseDecl(AST->getASTContext().getTranslationUnitDecl());
 
@@ -209,7 +231,10 @@ TEST_F(StandaloneFunctionTranslationTest, VariadicFunction) {
       ASSERT_TRUE(AST) << "Failed to parse C++ code";
 
       CNodeBuilder builder(AST->getASTContext());
-      CppToCVisitor visitor(AST->getASTContext(), builder);
+      cpptoc::FileOriginTracker tracker(AST->getASTContext().getSourceManager());
+    tracker.addUserHeaderPath("<stdin>");
+    clang::TranslationUnitDecl *C_TU = clang::TranslationUnitDecl::Create(AST->getASTContext());
+    CppToCVisitor visitor(AST->getASTContext(), builder, tracker, C_TU);
 
       visitor.TraverseDecl(AST->getASTContext().getTranslationUnitDecl());
 
@@ -230,7 +255,10 @@ TEST_F(StandaloneFunctionTranslationTest, InlineFunction) {
       ASSERT_TRUE(AST) << "Failed to parse C++ code";
 
       CNodeBuilder builder(AST->getASTContext());
-      CppToCVisitor visitor(AST->getASTContext(), builder);
+      cpptoc::FileOriginTracker tracker(AST->getASTContext().getSourceManager());
+    tracker.addUserHeaderPath("<stdin>");
+    clang::TranslationUnitDecl *C_TU = clang::TranslationUnitDecl::Create(AST->getASTContext());
+    CppToCVisitor visitor(AST->getASTContext(), builder, tracker, C_TU);
 
       visitor.TraverseDecl(AST->getASTContext().getTranslationUnitDecl());
 
@@ -259,7 +287,10 @@ TEST_F(StandaloneFunctionTranslationTest, MutuallyRecursiveFunctions) {
       ASSERT_TRUE(AST) << "Failed to parse C++ code";
 
       CNodeBuilder builder(AST->getASTContext());
-      CppToCVisitor visitor(AST->getASTContext(), builder);
+      cpptoc::FileOriginTracker tracker(AST->getASTContext().getSourceManager());
+    tracker.addUserHeaderPath("<stdin>");
+    clang::TranslationUnitDecl *C_TU = clang::TranslationUnitDecl::Create(AST->getASTContext());
+    CppToCVisitor visitor(AST->getASTContext(), builder, tracker, C_TU);
 
       visitor.TraverseDecl(AST->getASTContext().getTranslationUnitDecl());
 
@@ -282,7 +313,10 @@ TEST_F(StandaloneFunctionTranslationTest, ConstQualifiedParameter) {
       ASSERT_TRUE(AST) << "Failed to parse C++ code";
 
       CNodeBuilder builder(AST->getASTContext());
-      CppToCVisitor visitor(AST->getASTContext(), builder);
+      cpptoc::FileOriginTracker tracker(AST->getASTContext().getSourceManager());
+    tracker.addUserHeaderPath("<stdin>");
+    clang::TranslationUnitDecl *C_TU = clang::TranslationUnitDecl::Create(AST->getASTContext());
+    CppToCVisitor visitor(AST->getASTContext(), builder, tracker, C_TU);
 
       visitor.TraverseDecl(AST->getASTContext().getTranslationUnitDecl());
 
@@ -306,7 +340,10 @@ TEST_F(StandaloneFunctionTranslationTest, VoidReturnFunction) {
       ASSERT_TRUE(AST) << "Failed to parse C++ code";
 
       CNodeBuilder builder(AST->getASTContext());
-      CppToCVisitor visitor(AST->getASTContext(), builder);
+      cpptoc::FileOriginTracker tracker(AST->getASTContext().getSourceManager());
+    tracker.addUserHeaderPath("<stdin>");
+    clang::TranslationUnitDecl *C_TU = clang::TranslationUnitDecl::Create(AST->getASTContext());
+    CppToCVisitor visitor(AST->getASTContext(), builder, tracker, C_TU);
 
       visitor.TraverseDecl(AST->getASTContext().getTranslationUnitDecl());
 
@@ -327,7 +364,10 @@ TEST_F(StandaloneFunctionTranslationTest, OverloadingDifferentParamCounts) {
       ASSERT_TRUE(AST) << "Failed to parse C++ code";
 
       CNodeBuilder builder(AST->getASTContext());
-      CppToCVisitor visitor(AST->getASTContext(), builder);
+      cpptoc::FileOriginTracker tracker(AST->getASTContext().getSourceManager());
+    tracker.addUserHeaderPath("<stdin>");
+    clang::TranslationUnitDecl *C_TU = clang::TranslationUnitDecl::Create(AST->getASTContext());
+    CppToCVisitor visitor(AST->getASTContext(), builder, tracker, C_TU);
 
       visitor.TraverseDecl(AST->getASTContext().getTranslationUnitDecl());
 
@@ -359,7 +399,10 @@ TEST_F(StandaloneFunctionTranslationTest, NoParameterFunction) {
       ASSERT_TRUE(AST) << "Failed to parse C++ code";
 
       CNodeBuilder builder(AST->getASTContext());
-      CppToCVisitor visitor(AST->getASTContext(), builder);
+      cpptoc::FileOriginTracker tracker(AST->getASTContext().getSourceManager());
+    tracker.addUserHeaderPath("<stdin>");
+    clang::TranslationUnitDecl *C_TU = clang::TranslationUnitDecl::Create(AST->getASTContext());
+    CppToCVisitor visitor(AST->getASTContext(), builder, tracker, C_TU);
 
       visitor.TraverseDecl(AST->getASTContext().getTranslationUnitDecl());
 

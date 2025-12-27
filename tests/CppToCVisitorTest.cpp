@@ -21,6 +21,16 @@ std::unique_ptr<ASTUnit> buildAST(const std::string &code) {
 // Test fixture
 class CppToCVisitorTest : public ::testing::Test {
 protected:
+    // Helper to create a CppToCVisitor with a C TranslationUnitDecl
+    std::unique_ptr<CppToCVisitor> createVisitor(ASTUnit &AST, CNodeBuilder &builder,
+                                                   cpptoc::FileOriginTracker &tracker) {
+        // Create a C TranslationUnitDecl for the visitor
+        clang::TranslationUnitDecl *C_TU =
+            clang::TranslationUnitDecl::Create(AST.getASTContext());
+
+        return std::make_unique<CppToCVisitor>(AST.getASTContext(), builder,
+                                                tracker, C_TU);
+    }
 };
 
 TEST_F(CppToCVisitorTest, EmptyClass) {
@@ -34,13 +44,13 @@ TEST_F(CppToCVisitorTest, EmptyClass) {
         tracker.addUserHeaderPath("<stdin>");
         tracker.addUserHeaderPath("input.cc");
         tracker.addUserHeaderPath(".");
-        CppToCVisitor visitor(AST->getASTContext(), builder, tracker);
+        auto visitor = createVisitor(*AST, builder, tracker);
 
         // Run visitor on AST
-        visitor.TraverseDecl(AST->getASTContext().getTranslationUnitDecl());
+        visitor->TraverseDecl(AST->getASTContext().getTranslationUnitDecl());
 
         // Verify C struct generated
-        RecordDecl *CStruct = visitor.getCStruct("Empty");
+        RecordDecl *CStruct = visitor->getCStruct("Empty");
         ASSERT_TRUE(CStruct != nullptr) << "C struct not generated";
         ASSERT_TRUE(CStruct->getName() == "Empty") << "Struct name mismatch";
 }
@@ -56,11 +66,11 @@ TEST_F(CppToCVisitorTest, ClassWithFields) {
         tracker.addUserHeaderPath("<stdin>");
         tracker.addUserHeaderPath("input.cc");
         tracker.addUserHeaderPath(".");
-        CppToCVisitor visitor(AST->getASTContext(), builder, tracker);
+        auto visitor = createVisitor(*AST, builder, tracker);
 
-        visitor.TraverseDecl(AST->getASTContext().getTranslationUnitDecl());
+        visitor->TraverseDecl(AST->getASTContext().getTranslationUnitDecl());
 
-        RecordDecl *CStruct = visitor.getCStruct("Point");
+        RecordDecl *CStruct = visitor->getCStruct("Point");
         ASSERT_TRUE(CStruct != nullptr) << "C struct not generated";
 
         // Count fields
@@ -92,11 +102,11 @@ TEST_F(CppToCVisitorTest, MixedAccessSpecifiers) {
         tracker.addUserHeaderPath("<stdin>");
         tracker.addUserHeaderPath("input.cc");
         tracker.addUserHeaderPath(".");
-        CppToCVisitor visitor(AST->getASTContext(), builder, tracker);
+        auto visitor = createVisitor(*AST, builder, tracker);
 
-        visitor.TraverseDecl(AST->getASTContext().getTranslationUnitDecl());
+        visitor->TraverseDecl(AST->getASTContext().getTranslationUnitDecl());
 
-        RecordDecl *CStruct = visitor.getCStruct("Point");
+        RecordDecl *CStruct = visitor->getCStruct("Point");
         ASSERT_TRUE(CStruct != nullptr) << "C struct not generated";
 
         // All fields should be present (access specifiers ignored in C)
@@ -118,12 +128,12 @@ TEST_F(CppToCVisitorTest, ForwardDeclaration) {
         tracker.addUserHeaderPath("<stdin>");
         tracker.addUserHeaderPath("input.cc");
         tracker.addUserHeaderPath(".");
-        CppToCVisitor visitor(AST->getASTContext(), builder, tracker);
+        auto visitor = createVisitor(*AST, builder, tracker);
 
-        visitor.TraverseDecl(AST->getASTContext().getTranslationUnitDecl());
+        visitor->TraverseDecl(AST->getASTContext().getTranslationUnitDecl());
 
         // Forward declarations should be skipped
-        RecordDecl *CStruct = visitor.getCStruct("Forward");
+        RecordDecl *CStruct = visitor->getCStruct("Forward");
         ASSERT_TRUE(CStruct == nullptr) << "Forward declaration should be skipped";
 }
 
@@ -144,12 +154,12 @@ TEST_F(CppToCVisitorTest, SimpleMethod) {
         tracker.addUserHeaderPath("<stdin>");
         tracker.addUserHeaderPath("input.cc");
         tracker.addUserHeaderPath(".");
-        CppToCVisitor visitor(AST->getASTContext(), builder, tracker);
+        auto visitor = createVisitor(*AST, builder, tracker);
 
-        visitor.TraverseDecl(AST->getASTContext().getTranslationUnitDecl());
+        visitor->TraverseDecl(AST->getASTContext().getTranslationUnitDecl());
 
         // Verify C function generated with correct signature
-        FunctionDecl *CFunc = visitor.getCFunc("Point_getX");
+        FunctionDecl *CFunc = visitor->getCFunc("Point_getX");
         ASSERT_TRUE(CFunc != nullptr) << "C function not generated";
         ASSERT_TRUE(CFunc->getNumParams() == 1) << "Expected 1 parameter (this)";
         ASSERT_TRUE(CFunc->getParamDecl(0)->getName() == "this") << "First param should be 'this'";
@@ -172,11 +182,11 @@ TEST_F(CppToCVisitorTest, MethodWithParams) {
         tracker.addUserHeaderPath("<stdin>");
         tracker.addUserHeaderPath("input.cc");
         tracker.addUserHeaderPath(".");
-        CppToCVisitor visitor(AST->getASTContext(), builder, tracker);
+        auto visitor = createVisitor(*AST, builder, tracker);
 
-        visitor.TraverseDecl(AST->getASTContext().getTranslationUnitDecl());
+        visitor->TraverseDecl(AST->getASTContext().getTranslationUnitDecl());
 
-        FunctionDecl *CFunc = visitor.getCFunc("Point_setX");
+        FunctionDecl *CFunc = visitor->getCFunc("Point_setX");
         ASSERT_TRUE(CFunc != nullptr) << "C function not generated";
         ASSERT_TRUE(CFunc->getNumParams() == 2) << "Expected 2 parameters (this + val)";
         ASSERT_TRUE(CFunc->getParamDecl(0)->getName() == "this") << "First param should be 'this'";
@@ -199,12 +209,12 @@ TEST_F(CppToCVisitorTest, SkipVirtual) {
     tracker.addUserHeaderPath("<stdin>");
     tracker.addUserHeaderPath("input.cc");
     tracker.addUserHeaderPath(".");
-    CppToCVisitor visitor(AST->getASTContext(), builder, tracker);
+    auto visitor = createVisitor(*AST, builder, tracker);
 
-    visitor.TraverseDecl(AST->getASTContext().getTranslationUnitDecl());
+    visitor->TraverseDecl(AST->getASTContext().getTranslationUnitDecl());
 
     // Virtual methods should be skipped in Phase 1
-    FunctionDecl *CFunc = visitor.getCFunc("Base_foo");
+    FunctionDecl *CFunc = visitor->getCFunc("Base_foo");
     ASSERT_TRUE(CFunc == nullptr) << "Virtual method should be skipped";
 }
 
@@ -225,12 +235,12 @@ TEST_F(CppToCVisitorTest, ImplicitThisReadReturnX) {
     tracker.addUserHeaderPath("<stdin>");
     tracker.addUserHeaderPath("input.cc");
     tracker.addUserHeaderPath(".");
-    CppToCVisitor visitor(AST->getASTContext(), builder, tracker);
+    auto visitor = createVisitor(*AST, builder, tracker);
 
-    visitor.TraverseDecl(AST->getASTContext().getTranslationUnitDecl());
+    visitor->TraverseDecl(AST->getASTContext().getTranslationUnitDecl());
 
     // Verify function was generated
-    FunctionDecl *CFunc = visitor.getCFunc("Point_getX");
+    FunctionDecl *CFunc = visitor->getCFunc("Point_getX");
     ASSERT_TRUE(CFunc != nullptr) << "C function not generated";
 
     // Verify function has body
@@ -255,12 +265,12 @@ TEST_F(CppToCVisitorTest, ImplicitThisWrite) {
     tracker.addUserHeaderPath("<stdin>");
     tracker.addUserHeaderPath("input.cc");
     tracker.addUserHeaderPath(".");
-    CppToCVisitor visitor(AST->getASTContext(), builder, tracker);
+    auto visitor = createVisitor(*AST, builder, tracker);
 
-    visitor.TraverseDecl(AST->getASTContext().getTranslationUnitDecl());
+    visitor->TraverseDecl(AST->getASTContext().getTranslationUnitDecl());
 
     // Verify function was generated
-    FunctionDecl *CFunc = visitor.getCFunc("Point_setX");
+    FunctionDecl *CFunc = visitor->getCFunc("Point_setX");
     ASSERT_TRUE(CFunc != nullptr) << "C function not generated";
 
     // Verify function has body with translated assignment
@@ -286,12 +296,12 @@ TEST_F(CppToCVisitorTest, ExplicitMemberAccessObjXPreservedInTranslation) {
         tracker.addUserHeaderPath("<stdin>");
         tracker.addUserHeaderPath("input.cc");
         tracker.addUserHeaderPath(".");
-        CppToCVisitor visitor(AST->getASTContext(), builder, tracker);
+        auto visitor = createVisitor(*AST, builder, tracker);
 
-        visitor.TraverseDecl(AST->getASTContext().getTranslationUnitDecl());
+        visitor->TraverseDecl(AST->getASTContext().getTranslationUnitDecl());
 
         // Verify function was generated with translated body
-        FunctionDecl *CFunc = visitor.getCFunc("Point_distance");
+        FunctionDecl *CFunc = visitor->getCFunc("Point_distance");
         ASSERT_TRUE(CFunc != nullptr) << "C function not generated";
 
         Stmt *Body = CFunc->getBody();
@@ -316,12 +326,12 @@ TEST_F(CppToCVisitorTest, MultipleFieldAccessReturnWidthHeight) {
         tracker.addUserHeaderPath("<stdin>");
         tracker.addUserHeaderPath("input.cc");
         tracker.addUserHeaderPath(".");
-        CppToCVisitor visitor(AST->getASTContext(), builder, tracker);
+        auto visitor = createVisitor(*AST, builder, tracker);
 
-        visitor.TraverseDecl(AST->getASTContext().getTranslationUnitDecl());
+        visitor->TraverseDecl(AST->getASTContext().getTranslationUnitDecl());
 
         // Verify function was generated
-        FunctionDecl *CFunc = visitor.getCFunc("Rectangle_area");
+        FunctionDecl *CFunc = visitor->getCFunc("Rectangle_area");
         ASSERT_TRUE(CFunc != nullptr) << "C function not generated";
 
         // Verify both implicit member accesses are translated
@@ -346,12 +356,12 @@ TEST_F(CppToCVisitorTest, DefaultConstructorPointVoidPointCtorStructPointThis) {
         tracker.addUserHeaderPath("<stdin>");
         tracker.addUserHeaderPath("input.cc");
         tracker.addUserHeaderPath(".");
-        CppToCVisitor visitor(AST->getASTContext(), builder, tracker);
+        auto visitor = createVisitor(*AST, builder, tracker);
 
-        visitor.TraverseDecl(AST->getASTContext().getTranslationUnitDecl());
+        visitor->TraverseDecl(AST->getASTContext().getTranslationUnitDecl());
 
     // Verify constructor function was generated
-    FunctionDecl *CFunc = visitor.getCtor("Point__ctor");
+    FunctionDecl *CFunc = visitor->getCtor("Point__ctor");
     ASSERT_TRUE(CFunc != nullptr) << "Constructor function not generated";
     ASSERT_TRUE(CFunc->getNumParams() == 1) << "Expected 1 parameter (this)";
     ASSERT_TRUE(CFunc->getReturnType()->isVoidType()) << "Constructor should return void";
@@ -374,12 +384,12 @@ TEST_F(CppToCVisitorTest, MemberInitializersPointIntXIntY) {
         tracker.addUserHeaderPath("<stdin>");
         tracker.addUserHeaderPath("input.cc");
         tracker.addUserHeaderPath(".");
-        CppToCVisitor visitor(AST->getASTContext(), builder, tracker);
+        auto visitor = createVisitor(*AST, builder, tracker);
 
-        visitor.TraverseDecl(AST->getASTContext().getTranslationUnitDecl());
+        visitor->TraverseDecl(AST->getASTContext().getTranslationUnitDecl());
 
     // Verify constructor function was generated
-    FunctionDecl *CFunc = visitor.getCtor("Point__ctor");
+    FunctionDecl *CFunc = visitor->getCtor("Point__ctor");
     ASSERT_TRUE(CFunc != nullptr) << "Constructor function not generated";
     ASSERT_TRUE(CFunc->getNumParams() == 3) << "Expected 3 parameters (this + 2 params)";
 
@@ -408,12 +418,12 @@ TEST_F(CppToCVisitorTest, ConstructorWithBodyConstructorWithStatementsInBody) {
         tracker.addUserHeaderPath("<stdin>");
         tracker.addUserHeaderPath("input.cc");
         tracker.addUserHeaderPath(".");
-        CppToCVisitor visitor(AST->getASTContext(), builder, tracker);
+        auto visitor = createVisitor(*AST, builder, tracker);
 
-        visitor.TraverseDecl(AST->getASTContext().getTranslationUnitDecl());
+        visitor->TraverseDecl(AST->getASTContext().getTranslationUnitDecl());
 
         // Verify constructor was generated
-        FunctionDecl *CFunc = visitor.getCtor("Rectangle__ctor");
+        FunctionDecl *CFunc = visitor->getCtor("Rectangle__ctor");
         ASSERT_TRUE(CFunc != nullptr) << "Constructor function not generated";
 
         // Verify body has both initializers and body statements
@@ -440,12 +450,12 @@ TEST_F(CppToCVisitorTest, DestructorTranslationDestructorTranslation) {
         tracker.addUserHeaderPath("<stdin>");
         tracker.addUserHeaderPath("input.cc");
         tracker.addUserHeaderPath(".");
-        CppToCVisitor visitor(AST->getASTContext(), builder, tracker);
+        auto visitor = createVisitor(*AST, builder, tracker);
 
-        visitor.TraverseDecl(AST->getASTContext().getTranslationUnitDecl());
+        visitor->TraverseDecl(AST->getASTContext().getTranslationUnitDecl());
 
     // Verify destructor function was generated
-    FunctionDecl *CDtor = visitor.getDtor("Resource__dtor");
+    FunctionDecl *CDtor = visitor->getDtor("Resource__dtor");
     ASSERT_TRUE(CDtor != nullptr) << "Destructor function not generated";
     ASSERT_TRUE(CDtor->getNumParams() == 1) << "Expected 1 parameter (this)";
     ASSERT_TRUE(CDtor->getReturnType()->isVoidType()) << "Destructor should return void";
