@@ -123,21 +123,61 @@ private:
     std::string getSimpleTypeName(clang::QualType type) const;
 
     /**
-     * @brief Inject lpVtbl initialization as first statement in constructor body
+     * @brief Inject lpVtbl initialization as first statements in constructor body
      * @param parentClass C++ class (CXXRecordDecl)
      * @param thisParam C this parameter (struct ClassName* this)
      * @param ctx Handler context
-     * @return Statement: this->lpVtbl = &ClassName_vtable_instance;
+     * @return Vector of statements for all lpVtbl initializations
      *
      * Only injects if class is polymorphic (has virtual methods).
      * Pattern (COM/DCOM ABI):
-     *   this->lpVtbl = &ClassName_vtable_instance;
+     *   Single inheritance:
+     *     this->lpVtbl = &ClassName_vtable_instance;
+     *   Multiple inheritance:
+     *     this->lpVtbl = &ClassName_Base1_vtable_instance;
+     *     this->lpVtbl2 = &ClassName_Base2_vtable_instance;
+     *     this->lpVtbl3 = &ClassName_Base3_vtable_instance;
      *
-     * This MUST be the first statement in the constructor body.
+     * These MUST be the first statements in the constructor body.
      */
-    clang::Stmt* injectLpVtblInit(
+    std::vector<clang::Stmt*> injectLpVtblInit(
         const clang::CXXRecordDecl* parentClass,
         clang::ParmVarDecl* thisParam,
+        HandlerContext& ctx
+    );
+
+    /**
+     * @brief Generate base constructor calls for derived class constructor
+     * @param ctor C++ constructor declaration
+     * @param thisParam C this parameter
+     * @param ctx Handler context
+     * @return Vector of base constructor call statements
+     *
+     * Pattern (Phase 46 Group 3 Task 8):
+     *   Base1_init((struct Base1*)this);
+     *   Base2_init((struct Base2*)((char*)this + offset));
+     *
+     * For single inheritance or primary base: direct pointer cast
+     * For non-primary bases: pointer adjustment using offset
+     */
+    std::vector<clang::Stmt*> generateBaseConstructorCalls(
+        const clang::CXXConstructorDecl* ctor,
+        clang::ParmVarDecl* thisParam,
+        HandlerContext& ctx
+    );
+
+    /**
+     * @brief Create call to base constructor
+     * @param baseClass Base class to initialize
+     * @param thisParam C this parameter
+     * @param offset Offset of base in derived class (0 for primary base)
+     * @param ctx Handler context
+     * @return CallExpr for base constructor
+     */
+    clang::CallExpr* createBaseConstructorCall(
+        const clang::CXXRecordDecl* baseClass,
+        clang::ParmVarDecl* thisParam,
+        unsigned offset,
         HandlerContext& ctx
     );
 };

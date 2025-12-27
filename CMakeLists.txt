@@ -4484,6 +4484,59 @@ gtest_discover_tests(ConstructorHandlerTest_lpVtbl
     WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
 )
 
+# ConstructorHandler multiple lpVtbl initialization unit tests (Phase 46, Group 3, Task 7)
+add_executable(ConstructorHandlerTest_MultipleLpVtbl
+    tests/unit/handlers/ConstructorHandlerTest_MultipleLpVtbl.cpp
+)
+
+target_include_directories(ConstructorHandlerTest_MultipleLpVtbl PRIVATE
+    ${CMAKE_SOURCE_DIR}/tests/fixtures
+    ${CMAKE_SOURCE_DIR}/include
+    ${LLVM_INCLUDE_DIRS}
+    ${CLANG_INCLUDE_DIRS}
+)
+
+target_link_libraries(ConstructorHandlerTest_MultipleLpVtbl PRIVATE
+    test_fixtures
+    cpptoc_core
+    clangTooling
+    ${CLANG_LIBS}
+    ${LLVM_LIBS}
+    ${LLVM_LDFLAGS}
+    GTest::gtest
+    GTest::gtest_main
+)
+
+gtest_discover_tests(ConstructorHandlerTest_MultipleLpVtbl
+    WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
+)
+
+# ConstructorHandler base chaining unit tests (Phase 46, Group 3, Task 8)
+add_executable(ConstructorHandlerTest_BaseChaining
+    tests/unit/handlers/ConstructorHandlerTest_BaseChaining.cpp
+)
+
+target_include_directories(ConstructorHandlerTest_BaseChaining PRIVATE
+    ${CMAKE_SOURCE_DIR}/tests/fixtures
+    ${CMAKE_SOURCE_DIR}/include
+    ${LLVM_INCLUDE_DIRS}
+    ${CLANG_INCLUDE_DIRS}
+)
+
+target_link_libraries(ConstructorHandlerTest_BaseChaining PRIVATE
+    test_fixtures
+    cpptoc_core
+    clangTooling
+    clangAST
+    clangBasic
+    GTest::gtest
+    GTest::gtest_main
+)
+
+gtest_discover_tests(ConstructorHandlerTest_BaseChaining
+    WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
+)
+
 # Phase 44-01 Task 3: MethodHandler Tests
 add_executable(MethodHandlerTest
     tests/unit/handlers/MethodHandlerTest.cpp
