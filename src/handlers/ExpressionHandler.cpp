@@ -564,6 +564,13 @@ clang::Expr* ExpressionHandler::translateCStyleCastExpr(
 
     clang::ASTContext& cCtx = ctx.getCContext();
 
+    // Get TypeSourceInfo - if not available, create a trivial one
+    clang::TypeSourceInfo* TSI = CCE->getTypeInfoAsWritten();
+    if (!TSI) {
+        // Create trivial TypeSourceInfo for the target type
+        TSI = cCtx.getTrivialTypeSourceInfo(CCE->getType());
+    }
+
     // Create C CStyleCastExpr
     // We need to create the cast using CStyleCastExpr::Create
     return clang::CStyleCastExpr::Create(
@@ -574,7 +581,7 @@ clang::Expr* ExpressionHandler::translateCStyleCastExpr(
         SubExpr,                           // Subexpression
         nullptr,                           // Base path (for pointer-to-member casts)
         CCE->getFPFeatures(),              // Floating point features
-        CCE->getTypeInfoAsWritten(),       // Type info as written
+        TSI,                               // Type info as written (now guaranteed non-null)
         CCE->getLParenLoc(),               // Left paren location
         CCE->getRParenLoc()                // Right paren location
     );
