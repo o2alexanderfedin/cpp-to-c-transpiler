@@ -26,6 +26,7 @@
 #include "StaticOperatorTranslator.h"
 #include "ArithmeticOperatorTranslator.h"
 #include "ComparisonOperatorTranslator.h"
+#include "SpecialOperatorTranslator.h"
 #include "OverrideResolver.h"
 #include "RvalueRefParamTranslator.h"
 #include "TemplateExtractor.h"
@@ -156,6 +157,9 @@ class CppToCVisitor : public clang::RecursiveASTVisitor<CppToCVisitor> {
   // Phase 51: Comparison & logical operator overloading support (v2.11.0)
   std::unique_ptr<ComparisonOperatorTranslator> m_comparisonOpTrans;
 
+  // Phase 52: Special operator overloading support (v2.12.0)
+  std::unique_ptr<SpecialOperatorTranslator> m_specialOpTrans;
+
   // Current translation context (Story #19)
   clang::ParmVarDecl *currentThisParam = nullptr;
   clang::CXXMethodDecl *currentMethod = nullptr;
@@ -251,6 +255,9 @@ public:
 
   // Visit C++ member function declarations
   bool VisitCXXMethodDecl(clang::CXXMethodDecl *MD);
+
+  // Visit C++ conversion operator declarations (Phase 52 - v2.12.0)
+  bool VisitCXXConversionDecl(clang::CXXConversionDecl *CD);
 
   // Visit C++ constructor declarations (Story #17)
   bool VisitCXXConstructorDecl(clang::CXXConstructorDecl *CD);
