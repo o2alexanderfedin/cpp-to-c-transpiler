@@ -1,5 +1,9 @@
 #include "CppToCVisitor.h"
+#include "handlers/HandlerContext.h"
 #include "CFGAnalyzer.h"
+#include "MethodSignatureHelper.h"
+#include "TargetContext.h"
+#include "clang/AST/Attr.h"
 #include "clang/AST/Expr.h"
 #include "clang/AST/ExprCXX.h"
 #include "clang/Basic/SourceManager.h"
@@ -22,11 +26,21 @@ extern std::string getExceptionModel();              // Phase 12 (v2.5.0)
 extern bool shouldEnableRTTI();                      // Phase 13 (v2.6.0)
 
 // Epic #193: ACSL Integration - Constructor Implementation
-CppToCVisitor::CppToCVisitor(ASTContext &Context, CNodeBuilder &Builder)
+CppToCVisitor::CppToCVisitor(ASTContext &Context, CNodeBuilder &Builder,
+                             cpptoc::FileOriginTracker &tracker,
+                             TranslationUnitDecl *C_TU_param,
+                             const std::string& currentFile)
     : Context(Context), Builder(Builder), Mangler(Context),
+      fileOriginTracker(tracker),
       VirtualAnalyzer(Context), VptrInjectorInstance(Context, VirtualAnalyzer),
       MoveCtorTranslator(Context), MoveAssignTranslator(Context),
-      RvalueRefParamTrans(Context) {
+      RvalueRefParamTrans(Context), C_TranslationUnit(C_TU_param) {
+
+  // Initialize FileOriginFilter for proper file-based filtering
+  if (!currentFile.empty()) {
+    fileOriginFilter = std::make_unique<cpptoc::FileOriginFilter>(tracker, currentFile);
+    llvm::outs() << "FileOriginFilter initialized for: " << currentFile << "\n";
+  }
 
   // Initialize ACSL annotators if --generate-acsl flag is enabled
   if (shouldGenerateACSL()) {
@@ -74,9 +88,10 @@ CppToCVisitor::CppToCVisitor(ASTContext &Context, CNodeBuilder &Builder)
   // Phase 11 (v2.4.0): Initialize template monomorphization infrastructure
   // Note: Always initialize these, but only use them if
   // shouldMonomorphizeTemplates() is true
-  m_templateExtractor = std::make_unique<TemplateExtractor>(Context);
+  // Bug #17: Pass FileOriginTracker to skip system header templates
+  m_templateExtractor = std::make_unique<TemplateExtractor>(Context, &tracker);
   m_templateMonomorphizer =
-      std::make_unique<TemplateMonomorphizer>(Context, Mangler);
+      std::make_unique<TemplateMonomorphizer>(Context, Mangler, Builder);
   m_templateTracker = std::make_unique<TemplateInstantiationTracker>();
 
   if (shouldMonomorphizeTemplates()) {
@@ -97,10 +112,109 @@ CppToCVisitor::CppToCVisitor(ASTContext &Context, CNodeBuilder &Builder)
   m_dynamicCastTranslator =
       std::make_unique<DynamicCastTranslator>(Context, VirtualAnalyzer);
   llvm::outs() << "RTTI support initialized (typeid and dynamic_cast)\n";
+
+  // Phase 1: Initialize multidimensional subscript operator translator (C++23)
+  m_multidimSubscriptTrans = std::make_unique<MultidimSubscriptTranslator>(Builder);
+  llvm::outs() << "Multidimensional subscript operator support initialized (C++23)\n";
+
+  // Phase 2: Initialize static operator translator (C++23)
+  m_staticOperatorTrans = std::make_unique<StaticOperatorTranslator>(Builder);
+  llvm::outs() << "Static operator() and operator[] support initialized (C++23)\n";
+
+  // Phase 3: Initialize assume attribute handler (C++23)
+  m_assumeHandler = std::make_unique<AssumeAttributeHandler>(Builder, AssumeStrategy::Comment);
+  llvm::outs() << "[[assume]] attribute support initialized (C++23)\n";
+
+  // Phase 4: Initialize deducing this translator (C++23 P0847R7)
+  m_deducingThisTrans = std::make_unique<DeducingThisTranslator>(Builder);
+  llvm::outs() << "Deducing this / explicit object parameter support initialized (C++23 P0847R7)\n";
+
+  // Phase 5: Initialize if consteval translator (C++23 P1938R3)
+  m_constevalIfTrans = std::make_unique<clang::ConstevalIfTranslator>(Builder, clang::ConstevalStrategy::Runtime);
+  llvm::outs() << "if consteval support initialized (C++23 P1938R3) - Runtime strategy\n";
+
+  // Phase 6: Initialize auto(x) decay-copy and constexpr handlers (C++23 P0849R8)
+  m_autoDecayTrans = std::make_unique<AutoDecayCopyTranslator>(Builder);
+  m_constexprHandler = std::make_unique<ConstexprEnhancementHandler>(Builder);
+  llvm::outs() << "auto(x) decay-copy and partial constexpr support initialized (C++23 P0849R8)\n";
+
+  // Phase 47: Initialize scoped enum translator
+  m_enumTranslator = std::make_unique<cpptoc::EnumTranslator>();
+  llvm::outs() << "Scoped enum translation support initialized (Phase 47)\n";
+
+  // Phase 50: Initialize arithmetic operator translator
+  m_arithmeticOpTrans = std::make_unique<ArithmeticOperatorTranslator>(Builder, Mangler);
+  llvm::outs() << "Arithmetic operator overloading support initialized (Phase 50)\n";
+
+  // Phase 51: Initialize comparison & logical operator translator
+  m_comparisonOpTrans = std::make_unique<ComparisonOperatorTranslator>(Builder, Mangler);
+  llvm::outs() << "Comparison & logical operator overloading support initialized (Phase 51)\n";
+
+  // Phase 35-02 (Bug #30 FIX): C_TranslationUnit passed as constructor parameter
+  // Each source file has its own C_TU in the shared target context
+  llvm::outs() << "[Bug #30 FIX] CppToCVisitor using C_TU @ " << (void*)C_TranslationUnit << "\n";
+}
+
+// Phase 47: Enum Class Translation using EnumTranslator handler
+bool CppToCVisitor::VisitEnumDecl(EnumDecl *ED) {
+  // Skip declarations from non-transpilable files (system headers, etc.)
+  if (!fileOriginTracker.shouldTranspile(ED)) {
+    return true;
+  }
+
+  // Skip forward declarations
+  if (!ED->isCompleteDefinition()) {
+    return true;
+  }
+
+  // Skip compiler-generated enums
+  if (ED->isImplicit()) {
+    return true;
+  }
+
+  llvm::outs() << "Translating enum: " << ED->getNameAsString() << "\n";
+
+  // Phase 47: Use EnumTranslator handler for translation
+  // Create HandlerContext for enum translation
+  cpptoc::HandlerContext ctx(Context, Builder.getContext(), Builder);
+
+  // Delegate to EnumTranslator
+  clang::Decl* C_Enum = m_enumTranslator->handleDecl(ED, ctx);
+
+  if (!C_Enum) {
+    llvm::outs() << "  -> ERROR: EnumTranslator returned nullptr for enum "
+                 << ED->getNameAsString() << "\n";
+    return false;
+  }
+
+  // Note: EnumTranslator already registers enum and constant mappings in ctx
+  // But CppToCVisitor still uses enumConstantMap for backward compatibility
+  // Update enumConstantMap from HandlerContext registrations
+  if (ED->isScoped()) {
+    for (const EnumConstantDecl* CPP_ECD : ED->enumerators()) {
+      // Lookup translated constant from HandlerContext
+      if (clang::Decl* C_Decl = ctx.lookupDecl(CPP_ECD)) {
+        if (auto* C_ECD = llvm::dyn_cast<EnumConstantDecl>(C_Decl)) {
+          enumConstantMap[CPP_ECD] = C_ECD;
+          llvm::outs() << "    Mapped: " << CPP_ECD->getName() << " (C++) -> "
+                       << C_ECD->getName() << " (C)\n";
+        }
+      }
+    }
+  }
+
+  llvm::outs() << "  -> C enum " << ED->getNameAsString() << " created via EnumTranslator\n";
+
+  return true;
 }
 
 // Story #15 + Story #50: Class-to-Struct Conversion with Base Class Embedding
 bool CppToCVisitor::VisitCXXRecordDecl(CXXRecordDecl *D) {
+  // Phase 34 (v2.5.0): Skip declarations from non-transpilable files (system headers, etc.)
+  if (!fileOriginTracker.shouldTranspile(D)) {
+    return true;
+  }
+
   // Edge case 1: Forward declarations - skip
   if (!D->isCompleteDefinition())
     return true;
@@ -109,7 +223,33 @@ bool CppToCVisitor::VisitCXXRecordDecl(CXXRecordDecl *D) {
   if (D->isImplicit())
     return true;
 
-  // Edge case 3: Already translated - avoid duplicates
+  // Edge case 3: Template patterns - skip (Bug #17)
+  // Template patterns are handled by template monomorphization
+  // Only template specializations (instantiations) should be visited here
+  if (D->getDescribedClassTemplate() != nullptr) {
+    // This is a template pattern (e.g., template<typename T> class LinkedList)
+    // Skip it - we'll generate monomorphized versions from TemplateMonomorphizer
+    return true;
+  }
+
+  // Edge case 3b: Nested classes inside template patterns - skip (Bug #17 extension)
+  // If this class is defined inside a template class, skip it here.
+  // It will be handled by TemplateMonomorphizer when generating monomorphized versions.
+  // Example: struct Node inside template<typename T> class LinkedList
+  DeclContext *DC = D->getDeclContext();
+  while (DC && !DC->isTranslationUnit()) {
+    if (CXXRecordDecl *ParentRecord = dyn_cast<CXXRecordDecl>(DC)) {
+      if (ParentRecord->getDescribedClassTemplate() != nullptr) {
+        // Parent is a template pattern, so this nested class should be skipped
+        llvm::outs() << "Skipping nested class '" << D->getNameAsString()
+                     << "' inside template pattern '" << ParentRecord->getNameAsString() << "'\n";
+        return true;
+      }
+    }
+    DC = DC->getParent();
+  }
+
+  // Edge case 4: Already translated - avoid duplicates
   if (cppToCMap.find(D) != cppToCMap.end())
     return true;
 
@@ -139,6 +279,9 @@ bool CppToCVisitor::VisitCXXRecordDecl(CXXRecordDecl *D) {
 
   // Store mapping for method translation
   cppToCMap[D] = CStruct;
+
+  // Phase 32: Add to C TranslationUnit for output generation
+  C_TranslationUnit->addDecl(CStruct);
 
   llvm::outs() << "  -> struct " << CStruct->getName() << " with "
                << fields.size() << " fields\n";
@@ -171,6 +314,12 @@ bool CppToCVisitor::VisitCXXRecordDecl(CXXRecordDecl *D) {
     if (!fullAnnotation.empty()) {
       emitACSL(fullAnnotation, getACSLOutputMode());
     }
+  }
+
+  // Phase 31-03: Generate COM-style static declarations for ALL methods
+  std::string allMethodDecls = generateAllMethodDeclarations(D);
+  if (!allMethodDecls.empty()) {
+    llvm::outs() << "\n" << allMethodDecls << "\n";
   }
 
   // Phase 9 (v2.2.0): Generate vtable struct for polymorphic classes
@@ -224,13 +373,129 @@ bool CppToCVisitor::VisitCXXRecordDecl(CXXRecordDecl *D) {
 
 // Story #16: Method-to-Function Conversion
 bool CppToCVisitor::VisitCXXMethodDecl(CXXMethodDecl *MD) {
+  // Bug #43 FIX: Use FileOriginFilter for proper file-based filtering
+  // This ensures method bodies from StateMachine.cpp don't get processed when
+  // we're translating main.cpp (even though main.cpp includes StateMachine.h)
+  if (fileOriginFilter && !fileOriginFilter->shouldProcessMethod(MD)) {
+    return true;
+  }
+
+  // Fallback to old tracker if filter not initialized
+  if (!fileOriginFilter && !fileOriginTracker.shouldTranspile(MD)) {
+    return true;
+  }
+
   // Edge case 1: Skip implicit methods (compiler-generated)
   if (MD->isImplicit()) {
     return true;
   }
 
+  // Edge case 2: Skip methods of template patterns (Bug #17)
+  // Template pattern methods are handled by template monomorphization
+  CXXRecordDecl *ParentClass = MD->getParent();
+  if (ParentClass && ParentClass->getDescribedClassTemplate() != nullptr) {
+    // This method belongs to a template pattern class
+    // Skip it - we'll generate monomorphized versions from TemplateMonomorphizer
+    return true;
+  }
+
+  // Edge case 2b: Skip methods of nested classes inside template patterns (Bug #17 extension)
+  // If the parent class is nested inside a template class, skip it here.
+  // It will be handled by TemplateMonomorphizer when generating monomorphized versions.
+  // Example: methods of struct Node inside template<typename T> class LinkedList
+  if (ParentClass) {
+    DeclContext *DC = ParentClass->getDeclContext();
+    while (DC && !DC->isTranslationUnit()) {
+      if (CXXRecordDecl *AncestorRecord = dyn_cast<CXXRecordDecl>(DC)) {
+        if (AncestorRecord->getDescribedClassTemplate() != nullptr) {
+          // Ancestor is a template pattern, so this method should be skipped
+          llvm::outs() << "Skipping method '" << MD->getNameAsString()
+                       << "' of nested class '" << ParentClass->getNameAsString()
+                       << "' inside template pattern '" << AncestorRecord->getNameAsString() << "'\n";
+          return true;
+        }
+      }
+      DC = DC->getParent();
+    }
+  }
+
   // Edge case 3: Skip constructors/destructors (handled separately)
   if (isa<CXXConstructorDecl>(MD) || isa<CXXDestructorDecl>(MD)) {
+    return true;
+  }
+
+  // Bug fix #11: Skip method declarations (no body) to prevent duplicates
+  // Only process method definitions to avoid generating the same function twice
+  // (once from header declaration, once from .cpp definition)
+  if (!MD->hasBody()) {
+    return true;
+  }
+
+  // Bug #43 FIX: FileOriginFilter ensures proper file-based filtering
+  // Do NOT check methodToCFunc here - that map is shared across files which causes issues
+  // FileOriginFilter already prevents cross-file pollution
+  // We DO need the canonical decl for later storage
+  CXXMethodDecl *CanonicalMD = MD->getCanonicalDecl();
+
+  // Phase 4: Handle explicit object parameters (deducing this, C++23 P0847R7)
+  if (MD->isExplicitObjectMemberFunction()) {
+    llvm::outs() << "Translating explicit object member function: "
+                 << MD->getQualifiedNameAsString() << "\n";
+    auto C_Funcs = m_deducingThisTrans->transformMethod(MD, Context, C_TranslationUnit);
+    if (!C_Funcs.empty()) {
+      llvm::outs() << "  -> Generated " << C_Funcs.size() << " overload(s):\n";
+      for (auto* C_Func : C_Funcs) {
+        llvm::outs() << "     " << C_Func->getNameAsString() << "\n";
+      }
+    }
+    return true;
+  }
+
+  // Phase 2: Handle static operator() and operator[] (C++23)
+  if (MD->isStatic() && MD->isOverloadedOperator()) {
+    auto Op = MD->getOverloadedOperator();
+    if (Op == OO_Call || Op == OO_Subscript) {
+      llvm::outs() << "Translating static operator: "
+                   << MD->getQualifiedNameAsString() << "\n";
+      auto* C_Func = m_staticOperatorTrans->transformMethod(MD, Context, C_TranslationUnit);
+      if (C_Func) {
+        // Function already added to C_TranslationUnit by translator
+        llvm::outs() << "  -> " << C_Func->getNameAsString() << "\n";
+      }
+      return true;
+    }
+  }
+
+  // Phase 50: Handle arithmetic operator overloading (v2.10.0)
+  if (MD->isOverloadedOperator() && m_arithmeticOpTrans->isArithmeticOperator(MD->getOverloadedOperator())) {
+    llvm::outs() << "Translating arithmetic operator: "
+                 << MD->getQualifiedNameAsString() << "\n";
+    auto* C_Func = m_arithmeticOpTrans->transformMethod(MD, Context, C_TranslationUnit);
+    if (C_Func) {
+      // Store in method map for later call site transformation
+      methodToCFunc[MD] = C_Func;
+      llvm::outs() << "  -> " << C_Func->getNameAsString() << "\n";
+    }
+    return true;
+  }
+
+  // Phase 51: Handle comparison & logical operator overloading (v2.11.0)
+  if (MD->isOverloadedOperator() && m_comparisonOpTrans->isComparisonOperator(MD->getOverloadedOperator())) {
+    llvm::outs() << "Translating comparison/logical operator: "
+                 << MD->getQualifiedNameAsString() << "\n";
+    auto* C_Func = m_comparisonOpTrans->transformMethod(MD, Context, C_TranslationUnit);
+    if (C_Func) {
+      // Store in method map for later call site transformation
+      methodToCFunc[MD] = C_Func;
+      llvm::outs() << "  -> " << C_Func->getNameAsString() << " (returns bool)\n";
+    }
+    return true;
+  }
+
+  // Edge case 4: Skip virtual methods (handled by vtable infrastructure)
+  if (MD->isVirtual()) {
+    llvm::outs() << "Skipping virtual method (handled by vtable): "
+                 << MD->getQualifiedNameAsString() << "\n";
     return true;
   }
 
@@ -309,8 +574,14 @@ bool CppToCVisitor::VisitCXXMethodDecl(CXXMethodDecl *MD) {
   currentThisParam = nullptr;
   currentMethod = nullptr;
 
-  // Store mapping
-  methodToCFunc[MD] = CFunc;
+  // Store mapping using canonical declaration to prevent duplicate processing
+  methodToCFunc[CanonicalMD] = CFunc;
+
+  // Phase 32: Add to C TranslationUnit for output generation
+  C_TranslationUnit->addDecl(CFunc);
+
+  // Mark as generated to prevent re-processing as standalone function
+  generatedFunctions.insert(CFunc);
 
   llvm::outs() << "  -> " << funcName << " with " << params.size()
                << " parameters\n";
@@ -320,8 +591,62 @@ bool CppToCVisitor::VisitCXXMethodDecl(CXXMethodDecl *MD) {
 
 // Story #17: Constructor Translation
 bool CppToCVisitor::VisitCXXConstructorDecl(CXXConstructorDecl *CD) {
+  // Phase 34 (v2.5.0): Skip declarations from non-transpilable files
+  if (!fileOriginTracker.shouldTranspile(CD)) {
+    return true;
+  }
+
   // Edge case: Skip implicit constructors (compiler-generated)
   if (CD->isImplicit()) {
+    return true;
+  }
+
+  // Edge case: Skip constructors of template patterns (Bug #17)
+  // Template pattern constructors are handled by template monomorphization
+  CXXRecordDecl *ParentClass = CD->getParent();
+  if (ParentClass && ParentClass->getDescribedClassTemplate() != nullptr) {
+    // This constructor belongs to a template pattern class
+    // Skip it - we'll generate monomorphized versions from TemplateMonomorphizer
+    return true;
+  }
+
+  // Edge case extension: Skip constructors of nested classes inside template patterns (Bug #17 extension)
+  // If the parent class is nested inside a template class, skip it here.
+  // It will be handled by TemplateMonomorphizer when generating monomorphized versions.
+  // Example: constructor of struct Node inside template<typename T> class LinkedList
+  if (ParentClass) {
+    DeclContext *DC = ParentClass->getDeclContext();
+    while (DC && !DC->isTranslationUnit()) {
+      if (CXXRecordDecl *AncestorRecord = dyn_cast<CXXRecordDecl>(DC)) {
+        if (AncestorRecord->getDescribedClassTemplate() != nullptr) {
+          // Ancestor is a template pattern, so this constructor should be skipped
+          llvm::outs() << "Skipping constructor of nested class '" << ParentClass->getNameAsString()
+                       << "' inside template pattern '" << AncestorRecord->getNameAsString() << "'\n";
+          return true;
+        }
+      }
+      DC = DC->getParent();
+    }
+  }
+
+  // Bug fix #18: Skip constructor declarations without definitions (cross-file duplicates)
+  // Only process constructors with bodies (actual definitions in .cpp files)
+  // Declarations from headers should only generate forward declarations, not definitions
+  if (!CD->isThisDeclarationADefinition() || !CD->hasBody()) {
+    // This is just a declaration (from header), not a definition
+    // The actual definition will be processed when we visit the .cpp file
+    return true;
+  }
+
+  // Bug fix #15: Skip constructors already translated to prevent redefinitions
+  // Check if this constructor was already processed (prevents duplicate function definitions)
+  // Note: We check the canonical declaration because the AST may contain multiple
+  // CXXConstructorDecl nodes for the same constructor (e.g., declaration vs definition)
+  CXXConstructorDecl *CanonicalCD = cast<CXXConstructorDecl>(CD->getCanonicalDecl());
+  if (ctorMap.count(CanonicalCD) > 0) {
+    llvm::outs() << "  -> Already translated, skipping redefinition of "
+                 << CD->getParent()->getName() << "::"
+                 << CD->getParent()->getName() << "\n";
     return true;
   }
 
@@ -476,8 +801,11 @@ bool CppToCVisitor::VisitCXXConstructorDecl(CXXConstructorDecl *CD) {
   // Set function body
   CFunc->setBody(Builder.block(stmts));
 
-  // Store mapping
-  ctorMap[CD] = CFunc;
+  // Store mapping using canonical declaration to prevent duplicate processing
+  ctorMap[CanonicalCD] = CFunc;
+
+  // Phase 32: Add to C TranslationUnit for output generation
+  C_TranslationUnit->addDecl(CFunc);
 
   llvm::outs() << "  -> " << funcName << " with " << params.size()
                << " parameters, " << stmts.size() << " statements\n";
@@ -486,6 +814,11 @@ bool CppToCVisitor::VisitCXXConstructorDecl(CXXConstructorDecl *CD) {
 }
 
 bool CppToCVisitor::VisitVarDecl(VarDecl *VD) {
+  // Phase 34 (v2.5.0): Skip declarations from non-transpilable files
+  if (!fileOriginTracker.shouldTranspile(VD)) {
+    return true;
+  }
+
   llvm::outs() << "Found variable: " << VD->getNameAsString() << "\n";
   return true;
 }
@@ -548,8 +881,33 @@ FunctionDecl *CppToCVisitor::getDtor(llvm::StringRef funcName) const {
 
 // Visit C++ destructor declarations
 bool CppToCVisitor::VisitCXXDestructorDecl(CXXDestructorDecl *DD) {
+  // Phase 34 (v2.5.0): Skip declarations from non-transpilable files
+  if (!fileOriginTracker.shouldTranspile(DD)) {
+    return true;
+  }
+
   // Edge case: Skip implicit destructors (compiler-generated)
   if (DD->isImplicit() || DD->isTrivial()) {
+    return true;
+  }
+
+  // Edge case: Skip destructors of template patterns (Bug #17)
+  // Template pattern destructors are handled by template monomorphization
+  CXXRecordDecl *ParentClass = DD->getParent();
+  if (ParentClass && ParentClass->getDescribedClassTemplate() != nullptr) {
+    // This destructor belongs to a template pattern class
+    // Skip it - we'll generate monomorphized versions from TemplateMonomorphizer
+    return true;
+  }
+
+  // Bug fix #15: Skip destructors already translated to prevent redefinitions
+  // Check if this destructor was already processed (prevents duplicate function definitions)
+  // Note: We check the canonical declaration because the AST may contain multiple
+  // CXXDestructorDecl nodes for the same destructor (e.g., declaration vs definition)
+  CXXDestructorDecl *CanonicalDD = cast<CXXDestructorDecl>(DD->getCanonicalDecl());
+  if (dtorMap.count(CanonicalDD) > 0) {
+    llvm::outs() << "  -> Already translated, skipping redefinition of ~"
+                 << DD->getParent()->getName() << "\n";
     return true;
   }
 
@@ -617,8 +975,11 @@ bool CppToCVisitor::VisitCXXDestructorDecl(CXXDestructorDecl *DD) {
   currentThisParam = nullptr;
   currentMethod = nullptr;
 
-  // Store mapping
-  dtorMap[DD] = CFunc;
+  // Store mapping using canonical declaration to prevent duplicate processing
+  dtorMap[CanonicalDD] = CFunc;
+
+  // Phase 32: Add to C TranslationUnit for output generation
+  C_TranslationUnit->addDecl(CFunc);
 
   llvm::outs() << "  -> " << funcName << " created\n";
 
@@ -627,13 +988,31 @@ bool CppToCVisitor::VisitCXXDestructorDecl(CXXDestructorDecl *DD) {
 
 // Visit function declarations for destructor injection
 bool CppToCVisitor::VisitFunctionDecl(FunctionDecl *FD) {
+  // Phase 34 (v2.5.0): Skip declarations from non-transpilable files
+  if (!fileOriginTracker.shouldTranspile(FD)) {
+    return true;
+  }
+
   // Skip if this is a C++ method (handled by VisitCXXMethodDecl)
   if (isa<CXXMethodDecl>(FD)) {
     return true;
   }
 
+  // Phase 6: Handle constexpr functions (C++23 enhancements)
+  if (FD->isConstexpr()) {
+    m_constexprHandler->handleConstexprFunction(FD, Context);
+    // Continue processing (handler determines strategy internally)
+  }
+
   // Skip if no body
   if (!FD->hasBody()) {
+    return true;
+  }
+
+  // FIX: Skip functions we generated ourselves to prevent infinite recursion
+  // (following Frama-Clang's pattern of marking synthetic functions)
+  if (generatedFunctions.count(FD) > 0) {
+    llvm::outs() << "  -> Skipping generated function to prevent recursion\n";
     return true;
   }
 
@@ -752,6 +1131,12 @@ bool CppToCVisitor::VisitFunctionDecl(FunctionDecl *FD) {
 
   llvm::outs() << "  Mangled name: " << mangledName << "\n";
 
+  // Check if function already translated (deduplication)
+  if (standaloneFuncMap.count(mangledName) > 0) {
+    llvm::outs() << "  -> Already translated, skipping\n";
+    return true;
+  }
+
   // Build parameter list for C function
   llvm::SmallVector<ParmVarDecl *, 4> cParams;
   for (ParmVarDecl *Param : FD->parameters()) {
@@ -760,15 +1145,19 @@ bool CppToCVisitor::VisitFunctionDecl(FunctionDecl *FD) {
     cParams.push_back(CParam);
   }
 
-  // Get function body (will be translated separately if needed)
+  // Get function body and translate it (Phase 34-05)
   Stmt *body = FD->getBody();
+  Stmt *translatedBody = nullptr;
+  if (body) {
+    translatedBody = translateStmt(body);
+  }
 
   // Check if function is variadic
   bool isVariadic = FD->isVariadic();
 
   // Create C function declaration with mangled name
   FunctionDecl *CFunc =
-      Builder.funcDecl(mangledName, FD->getReturnType(), cParams, body,
+      Builder.funcDecl(mangledName, FD->getReturnType(), cParams, translatedBody,
                        CC_C,      // Calling convention (default)
                        isVariadic // Variadic property
       );
@@ -795,6 +1184,12 @@ bool CppToCVisitor::VisitFunctionDecl(FunctionDecl *FD) {
 
   // Store in standalone function map
   standaloneFuncMap[mangledName] = CFunc;
+
+  // Phase 32: Add to C TranslationUnit for output generation
+  C_TranslationUnit->addDecl(CFunc);
+
+  // Mark as generated to prevent re-processing
+  generatedFunctions.insert(CFunc);
 
   llvm::outs() << "  -> C function '" << mangledName << "' created\n";
   llvm::outs() << "  Parameters: " << cParams.size() << "\n";
@@ -1648,6 +2043,40 @@ bool CppToCVisitor::hasNonTrivialDestructor(QualType type) const {
   return CXXRD->hasNonTrivialDestructor();
 }
 
+// Bug #8: Check if a statement contains RecoveryExpr (parsing errors)
+// This recursively checks if any expression in the statement tree is RecoveryExpr
+bool CppToCVisitor::containsRecoveryExpr(Stmt *S) {
+  if (!S) {
+    return false;
+  }
+
+  // Check if this statement itself is a RecoveryExpr
+  if (isa<RecoveryExpr>(S)) {
+    return true;
+  }
+
+  // CRITICAL FIX for Bug #X (Empty C files):
+  // Do NOT recurse into nested CompoundStmts - they handle their own filtering.
+  // This prevents skipping entire if/while/for blocks just because they contain
+  // a RecoveryExpr somewhere deep inside.
+  //
+  // Each CompoundStmt independently filters its own statements, creating a
+  // hierarchy of filtering rather than all-or-nothing.
+  if (isa<CompoundStmt>(S)) {
+    // Don't recurse into compound statements - they filter themselves
+    return false;
+  }
+
+  // Recursively check all child statements/expressions (except CompoundStmts)
+  for (Stmt *Child : S->children()) {
+    if (containsRecoveryExpr(Child)) {
+      return true;
+    }
+  }
+
+  return false;
+}
+
 // Helper: Create destructor call for a variable
 CallExpr *CppToCVisitor::createDestructorCall(VarDecl *VD) {
   QualType type = VD->getType();
@@ -1723,6 +2152,13 @@ Expr *CppToCVisitor::translateExpr(Expr *E) {
   if (!E)
     return nullptr;
 
+  // Bug #37: Handle ConstantExpr - unwrap and translate subexpression
+  // ConstantExpr appears in case labels: case GameState::Menu
+  // Unwrap to get the DeclRefExpr and translate it
+  if (ConstantExpr *CE = dyn_cast<ConstantExpr>(E)) {
+    return translateExpr(CE->getSubExpr());
+  }
+
   // Dispatch to specific translators based on expression type
   if (MemberExpr *ME = dyn_cast<MemberExpr>(E)) {
     return translateMemberExpr(ME);
@@ -1752,6 +2188,258 @@ Expr *CppToCVisitor::translateExpr(Expr *E) {
     return translateBinaryOperator(BO);
   }
 
+  // Handle constructor expressions - need to translate arguments
+  if (CXXConstructExpr *CCE = dyn_cast<CXXConstructExpr>(E)) {
+    return translateConstructExpr(CCE);
+  }
+
+  // Bug fix: Handle C++ new operator - convert to malloc()
+  // Example: new Node(value) → malloc(sizeof(struct Node_int))
+  if (CXXNewExpr *NE = dyn_cast<CXXNewExpr>(E)) {
+    llvm::outs() << "  Translating CXXNewExpr to malloc()\n";
+
+    // Get the allocated type
+    QualType AllocatedType = NE->getAllocatedType();
+
+    // Bug #38 FIX: Check if this is a nested class that needs substitution
+    // E.g., "new Node()" -> "malloc(sizeof(struct LinkedList_int_Node))"
+    if (currentNestedClassMappings && AllocatedType->isRecordType()) {
+      const RecordType *RT = AllocatedType->getAs<RecordType>();
+      RecordDecl *RD = RT->getDecl();
+      std::string typeName = RD->getNameAsString();
+
+      auto it = currentNestedClassMappings->find(typeName);
+      if (it != currentNestedClassMappings->end()) {
+        // Found it! Replace with monomorphized type
+        std::string monomorphizedName = it->second;
+        llvm::outs() << "      Substituting new expression type: new " << typeName
+                     << "() -> malloc(sizeof(struct " << monomorphizedName << "))\n";
+
+        // Create the monomorphized struct type
+        IdentifierInfo &II = Context.Idents.get(monomorphizedName);
+        RecordDecl *CRecord = RecordDecl::Create(
+            Context,
+#if LLVM_VERSION_MAJOR >= 16
+            TagTypeKind::Struct,
+#else
+            TTK_Struct,
+#endif
+            Context.getTranslationUnitDecl(),
+            SourceLocation(),
+            SourceLocation(),
+            &II
+        );
+
+        AllocatedType = Context.getRecordType(CRecord);
+      }
+    }
+
+    // Create malloc call: malloc(sizeof(Type))
+    // 1. Create sizeof(Type) expression using UnaryExprOrTypeTraitExpr
+    UnaryExprOrTypeTraitExpr *SizeOfExpr = new (Context) UnaryExprOrTypeTraitExpr(
+        UETT_SizeOf,
+        Context.getTrivialTypeSourceInfo(AllocatedType, SourceLocation()),
+        Context.getSizeType(),
+        SourceLocation(),
+        SourceLocation()
+    );
+
+    // 2. Create malloc call using Builder (takes function name as string)
+    std::vector<Expr*> MallocArgs;
+    MallocArgs.push_back(SizeOfExpr);
+    CallExpr *MallocCall = Builder.call("malloc", MallocArgs);
+
+    // 3. Cast result to appropriate pointer type
+    QualType ResultType = Context.getPointerType(AllocatedType);
+    return ImplicitCastExpr::Create(Context, ResultType, CK_BitCast,
+                                    MallocCall, nullptr, VK_PRValue,
+                                    FPOptionsOverride());
+  }
+
+  // Bug fix: Handle C++ delete operator - convert to free()
+  // Example: delete temp → free(temp)
+  if (CXXDeleteExpr *DE = dyn_cast<CXXDeleteExpr>(E)) {
+    llvm::outs() << "  Translating CXXDeleteExpr to free()\n";
+
+    // Get the pointer being deleted
+    Expr *Argument = DE->getArgument();
+    Expr *TranslatedArg = translateExpr(Argument);
+    if (!TranslatedArg) {
+      TranslatedArg = Argument;
+    }
+
+    // Create free call using Builder (takes function name as string)
+    std::vector<Expr*> FreeArgs;
+    FreeArgs.push_back(TranslatedArg);
+    return Builder.call("free", FreeArgs);
+  }
+
+  // Bug fix: Handle C++ nullptr literal - convert to NULL
+  // Example: nullptr → NULL (which is ((void*)0) in C)
+  if (CXXNullPtrLiteralExpr *NPE = dyn_cast<CXXNullPtrLiteralExpr>(E)) {
+    llvm::outs() << "  Translating nullptr to NULL\n";
+
+    // Create NULL as ((void*)0)
+    // 1. Create integer literal 0
+    llvm::APInt Zero(32, 0);
+    IntegerLiteral *ZeroLit = IntegerLiteral::Create(
+        Context, Zero, Context.IntTy, SourceLocation());
+
+    // 2. Cast to void*
+    QualType VoidPtrType = Context.getPointerType(Context.VoidTy);
+    return ImplicitCastExpr::Create(Context, VoidPtrType, CK_NullToPointer,
+                                    ZeroLit, nullptr, VK_PRValue,
+                                    FPOptionsOverride());
+  }
+
+  // Handle implicit casts - just translate the sub-expression
+  if (ImplicitCastExpr *ICE = dyn_cast<ImplicitCastExpr>(E)) {
+    Expr *SubExpr = ICE->getSubExpr();
+    Expr *TranslatedSub = translateExpr(SubExpr);
+    if (TranslatedSub && TranslatedSub != SubExpr) {
+      // Create new implicit cast with translated sub-expression
+      return ImplicitCastExpr::Create(Context, ICE->getType(), ICE->getCastKind(),
+                                      TranslatedSub, nullptr, ICE->getValueKind(),
+                                      FPOptionsOverride());
+    }
+    return ICE;
+  }
+
+  // Bug #13 fix: Handle ArraySubscriptExpr - translate base and index
+  // This is critical for expressions like other.data[i] where other is a pointer parameter
+  if (ArraySubscriptExpr *ASE = dyn_cast<ArraySubscriptExpr>(E)) {
+    Expr *Base = ASE->getBase();
+    Expr *Idx = ASE->getIdx();
+
+    // Translate both base and index
+    Expr *TranslatedBase = translateExpr(Base);
+    Expr *TranslatedIdx = translateExpr(Idx);
+
+    // If either changed, create a new ArraySubscriptExpr
+    if ((TranslatedBase && TranslatedBase != Base) ||
+        (TranslatedIdx && TranslatedIdx != Idx)) {
+      Expr *NewBase = TranslatedBase ? TranslatedBase : Base;
+      Expr *NewIdx = TranslatedIdx ? TranslatedIdx : Idx;
+
+      // Create new ArraySubscriptExpr using Clang API
+      return new (Context) ArraySubscriptExpr(
+          NewBase, NewIdx, ASE->getType(),
+          ASE->getValueKind(), ASE->getObjectKind(),
+          ASE->getRBracketLoc());
+    }
+    return ASE;
+  }
+
+  // Bug #38 FIX: Handle sizeof expressions to substitute nested class types
+  // E.g., sizeof(Node) -> sizeof(struct LinkedList_int_Node)
+  if (UnaryExprOrTypeTraitExpr *UETTE = dyn_cast<UnaryExprOrTypeTraitExpr>(E)) {
+    if (UETTE->getKind() == UETT_SizeOf && UETTE->isArgumentType()) {
+      QualType ArgType = UETTE->getArgumentType();
+
+      // Check if this is a nested class type that needs substitution
+      if (currentNestedClassMappings && ArgType->isRecordType()) {
+        const RecordType *RT = ArgType->getAs<RecordType>();
+        RecordDecl *RD = RT->getDecl();
+        std::string typeName = RD->getNameAsString();
+
+        auto it = currentNestedClassMappings->find(typeName);
+        if (it != currentNestedClassMappings->end()) {
+          // Found it! Replace with monomorphized type
+          std::string monomorphizedName = it->second;
+          llvm::outs() << "      Substituting sizeof nested class: sizeof(" << typeName
+                       << ") -> sizeof(struct " << monomorphizedName << ")\n";
+
+          // Create the monomorphized struct type
+          IdentifierInfo &II = Context.Idents.get(monomorphizedName);
+          RecordDecl *CRecord = RecordDecl::Create(
+              Context,
+#if LLVM_VERSION_MAJOR >= 16
+              TagTypeKind::Struct,
+#else
+              TTK_Struct,
+#endif
+              Context.getTranslationUnitDecl(),
+              SourceLocation(),
+              SourceLocation(),
+              &II
+          );
+
+          QualType CStructType = Context.getRecordType(CRecord);
+
+          // Create new sizeof expression with substituted type
+          return new (Context) UnaryExprOrTypeTraitExpr(
+              UETT_SizeOf,
+              Context.getTrivialTypeSourceInfo(CStructType, SourceLocation()),
+              Context.getSizeType(),
+              SourceLocation(),
+              SourceLocation()
+          );
+        }
+      }
+    }
+    // No substitution needed, return as-is
+    return UETTE;
+  }
+
+  // Bug fix #8: Handle RecoveryExpr from missing system headers
+  // RecoveryExpr is created when Clang can't parse something (e.g., missing <cstdio>)
+  // Try to extract the underlying call expression if possible
+  if (RecoveryExpr *RE = dyn_cast<RecoveryExpr>(E)) {
+    llvm::outs() << "  Warning: RecoveryExpr encountered (parsing error)\n";
+
+    // RecoveryExpr contains sub-expressions that were partially parsed
+    // For function calls like printf(...), the sub-expressions are the arguments
+    ArrayRef<Expr *> SubExprs = RE->subExpressions();
+
+    if (SubExprs.size() > 0) {
+      // First sub-expression is usually the function name (as DeclRefExpr)
+      Expr *FirstExpr = SubExprs[0];
+
+      // Check if it's a function call pattern
+      if (DeclRefExpr *FuncRef = dyn_cast<DeclRefExpr>(FirstExpr)) {
+        std::string FuncName = FuncRef->getDecl()->getNameAsString();
+        llvm::outs() << "  RecoveryExpr appears to be call to: " << FuncName << "\n";
+
+        // Create a CallExpr from the recovered pieces
+        std::vector<Expr *> Args;
+        // Arguments start from index 1
+        for (unsigned i = 1; i < SubExprs.size(); ++i) {
+          Expr *TranslatedArg = translateExpr(SubExprs[i]);
+          Args.push_back(TranslatedArg ? TranslatedArg : SubExprs[i]);
+        }
+
+        // Create a function declaration for the call
+        // We assume it returns int (common for printf, etc.)
+        QualType RetType = Context.IntTy;
+        std::vector<ParmVarDecl *> Params;
+
+        // Create function decl
+        FunctionDecl *FuncDecl = Builder.funcDecl(FuncName, RetType, Params, nullptr);
+
+        // Create call expression
+        CallExpr *Call = Builder.call(FuncDecl, Args);
+        if (Call) {
+          llvm::outs() << "  Successfully reconstructed call to " << FuncName << "\n";
+          return Call;
+        }
+      }
+    }
+
+    // If we can't reconstruct it, return nullptr to skip it
+    llvm::outs() << "  Skipping RecoveryExpr (cannot reconstruct)\n";
+    return nullptr;
+  }
+
+  // Bug #42: Handle ParenExpr - translate subexpression and recreate ParenExpr
+  if (ParenExpr *PE = dyn_cast<ParenExpr>(E)) {
+    Expr *SubExpr = PE->getSubExpr();
+    Expr *TranslatedSubExpr = translateExpr(SubExpr);
+    if (TranslatedSubExpr && TranslatedSubExpr != SubExpr) {
+      return new (Context) ParenExpr(SourceLocation(), SourceLocation(), TranslatedSubExpr);
+    }
+    return PE;  // Return original if subexpr unchanged
+  }
+
   // Default: return expression as-is (literals, etc.)
   return E;
 }
@@ -1759,6 +2447,27 @@ Expr *CppToCVisitor::translateExpr(Expr *E) {
 // Translate DeclRefExpr - handles implicit 'this'
 Expr *CppToCVisitor::translateDeclRefExpr(DeclRefExpr *DRE) {
   ValueDecl *D = DRE->getDecl();
+
+  // Bug #37 FIX: Translate scoped enum references to use C naming convention
+  // In C++: GameState::Menu (with NestedNameSpecifier)
+  // In C: GameState__Menu (scoped enum) or integer literal (unscoped enum)
+  if (EnumConstantDecl *ECD = dyn_cast<EnumConstantDecl>(D)) {
+    // Check if this C++ enum constant has been mapped to a C enum constant
+    auto it = enumConstantMap.find(ECD);
+    if (it != enumConstantMap.end()) {
+      // Scoped enum: use the mapped C enum constant
+      EnumConstantDecl *CECD = it->second;
+      llvm::outs() << "  Translating scoped enum ref: " << ECD->getName()
+                   << " -> " << CECD->getName() << "\n";
+
+      // Create a DeclRefExpr to the C enum constant
+      return Builder.ref(CECD);
+    } else {
+      // Bug #28: Unscoped enum - keep as integer literal for backward compatibility
+      llvm::APSInt Value = ECD->getInitVal();
+      return Builder.intLit(Value.getExtValue());
+    }
+  }
 
   // Check if this is an implicit member access (field without explicit this)
   if (FieldDecl *FD = dyn_cast<FieldDecl>(D)) {
@@ -1780,27 +2489,294 @@ Expr *CppToCVisitor::translateMemberExpr(MemberExpr *ME) {
   Expr *Base = ME->getBase();
   ValueDecl *Member = ME->getMemberDecl();
 
-  llvm::outs() << "  Translating member access: " << Member->getName() << "\n";
-
   // Translate base recursively
   Expr *TranslatedBase = translateExpr(Base);
 
-  // Determine if we need -> or . based on base type
-  if (Base->getType()->isPointerType()) {
-    return Builder.arrowMember(TranslatedBase, Member->getName());
-  } else {
-    return Builder.member(TranslatedBase, Member->getName());
+  // If translation failed, return original expression
+  if (!TranslatedBase) {
+    return ME;
   }
+
+  // Determine if we need -> or . based on the base type
+  // Key insight: We need to check if the base refers to a reference parameter,
+  // even if it's been implicitly cast. Strip implicit casts to find the real base.
+  Expr *UnstrippedBase = Base;
+  while (ImplicitCastExpr *ICE = dyn_cast<ImplicitCastExpr>(UnstrippedBase)) {
+    UnstrippedBase = ICE->getSubExpr();
+  }
+
+  bool useArrow = false;
+  QualType TranslatedBaseType = TranslatedBase->getType();
+  QualType OriginalBaseType = Base->getType();
+
+  // Check if base is a pointer
+  if (TranslatedBaseType->isPointerType() || OriginalBaseType->isPointerType()) {
+    useArrow = true;
+  }
+  // Check if base is a reference
+  if (OriginalBaseType->isReferenceType()) {
+    useArrow = true;
+  }
+  // Bug #13: Check if base is a DeclRef to a reference/pointer parameter
+  // This handles parameters that were converted from references to pointers (Bug #1)
+  if (DeclRefExpr *DRE = dyn_cast<DeclRefExpr>(UnstrippedBase)) {
+    if (ParmVarDecl *PVD = dyn_cast<ParmVarDecl>(DRE->getDecl())) {
+      // Check if parameter is a reference (will be converted to pointer by CodeGenerator)
+      if (PVD->getType()->isReferenceType()) {
+        useArrow = true;
+      }
+      // Bug #13: Also check if parameter is already a pointer in the original C++ code
+      if (PVD->getType()->isPointerType()) {
+        useArrow = true;
+      }
+    }
+  }
+
+  // Create the member expression with the correct arrow/dot operator
+  // For reference parameters, we need to manually create the MemberExpr
+  // because Builder.arrowMember() requires a pointer type
+  Expr *Result = nullptr;
+
+  if (useArrow) {
+    // Bug #13 fix: Convert base to pointer type if it's a reference
+    // This ensures Clang's printer will use -> instead of .
+    Expr *BaseForArrow = TranslatedBase;
+    QualType BaseType = TranslatedBase->getType();
+
+    // If the base is a reference type, we need to convert it to a pointer type
+    // for the printer to correctly generate ->
+    if (BaseType->isReferenceType()) {
+      // Get the pointee type (strip reference)
+      QualType PointeeType = BaseType.getNonReferenceType();
+      // Create pointer type
+      QualType PointerType = Context.getPointerType(PointeeType);
+
+      // Create an implicit cast from reference to pointer
+      // Note: This is a semantic conversion, not syntactic - the C code will use the pointer directly
+      BaseForArrow = ImplicitCastExpr::Create(
+          Context, PointerType, CK_LValueToRValue,
+          TranslatedBase, nullptr, VK_PRValue, FPOptionsOverride());
+    }
+
+    // Try using Builder.arrowMember() with the potentially converted base
+    Result = Builder.arrowMember(BaseForArrow, Member->getName());
+
+    // If that failed, create the MemberExpr manually with isArrow=true
+    if (!Result) {
+      // Get the record type - for references, we need to strip the reference
+      QualType BaseRecordType = BaseForArrow->getType();
+      if (BaseRecordType->isPointerType()) {
+        BaseRecordType = BaseRecordType->getPointeeType();
+      } else if (BaseRecordType->isReferenceType()) {
+        BaseRecordType = BaseRecordType.getNonReferenceType();
+      }
+
+      const RecordType *RT = BaseRecordType->getAs<RecordType>();
+      if (RT) {
+        RecordDecl *RD = RT->getDecl();
+        FieldDecl *FD = nullptr;
+        for (auto *Field : RD->fields()) {
+          if (Field->getName() == Member->getName()) {
+            FD = Field;
+            break;
+          }
+        }
+
+        if (FD) {
+          Result = MemberExpr::Create(
+              Context, BaseForArrow,
+              true, // is arrow
+              SourceLocation(), NestedNameSpecifierLoc(), SourceLocation(), FD,
+              DeclAccessPair::make(FD, AS_public), DeclarationNameInfo(), nullptr,
+              FD->getType(), VK_LValue, OK_Ordinary, NOUR_None);
+        }
+      }
+    }
+  } else {
+    Result = Builder.member(TranslatedBase, Member->getName());
+  }
+
+  // If member access creation failed, return original expression
+  if (!Result) {
+    return ME;
+  }
+
+  return Result;
 }
 
 // Translate CallExpr - handles function calls
 Expr *CppToCVisitor::translateCallExpr(CallExpr *CE) {
+  // Phase 34-05: Check if this is a member method call
+  if (CXXMemberCallExpr *MCE = dyn_cast<CXXMemberCallExpr>(CE)) {
+    CXXMethodDecl *Method = MCE->getMethodDecl();
+    if (Method) {
+      // Bug #41 FIX: Use canonical method declaration for lookup
+      // Methods are stored in map using canonical decl (line 553)
+      // but were being looked up using non-canonical decl, causing mismatches
+      CXXMethodDecl *CanonicalMethod = cast<CXXMethodDecl>(Method->getCanonicalDecl());
+
+      // Find the corresponding C function
+      FunctionDecl *CFunc = nullptr;
+      if (methodToCFunc.find(CanonicalMethod) != methodToCFunc.end()) {
+        CFunc = methodToCFunc[CanonicalMethod];
+      }
+
+      if (CFunc) {
+        // Translate to C function call: object.method(args) -> Method(&object, args)
+        std::vector<Expr *> args;
+
+        // First argument: address of the object
+        Expr *ObjectExpr = MCE->getImplicitObjectArgument();
+        if (ObjectExpr) {
+          Expr *TranslatedObject = translateExpr(ObjectExpr);
+          if (TranslatedObject) {
+            // Take address if not already a pointer
+            if (!ObjectExpr->getType()->isPointerType()) {
+              TranslatedObject = Builder.addrOf(TranslatedObject);
+            }
+            args.push_back(TranslatedObject);
+          }
+        }
+
+        // Add method arguments
+        unsigned paramIdx = 0;  // Index into C++ method parameters
+        for (Expr *Arg : MCE->arguments()) {
+          Expr *TranslatedArg = translateExpr(Arg);
+          Expr *FinalArg = TranslatedArg ? TranslatedArg : Arg;
+
+          // Bug fix #10: Check if C++ parameter was a reference type
+          // If so, we need to pass address in C
+          if (paramIdx < Method->param_size()) {
+            ParmVarDecl *CppParam = Method->getParamDecl(paramIdx);
+            QualType CppParamType = CppParam->getType();
+
+            // If C++ parameter was a reference and argument is not already an address-of
+            if (CppParamType->isReferenceType() && !isa<UnaryOperator>(FinalArg)) {
+              // Strip any implicit casts to check the underlying expression
+              Expr *UnderlyingExpr = FinalArg->IgnoreImplicitAsWritten();
+
+              // Only take address if not already a pointer type
+              if (!UnderlyingExpr->getType()->isPointerType()) {
+                FinalArg = Builder.addrOf(FinalArg);
+              }
+            }
+          }
+          args.push_back(FinalArg);
+          paramIdx++;
+        }
+
+        // Create C function call
+        return Builder.call(CFunc, args);
+      } else {
+        // Bug #14 fix: Method not in map (declaration-only in current TU)
+        // Generate the C function call anyway using name mangling
+        llvm::outs() << "  Warning: Method not in methodToCFunc map, generating call anyway: "
+                     << Method->getQualifiedNameAsString() << "\n";
+
+        // Generate mangled C function name
+        std::string funcName = Mangler.mangleName(Method);
+        llvm::outs() << "  Generated function name: " << funcName << "\n";
+
+        // Build argument list: &object + original args
+        std::vector<Expr *> args;
+
+        // First argument: address of the object
+        Expr *ObjectExpr = MCE->getImplicitObjectArgument();
+        if (ObjectExpr) {
+          Expr *TranslatedObject = translateExpr(ObjectExpr);
+          if (TranslatedObject) {
+            // Take address if not already a pointer
+            if (!ObjectExpr->getType()->isPointerType()) {
+              TranslatedObject = Builder.addrOf(TranslatedObject);
+            }
+            args.push_back(TranslatedObject);
+          }
+        }
+
+        // Add method arguments
+        unsigned paramIdx = 0;
+        for (Expr *Arg : MCE->arguments()) {
+          Expr *TranslatedArg = translateExpr(Arg);
+          Expr *FinalArg = TranslatedArg ? TranslatedArg : Arg;
+
+          // Check if C++ parameter was a reference type
+          if (paramIdx < Method->param_size()) {
+            ParmVarDecl *CppParam = Method->getParamDecl(paramIdx);
+            QualType CppParamType = CppParam->getType();
+
+            // If C++ parameter was a reference and argument is not already an address-of
+            if (CppParamType->isReferenceType() && !isa<UnaryOperator>(FinalArg)) {
+              // Strip any implicit casts to check the underlying expression
+              Expr *UnderlyingExpr = FinalArg->IgnoreImplicitAsWritten();
+
+              // Only take address if not already a pointer type
+              if (!UnderlyingExpr->getType()->isPointerType()) {
+                FinalArg = Builder.addrOf(FinalArg);
+              }
+            }
+          }
+          args.push_back(FinalArg);
+          paramIdx++;
+        }
+
+        // Create a function declaration for the C function
+        // Build parameter types: this pointer + original params
+        std::vector<ParmVarDecl *> params;
+
+        // Add this parameter
+        CXXRecordDecl *Parent = Method->getParent();
+        QualType thisType = Builder.ptrType(Builder.structType(Parent->getName()));
+        ParmVarDecl *thisParam = Builder.param(thisType, "this");
+        params.push_back(thisParam);
+
+        // Add original parameters
+        for (ParmVarDecl *Param : Method->parameters()) {
+          ParmVarDecl *CParam = Builder.param(Param->getType(), Param->getName());
+          params.push_back(CParam);
+        }
+
+        // Create function declaration
+        FunctionDecl *CFuncDecl = Builder.funcDecl(funcName, Method->getReturnType(), params, nullptr);
+
+        // Add declaration to C TranslationUnit so it appears in the header
+        C_TranslationUnit->addDecl(CFuncDecl);
+
+        // Bug #43 FIX: Store in methodToCFunc map using canonical decl as key
+        // This ensures consistency with VisitCXXMethodDecl which also uses canonical
+        CXXMethodDecl *CanonicalMethod = cast<CXXMethodDecl>(Method->getCanonicalDecl());
+        methodToCFunc[CanonicalMethod] = CFuncDecl;
+
+        // Create and return the call
+        return Builder.call(CFuncDecl, args);
+      }
+    }
+  }
+
+  // Regular function call (not a method)
   // Translate callee and arguments
   Expr *Callee = translateExpr(CE->getCallee());
 
+  // Bug fix #8: If callee translation failed (e.g., RecoveryExpr), skip entire call
+  if (!Callee) {
+    llvm::outs() << "  Skipping CallExpr due to RecoveryExpr in callee\n";
+    return nullptr;
+  }
+
   std::vector<Expr *> args;
+  bool hasRecoveryExpr = false;
   for (Expr *Arg : CE->arguments()) {
-    args.push_back(translateExpr(Arg));
+    Expr *TranslatedArg = translateExpr(Arg);
+    if (!TranslatedArg) {
+      hasRecoveryExpr = true;
+      break;
+    }
+    args.push_back(TranslatedArg);
+  }
+
+  // Bug fix #8: If any argument is RecoveryExpr, skip entire call
+  if (hasRecoveryExpr) {
+    llvm::outs() << "  Skipping CallExpr due to RecoveryExpr in arguments\n";
+    return nullptr;
   }
 
   // Reconstruct call expression with translated parts
@@ -1814,9 +2790,77 @@ Expr *CppToCVisitor::translateBinaryOperator(BinaryOperator *BO) {
   Expr *LHS = translateExpr(BO->getLHS());
   Expr *RHS = translateExpr(BO->getRHS());
 
+  // Bug fix #8: If either operand contains RecoveryExpr (returns nullptr),
+  // skip the entire binary operator
+  if (!LHS || !RHS) {
+    llvm::outs() << "  Skipping BinaryOperator due to RecoveryExpr in operand\n";
+    return nullptr;
+  }
+
   return BinaryOperator::Create(
       Context, LHS, RHS, BO->getOpcode(), BO->getType(), BO->getValueKind(),
       BO->getObjectKind(), SourceLocation(), FPOptionsOverride());
+}
+
+// Translate CXXConstructExpr - handles C++ constructor calls
+// Bug fix #6: Convert C++ constructor to C struct initialization (compound literal)
+// Example: Vector3D(x, y, z) -> (struct Vector3D){x, y, z}
+// Bug fix #16: Detect copy construction from variable and unwrap it
+// Example: return result; -> should stay as "return result;" not "return (struct Type){result};"
+Expr *CppToCVisitor::translateConstructExpr(CXXConstructExpr *CCE) {
+  // Bug fix #16: Check if this is a copy/move constructor wrapping a simple variable reference
+  // Pattern: return result; where result is a local variable
+  // Clang represents this as CXXConstructExpr(copy/move ctor, DeclRefExpr)
+  // We should unwrap it to just return the variable directly
+  // Note: In C++23, this is typically a move constructor due to copy elision
+
+  CXXConstructorDecl *Ctor = CCE->getConstructor();
+  if (CCE->getNumArgs() == 1 && (Ctor->isCopyConstructor() || Ctor->isMoveConstructor())) {
+    Expr *Arg = CCE->getArg(0);
+
+    // Skip through any implicit casts to find the underlying expression
+    while (ImplicitCastExpr *ICE = dyn_cast<ImplicitCastExpr>(Arg)) {
+      Arg = ICE->getSubExpr();
+    }
+
+    // If the argument is a simple variable reference (DeclRefExpr),
+    // just return the translated variable reference directly
+    if (DeclRefExpr *DRE = dyn_cast<DeclRefExpr>(Arg)) {
+      return translateExpr(DRE);
+    }
+  }
+
+  // Translate all constructor arguments
+  std::vector<Expr *> translatedArgs;
+  for (unsigned i = 0; i < CCE->getNumArgs(); ++i) {
+    Expr *Arg = CCE->getArg(i);
+    Expr *TranslatedArg = translateExpr(Arg);
+    translatedArgs.push_back(TranslatedArg ? TranslatedArg : Arg);
+  }
+
+  // Bug fix #6: Get the C struct type instead of C++ class type
+  // This ensures (struct Type) instead of just (Type)
+  QualType resultType = CCE->getType();
+  CXXRecordDecl *CppClass = CCE->getType()->getAsCXXRecordDecl();
+  if (CppClass && cppToCMap.find(CppClass) != cppToCMap.end()) {
+    // Use the C struct type for proper "struct TypeName" printing
+    RecordDecl *CStruct = cppToCMap[CppClass];
+    resultType = Context.getRecordType(CStruct);
+  }
+
+  // Bug fix #6: Create InitListExpr for C struct initialization
+  // This generates {arg1, arg2, ...} syntax
+  InitListExpr *InitList = new (Context) InitListExpr(
+      Context, SourceLocation(), translatedArgs, SourceLocation());
+  InitList->setType(resultType);
+
+  // Wrap in CompoundLiteralExpr to create (struct Type){...}
+  // This is the proper C99 syntax for struct literals in return statements
+  CompoundLiteralExpr *CompoundLit = new (Context) CompoundLiteralExpr(
+      SourceLocation(), Context.getTrivialTypeSourceInfo(resultType),
+      resultType, VK_PRValue, InitList, false);
+
+  return CompoundLit;
 }
 
 // ============================================================================
@@ -1828,13 +2872,114 @@ Stmt *CppToCVisitor::translateStmt(Stmt *S) {
   if (!S)
     return nullptr;
 
+  llvm::outs() << "[DEBUG Bug#26] translateStmt called, type: " << S->getStmtClassName() << "\n";
+
   // Dispatch to specific translators
   if (ReturnStmt *RS = dyn_cast<ReturnStmt>(S)) {
+    llvm::outs() << "[DEBUG Bug#26] Dispatching to translateReturnStmt\n";
     return translateReturnStmt(RS);
   }
 
   if (CompoundStmt *CS = dyn_cast<CompoundStmt>(S)) {
     return translateCompoundStmt(CS);
+  }
+
+  // Phase 34-05: Handle variable declarations with constructors
+  if (DeclStmt *DS = dyn_cast<DeclStmt>(S)) {
+    return translateDeclStmt(DS);
+  }
+
+  // Bug #13 fix: Handle ForStmt - translate all sub-statements and expressions
+  // This is critical for translating expressions like other.data[i] inside for loops
+  if (ForStmt *FS = dyn_cast<ForStmt>(S)) {
+    Stmt *Init = FS->getInit();
+    Expr *Cond = FS->getCond();
+    Expr *Inc = FS->getInc();
+    Stmt *Body = FS->getBody();
+
+    // Translate each component
+    Stmt *TranslatedInit = Init ? translateStmt(Init) : nullptr;
+    Expr *TranslatedCond = Cond ? translateExpr(Cond) : nullptr;
+    Expr *TranslatedInc = Inc ? translateExpr(Inc) : nullptr;
+    Stmt *TranslatedBody = Body ? translateStmt(Body) : nullptr;
+
+    // Create new ForStmt with translated components
+    return new (Context) ForStmt(
+        Context, TranslatedInit, TranslatedCond, nullptr, TranslatedInc,
+        TranslatedBody, FS->getForLoc(), FS->getLParenLoc(), FS->getRParenLoc());
+  }
+
+  // Bug #26: Handle IfStmt - translate condition and branches, create NEW C AST node
+  if (IfStmt *IS = dyn_cast<IfStmt>(S)) {
+    Expr *Cond = IS->getCond();
+    Stmt *Then = IS->getThen();
+    Stmt *Else = IS->getElse();
+
+    Expr *TranslatedCond = Cond ? translateExpr(Cond) : nullptr;
+    Stmt *TranslatedThen = Then ? translateStmt(Then) : nullptr;
+    Stmt *TranslatedElse = Else ? translateStmt(Else) : nullptr;
+
+    return IfStmt::Create(Context, IS->getIfLoc(), IfStatementKind::Ordinary,
+                          nullptr, nullptr, TranslatedCond, IS->getLParenLoc(),
+                          IS->getRParenLoc(), TranslatedThen, IS->getElseLoc(),
+                          TranslatedElse);
+  }
+
+  // Bug #26: Handle WhileStmt - translate condition and body, create NEW C AST node
+  if (WhileStmt *WS = dyn_cast<WhileStmt>(S)) {
+    Expr *Cond = WS->getCond();
+    Stmt *Body = WS->getBody();
+
+    Expr *TranslatedCond = Cond ? translateExpr(Cond) : nullptr;
+    Stmt *TranslatedBody = Body ? translateStmt(Body) : nullptr;
+
+    return WhileStmt::Create(Context, nullptr, TranslatedCond, TranslatedBody,
+                              WS->getWhileLoc(), WS->getLParenLoc(), WS->getRParenLoc());
+  }
+
+  // Bug #26: Handle SwitchStmt - translate condition and body, create NEW C AST node
+  if (SwitchStmt *SS = dyn_cast<SwitchStmt>(S)) {
+    Expr *Cond = SS->getCond();
+    Stmt *Body = SS->getBody();
+
+    Expr *TranslatedCond = Cond ? translateExpr(Cond) : nullptr;
+    Stmt *TranslatedBody = Body ? translateStmt(Body) : nullptr;
+
+    SwitchStmt *NewSwitch = SwitchStmt::Create(Context, nullptr, nullptr, TranslatedCond,
+                                                SS->getLParenLoc(), SS->getRParenLoc());
+    NewSwitch->setBody(TranslatedBody);
+    return NewSwitch;
+  }
+
+  // Bug #26: Handle CaseStmt - translate LHS and substmt, create NEW C AST node
+  if (CaseStmt *CS = dyn_cast<CaseStmt>(S)) {
+    Expr *LHS = CS->getLHS();
+    Stmt *SubStmt = CS->getSubStmt();
+
+    Expr *TranslatedLHS = LHS ? translateExpr(LHS) : nullptr;
+    Stmt *TranslatedSubStmt = SubStmt ? translateStmt(SubStmt) : nullptr;
+
+    CaseStmt *NewCase = CaseStmt::Create(Context, TranslatedLHS, nullptr, CS->getCaseLoc(),
+                                          CS->getEllipsisLoc(), CS->getColonLoc());
+    NewCase->setSubStmt(TranslatedSubStmt);
+    return NewCase;
+  }
+
+  // Bug #26: Handle DefaultStmt - translate substmt, create NEW C AST node
+  if (DefaultStmt *DS = dyn_cast<DefaultStmt>(S)) {
+    Stmt *SubStmt = DS->getSubStmt();
+
+    Stmt *TranslatedSubStmt = SubStmt ? translateStmt(SubStmt) : nullptr;
+
+    return new (Context) DefaultStmt(DS->getDefaultLoc(), DS->getColonLoc(), TranslatedSubStmt);
+  }
+
+  // Bug #26: Recursively visit all children to ensure nested return statements are seen
+  // We don't recreate the statement (complex API issues), but we ensure children are visited
+  for (Stmt *Child : S->children()) {
+    if (Child) {
+      translateStmt(Child);
+    }
   }
 
   // If it's an expression, translate it
@@ -1853,21 +2998,421 @@ Stmt *CppToCVisitor::translateReturnStmt(ReturnStmt *RS) {
   // inject destructor calls before the return
   // This creates a compound statement: { dtors...; return; }
 
+  llvm::outs() << "[DEBUG Bug#26] translateReturnStmt called\n";
+
   Expr *RetValue = RS->getRetValue();
-  Expr *TranslatedValue = nullptr;
+
+  // Bug #26: Handle constructor calls in return statements
+  // Pattern: return ClassName(args...);
+  // Transform to: struct ClassName temp; ClassName__ctor(&temp, args...); return temp;
   if (RetValue) {
-    TranslatedValue = translateExpr(RetValue);
+    llvm::outs() << "[DEBUG Bug#26] RetValue exists, type: " << RetValue->getStmtClassName() << "\n";
+
+    // Debug: Print full expression structure
+    if (ImplicitCastExpr *ICE = dyn_cast<ImplicitCastExpr>(RetValue)) {
+      llvm::outs() << "[DEBUG Bug#26]   ImplicitCastExpr -> subexpr type: " << ICE->getSubExpr()->getStmtClassName() << "\n";
+    }
+    if (ExprWithCleanups *EWC = dyn_cast<ExprWithCleanups>(RetValue)) {
+      llvm::outs() << "[DEBUG Bug#26]   ExprWithCleanups -> subexpr type: " << EWC->getSubExpr()->getStmtClassName() << "\n";
+    }
+
+    // Check if return value is a constructor expression
+    CXXConstructExpr *CCE = dyn_cast<CXXConstructExpr>(RetValue);
+    if (!CCE) {
+      // Unwrap implicit casts and cleanups
+      if (ExprWithCleanups *EWC = dyn_cast<ExprWithCleanups>(RetValue)) {
+        CCE = dyn_cast<CXXConstructExpr>(EWC->getSubExpr());
+        if (CCE) llvm::outs() << "[DEBUG Bug#26]   Found CCE inside ExprWithCleanups\n";
+      }
+      if (!CCE && isa<ImplicitCastExpr>(RetValue)) {
+        ImplicitCastExpr *ICE = cast<ImplicitCastExpr>(RetValue);
+        CCE = dyn_cast<CXXConstructExpr>(ICE->getSubExpr());
+        if (CCE) llvm::outs() << "[DEBUG Bug#26]   Found CCE inside ImplicitCastExpr\n";
+      }
+      // Bug #26: Also check for CXXFunctionalCastExpr (e.g., Token(EndOfInput))
+      if (!CCE) {
+        if (CXXFunctionalCastExpr *FCE = dyn_cast<CXXFunctionalCastExpr>(RetValue)) {
+          llvm::outs() << "[DEBUG Bug#26]   Found CXXFunctionalCastExpr, checking subexpr\n";
+          Expr *SubExpr = FCE->getSubExpr();
+          // The subexpr might be wrapped in casts
+          while (ImplicitCastExpr *ICE = dyn_cast<ImplicitCastExpr>(SubExpr)) {
+            SubExpr = ICE->getSubExpr();
+          }
+          CCE = dyn_cast<CXXConstructExpr>(SubExpr);
+          if (CCE) llvm::outs() << "[DEBUG Bug#26]   Found CCE inside CXXFunctionalCastExpr\n";
+        }
+      }
+    }
+
+    if (CCE) {
+      llvm::outs() << "[DEBUG Bug#26] Constructor expression detected!\n";
+      // This is a constructor call in return statement
+      CXXConstructorDecl *Ctor = CCE->getConstructor();
+      llvm::outs() << "[DEBUG Bug#26] Constructor: " << Ctor->getNameAsString() << "\n";
+      llvm::outs() << "[DEBUG Bug#26] isCopyConstructor: " << Ctor->isCopyConstructor() << "\n";
+      llvm::outs() << "[DEBUG Bug#26] isMoveConstructor: " << Ctor->isMoveConstructor() << "\n";
+      llvm::outs() << "[DEBUG Bug#26] NumArgs: " << CCE->getNumArgs() << "\n";
+
+      // Check if this is a copy/move constructor wrapping another constructor
+      if (CCE->getNumArgs() == 1 && (Ctor->isCopyConstructor() || Ctor->isMoveConstructor())) {
+        llvm::outs() << "[DEBUG Bug#26] This is a copy/move constructor, checking argument...\n";
+        Expr *Arg = CCE->getArg(0);
+        llvm::outs() << "[DEBUG Bug#26] Argument type: " << Arg->getStmtClassName() << "\n";
+
+        // Unwrap casts
+        while (ImplicitCastExpr *ICE = dyn_cast<ImplicitCastExpr>(Arg)) {
+          Arg = ICE->getSubExpr();
+          llvm::outs() << "[DEBUG Bug#26] Unwrapped to: " << Arg->getStmtClassName() << "\n";
+        }
+
+        // Check if the argument is another constructor call
+        if (CXXConstructExpr *InnerCCE = dyn_cast<CXXConstructExpr>(Arg)) {
+          llvm::outs() << "[DEBUG Bug#26] Found INNER constructor! Unwrapping copy constructor.\n";
+          CCE = InnerCCE;
+          Ctor = CCE->getConstructor();
+          llvm::outs() << "[DEBUG Bug#26] Inner constructor: " << Ctor->getNameAsString() << "\n";
+        } else if (isa<DeclRefExpr>(Arg)) {
+          // Just return the variable directly
+          llvm::outs() << "[DEBUG Bug#26] Copy of variable, returning normally\n";
+          Expr *TranslatedValue = translateExpr(RetValue);
+          return Builder.returnStmt(TranslatedValue);
+        }
+      }
+
+      // Look up the C constructor function using canonical declaration
+      CXXConstructorDecl *CanonicalCtor = cast<CXXConstructorDecl>(Ctor->getCanonicalDecl());
+      llvm::outs() << "[DEBUG Bug#26] Looking up in ctorMap (size: " << ctorMap.size() << ")\n";
+      auto it = ctorMap.find(CanonicalCtor);
+      if (it != ctorMap.end()) {
+        FunctionDecl *CCtorFunc = it->second;
+        llvm::outs() << "[DEBUG Bug#26] Found in ctorMap! C function: " << CCtorFunc->getNameAsString() << "\n";
+
+        // Create a compound statement: { struct Type temp; Type__ctor(&temp, args...); return temp; }
+        std::vector<Stmt *> stmts;
+
+        // 1. Create temporary variable: struct Type temp;
+        QualType resultType = CCE->getType();
+        CXXRecordDecl *CppClass = resultType->getAsCXXRecordDecl();
+        if (CppClass && cppToCMap.find(CppClass) != cppToCMap.end()) {
+          RecordDecl *CStruct = cppToCMap[CppClass];
+          resultType = Context.getRecordType(CStruct);
+        }
+
+        VarDecl *tempVar = Builder.var(resultType, "__return_temp");
+        stmts.push_back(Builder.declStmt(tempVar));
+
+        // 2. Call constructor: Type__ctor(&temp, args...);
+        std::vector<Expr *> ctorArgs;
+
+        // First arg: address of temp variable (&temp)
+        DeclRefExpr *tempRef = Builder.ref(tempVar);
+        Expr *tempAddr = Builder.addrOf(tempRef);
+        ctorArgs.push_back(tempAddr);
+
+        // Remaining args: translate constructor arguments
+        for (unsigned i = 0; i < CCE->getNumArgs(); ++i) {
+          Expr *Arg = CCE->getArg(i);
+          Expr *TranslatedArg = translateExpr(Arg);
+          ctorArgs.push_back(TranslatedArg ? TranslatedArg : Arg);
+        }
+
+        // Handle default arguments if constructor has more parameters
+        unsigned numParams = CCtorFunc->getNumParams();
+        unsigned numArgs = ctorArgs.size(); // Includes 'this' parameter
+        if (numArgs < numParams) {
+          // Add default values for missing arguments
+          for (unsigned i = numArgs; i < numParams; ++i) {
+            ParmVarDecl *Param = CCtorFunc->getParamDecl(i);
+            if (Param->hasDefaultArg()) {
+              Expr *DefaultArg = Param->getDefaultArg();
+              Expr *TranslatedDefault = translateExpr(DefaultArg);
+              ctorArgs.push_back(TranslatedDefault ? TranslatedDefault : DefaultArg);
+            } else {
+              // No default value available - use zero initializer
+              QualType ParamType = Param->getType();
+              if (ParamType->isIntegerType()) {
+                ctorArgs.push_back(Builder.intLit(0));
+              } else {
+                llvm::outs() << "  Warning: No default value for parameter " << i << "\n";
+              }
+            }
+          }
+        }
+
+        // Create constructor call
+        Expr *ctorCall = Builder.call(CCtorFunc, ctorArgs);
+        stmts.push_back(ctorCall);
+
+        // 3. Return temp variable
+        stmts.push_back(Builder.returnStmt(Builder.ref(tempVar)));
+
+        // Return compound statement
+        llvm::outs() << "[DEBUG Bug#26] Returning compound statement with " << stmts.size() << " statements\n";
+        return Builder.block(stmts);
+      } else {
+        llvm::outs() << "[DEBUG Bug#26] WARNING: Constructor not found in ctorMap for return statement\n";
+        llvm::outs() << "[DEBUG Bug#26] Constructor name: " << CanonicalCtor->getNameAsString() << "\n";
+      }
+    } else {
+      llvm::outs() << "[DEBUG Bug#26] No constructor expression detected after unwrapping\n";
+    }
+
+    // Fall back to normal translation
+    Expr *TranslatedValue = translateExpr(RetValue);
+    if (TranslatedValue) {
+      return Builder.returnStmt(TranslatedValue);
+    }
   }
 
-  // Story #45: Check if we need to inject destructors before this return
-  // For now, we'll do this during the VisitFunctionDecl analysis phase
-  // The actual injection happens in a later pass
-  // For this implementation, we just return the translated return statement
-
-  if (TranslatedValue) {
-    return Builder.returnStmt(TranslatedValue);
-  }
   return Builder.returnStmt();
+}
+
+// Phase 34-05: Translate declaration statements (variable declarations)
+// This handles C++ constructor syntax and converts it to C initialization
+Stmt *CppToCVisitor::translateDeclStmt(DeclStmt *DS) {
+  if (!DS) {
+    return nullptr;
+  }
+
+  // Phase 34-05/34-06: Translate variable declarations
+  // Handles both class constructors and method call initializers
+  llvm::outs() << "  [Translating DeclStmt]\n";
+
+  std::vector<Stmt *> statements;
+
+  // Process each declaration in the statement
+  for (Decl *D : DS->decls()) {
+    VarDecl *VD = dyn_cast<VarDecl>(D);
+    if (!VD) {
+      // Not a variable declaration, keep as-is
+      continue;
+    }
+
+    llvm::outs() << "    Variable: " << VD->getNameAsString() << "\n";
+
+    // Get the variable type
+    QualType VarType = VD->getType();
+    const Type *T = VarType.getTypePtr();
+
+    // Bug #38 FIX: Check if this is a pointer to a nested class that needs monomorphization
+    // E.g., "Node *newNode" -> "struct LinkedList_int_Node *newNode"
+    if (currentNestedClassMappings && T->isPointerType()) {
+      const PointerType *PT = T->getAs<PointerType>();
+      QualType PointeeType = PT->getPointeeType();
+
+      // Check if pointee is a record type (struct/class)
+      if (const RecordType *RT = PointeeType->getAs<RecordType>()) {
+        RecordDecl *RD = RT->getDecl();
+        std::string typeName = RD->getNameAsString();
+
+        // Check if this type is in our nested class mappings
+        auto it = currentNestedClassMappings->find(typeName);
+        if (it != currentNestedClassMappings->end()) {
+          // Found it! Replace with monomorphized type
+          std::string monomorphizedName = it->second;
+          llvm::outs() << "      Substituting nested class pointer: " << typeName
+                       << "* -> struct " << monomorphizedName << "*\n";
+
+          // Create the monomorphized struct type
+          IdentifierInfo &II = Context.Idents.get(monomorphizedName);
+          RecordDecl *CRecord = RecordDecl::Create(
+              Context,
+#if LLVM_VERSION_MAJOR >= 16
+              TagTypeKind::Struct,
+#else
+              TTK_Struct,
+#endif
+              Context.getTranslationUnitDecl(),
+              SourceLocation(),
+              SourceLocation(),
+              &II
+          );
+
+          // Create pointer to the struct
+          QualType CStructType = Context.getRecordType(CRecord);
+          QualType CPointerType = Context.getPointerType(CStructType);
+
+          // Create the C variable declaration
+          VarDecl *CVarDecl = Builder.var(CPointerType, VD->getName());
+
+          // If there's an initializer, translate it
+          if (Expr *Init = VD->getInit()) {
+            Expr *TranslatedInit = translateExpr(Init);
+            if (TranslatedInit) {
+              CVarDecl->setInit(TranslatedInit);
+            }
+          }
+
+          return Builder.declStmt(CVarDecl);
+        }
+      }
+    }
+
+    // BUG FIX (Bug #18): Check if this is a template specialization type
+    // E.g., LinkedList<int> list; -> struct LinkedList_int list;
+    if (const RecordType *RT = T->getAs<RecordType>()) {
+      RecordDecl *RD = RT->getDecl();
+
+      // Check if this is a ClassTemplateSpecializationDecl
+      if (ClassTemplateSpecializationDecl *CTSD = dyn_cast<ClassTemplateSpecializationDecl>(RD)) {
+        llvm::outs() << "      Is a template specialization: " << CTSD->getNameAsString() << "\n";
+
+        // Generate mangled name for the monomorphized struct
+        // Reuse TemplateMonomorphizer's generateMangledName function
+        std::string mangledName = m_templateMonomorphizer->generateMangledName(
+            CTSD->getSpecializedTemplate()->getNameAsString(),
+            CTSD->getTemplateArgs()
+        );
+
+        llvm::outs() << "      Monomorphized struct name: " << mangledName << "\n";
+
+        // Create C variable declaration with monomorphized struct type
+        // struct LinkedList_int list;
+        IdentifierInfo &II = Context.Idents.get(mangledName);
+        RecordDecl *CRecord = RecordDecl::Create(
+            Context,
+#if LLVM_VERSION_MAJOR >= 16
+            TagTypeKind::Struct,
+#else
+            TTK_Struct,
+#endif
+            Context.getTranslationUnitDecl(),
+            SourceLocation(),
+            SourceLocation(),
+            &II
+        );
+
+        QualType CStructType = Context.getRecordType(CRecord);
+        VarDecl *CVarDecl = Builder.var(CStructType, VD->getName());
+        return Builder.declStmt(CVarDecl);
+      }
+    }
+
+    // Check if this is a class type with a constructor call
+    // Note: Use getAs<RecordType>() which works for both C structs and C++ classes
+    if (const RecordType *RT = T->getAs<RecordType>()) {
+      llvm::outs() << "      Is a struct/class type\n";
+      RecordDecl *RD = RT->getDecl();
+      CXXRecordDecl *CXXRD = dyn_cast<CXXRecordDecl>(RD);
+
+      if (CXXRD) {
+        llvm::outs() << "      Is a C++ class: " << CXXRD->getNameAsString() << "\n";
+        // This is a C++ class - need to translate constructor call
+        Expr *Init = VD->getInit();
+
+        // Check if the initializer is a constructor expression
+        CXXConstructExpr *CCE = nullptr;
+        if (Init) {
+          // Direct constructor call: Point p(3, 4);
+          CCE = dyn_cast<CXXConstructExpr>(Init);
+          if (!CCE) {
+            // Might be wrapped in ExprWithCleanups or other expressions
+            if (ExprWithCleanups *EWC = dyn_cast<ExprWithCleanups>(Init)) {
+              CCE = dyn_cast<CXXConstructExpr>(EWC->getSubExpr());
+            }
+          }
+        } else {
+          // Default initialization: Point p;
+          // We'll create a default constructor call if one exists
+        }
+
+        // Find the corresponding C struct
+        RecordDecl *CStruct = nullptr;
+        if (cppToCMap.find(CXXRD) != cppToCMap.end()) {
+          CStruct = cppToCMap[CXXRD];
+          llvm::outs() << "      Found C struct: " << CStruct->getNameAsString() << "\n";
+        } else {
+          llvm::outs() << "      WARNING: C struct not found in cppToCMap!\n";
+        }
+
+        if (CStruct) {
+          llvm::outs() << "      Creating C variable declaration\n";
+          // Step 1: Create variable declaration without initializer
+          //         struct Point p;
+          QualType CStructType = Context.getRecordType(CStruct);
+          VarDecl *CVarDecl = Builder.var(CStructType, VD->getName());
+          DeclStmt *CDeclStmt = Builder.declStmt(CVarDecl);
+          statements.push_back(CDeclStmt);
+
+          // Step 2: If there's a constructor, create the constructor call
+          //         Point__ctor(&p, 3, 4);
+          if (CCE) {
+            llvm::outs() << "      Has constructor expression\n";
+            CXXConstructorDecl *Ctor = CCE->getConstructor();
+
+            // Find the corresponding C constructor function
+            FunctionDecl *CCtorFunc = nullptr;
+            if (ctorMap.find(Ctor) != ctorMap.end()) {
+              CCtorFunc = ctorMap[Ctor];
+              llvm::outs() << "      Found C constructor: " << CCtorFunc->getNameAsString() << "\n";
+            } else {
+              llvm::outs() << "      WARNING: C constructor not found in ctorMap!\n";
+            }
+
+            if (CCtorFunc) {
+              llvm::outs() << "      Creating constructor call\n";
+              // Create argument list: &p, arg1, arg2, ...
+              std::vector<Expr *> args;
+
+              // First argument: address of the variable
+              DeclRefExpr *VarRef = Builder.ref(CVarDecl);
+              Expr *VarAddr = Builder.addrOf(VarRef);
+              args.push_back(VarAddr);
+
+              // Add constructor arguments
+              for (const Expr *Arg : CCE->arguments()) {
+                Expr *TranslatedArg = translateExpr(const_cast<Expr *>(Arg));
+                if (TranslatedArg) {
+                  args.push_back(TranslatedArg);
+                }
+              }
+
+              // Create constructor function call
+              Expr *CtorCall = Builder.call(CCtorFunc, args);
+              statements.push_back(CtorCall);
+            }
+          }
+        } else {
+          // C struct not found, return original statement
+          return DS;
+        }
+      } else {
+        // Plain C struct, return as-is
+        return DS;
+      }
+    } else {
+      // Not a class type (int, float, etc.)
+      // Phase 34-06: Still need to translate initializer if it contains method calls
+      // Example: int dist = p.distanceSquared(); → int dist = Point_distanceSquared(&p);
+      Expr *Init = VD->getInit();
+      if (Init) {
+        Expr *TranslatedInit = translateExpr(Init);
+
+        // Bug fix #8: If translation returns nullptr (RecoveryExpr), create var without initializer
+        if (!TranslatedInit) {
+          llvm::outs() << "    Initializer contains RecoveryExpr, creating variable without initializer\n";
+          VarDecl *CVar = Builder.var(VarType, VD->getName());
+          return Builder.declStmt(CVar);
+        }
+
+        if (TranslatedInit != Init) {
+          // Initializer was translated (method call, constructor, etc.)
+          VarDecl *CVar = Builder.var(VarType, VD->getName(), TranslatedInit);
+          return Builder.declStmt(CVar);
+        }
+      }
+      // No translation needed, return as-is
+      return DS;
+    }
+  }
+
+  // If we generated statements, return them as a compound statement
+  if (!statements.empty()) {
+    return Builder.block(statements);
+  }
+
+  // Fallback: return original
+  return DS;
 }
 
 // Story #45: Helper - removed inline class since it needs access to private
@@ -1883,6 +3428,14 @@ Stmt *CppToCVisitor::translateCompoundStmt(CompoundStmt *CS) {
 
   // Translate all statements in the compound statement
   for (Stmt *S : CS->body()) {
+    // Bug #8: Skip statements containing RecoveryExpr (parsing errors from missing headers)
+    // Bug #17: Exclude DeclStmt from statement-level filtering - it has expression-level handling
+    // DeclStmt with RecoveryExpr in initializer creates variable without initializer (correct behavior)
+    if (containsRecoveryExpr(S) && !isa<DeclStmt>(S)) {
+      llvm::outs() << "  [Bug #8] Skipping statement containing RecoveryExpr\n";
+      continue;
+    }
+
     // Check if this is a VarDecl statement with a destructor
     if (DeclStmt *DS = dyn_cast<DeclStmt>(S)) {
       // Check if any decls in this statement have destructors
@@ -1989,7 +3542,26 @@ Stmt *CppToCVisitor::translateCompoundStmt(CompoundStmt *CS) {
       // Regular statement translation (includes nested CompoundStmts)
       Stmt *TranslatedStmt = translateStmt(S);
       if (TranslatedStmt) {
-        translatedStmts.push_back(TranslatedStmt);
+        // Phase 34-06: If the translated statement is a CompoundStmt returned from
+        // translateDeclStmt, flatten it by adding its children directly
+        // This fixes the scoping issue where constructor calls were wrapped in a block
+        // Example: {struct Point p; Point__ctor(&p, 3, 4);} → two separate statements
+        // Bug #12 fix: Also flatten single-statement blocks from default constructors
+        // Example: {struct Matrix3x3 result;} → struct Matrix3x3 result;
+        if (CompoundStmt *TranslatedBlock = dyn_cast<CompoundStmt>(TranslatedStmt)) {
+          // Check if this is a flattening candidate from translateDeclStmt
+          // Bug #12: Remove size check - flatten ALL DeclStmt blocks, even with 1 statement
+          if (isa<DeclStmt>(S) && TranslatedBlock->size() > 0) {
+            // Flatten: add children directly instead of nested block
+            for (Stmt *Child : TranslatedBlock->body()) {
+              translatedStmts.push_back(Child);
+            }
+          } else {
+            translatedStmts.push_back(TranslatedStmt);
+          }
+        } else {
+          translatedStmts.push_back(TranslatedStmt);
+        }
       }
     }
   }
@@ -2081,6 +3653,9 @@ void CppToCVisitor::generateImplicitConstructors(CXXRecordDecl *D) {
       // CXXConstructorDecl)
       ctorMap[reinterpret_cast<CXXConstructorDecl *>(DefaultCtor)] =
           DefaultCtor;
+
+      // Phase 32: Add to C TranslationUnit for output generation
+      C_TranslationUnit->addDecl(DefaultCtor);
     }
   }
 
@@ -2093,6 +3668,9 @@ void CppToCVisitor::generateImplicitConstructors(CXXRecordDecl *D) {
       // Use the FunctionDecl pointer cast as key (implicit ctors don't have
       // CXXConstructorDecl)
       ctorMap[reinterpret_cast<CXXConstructorDecl *>(CopyCtor)] = CopyCtor;
+
+      // Phase 32: Add to C TranslationUnit for output generation
+      C_TranslationUnit->addDecl(CopyCtor);
     }
   }
 }
@@ -2126,6 +3704,11 @@ FunctionDecl *CppToCVisitor::generateDefaultConstructor(CXXRecordDecl *D) {
   // Create C init function
   FunctionDecl *CFunc =
       Builder.funcDecl(funcName, Builder.voidType(), params, nullptr);
+
+  // Bug #19: Make implicit constructors static to avoid linker conflicts
+  // Since this is an implicit constructor, it's generated in every translation
+  // unit that sees the class. Making it static ensures each TU has its own copy.
+  CFunc->setStorageClass(SC_Static);
 
   // Build function body
   std::vector<Stmt *> stmts;
@@ -2272,6 +3855,11 @@ FunctionDecl *CppToCVisitor::generateCopyConstructor(CXXRecordDecl *D) {
   FunctionDecl *CFunc =
       Builder.funcDecl(funcName, Builder.voidType(), params, nullptr);
 
+  // Bug #19: Make implicit constructors static to avoid linker conflicts
+  // Since this is an implicit constructor, it's generated in every translation
+  // unit that sees the class. Making it static ensures each TU has its own copy.
+  CFunc->setStorageClass(SC_Static);
+
   // Build function body
   std::vector<Stmt *> stmts;
 
@@ -2361,6 +3949,53 @@ FunctionDecl *CppToCVisitor::generateCopyConstructor(CXXRecordDecl *D) {
         } else {
           llvm::outs() << "    Warning: Member copy constructor not found: "
                        << fieldCopyCtorName << "\n";
+        }
+      }
+    } else if (fieldType->isArrayType()) {
+      // Array member: use memcpy for deep copy
+      // memcpy(&this->field, &other->field, sizeof(this->field));
+
+      // Get array size
+      const ConstantArrayType *ArrayTy =
+          Context.getAsConstantArrayType(fieldType);
+      if (ArrayTy) {
+        // Create memcpy function reference
+        // We assume memcpy is available (added in generated headers)
+        IdentifierInfo *MemcpyIdent = &Context.Idents.get("memcpy");
+        DeclarationName MemcpyName(MemcpyIdent);
+
+        // Create a placeholder function decl for memcpy
+        // void *memcpy(void *dest, const void *src, size_t n)
+        QualType VoidPtrTy = Context.getPointerType(Context.VoidTy);
+        QualType ConstVoidPtrTy = Context.getPointerType(
+            Context.getConstType(Context.VoidTy));
+        QualType SizeTy = Context.getSizeType();
+
+        std::vector<ParmVarDecl *> memcpyParams;
+        memcpyParams.push_back(Builder.param(VoidPtrTy, "dest"));
+        memcpyParams.push_back(Builder.param(ConstVoidPtrTy, "src"));
+        memcpyParams.push_back(Builder.param(SizeTy, "n"));
+
+        FunctionDecl *MemcpyDecl = Builder.funcDecl(
+            "memcpy", VoidPtrTy, memcpyParams, nullptr);
+
+        // Create arguments for memcpy call
+        std::vector<Expr *> args;
+        args.push_back(Builder.addrOf(ThisMember));    // dest
+        args.push_back(Builder.addrOf(OtherMember));   // src
+
+        // sizeof(this->field)
+        Expr *SizeofExpr = new (Context) UnaryExprOrTypeTraitExpr(
+            UETT_SizeOf, ThisMember, Context.getSizeType(),
+            SourceLocation(), SourceLocation());
+        args.push_back(SizeofExpr);
+
+        // Create memcpy call
+        CallExpr *MemcpyCall = Builder.call(MemcpyDecl, args);
+        if (MemcpyCall) {
+          stmts.push_back(MemcpyCall);
+          llvm::outs() << "    Using memcpy for array field: "
+                       << Field->getName() << "\n";
         }
       }
     } else {
@@ -2577,6 +4212,92 @@ bool CppToCVisitor::VisitCXXTypeidExpr(CXXTypeidExpr *E) {
  * @param E The CXXDynamicCastExpr AST node
  * @return true to continue traversal
  */
+/**
+ * @brief Visit C++23 multidimensional subscript operator calls
+ *
+ * Detects and translates multidimensional subscript operators (operator[](T1, T2, ...))
+ * to equivalent C function calls.
+ *
+ * C++23: m[i, j] = 42;
+ * C:     *Matrix__subscript_2d(&m, i, j) = 42;
+ *
+ * @param E The CXXOperatorCallExpr AST node
+ * @return true to continue traversal
+ */
+bool CppToCVisitor::VisitCXXOperatorCallExpr(CXXOperatorCallExpr *E) {
+  if (!E) {
+    return true;
+  }
+
+  // Phase 34 (v2.5.0): Skip expressions from non-transpilable files
+  // For expressions, we check the source location against SourceManager
+  if (!Context.getSourceManager().isInMainFile(E->getBeginLoc())) {
+    // TODO: Enhance FileOriginTracker to support SourceLocation directly
+    return true;
+  }
+
+  // Get the method declaration
+  auto* MethodDecl = dyn_cast_or_null<CXXMethodDecl>(E->getCalleeDecl());
+  if (!MethodDecl) {
+    return true;
+  }
+
+  // Phase 2: Handle static operator() and operator[] call sites (C++23)
+  if (MethodDecl->isStatic() &&
+      (E->getOperator() == OO_Call || E->getOperator() == OO_Subscript)) {
+    llvm::outs() << "  -> Translating static operator call\n";
+
+    auto* C_Call = m_staticOperatorTrans->transformCall(E, Context);
+    if (C_Call) {
+      // Translation successful
+      // Note: AST replacement would happen here in a full implementation
+      // For now, we've generated the call expression
+      llvm::outs() << "     Generated static operator call\n";
+    }
+    return true;
+  }
+
+  // Phase 50: Handle arithmetic operator call sites (v2.10.0)
+  if (m_arithmeticOpTrans->isArithmeticOperator(E->getOperator())) {
+    llvm::outs() << "  -> Translating arithmetic operator call\n";
+    auto* C_Call = m_arithmeticOpTrans->transformCall(E, Context);
+    if (C_Call) {
+      // Translation successful
+      // Note: AST replacement would happen here in a full implementation
+      llvm::outs() << "     Generated arithmetic operator call\n";
+    }
+    return true;
+  }
+
+  // Phase 51: Handle comparison & logical operator call sites (v2.11.0)
+  if (m_comparisonOpTrans->isComparisonOperator(E->getOperator())) {
+    llvm::outs() << "  -> Translating comparison/logical operator call\n";
+    auto* C_Call = m_comparisonOpTrans->transformCall(E, Context);
+    if (C_Call) {
+      // Translation successful
+      // Note: AST replacement would happen here in a full implementation
+      llvm::outs() << "     Generated comparison/logical operator call (returns bool)\n";
+    }
+    return true;
+  }
+
+  // Phase 1: Check if this is a multidimensional subscript operator
+  if (E->getOperator() == OO_Subscript && E->getNumArgs() >= 3) {
+    // This is a multidimensional subscript (object + 2+ indices)
+    llvm::outs() << "  -> Translating multidimensional subscript operator ["
+                 << (E->getNumArgs() - 1) << "D]\n";
+
+    auto* C_Call = m_multidimSubscriptTrans->transform(E, Context, C_TranslationUnit);
+    if (C_Call) {
+      // Translation successful
+      // Note: AST replacement would happen here in a full implementation
+      // For now, we've generated the function declaration in C_TranslationUnit
+    }
+  }
+
+  return true;
+}
+
 bool CppToCVisitor::VisitCXXDynamicCastExpr(CXXDynamicCastExpr *E) {
   if (!E) {
     return true;
@@ -2654,6 +4375,11 @@ bool CppToCVisitor::VisitClassTemplateDecl(ClassTemplateDecl *D) {
     return true;
   }
 
+  // Phase 34 (v2.5.0): Skip declarations from non-transpilable files
+  if (!fileOriginTracker.shouldTranspile(D)) {
+    return true;
+  }
+
   llvm::outs() << "Found class template: " << D->getNameAsString() << "\n";
   // Don't generate code here - wait for instantiations
   return true;
@@ -2668,6 +4394,11 @@ bool CppToCVisitor::VisitClassTemplateDecl(ClassTemplateDecl *D) {
  */
 bool CppToCVisitor::VisitFunctionTemplateDecl(FunctionTemplateDecl *D) {
   if (!D || !shouldMonomorphizeTemplates()) {
+    return true;
+  }
+
+  // Phase 34 (v2.5.0): Skip declarations from non-transpilable files
+  if (!fileOriginTracker.shouldTranspile(D)) {
     return true;
   }
 
@@ -2686,6 +4417,11 @@ bool CppToCVisitor::VisitFunctionTemplateDecl(FunctionTemplateDecl *D) {
 bool CppToCVisitor::VisitClassTemplateSpecializationDecl(
     ClassTemplateSpecializationDecl *D) {
   if (!D || !shouldMonomorphizeTemplates()) {
+    return true;
+  }
+
+  // Phase 34 (v2.5.0): Skip declarations from non-transpilable files
+  if (!fileOriginTracker.shouldTranspile(D)) {
     return true;
   }
 
@@ -2752,14 +4488,8 @@ void CppToCVisitor::processTemplateInstantiations(TranslationUnitDecl *TU) {
     return;
   }
 
-  std::ostringstream codeStream;
-  codeStream << "\n// "
-                "=============================================================="
-                "==============\n";
-  codeStream << "// Monomorphized Template Code (Phase 11 - v2.4.0)\n";
-  codeStream << "// "
-                "=============================================================="
-                "==============\n\n";
+  // Phase 32.1: AST-based template monomorphization
+  // Generate C AST nodes and add them to C_TranslationUnit
 
   // Step 2: Process class template instantiations
   llvm::outs() << "\nMonomorphizing class templates:\n";
@@ -2773,13 +4503,136 @@ void CppToCVisitor::processTemplateInstantiations(TranslationUnitDecl *TU) {
       continue;
     }
 
-    llvm::outs() << "  Generating code for: " << key << "\n";
+    llvm::outs() << "  Generating AST for: " << key << "\n";
 
-    // Generate monomorphized C code
-    std::string code = m_templateMonomorphizer->monomorphizeClass(classInst);
-    if (!code.empty()) {
-      codeStream << "// Class: " << key << "\n";
-      codeStream << code << "\n";
+    // Generate monomorphized C struct AST node
+    RecordDecl* CStruct = m_templateMonomorphizer->monomorphizeClass(classInst);
+    if (CStruct) {
+      // Add to C TranslationUnit (CNodeBuilder already does this)
+      llvm::outs() << "    -> Created struct: " << CStruct->getNameAsString() << "\n";
+
+      // Generate method functions
+      std::vector<FunctionDecl*> methods =
+          m_templateMonomorphizer->monomorphizeClassMethods(classInst, CStruct);
+
+      llvm::outs() << "    -> Created " << methods.size() << " method function(s)\n";
+
+      // BUG FIX: Translate method bodies for monomorphized functions
+      // The monomorphizer creates function signatures, but bodies need translation
+      //
+      // NOTE: We use the INSTANTIATION's methods (classInst), not the pattern,
+      // because template method out-of-line definitions are not associated with
+      // the pattern's method declarations. The instantiation has all bodies.
+
+      // Get template pattern to access method list
+      ClassTemplateDecl* Template = classInst->getSpecializedTemplate();
+      CXXRecordDecl* Pattern = Template ? Template->getTemplatedDecl() : nullptr;
+
+      if (Pattern) {
+        // Build a map of pattern methods (these have the names we need)
+        std::map<std::string, CXXMethodDecl*> methodMap;
+        for (auto* PatternMethod : Pattern->methods()) {
+          // Skip compiler-generated, constructors, destructors (same as monomorphizer)
+          if (PatternMethod->isImplicit()) continue;
+          if (isa<CXXConstructorDecl>(PatternMethod) || isa<CXXDestructorDecl>(PatternMethod)) {
+            continue;
+          }
+          std::string methodName = PatternMethod->getNameAsString();
+          llvm::outs() << "      -> Found pattern method: " << methodName << "\n";
+          methodMap[methodName] = PatternMethod;
+        }
+
+        // Translate bodies for each monomorphized method
+        std::string className = CStruct->getNameAsString();
+        for (FunctionDecl* MonoFunc : methods) {
+          // Extract method name from monomorphized function name
+          // Format: ClassName_methodName
+          std::string funcName = MonoFunc->getNameAsString();
+          std::string prefix = className + "_";
+          if (funcName.find(prefix) != 0) {
+            llvm::outs() << "      -> Warning: Unexpected function name format: " << funcName << "\n";
+            continue;
+          }
+
+          std::string methodName = funcName.substr(prefix.length());
+
+          // Find corresponding pattern method
+          auto it = methodMap.find(methodName);
+          if (it == methodMap.end()) {
+            llvm::outs() << "      -> Warning: No method found for: " << methodName << "\n";
+            continue;
+          }
+
+          CXXMethodDecl* PatternMethod = it->second;
+
+          // The key insight: For template instantiations, we need to get the
+          // body from the INSTANTIATED version. Use getTemplateInstantiationPattern
+          // to find the original template, then walk to the instantiated body.
+          //
+          // If the pattern method is inline (body in class), it will have hasBody() = true
+          // If it's out-of-line, we need to look for it in the TU declarations
+          Stmt* BodyToTranslate = nullptr;
+
+          // First try: Check if pattern has inline body
+          if (PatternMethod->hasBody()) {
+            llvm::outs() << "      -> Method " << methodName << " has inline body\n";
+            BodyToTranslate = PatternMethod->getBody();
+          } else {
+            // Out-of-line definition - need to find it
+            // For templates, the actual instantiated body exists in the AST
+            // We need to search for the FunctionDecl that corresponds to this instantiation
+            llvm::outs() << "      -> Method " << methodName << " has out-of-line definition, searching...\n";
+
+            // Search all decls in TranslationUnit for this method's definition
+            for (auto* Decl : Context.getTranslationUnitDecl()->decls()) {
+              if (auto* FuncTemplate = dyn_cast<FunctionTemplateDecl>(Decl)) {
+                // Check if this is the template definition for our method
+                if (FuncTemplate->getTemplatedDecl()->getNameAsString() == methodName) {
+                  // This might be it, but we need the instantiated version
+                  // For now, try the templated decl
+                  if (FuncTemplate->getTemplatedDecl()->hasBody()) {
+                    llvm::outs() << "      -> Found function template definition!\n";
+                    BodyToTranslate = FuncTemplate->getTemplatedDecl()->getBody();
+                    break;
+                  }
+                }
+              }
+            }
+          }
+
+          if (BodyToTranslate) {
+            llvm::outs() << "      -> Translating body for " << funcName << "\n";
+
+            // Set up translation context
+            if (MonoFunc->getNumParams() > 0) {
+              currentThisParam = MonoFunc->getParamDecl(0);  // First param is 'this'
+            }
+            currentMethod = PatternMethod;
+
+            // Bug #38 FIX: Set nested class mappings for this template
+            // This allows translateDeclStmt() to substitute nested class types
+            // E.g., "Node*" -> "struct LinkedList_int_Node*"
+            currentNestedClassMappings = &m_templateMonomorphizer->getNestedClassMappings();
+
+            // Translate the method body
+            Stmt* TranslatedBody = translateStmt(BodyToTranslate);
+
+            if (TranslatedBody) {
+              MonoFunc->setBody(TranslatedBody);
+              llvm::outs() << "      -> Body translated successfully\n";
+            } else {
+              llvm::outs() << "      -> Warning: Body translation returned nullptr\n";
+            }
+
+            // Clear translation context
+            currentThisParam = nullptr;
+            currentMethod = nullptr;
+            currentNestedClassMappings = nullptr;
+          } else {
+            llvm::outs() << "      -> Warning: Could not find body for method: " << methodName << "\n";
+          }
+        }
+      }
     }
   }
 
@@ -2796,18 +4649,15 @@ void CppToCVisitor::processTemplateInstantiations(TranslationUnitDecl *TU) {
       continue;
     }
 
-    llvm::outs() << "  Generating code for: " << key << "\n";
+    llvm::outs() << "  Generating AST for: " << key << "\n";
 
-    // Generate monomorphized C code
-    std::string code = m_templateMonomorphizer->monomorphizeFunction(funcInst);
-    if (!code.empty()) {
-      codeStream << "// Function: " << key << "\n";
-      codeStream << code << "\n";
+    // Generate monomorphized C function AST node
+    FunctionDecl* CFunc = m_templateMonomorphizer->monomorphizeFunction(funcInst);
+    if (CFunc) {
+      // Add to C TranslationUnit (CNodeBuilder already does this)
+      llvm::outs() << "    -> Created function: " << CFunc->getNameAsString() << "\n";
     }
   }
-
-  // Store generated code
-  m_monomorphizedCode = codeStream.str();
 
   llvm::outs() << "\n========================================\n";
   llvm::outs() << "Template Monomorphization Complete\n";
@@ -2815,6 +4665,177 @@ void CppToCVisitor::processTemplateInstantiations(TranslationUnitDecl *TU) {
                << "\n";
   llvm::outs() << "========================================\n\n";
 
-  // Output the generated code
-  llvm::outs() << m_monomorphizedCode;
+  // Phase 32.1: AST nodes are already added to C_TranslationUnit by CNodeBuilder
+  // No need to output string-based code anymore
+}
+
+// ============================================================================
+// Phase 31-03: COM-Style Static Declarations for All Methods
+// ============================================================================
+
+std::string CppToCVisitor::generateAllMethodDeclarations(CXXRecordDecl *RD) {
+  if (!RD) {
+    return "";
+  }
+
+  std::ostringstream decls;
+  std::string className = RD->getNameAsString();
+
+  // Add comment header
+  decls << "// Static declarations for all " << className << " methods\n";
+
+  int ctorCount = 0;
+  int dtorCount = 0;
+  int methodCount = 0;
+
+  // Constructors
+  for (auto *ctor : RD->ctors()) {
+    // Skip compiler-generated implicit constructors
+    if (!ctor->isImplicit()) {
+      decls << MethodSignatureHelper::generateSignature(ctor, className)
+            << ";\n";
+      ctorCount++;
+    }
+  }
+
+  // Destructor
+  if (CXXDestructorDecl *dtor = RD->getDestructor()) {
+    // Skip compiler-generated implicit destructor
+    if (!dtor->isImplicit()) {
+      decls << MethodSignatureHelper::generateSignature(dtor, className)
+            << ";\n";
+      dtorCount++;
+    }
+  }
+
+  // All methods (virtual and non-virtual)
+  for (auto *method : RD->methods()) {
+    // Skip implicit methods (compiler-generated)
+    if (method->isImplicit()) {
+      continue;
+    }
+
+    // Skip constructors and destructors (already handled above)
+    if (isa<CXXConstructorDecl>(method) || isa<CXXDestructorDecl>(method)) {
+      continue;
+    }
+
+    decls << MethodSignatureHelper::generateSignature(method, className)
+          << ";\n";
+    methodCount++;
+  }
+
+  llvm::outs() << "  [Phase 31-03] Generated " << ctorCount << " constructor, "
+               << dtorCount << " destructor, " << methodCount
+               << " method declarations\n";
+
+  return decls.str();
+}
+
+// Phase 3: [[assume]] Attribute Handler (C++23 P1774R8)
+bool CppToCVisitor::VisitAttributedStmt(AttributedStmt *S) {
+  // Phase 34 (v2.5.0): Skip statements from non-transpilable files
+  // For statements, we check the source location against SourceManager
+  if (!Context.getSourceManager().isInMainFile(S->getBeginLoc())) {
+    // TODO: Enhance FileOriginTracker to support SourceLocation directly
+    return true;
+  }
+
+  // Check if this is an assume attribute
+  bool hasAssumeAttr = false;
+  for (const auto *Attr : S->getAttrs()) {
+    if (isa<CXXAssumeAttr>(Attr)) {
+      hasAssumeAttr = true;
+      break;
+    }
+  }
+
+  if (!hasAssumeAttr) {
+    // Not an assume attribute, continue traversal
+    return true;
+  }
+
+  // Handle the assume attribute
+  Stmt *TransformedStmt = m_assumeHandler->handle(S, Context);
+
+  if (TransformedStmt && TransformedStmt != S) {
+    // The attribute was successfully transformed
+    // In a full implementation, we would replace S with TransformedStmt
+    // in the C AST. For now, we just log the transformation.
+    llvm::outs() << "  [Phase 3] Transformed [[assume]] attribute\n";
+  }
+
+  return true;
+}
+
+// Phase 5: if consteval visitor (C++23 P1938R3)
+bool CppToCVisitor::VisitIfStmt(IfStmt *S) {
+  // Phase 34 (v2.5.0): Skip statements from non-transpilable files
+  // For statements, we check the source location against SourceManager
+  if (!Context.getSourceManager().isInMainFile(S->getBeginLoc())) {
+    // TODO: Enhance FileOriginTracker to support SourceLocation directly
+    return true;
+  }
+
+  // Check if this is an 'if consteval' statement
+  if (!S->isConsteval()) {
+    // Regular if statement, not if consteval - continue normal traversal
+    return true;
+  }
+
+  // This is an 'if consteval' statement - transform it
+  llvm::outs() << "  [Phase 5] Processing if consteval at "
+               << S->getBeginLoc().printToString(Context.getSourceManager()) << "\n";
+
+  // Transform the consteval-if to C
+  Stmt *TransformedStmt = m_constevalIfTrans->transform(S, Context);
+
+  if (TransformedStmt) {
+    // Successfully transformed
+    // In a full implementation, we would replace S with TransformedStmt
+    // in the C AST. For now, we log the transformation.
+    llvm::outs() << "  [Phase 5] Transformed if consteval to runtime branch\n";
+  } else {
+    // No transformation (e.g., no else branch and runtime strategy)
+    llvm::outs() << "  [Phase 5] if consteval has no runtime branch - emitting null statement\n";
+  }
+
+  return true;
+}
+
+// Phase 6: auto(x) decay-copy visitor (C++23 P0849R8)
+bool CppToCVisitor::VisitCXXFunctionalCastExpr(CXXFunctionalCastExpr *E) {
+  // Phase 34 (v2.5.0): Skip expressions from non-transpilable files
+  // For expressions, we check the source location against SourceManager
+  if (!Context.getSourceManager().isInMainFile(E->getBeginLoc())) {
+    // TODO: Enhance FileOriginTracker to support SourceLocation directly
+    return true;
+  }
+
+  // Check if this is auto(x) or auto{x}
+  QualType TypeAsWritten = E->getTypeAsWritten();
+  const Type* TypePtr = TypeAsWritten.getTypePtr();
+  if (!TypePtr || !isa<AutoType>(TypePtr)) {
+    // Not auto(x), continue normal traversal
+    return true;
+  }
+
+  // This is an auto(x) or auto{x} expression - transform it
+  llvm::outs() << "  [Phase 6] Processing auto(x) at "
+               << E->getBeginLoc().printToString(Context.getSourceManager()) << "\n";
+
+  // Transform the auto(x) to C
+  Expr *TransformedExpr = m_autoDecayTrans->transform(E, Context);
+
+  if (TransformedExpr) {
+    // Successfully transformed
+    // In a full implementation, we would replace E with TransformedExpr
+    // in the C AST. For now, we log the transformation.
+    llvm::outs() << "  [Phase 6] Transformed auto(x) with type decay\n";
+  } else {
+    // Transformation failed or not applicable
+    llvm::outs() << "  [Phase 6] auto(x) transformation skipped\n";
+  }
+
+  return true;
 }

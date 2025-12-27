@@ -1,0 +1,2893 @@
+From: <Saved by Blink>
+Snapshot-Content-Location: file:///private/var/folders/0s/tfrwn0013mv7f4msz96r_2z40000gn/T/crossnote20251126-8574-dytymn.k8vpf.html
+Subject: TRANSPILER_ARCHITECTURE_MOTIVATION
+Date: Fri, 26 Dec 2025 20:47:03 -0800
+MIME-Version: 1.0
+Content-Type: multipart/related;
+	type="text/html";
+	boundary="----MultipartBoundary--RgmNtGACLopbAnpLNPb6mWOWMEIntbUp9nMtczFXve----"
+
+
+------MultipartBoundary--RgmNtGACLopbAnpLNPb6mWOWMEIntbUp9nMtczFXve----
+Content-Type: text/html
+Content-ID: <frame-122A85750A7C4D92C41530753E664408@mhtml.blink>
+Content-Transfer-Encoding: quoted-printable
+Content-Location: file:///private/var/folders/0s/tfrwn0013mv7f4msz96r_2z40000gn/T/crossnote20251126-8574-dytymn.k8vpf.html
+
+<!DOCTYPE html><html><head><meta http-equiv=3D"Content-Type" content=3D"tex=
+t/html; charset=3DUTF-8"><link rel=3D"stylesheet" type=3D"text/css" href=3D=
+"cid:css-16f8029f-2ebc-4060-a890-5523ea787485@mhtml.blink" />
+      <title>TRANSPILER_ARCHITECTURE_MOTIVATION</title>
+     =20
+      <meta name=3D"viewport" content=3D"width=3Ddevice-width, initial-scal=
+e=3D1.0">
+     =20
+      <link rel=3D"stylesheet" href=3D"file:///Users/alexanderfedin/.vscode=
+/extensions/shd101wyy.markdown-preview-enhanced-0.8.20/crossnote/dependenci=
+es/katex/katex.min.css">
+     =20
+     =20
+     =20
+     =20
+     =20
+     =20
+      <!-- The content below will be included at the end of the <head> elem=
+ent. --></head><body for=3D"html-export">
+   =20
+   =20
+      <div class=3D"crossnote markdown-preview  ">
+     =20
+<h1 id=3D"c-to-c-transpiler-architecture-and-motivation">C++ to C Transpile=
+r: Architecture and Motivation </h1>
+<p><strong>Version:</strong> 1.0<br>
+<strong>Date:</strong> 2025-12-26<br>
+<strong>Purpose:</strong> Understand the 3-stage pipeline architecture and =
+why it was designed this way</p>
+<hr>
+<h2 id=3D"table-of-contents">Table of Contents </h2>
+<ol>
+<li><a href=3D"file:///private/var/folders/0s/tfrwn0013mv7f4msz96r_2z40000g=
+n/T/crossnote20251126-8574-dytymn.k8vpf.html#overview">Overview</a></li>
+<li><a href=3D"file:///private/var/folders/0s/tfrwn0013mv7f4msz96r_2z40000g=
+n/T/crossnote20251126-8574-dytymn.k8vpf.html#the-3-stage-pipeline">The 3-St=
+age Pipeline</a></li>
+<li><a href=3D"file:///private/var/folders/0s/tfrwn0013mv7f4msz96r_2z40000g=
+n/T/crossnote20251126-8574-dytymn.k8vpf.html#why-this-architecture">Why Thi=
+s Architecture?</a></li>
+<li><a href=3D"file:///private/var/folders/0s/tfrwn0013mv7f4msz96r_2z40000g=
+n/T/crossnote20251126-8574-dytymn.k8vpf.html#key-design-principles">Key Des=
+ign Principles</a></li>
+<li><a href=3D"file:///private/var/folders/0s/tfrwn0013mv7f4msz96r_2z40000g=
+n/T/crossnote20251126-8574-dytymn.k8vpf.html#alternative-approaches-conside=
+red">Alternative Approaches Considered</a></li>
+<li><a href=3D"file:///private/var/folders/0s/tfrwn0013mv7f4msz96r_2z40000g=
+n/T/crossnote20251126-8574-dytymn.k8vpf.html#benefits-in-practice">Benefits=
+ in Practice</a></li>
+</ol>
+<hr>
+<h2 id=3D"overview">Overview </h2>
+<p>The C++ to C transpiler converts modern C++ code into clean, readable, f=
+ormally-verifiable C99 code. The architecture is built around a <strong>3-s=
+tage pipeline</strong> that separates concerns and optimizes for <strong>ou=
+tput code quality</strong> over implementation simplicity.</p>
+<h3 id=3D"the-core-insight">The Core Insight </h3>
+<p>There are three common approaches to transpilation, and one novel approa=
+ch (ours):</p>
+<ol>
+<li><strong>Direct text emission from source AST</strong> - Walk C++ AST, e=
+mit text strings</li>
+<li><strong>LLVM IR/bytecode approach</strong> - Lower to LLVM IR, emit fro=
+m bytecode</li>
+<li><strong>LLM-based transpilation</strong> - Use GPT/Claude to translate =
+source code</li>
+<li><strong>Intermediate AST approach</strong> (our novel approach) - C++ A=
+ST =E2=86=92 <strong>separate C AST</strong> =E2=86=92 text</li>
+</ol>
+<p><strong>For production-quality, human-readable, verifiable C code, appro=
+aches 1-3 fail:</strong></p>
+<p><strong>Approach 1 (Direct text emission):</strong></p>
+<ul>
+<li>=E2=9D=8C Messy output with incorrect precedence</li>
+<li>=E2=9D=8C Missing parentheses causing bugs</li>
+<li>=E2=9D=8C Thousands of edge cases to handle manually</li>
+<li>=E2=9D=8C Unreadable generated code</li>
+</ul>
+<p><strong>Approach 2 (LLVM IR):</strong></p>
+<ul>
+<li>=E2=9D=8C Loses high-level structure (names, types, control flow)</li>
+<li>=E2=9D=8C Output is machine-like, not human-readable</li>
+<li>=E2=9D=8C Cannot preserve source semantics for verification</li>
+<li>=E2=9C=85 Works for JIT/VM targets (Emscripten, WASM)</li>
+<li>=E2=9C=85 Good for performance-critical backends</li>
+</ul>
+<p><strong>Approach 3 (LLM-based transpilation):</strong></p>
+<ul>
+<li>=E2=9D=8C <strong>Hallucinations</strong> - Invents APIs, functions, sy=
+ntax that don't exist</li>
+<li>=E2=9D=8C <strong>Inconsistency</strong> - Same input produces differen=
+t outputs</li>
+<li>=E2=9D=8C <strong>Context limits</strong> - Cannot process large codeba=
+ses coherently</li>
+<li>=E2=9D=8C <strong>No guarantees</strong> - Cannot prove correctness or =
+completeness</li>
+<li>=E2=9D=8C <strong>Missing edge cases</strong> - Fails on corner cases n=
+ot in training data</li>
+<li>=E2=9D=8C <strong>Non-deterministic</strong> - Cannot reproduce builds<=
+/li>
+<li>=E2=9A=A0=EF=B8=8F <strong>Poor context engineering</strong> - Struggle=
+s with cross-file dependencies</li>
+<li>=E2=9C=85 Useful for prototypes, learning, simple one-off conversions</=
+li>
+<li>=E2=9C=85 Good for human-in-the-loop assisted migration</li>
+</ul>
+<p><strong>Our novel solution (Approach 4):</strong> Build a <strong>separa=
+te, complete C AST</strong> (using Clang's C node types) and let Clang's ba=
+ttle-tested printer handle code generation.</p>
+<p><strong>What makes this novel:</strong></p>
+<ul>
+<li>Most transpilers emit text directly (Approach 1) or use LLVM IR (Approa=
+ch 2)</li>
+<li>Clang's TreeTransform API modifies AST in-place, doesn't create separat=
+e output AST</li>
+<li>We build an entirely new AST using <strong>only C-compatible node types=
+</strong> (RecordDecl, FunctionDecl, CallExpr, etc.)</li>
+<li>Then we leverage Clang's printer which has solved all the hard problems=
+ over 15+ years</li>
+<li>No known C++ to C transpiler uses this architecture (as of 2025)</li>
+</ul>
+<p><strong>Why this matters for our goals:</strong></p>
+<ul>
+<li>=E2=9C=85 Preserves high-level semantics (unlike LLVM IR)</li>
+<li>=E2=9C=85 Clean, readable output (unlike direct emission)</li>
+<li>=E2=9C=85 Suitable for Frama-C verification (unlike LLM approach)</li>
+<li>=E2=9C=85 Deterministic and reproducible (unlike LLM approach)</li>
+<li>=E2=9C=85 Debuggable with source mapping</li>
+<li>=E2=9C=85 Handles edge cases systematically (unlike LLM approach)</li>
+</ul>
+<hr>
+<h2 id=3D"the-3-stage-pipeline">The 3-Stage Pipeline </h2>
+<div class=3D"mermaid" data-processed=3D"true"><svg id=3D"mermaid-176681071=
+4868" width=3D"100%" xmlns=3D"http://www.w3.org/2000/svg" xmlns:xlink=3D"ht=
+tp://www.w3.org/1999/xlink" class=3D"flowchart" style=3D"max-width: 320.539=
+0625px;" viewBox=3D"0 0 320.5390625 1372" role=3D"graphics-document documen=
+t" aria-roledescription=3D"flowchart-v2"><style>#mermaid-1766810714868{font=
+-family:"trebuchet ms",verdana,arial,sans-serif;font-size:16px;fill:#333;}@=
+keyframes edge-animation-frame{from{stroke-dashoffset:0;}}@keyframes dash{t=
+o{stroke-dashoffset:0;}}#mermaid-1766810714868 .edge-animation-slow{stroke-=
+dasharray:9,5!important;stroke-dashoffset:900;animation:dash 50s linear inf=
+inite;stroke-linecap:round;}#mermaid-1766810714868 .edge-animation-fast{str=
+oke-dasharray:9,5!important;stroke-dashoffset:900;animation:dash 20s linear=
+ infinite;stroke-linecap:round;}#mermaid-1766810714868 .error-icon{fill:#55=
+2222;}#mermaid-1766810714868 .error-text{fill:#552222;stroke:#552222;}#merm=
+aid-1766810714868 .edge-thickness-normal{stroke-width:1px;}#mermaid-1766810=
+714868 .edge-thickness-thick{stroke-width:3.5px;}#mermaid-1766810714868 .ed=
+ge-pattern-solid{stroke-dasharray:0;}#mermaid-1766810714868 .edge-thickness=
+-invisible{stroke-width:0;fill:none;}#mermaid-1766810714868 .edge-pattern-d=
+ashed{stroke-dasharray:3;}#mermaid-1766810714868 .edge-pattern-dotted{strok=
+e-dasharray:2;}#mermaid-1766810714868 .marker{fill:#333333;stroke:#333333;}=
+#mermaid-1766810714868 .marker.cross{stroke:#333333;}#mermaid-1766810714868=
+ svg{font-family:"trebuchet ms",verdana,arial,sans-serif;font-size:16px;}#m=
+ermaid-1766810714868 p{margin:0;}#mermaid-1766810714868 .label{font-family:=
+"trebuchet ms",verdana,arial,sans-serif;color:#333;}#mermaid-1766810714868 =
+.cluster-label text{fill:#333;}#mermaid-1766810714868 .cluster-label span{c=
+olor:#333;}#mermaid-1766810714868 .cluster-label span p{background-color:tr=
+ansparent;}#mermaid-1766810714868 .label text,#mermaid-1766810714868 span{f=
+ill:#333;color:#333;}#mermaid-1766810714868 .node rect,#mermaid-17668107148=
+68 .node circle,#mermaid-1766810714868 .node ellipse,#mermaid-1766810714868=
+ .node polygon,#mermaid-1766810714868 .node path{fill:#ECECFF;stroke:#9370D=
+B;stroke-width:1px;}#mermaid-1766810714868 .rough-node .label text,#mermaid=
+-1766810714868 .node .label text,#mermaid-1766810714868 .image-shape .label=
+,#mermaid-1766810714868 .icon-shape .label{text-anchor:middle;}#mermaid-176=
+6810714868 .node .katex path{fill:#000;stroke:#000;stroke-width:1px;}#merma=
+id-1766810714868 .rough-node .label,#mermaid-1766810714868 .node .label,#me=
+rmaid-1766810714868 .image-shape .label,#mermaid-1766810714868 .icon-shape =
+.label{text-align:center;}#mermaid-1766810714868 .node.clickable{cursor:poi=
+nter;}#mermaid-1766810714868 .root .anchor path{fill:#333333!important;stro=
+ke-width:0;stroke:#333333;}#mermaid-1766810714868 .arrowheadPath{fill:#3333=
+33;}#mermaid-1766810714868 .edgePath .path{stroke:#333333;stroke-width:2.0p=
+x;}#mermaid-1766810714868 .flowchart-link{stroke:#333333;fill:none;}#mermai=
+d-1766810714868 .edgeLabel{background-color:rgba(232,232,232, 0.8);text-ali=
+gn:center;}#mermaid-1766810714868 .edgeLabel p{background-color:rgba(232,23=
+2,232, 0.8);}#mermaid-1766810714868 .edgeLabel rect{opacity:0.5;background-=
+color:rgba(232,232,232, 0.8);fill:rgba(232,232,232, 0.8);}#mermaid-17668107=
+14868 .labelBkg{background-color:rgba(232, 232, 232, 0.5);}#mermaid-1766810=
+714868 .cluster rect{fill:#ffffde;stroke:#aaaa33;stroke-width:1px;}#mermaid=
+-1766810714868 .cluster text{fill:#333;}#mermaid-1766810714868 .cluster spa=
+n{color:#333;}#mermaid-1766810714868 div.mermaidTooltip{position:absolute;t=
+ext-align:center;max-width:200px;padding:2px;font-family:"trebuchet ms",ver=
+dana,arial,sans-serif;font-size:12px;background:hsl(80, 100%, 96.2745098039=
+%);border:1px solid #aaaa33;border-radius:2px;pointer-events:none;z-index:1=
+00;}#mermaid-1766810714868 .flowchartTitleText{text-anchor:middle;font-size=
+:18px;fill:#333;}#mermaid-1766810714868 rect.text{fill:none;stroke-width:0;=
+}#mermaid-1766810714868 .icon-shape,#mermaid-1766810714868 .image-shape{bac=
+kground-color:rgba(232,232,232, 0.8);text-align:center;}#mermaid-1766810714=
+868 .icon-shape p,#mermaid-1766810714868 .image-shape p{background-color:rg=
+ba(232,232,232, 0.8);padding:2px;}#mermaid-1766810714868 .icon-shape rect,#=
+mermaid-1766810714868 .image-shape rect{opacity:0.5;background-color:rgba(2=
+32,232,232, 0.8);fill:rgba(232,232,232, 0.8);}#mermaid-1766810714868 .label=
+-icon{display:inline-block;height:1em;overflow:visible;vertical-align:-0.12=
+5em;}#mermaid-1766810714868 .node .label-icon path{fill:currentColor;stroke=
+:revert;stroke-width:revert;}#mermaid-1766810714868 :root{--mermaid-font-fa=
+mily:"trebuchet ms",verdana,arial,sans-serif;}</style><g><marker id=3D"merm=
+aid-1766810714868_flowchart-v2-pointEnd" class=3D"marker flowchart-v2" view=
+Box=3D"0 0 10 10" refX=3D"5" refY=3D"5" markerUnits=3D"userSpaceOnUse" mark=
+erWidth=3D"8" markerHeight=3D"8" orient=3D"auto"><path d=3D"M 0 0 L 10 5 L =
+0 10 z" class=3D"arrowMarkerPath" style=3D"stroke-width: 1; stroke-dasharra=
+y: 1, 0;"></path></marker><marker id=3D"mermaid-1766810714868_flowchart-v2-=
+pointStart" class=3D"marker flowchart-v2" viewBox=3D"0 0 10 10" refX=3D"4.5=
+" refY=3D"5" markerUnits=3D"userSpaceOnUse" markerWidth=3D"8" markerHeight=
+=3D"8" orient=3D"auto"><path d=3D"M 0 5 L 10 10 L 10 0 z" class=3D"arrowMar=
+kerPath" style=3D"stroke-width: 1; stroke-dasharray: 1, 0;"></path></marker=
+><marker id=3D"mermaid-1766810714868_flowchart-v2-circleEnd" class=3D"marke=
+r flowchart-v2" viewBox=3D"0 0 10 10" refX=3D"11" refY=3D"5" markerUnits=3D=
+"userSpaceOnUse" markerWidth=3D"11" markerHeight=3D"11" orient=3D"auto"><ci=
+rcle cx=3D"5" cy=3D"5" r=3D"5" class=3D"arrowMarkerPath" style=3D"stroke-wi=
+dth: 1; stroke-dasharray: 1, 0;"></circle></marker><marker id=3D"mermaid-17=
+66810714868_flowchart-v2-circleStart" class=3D"marker flowchart-v2" viewBox=
+=3D"0 0 10 10" refX=3D"-1" refY=3D"5" markerUnits=3D"userSpaceOnUse" marker=
+Width=3D"11" markerHeight=3D"11" orient=3D"auto"><circle cx=3D"5" cy=3D"5" =
+r=3D"5" class=3D"arrowMarkerPath" style=3D"stroke-width: 1; stroke-dasharra=
+y: 1, 0;"></circle></marker><marker id=3D"mermaid-1766810714868_flowchart-v=
+2-crossEnd" class=3D"marker cross flowchart-v2" viewBox=3D"0 0 11 11" refX=
+=3D"12" refY=3D"5.2" markerUnits=3D"userSpaceOnUse" markerWidth=3D"11" mark=
+erHeight=3D"11" orient=3D"auto"><path d=3D"M 1,1 l 9,9 M 10,1 l -9,9" class=
+=3D"arrowMarkerPath" style=3D"stroke-width: 2; stroke-dasharray: 1, 0;"></p=
+ath></marker><marker id=3D"mermaid-1766810714868_flowchart-v2-crossStart" c=
+lass=3D"marker cross flowchart-v2" viewBox=3D"0 0 11 11" refX=3D"-1" refY=
+=3D"5.2" markerUnits=3D"userSpaceOnUse" markerWidth=3D"11" markerHeight=3D"=
+11" orient=3D"auto"><path d=3D"M 1,1 l 9,9 M 10,1 l -9,9" class=3D"arrowMar=
+kerPath" style=3D"stroke-width: 2; stroke-dasharray: 1, 0;"></path></marker=
+><g class=3D"root"><g class=3D"clusters"><g class=3D"cluster" id=3D"Stage3"=
+ data-look=3D"classic"><rect style=3D"fill:#f1f8e9 !important" x=3D"38.5664=
+0625" y=3D"1004" width=3D"243.40625" height=3D"360"></rect><g class=3D"clus=
+ter-label" transform=3D"translate(70.58203125, 1004)"><foreignObject width=
+=3D"179.375" height=3D"24"><div xmlns=3D"http://www.w3.org/1999/xhtml" styl=
+e=3D"display: table-cell; white-space: nowrap; line-height: 1.5; max-width:=
+ 200px; text-align: center;"><span class=3D"nodeLabel"><p>Stage 3: C Code E=
+mission</p></span></div></foreignObject></g></g><g class=3D"cluster" id=3D"=
+Stage2" data-look=3D"classic"><rect style=3D"fill:#fff3e0 !important" x=3D"=
+8" y=3D"442" width=3D"304.5390625" height=3D"488"></rect><g class=3D"cluste=
+r-label" transform=3D"translate(60.26953125, 442)"><foreignObject width=3D"=
+200" height=3D"48"><div xmlns=3D"http://www.w3.org/1999/xhtml" style=3D"dis=
+play: table; white-space: break-spaces; line-height: 1.5; max-width: 200px;=
+ text-align: center; width: 200px;"><span class=3D"nodeLabel"><p>Stage 2: C=
+++ AST =E2=86=92 C AST Translation</p></span></div></foreignObject></g></g>=
+<g class=3D"cluster" id=3D"Stage1" data-look=3D"classic"><rect style=3D"fil=
+l:#e1f5ff !important" x=3D"36.88671875" y=3D"8" width=3D"246.765625" height=
+=3D"360"></rect><g class=3D"cluster-label" transform=3D"translate(60.269531=
+25, 8)"><foreignObject width=3D"200" height=3D"48"><div xmlns=3D"http://www=
+.w3.org/1999/xhtml" style=3D"display: table; white-space: break-spaces; lin=
+e-height: 1.5; max-width: 200px; text-align: center; width: 200px;"><span c=
+lass=3D"nodeLabel"><p>Stage 1: C++ AST Generation</p></span></div></foreign=
+Object></g></g></g><g class=3D"edgePaths"><path d=3D"M160.27,87L160.27,93.1=
+67C160.27,99.333,160.27,111.667,160.27,123.333C160.27,135,160.27,146,160.27=
+,151.5L160.27,157" id=3D"L_CPP_CLANG_0" class=3D"edge-thickness-normal edge=
+-pattern-solid edge-thickness-normal edge-pattern-solid flowchart-link" sty=
+le=3D";" data-edge=3D"true" data-et=3D"edge" data-id=3D"L_CPP_CLANG_0" data=
+-points=3D"W3sieCI6MTYwLjI2OTUzMTI1LCJ5Ijo4N30seyJ4IjoxNjAuMjY5NTMxMjUsInki=
+OjEyNH0seyJ4IjoxNjAuMjY5NTMxMjUsInkiOjE2MX1d" marker-end=3D"url(#mermaid-17=
+66810714868_flowchart-v2-pointEnd)"></path><path d=3D"M160.27,215L160.27,22=
+1.167C160.27,227.333,160.27,239.667,160.27,251.333C160.27,263,160.27,274,16=
+0.27,279.5L160.27,285" id=3D"L_CLANG_CPPAST_0" class=3D"edge-thickness-norm=
+al edge-pattern-solid edge-thickness-normal edge-pattern-solid flowchart-li=
+nk" style=3D";" data-edge=3D"true" data-et=3D"edge" data-id=3D"L_CLANG_CPPA=
+ST_0" data-points=3D"W3sieCI6MTYwLjI2OTUzMTI1LCJ5IjoyMTV9LHsieCI6MTYwLjI2OT=
+UzMTI1LCJ5IjoyNTJ9LHsieCI6MTYwLjI2OTUzMTI1LCJ5IjoyODl9XQ=3D=3D" marker-end=
+=3D"url(#mermaid-1766810714868_flowchart-v2-pointEnd)"></path><path d=3D"M1=
+60.27,521L160.27,527.167C160.27,533.333,160.27,545.667,160.27,557.333C160.2=
+7,569,160.27,580,160.27,585.5L160.27,591" id=3D"L_CPPAST2_ORCHESTRATOR_0" c=
+lass=3D"edge-thickness-normal edge-pattern-solid edge-thickness-normal edge=
+-pattern-solid flowchart-link" style=3D";" data-edge=3D"true" data-et=3D"ed=
+ge" data-id=3D"L_CPPAST2_ORCHESTRATOR_0" data-points=3D"W3sieCI6MTYwLjI2OTU=
+zMTI1LCJ5Ijo1MjF9LHsieCI6MTYwLjI2OTUzMTI1LCJ5Ijo1NTh9LHsieCI6MTYwLjI2OTUzMT=
+I1LCJ5Ijo1OTV9XQ=3D=3D" marker-end=3D"url(#mermaid-1766810714868_flowchart-=
+v2-pointEnd)"></path><path d=3D"M160.27,649L160.27,655.167C160.27,661.333,1=
+60.27,673.667,160.27,685.333C160.27,697,160.27,708,160.27,713.5L160.27,719"=
+ id=3D"L_ORCHESTRATOR_HANDLERS_0" class=3D"edge-thickness-normal edge-patte=
+rn-solid edge-thickness-normal edge-pattern-solid flowchart-link" style=3D"=
+;" data-edge=3D"true" data-et=3D"edge" data-id=3D"L_ORCHESTRATOR_HANDLERS_0=
+" data-points=3D"W3sieCI6MTYwLjI2OTUzMTI1LCJ5Ijo2NDl9LHsieCI6MTYwLjI2OTUzMT=
+I1LCJ5Ijo2ODZ9LHsieCI6MTYwLjI2OTUzMTI1LCJ5Ijo3MjN9XQ=3D=3D" marker-end=3D"u=
+rl(#mermaid-1766810714868_flowchart-v2-pointEnd)"></path><path d=3D"M160.27=
+,777L160.27,783.167C160.27,789.333,160.27,801.667,160.27,813.333C160.27,825=
+,160.27,836,160.27,841.5L160.27,847" id=3D"L_HANDLERS_CAST_0" class=3D"edge=
+-thickness-normal edge-pattern-solid edge-thickness-normal edge-pattern-sol=
+id flowchart-link" style=3D";" data-edge=3D"true" data-et=3D"edge" data-id=
+=3D"L_HANDLERS_CAST_0" data-points=3D"W3sieCI6MTYwLjI2OTUzMTI1LCJ5Ijo3Nzd9L=
+HsieCI6MTYwLjI2OTUzMTI1LCJ5Ijo4MTR9LHsieCI6MTYwLjI2OTUzMTI1LCJ5Ijo4NTF9XQ=
+=3D=3D" marker-end=3D"url(#mermaid-1766810714868_flowchart-v2-pointEnd)"></=
+path><path d=3D"M160.27,1083L160.27,1089.167C160.27,1095.333,160.27,1107.66=
+7,160.27,1119.333C160.27,1131,160.27,1142,160.27,1147.5L160.27,1153" id=3D"=
+L_CAST2_CODEGEN_0" class=3D"edge-thickness-normal edge-pattern-solid edge-t=
+hickness-normal edge-pattern-solid flowchart-link" style=3D";" data-edge=3D=
+"true" data-et=3D"edge" data-id=3D"L_CAST2_CODEGEN_0" data-points=3D"W3sieC=
+I6MTYwLjI2OTUzMTI1LCJ5IjoxMDgzfSx7IngiOjE2MC4yNjk1MzEyNSwieSI6MTEyMH0seyJ4I=
+joxNjAuMjY5NTMxMjUsInkiOjExNTd9XQ=3D=3D" marker-end=3D"url(#mermaid-1766810=
+714868_flowchart-v2-pointEnd)"></path><path d=3D"M160.27,1211L160.27,1217.1=
+67C160.27,1223.333,160.27,1235.667,160.27,1247.333C160.27,1259,160.27,1270,=
+160.27,1275.5L160.27,1281" id=3D"L_CODEGEN_CFILES_0" class=3D"edge-thicknes=
+s-normal edge-pattern-solid edge-thickness-normal edge-pattern-solid flowch=
+art-link" style=3D";" data-edge=3D"true" data-et=3D"edge" data-id=3D"L_CODE=
+GEN_CFILES_0" data-points=3D"W3sieCI6MTYwLjI2OTUzMTI1LCJ5IjoxMjExfSx7IngiOj=
+E2MC4yNjk1MzEyNSwieSI6MTI0OH0seyJ4IjoxNjAuMjY5NTMxMjUsInkiOjEyODV9XQ=3D=3D"=
+ marker-end=3D"url(#mermaid-1766810714868_flowchart-v2-pointEnd)"></path><p=
+ath d=3D"M160.27,343L160.27,347.167C160.27,351.333,160.27,359.667,160.27,37=
+0C160.27,380.333,160.27,392.667,160.27,405C160.27,417.333,160.27,429.667,16=
+0.27,439.333C160.27,449,160.27,456,160.27,459.5L160.27,463" id=3D"L_CPPAST_=
+CPPAST2_0" class=3D"edge-thickness-normal edge-pattern-dotted edge-thicknes=
+s-normal edge-pattern-solid flowchart-link" style=3D";" data-edge=3D"true" =
+data-et=3D"edge" data-id=3D"L_CPPAST_CPPAST2_0" data-points=3D"W3sieCI6MTYw=
+LjI2OTUzMTI1LCJ5IjozNDN9LHsieCI6MTYwLjI2OTUzMTI1LCJ5IjozNjh9LHsieCI6MTYwLjI=
+2OTUzMTI1LCJ5Ijo0MDV9LHsieCI6MTYwLjI2OTUzMTI1LCJ5Ijo0NDJ9LHsieCI6MTYwLjI2OT=
+UzMTI1LCJ5Ijo0Njd9XQ=3D=3D" marker-end=3D"url(#mermaid-1766810714868_flowch=
+art-v2-pointEnd)"></path><path d=3D"M160.27,905L160.27,909.167C160.27,913.3=
+33,160.27,921.667,160.27,932C160.27,942.333,160.27,954.667,160.27,967C160.2=
+7,979.333,160.27,991.667,160.27,1001.333C160.27,1011,160.27,1018,160.27,102=
+1.5L160.27,1025" id=3D"L_CAST_CAST2_0" class=3D"edge-thickness-normal edge-=
+pattern-dotted edge-thickness-normal edge-pattern-solid flowchart-link" sty=
+le=3D";" data-edge=3D"true" data-et=3D"edge" data-id=3D"L_CAST_CAST2_0" dat=
+a-points=3D"W3sieCI6MTYwLjI2OTUzMTI1LCJ5Ijo5MDV9LHsieCI6MTYwLjI2OTUzMTI1LCJ=
+5Ijo5MzB9LHsieCI6MTYwLjI2OTUzMTI1LCJ5Ijo5Njd9LHsieCI6MTYwLjI2OTUzMTI1LCJ5Ij=
+oxMDA0fSx7IngiOjE2MC4yNjk1MzEyNSwieSI6MTAyOX1d" marker-end=3D"url(#mermaid-=
+1766810714868_flowchart-v2-pointEnd)"></path></g><g class=3D"edgeLabels"><g=
+ class=3D"edgeLabel" transform=3D"translate(160.26953125, 124)"><g class=3D=
+"label" data-id=3D"L_CPP_CLANG_0" transform=3D"translate(-19, -12)"><foreig=
+nObject width=3D"38" height=3D"24"><div xmlns=3D"http://www.w3.org/1999/xht=
+ml" class=3D"labelBkg" style=3D"display: table-cell; white-space: nowrap; l=
+ine-height: 1.5; max-width: 200px; text-align: center;"><span class=3D"edge=
+Label"><p>Parse</p></span></div></foreignObject></g></g><g class=3D"edgeLab=
+el" transform=3D"translate(160.26953125, 252)"><g class=3D"label" data-id=
+=3D"L_CLANG_CPPAST_0" transform=3D"translate(-33.35546875, -12)"><foreignOb=
+ject width=3D"66.7109375" height=3D"24"><div xmlns=3D"http://www.w3.org/199=
+9/xhtml" class=3D"labelBkg" style=3D"display: table-cell; white-space: nowr=
+ap; line-height: 1.5; max-width: 200px; text-align: center;"><span class=3D=
+"edgeLabel"><p>Generate</p></span></div></foreignObject></g></g><g class=3D=
+"edgeLabel" transform=3D"translate(160.26953125, 558)"><g class=3D"label" d=
+ata-id=3D"L_CPPAST2_ORCHESTRATOR_0" transform=3D"translate(-30.0703125, -12=
+)"><foreignObject width=3D"60.140625" height=3D"24"><div xmlns=3D"http://ww=
+w.w3.org/1999/xhtml" class=3D"labelBkg" style=3D"display: table-cell; white=
+-space: nowrap; line-height: 1.5; max-width: 200px; text-align: center;"><s=
+pan class=3D"edgeLabel"><p>Traverse</p></span></div></foreignObject></g></g=
+><g class=3D"edgeLabel" transform=3D"translate(160.26953125, 686)"><g class=
+=3D"label" data-id=3D"L_ORCHESTRATOR_HANDLERS_0" transform=3D"translate(-30=
+.58984375, -12)"><foreignObject width=3D"61.1796875" height=3D"24"><div xml=
+ns=3D"http://www.w3.org/1999/xhtml" class=3D"labelBkg" style=3D"display: ta=
+ble-cell; white-space: nowrap; line-height: 1.5; max-width: 200px; text-ali=
+gn: center;"><span class=3D"edgeLabel"><p>Dispatch</p></span></div></foreig=
+nObject></g></g><g class=3D"edgeLabel" transform=3D"translate(160.26953125,=
+ 814)"><g class=3D"label" data-id=3D"L_HANDLERS_CAST_0" transform=3D"transl=
+ate(-17.99609375, -12)"><foreignObject width=3D"35.9921875" height=3D"24"><=
+div xmlns=3D"http://www.w3.org/1999/xhtml" class=3D"labelBkg" style=3D"disp=
+lay: table-cell; white-space: nowrap; line-height: 1.5; max-width: 200px; t=
+ext-align: center;"><span class=3D"edgeLabel"><p>Build</p></span></div></fo=
+reignObject></g></g><g class=3D"edgeLabel" transform=3D"translate(160.26953=
+125, 1120)"><g class=3D"label" data-id=3D"L_CAST2_CODEGEN_0" transform=3D"t=
+ranslate(-15.52734375, -12)"><foreignObject width=3D"31.0546875" height=3D"=
+24"><div xmlns=3D"http://www.w3.org/1999/xhtml" class=3D"labelBkg" style=3D=
+"display: table-cell; white-space: nowrap; line-height: 1.5; max-width: 200=
+px; text-align: center;"><span class=3D"edgeLabel"><p>Visit</p></span></div=
+></foreignObject></g></g><g class=3D"edgeLabel" transform=3D"translate(160.=
+26953125, 1248)"><g class=3D"label" data-id=3D"L_CODEGEN_CFILES_0" transfor=
+m=3D"translate(-16.37890625, -12)"><foreignObject width=3D"32.7578125" heig=
+ht=3D"24"><div xmlns=3D"http://www.w3.org/1999/xhtml" class=3D"labelBkg" st=
+yle=3D"display: table-cell; white-space: nowrap; line-height: 1.5; max-widt=
+h: 200px; text-align: center;"><span class=3D"edgeLabel"><p>Emit</p></span>=
+</div></foreignObject></g></g><g class=3D"edgeLabel" transform=3D"translate=
+(160.26953125, 405)"><g class=3D"label" data-id=3D"L_CPPAST_CPPAST2_0" tran=
+sform=3D"translate(-18.59765625, -12)"><foreignObject width=3D"37.1953125" =
+height=3D"24"><div xmlns=3D"http://www.w3.org/1999/xhtml" class=3D"labelBkg=
+" style=3D"display: table-cell; white-space: nowrap; line-height: 1.5; max-=
+width: 200px; text-align: center;"><span class=3D"edgeLabel"><p>Input</p></=
+span></div></foreignObject></g></g><g class=3D"edgeLabel" transform=3D"tran=
+slate(160.26953125, 967)"><g class=3D"label" data-id=3D"L_CAST_CAST2_0" tra=
+nsform=3D"translate(-24.93359375, -12)"><foreignObject width=3D"49.8671875"=
+ height=3D"24"><div xmlns=3D"http://www.w3.org/1999/xhtml" class=3D"labelBk=
+g" style=3D"display: table-cell; white-space: nowrap; line-height: 1.5; max=
+-width: 200px; text-align: center;"><span class=3D"edgeLabel"><p>Output</p>=
+</span></div></foreignObject></g></g></g><g class=3D"nodes"><g class=3D"nod=
+e default" id=3D"flowchart-CPP-0" transform=3D"translate(160.26953125, 60)"=
+><rect class=3D"basic label-container" style=3D"" x=3D"-88.3828125" y=3D"-2=
+7" width=3D"176.765625" height=3D"54"></rect><g class=3D"label" style=3D"" =
+transform=3D"translate(-58.3828125, -12)"><rect></rect><foreignObject width=
+=3D"116.765625" height=3D"24"><div xmlns=3D"http://www.w3.org/1999/xhtml" s=
+tyle=3D"display: table-cell; white-space: nowrap; line-height: 1.5; max-wid=
+th: 200px; text-align: center;"><span class=3D"nodeLabel"><p>C++ Source Fil=
+es</p></span></div></foreignObject></g></g><g class=3D"node default" id=3D"=
+flowchart-CLANG-1" transform=3D"translate(160.26953125, 188)"><rect class=
+=3D"basic label-container" style=3D"" x=3D"-84.48046875" y=3D"-27" width=3D=
+"168.9609375" height=3D"54"></rect><g class=3D"label" style=3D"" transform=
+=3D"translate(-54.48046875, -12)"><rect></rect><foreignObject width=3D"108.=
+9609375" height=3D"24"><div xmlns=3D"http://www.w3.org/1999/xhtml" style=3D=
+"display: table-cell; white-space: nowrap; line-height: 1.5; max-width: 200=
+px; text-align: center;"><span class=3D"nodeLabel"><p>Clang Frontend</p></s=
+pan></div></foreignObject></g></g><g class=3D"node default" id=3D"flowchart=
+-CPPAST-2" transform=3D"translate(160.26953125, 316)"><rect class=3D"basic =
+label-container" style=3D"" x=3D"-58.35546875" y=3D"-27" width=3D"116.71093=
+75" height=3D"54"></rect><g class=3D"label" style=3D"" transform=3D"transla=
+te(-28.35546875, -12)"><rect></rect><foreignObject width=3D"56.7109375" hei=
+ght=3D"24"><div xmlns=3D"http://www.w3.org/1999/xhtml" style=3D"display: ta=
+ble-cell; white-space: nowrap; line-height: 1.5; max-width: 200px; text-ali=
+gn: center;"><span class=3D"nodeLabel"><p>C++ AST</p></span></div></foreign=
+Object></g></g><g class=3D"node default" id=3D"flowchart-CPPAST2-7" transfo=
+rm=3D"translate(160.26953125, 494)"><rect class=3D"basic label-container" s=
+tyle=3D"" x=3D"-58.35546875" y=3D"-27" width=3D"116.7109375" height=3D"54">=
+</rect><g class=3D"label" style=3D"" transform=3D"translate(-28.35546875, -=
+12)"><rect></rect><foreignObject width=3D"56.7109375" height=3D"24"><div xm=
+lns=3D"http://www.w3.org/1999/xhtml" style=3D"display: table-cell; white-sp=
+ace: nowrap; line-height: 1.5; max-width: 200px; text-align: center;"><span=
+ class=3D"nodeLabel"><p>C++ AST</p></span></div></foreignObject></g></g><g =
+class=3D"node default" id=3D"flowchart-ORCHESTRATOR-8" transform=3D"transla=
+te(160.26953125, 622)"><rect class=3D"basic label-container" style=3D"" x=
+=3D"-117.26953125" y=3D"-27" width=3D"234.5390625" height=3D"54"></rect><g =
+class=3D"label" style=3D"" transform=3D"translate(-87.26953125, -12)"><rect=
+></rect><foreignObject width=3D"174.5390625" height=3D"24"><div xmlns=3D"ht=
+tp://www.w3.org/1999/xhtml" style=3D"display: table-cell; white-space: nowr=
+ap; line-height: 1.5; max-width: 200px; text-align: center;"><span class=3D=
+"nodeLabel"><p>Translation Orchestrator</p></span></div></foreignObject></g=
+></g><g class=3D"node default" id=3D"flowchart-HANDLERS-9" transform=3D"tra=
+nslate(160.26953125, 750)"><rect class=3D"basic label-container" style=3D""=
+ x=3D"-80.51953125" y=3D"-27" width=3D"161.0390625" height=3D"54"></rect><g=
+ class=3D"label" style=3D"" transform=3D"translate(-50.51953125, -12)"><rec=
+t></rect><foreignObject width=3D"101.0390625" height=3D"24"><div xmlns=3D"h=
+ttp://www.w3.org/1999/xhtml" style=3D"display: table-cell; white-space: now=
+rap; line-height: 1.5; max-width: 200px; text-align: center;"><span class=
+=3D"nodeLabel"><p>Handler Chain</p></span></div></foreignObject></g></g><g =
+class=3D"node default" id=3D"flowchart-CAST-10" transform=3D"translate(160.=
+26953125, 878)"><rect class=3D"basic label-container" style=3D"" x=3D"-49.9=
+6484375" y=3D"-27" width=3D"99.9296875" height=3D"54"></rect><g class=3D"la=
+bel" style=3D"" transform=3D"translate(-19.96484375, -12)"><rect></rect><fo=
+reignObject width=3D"39.9296875" height=3D"24"><div xmlns=3D"http://www.w3.=
+org/1999/xhtml" style=3D"display: table-cell; white-space: nowrap; line-hei=
+ght: 1.5; max-width: 200px; text-align: center;"><span class=3D"nodeLabel">=
+<p>C AST</p></span></div></foreignObject></g></g><g class=3D"node default" =
+id=3D"flowchart-CAST2-17" transform=3D"translate(160.26953125, 1056)"><rect=
+ class=3D"basic label-container" style=3D"" x=3D"-49.96484375" y=3D"-27" wi=
+dth=3D"99.9296875" height=3D"54"></rect><g class=3D"label" style=3D"" trans=
+form=3D"translate(-19.96484375, -12)"><rect></rect><foreignObject width=3D"=
+39.9296875" height=3D"24"><div xmlns=3D"http://www.w3.org/1999/xhtml" style=
+=3D"display: table-cell; white-space: nowrap; line-height: 1.5; max-width: =
+200px; text-align: center;"><span class=3D"nodeLabel"><p>C AST</p></span></=
+div></foreignObject></g></g><g class=3D"node default" id=3D"flowchart-CODEG=
+EN-18" transform=3D"translate(160.26953125, 1184)"><rect class=3D"basic lab=
+el-container" style=3D"" x=3D"-86.703125" y=3D"-27" width=3D"173.40625" hei=
+ght=3D"54"></rect><g class=3D"label" style=3D"" transform=3D"translate(-56.=
+703125, -12)"><rect></rect><foreignObject width=3D"113.40625" height=3D"24"=
+><div xmlns=3D"http://www.w3.org/1999/xhtml" style=3D"display: table-cell; =
+white-space: nowrap; line-height: 1.5; max-width: 200px; text-align: center=
+;"><span class=3D"nodeLabel"><p>Code Generator</p></span></div></foreignObj=
+ect></g></g><g class=3D"node default" id=3D"flowchart-CFILES-19" transform=
+=3D"translate(160.26953125, 1312)"><rect class=3D"basic label-container" st=
+yle=3D"" x=3D"-79.9921875" y=3D"-27" width=3D"159.984375" height=3D"54"></r=
+ect><g class=3D"label" style=3D"" transform=3D"translate(-49.9921875, -12)"=
+><rect></rect><foreignObject width=3D"99.984375" height=3D"24"><div xmlns=
+=3D"http://www.w3.org/1999/xhtml" style=3D"display: table-cell; white-space=
+: nowrap; line-height: 1.5; max-width: 200px; text-align: center;"><span cl=
+ass=3D"nodeLabel"><p>C Source Files</p></span></div></foreignObject></g></g=
+></g></g></g></svg></div><h3 id=3D"stage-1-c-ast-generation">Stage 1: C++ A=
+ST Generation </h3>
+<p><strong>What:</strong> Parse C++ source code using Clang frontend<br>
+<strong>Input:</strong> C++ source files<br>
+<strong>Output:</strong> Fully-resolved C++ AST with type information, temp=
+late instantiations, semantic analysis<br>
+<strong>Why:</strong> Leverage Clang's world-class C++ parser instead of bu=
+ilding our own</p>
+<h3 id=3D"stage-2-c-ast--c-ast-translation">Stage 2: C++ AST =E2=86=92 C AS=
+T Translation </h3>
+<p><strong>What:</strong> Walk C++ AST and build equivalent C AST using han=
+dler chain<br>
+<strong>Input:</strong> C++ AST from Stage 1<br>
+<strong>Output:</strong> Pure C AST with only C-compatible nodes<br>
+<strong>Why:</strong> Make ALL translation decisions here, create proper C =
+structures</p>
+<h3 id=3D"stage-3-c-code-emission">Stage 3: C Code Emission </h3>
+<p><strong>What:</strong> Print C AST to text using Clang's DeclPrinter/Stm=
+tPrinter<br>
+<strong>Input:</strong> C AST from Stage 2<br>
+<strong>Output:</strong> Clean, formatted C source code<br>
+<strong>Why:</strong> Leverage 15+ years of production-tested code generati=
+on</p>
+<hr>
+<h2 id=3D"why-this-architecture">Why This Architecture? </h2>
+<h3 id=3D"problem-direct-text-emission-is-fragile">Problem: Direct Text Emi=
+ssion is Fragile </h3>
+<p><strong>Naive Approach (What We DON'T Do):</strong></p>
+<pre data-role=3D"codeBlock" data-info=3D"cpp" class=3D"language-cpp cpp"><=
+code><span class=3D"token comment">// BAD: Emit text directly from C++ AST<=
+/span>
+<span class=3D"token keyword keyword-void">void</span> <span class=3D"token=
+ function">emitExpression</span><span class=3D"token punctuation">(</span>E=
+xpr<span class=3D"token operator">*</span> E<span class=3D"token punctuatio=
+n">)</span> <span class=3D"token punctuation">{</span>
+    <span class=3D"token keyword keyword-if">if</span> <span class=3D"token=
+ punctuation">(</span>BinaryOperator<span class=3D"token operator">*</span>=
+ BO <span class=3D"token operator">=3D</span> <span class=3D"token generic-=
+function"><span class=3D"token function">dyn_cast</span><span class=3D"toke=
+n generic class-name"><span class=3D"token operator">&lt;</span>BinaryOpera=
+tor<span class=3D"token operator">&gt;</span></span></span><span class=3D"t=
+oken punctuation">(</span>E<span class=3D"token punctuation">)</span><span =
+class=3D"token punctuation">)</span> <span class=3D"token punctuation">{</s=
+pan>
+        <span class=3D"token function">emitExpression</span><span class=3D"=
+token punctuation">(</span>BO<span class=3D"token operator">-&gt;</span><sp=
+an class=3D"token function">getLHS</span><span class=3D"token punctuation">=
+(</span><span class=3D"token punctuation">)</span><span class=3D"token punc=
+tuation">)</span><span class=3D"token punctuation">;</span>
+        OS <span class=3D"token operator">&lt;&lt;</span> <span class=3D"to=
+ken string">" "</span> <span class=3D"token operator">&lt;&lt;</span> BO<sp=
+an class=3D"token operator">-&gt;</span><span class=3D"token function">getO=
+pcodeStr</span><span class=3D"token punctuation">(</span><span class=3D"tok=
+en punctuation">)</span> <span class=3D"token operator">&lt;&lt;</span> <sp=
+an class=3D"token string">" "</span><span class=3D"token punctuation">;</sp=
+an>
+        <span class=3D"token function">emitExpression</span><span class=3D"=
+token punctuation">(</span>BO<span class=3D"token operator">-&gt;</span><sp=
+an class=3D"token function">getRHS</span><span class=3D"token punctuation">=
+(</span><span class=3D"token punctuation">)</span><span class=3D"token punc=
+tuation">)</span><span class=3D"token punctuation">;</span>
+        <span class=3D"token comment">// PROBLEM: What about precedence?</s=
+pan>
+        <span class=3D"token comment">// PROBLEM: What about parentheses?</=
+span>
+        <span class=3D"token comment">// PROBLEM: What about edge cases?</s=
+pan>
+    <span class=3D"token punctuation">}</span>
+<span class=3D"token punctuation">}</span>
+</code></pre><p><strong>Issues:</strong></p>
+<ul>
+<li>=E2=9D=8C Incorrect operator precedence: <code>a + b * c</code> becomes=
+ <code>(a + b) * c</code></li>
+<li>=E2=9D=8C Missing parentheses cause subtle bugs</li>
+<li>=E2=9D=8C Edge cases pile up (pointer-to-member, overloaded operators, =
+etc.)</li>
+<li>=E2=9D=8C Thousands of lines of brittle string concatenation</li>
+<li>=E2=9D=8C Hard to verify output correctness</li>
+</ul>
+<h3 id=3D"solution-intermediate-c-ast">Solution: Intermediate C AST </h3>
+<p><strong>Our Approach (What We DO):</strong></p>
+<pre data-role=3D"codeBlock" data-info=3D"cpp" class=3D"language-cpp cpp"><=
+code><span class=3D"token comment">// GOOD: Build C AST nodes</span>
+Expr<span class=3D"token operator">*</span> <span class=3D"token function">=
+translateExpression</span><span class=3D"token punctuation">(</span>Expr<sp=
+an class=3D"token operator">*</span> E<span class=3D"token punctuation">)</=
+span> <span class=3D"token punctuation">{</span>
+    <span class=3D"token keyword keyword-if">if</span> <span class=3D"token=
+ punctuation">(</span>BinaryOperator<span class=3D"token operator">*</span>=
+ BO <span class=3D"token operator">=3D</span> <span class=3D"token generic-=
+function"><span class=3D"token function">dyn_cast</span><span class=3D"toke=
+n generic class-name"><span class=3D"token operator">&lt;</span>BinaryOpera=
+tor<span class=3D"token operator">&gt;</span></span></span><span class=3D"t=
+oken punctuation">(</span>E<span class=3D"token punctuation">)</span><span =
+class=3D"token punctuation">)</span> <span class=3D"token punctuation">{</s=
+pan>
+        Expr<span class=3D"token operator">*</span> lhs <span class=3D"toke=
+n operator">=3D</span> <span class=3D"token function">translateExpression</=
+span><span class=3D"token punctuation">(</span>BO<span class=3D"token opera=
+tor">-&gt;</span><span class=3D"token function">getLHS</span><span class=3D=
+"token punctuation">(</span><span class=3D"token punctuation">)</span><span=
+ class=3D"token punctuation">)</span><span class=3D"token punctuation">;</s=
+pan>
+        Expr<span class=3D"token operator">*</span> rhs <span class=3D"toke=
+n operator">=3D</span> <span class=3D"token function">translateExpression</=
+span><span class=3D"token punctuation">(</span>BO<span class=3D"token opera=
+tor">-&gt;</span><span class=3D"token function">getRHS</span><span class=3D=
+"token punctuation">(</span><span class=3D"token punctuation">)</span><span=
+ class=3D"token punctuation">)</span><span class=3D"token punctuation">;</s=
+pan>
+        <span class=3D"token keyword keyword-return">return</span> builder<=
+span class=3D"token punctuation">.</span><span class=3D"token function">cre=
+ateBinaryOp</span><span class=3D"token punctuation">(</span>BO<span class=
+=3D"token operator">-&gt;</span><span class=3D"token function">getOpcode</s=
+pan><span class=3D"token punctuation">(</span><span class=3D"token punctuat=
+ion">)</span><span class=3D"token punctuation">,</span> lhs<span class=3D"t=
+oken punctuation">,</span> rhs<span class=3D"token punctuation">)</span><sp=
+an class=3D"token punctuation">;</span>
+        <span class=3D"token comment">// Clang's printer handles precedence=
+ automatically!</span>
+    <span class=3D"token punctuation">}</span>
+<span class=3D"token punctuation">}</span>
+</code></pre><p><strong>Benefits:</strong></p>
+<ul>
+<li>=E2=9C=85 Clang's printer handles precedence, parentheses, formatting</=
+li>
+<li>=E2=9C=85 15+ years of edge cases already fixed</li>
+<li>=E2=9C=85 Zero maintenance burden for code generation</li>
+<li>=E2=9C=85 Output is clean and verifiable</li>
+</ul>
+<h3 id=3D"the-numbers-output-quality">The Numbers: Output Quality </h3>
+<table>
+<thead>
+<tr>
+<th>Metric</th>
+<th>Direct Emission</th>
+<th>Intermediate AST</th>
+<th>Improvement</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>Lines per exception handler</strong></td>
+<td>46 lines</td>
+<td>11 lines</td>
+<td><strong>4.2x cleaner</strong></td>
+</tr>
+<tr>
+<td><strong>Code size</strong></td>
+<td>100%</td>
+<td>20%</td>
+<td><strong>80% reduction</strong></td>
+</tr>
+<tr>
+<td><strong>Frama-C verification time</strong></td>
+<td>100%</td>
+<td>10-20%</td>
+<td><strong>5-10x faster</strong></td>
+</tr>
+<tr>
+<td><strong>Implementation LOC</strong></td>
+<td>1,400-2,300</td>
+<td>2,000-3,200</td>
+<td>+40% code</td>
+</tr>
+</tbody>
+</table>
+<p><strong>Trade-off (Pre-AI Era, 2015-2023):</strong> We accepted 40% more=
+ implementation code for 80% cleaner output.</p>
+<p><strong>Trade-off (AI Era, 2024+):</strong> With AI-assisted development=
+ (Claude Code, Cursor, Copilot), implementation effort is now comparable to=
+ direct emission while retaining 80% cleaner output.</p>
+<p><strong>Rationale:</strong> Generated code is read/debugged/verified far=
+ more often than implementation code. With AI handling boilerplate, we get =
+superior output quality without developer productivity cost.</p>
+<hr>
+<h2 id=3D"key-design-principles">Key Design Principles </h2>
+<h3 id=3D"1-separation-of-concerns">1. Separation of Concerns </h3>
+<p>Each stage has ONE clear responsibility:</p>
+<table>
+<thead>
+<tr>
+<th>Stage</th>
+<th>Responsibility</th>
+<th>Does NOT Do</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>Stage 1</strong></td>
+<td>Parse C++</td>
+<td>=E2=9D=8C Translation decisions</td>
+</tr>
+<tr>
+<td><strong>Stage 2</strong></td>
+<td>Decide C representation</td>
+<td>=E2=9D=8C Text generation</td>
+</tr>
+<tr>
+<td><strong>Stage 3</strong></td>
+<td>Format text output</td>
+<td>=E2=9D=8C Translation logic</td>
+</tr>
+</tbody>
+</table>
+<p><strong>Golden Rule:</strong> Stage 2 decides WHAT to emit, Stage 3 deci=
+des HOW to format it.</p>
+<h3 id=3D"2-testability">2. Testability </h3>
+<p>Each stage can be unit tested independently:</p>
+<pre data-role=3D"codeBlock" data-info=3D"cpp" class=3D"language-cpp cpp"><=
+code><span class=3D"token comment">// Test Stage 2 WITHOUT running Stage 3<=
+/span>
+<span class=3D"token function">TEST</span><span class=3D"token punctuation"=
+>(</span>TranslationTest<span class=3D"token punctuation">,</span> ClassToS=
+truct<span class=3D"token punctuation">)</span> <span class=3D"token punctu=
+ation">{</span>
+    <span class=3D"token comment">// Given: C++ class in AST</span>
+    CXXRecordDecl<span class=3D"token operator">*</span> cppClass <span cla=
+ss=3D"token operator">=3D</span> <span class=3D"token punctuation">.</span>=
+<span class=3D"token punctuation">.</span><span class=3D"token punctuation"=
+>.</span><span class=3D"token punctuation">;</span>
+
+    <span class=3D"token comment">// When: Translate to C</span>
+    RecordDecl<span class=3D"token operator">*</span> cStruct <span class=
+=3D"token operator">=3D</span> translator<span class=3D"token punctuation">=
+.</span><span class=3D"token function">translate</span><span class=3D"token=
+ punctuation">(</span>cppClass<span class=3D"token punctuation">)</span><sp=
+an class=3D"token punctuation">;</span>
+
+    <span class=3D"token comment">// Then: Verify C AST structure (no text =
+output needed!)</span>
+    <span class=3D"token function">EXPECT_EQ</span><span class=3D"token pun=
+ctuation">(</span>cStruct<span class=3D"token operator">-&gt;</span><span c=
+lass=3D"token function">getName</span><span class=3D"token punctuation">(</=
+span><span class=3D"token punctuation">)</span><span class=3D"token punctua=
+tion">,</span> <span class=3D"token string">"MyClass"</span><span class=3D"=
+token punctuation">)</span><span class=3D"token punctuation">;</span>
+    <span class=3D"token function">EXPECT_EQ</span><span class=3D"token pun=
+ctuation">(</span>cStruct<span class=3D"token operator">-&gt;</span><span c=
+lass=3D"token function">fields</span><span class=3D"token punctuation">(</s=
+pan><span class=3D"token punctuation">)</span><span class=3D"token punctuat=
+ion">.</span><span class=3D"token function">size</span><span class=3D"token=
+ punctuation">(</span><span class=3D"token punctuation">)</span><span class=
+=3D"token punctuation">,</span> <span class=3D"token number">2</span><span =
+class=3D"token punctuation">)</span><span class=3D"token punctuation">;</sp=
+an>
+<span class=3D"token punctuation">}</span>
+</code></pre><h3 id=3D"3-battle-tested-components">3. Battle-Tested Compone=
+nts </h3>
+<p><strong>Don't Reinvent the Wheel:</strong></p>
+<ul>
+<li><strong>Clang's Parser</strong> =E2=86=92 Used by Apple, Google, Micros=
+oft</li>
+<li><strong>Clang's Printer</strong> =E2=86=92 15+ years in production</li>
+<li><strong>PNaCl Exception Handling</strong> =E2=86=92 Used by Chrome Nati=
+ve Client</li>
+<li><strong>Itanium ABI RTTI</strong> =E2=86=92 Standard used by GCC, Clang=
+, ICC</li>
+</ul>
+<p><strong>Result:</strong> Stand on the shoulders of giants.</p>
+<h3 id=3D"4-frama-c-first">4. Frama-C First </h3>
+<p>Optimize for formal verification:</p>
+<p><strong>Runtime Library Approach:</strong></p>
+<pre data-role=3D"codeBlock" data-info=3D"c" class=3D"language-c c"><code><=
+span class=3D"token comment">// Instead of inlining 46 lines of exception h=
+andling:</span>
+<span class=3D"token function">try_block</span><span class=3D"token punctua=
+tion">(</span><span class=3D"token punctuation">)</span> <span class=3D"tok=
+en punctuation">{</span>
+    <span class=3D"token comment">// 46 lines of complex setjmp/longjmp cod=
+e</span>
+<span class=3D"token punctuation">}</span>
+
+<span class=3D"token comment">// We call runtime library:</span>
+<span class=3D"token function">try_block</span><span class=3D"token punctua=
+tion">(</span><span class=3D"token punctuation">)</span> <span class=3D"tok=
+en punctuation">{</span>
+    <span class=3D"token function">cxx_frame_push</span><span class=3D"toke=
+n punctuation">(</span><span class=3D"token operator">&amp;</span>frame<spa=
+n class=3D"token punctuation">)</span><span class=3D"token punctuation">;</=
+span>  <span class=3D"token comment">// 11 lines total</span>
+    <span class=3D"token keyword keyword-if">if</span> <span class=3D"token=
+ punctuation">(</span><span class=3D"token function">setjmp</span><span cla=
+ss=3D"token punctuation">(</span>frame<span class=3D"token punctuation">.</=
+span>jmpbuf<span class=3D"token punctuation">)</span> <span class=3D"token =
+operator">=3D=3D</span> <span class=3D"token number">0</span><span class=3D=
+"token punctuation">)</span> <span class=3D"token punctuation">{</span>
+        <span class=3D"token comment">// try body</span>
+    <span class=3D"token punctuation">}</span> <span class=3D"token keyword=
+ keyword-else">else</span> <span class=3D"token punctuation">{</span>
+        <span class=3D"token comment">// catch handler</span>
+    <span class=3D"token punctuation">}</span>
+    <span class=3D"token function">cxx_frame_pop</span><span class=3D"token=
+ punctuation">(</span><span class=3D"token operator">&amp;</span>frame<span=
+ class=3D"token punctuation">)</span><span class=3D"token punctuation">;</s=
+pan>
+<span class=3D"token punctuation">}</span>
+</code></pre><p><strong>Benefits:</strong></p>
+<ul>
+<li>Verify runtime library ONCE with Frama-C</li>
+<li>Generated code just calls verified functions</li>
+<li>5-10x easier to verify</li>
+</ul>
+<hr>
+<h2 id=3D"alternative-approaches-considered">Alternative Approaches Conside=
+red </h2>
+<h3 id=3D"comparison-of-transpilation-approaches">Comparison of Transpilati=
+on Approaches </h3>
+<p>Here's how the three common approaches plus our novel approach compare f=
+or our use case:</p>
+<table>
+<thead>
+<tr>
+<th>Aspect</th>
+<th>Direct Text Emission</th>
+<th>LLVM IR Approach</th>
+<th>LLM-Based</th>
+<th>Separate C AST (Novel)</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>Input</strong></td>
+<td>C++ AST</td>
+<td>LLVM Bytecode</td>
+<td>Source Text</td>
+<td>C++ AST</td>
+</tr>
+<tr>
+<td><strong>Output Quality</strong></td>
+<td>=E2=9D=8C Poor (precedence bugs)</td>
+<td>=E2=9D=8C Machine-like</td>
+<td>=E2=9A=A0=EF=B8=8F Varies (non-deterministic)</td>
+<td>=E2=9C=85 Clean, readable</td>
+</tr>
+<tr>
+<td><strong>Preserves Structure</strong></td>
+<td>=E2=9A=A0=EF=B8=8F Partial</td>
+<td>=E2=9D=8C Lost</td>
+<td>=E2=9A=A0=EF=B8=8F Sometimes</td>
+<td>=E2=9C=85 Yes</td>
+</tr>
+<tr>
+<td><strong>Variable Names</strong></td>
+<td>=E2=9C=85 Preserved</td>
+<td>=E2=9D=8C Lost to SSA</td>
+<td>=E2=9C=85 Usually preserved</td>
+<td>=E2=9C=85 Preserved</td>
+</tr>
+<tr>
+<td><strong>Control Flow</strong></td>
+<td>=E2=9C=85 Preserved</td>
+<td>=E2=9D=8C Basic blocks</td>
+<td>=E2=9A=A0=EF=B8=8F May change</td>
+<td>=E2=9C=85 Preserved</td>
+</tr>
+<tr>
+<td><strong>Correctness Guarantees</strong></td>
+<td>=E2=9A=A0=EF=B8=8F Manual testing</td>
+<td>=E2=9C=85 Semantic preserving</td>
+<td>=E2=9D=8C None (hallucinations)</td>
+<td>=E2=9C=85 AST-level correctness</td>
+</tr>
+<tr>
+<td><strong>Deterministic Output</strong></td>
+<td>=E2=9C=85 Yes</td>
+<td>=E2=9C=85 Yes</td>
+<td>=E2=9D=8C No</td>
+<td>=E2=9C=85 Yes</td>
+</tr>
+<tr>
+<td><strong>Handles Edge Cases</strong></td>
+<td>=E2=9D=8C Manual effort</td>
+<td>=E2=9C=85 Systematic</td>
+<td>=E2=9D=8C Training-dependent</td>
+<td>=E2=9C=85 Systematic</td>
+</tr>
+<tr>
+<td><strong>Frama-C Verification</strong></td>
+<td>=E2=9A=A0=EF=B8=8F Difficult</td>
+<td>=E2=9D=8C Incompatible</td>
+<td>=E2=9D=8C Unreliable</td>
+<td>=E2=9C=85 Optimized</td>
+</tr>
+<tr>
+<td><strong>Implementation Effort (2025)</strong></td>
+<td>=E2=9A=A0=EF=B8=8F Medium</td>
+<td>=E2=9A=A0=EF=B8=8F Medium</td>
+<td>=E2=9C=85 Low (API calls)</td>
+<td>=E2=9C=85 Medium (AI-assisted)</td>
+</tr>
+<tr>
+<td><strong>Implementation Effort (Pre-AI)</strong></td>
+<td>=E2=9A=A0=EF=B8=8F Medium</td>
+<td>=E2=9A=A0=EF=B8=8F Medium</td>
+<td>N/A</td>
+<td>=E2=9D=8C High (verbose)</td>
+</tr>
+<tr>
+<td><strong>Maintenance Burden</strong></td>
+<td>=E2=9D=8C High</td>
+<td>=E2=9C=85 Low</td>
+<td>=E2=9A=A0=EF=B8=8F Model-dependent</td>
+<td>=E2=9C=85 Low</td>
+</tr>
+<tr>
+<td><strong>Best For</strong></td>
+<td>Quick prototypes</td>
+<td>JIT/VM/WASM</td>
+<td>Learning, assisted migration</td>
+<td>Production transpilers</td>
+</tr>
+</tbody>
+</table>
+<p><strong>Note on Implementation Effort (2025):</strong></p>
+<p>The intermediate AST approach was previously considered "high effort" du=
+e to verbose Clang API calls. <strong>With AI-assisted development in 2025<=
+/strong>, this is no longer true:</p>
+<ul>
+<li>=E2=9C=85 <strong>AI generates boilerplate</strong>: CNodeBuilder helpe=
+r functions written by AI (Claude Code, Cursor, Copilot)</li>
+<li>=E2=9C=85 <strong>AI handles Clang API complexity</strong>: 50-line nod=
+e creation =E2=86=92 AI-generated in seconds</li>
+<li>=E2=9C=85 <strong>AI assists with visitor patterns</strong>: RecursiveA=
+STVisitor implementation scaffolded automatically</li>
+<li>=E2=9C=85 <strong>Focus on high-level logic</strong>: Developers specif=
+y WHAT to translate, AI handles HOW</li>
+<li>=E2=9C=85 <strong>This project itself</strong>: Built with AI assistanc=
+e - validates the approach!</li>
+</ul>
+<p><strong>Result:</strong> Implementation effort is now <strong>medium</st=
+rong> (comparable to other approaches) while retaining all quality benefits=
+.</p>
+<p><strong>Example: Simple C++ Function</strong></p>
+<pre data-role=3D"codeBlock" data-info=3D"cpp" class=3D"language-cpp cpp"><=
+code><span class=3D"token comment">// Input C++</span>
+<span class=3D"token keyword keyword-class">class</span> <span class=3D"tok=
+en class-name">Calculator</span> <span class=3D"token punctuation">{</span>
+    <span class=3D"token keyword keyword-int">int</span> value<span class=
+=3D"token punctuation">;</span>
+<span class=3D"token keyword keyword-public">public</span><span class=3D"to=
+ken operator">:</span>
+    <span class=3D"token keyword keyword-int">int</span> <span class=3D"tok=
+en function">add</span><span class=3D"token punctuation">(</span><span clas=
+s=3D"token keyword keyword-int">int</span> x<span class=3D"token punctuatio=
+n">)</span> <span class=3D"token punctuation">{</span> <span class=3D"token=
+ keyword keyword-return">return</span> value <span class=3D"token operator"=
+>+</span> x<span class=3D"token punctuation">;</span> <span class=3D"token =
+punctuation">}</span>
+<span class=3D"token punctuation">}</span><span class=3D"token punctuation"=
+>;</span>
+</code></pre><p><strong>Approach 1 - Direct Text Emission (Buggy):</strong>=
+</p>
+<pre data-role=3D"codeBlock" data-info=3D"c" class=3D"language-c c"><code><=
+span class=3D"token comment">// Output - Missing parentheses, wrong precede=
+nce</span>
+<span class=3D"token keyword keyword-int">int</span> <span class=3D"token f=
+unction">Calculator_add</span><span class=3D"token punctuation">(</span><sp=
+an class=3D"token keyword keyword-struct">struct</span> <span class=3D"toke=
+n class-name">Calculator</span> <span class=3D"token operator">*</span>this=
+<span class=3D"token punctuation">,</span> <span class=3D"token keyword key=
+word-int">int</span> x<span class=3D"token punctuation">)</span> <span clas=
+s=3D"token punctuation">{</span>
+    <span class=3D"token keyword keyword-return">return</span> this<span cl=
+ass=3D"token operator">-&gt;</span>value <span class=3D"token operator">+</=
+span> x<span class=3D"token punctuation">;</span>  <span class=3D"token com=
+ment">// OK for this case</span>
+    <span class=3D"token comment">// But complex expressions become: a + b =
+* c + d</span>
+    <span class=3D"token comment">// Should be: (a + b) * (c + d)  =E2=86=
+=90 Bug!</span>
+<span class=3D"token punctuation">}</span>
+</code></pre><p><strong>Approach 2 - LLVM IR (Machine-Like):</strong></p>
+<pre data-role=3D"codeBlock" data-info=3D"llvm" class=3D"language-llvm llvm=
+"><code><span class=3D"token comment">; Output LLVM IR</span>
+<span class=3D"token variable">%class.Calculator</span> <span class=3D"toke=
+n punctuation">=3D</span> <span class=3D"token keyword keyword-type">type</=
+span> <span class=3D"token punctuation">{</span> <span class=3D"token type =
+class-name">i32</span> <span class=3D"token punctuation">}</span>
+
+<span class=3D"token keyword keyword-define">define</span> <span class=3D"t=
+oken type class-name">i32</span> <span class=3D"token variable">@Calculator=
+_add</span><span class=3D"token punctuation">(</span><span class=3D"token v=
+ariable">%class.Calculator</span><span class=3D"token punctuation">*</span>=
+ <span class=3D"token variable">%this</span><span class=3D"token punctuatio=
+n">,</span> <span class=3D"token type class-name">i32</span> <span class=3D=
+"token variable">%x</span><span class=3D"token punctuation">)</span> <span =
+class=3D"token punctuation">{</span>
+<span class=3D"token label">entry:</span>
+  <span class=3D"token variable">%value.addr</span> <span class=3D"token pu=
+nctuation">=3D</span> <span class=3D"token keyword keyword-getelementptr">g=
+etelementptr</span> <span class=3D"token keyword keyword-inbounds">inbounds=
+</span> <span class=3D"token variable">%class.Calculator</span><span class=
+=3D"token punctuation">,</span> <span class=3D"token variable">%class.Calcu=
+lator</span><span class=3D"token punctuation">*</span> <span class=3D"token=
+ variable">%this</span><span class=3D"token punctuation">,</span> <span cla=
+ss=3D"token type class-name">i32</span> <span class=3D"token number">0</spa=
+n><span class=3D"token punctuation">,</span> <span class=3D"token type clas=
+s-name">i32</span> <span class=3D"token number">0</span>
+  <span class=3D"token variable">%0</span> <span class=3D"token punctuation=
+">=3D</span> <span class=3D"token keyword keyword-load">load</span> <span c=
+lass=3D"token type class-name">i32</span><span class=3D"token punctuation">=
+,</span> <span class=3D"token type class-name">i32</span><span class=3D"tok=
+en punctuation">*</span> <span class=3D"token variable">%value.addr</span>
+  <span class=3D"token variable">%1</span> <span class=3D"token punctuation=
+">=3D</span> <span class=3D"token keyword keyword-add">add</span> <span cla=
+ss=3D"token keyword keyword-nsw">nsw</span> <span class=3D"token type class=
+-name">i32</span> <span class=3D"token variable">%0</span><span class=3D"to=
+ken punctuation">,</span> <span class=3D"token variable">%x</span>
+  <span class=3D"token keyword keyword-ret">ret</span> <span class=3D"token=
+ type class-name">i32</span> <span class=3D"token variable">%1</span>
+<span class=3D"token punctuation">}</span>
+<span class=3D"token comment">; Converting back to C loses readability</spa=
+n>
+</code></pre><p><strong>Approach 3 - Intermediate AST (Ours - Clean):</stro=
+ng></p>
+<pre data-role=3D"codeBlock" data-info=3D"c" class=3D"language-c c"><code><=
+span class=3D"token comment">// Output C - Clean, correct, readable</span>
+<span class=3D"token keyword keyword-struct">struct</span> <span class=3D"t=
+oken class-name">Calculator</span> <span class=3D"token punctuation">{</spa=
+n>
+    <span class=3D"token keyword keyword-int">int</span> value<span class=
+=3D"token punctuation">;</span>
+<span class=3D"token punctuation">}</span><span class=3D"token punctuation"=
+>;</span>
+
+<span class=3D"token keyword keyword-int">int</span> <span class=3D"token f=
+unction">Calculator_add</span><span class=3D"token punctuation">(</span><sp=
+an class=3D"token keyword keyword-struct">struct</span> <span class=3D"toke=
+n class-name">Calculator</span> <span class=3D"token operator">*</span>this=
+<span class=3D"token punctuation">,</span> <span class=3D"token keyword key=
+word-int">int</span> x<span class=3D"token punctuation">)</span> <span clas=
+s=3D"token punctuation">{</span>
+    <span class=3D"token keyword keyword-return">return</span> this<span cl=
+ass=3D"token operator">-&gt;</span>value <span class=3D"token operator">+</=
+span> x<span class=3D"token punctuation">;</span>  <span class=3D"token com=
+ment">// Clang printer guarantees correctness</span>
+<span class=3D"token punctuation">}</span>
+</code></pre><h3 id=3D"alternative-1-treetransform-api">Alternative 1: Tree=
+Transform API </h3>
+<p><strong>What:</strong> Use Clang's TreeTransform API to modify C++ AST i=
+n-place</p>
+<p><strong>Why We Rejected It:</strong></p>
+<ul>
+<li>Clang documentation: "TreeTransform does not support adding new nodes w=
+ell"</li>
+<li>Requires 50+ lines of boilerplate per node type</li>
+<li>Cannot inject statements or create new variables easily</li>
+<li>Still need a printer afterward</li>
+<li><strong>Score:</strong> 4.1/10 (see docs/architecture/prototype-compari=
+son.md)</li>
+</ul>
+<p><strong>Decision:</strong> Direct C AST generation scores 9.2/10</p>
+<h3 id=3D"alternative-2-direct-text-emission">Alternative 2: Direct Text Em=
+ission </h3>
+<p><strong>What:</strong> Walk C++ AST and emit text strings directly</p>
+<p><strong>Why We Rejected It:</strong></p>
+<ul>
+<li>Fragile operator precedence handling</li>
+<li>Thousands of edge cases to handle manually</li>
+<li>Unreadable output with missing parentheses</li>
+<li>Impossible to verify correctness</li>
+<li><strong>Result:</strong> 3-5x worse output quality</li>
+</ul>
+<p><strong>Decision:</strong> Intermediate AST + Clang printer</p>
+<h3 id=3D"alternative-3-llvm-ir-lowering">Alternative 3: LLVM IR Lowering <=
+/h3>
+<p><strong>What:</strong> Use LLVM backend to lower C++ to LLVM IR, then em=
+it C from IR</p>
+<p><strong>Valid Use Cases for LLVM IR:</strong></p>
+<ul>
+<li>=E2=9C=85 Emscripten (C/C++ =E2=86=92 WebAssembly) - Machine code targe=
+t</li>
+<li>=E2=9C=85 JIT compilation - Runtime optimization</li>
+<li>=E2=9C=85 Cross-platform VMs - Portable bytecode</li>
+<li>=E2=9C=85 Optimization-heavy backends - Leverage LLVM passes</li>
+</ul>
+<p><strong>Why We Rejected It for Human-Readable C:</strong></p>
+<ul>
+<li>=E2=9D=8C Loses high-level semantics (class names, variable names, stru=
+cture)</li>
+<li>=E2=9D=8C Output is SSA form (Single Static Assignment), not readable C=
+</li>
+<li>=E2=9D=8C Control flow becomes basic blocks and phi nodes</li>
+<li>=E2=9D=8C Cannot preserve source structure for code review</li>
+<li>=E2=9D=8C Not suitable for formal verification (Frama-C needs readable =
+C)</li>
+<li><strong>Example:</strong> <code>int add(int a, int b) { return a + b; }=
+</code> becomes:<pre data-role=3D"codeBlock" data-info=3D"llvm" class=3D"la=
+nguage-llvm llvm"><code><span class=3D"token keyword keyword-define">define=
+</span> <span class=3D"token type class-name">i32</span> <span class=3D"tok=
+en variable">@add</span><span class=3D"token punctuation">(</span><span cla=
+ss=3D"token type class-name">i32</span> <span class=3D"token variable">%a</=
+span><span class=3D"token punctuation">,</span> <span class=3D"token type c=
+lass-name">i32</span> <span class=3D"token variable">%b</span><span class=
+=3D"token punctuation">)</span> <span class=3D"token punctuation">{</span>
+<span class=3D"token label">entry:</span>
+  <span class=3D"token variable">%0</span> <span class=3D"token punctuation=
+">=3D</span> <span class=3D"token keyword keyword-add">add</span> <span cla=
+ss=3D"token keyword keyword-nsw">nsw</span> <span class=3D"token type class=
+-name">i32</span> <span class=3D"token variable">%a</span><span class=3D"to=
+ken punctuation">,</span> <span class=3D"token variable">%b</span>
+  <span class=3D"token keyword keyword-ret">ret</span> <span class=3D"token=
+ type class-name">i32</span> <span class=3D"token variable">%0</span>
+<span class=3D"token punctuation">}</span>
+</code></pre>Converting back to C loses names, structure, and readability</=
+li>
+</ul>
+<p><strong>Decision:</strong> Stay at AST level, preserve high-level struct=
+ure for human consumption</p>
+<p><strong>Note:</strong> LLVM IR is an excellent choice for machine-target=
+ed transpilation (WebAssembly, JVM bytecode, native code), just not for our=
+ goal of human-readable, verifiable C.</p>
+<h3 id=3D"alternative-4-llm-based-transpilation">Alternative 4: LLM-Based T=
+ranspilation </h3>
+<p><strong>What:</strong> Use Large Language Models (GPT-4, Claude, etc.) t=
+o translate source code via prompts</p>
+<p><strong>Valid Use Cases for LLM Transpilation:</strong></p>
+<ul>
+<li>=E2=9C=85 Quick prototypes and proof-of-concepts</li>
+<li>=E2=9C=85 Learning and educational purposes</li>
+<li>=E2=9C=85 Human-in-the-loop assisted migration (developer reviews each =
+output)</li>
+<li>=E2=9C=85 One-off conversions of small codebases</li>
+<li>=E2=9C=85 Migration planning and strategy development</li>
+</ul>
+<p><strong>Why We Rejected It for Production Transpiler:</strong></p>
+<ul>
+<li>=E2=9D=8C <strong>Hallucinations</strong>: Invents non-existent functio=
+ns, APIs, or syntax
+<ul>
+<li>Example: <code>std::vector::fast_sort()</code> (doesn't exist)</li>
+<li>Creates plausible-looking but incorrect code</li>
+</ul>
+</li>
+<li>=E2=9D=8C <strong>Non-deterministic</strong>: Same input produces diffe=
+rent outputs
+<ul>
+<li>Run 1: Uses approach A</li>
+<li>Run 2: Uses approach B (equally valid but different)</li>
+<li>Cannot reproduce builds</li>
+</ul>
+</li>
+<li>=E2=9D=8C <strong>Context window limits</strong>: Cannot coherently pro=
+cess large files
+<ul>
+<li>100K token limit =3D ~30K lines of code</li>
+<li>Loses consistency across large codebases</li>
+<li>Forgets earlier decisions</li>
+</ul>
+</li>
+<li>=E2=9D=8C <strong>Poor context engineering</strong>: Struggles with cro=
+ss-file dependencies
+<ul>
+<li>Missing type definitions from headers</li>
+<li>Incorrect function signatures</li>
+<li>Lost namespace context</li>
+</ul>
+</li>
+<li>=E2=9D=8C <strong>No correctness guarantees</strong>: Cannot prove outp=
+ut matches input semantics
+<ul>
+<li>Might compile but behave differently</li>
+<li>Subtle bugs in edge cases</li>
+<li>Cannot verify with formal methods</li>
+</ul>
+</li>
+<li>=E2=9D=8C <strong>Training data bias</strong>: Fails on patterns not in=
+ training set
+<ul>
+<li>Modern C++20 features may be under-represented</li>
+<li>Domain-specific patterns (embedded, safety-critical) may be mishandled<=
+/li>
+<li>Non-standard compiler extensions likely wrong</li>
+</ul>
+</li>
+<li>=E2=9D=8C <strong>Cost and latency</strong>: API calls per file add up
+<ul>
+<li>Large project =3D thousands of API calls</li>
+<li>Latency makes iteration slow</li>
+<li>Cost scales with codebase size</li>
+</ul>
+</li>
+</ul>
+<p><strong>Example of LLM Hallucination:</strong></p>
+<pre data-role=3D"codeBlock" data-info=3D"cpp" class=3D"language-cpp cpp"><=
+code><span class=3D"token comment">// Input C++</span>
+std<span class=3D"token double-colon punctuation">::</span>vector<span clas=
+s=3D"token operator">&lt;</span><span class=3D"token keyword keyword-int">i=
+nt</span><span class=3D"token operator">&gt;</span> vec <span class=3D"toke=
+n operator">=3D</span> <span class=3D"token punctuation">{</span><span clas=
+s=3D"token number">1</span><span class=3D"token punctuation">,</span> <span=
+ class=3D"token number">2</span><span class=3D"token punctuation">,</span> =
+<span class=3D"token number">3</span><span class=3D"token punctuation">}</s=
+pan><span class=3D"token punctuation">;</span>
+vec<span class=3D"token punctuation">.</span><span class=3D"token function"=
+>shrink_to_fit</span><span class=3D"token punctuation">(</span><span class=
+=3D"token punctuation">)</span><span class=3D"token punctuation">;</span>
+</code></pre><p><strong>LLM might output (WRONG):</strong></p>
+<pre data-role=3D"codeBlock" data-info=3D"c" class=3D"language-c c"><code><=
+span class=3D"token comment">// Hallucinated - realloc doesn't exist in thi=
+s context!</span>
+<span class=3D"token keyword keyword-int">int</span><span class=3D"token op=
+erator">*</span> vec <span class=3D"token operator">=3D</span> <span class=
+=3D"token function">malloc</span><span class=3D"token punctuation">(</span>=
+<span class=3D"token number">3</span> <span class=3D"token operator">*</spa=
+n> <span class=3D"token keyword keyword-sizeof">sizeof</span><span class=3D=
+"token punctuation">(</span><span class=3D"token keyword keyword-int">int</=
+span><span class=3D"token punctuation">)</span><span class=3D"token punctua=
+tion">)</span><span class=3D"token punctuation">;</span>
+vec <span class=3D"token operator">=3D</span> <span class=3D"token function=
+">realloc_shrink</span><span class=3D"token punctuation">(</span>vec<span c=
+lass=3D"token punctuation">,</span> <span class=3D"token number">3</span><s=
+pan class=3D"token punctuation">)</span><span class=3D"token punctuation">;=
+</span>  <span class=3D"token comment">// Function doesn't exist!</span>
+</code></pre><p><strong>Correct AST-based output:</strong></p>
+<pre data-role=3D"codeBlock" data-info=3D"c" class=3D"language-c c"><code><=
+span class=3D"token comment">// Correct - systematic translation</span>
+<span class=3D"token keyword keyword-struct">struct</span> <span class=3D"t=
+oken class-name">vector_int</span> <span class=3D"token punctuation">{</spa=
+n>
+    <span class=3D"token keyword keyword-int">int</span><span class=3D"toke=
+n operator">*</span> data<span class=3D"token punctuation">;</span>
+    <span class=3D"token class-name">size_t</span> size<span class=3D"token=
+ punctuation">;</span>
+    <span class=3D"token class-name">size_t</span> capacity<span class=3D"t=
+oken punctuation">;</span>
+<span class=3D"token punctuation">}</span><span class=3D"token punctuation"=
+>;</span>
+<span class=3D"token function">vector_int__shrink_to_fit</span><span class=
+=3D"token punctuation">(</span><span class=3D"token operator">&amp;</span>v=
+ec<span class=3D"token punctuation">)</span><span class=3D"token punctuatio=
+n">;</span>  <span class=3D"token comment">// Calls runtime function</span>
+</code></pre><p><strong>Decision:</strong> AST-based approach provides dete=
+rministic, verifiable, production-quality output.</p>
+<p><strong>Note:</strong> LLMs are powerful tools for assisted development =
+and code exploration, but not suitable for automated production transpilati=
+on where correctness and reproducibility are critical.</p>
+<hr>
+<h2 id=3D"benefits-in-practice">Benefits in Practice </h2>
+<h3 id=3D"1-clean-readable-output">1. Clean, Readable Output </h3>
+<p><strong>C++ Input:</strong></p>
+<pre data-role=3D"codeBlock" data-info=3D"cpp" class=3D"language-cpp cpp"><=
+code><span class=3D"token keyword keyword-class">class</span> <span class=
+=3D"token class-name">Point</span> <span class=3D"token punctuation">{</spa=
+n>
+    <span class=3D"token keyword keyword-int">int</span> x<span class=3D"to=
+ken punctuation">,</span> y<span class=3D"token punctuation">;</span>
+<span class=3D"token keyword keyword-public">public</span><span class=3D"to=
+ken operator">:</span>
+    <span class=3D"token function">Point</span><span class=3D"token punctua=
+tion">(</span><span class=3D"token keyword keyword-int">int</span> x<span c=
+lass=3D"token punctuation">,</span> <span class=3D"token keyword keyword-in=
+t">int</span> y<span class=3D"token punctuation">)</span> <span class=3D"to=
+ken operator">:</span> <span class=3D"token function">x</span><span class=
+=3D"token punctuation">(</span>x<span class=3D"token punctuation">)</span><=
+span class=3D"token punctuation">,</span> <span class=3D"token function">y<=
+/span><span class=3D"token punctuation">(</span>y<span class=3D"token punct=
+uation">)</span> <span class=3D"token punctuation">{</span><span class=3D"t=
+oken punctuation">}</span>
+    <span class=3D"token keyword keyword-int">int</span> <span class=3D"tok=
+en function">getX</span><span class=3D"token punctuation">(</span><span cla=
+ss=3D"token punctuation">)</span> <span class=3D"token keyword keyword-cons=
+t">const</span> <span class=3D"token punctuation">{</span> <span class=3D"t=
+oken keyword keyword-return">return</span> x<span class=3D"token punctuatio=
+n">;</span> <span class=3D"token punctuation">}</span>
+<span class=3D"token punctuation">}</span><span class=3D"token punctuation"=
+>;</span>
+</code></pre><p><strong>Generated C (Actual Output):</strong></p>
+<pre data-role=3D"codeBlock" data-info=3D"c" class=3D"language-c c"><code><=
+span class=3D"token keyword keyword-struct">struct</span> <span class=3D"to=
+ken class-name">Point</span> <span class=3D"token punctuation">{</span>
+    <span class=3D"token keyword keyword-int">int</span> x<span class=3D"to=
+ken punctuation">;</span>
+    <span class=3D"token keyword keyword-int">int</span> y<span class=3D"to=
+ken punctuation">;</span>
+<span class=3D"token punctuation">}</span><span class=3D"token punctuation"=
+>;</span>
+
+<span class=3D"token keyword keyword-void">void</span> <span class=3D"token=
+ function">Point_ctor</span><span class=3D"token punctuation">(</span><span=
+ class=3D"token keyword keyword-struct">struct</span> <span class=3D"token =
+class-name">Point</span> <span class=3D"token operator">*</span>this<span c=
+lass=3D"token punctuation">,</span> <span class=3D"token keyword keyword-in=
+t">int</span> x<span class=3D"token punctuation">,</span> <span class=3D"to=
+ken keyword keyword-int">int</span> y<span class=3D"token punctuation">)</s=
+pan> <span class=3D"token punctuation">{</span>
+    this<span class=3D"token operator">-&gt;</span>x <span class=3D"token o=
+perator">=3D</span> x<span class=3D"token punctuation">;</span>
+    this<span class=3D"token operator">-&gt;</span>y <span class=3D"token o=
+perator">=3D</span> y<span class=3D"token punctuation">;</span>
+<span class=3D"token punctuation">}</span>
+
+<span class=3D"token keyword keyword-int">int</span> <span class=3D"token f=
+unction">Point_getX</span><span class=3D"token punctuation">(</span><span c=
+lass=3D"token keyword keyword-const">const</span> <span class=3D"token keyw=
+ord keyword-struct">struct</span> <span class=3D"token class-name">Point</s=
+pan> <span class=3D"token operator">*</span>this<span class=3D"token punctu=
+ation">)</span> <span class=3D"token punctuation">{</span>
+    <span class=3D"token keyword keyword-return">return</span> this<span cl=
+ass=3D"token operator">-&gt;</span>x<span class=3D"token punctuation">;</sp=
+an>
+<span class=3D"token punctuation">}</span>
+</code></pre><p><strong>Note:</strong> No extra parentheses, correct format=
+ting, human-readable.</p>
+<h3 id=3D"2-debugging-with-line-directives">2. Debugging with #line Directi=
+ves </h3>
+<p>Generated code maps back to original C++ source:</p>
+<pre data-role=3D"codeBlock" data-info=3D"c" class=3D"language-c c"><code><=
+span class=3D"token macro property"><span class=3D"token directive-hash">#<=
+/span><span class=3D"token directive keyword">line</span> <span class=3D"to=
+ken expression"><span class=3D"token number">42</span> </span><span class=
+=3D"token string">"example.cpp"</span></span>
+<span class=3D"token keyword keyword-void">void</span> <span class=3D"token=
+ function">MyClass_method</span><span class=3D"token punctuation">(</span><=
+span class=3D"token keyword keyword-struct">struct</span> <span class=3D"to=
+ken class-name">MyClass</span> <span class=3D"token operator">*</span>this<=
+span class=3D"token punctuation">)</span> <span class=3D"token punctuation"=
+>{</span>
+<span class=3D"token macro property"><span class=3D"token directive-hash">#=
+</span><span class=3D"token directive keyword">line</span> <span class=3D"t=
+oken expression"><span class=3D"token number">43</span> </span><span class=
+=3D"token string">"example.cpp"</span></span>
+    <span class=3D"token keyword keyword-int">int</span> x <span class=3D"t=
+oken operator">=3D</span> this<span class=3D"token operator">-&gt;</span>va=
+lue<span class=3D"token punctuation">;</span>
+<span class=3D"token macro property"><span class=3D"token directive-hash">#=
+</span><span class=3D"token directive keyword">line</span> <span class=3D"t=
+oken expression"><span class=3D"token number">44</span> </span><span class=
+=3D"token string">"example.cpp"</span></span>
+    <span class=3D"token keyword keyword-return">return</span> <span class=
+=3D"token function">process</span><span class=3D"token punctuation">(</span=
+>x<span class=3D"token punctuation">)</span><span class=3D"token punctuatio=
+n">;</span>
+<span class=3D"token punctuation">}</span>
+</code></pre><p>Compiler errors reference <strong>original C++ line numbers=
+</strong>, not generated C.</p>
+<h3 id=3D"3-zero-maintenance-for-code-generation">3. Zero Maintenance for C=
+ode Generation </h3>
+<p>Clang's printer is maintained by LLVM community:</p>
+<ul>
+<li>=E2=9C=85 Automatic bug fixes</li>
+<li>=E2=9C=85 New C standard features</li>
+<li>=E2=9C=85 Performance improvements</li>
+<li>=E2=9C=85 Edge case handling</li>
+</ul>
+<p><strong>We never touch the printer code.</strong></p>
+<h3 id=3D"4-formal-verification">4. Formal Verification </h3>
+<p>Frama-C can verify:</p>
+<pre data-role=3D"codeBlock" data-info=3D"c" class=3D"language-c c"><code><=
+span class=3D"token comment">/*@ requires this !=3D NULL;
+  @ ensures this-&gt;x =3D=3D x &amp;&amp; this-&gt;y =3D=3D y;
+  @*/</span>
+<span class=3D"token keyword keyword-void">void</span> <span class=3D"token=
+ function">Point_ctor</span><span class=3D"token punctuation">(</span><span=
+ class=3D"token keyword keyword-struct">struct</span> <span class=3D"token =
+class-name">Point</span> <span class=3D"token operator">*</span>this<span c=
+lass=3D"token punctuation">,</span> <span class=3D"token keyword keyword-in=
+t">int</span> x<span class=3D"token punctuation">,</span> <span class=3D"to=
+ken keyword keyword-int">int</span> y<span class=3D"token punctuation">)</s=
+pan><span class=3D"token punctuation">;</span>
+</code></pre><p>Runtime library verified ONCE, reused everywhere.</p>
+<hr>
+<h2 id=3D"the-bottom-line">The Bottom Line </h2>
+<h3 id=3D"why-3-stages">Why 3 Stages? </h3>
+<ol>
+<li><strong>Stage 1 (Clang Parse):</strong> Let Clang handle the hard part =
+(C++ parsing)</li>
+<li><strong>Stage 2 (Translation):</strong> We control C representation (ou=
+r expertise)</li>
+<li><strong>Stage 3 (Clang Print):</strong> Let Clang handle the hard part =
+(text generation)</li>
+</ol>
+<h3 id=3D"why-our-novel-intermediate-c-ast-approach">Why Our Novel Intermed=
+iate C AST Approach? </h3>
+<p><strong>What's different from other transpilers:</strong></p>
+<ul>
+<li>Most C++ transpilers emit text directly (fragile, buggy)</li>
+<li>Some use LLVM IR (unreadable, loses structure)</li>
+<li>We build a <strong>separate, complete C AST</strong> - to our knowledge=
+, first of its kind</li>
+</ul>
+<p><strong>Why this works:</strong></p>
+<p><strong>Pre-AI Era (2015-2023):</strong> We traded implementation comple=
+xity for output quality:</p>
+<ul>
+<li>+40% more implementation code (verbose Clang API)</li>
+<li>-80% generated code size</li>
+<li>3-5x cleaner output</li>
+<li>5-10x easier verification</li>
+</ul>
+<p><strong>AI Era (2024+):</strong> We get the best of both worlds:</p>
+<ul>
+<li>=E2=9C=85 AI handles verbose boilerplate =E2=86=92 implementation effor=
+t comparable to direct emission</li>
+<li>=E2=9C=85 Still get 80% cleaner output</li>
+<li>=E2=9C=85 Still get 5-10x easier verification</li>
+<li>=E2=9C=85 Zero maintenance burden (Clang printer)</li>
+</ul>
+<p><strong>For a transpiler, output quality is everything. With AI assistan=
+ce, we no longer sacrifice developer productivity to achieve it.</strong></=
+p>
+<h3 id=3D"why-this-matters">Why This Matters </h3>
+<p>This architecture enables:</p>
+<ul>
+<li>=E2=9C=85 Clean C code suitable for code review</li>
+<li>=E2=9C=85 Formal verification with Frama-C</li>
+<li>=E2=9C=85 Debugging with original source locations</li>
+<li>=E2=9C=85 Safety-critical embedded systems use</li>
+<li>=E2=9C=85 Long-term maintainability</li>
+</ul>
+<p><strong>Result:</strong> A production-quality transpiler, not a research=
+ prototype.</p>
+<h3 id=3D"why-we-believe-this-is-novel">Why We Believe This is Novel </h3>
+<p><strong>Research conducted:</strong></p>
+<ul>
+<li>Analyzed historical transpilers (Cfront, Comeau C++)</li>
+<li>Studied modern tools (Emscripten, emmtrix eCPP2C)</li>
+<li>Examined Clang tooling (TreeTransform, clang-tidy, clang-refactor)</li>
+<li>Reviewed academic literature on source-to-source translation</li>
+</ul>
+<p><strong>Findings:</strong></p>
+<ul>
+<li><strong>Cfront (1983-1993):</strong> Likely emitted text directly, no p=
+ublic AST-building documentation</li>
+<li><strong>Emscripten:</strong> Uses LLVM IR =E2=86=92 asm.js/WASM path, n=
+ot C AST</li>
+<li><strong>emmtrix eCPP2C:</strong> Commercial tool, no public architectur=
+e details, likely proprietary approach</li>
+<li><strong>Clang TreeTransform:</strong> Modifies AST in-place, doesn't cr=
+eate separate C AST</li>
+<li><strong>Academic tools:</strong> Focus on analysis/refactoring, not com=
+plete transpilation</li>
+</ul>
+<p><strong>Our contribution:</strong></p>
+<ul>
+<li>First documented approach to build <strong>separate C AST from C++ AST<=
+/strong></li>
+<li>Systematically use Clang's C node types (not C++ nodes) for output</li>
+<li>Leverage printer as zero-maintenance backend</li>
+<li>Optimize for formal verification (Frama-C)</li>
+</ul>
+<p><strong>Caveat:</strong> Other proprietary transpilers may use similar t=
+echniques but haven't published their architectures. If you know of prior a=
+rt, please let us know!</p>
+<hr>
+<h2 id=3D"meta-this-project-validates-ai-assisted-development">Meta: This P=
+roject Validates AI-Assisted Development </h2>
+<p><strong>This transpiler was built with AI assistance (Claude Code),</str=
+ong> validating our architectural choice:</p>
+<p><strong>Pre-AI Concern (2015-2023):</strong></p>
+<ul>
+<li>"Intermediate AST requires too much boilerplate"</li>
+<li>"Clang API is too verbose for manual coding"</li>
+<li>"Direct text emission is faster to implement"</li>
+</ul>
+<p><strong>AI-Era Reality (2024+):</strong></p>
+<ul>
+<li>=E2=9C=85 <strong>CNodeBuilder helpers</strong>: AI generated 500+ line=
+s in minutes</li>
+<li>=E2=9C=85 <strong>Visitor patterns</strong>: AI scaffolded RecursiveAST=
+Visitor implementations</li>
+<li>=E2=9C=85 <strong>AST node creation</strong>: AI handles 50-line Clang =
+API calls automatically</li>
+<li>=E2=9C=85 <strong>Documentation</strong>: AI helped write this comprehe=
+nsive architecture doc</li>
+<li>=E2=9C=85 <strong>Tests</strong>: AI assists with test generation for e=
+dge cases</li>
+</ul>
+<p><strong>Result:</strong> We implemented the "high-effort" approach in th=
+e time it would have taken to do "quick" direct emission, but got productio=
+n-quality output.</p>
+<p><strong>Lesson:</strong> In 2025, <strong>architectural decisions should=
+ prioritize output quality over implementation simplicity</strong>, because=
+ AI handles implementation complexity.</p>
+<hr>
+<h2 id=3D"further-reading">Further Reading </h2>
+<ul>
+<li><strong>Implementation Details:</strong> <a href=3D"file:///Users/alexa=
+nderfedin/Projects/hapyy/hupyy-cpp-to-c/docs/architecture/01-pipeline-archi=
+tecture.md">docs/architecture/01-pipeline-architecture.md</a></li>
+<li><strong>Design Decision Rationale:</strong> <a href=3D"file:///Users/al=
+exanderfedin/Projects/hapyy/hupyy-cpp-to-c/docs/architecture/architecture-d=
+ecision.md">docs/architecture/architecture-decision.md</a></li>
+<li><strong>Prototype Comparison:</strong> <a href=3D"file:///Users/alexand=
+erfedin/Projects/hapyy/hupyy-cpp-to-c/docs/architecture/prototype-compariso=
+n.md">docs/architecture/prototype-comparison.md</a></li>
+<li><strong>Complete Architecture:</strong> <a href=3D"file:///Users/alexan=
+derfedin/Projects/hapyy/hupyy-cpp-to-c/docs/ARCHITECTURE.md">docs/ARCHITECT=
+URE.md</a></li>
+</ul>
+<hr>
+<h2 id=3D"visual-summary">Visual Summary </h2>
+<div class=3D"mermaid" data-processed=3D"true"><svg id=3D"mermaid-176681071=
+4940" width=3D"100%" xmlns=3D"http://www.w3.org/2000/svg" xmlns:xlink=3D"ht=
+tp://www.w3.org/1999/xlink" class=3D"flowchart" style=3D"max-width: 373.953=
+125px;" viewBox=3D"0 0 373.953125 1398" role=3D"graphics-document document"=
+ aria-roledescription=3D"flowchart-v2"><style>#mermaid-1766810714940{font-f=
+amily:"trebuchet ms",verdana,arial,sans-serif;font-size:16px;fill:#333;}@ke=
+yframes edge-animation-frame{from{stroke-dashoffset:0;}}@keyframes dash{to{=
+stroke-dashoffset:0;}}#mermaid-1766810714940 .edge-animation-slow{stroke-da=
+sharray:9,5!important;stroke-dashoffset:900;animation:dash 50s linear infin=
+ite;stroke-linecap:round;}#mermaid-1766810714940 .edge-animation-fast{strok=
+e-dasharray:9,5!important;stroke-dashoffset:900;animation:dash 20s linear i=
+nfinite;stroke-linecap:round;}#mermaid-1766810714940 .error-icon{fill:#5522=
+22;}#mermaid-1766810714940 .error-text{fill:#552222;stroke:#552222;}#mermai=
+d-1766810714940 .edge-thickness-normal{stroke-width:1px;}#mermaid-176681071=
+4940 .edge-thickness-thick{stroke-width:3.5px;}#mermaid-1766810714940 .edge=
+-pattern-solid{stroke-dasharray:0;}#mermaid-1766810714940 .edge-thickness-i=
+nvisible{stroke-width:0;fill:none;}#mermaid-1766810714940 .edge-pattern-das=
+hed{stroke-dasharray:3;}#mermaid-1766810714940 .edge-pattern-dotted{stroke-=
+dasharray:2;}#mermaid-1766810714940 .marker{fill:#333333;stroke:#333333;}#m=
+ermaid-1766810714940 .marker.cross{stroke:#333333;}#mermaid-1766810714940 s=
+vg{font-family:"trebuchet ms",verdana,arial,sans-serif;font-size:16px;}#mer=
+maid-1766810714940 p{margin:0;}#mermaid-1766810714940 .label{font-family:"t=
+rebuchet ms",verdana,arial,sans-serif;color:#333;}#mermaid-1766810714940 .c=
+luster-label text{fill:#333;}#mermaid-1766810714940 .cluster-label span{col=
+or:#333;}#mermaid-1766810714940 .cluster-label span p{background-color:tran=
+sparent;}#mermaid-1766810714940 .label text,#mermaid-1766810714940 span{fil=
+l:#333;color:#333;}#mermaid-1766810714940 .node rect,#mermaid-1766810714940=
+ .node circle,#mermaid-1766810714940 .node ellipse,#mermaid-1766810714940 .=
+node polygon,#mermaid-1766810714940 .node path{fill:#ECECFF;stroke:#9370DB;=
+stroke-width:1px;}#mermaid-1766810714940 .rough-node .label text,#mermaid-1=
+766810714940 .node .label text,#mermaid-1766810714940 .image-shape .label,#=
+mermaid-1766810714940 .icon-shape .label{text-anchor:middle;}#mermaid-17668=
+10714940 .node .katex path{fill:#000;stroke:#000;stroke-width:1px;}#mermaid=
+-1766810714940 .rough-node .label,#mermaid-1766810714940 .node .label,#merm=
+aid-1766810714940 .image-shape .label,#mermaid-1766810714940 .icon-shape .l=
+abel{text-align:center;}#mermaid-1766810714940 .node.clickable{cursor:point=
+er;}#mermaid-1766810714940 .root .anchor path{fill:#333333!important;stroke=
+-width:0;stroke:#333333;}#mermaid-1766810714940 .arrowheadPath{fill:#333333=
+;}#mermaid-1766810714940 .edgePath .path{stroke:#333333;stroke-width:2.0px;=
+}#mermaid-1766810714940 .flowchart-link{stroke:#333333;fill:none;}#mermaid-=
+1766810714940 .edgeLabel{background-color:rgba(232,232,232, 0.8);text-align=
+:center;}#mermaid-1766810714940 .edgeLabel p{background-color:rgba(232,232,=
+232, 0.8);}#mermaid-1766810714940 .edgeLabel rect{opacity:0.5;background-co=
+lor:rgba(232,232,232, 0.8);fill:rgba(232,232,232, 0.8);}#mermaid-1766810714=
+940 .labelBkg{background-color:rgba(232, 232, 232, 0.5);}#mermaid-176681071=
+4940 .cluster rect{fill:#ffffde;stroke:#aaaa33;stroke-width:1px;}#mermaid-1=
+766810714940 .cluster text{fill:#333;}#mermaid-1766810714940 .cluster span{=
+color:#333;}#mermaid-1766810714940 div.mermaidTooltip{position:absolute;tex=
+t-align:center;max-width:200px;padding:2px;font-family:"trebuchet ms",verda=
+na,arial,sans-serif;font-size:12px;background:hsl(80, 100%, 96.2745098039%)=
+;border:1px solid #aaaa33;border-radius:2px;pointer-events:none;z-index:100=
+;}#mermaid-1766810714940 .flowchartTitleText{text-anchor:middle;font-size:1=
+8px;fill:#333;}#mermaid-1766810714940 rect.text{fill:none;stroke-width:0;}#=
+mermaid-1766810714940 .icon-shape,#mermaid-1766810714940 .image-shape{backg=
+round-color:rgba(232,232,232, 0.8);text-align:center;}#mermaid-176681071494=
+0 .icon-shape p,#mermaid-1766810714940 .image-shape p{background-color:rgba=
+(232,232,232, 0.8);padding:2px;}#mermaid-1766810714940 .icon-shape rect,#me=
+rmaid-1766810714940 .image-shape rect{opacity:0.5;background-color:rgba(232=
+,232,232, 0.8);fill:rgba(232,232,232, 0.8);}#mermaid-1766810714940 .label-i=
+con{display:inline-block;height:1em;overflow:visible;vertical-align:-0.125e=
+m;}#mermaid-1766810714940 .node .label-icon path{fill:currentColor;stroke:r=
+evert;stroke-width:revert;}#mermaid-1766810714940 :root{--mermaid-font-fami=
+ly:"trebuchet ms",verdana,arial,sans-serif;}</style><g><marker id=3D"mermai=
+d-1766810714940_flowchart-v2-pointEnd" class=3D"marker flowchart-v2" viewBo=
+x=3D"0 0 10 10" refX=3D"5" refY=3D"5" markerUnits=3D"userSpaceOnUse" marker=
+Width=3D"8" markerHeight=3D"8" orient=3D"auto"><path d=3D"M 0 0 L 10 5 L 0 =
+10 z" class=3D"arrowMarkerPath" style=3D"stroke-width: 1; stroke-dasharray:=
+ 1, 0;"></path></marker><marker id=3D"mermaid-1766810714940_flowchart-v2-po=
+intStart" class=3D"marker flowchart-v2" viewBox=3D"0 0 10 10" refX=3D"4.5" =
+refY=3D"5" markerUnits=3D"userSpaceOnUse" markerWidth=3D"8" markerHeight=3D=
+"8" orient=3D"auto"><path d=3D"M 0 5 L 10 10 L 10 0 z" class=3D"arrowMarker=
+Path" style=3D"stroke-width: 1; stroke-dasharray: 1, 0;"></path></marker><m=
+arker id=3D"mermaid-1766810714940_flowchart-v2-circleEnd" class=3D"marker f=
+lowchart-v2" viewBox=3D"0 0 10 10" refX=3D"11" refY=3D"5" markerUnits=3D"us=
+erSpaceOnUse" markerWidth=3D"11" markerHeight=3D"11" orient=3D"auto"><circl=
+e cx=3D"5" cy=3D"5" r=3D"5" class=3D"arrowMarkerPath" style=3D"stroke-width=
+: 1; stroke-dasharray: 1, 0;"></circle></marker><marker id=3D"mermaid-17668=
+10714940_flowchart-v2-circleStart" class=3D"marker flowchart-v2" viewBox=3D=
+"0 0 10 10" refX=3D"-1" refY=3D"5" markerUnits=3D"userSpaceOnUse" markerWid=
+th=3D"11" markerHeight=3D"11" orient=3D"auto"><circle cx=3D"5" cy=3D"5" r=
+=3D"5" class=3D"arrowMarkerPath" style=3D"stroke-width: 1; stroke-dasharray=
+: 1, 0;"></circle></marker><marker id=3D"mermaid-1766810714940_flowchart-v2=
+-crossEnd" class=3D"marker cross flowchart-v2" viewBox=3D"0 0 11 11" refX=
+=3D"12" refY=3D"5.2" markerUnits=3D"userSpaceOnUse" markerWidth=3D"11" mark=
+erHeight=3D"11" orient=3D"auto"><path d=3D"M 1,1 l 9,9 M 10,1 l -9,9" class=
+=3D"arrowMarkerPath" style=3D"stroke-width: 2; stroke-dasharray: 1, 0;"></p=
+ath></marker><marker id=3D"mermaid-1766810714940_flowchart-v2-crossStart" c=
+lass=3D"marker cross flowchart-v2" viewBox=3D"0 0 11 11" refX=3D"-1" refY=
+=3D"5.2" markerUnits=3D"userSpaceOnUse" markerWidth=3D"11" markerHeight=3D"=
+11" orient=3D"auto"><path d=3D"M 1,1 l 9,9 M 10,1 l -9,9" class=3D"arrowMar=
+kerPath" style=3D"stroke-width: 2; stroke-dasharray: 1, 0;"></path></marker=
+><g class=3D"root"><g class=3D"clusters"></g><g class=3D"edgePaths"><path d=
+=3D"M138,110L138,114.167C138,118.333,138,126.667,138,134.333C138,142,138,14=
+9,138,152.5L138,156" id=3D"L_Goal_Challenge_0" class=3D"edge-thickness-norm=
+al edge-pattern-solid edge-thickness-normal edge-pattern-solid flowchart-li=
+nk" style=3D";" data-edge=3D"true" data-et=3D"edge" data-id=3D"L_Goal_Chall=
+enge_0" data-points=3D"W3sieCI6MTM4LCJ5IjoxMTB9LHsieCI6MTM4LCJ5IjoxMzV9LHsi=
+eCI6MTM4LCJ5IjoxNjB9XQ=3D=3D" marker-end=3D"url(#mermaid-1766810714940_flow=
+chart-v2-pointEnd)"></path><path d=3D"M138,310L138,314.167C138,318.333,138,=
+326.667,138,334.333C138,342,138,349,138,352.5L138,356" id=3D"L_Challenge_So=
+lution_0" class=3D"edge-thickness-normal edge-pattern-solid edge-thickness-=
+normal edge-pattern-solid flowchart-link" style=3D";" data-edge=3D"true" da=
+ta-et=3D"edge" data-id=3D"L_Challenge_Solution_0" data-points=3D"W3sieCI6MT=
+M4LCJ5IjozMTB9LHsieCI6MTM4LCJ5IjozMzV9LHsieCI6MTM4LCJ5IjozNjB9XQ=3D=3D" mar=
+ker-end=3D"url(#mermaid-1766810714940_flowchart-v2-pointEnd)"></path><path =
+d=3D"M138,486L138,490.167C138,494.333,138,502.667,138,510.333C138,518,138,5=
+25,138,528.5L138,532" id=3D"L_Solution_Architecture_0" class=3D"edge-thickn=
+ess-normal edge-pattern-solid edge-thickness-normal edge-pattern-solid flow=
+chart-link" style=3D";" data-edge=3D"true" data-et=3D"edge" data-id=3D"L_So=
+lution_Architecture_0" data-points=3D"W3sieCI6MTM4LCJ5Ijo0ODZ9LHsieCI6MTM4L=
+CJ5Ijo1MTF9LHsieCI6MTM4LCJ5Ijo1MzZ9XQ=3D=3D" marker-end=3D"url(#mermaid-176=
+6810714940_flowchart-v2-pointEnd)"></path><path d=3D"M218.119,614L226.678,6=
+18.167C235.238,622.333,252.357,630.667,260.917,638.333C269.477,646,269.477,=
+653,269.477,656.5L269.477,660" id=3D"L_Architecture_Stage1_0" class=3D"edge=
+-thickness-normal edge-pattern-solid edge-thickness-normal edge-pattern-sol=
+id flowchart-link" style=3D";" data-edge=3D"true" data-et=3D"edge" data-id=
+=3D"L_Architecture_Stage1_0" data-points=3D"W3sieCI6MjE4LjExODUzMDI3MzQzNzU=
+sInkiOjYxNH0seyJ4IjoyNjkuNDc2NTYyNSwieSI6NjM5fSx7IngiOjI2OS40NzY1NjI1LCJ5Ij=
+o2NjR9XQ=3D=3D" marker-end=3D"url(#mermaid-1766810714940_flowchart-v2-point=
+End)"></path><path d=3D"M138,614L138,618.167C138,622.333,138,630.667,138,64=
+9.5C138,668.333,138,697.667,138,729C138,760.333,138,793.667,141.688,815.943=
+C145.375,838.219,152.751,849.438,156.438,855.048L160.126,860.658" id=3D"L_A=
+rchitecture_Stage2_0" class=3D"edge-thickness-normal edge-pattern-solid edg=
+e-thickness-normal edge-pattern-solid flowchart-link" style=3D";" data-edge=
+=3D"true" data-et=3D"edge" data-id=3D"L_Architecture_Stage2_0" data-points=
+=3D"W3sieCI6MTM4LCJ5Ijo2MTR9LHsieCI6MTM4LCJ5Ijo2Mzl9LHsieCI6MTM4LCJ5Ijo3Mjd=
+9LHsieCI6MTM4LCJ5Ijo4Mjd9LHsieCI6MTYyLjMyMzE2NDA2MjQ5OTk4LCJ5Ijo4NjR9XQ=3D=
+=3D" marker-end=3D"url(#mermaid-1766810714940_flowchart-v2-pointEnd)"></pat=
+h><path d=3D"M92.542,614L87.685,618.167C82.829,622.333,73.116,630.667,68.25=
+9,649.5C63.402,668.333,63.402,697.667,63.402,729C63.402,760.333,63.402,793.=
+667,63.402,827C63.402,860.333,63.402,893.667,63.402,927C63.402,960.333,63.4=
+02,993.667,67.67,1015.969C71.938,1038.27,80.474,1049.541,84.742,1055.176L89=
+.01,1060.811" id=3D"L_Architecture_Stage3_0" class=3D"edge-thickness-normal=
+ edge-pattern-solid edge-thickness-normal edge-pattern-solid flowchart-link=
+" style=3D";" data-edge=3D"true" data-et=3D"edge" data-id=3D"L_Architecture=
+_Stage3_0" data-points=3D"W3sieCI6OTIuNTQyMDUzMjIyNjU2MjUsInkiOjYxNH0seyJ4I=
+jo2My40MDIzNDM3NSwieSI6NjM5fSx7IngiOjYzLjQwMjM0Mzc1LCJ5Ijo3Mjd9LHsieCI6NjMu=
+NDAyMzQzNzUsInkiOjgyN30seyJ4Ijo2My40MDIzNDM3NSwieSI6OTI3fSx7IngiOjYzLjQwMjM=
+0Mzc1LCJ5IjoxMDI3fSx7IngiOjkxLjQyNTUwNzgxMjUsInkiOjEwNjR9XQ=3D=3D" marker-e=
+nd=3D"url(#mermaid-1766810714940_flowchart-v2-pointEnd)"></path><path d=3D"=
+M269.477,790L269.477,796.167C269.477,802.333,269.477,814.667,265.789,826.44=
+3C262.101,838.219,254.726,849.438,251.038,855.048L247.351,860.658" id=3D"L_=
+Stage1_Stage2_0" class=3D"edge-thickness-normal edge-pattern-solid edge-thi=
+ckness-normal edge-pattern-solid flowchart-link" style=3D";" data-edge=3D"t=
+rue" data-et=3D"edge" data-id=3D"L_Stage1_Stage2_0" data-points=3D"W3sieCI6=
+MjY5LjQ3NjU2MjUsInkiOjc5MH0seyJ4IjoyNjkuNDc2NTYyNSwieSI6ODI3fSx7IngiOjI0NS4=
+xNTMzOTg0Mzc1MDAwMiwieSI6ODY0fV0=3D" marker-end=3D"url(#mermaid-17668107149=
+40_flowchart-v2-pointEnd)"></path><path d=3D"M203.738,990L203.738,996.167C2=
+03.738,1002.333,203.738,1014.667,200.116,1026.44C196.495,1038.213,189.251,1=
+049.427,185.629,1055.033L182.008,1060.64" id=3D"L_Stage2_Stage3_0" class=3D=
+"edge-thickness-normal edge-pattern-solid edge-thickness-normal edge-patter=
+n-solid flowchart-link" style=3D";" data-edge=3D"true" data-et=3D"edge" dat=
+a-id=3D"L_Stage2_Stage3_0" data-points=3D"W3sieCI6MjAzLjczODI4MTI1LCJ5Ijo5O=
+TB9LHsieCI6MjAzLjczODI4MTI1LCJ5IjoxMDI3fSx7IngiOjE3OS44MzcxNDg0Mzc1LCJ5Ijox=
+MDY0fV0=3D" marker-end=3D"url(#mermaid-1766810714940_flowchart-v2-pointEnd)=
+"></path><path d=3D"M139.141,1190L139.141,1194.167C139.141,1198.333,139.141=
+,1206.667,139.141,1214.333C139.141,1222,139.141,1229,139.141,1232.5L139.141=
+,1236" id=3D"L_Stage3_Result_0" class=3D"edge-thickness-normal edge-pattern=
+-solid edge-thickness-normal edge-pattern-solid flowchart-link" style=3D";"=
+ data-edge=3D"true" data-et=3D"edge" data-id=3D"L_Stage3_Result_0" data-poi=
+nts=3D"W3sieCI6MTM5LjE0MDYyNSwieSI6MTE5MH0seyJ4IjoxMzkuMTQwNjI1LCJ5IjoxMjE1=
+fSx7IngiOjEzOS4xNDA2MjUsInkiOjEyNDB9XQ=3D=3D" marker-end=3D"url(#mermaid-17=
+66810714940_flowchart-v2-pointEnd)"></path></g><g class=3D"edgeLabels"><g c=
+lass=3D"edgeLabel"><g class=3D"label" data-id=3D"L_Goal_Challenge_0" transf=
+orm=3D"translate(0, 0)"><foreignObject width=3D"0" height=3D"0"><div xmlns=
+=3D"http://www.w3.org/1999/xhtml" class=3D"labelBkg" style=3D"display: tabl=
+e-cell; white-space: nowrap; line-height: 1.5; max-width: 200px; text-align=
+: center;"><span class=3D"edgeLabel"></span></div></foreignObject></g></g><=
+g class=3D"edgeLabel"><g class=3D"label" data-id=3D"L_Challenge_Solution_0"=
+ transform=3D"translate(0, 0)"><foreignObject width=3D"0" height=3D"0"><div=
+ xmlns=3D"http://www.w3.org/1999/xhtml" class=3D"labelBkg" style=3D"display=
+: table-cell; white-space: nowrap; line-height: 1.5; max-width: 200px; text=
+-align: center;"><span class=3D"edgeLabel"></span></div></foreignObject></g=
+></g><g class=3D"edgeLabel"><g class=3D"label" data-id=3D"L_Solution_Archit=
+ecture_0" transform=3D"translate(0, 0)"><foreignObject width=3D"0" height=
+=3D"0"><div xmlns=3D"http://www.w3.org/1999/xhtml" class=3D"labelBkg" style=
+=3D"display: table-cell; white-space: nowrap; line-height: 1.5; max-width: =
+200px; text-align: center;"><span class=3D"edgeLabel"></span></div></foreig=
+nObject></g></g><g class=3D"edgeLabel"><g class=3D"label" data-id=3D"L_Arch=
+itecture_Stage1_0" transform=3D"translate(0, 0)"><foreignObject width=3D"0"=
+ height=3D"0"><div xmlns=3D"http://www.w3.org/1999/xhtml" class=3D"labelBkg=
+" style=3D"display: table-cell; white-space: nowrap; line-height: 1.5; max-=
+width: 200px; text-align: center;"><span class=3D"edgeLabel"></span></div><=
+/foreignObject></g></g><g class=3D"edgeLabel"><g class=3D"label" data-id=3D=
+"L_Architecture_Stage2_0" transform=3D"translate(0, 0)"><foreignObject widt=
+h=3D"0" height=3D"0"><div xmlns=3D"http://www.w3.org/1999/xhtml" class=3D"l=
+abelBkg" style=3D"display: table-cell; white-space: nowrap; line-height: 1.=
+5; max-width: 200px; text-align: center;"><span class=3D"edgeLabel"></span>=
+</div></foreignObject></g></g><g class=3D"edgeLabel"><g class=3D"label" dat=
+a-id=3D"L_Architecture_Stage3_0" transform=3D"translate(0, 0)"><foreignObje=
+ct width=3D"0" height=3D"0"><div xmlns=3D"http://www.w3.org/1999/xhtml" cla=
+ss=3D"labelBkg" style=3D"display: table-cell; white-space: nowrap; line-hei=
+ght: 1.5; max-width: 200px; text-align: center;"><span class=3D"edgeLabel">=
+</span></div></foreignObject></g></g><g class=3D"edgeLabel" transform=3D"tr=
+anslate(269.4765625, 827)"><g class=3D"label" data-id=3D"L_Stage1_Stage2_0"=
+ transform=3D"translate(-28.35546875, -12)"><foreignObject width=3D"56.7109=
+375" height=3D"24"><div xmlns=3D"http://www.w3.org/1999/xhtml" class=3D"lab=
+elBkg" style=3D"display: table-cell; white-space: nowrap; line-height: 1.5;=
+ max-width: 200px; text-align: center;"><span class=3D"edgeLabel"><p>C++ AS=
+T</p></span></div></foreignObject></g></g><g class=3D"edgeLabel" transform=
+=3D"translate(203.73828125, 1027)"><g class=3D"label" data-id=3D"L_Stage2_S=
+tage3_0" transform=3D"translate(-19.96484375, -12)"><foreignObject width=3D=
+"39.9296875" height=3D"24"><div xmlns=3D"http://www.w3.org/1999/xhtml" clas=
+s=3D"labelBkg" style=3D"display: table-cell; white-space: nowrap; line-heig=
+ht: 1.5; max-width: 200px; text-align: center;"><span class=3D"edgeLabel"><=
+p>C AST</p></span></div></foreignObject></g></g><g class=3D"edgeLabel"><g c=
+lass=3D"label" data-id=3D"L_Stage3_Result_0" transform=3D"translate(0, 0)">=
+<foreignObject width=3D"0" height=3D"0"><div xmlns=3D"http://www.w3.org/199=
+9/xhtml" class=3D"labelBkg" style=3D"display: table-cell; white-space: nowr=
+ap; line-height: 1.5; max-width: 200px; text-align: center;"><span class=3D=
+"edgeLabel"></span></div></foreignObject></g></g></g><g class=3D"nodes"><g =
+class=3D"node default" id=3D"flowchart-Goal-0" transform=3D"translate(138, =
+59)"><rect class=3D"basic label-container" style=3D"fill:#e1f5ff !important=
+" x=3D"-117.4921875" y=3D"-51" width=3D"234.984375" height=3D"102"></rect><=
+g class=3D"label" style=3D"" transform=3D"translate(-87.4921875, -36)"><rec=
+t></rect><foreignObject width=3D"174.984375" height=3D"72"><div xmlns=3D"ht=
+tp://www.w3.org/1999/xhtml" style=3D"display: table-cell; white-space: nowr=
+ap; line-height: 1.5; max-width: 200px; text-align: center;"><span class=3D=
+"nodeLabel"><p>=F0=9F=8E=AF GOAL<br>Clean, Verifiable C Code<br>from Modern=
+ C++</p></span></div></foreignObject></g></g><g class=3D"node default" id=
+=3D"flowchart-Challenge-1" transform=3D"translate(138, 235)"><rect class=3D=
+"basic label-container" style=3D"fill:#ffe1e1 !important" x=3D"-130" y=3D"-=
+75" width=3D"260" height=3D"150"></rect><g class=3D"label" style=3D"" trans=
+form=3D"translate(-100, -60)"><rect></rect><foreignObject width=3D"200" hei=
+ght=3D"120"><div xmlns=3D"http://www.w3.org/1999/xhtml" style=3D"display: t=
+able; white-space: break-spaces; line-height: 1.5; max-width: 200px; text-a=
+lign: center; width: 200px;"><span class=3D"nodeLabel"><p>=E2=9A=A0=EF=B8=
+=8F CHALLENGE<br>Direct text emission =E2=86=92 messy output<br>LLVM IR =E2=
+=86=92 loses structure<br>LLM =E2=86=92 hallucinations</p></span></div></fo=
+reignObject></g></g><g class=3D"node default" id=3D"flowchart-Solution-2" t=
+ransform=3D"translate(138, 423)"><rect class=3D"basic label-container" styl=
+e=3D"fill:#e1ffe1 !important" x=3D"-130" y=3D"-63" width=3D"260" height=3D"=
+126"></rect><g class=3D"label" style=3D"" transform=3D"translate(-100, -48)=
+"><rect></rect><foreignObject width=3D"200" height=3D"96"><div xmlns=3D"htt=
+p://www.w3.org/1999/xhtml" style=3D"display: table; white-space: break-spac=
+es; line-height: 1.5; max-width: 200px; text-align: center; width: 200px;">=
+<span class=3D"nodeLabel"><p>=F0=9F=92=A1 SOLUTION<br>Build intermediate C =
+AST<br>Use Clang's battle-tested printer</p></span></div></foreignObject></=
+g></g><g class=3D"node default" id=3D"flowchart-Architecture-3" transform=
+=3D"translate(138, 575)"><rect class=3D"basic label-container" style=3D"fil=
+l:#fff3e0 !important" x=3D"-130" y=3D"-39" width=3D"260" height=3D"78"></re=
+ct><g class=3D"label" style=3D"" transform=3D"translate(-100, -24)"><rect><=
+/rect><foreignObject width=3D"200" height=3D"48"><div xmlns=3D"http://www.w=
+3.org/1999/xhtml" style=3D"display: table; white-space: break-spaces; line-=
+height: 1.5; max-width: 200px; text-align: center; width: 200px;"><span cla=
+ss=3D"nodeLabel"><p>3-Stage Pipeline Architecture</p></span></div></foreign=
+Object></g></g><g class=3D"node default" id=3D"flowchart-Stage1-4" transfor=
+m=3D"translate(269.4765625, 727)"><rect class=3D"basic label-container" sty=
+le=3D"fill:#e1f5ff !important" x=3D"-96.4765625" y=3D"-63" width=3D"192.953=
+125" height=3D"126"></rect><g class=3D"label" style=3D"" transform=3D"trans=
+late(-66.4765625, -48)"><rect></rect><foreignObject width=3D"132.953125" he=
+ight=3D"96"><div xmlns=3D"http://www.w3.org/1999/xhtml" style=3D"display: t=
+able-cell; white-space: nowrap; line-height: 1.5; max-width: 200px; text-al=
+ign: center;"><span class=3D"nodeLabel"><p>Stage 1: Parse C++<br>=E2=94=80=
+=E2=94=80=E2=94=80=E2=94=80=E2=94=80=E2=94=80=E2=94=80=E2=94=80=E2=94=80=E2=
+=94=80=E2=94=80<br>Clang Frontend<br><i>(Clang's expertise)</i></p></span><=
+/div></foreignObject></g></g><g class=3D"node default" id=3D"flowchart-Stag=
+e2-5" transform=3D"translate(203.73828125, 927)"><rect class=3D"basic label=
+-container" style=3D"fill:#fff3e0 !important" x=3D"-94.1953125" y=3D"-63" w=
+idth=3D"188.390625" height=3D"126"></rect><g class=3D"label" style=3D"" tra=
+nsform=3D"translate(-64.1953125, -48)"><rect></rect><foreignObject width=3D=
+"128.390625" height=3D"96"><div xmlns=3D"http://www.w3.org/1999/xhtml" styl=
+e=3D"display: table-cell; white-space: nowrap; line-height: 1.5; max-width:=
+ 200px; text-align: center;"><span class=3D"nodeLabel"><p>Stage 2: Translat=
+e<br>=E2=94=80=E2=94=80=E2=94=80=E2=94=80=E2=94=80=E2=94=80=E2=94=80=E2=94=
+=80=E2=94=80=E2=94=80=E2=94=80<br>C++ AST =E2=86=92 C AST<br><i>(Our expert=
+ise)</i></p></span></div></foreignObject></g></g><g class=3D"node default" =
+id=3D"flowchart-Stage3-6" transform=3D"translate(139.140625, 1127)"><rect c=
+lass=3D"basic label-container" style=3D"fill:#e1f5ff !important" x=3D"-97.4=
+4140625" y=3D"-63" width=3D"194.8828125" height=3D"126"></rect><g class=3D"=
+label" style=3D"" transform=3D"translate(-67.44140625, -48)"><rect></rect><=
+foreignObject width=3D"134.8828125" height=3D"96"><div xmlns=3D"http://www.=
+w3.org/1999/xhtml" style=3D"display: table-cell; white-space: nowrap; line-=
+height: 1.5; max-width: 200px; text-align: center;"><span class=3D"nodeLabe=
+l"><p>Stage 3: Emit Text<br>=E2=94=80=E2=94=80=E2=94=80=E2=94=80=E2=94=80=
+=E2=94=80=E2=94=80=E2=94=80=E2=94=80=E2=94=80=E2=94=80<br>C Code Generation=
+<br><i>(Clang's expertise)</i></p></span></div></foreignObject></g></g><g c=
+lass=3D"node default" id=3D"flowchart-Result-7" transform=3D"translate(139.=
+140625, 1315)"><rect class=3D"basic label-container" style=3D"fill:#e1ffe1 =
+!important" x=3D"-130" y=3D"-75" width=3D"260" height=3D"150"></rect><g cla=
+ss=3D"label" style=3D"" transform=3D"translate(-100, -60)"><rect></rect><fo=
+reignObject width=3D"200" height=3D"120"><div xmlns=3D"http://www.w3.org/19=
+99/xhtml" style=3D"display: table; white-space: break-spaces; line-height: =
+1.5; max-width: 200px; text-align: center; width: 200px;"><span class=3D"no=
+deLabel"><p>=E2=9C=85 RESULT<br>80% cleaner output<br>Verifiable with Frama=
+-C<br>Deterministic &amp; Reproducible</p></span></div></foreignObject></g>=
+</g></g></g></g></svg></div><hr>
+<p><strong>Document Status:</strong> Living Document<br>
+<strong>Maintained By:</strong> Project Team<br>
+<strong>Questions?</strong> See <a href=3D"file:///Users/alexanderfedin/Pro=
+jects/hapyy/hupyy-cpp-to-c/CONTRIBUTING.md">Contributing Guide</a></p>
+
+      </div>
+     =20
+     =20
+   =20
+   =20
+   =20
+   =20
+   =20
+   =20
+  <div class=3D"mermaidTooltip" style=3D"opacity: 0;"></div></body></html>
+------MultipartBoundary--RgmNtGACLopbAnpLNPb6mWOWMEIntbUp9nMtczFXve----
+Content-Type: text/css
+Content-Transfer-Encoding: quoted-printable
+Content-Location: file:///Users/alexanderfedin/.vscode/extensions/shd101wyy.markdown-preview-enhanced-0.8.20/crossnote/dependencies/katex/katex.min.css
+
+@charset "utf-8";
+
+@font-face { font-display: block; font-family: KaTeX_AMS; font-style: norma=
+l; font-weight: 400; src: url("fonts/KaTeX_AMS-Regular.woff2") format("woff=
+2"), url("fonts/KaTeX_AMS-Regular.woff") format("woff"), url("fonts/KaTeX_A=
+MS-Regular.ttf") format("truetype"); }
+
+@font-face { font-display: block; font-family: KaTeX_Caligraphic; font-styl=
+e: normal; font-weight: 700; src: url("fonts/KaTeX_Caligraphic-Bold.woff2")=
+ format("woff2"), url("fonts/KaTeX_Caligraphic-Bold.woff") format("woff"), =
+url("fonts/KaTeX_Caligraphic-Bold.ttf") format("truetype"); }
+
+@font-face { font-display: block; font-family: KaTeX_Caligraphic; font-styl=
+e: normal; font-weight: 400; src: url("fonts/KaTeX_Caligraphic-Regular.woff=
+2") format("woff2"), url("fonts/KaTeX_Caligraphic-Regular.woff") format("wo=
+ff"), url("fonts/KaTeX_Caligraphic-Regular.ttf") format("truetype"); }
+
+@font-face { font-display: block; font-family: KaTeX_Fraktur; font-style: n=
+ormal; font-weight: 700; src: url("fonts/KaTeX_Fraktur-Bold.woff2") format(=
+"woff2"), url("fonts/KaTeX_Fraktur-Bold.woff") format("woff"), url("fonts/K=
+aTeX_Fraktur-Bold.ttf") format("truetype"); }
+
+@font-face { font-display: block; font-family: KaTeX_Fraktur; font-style: n=
+ormal; font-weight: 400; src: url("fonts/KaTeX_Fraktur-Regular.woff2") form=
+at("woff2"), url("fonts/KaTeX_Fraktur-Regular.woff") format("woff"), url("f=
+onts/KaTeX_Fraktur-Regular.ttf") format("truetype"); }
+
+@font-face { font-display: block; font-family: KaTeX_Main; font-style: norm=
+al; font-weight: 700; src: url("fonts/KaTeX_Main-Bold.woff2") format("woff2=
+"), url("fonts/KaTeX_Main-Bold.woff") format("woff"), url("fonts/KaTeX_Main=
+-Bold.ttf") format("truetype"); }
+
+@font-face { font-display: block; font-family: KaTeX_Main; font-style: ital=
+ic; font-weight: 700; src: url("fonts/KaTeX_Main-BoldItalic.woff2") format(=
+"woff2"), url("fonts/KaTeX_Main-BoldItalic.woff") format("woff"), url("font=
+s/KaTeX_Main-BoldItalic.ttf") format("truetype"); }
+
+@font-face { font-display: block; font-family: KaTeX_Main; font-style: ital=
+ic; font-weight: 400; src: url("fonts/KaTeX_Main-Italic.woff2") format("wof=
+f2"), url("fonts/KaTeX_Main-Italic.woff") format("woff"), url("fonts/KaTeX_=
+Main-Italic.ttf") format("truetype"); }
+
+@font-face { font-display: block; font-family: KaTeX_Main; font-style: norm=
+al; font-weight: 400; src: url("fonts/KaTeX_Main-Regular.woff2") format("wo=
+ff2"), url("fonts/KaTeX_Main-Regular.woff") format("woff"), url("fonts/KaTe=
+X_Main-Regular.ttf") format("truetype"); }
+
+@font-face { font-display: block; font-family: KaTeX_Math; font-style: ital=
+ic; font-weight: 700; src: url("fonts/KaTeX_Math-BoldItalic.woff2") format(=
+"woff2"), url("fonts/KaTeX_Math-BoldItalic.woff") format("woff"), url("font=
+s/KaTeX_Math-BoldItalic.ttf") format("truetype"); }
+
+@font-face { font-display: block; font-family: KaTeX_Math; font-style: ital=
+ic; font-weight: 400; src: url("fonts/KaTeX_Math-Italic.woff2") format("wof=
+f2"), url("fonts/KaTeX_Math-Italic.woff") format("woff"), url("fonts/KaTeX_=
+Math-Italic.ttf") format("truetype"); }
+
+@font-face { font-display: block; font-family: KaTeX_SansSerif; font-style:=
+ normal; font-weight: 700; src: url("fonts/KaTeX_SansSerif-Bold.woff2") for=
+mat("woff2"), url("fonts/KaTeX_SansSerif-Bold.woff") format("woff"), url("f=
+onts/KaTeX_SansSerif-Bold.ttf") format("truetype"); }
+
+@font-face { font-display: block; font-family: KaTeX_SansSerif; font-style:=
+ italic; font-weight: 400; src: url("fonts/KaTeX_SansSerif-Italic.woff2") f=
+ormat("woff2"), url("fonts/KaTeX_SansSerif-Italic.woff") format("woff"), ur=
+l("fonts/KaTeX_SansSerif-Italic.ttf") format("truetype"); }
+
+@font-face { font-display: block; font-family: KaTeX_SansSerif; font-style:=
+ normal; font-weight: 400; src: url("fonts/KaTeX_SansSerif-Regular.woff2") =
+format("woff2"), url("fonts/KaTeX_SansSerif-Regular.woff") format("woff"), =
+url("fonts/KaTeX_SansSerif-Regular.ttf") format("truetype"); }
+
+@font-face { font-display: block; font-family: KaTeX_Script; font-style: no=
+rmal; font-weight: 400; src: url("fonts/KaTeX_Script-Regular.woff2") format=
+("woff2"), url("fonts/KaTeX_Script-Regular.woff") format("woff"), url("font=
+s/KaTeX_Script-Regular.ttf") format("truetype"); }
+
+@font-face { font-display: block; font-family: KaTeX_Size1; font-style: nor=
+mal; font-weight: 400; src: url("fonts/KaTeX_Size1-Regular.woff2") format("=
+woff2"), url("fonts/KaTeX_Size1-Regular.woff") format("woff"), url("fonts/K=
+aTeX_Size1-Regular.ttf") format("truetype"); }
+
+@font-face { font-display: block; font-family: KaTeX_Size2; font-style: nor=
+mal; font-weight: 400; src: url("fonts/KaTeX_Size2-Regular.woff2") format("=
+woff2"), url("fonts/KaTeX_Size2-Regular.woff") format("woff"), url("fonts/K=
+aTeX_Size2-Regular.ttf") format("truetype"); }
+
+@font-face { font-display: block; font-family: KaTeX_Size3; font-style: nor=
+mal; font-weight: 400; src: url("fonts/KaTeX_Size3-Regular.woff2") format("=
+woff2"), url("fonts/KaTeX_Size3-Regular.woff") format("woff"), url("fonts/K=
+aTeX_Size3-Regular.ttf") format("truetype"); }
+
+@font-face { font-display: block; font-family: KaTeX_Size4; font-style: nor=
+mal; font-weight: 400; src: url("fonts/KaTeX_Size4-Regular.woff2") format("=
+woff2"), url("fonts/KaTeX_Size4-Regular.woff") format("woff"), url("fonts/K=
+aTeX_Size4-Regular.ttf") format("truetype"); }
+
+@font-face { font-display: block; font-family: KaTeX_Typewriter; font-style=
+: normal; font-weight: 400; src: url("fonts/KaTeX_Typewriter-Regular.woff2"=
+) format("woff2"), url("fonts/KaTeX_Typewriter-Regular.woff") format("woff"=
+), url("fonts/KaTeX_Typewriter-Regular.ttf") format("truetype"); }
+
+.katex { font: 1.21em / 1.2 KaTeX_Main, "Times New Roman", serif; text-inde=
+nt: 0px; text-rendering: auto; }
+
+.katex * { border-color: currentcolor; }
+
+.katex .katex-version::after { content: "0.16.25"; }
+
+.katex .katex-mathml { clip: rect(1px, 1px, 1px, 1px); border: 0px; height:=
+ 1px; overflow: hidden; padding: 0px; position: absolute; width: 1px; }
+
+.katex .katex-html > .newline { display: block; }
+
+.katex .base { position: relative; white-space: nowrap; width: min-content;=
+ }
+
+.katex .base, .katex .strut { display: inline-block; }
+
+.katex .textbf { font-weight: 700; }
+
+.katex .textit { font-style: italic; }
+
+.katex .textrm { font-family: KaTeX_Main; }
+
+.katex .textsf { font-family: KaTeX_SansSerif; }
+
+.katex .texttt { font-family: KaTeX_Typewriter; }
+
+.katex .mathnormal { font-family: KaTeX_Math; font-style: italic; }
+
+.katex .mathit { font-family: KaTeX_Main; font-style: italic; }
+
+.katex .mathrm { font-style: normal; }
+
+.katex .mathbf { font-family: KaTeX_Main; font-weight: 700; }
+
+.katex .boldsymbol { font-family: KaTeX_Math; font-style: italic; font-weig=
+ht: 700; }
+
+.katex .amsrm, .katex .mathbb, .katex .textbb { font-family: KaTeX_AMS; }
+
+.katex .mathcal { font-family: KaTeX_Caligraphic; }
+
+.katex .mathfrak, .katex .textfrak { font-family: KaTeX_Fraktur; }
+
+.katex .mathboldfrak, .katex .textboldfrak { font-family: KaTeX_Fraktur; fo=
+nt-weight: 700; }
+
+.katex .mathtt { font-family: KaTeX_Typewriter; }
+
+.katex .mathscr, .katex .textscr { font-family: KaTeX_Script; }
+
+.katex .mathsf, .katex .textsf { font-family: KaTeX_SansSerif; }
+
+.katex .mathboldsf, .katex .textboldsf { font-family: KaTeX_SansSerif; font=
+-weight: 700; }
+
+.katex .mathitsf, .katex .mathsfit, .katex .textitsf { font-family: KaTeX_S=
+ansSerif; font-style: italic; }
+
+.katex .mainrm { font-family: KaTeX_Main; font-style: normal; }
+
+.katex .vlist-t { border-collapse: collapse; display: inline-table; table-l=
+ayout: fixed; }
+
+.katex .vlist-r { display: table-row; }
+
+.katex .vlist { display: table-cell; position: relative; vertical-align: bo=
+ttom; }
+
+.katex .vlist > span { display: block; height: 0px; position: relative; }
+
+.katex .vlist > span > span { display: inline-block; }
+
+.katex .vlist > span > .pstrut { overflow: hidden; width: 0px; }
+
+.katex .vlist-t2 { margin-right: -2px; }
+
+.katex .vlist-s { display: table-cell; font-size: 1px; min-width: 2px; vert=
+ical-align: bottom; width: 2px; }
+
+.katex .vbox { align-items: baseline; display: inline-flex; flex-direction:=
+ column; }
+
+.katex .hbox { width: 100%; }
+
+.katex .hbox, .katex .thinbox { display: inline-flex; flex-direction: row; =
+}
+
+.katex .thinbox { max-width: 0px; width: 0px; }
+
+.katex .msupsub { text-align: left; }
+
+.katex .mfrac > span > span { text-align: center; }
+
+.katex .mfrac .frac-line { border-bottom-style: solid; display: inline-bloc=
+k; width: 100%; }
+
+.katex .hdashline, .katex .hline, .katex .mfrac .frac-line, .katex .overlin=
+e .overline-line, .katex .rule, .katex .underline .underline-line { min-hei=
+ght: 1px; }
+
+.katex .mspace { display: inline-block; }
+
+.katex .clap, .katex .llap, .katex .rlap { position: relative; width: 0px; =
+}
+
+.katex .clap > .inner, .katex .llap > .inner, .katex .rlap > .inner { posit=
+ion: absolute; }
+
+.katex .clap > .fix, .katex .llap > .fix, .katex .rlap > .fix { display: in=
+line-block; }
+
+.katex .llap > .inner { right: 0px; }
+
+.katex .clap > .inner, .katex .rlap > .inner { left: 0px; }
+
+.katex .clap > .inner > span { margin-left: -50%; margin-right: 50%; }
+
+.katex .rule { border: 0px solid; display: inline-block; position: relative=
+; }
+
+.katex .hline, .katex .overline .overline-line, .katex .underline .underlin=
+e-line { border-bottom-style: solid; display: inline-block; width: 100%; }
+
+.katex .hdashline { border-bottom-style: dashed; display: inline-block; wid=
+th: 100%; }
+
+.katex .sqrt > .root { margin-left: 0.277778em; margin-right: -0.555556em; =
+}
+
+.katex .fontsize-ensurer.reset-size1.size1, .katex .sizing.reset-size1.size=
+1 { font-size: 1em; }
+
+.katex .fontsize-ensurer.reset-size1.size2, .katex .sizing.reset-size1.size=
+2 { font-size: 1.2em; }
+
+.katex .fontsize-ensurer.reset-size1.size3, .katex .sizing.reset-size1.size=
+3 { font-size: 1.4em; }
+
+.katex .fontsize-ensurer.reset-size1.size4, .katex .sizing.reset-size1.size=
+4 { font-size: 1.6em; }
+
+.katex .fontsize-ensurer.reset-size1.size5, .katex .sizing.reset-size1.size=
+5 { font-size: 1.8em; }
+
+.katex .fontsize-ensurer.reset-size1.size6, .katex .sizing.reset-size1.size=
+6 { font-size: 2em; }
+
+.katex .fontsize-ensurer.reset-size1.size7, .katex .sizing.reset-size1.size=
+7 { font-size: 2.4em; }
+
+.katex .fontsize-ensurer.reset-size1.size8, .katex .sizing.reset-size1.size=
+8 { font-size: 2.88em; }
+
+.katex .fontsize-ensurer.reset-size1.size9, .katex .sizing.reset-size1.size=
+9 { font-size: 3.456em; }
+
+.katex .fontsize-ensurer.reset-size1.size10, .katex .sizing.reset-size1.siz=
+e10 { font-size: 4.148em; }
+
+.katex .fontsize-ensurer.reset-size1.size11, .katex .sizing.reset-size1.siz=
+e11 { font-size: 4.976em; }
+
+.katex .fontsize-ensurer.reset-size2.size1, .katex .sizing.reset-size2.size=
+1 { font-size: 0.833333em; }
+
+.katex .fontsize-ensurer.reset-size2.size2, .katex .sizing.reset-size2.size=
+2 { font-size: 1em; }
+
+.katex .fontsize-ensurer.reset-size2.size3, .katex .sizing.reset-size2.size=
+3 { font-size: 1.16667em; }
+
+.katex .fontsize-ensurer.reset-size2.size4, .katex .sizing.reset-size2.size=
+4 { font-size: 1.33333em; }
+
+.katex .fontsize-ensurer.reset-size2.size5, .katex .sizing.reset-size2.size=
+5 { font-size: 1.5em; }
+
+.katex .fontsize-ensurer.reset-size2.size6, .katex .sizing.reset-size2.size=
+6 { font-size: 1.66667em; }
+
+.katex .fontsize-ensurer.reset-size2.size7, .katex .sizing.reset-size2.size=
+7 { font-size: 2em; }
+
+.katex .fontsize-ensurer.reset-size2.size8, .katex .sizing.reset-size2.size=
+8 { font-size: 2.4em; }
+
+.katex .fontsize-ensurer.reset-size2.size9, .katex .sizing.reset-size2.size=
+9 { font-size: 2.88em; }
+
+.katex .fontsize-ensurer.reset-size2.size10, .katex .sizing.reset-size2.siz=
+e10 { font-size: 3.45667em; }
+
+.katex .fontsize-ensurer.reset-size2.size11, .katex .sizing.reset-size2.siz=
+e11 { font-size: 4.14667em; }
+
+.katex .fontsize-ensurer.reset-size3.size1, .katex .sizing.reset-size3.size=
+1 { font-size: 0.714286em; }
+
+.katex .fontsize-ensurer.reset-size3.size2, .katex .sizing.reset-size3.size=
+2 { font-size: 0.857143em; }
+
+.katex .fontsize-ensurer.reset-size3.size3, .katex .sizing.reset-size3.size=
+3 { font-size: 1em; }
+
+.katex .fontsize-ensurer.reset-size3.size4, .katex .sizing.reset-size3.size=
+4 { font-size: 1.14286em; }
+
+.katex .fontsize-ensurer.reset-size3.size5, .katex .sizing.reset-size3.size=
+5 { font-size: 1.28571em; }
+
+.katex .fontsize-ensurer.reset-size3.size6, .katex .sizing.reset-size3.size=
+6 { font-size: 1.42857em; }
+
+.katex .fontsize-ensurer.reset-size3.size7, .katex .sizing.reset-size3.size=
+7 { font-size: 1.71429em; }
+
+.katex .fontsize-ensurer.reset-size3.size8, .katex .sizing.reset-size3.size=
+8 { font-size: 2.05714em; }
+
+.katex .fontsize-ensurer.reset-size3.size9, .katex .sizing.reset-size3.size=
+9 { font-size: 2.46857em; }
+
+.katex .fontsize-ensurer.reset-size3.size10, .katex .sizing.reset-size3.siz=
+e10 { font-size: 2.96286em; }
+
+.katex .fontsize-ensurer.reset-size3.size11, .katex .sizing.reset-size3.siz=
+e11 { font-size: 3.55429em; }
+
+.katex .fontsize-ensurer.reset-size4.size1, .katex .sizing.reset-size4.size=
+1 { font-size: 0.625em; }
+
+.katex .fontsize-ensurer.reset-size4.size2, .katex .sizing.reset-size4.size=
+2 { font-size: 0.75em; }
+
+.katex .fontsize-ensurer.reset-size4.size3, .katex .sizing.reset-size4.size=
+3 { font-size: 0.875em; }
+
+.katex .fontsize-ensurer.reset-size4.size4, .katex .sizing.reset-size4.size=
+4 { font-size: 1em; }
+
+.katex .fontsize-ensurer.reset-size4.size5, .katex .sizing.reset-size4.size=
+5 { font-size: 1.125em; }
+
+.katex .fontsize-ensurer.reset-size4.size6, .katex .sizing.reset-size4.size=
+6 { font-size: 1.25em; }
+
+.katex .fontsize-ensurer.reset-size4.size7, .katex .sizing.reset-size4.size=
+7 { font-size: 1.5em; }
+
+.katex .fontsize-ensurer.reset-size4.size8, .katex .sizing.reset-size4.size=
+8 { font-size: 1.8em; }
+
+.katex .fontsize-ensurer.reset-size4.size9, .katex .sizing.reset-size4.size=
+9 { font-size: 2.16em; }
+
+.katex .fontsize-ensurer.reset-size4.size10, .katex .sizing.reset-size4.siz=
+e10 { font-size: 2.5925em; }
+
+.katex .fontsize-ensurer.reset-size4.size11, .katex .sizing.reset-size4.siz=
+e11 { font-size: 3.11em; }
+
+.katex .fontsize-ensurer.reset-size5.size1, .katex .sizing.reset-size5.size=
+1 { font-size: 0.555556em; }
+
+.katex .fontsize-ensurer.reset-size5.size2, .katex .sizing.reset-size5.size=
+2 { font-size: 0.666667em; }
+
+.katex .fontsize-ensurer.reset-size5.size3, .katex .sizing.reset-size5.size=
+3 { font-size: 0.777778em; }
+
+.katex .fontsize-ensurer.reset-size5.size4, .katex .sizing.reset-size5.size=
+4 { font-size: 0.888889em; }
+
+.katex .fontsize-ensurer.reset-size5.size5, .katex .sizing.reset-size5.size=
+5 { font-size: 1em; }
+
+.katex .fontsize-ensurer.reset-size5.size6, .katex .sizing.reset-size5.size=
+6 { font-size: 1.11111em; }
+
+.katex .fontsize-ensurer.reset-size5.size7, .katex .sizing.reset-size5.size=
+7 { font-size: 1.33333em; }
+
+.katex .fontsize-ensurer.reset-size5.size8, .katex .sizing.reset-size5.size=
+8 { font-size: 1.6em; }
+
+.katex .fontsize-ensurer.reset-size5.size9, .katex .sizing.reset-size5.size=
+9 { font-size: 1.92em; }
+
+.katex .fontsize-ensurer.reset-size5.size10, .katex .sizing.reset-size5.siz=
+e10 { font-size: 2.30444em; }
+
+.katex .fontsize-ensurer.reset-size5.size11, .katex .sizing.reset-size5.siz=
+e11 { font-size: 2.76444em; }
+
+.katex .fontsize-ensurer.reset-size6.size1, .katex .sizing.reset-size6.size=
+1 { font-size: 0.5em; }
+
+.katex .fontsize-ensurer.reset-size6.size2, .katex .sizing.reset-size6.size=
+2 { font-size: 0.6em; }
+
+.katex .fontsize-ensurer.reset-size6.size3, .katex .sizing.reset-size6.size=
+3 { font-size: 0.7em; }
+
+.katex .fontsize-ensurer.reset-size6.size4, .katex .sizing.reset-size6.size=
+4 { font-size: 0.8em; }
+
+.katex .fontsize-ensurer.reset-size6.size5, .katex .sizing.reset-size6.size=
+5 { font-size: 0.9em; }
+
+.katex .fontsize-ensurer.reset-size6.size6, .katex .sizing.reset-size6.size=
+6 { font-size: 1em; }
+
+.katex .fontsize-ensurer.reset-size6.size7, .katex .sizing.reset-size6.size=
+7 { font-size: 1.2em; }
+
+.katex .fontsize-ensurer.reset-size6.size8, .katex .sizing.reset-size6.size=
+8 { font-size: 1.44em; }
+
+.katex .fontsize-ensurer.reset-size6.size9, .katex .sizing.reset-size6.size=
+9 { font-size: 1.728em; }
+
+.katex .fontsize-ensurer.reset-size6.size10, .katex .sizing.reset-size6.siz=
+e10 { font-size: 2.074em; }
+
+.katex .fontsize-ensurer.reset-size6.size11, .katex .sizing.reset-size6.siz=
+e11 { font-size: 2.488em; }
+
+.katex .fontsize-ensurer.reset-size7.size1, .katex .sizing.reset-size7.size=
+1 { font-size: 0.416667em; }
+
+.katex .fontsize-ensurer.reset-size7.size2, .katex .sizing.reset-size7.size=
+2 { font-size: 0.5em; }
+
+.katex .fontsize-ensurer.reset-size7.size3, .katex .sizing.reset-size7.size=
+3 { font-size: 0.583333em; }
+
+.katex .fontsize-ensurer.reset-size7.size4, .katex .sizing.reset-size7.size=
+4 { font-size: 0.666667em; }
+
+.katex .fontsize-ensurer.reset-size7.size5, .katex .sizing.reset-size7.size=
+5 { font-size: 0.75em; }
+
+.katex .fontsize-ensurer.reset-size7.size6, .katex .sizing.reset-size7.size=
+6 { font-size: 0.833333em; }
+
+.katex .fontsize-ensurer.reset-size7.size7, .katex .sizing.reset-size7.size=
+7 { font-size: 1em; }
+
+.katex .fontsize-ensurer.reset-size7.size8, .katex .sizing.reset-size7.size=
+8 { font-size: 1.2em; }
+
+.katex .fontsize-ensurer.reset-size7.size9, .katex .sizing.reset-size7.size=
+9 { font-size: 1.44em; }
+
+.katex .fontsize-ensurer.reset-size7.size10, .katex .sizing.reset-size7.siz=
+e10 { font-size: 1.72833em; }
+
+.katex .fontsize-ensurer.reset-size7.size11, .katex .sizing.reset-size7.siz=
+e11 { font-size: 2.07333em; }
+
+.katex .fontsize-ensurer.reset-size8.size1, .katex .sizing.reset-size8.size=
+1 { font-size: 0.347222em; }
+
+.katex .fontsize-ensurer.reset-size8.size2, .katex .sizing.reset-size8.size=
+2 { font-size: 0.416667em; }
+
+.katex .fontsize-ensurer.reset-size8.size3, .katex .sizing.reset-size8.size=
+3 { font-size: 0.486111em; }
+
+.katex .fontsize-ensurer.reset-size8.size4, .katex .sizing.reset-size8.size=
+4 { font-size: 0.555556em; }
+
+.katex .fontsize-ensurer.reset-size8.size5, .katex .sizing.reset-size8.size=
+5 { font-size: 0.625em; }
+
+.katex .fontsize-ensurer.reset-size8.size6, .katex .sizing.reset-size8.size=
+6 { font-size: 0.694444em; }
+
+.katex .fontsize-ensurer.reset-size8.size7, .katex .sizing.reset-size8.size=
+7 { font-size: 0.833333em; }
+
+.katex .fontsize-ensurer.reset-size8.size8, .katex .sizing.reset-size8.size=
+8 { font-size: 1em; }
+
+.katex .fontsize-ensurer.reset-size8.size9, .katex .sizing.reset-size8.size=
+9 { font-size: 1.2em; }
+
+.katex .fontsize-ensurer.reset-size8.size10, .katex .sizing.reset-size8.siz=
+e10 { font-size: 1.44028em; }
+
+.katex .fontsize-ensurer.reset-size8.size11, .katex .sizing.reset-size8.siz=
+e11 { font-size: 1.72778em; }
+
+.katex .fontsize-ensurer.reset-size9.size1, .katex .sizing.reset-size9.size=
+1 { font-size: 0.289352em; }
+
+.katex .fontsize-ensurer.reset-size9.size2, .katex .sizing.reset-size9.size=
+2 { font-size: 0.347222em; }
+
+.katex .fontsize-ensurer.reset-size9.size3, .katex .sizing.reset-size9.size=
+3 { font-size: 0.405093em; }
+
+.katex .fontsize-ensurer.reset-size9.size4, .katex .sizing.reset-size9.size=
+4 { font-size: 0.462963em; }
+
+.katex .fontsize-ensurer.reset-size9.size5, .katex .sizing.reset-size9.size=
+5 { font-size: 0.520833em; }
+
+.katex .fontsize-ensurer.reset-size9.size6, .katex .sizing.reset-size9.size=
+6 { font-size: 0.578704em; }
+
+.katex .fontsize-ensurer.reset-size9.size7, .katex .sizing.reset-size9.size=
+7 { font-size: 0.694444em; }
+
+.katex .fontsize-ensurer.reset-size9.size8, .katex .sizing.reset-size9.size=
+8 { font-size: 0.833333em; }
+
+.katex .fontsize-ensurer.reset-size9.size9, .katex .sizing.reset-size9.size=
+9 { font-size: 1em; }
+
+.katex .fontsize-ensurer.reset-size9.size10, .katex .sizing.reset-size9.siz=
+e10 { font-size: 1.20023em; }
+
+.katex .fontsize-ensurer.reset-size9.size11, .katex .sizing.reset-size9.siz=
+e11 { font-size: 1.43981em; }
+
+.katex .fontsize-ensurer.reset-size10.size1, .katex .sizing.reset-size10.si=
+ze1 { font-size: 0.24108em; }
+
+.katex .fontsize-ensurer.reset-size10.size2, .katex .sizing.reset-size10.si=
+ze2 { font-size: 0.289296em; }
+
+.katex .fontsize-ensurer.reset-size10.size3, .katex .sizing.reset-size10.si=
+ze3 { font-size: 0.337512em; }
+
+.katex .fontsize-ensurer.reset-size10.size4, .katex .sizing.reset-size10.si=
+ze4 { font-size: 0.385728em; }
+
+.katex .fontsize-ensurer.reset-size10.size5, .katex .sizing.reset-size10.si=
+ze5 { font-size: 0.433944em; }
+
+.katex .fontsize-ensurer.reset-size10.size6, .katex .sizing.reset-size10.si=
+ze6 { font-size: 0.48216em; }
+
+.katex .fontsize-ensurer.reset-size10.size7, .katex .sizing.reset-size10.si=
+ze7 { font-size: 0.578592em; }
+
+.katex .fontsize-ensurer.reset-size10.size8, .katex .sizing.reset-size10.si=
+ze8 { font-size: 0.694311em; }
+
+.katex .fontsize-ensurer.reset-size10.size9, .katex .sizing.reset-size10.si=
+ze9 { font-size: 0.833173em; }
+
+.katex .fontsize-ensurer.reset-size10.size10, .katex .sizing.reset-size10.s=
+ize10 { font-size: 1em; }
+
+.katex .fontsize-ensurer.reset-size10.size11, .katex .sizing.reset-size10.s=
+ize11 { font-size: 1.19961em; }
+
+.katex .fontsize-ensurer.reset-size11.size1, .katex .sizing.reset-size11.si=
+ze1 { font-size: 0.200965em; }
+
+.katex .fontsize-ensurer.reset-size11.size2, .katex .sizing.reset-size11.si=
+ze2 { font-size: 0.241158em; }
+
+.katex .fontsize-ensurer.reset-size11.size3, .katex .sizing.reset-size11.si=
+ze3 { font-size: 0.28135em; }
+
+.katex .fontsize-ensurer.reset-size11.size4, .katex .sizing.reset-size11.si=
+ze4 { font-size: 0.321543em; }
+
+.katex .fontsize-ensurer.reset-size11.size5, .katex .sizing.reset-size11.si=
+ze5 { font-size: 0.361736em; }
+
+.katex .fontsize-ensurer.reset-size11.size6, .katex .sizing.reset-size11.si=
+ze6 { font-size: 0.401929em; }
+
+.katex .fontsize-ensurer.reset-size11.size7, .katex .sizing.reset-size11.si=
+ze7 { font-size: 0.482315em; }
+
+.katex .fontsize-ensurer.reset-size11.size8, .katex .sizing.reset-size11.si=
+ze8 { font-size: 0.578778em; }
+
+.katex .fontsize-ensurer.reset-size11.size9, .katex .sizing.reset-size11.si=
+ze9 { font-size: 0.694534em; }
+
+.katex .fontsize-ensurer.reset-size11.size10, .katex .sizing.reset-size11.s=
+ize10 { font-size: 0.833601em; }
+
+.katex .fontsize-ensurer.reset-size11.size11, .katex .sizing.reset-size11.s=
+ize11 { font-size: 1em; }
+
+.katex .delimsizing.size1 { font-family: KaTeX_Size1; }
+
+.katex .delimsizing.size2 { font-family: KaTeX_Size2; }
+
+.katex .delimsizing.size3 { font-family: KaTeX_Size3; }
+
+.katex .delimsizing.size4 { font-family: KaTeX_Size4; }
+
+.katex .delimsizing.mult .delim-size1 > span { font-family: KaTeX_Size1; }
+
+.katex .delimsizing.mult .delim-size4 > span { font-family: KaTeX_Size4; }
+
+.katex .nulldelimiter { display: inline-block; width: 0.12em; }
+
+.katex .delimcenter, .katex .op-symbol { position: relative; }
+
+.katex .op-symbol.small-op { font-family: KaTeX_Size1; }
+
+.katex .op-symbol.large-op { font-family: KaTeX_Size2; }
+
+.katex .accent > .vlist-t, .katex .op-limits > .vlist-t { text-align: cente=
+r; }
+
+.katex .accent .accent-body { position: relative; }
+
+.katex .accent .accent-body:not(.accent-full) { width: 0px; }
+
+.katex .overlay { display: block; }
+
+.katex .mtable .vertical-separator { display: inline-block; min-width: 1px;=
+ }
+
+.katex .mtable .arraycolsep { display: inline-block; }
+
+.katex .mtable .col-align-c > .vlist-t { text-align: center; }
+
+.katex .mtable .col-align-l > .vlist-t { text-align: left; }
+
+.katex .mtable .col-align-r > .vlist-t { text-align: right; }
+
+.katex .svg-align { text-align: left; }
+
+.katex svg { fill: currentcolor; stroke: currentcolor; fill-rule: nonzero; =
+fill-opacity: 1; stroke-width: 1; stroke-linecap: butt; stroke-linejoin: mi=
+ter; stroke-miterlimit: 4; stroke-dasharray: none; stroke-dashoffset: 0; st=
+roke-opacity: 1; display: block; height: inherit; position: absolute; width=
+: 100%; }
+
+.katex svg path { stroke: none; }
+
+.katex img { border-style: none; max-height: none; max-width: none; min-hei=
+ght: 0px; min-width: 0px; }
+
+.katex .stretchy { display: block; overflow: hidden; position: relative; wi=
+dth: 100%; }
+
+.katex .stretchy::after, .katex .stretchy::before { content: ""; }
+
+.katex .hide-tail { overflow: hidden; position: relative; width: 100%; }
+
+.katex .halfarrow-left { left: 0px; overflow: hidden; position: absolute; w=
+idth: 50.2%; }
+
+.katex .halfarrow-right { overflow: hidden; position: absolute; right: 0px;=
+ width: 50.2%; }
+
+.katex .brace-left { left: 0px; overflow: hidden; position: absolute; width=
+: 25.1%; }
+
+.katex .brace-center { left: 25%; overflow: hidden; position: absolute; wid=
+th: 50%; }
+
+.katex .brace-right { overflow: hidden; position: absolute; right: 0px; wid=
+th: 25.1%; }
+
+.katex .x-arrow-pad { padding: 0px 0.5em; }
+
+.katex .cd-arrow-pad { padding: 0px 0.55556em 0px 0.27778em; }
+
+.katex .mover, .katex .munder, .katex .x-arrow { text-align: center; }
+
+.katex .boxpad { padding: 0px 0.3em; }
+
+.katex .fbox, .katex .fcolorbox { border: 0.04em solid; box-sizing: border-=
+box; }
+
+.katex .cancel-pad { padding: 0px 0.2em; }
+
+.katex .cancel-lap { margin-left: -0.2em; margin-right: -0.2em; }
+
+.katex .sout { border-bottom-style: solid; border-bottom-width: 0.08em; }
+
+.katex .angl { border-right: 0.049em solid; border-top: 0.049em solid; box-=
+sizing: border-box; margin-right: 0.03889em; }
+
+.katex .anglpad { padding: 0px 0.03889em; }
+
+.katex .eqn-num::before { content: "(" counter(katexEqnNo) ")"; counter-inc=
+rement: katexEqnNo 1; }
+
+.katex .mml-eqn-num::before { content: "(" counter(mmlEqnNo) ")"; counter-i=
+ncrement: mmlEqnNo 1; }
+
+.katex .mtr-glue { width: 50%; }
+
+.katex .cd-vert-arrow { display: inline-block; position: relative; }
+
+.katex .cd-label-left { display: inline-block; position: absolute; right: c=
+alc(50% + 0.3em); text-align: left; }
+
+.katex .cd-label-right { display: inline-block; left: calc(50% + 0.3em); po=
+sition: absolute; text-align: right; }
+
+.katex-display { display: block; margin: 1em 0px; text-align: center; }
+
+.katex-display > .katex { display: block; text-align: center; white-space: =
+nowrap; }
+
+.katex-display > .katex > .katex-html { display: block; position: relative;=
+ }
+
+.katex-display > .katex > .katex-html > .tag { position: absolute; right: 0=
+px; }
+
+.katex-display.leqno > .katex > .katex-html > .tag { left: 0px; right: auto=
+; }
+
+.katex-display.fleqn > .katex { padding-left: 2em; text-align: left; }
+
+body { counter-reset: katexEqnNo 0 mmlEqnNo 0; }
+------MultipartBoundary--RgmNtGACLopbAnpLNPb6mWOWMEIntbUp9nMtczFXve----
+Content-Type: text/css
+Content-Transfer-Encoding: quoted-printable
+Content-Location: cid:css-16f8029f-2ebc-4060-a890-5523ea787485@mhtml.blink
+
+@charset "utf-8";
+
+code[class*=3D"language-"], pre[class*=3D"language-"] { color: rgb(51, 51, =
+51); background: 0px 0px; font-family: Consolas, "Liberation Mono", Menlo, =
+Courier, monospace; text-align: left; white-space: pre; word-spacing: norma=
+l; word-break: normal; overflow-wrap: normal; line-height: 1.4; tab-size: 8=
+; hyphens: none; }
+
+pre[class*=3D"language-"] { padding: 0.8em; overflow: auto; border-radius: =
+3px; background: rgb(245, 245, 245); }
+
+:not(pre) > code[class*=3D"language-"] { padding: 0.1em; border-radius: 0.3=
+em; white-space: normal; background: rgb(245, 245, 245); }
+
+.token.blockquote, .token.comment { color: rgb(150, 152, 150); }
+
+.token.cdata { color: rgb(24, 54, 145); }
+
+.token.doctype, .token.macro.property, .token.punctuation, .token.variable =
+{ color: rgb(51, 51, 51); }
+
+.token.builtin, .token.important, .token.keyword, .token.operator, .token.r=
+ule { color: rgb(167, 29, 93); }
+
+.token.attr-value, .token.regex, .token.string, .token.url { color: rgb(24,=
+ 54, 145); }
+
+.token.atrule, .token.boolean, .token.code, .token.command, .token.constant=
+, .token.entity, .token.number, .token.property, .token.symbol { color: rgb=
+(0, 134, 179); }
+
+.token.prolog, .token.selector, .token.tag { color: rgb(99, 163, 92); }
+
+.token.attr-name, .token.class, .token.class-name, .token.function, .token.=
+id, .token.namespace, .token.pseudo-class, .token.pseudo-element, .token.ur=
+l-reference .token.variable { color: rgb(121, 93, 163); }
+
+.token.entity { cursor: help; }
+
+.token.title, .token.title .token.punctuation { font-weight: 700; color: rg=
+b(29, 62, 129); }
+
+.token.list { color: rgb(237, 106, 67); }
+
+.token.inserted { background-color: rgb(234, 255, 234); color: rgb(85, 165,=
+ 50); }
+
+.token.deleted { background-color: rgb(255, 236, 236); color: rgb(189, 44, =
+0); }
+
+.token.bold { font-weight: 700; }
+
+.token.italic { font-style: italic; }
+
+.language-json .token.property { color: rgb(24, 54, 145); }
+
+.language-markup .token.tag .token.punctuation { color: rgb(51, 51, 51); }
+
+.language-css .token.function, code.language-css { color: rgb(0, 134, 179);=
+ }
+
+.language-yaml .token.atrule { color: rgb(99, 163, 92); }
+
+code.language-yaml { color: rgb(24, 54, 145); }
+
+.language-ruby .token.function { color: rgb(51, 51, 51); }
+
+.language-markdown .token.url { color: rgb(121, 93, 163); }
+
+.language-makefile .token.symbol { color: rgb(121, 93, 163); }
+
+.language-makefile .token.variable { color: rgb(24, 54, 145); }
+
+.language-makefile .token.builtin { color: rgb(0, 134, 179); }
+
+.language-bash .token.keyword { color: rgb(0, 134, 179); }
+
+pre[data-line] { position: relative; padding: 1em 0px 1em 3em; }
+
+pre[data-line] .line-highlight-wrapper { position: absolute; top: 0px; left=
+: 0px; background-color: transparent; display: block; width: 100%; }
+
+pre[data-line] .line-highlight { position: absolute; left: 0px; right: 0px;=
+ margin-top: 1em; background: linear-gradient(to right, rgba(153, 122, 102,=
+ 0.1) 70%, rgba(153, 122, 102, 0)); pointer-events: none; line-height: inhe=
+rit; white-space: pre; }
+
+pre[data-line] .line-highlight::before, pre[data-line] .line-highlight[data=
+-end]::after { content: attr(data-start); position: absolute; top: 0.4em; l=
+eft: 0.6em; min-width: 1em; padding: 0px 0.5em; background-color: rgba(153,=
+ 122, 102, 0.4); color: rgb(244, 241, 239); font: bold 65% / 1.5 sans-serif=
+; text-align: center; vertical-align: 0.3em; border-radius: 999px; text-sha=
+dow: none; box-shadow: rgb(255, 255, 255) 0px 1px; }
+
+pre[data-line] .line-highlight[data-end]::after { content: attr(data-end); =
+top: auto; bottom: 0.4em; }
+
+html body { font-family: "Helvetica Neue", Helvetica, "Segoe UI", Arial, fr=
+eesans, sans-serif; font-size: 16px; line-height: 1.6; color: rgb(51, 51, 5=
+1); background-color: rgb(255, 255, 255); overflow: initial; box-sizing: bo=
+rder-box; overflow-wrap: break-word; }
+
+html body > :first-child { margin-top: 0px; }
+
+html body h1, html body h2, html body h3, html body h4, html body h5, html =
+body h6 { line-height: 1.2; margin-top: 1em; margin-bottom: 16px; color: rg=
+b(0, 0, 0); }
+
+html body h1 { font-size: 2.25em; font-weight: 300; padding-bottom: 0.3em; =
+}
+
+html body h2 { font-size: 1.75em; font-weight: 400; padding-bottom: 0.3em; =
+}
+
+html body h3 { font-size: 1.5em; font-weight: 500; }
+
+html body h4 { font-size: 1.25em; font-weight: 600; }
+
+html body h5 { font-size: 1.1em; font-weight: 600; }
+
+html body h6 { font-size: 1em; font-weight: 600; }
+
+html body h1, html body h2, html body h3, html body h4, html body h5 { font=
+-weight: 600; }
+
+html body h5 { font-size: 1em; }
+
+html body h6 { color: rgb(92, 92, 92); }
+
+html body strong { color: rgb(0, 0, 0); }
+
+html body del { color: rgb(92, 92, 92); }
+
+html body a:not([href]) { color: inherit; text-decoration: none; }
+
+html body a { color: rgb(0, 136, 204); text-decoration: none; }
+
+html body a:hover { color: rgb(0, 163, 245); text-decoration: none; }
+
+html body img { max-width: 100%; }
+
+html body > p { margin-top: 0px; margin-bottom: 16px; overflow-wrap: break-=
+word; }
+
+html body > ol, html body > ul { margin-bottom: 16px; }
+
+html body ol, html body ul { padding-left: 2em; }
+
+html body ol.no-list, html body ul.no-list { padding: 0px; list-style-type:=
+ none; }
+
+html body ol ol, html body ol ul, html body ul ol, html body ul ul { margin=
+-top: 0px; margin-bottom: 0px; }
+
+html body li { margin-bottom: 0px; }
+
+html body li.task-list-item { list-style: none; }
+
+html body li > p { margin-top: 0px; margin-bottom: 0px; }
+
+html body .task-list-item-checkbox { margin: 0px 0.2em 0.25em -1.8em; verti=
+cal-align: middle; }
+
+html body .task-list-item-checkbox:hover { cursor: pointer; }
+
+html body blockquote { margin: 16px 0px; font-size: inherit; padding: 0px 1=
+5px; color: rgb(92, 92, 92); background-color: rgb(240, 240, 240); border-l=
+eft: 4px solid rgb(214, 214, 214); }
+
+html body blockquote > :first-child { margin-top: 0px; }
+
+html body blockquote > :last-child { margin-bottom: 0px; }
+
+html body hr { height: 4px; margin: 32px 0px; background-color: rgb(214, 21=
+4, 214); border: 0px none; }
+
+html body table { margin: 10px 0px 15px; border-collapse: collapse; border-=
+spacing: 0px; display: block; width: 100%; overflow: auto; word-break: keep=
+-all; }
+
+html body table th { font-weight: 700; color: rgb(0, 0, 0); }
+
+html body table td, html body table th { border: 1px solid rgb(214, 214, 21=
+4); padding: 6px 13px; }
+
+html body dl { padding: 0px; }
+
+html body dl dt { padding: 0px; margin-top: 16px; font-size: 1em; font-styl=
+e: italic; font-weight: 700; }
+
+html body dl dd { padding: 0px 16px; margin-bottom: 16px; }
+
+html body code { font-family: Menlo, Monaco, Consolas, "Courier New", monos=
+pace; font-size: 0.85em; color: rgb(0, 0, 0); background-color: rgb(240, 24=
+0, 240); border-radius: 3px; padding: 0.2em 0px; }
+
+html body code::after, html body code::before { letter-spacing: -0.2em; con=
+tent: "=C2=A0"; }
+
+html body pre > code { padding: 0px; margin: 0px; word-break: normal; white=
+-space: pre; background: 0px 0px; border: 0px; }
+
+html body .highlight { margin-bottom: 16px; }
+
+html body .highlight pre, html body pre { padding: 1em; overflow: auto; lin=
+e-height: 1.45; border: rgb(214, 214, 214); border-radius: 3px; }
+
+html body .highlight pre { margin-bottom: 0px; word-break: normal; }
+
+html body pre code, html body pre tt { display: inline; max-width: initial;=
+ padding: 0px; margin: 0px; overflow: initial; line-height: inherit; overfl=
+ow-wrap: normal; background-color: transparent; border: 0px; }
+
+html body pre code::after, html body pre code::before, html body pre tt::af=
+ter, html body pre tt::before { content: normal; }
+
+html body blockquote, html body dl, html body ol, html body p, html body pr=
+e, html body ul { margin-top: 0px; margin-bottom: 16px; }
+
+html body kbd { color: rgb(0, 0, 0); border-width: 1px 1px 2px; border-styl=
+e: solid; border-color: rgb(214, 214, 214) rgb(214, 214, 214) rgb(199, 199,=
+ 199); border-image: initial; padding: 2px 4px; background-color: rgb(240, =
+240, 240); border-radius: 3px; }
+
+@media print {
+  html body { background-color: rgb(255, 255, 255); }
+  html body h1, html body h2, html body h3, html body h4, html body h5, htm=
+l body h6 { color: rgb(0, 0, 0); break-after: avoid; }
+  html body blockquote { color: rgb(92, 92, 92); }
+  html body pre { break-inside: avoid; }
+  html body table { display: table; }
+  html body img { display: block; max-width: 100%; max-height: 100%; }
+  html body code, html body pre { overflow-wrap: break-word; white-space: p=
+re; }
+}
+
+.markdown-preview { width: 100%; height: 100%; box-sizing: border-box; }
+
+.markdown-preview ul { list-style: disc; }
+
+.markdown-preview ul ul { list-style: circle; }
+
+.markdown-preview ul ul ul { list-style: square; }
+
+.markdown-preview ol { list-style: decimal; }
+
+.markdown-preview ol ol, .markdown-preview ul ol { list-style-type: lower-r=
+oman; }
+
+.markdown-preview ol ol ol, .markdown-preview ol ul ol, .markdown-preview u=
+l ol ol, .markdown-preview ul ul ol { list-style-type: lower-alpha; }
+
+.markdown-preview .newpage, .markdown-preview .pagebreak { break-before: pa=
+ge; }
+
+.markdown-preview pre.line-numbers { position: relative; padding-left: 3.8e=
+m; counter-reset: linenumber 0; }
+
+.markdown-preview pre.line-numbers > code { position: relative; }
+
+.markdown-preview pre.line-numbers .line-numbers-rows { position: absolute;=
+ pointer-events: none; top: 1em; font-size: 100%; left: 0px; width: 3em; le=
+tter-spacing: -1px; border-right: 1px solid rgb(153, 153, 153); user-select=
+: none; }
+
+.markdown-preview pre.line-numbers .line-numbers-rows > span { pointer-even=
+ts: none; display: block; counter-increment: linenumber 1; }
+
+.markdown-preview pre.line-numbers .line-numbers-rows > span::before { cont=
+ent: counter(linenumber); color: rgb(153, 153, 153); display: block; paddin=
+g-right: 0.8em; text-align: right; }
+
+.markdown-preview .mathjax-exps .MathJax_Display { text-align: center !impo=
+rtant; }
+
+.markdown-preview:not([data-for=3D"preview"]) .code-chunk .code-chunk-btn-g=
+roup { display: none; }
+
+.markdown-preview:not([data-for=3D"preview"]) .code-chunk .status { display=
+: none; }
+
+.markdown-preview:not([data-for=3D"preview"]) .code-chunk .output-div { mar=
+gin-bottom: 16px; }
+
+.markdown-preview .md-toc { padding: 0px; }
+
+.markdown-preview .md-toc .md-toc-link-wrapper .md-toc-link { display: inli=
+ne; padding: 0.25rem 0px; }
+
+.markdown-preview .md-toc .md-toc-link-wrapper .md-toc-link div, .markdown-=
+preview .md-toc .md-toc-link-wrapper .md-toc-link p { display: inline; }
+
+.markdown-preview .md-toc .md-toc-link-wrapper.highlighted .md-toc-link { f=
+ont-weight: 800; }
+
+.scrollbar-style::-webkit-scrollbar { width: 8px; }
+
+.scrollbar-style::-webkit-scrollbar-track { border-radius: 10px; background=
+-color: transparent; }
+
+.scrollbar-style::-webkit-scrollbar-thumb { border-radius: 5px; background-=
+color: rgba(150, 150, 150, 0.66); border: 4px solid rgba(150, 150, 150, 0.6=
+6); background-clip: content-box; }
+
+html body[for=3D"html-export"]:not([data-presentation-mode]) { position: re=
+lative; width: 100%; height: 100%; top: 0px; left: 0px; margin: 0px; paddin=
+g: 0px; overflow: auto; }
+
+html body[for=3D"html-export"]:not([data-presentation-mode]) .markdown-prev=
+iew { position: relative; top: 0px; min-height: 100vh; }
+
+@media screen and (min-width: 914px) {
+  html body[for=3D"html-export"]:not([data-presentation-mode]) .markdown-pr=
+eview { padding: 2em calc(50% + 2em - 457px); }
+}
+
+@media screen and (max-width: 914px) {
+  html body[for=3D"html-export"]:not([data-presentation-mode]) .markdown-pr=
+eview { padding: 2em; }
+}
+
+@media screen and (max-width: 450px) {
+  html body[for=3D"html-export"]:not([data-presentation-mode]) .markdown-pr=
+eview { padding: 1em; font-size: 14px !important; }
+}
+
+@media print {
+  html body[for=3D"html-export"]:not([data-presentation-mode]) #sidebar-toc=
+-btn { display: none; }
+}
+
+html body[for=3D"html-export"]:not([data-presentation-mode]) #sidebar-toc-b=
+tn { position: fixed; bottom: 8px; left: 8px; font-size: 28px; cursor: poin=
+ter; color: inherit; z-index: 99; width: 32px; text-align: center; opacity:=
+ 0.4; }
+
+html body[for=3D"html-export"]:not([data-presentation-mode])[html-show-side=
+bar-toc] #sidebar-toc-btn { opacity: 1; }
+
+html body[for=3D"html-export"]:not([data-presentation-mode])[html-show-side=
+bar-toc] .md-sidebar-toc { position: fixed; top: 0px; left: 0px; width: 300=
+px; height: 100%; padding: 32px 0px 48px; font-size: 14px; box-shadow: rgba=
+(150, 150, 150, 0.33) 0px 0px 4px; box-sizing: border-box; overflow: auto; =
+background-color: inherit; }
+
+html body[for=3D"html-export"]:not([data-presentation-mode])[html-show-side=
+bar-toc] .md-sidebar-toc::-webkit-scrollbar { width: 8px; }
+
+html body[for=3D"html-export"]:not([data-presentation-mode])[html-show-side=
+bar-toc] .md-sidebar-toc::-webkit-scrollbar-track { border-radius: 10px; ba=
+ckground-color: transparent; }
+
+html body[for=3D"html-export"]:not([data-presentation-mode])[html-show-side=
+bar-toc] .md-sidebar-toc::-webkit-scrollbar-thumb { border-radius: 5px; bac=
+kground-color: rgba(150, 150, 150, 0.66); border: 4px solid rgba(150, 150, =
+150, 0.66); background-clip: content-box; }
+
+html body[for=3D"html-export"]:not([data-presentation-mode])[html-show-side=
+bar-toc] .md-sidebar-toc a { text-decoration: none; }
+
+html body[for=3D"html-export"]:not([data-presentation-mode])[html-show-side=
+bar-toc] .md-sidebar-toc .md-toc { padding: 0px 16px; }
+
+html body[for=3D"html-export"]:not([data-presentation-mode])[html-show-side=
+bar-toc] .md-sidebar-toc .md-toc .md-toc-link-wrapper .md-toc-link { displa=
+y: inline; padding: 0.25rem 0px; }
+
+html body[for=3D"html-export"]:not([data-presentation-mode])[html-show-side=
+bar-toc] .md-sidebar-toc .md-toc .md-toc-link-wrapper .md-toc-link div, htm=
+l body[for=3D"html-export"]:not([data-presentation-mode])[html-show-sidebar=
+-toc] .md-sidebar-toc .md-toc .md-toc-link-wrapper .md-toc-link p { display=
+: inline; }
+
+html body[for=3D"html-export"]:not([data-presentation-mode])[html-show-side=
+bar-toc] .md-sidebar-toc .md-toc .md-toc-link-wrapper.highlighted .md-toc-l=
+ink { font-weight: 800; }
+
+html body[for=3D"html-export"]:not([data-presentation-mode])[html-show-side=
+bar-toc] .markdown-preview { left: 300px; width: calc(100% - 300px); paddin=
+g: 2em calc(50% - 607px); margin: 0px; box-sizing: border-box; }
+
+@media screen and (max-width: 1274px) {
+  html body[for=3D"html-export"]:not([data-presentation-mode])[html-show-si=
+debar-toc] .markdown-preview { padding: 2em; }
+}
+
+@media screen and (max-width: 450px) {
+  html body[for=3D"html-export"]:not([data-presentation-mode])[html-show-si=
+debar-toc] .markdown-preview { width: 100%; }
+}
+
+html body[for=3D"html-export"]:not([data-presentation-mode]):not([html-show=
+-sidebar-toc]) .markdown-preview { left: 50%; transform: translateX(-50%); =
+}
+
+html body[for=3D"html-export"]:not([data-presentation-mode]):not([html-show=
+-sidebar-toc]) .md-sidebar-toc { display: none; }
+------MultipartBoundary--RgmNtGACLopbAnpLNPb6mWOWMEIntbUp9nMtczFXve------

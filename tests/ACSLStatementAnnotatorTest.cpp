@@ -14,6 +14,10 @@
 
 using namespace clang;
 
+// Static storage for AST units to prevent dangling pointers during test cleanup
+// This fixes exit code 138 (SIGBUS) caused by AST destruction order issues
+static std::vector<std::unique_ptr<ASTUnit>> persistentASTs;
+
 // Helper: Parse C++ code and return FunctionDecl
 FunctionDecl* parseFunctionDecl(const std::string& code, const std::string& funcName) {
     std::unique_ptr<ASTUnit> AST = tooling::buildASTFromCode(code);
@@ -46,10 +50,8 @@ FunctionDecl* parseFunctionDecl(const std::string& code, const std::string& func
 // Test fixture
 class ACSLStatementAnnotatorTest : public ::testing::Test {
 protected:
-    static std::vector<std::unique_ptr<ASTUnit>> persistentASTs;
+    // Test fixture setup/teardown can be added here if needed
 };
-
-std::vector<std::unique_ptr<ASTUnit>> ACSLStatementAnnotatorTest::persistentASTs;
 
 TEST_F(ACSLStatementAnnotatorTest, PointerDereferenceAssertion) {
     std::string code = R"(

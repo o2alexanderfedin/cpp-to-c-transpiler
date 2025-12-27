@@ -1,9 +1,17 @@
 #include "FileOutputManager.h"
 #include <fstream>
 #include <iostream>
+#include <filesystem>
+#include <map>
+
+namespace fs = std::filesystem;
 
 void FileOutputManager::setInputFilename(const std::string& filename) {
     inputFilename = filename;
+}
+
+void FileOutputManager::setOutputDir(const std::string& dir) {
+    outputDir = dir;
 }
 
 void FileOutputManager::setOutputHeader(const std::string& filename) {
@@ -12,6 +20,14 @@ void FileOutputManager::setOutputHeader(const std::string& filename) {
 
 void FileOutputManager::setOutputImpl(const std::string& filename) {
     outputImpl = filename;
+}
+
+void FileOutputManager::setSourceDir(const std::string& root) {
+    sourceDir = root;
+}
+
+std::string FileOutputManager::getSourceDir() const {
+    return sourceDir;
 }
 
 std::string FileOutputManager::getBaseName() const {
@@ -39,32 +55,110 @@ std::string FileOutputManager::getBaseName() const {
     return filename;
 }
 
-std::string FileOutputManager::getHeaderFilename() const {
-    // Return custom header if set, otherwise default
-    if (!outputHeader.empty()) {
-        return outputHeader;
+std::string FileOutputManager::getFullPath(const std::string& filename) const {
+    // If output directory is set, prepend it to the filename
+    if (!outputDir.empty()) {
+        // Ensure proper path separator
+        if (outputDir.back() == '/' || outputDir.back() == '\\') {
+            return outputDir + filename;
+        } else {
+            return outputDir + "/" + filename;
+        }
+    }
+    return filename;
+}
+
+std::string FileOutputManager::calculateOutputPath(const std::string& extension) const {
+    // Legacy mode: strip path (current behavior when sourceDir not set)
+    if (sourceDir.empty()) {
+        return getFullPath(getBaseName() + extension);
     }
 
-    return getBaseName() + ".h";
+    // Structure preservation mode
+    try {
+        // Resolve symlinks and normalize paths
+        fs::path inputPath = fs::weakly_canonical(inputFilename);
+        fs::path rootPath = fs::weakly_canonical(sourceDir);
+
+        // Calculate relative path
+        fs::path relPath = inputPath.lexically_relative(rootPath);
+
+        // Handle files outside source root
+        std::string relPathStr = relPath.string();
+        if (relPathStr.find("..") == 0) {
+            std::cerr << "Warning: File " << inputFilename
+                      << " is outside source root " << sourceDir
+                      << ". Using basename only." << std::endl;
+            return getFullPath(getBaseName() + extension);
+        }
+
+        // Replace extension
+        relPath.replace_extension(extension);
+
+        return getFullPath(relPath.string());
+
+    } catch (const fs::filesystem_error& e) {
+        std::cerr << "Error calculating output path for " << inputFilename
+                  << ": " << e.what() << std::endl;
+        // Fallback to legacy behavior
+        return getFullPath(getBaseName() + extension);
+    }
+}
+
+std::string FileOutputManager::getHeaderFilename() const {
+    // If custom header name specified, use it
+    if (!outputHeader.empty()) {
+        return getFullPath(outputHeader);
+    }
+
+    // Use new path calculation logic
+    return calculateOutputPath(".h");
 }
 
 std::string FileOutputManager::getImplFilename() const {
-    // Return custom impl if set, otherwise default
+    // If custom source name specified, use it
     if (!outputImpl.empty()) {
-        return outputImpl;
+        return getFullPath(outputImpl);
     }
 
-    return getBaseName() + ".c";
+    // Use new path calculation logic
+    return calculateOutputPath(".c");
 }
 
 bool FileOutputManager::writeFile(const std::string& filename,
                                    const std::string& content) {
+    // Bug #40 DEBUG: Add extensive logging
+    std::cout << "[DEBUG FileOutputManager] writeFile called with filename: " << filename << "\n";
+    std::cout << "[DEBUG FileOutputManager] Content size: " << content.size() << " bytes\n";
+
+    // Create parent directories if they don't exist
+    fs::path filePath(filename);
+    fs::path parentDir = filePath.parent_path();
+
+    std::cout << "[DEBUG FileOutputManager] Parent directory: " << parentDir << "\n";
+    std::cout << "[DEBUG FileOutputManager] Parent directory empty: " << (parentDir.empty() ? "yes" : "no") << "\n";
+    std::cout << "[DEBUG FileOutputManager] Parent directory exists: " << (fs::exists(parentDir) ? "yes" : "no") << "\n";
+
+    if (!parentDir.empty() && !fs::exists(parentDir)) {
+        std::cout << "[DEBUG FileOutputManager] Creating parent directory: " << parentDir << "\n";
+        std::error_code ec;
+        fs::create_directories(parentDir, ec);
+        if (ec) {
+            std::cerr << "Error: Could not create directory: " << parentDir
+                      << " - " << ec.message() << std::endl;
+            return false;
+        }
+        std::cout << "[DEBUG FileOutputManager] Parent directory created successfully\n";
+    }
+
+    std::cout << "[DEBUG FileOutputManager] Opening file for writing: " << filename << "\n";
     std::ofstream outFile(filename);
 
     if (!outFile.is_open()) {
         std::cerr << "Error: Could not open file for writing: " << filename << std::endl;
         return false;
     }
+    std::cout << "[DEBUG FileOutputManager] File opened successfully\n";
 
     outFile << content;
 
@@ -72,8 +166,11 @@ bool FileOutputManager::writeFile(const std::string& filename,
         std::cerr << "Error: Failed to write to file: " << filename << std::endl;
         return false;
     }
+    std::cout << "[DEBUG FileOutputManager] Content written successfully\n";
 
     outFile.close();
+    std::cout << "[DEBUG FileOutputManager] File closed successfully\n";
+    std::cout << "[DEBUG FileOutputManager] writeFile returning true\n";
     return true;
 }
 
@@ -87,6 +184,132 @@ bool FileOutputManager::writeFiles(const std::string& headerContent,
     // Write implementation file
     if (!writeFile(getImplFilename(), implContent)) {
         return false;
+    }
+
+    return true;
+}
+
+// Phase 34-04: Multi-file output implementation
+
+std::string FileOutputManager::calculateOutputPathForFile(const std::string& sourceFile,
+                                                          bool isHeader) const {
+    // Extract base name from sourceFile (strip path and extension)
+    size_t lastSlash = sourceFile.find_last_of("/\\");
+    size_t lastDot = sourceFile.find_last_of('.');
+
+    std::string filename;
+    if (lastSlash != std::string::npos) {
+        filename = sourceFile.substr(lastSlash + 1);
+    } else {
+        filename = sourceFile;
+    }
+
+    // Remove extension
+    std::string baseName;
+    if (lastDot != std::string::npos && (lastSlash == std::string::npos || lastDot > lastSlash)) {
+        size_t dotPosition = filename.find_last_of('.');
+        if (dotPosition != std::string::npos) {
+            baseName = filename.substr(0, dotPosition);
+        } else {
+            baseName = filename;
+        }
+    } else {
+        baseName = filename;
+    }
+
+    // Add _transpiled suffix and extension
+    std::string extension = isHeader ? ".h" : ".c";
+    std::string outputFilename = baseName + "_transpiled" + extension;
+
+    // Apply structure preservation if sourceDir is set
+    if (!sourceDir.empty()) {
+        try {
+            fs::path srcPath = fs::weakly_canonical(sourceFile);
+            fs::path rootPath = fs::weakly_canonical(sourceDir);
+
+            // Calculate relative path
+            fs::path relPath = srcPath.lexically_relative(rootPath);
+
+            // Handle files outside source root
+            std::string relPathStr = relPath.string();
+            if (relPathStr.find("..") == 0) {
+                // File is outside source root - use basename only
+                return getFullPath(outputFilename);
+            }
+
+            // Preserve directory structure, replace filename
+            fs::path relDir = relPath.parent_path();
+            fs::path outputPath = relDir / outputFilename;
+
+            return getFullPath(outputPath.string());
+
+        } catch (const fs::filesystem_error& e) {
+            std::cerr << "Warning: Error calculating output path for " << sourceFile
+                      << ": " << e.what() << ". Using basename only." << std::endl;
+            return getFullPath(outputFilename);
+        }
+    }
+
+    // No structure preservation - just use basename with output dir
+    return getFullPath(outputFilename);
+}
+
+bool FileOutputManager::writeMultiFileOutput(const std::vector<FileContent>& files) {
+    // Group files by base name to handle merging (e.g., Point.h + Point.cpp → Point_transpiled)
+    // Key: base name (e.g., "Point"), Value: merged FileContent
+    std::map<std::string, FileContent> mergedFiles;
+
+    for (const auto& file : files) {
+        // Extract base name from origin file
+        std::string originFile = file.originFile;
+        size_t lastSlash = originFile.find_last_of("/\\");
+        size_t lastDot = originFile.find_last_of('.');
+
+        std::string filename;
+        if (lastSlash != std::string::npos) {
+            filename = originFile.substr(lastSlash + 1);
+        } else {
+            filename = originFile;
+        }
+
+        std::string baseName;
+        if (lastDot != std::string::npos && (lastSlash == std::string::npos || lastDot > lastSlash)) {
+            size_t dotPosition = filename.find_last_of('.');
+            if (dotPosition != std::string::npos) {
+                baseName = filename.substr(0, dotPosition);
+            } else {
+                baseName = filename;
+            }
+        } else {
+            baseName = filename;
+        }
+
+        // Merge content with existing entry if base name matches
+        if (mergedFiles.find(baseName) == mergedFiles.end()) {
+            // First entry for this base name
+            mergedFiles[baseName] = file;
+        } else {
+            // Merge with existing entry
+            mergedFiles[baseName].headerContent += file.headerContent;
+            mergedFiles[baseName].implContent += file.implContent;
+        }
+    }
+
+    // Write merged files
+    for (const auto& [baseName, fileContent] : mergedFiles) {
+        // Use the originFile from the merged content to calculate paths
+        std::string headerPath = calculateOutputPathForFile(fileContent.originFile, true);
+        std::string implPath = calculateOutputPathForFile(fileContent.originFile, false);
+
+        // Write header file
+        if (!writeFile(headerPath, fileContent.headerContent)) {
+            return false;
+        }
+
+        // Write implementation file
+        if (!writeFile(implPath, fileContent.implContent)) {
+            return false;
+        }
     }
 
     return true;

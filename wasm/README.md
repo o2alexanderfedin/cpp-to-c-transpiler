@@ -44,7 +44,8 @@ public:
 });
 
 if (result.success) {
-    console.log('C code:', result.c);
+    console.log('Header (.h):', result.h);
+    console.log('Implementation (.c):', result.c);
     console.log('ACSL annotations:', result.acsl);
 } else {
     console.error('Errors:', result.diagnostics);
@@ -107,8 +108,106 @@ interface TranspileOptions {
 interface TranspileResult {
     success: boolean;
     c: string;
+    h: string;          // Header code (Phase 28)
     acsl: string;
     diagnostics: Diagnostic[];
+}
+```
+
+## Header/Implementation Separation (Phase 28)
+
+The transpiler generates separate .h and .c files with proper forward declarations:
+
+### Output Structure
+
+**Header File (.h)**:
+- Include guards (`#ifndef` / `#define` / `#endif`)
+- Forward declarations (for struct pointers)
+- Struct/class definitions
+- Function declarations (signatures only)
+
+**Implementation File (.c)**:
+- `#include "header.h"`
+- Function implementations (full bodies)
+
+### WASM API
+
+The `TranspileResult` object now includes:
+
+```javascript
+{
+  success: boolean,
+  c: string,          // Implementation code
+  h: string,          // Header code
+  acsl: string,       // ACSL annotations (if enabled)
+  diagnostics: Diagnostic[]
+}
+```
+
+### Example Usage
+
+```javascript
+import createCppToC from './cpptoc.js';
+
+const Module = await createCppToC();
+const transpiler = new Module.Transpiler();
+
+const cpp = `
+  struct Node {
+      int data;
+      struct Node* next;
+  };
+
+  int getLength(struct Node* head) {
+      int count = 0;
+      while (head) {
+          count++;
+          head = head->next;
+      }
+      return count;
+  }
+`;
+
+const result = transpiler.transpile(cpp, new Module.TranspileOptions());
+
+console.log('=== Header File ===');
+console.log(result.h);
+
+console.log('=== Implementation File ===');
+console.log(result.c);
+```
+
+### Output Example
+
+**Header File (result.h)**:
+```c
+#ifndef INPUT_CPP_H
+#define INPUT_CPP_H
+
+// Forward declarations
+struct Node;
+
+struct Node {
+    int data;
+    struct Node *next;
+};
+
+int getLength(struct Node *head);
+
+#endif // INPUT_CPP_H
+```
+
+**Implementation File (result.c)**:
+```c
+#include "input.cpp.h"
+
+int getLength(struct Node *head) {
+    int count = 0;
+    while (head) {
+        count++;
+        head = head->next;
+    }
+    return count;
 }
 ```
 

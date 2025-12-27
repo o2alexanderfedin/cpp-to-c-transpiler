@@ -27,6 +27,7 @@ std::unique_ptr<ASTUnit> buildAST(const char *code) {
 }
 
 // Test helper macros
+#define ASSERT_CONDITION(cond, msg) \
     if (!(cond)) { \
         std::cerr << "\nASSERT FAILED: " << msg << std::endl; \
         return; \

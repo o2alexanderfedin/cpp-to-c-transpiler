@@ -26,13 +26,6 @@
 #include <cstddef>
 #include <cstring>
 
-
-// Test helper macros
-  if (!(cond)) {                                                               \
-    std::cerr << "\nASSERT FAILED: " << msg << std::endl;                      \
-    return;                                                                    \
-  }
-
 // Forward declarations of runtime functions to be implemented
 extern "C" {
 // Type info structures (Itanium ABI)
@@ -84,7 +77,7 @@ const void *__vt_vmi_class_type_info = (const void *)0x3000;
  * Test: Base1* -> Base2* via Diamond
  */
 
-TEST(TEST, CrossCastTraversal) {
+TEST(CrossCastTraversalTest, NoCommonDerivedType) {
     // Setup type_info structures for unrelated classes
       const struct __class_type_info ti_Base1 = {.vtable_ptr = __vt_class_type_info,
                                                  .type_name = "5Base1"};
@@ -117,7 +110,7 @@ TEST(TEST, CrossCastTraversal) {
       ASSERT_TRUE(result == nullptr) << "Cross-cast with no common derived should return NULL";
 }
 
-TEST(TEST, CrossCastTraversal) {
+TEST(CrossCastTraversalTest, NullPointerCrossCast) {
     const struct __class_type_info ti_Base1 = {.vtable_ptr = __vt_class_type_info,
                                                  .type_name = "5Base1"};
 
@@ -134,7 +127,7 @@ TEST(TEST, CrossCastTraversal) {
       ASSERT_TRUE(result == nullptr) << "NULL pointer cross-cast should return NULL";
 }
 
-TEST(TEST, CrossCastTraversal) {
+TEST(CrossCastTraversalTest, SameTypeCrossCast) {
     const struct __class_type_info ti_Base = {.vtable_ptr = __vt_class_type_info,
                                                 .type_name = "4Base"};
 

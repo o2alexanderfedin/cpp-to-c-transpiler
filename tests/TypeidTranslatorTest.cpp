@@ -27,12 +27,6 @@ std::unique_ptr<ASTUnit> buildAST(const char *code) {
     return tooling::buildASTFromCodeWithArgs(code, args, "input.cc");
 }
 
-// Test helper macros
-    if (!(cond)) { \
-        std::cerr << "\nASSERT FAILED: " << msg << std::endl; \
-        return; \
-    }
-
 /**
  * @brief Helper to find first CXXTypeidExpr in AST
  */

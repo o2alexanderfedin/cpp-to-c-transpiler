@@ -42,6 +42,7 @@
 #include "clang/Tooling/Tooling.h"
 #include "CppToCVisitor.h"
 #include "CNodeBuilder.h"
+#include "FileOriginTracker.h"
 #include "ACSLGenerator.h"
 #include <cassert>
 #include <csetjmp>
@@ -165,7 +166,10 @@ bool runVisitorOnCode(const std::string& cpp_code) {
 
     ASTContext &Context = AST->getASTContext();
     CNodeBuilder Builder(Context);
-    CppToCVisitor Visitor(Context, Builder);
+    cpptoc::FileOriginTracker tracker(Context.getSourceManager());
+    tracker.addUserHeaderPath("<stdin>");
+    clang::TranslationUnitDecl *C_TU = clang::TranslationUnitDecl::Create(Context);
+    CppToCVisitor Visitor(Context, Builder, tracker, C_TU);
 
     // Traverse the AST
     Visitor.TraverseDecl(Context.getTranslationUnitDecl());

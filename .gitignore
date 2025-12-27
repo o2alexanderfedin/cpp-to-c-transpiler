@@ -19,6 +19,7 @@ cmake_install.cmake
 install_manifest.txt
 CTestTestfile.cmake
 _deps
+cmake_test_discovery_*.json
 
 # Clang/LLVM
 *.ast
@@ -55,6 +56,15 @@ bin/
 lib/
 dist/
 *.dSYM/
+build/
+build-*/
+build_*/
+**/build/
+tests/**/build/
+emsdk/
+build-wasm-*/
+build-asan/
+build-test*/
 
 # Dependency management
 compile_commands.json
@@ -84,6 +94,7 @@ valgrind-*.log
 # Profiling
 *.prof
 *.profdata
+*.profraw
 
 # Documentation generation
 docs/build/
@@ -92,6 +103,7 @@ docs/_build/
 # Package managers
 .cache/
 *.egg-info/
+node_modules/
 
 # Python (if using Python scripts)
 __pycache__/

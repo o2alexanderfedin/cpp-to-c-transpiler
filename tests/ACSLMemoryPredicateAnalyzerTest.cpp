@@ -23,6 +23,9 @@
 
 using namespace clang;
 
+// Global storage for AST units to keep them alive
+static std::vector<std::unique_ptr<ASTUnit>> persistentASTs;
+
 // Helper: Parse C++ code and return FunctionDecl
 FunctionDecl* parseFunctionDecl(const std::string& code, const std::string& funcName) {
     std::unique_ptr<ASTUnit> AST = tooling::buildASTFromCode(code);
@@ -51,10 +54,7 @@ FunctionDecl* parseFunctionDecl(const std::string& code, const std::string& func
 // Test fixture
 class ACSLMemoryPredicateAnalyzerTest : public ::testing::Test {
 protected:
-    static std::vector<std::unique_ptr<ASTUnit>> persistentASTs;
 };
-
-std::vector<std::unique_ptr<ASTUnit>> ACSLMemoryPredicateAnalyzerTest::persistentASTs;
 
 TEST_F(ACSLMemoryPredicateAnalyzerTest, AllocablePrecondition) {
     std::string code = R"(
@@ -257,7 +257,7 @@ TEST_F(ACSLMemoryPredicateAnalyzerTest, FreshMemoryAllocation) {
         ACSLMemoryPredicateAnalyzer analyzer;
         std::string contract = analyzer.generateMemoryPredicates(func);
 
-        EXPECT_NE((contract).find("\\fresh(\\result), std::string::npos) << size;", "Allocated memory should be fresh");
+        EXPECT_NE((contract).find("\\fresh(\\result"), std::string::npos) << "Allocated memory should be fresh";
         EXPECT_NE((contract).find("\\valid(\\result"), std::string::npos) << "Result should be valid or null";
 }
 

@@ -187,6 +187,33 @@ cpptoc-wasm-full/fast:
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/cpptoc-wasm-full.dir/build.make CMakeFiles/cpptoc-wasm-full.dir/build
 .PHONY : cpptoc-wasm-full/fast
 
+bindings/TranspilerAPIStub.o: bindings/TranspilerAPIStub.cpp.o
+.PHONY : bindings/TranspilerAPIStub.o
+
+# target to build an object file
+bindings/TranspilerAPIStub.cpp.o:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/cpptoc-wasm-minimal.dir/build.make CMakeFiles/cpptoc-wasm-minimal.dir/bindings/TranspilerAPIStub.cpp.o
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/cpptoc-wasm-full.dir/build.make CMakeFiles/cpptoc-wasm-full.dir/bindings/TranspilerAPIStub.cpp.o
+.PHONY : bindings/TranspilerAPIStub.cpp.o
+
+bindings/TranspilerAPIStub.i: bindings/TranspilerAPIStub.cpp.i
+.PHONY : bindings/TranspilerAPIStub.i
+
+# target to preprocess a source file
+bindings/TranspilerAPIStub.cpp.i:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/cpptoc-wasm-minimal.dir/build.make CMakeFiles/cpptoc-wasm-minimal.dir/bindings/TranspilerAPIStub.cpp.i
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/cpptoc-wasm-full.dir/build.make CMakeFiles/cpptoc-wasm-full.dir/bindings/TranspilerAPIStub.cpp.i
+.PHONY : bindings/TranspilerAPIStub.cpp.i
+
+bindings/TranspilerAPIStub.s: bindings/TranspilerAPIStub.cpp.s
+.PHONY : bindings/TranspilerAPIStub.s
+
+# target to generate assembly for a file
+bindings/TranspilerAPIStub.cpp.s:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/cpptoc-wasm-minimal.dir/build.make CMakeFiles/cpptoc-wasm-minimal.dir/bindings/TranspilerAPIStub.cpp.s
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/cpptoc-wasm-full.dir/build.make CMakeFiles/cpptoc-wasm-full.dir/bindings/TranspilerAPIStub.cpp.s
+.PHONY : bindings/TranspilerAPIStub.cpp.s
+
 bindings/full.o: bindings/full.cpp.o
 .PHONY : bindings/full.o
 
@@ -249,6 +276,9 @@ help:
 	@echo "... rebuild_cache"
 	@echo "... cpptoc-wasm-full"
 	@echo "... cpptoc-wasm-minimal"
+	@echo "... bindings/TranspilerAPIStub.o"
+	@echo "... bindings/TranspilerAPIStub.i"
+	@echo "... bindings/TranspilerAPIStub.s"
 	@echo "... bindings/full.o"
 	@echo "... bindings/full.i"
 	@echo "... bindings/full.s"

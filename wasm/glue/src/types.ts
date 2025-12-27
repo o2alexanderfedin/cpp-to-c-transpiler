@@ -67,6 +67,11 @@ export interface TranspileOptions {
 export interface TranspileResult {
     success: boolean;
     c: string;
+    /**
+     * Header file (.h) - Phase 28
+     * Contains forward declarations, struct definitions, and function signatures
+     */
+    h: string;
     acsl: string;
     diagnostics: Diagnostic[];
     /**

@@ -58,6 +58,14 @@ public:
    */
   explicit CNodeBuilder(ASTContext &Ctx) : Ctx(Ctx) {}
 
+  /**
+   * @brief Get the ASTContext used by this builder
+   * @return Reference to ASTContext
+   *
+   * Allows handlers to access context for creating nodes directly.
+   */
+  ASTContext& getContext() { return Ctx; }
+
   // ========================================================================
   // Type Helpers (Story #9)
   // ========================================================================
@@ -191,9 +199,14 @@ public:
     QualType intTy = intType();
     IdentifierInfo &II = Ctx.Idents.get(name);
 
-    return VarDecl::Create(Ctx, Ctx.getTranslationUnitDecl(), SourceLocation(),
+    VarDecl *VD = VarDecl::Create(Ctx, Ctx.getTranslationUnitDecl(), SourceLocation(),
                            SourceLocation(), &II, intTy,
                            Ctx.getTrivialTypeSourceInfo(intTy), SC_None);
+
+    // CRITICAL FIX: Add the variable to the TranslationUnitDecl so it gets printed
+    Ctx.getTranslationUnitDecl()->addDecl(VD);
+
+    return VD;
   }
 
   /**
@@ -210,9 +223,14 @@ public:
   VarDecl *structVar(QualType type, llvm::StringRef name) {
     IdentifierInfo &II = Ctx.Idents.get(name);
 
-    return VarDecl::Create(Ctx, Ctx.getTranslationUnitDecl(), SourceLocation(),
+    VarDecl *VD = VarDecl::Create(Ctx, Ctx.getTranslationUnitDecl(), SourceLocation(),
                            SourceLocation(), &II, type,
                            Ctx.getTrivialTypeSourceInfo(type), SC_None);
+
+    // CRITICAL FIX: Add the variable to the TranslationUnitDecl so it gets printed
+    Ctx.getTranslationUnitDecl()->addDecl(VD);
+
+    return VD;
   }
 
   /**
@@ -230,9 +248,14 @@ public:
     QualType ptrTy = ptrType(pointee);
     IdentifierInfo &II = Ctx.Idents.get(name);
 
-    return VarDecl::Create(Ctx, Ctx.getTranslationUnitDecl(), SourceLocation(),
+    VarDecl *VD = VarDecl::Create(Ctx, Ctx.getTranslationUnitDecl(), SourceLocation(),
                            SourceLocation(), &II, ptrTy,
                            Ctx.getTrivialTypeSourceInfo(ptrTy), SC_None);
+
+    // CRITICAL FIX: Add the variable to the TranslationUnitDecl so it gets printed
+    Ctx.getTranslationUnitDecl()->addDecl(VD);
+
+    return VD;
   }
 
   /**
@@ -257,6 +280,9 @@ public:
     if (init) {
       VD->setInit(init);
     }
+
+    // CRITICAL FIX: Add the variable to the TranslationUnitDecl so it gets printed
+    Ctx.getTranslationUnitDecl()->addDecl(VD);
 
     return VD;
   }
@@ -354,6 +380,22 @@ public:
     return DeclRefExpr::Create(Ctx, NestedNameSpecifierLoc(), SourceLocation(),
                                func, false, SourceLocation(), func->getType(),
                                VK_LValue);
+  }
+
+  /**
+   * @brief Create reference to enum constant (Bug #37)
+   * @param enumConst EnumConstantDecl
+   * @return DeclRefExpr* referring to the enum constant
+   *
+   * Example:
+   * @code
+   *   DeclRefExpr *ref = builder.ref(gameStateMenuConst);
+   * @endcode
+   */
+  DeclRefExpr *ref(EnumConstantDecl *enumConst) {
+    return DeclRefExpr::Create(Ctx, NestedNameSpecifierLoc(), SourceLocation(),
+                               enumConst, false, SourceLocation(), enumConst->getType(),
+                               VK_PRValue);
   }
 
   /**
@@ -718,7 +760,53 @@ public:
 
     RD->completeDefinition();
 
+    // CRITICAL FIX: Add the struct to the TranslationUnitDecl so it gets printed
+    Ctx.getTranslationUnitDecl()->addDecl(RD);
+
     return RD;
+  }
+
+  /**
+   * @brief Create enum declaration (Bug #23: Enum class translation)
+   * @param name Enum name
+   * @param enumerators List of enumerator names and values
+   * @return EnumDecl* declaration
+   *
+   * Example:
+   * @code
+   *   EnumDecl *e = builder.enumDecl("Color", {{"Red", 0}, {"Green", 1}});
+   * @endcode
+   */
+  EnumDecl *enumDecl(llvm::StringRef name,
+                     llvm::ArrayRef<std::pair<llvm::StringRef, int>> enumerators) {
+    IdentifierInfo &II = Ctx.Idents.get(name);
+
+    // Create the enum declaration
+    EnumDecl *ED = EnumDecl::Create(
+        Ctx, Ctx.getTranslationUnitDecl(), SourceLocation(), SourceLocation(),
+        &II, nullptr, false, false, true);  // Not scoped, not fixed underlying type
+
+    ED->startDefinition();
+
+    // Add enumerator constants
+    for (const auto &[enumName, enumValue] : enumerators) {
+      IdentifierInfo &EnumII = Ctx.Idents.get(enumName);
+
+      // Create enumerator constant
+      EnumConstantDecl *ECD = EnumConstantDecl::Create(
+          Ctx, ED, SourceLocation(), &EnumII, Ctx.IntTy,
+          nullptr, llvm::APSInt(llvm::APInt(32, enumValue)));
+
+      // Add to enum
+      ED->addDecl(ECD);
+    }
+
+    ED->completeDefinition(Ctx.IntTy, Ctx.IntTy, 0, 0);
+
+    // Add to TranslationUnitDecl
+    Ctx.getTranslationUnitDecl()->addDecl(ED);
+
+    return ED;
   }
 
   /**
@@ -814,6 +902,9 @@ public:
     if (body) {
       FD->setBody(body);
     }
+
+    // CRITICAL FIX: Add the function to the TranslationUnitDecl so it gets printed
+    Ctx.getTranslationUnitDecl()->addDecl(FD);
 
     return FD;
   }

@@ -9,6 +9,7 @@
 #ifndef TEMPLATE_EXTRACTOR_H
 #define TEMPLATE_EXTRACTOR_H
 
+#include "FileOriginTracker.h"
 #include "clang/AST/AST.h"
 #include "clang/AST/RecursiveASTVisitor.h"
 #include <vector>
@@ -30,8 +31,10 @@ public:
     /**
      * @brief Construct extractor with AST context
      * @param Context Clang AST context
+     * @param tracker File origin tracker for filtering system headers (Bug #17)
      */
-    explicit TemplateExtractor(clang::ASTContext& Context);
+    explicit TemplateExtractor(clang::ASTContext& Context,
+                               cpptoc::FileOriginTracker* tracker = nullptr);
 
     /**
      * @brief Extract all template instantiations from translation unit
@@ -50,6 +53,21 @@ public:
      * @return Vector of FunctionDecl pointers
      */
     std::vector<clang::FunctionDecl*> getFunctionInstantiations() const;
+
+    // RecursiveASTVisitor configuration
+    // Bug #33 FIX: DO NOT override shouldVisitTemplateInstantiations()!
+    //
+    // Previous approach: returned false to skip visiting template instantiations
+    // Problem: This also prevented visiting ClassTemplateDecl (the template definition)!
+    // Result: VisitClassTemplateDecl was never called, so we never found templates
+    //
+    // Current approach: Let RecursiveASTVisitor visit both template decls and instantiations
+    // Filter system headers in Visit methods using FileOriginTracker
+    // This allows finding user templates while skipping STL
+
+    bool shouldVisitImplicitCode() const {
+        return false;  // Skip implicit code
+    }
 
     // RecursiveASTVisitor interface
     bool VisitClassTemplateDecl(clang::ClassTemplateDecl* D);
@@ -73,6 +91,7 @@ public:
 
 private:
     clang::ASTContext& Context;
+    cpptoc::FileOriginTracker* fileTracker; // Bug #17: Filter system headers
 
     // Store unique instantiations (avoid duplicates)
     std::vector<clang::ClassTemplateSpecializationDecl*> classInstantiations;

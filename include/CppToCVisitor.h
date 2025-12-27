@@ -8,12 +8,24 @@
 #include "ACSLLoopAnnotator.h"
 #include "ACSLStatementAnnotator.h"
 #include "ACSLTypeInvariantGenerator.h"
+#include "AssumeAttributeHandler.h"
+#include "AutoDecayCopyTranslator.h"
 #include "CNodeBuilder.h"
+#include "ConstevalIfTranslator.h"
+#include "ConstexprEnhancementHandler.h"
+#include "DeducingThisTranslator.h"
 #include "DynamicCastTranslator.h"
 #include "ExceptionFrameGenerator.h"
+#include "FileOriginTracker.h"
+#include "FileOriginFilter.h"
 #include "MoveAssignmentTranslator.h"
+#include "handlers/EnumTranslator.h"
 #include "MoveConstructorTranslator.h"
+#include "MultidimSubscriptTranslator.h"
 #include "NameMangler.h"
+#include "StaticOperatorTranslator.h"
+#include "ArithmeticOperatorTranslator.h"
+#include "ComparisonOperatorTranslator.h"
 #include "OverrideResolver.h"
 #include "RvalueRefParamTranslator.h"
 #include "TemplateExtractor.h"
@@ -39,6 +51,10 @@ class CppToCVisitor : public clang::RecursiveASTVisitor<CppToCVisitor> {
   clang::ASTContext &Context;
   clang::CNodeBuilder &Builder;
   NameMangler Mangler;
+
+  // Phase 34 (v2.5.0): File origin tracking for multi-file transpilation
+  cpptoc::FileOriginTracker &fileOriginTracker;
+  std::unique_ptr<cpptoc::FileOriginFilter> fileOriginFilter;
 
   // Phase 9 (v2.2.0): Virtual method support
   VirtualMethodAnalyzer VirtualAnalyzer;
@@ -89,11 +105,17 @@ class CppToCVisitor : public clang::RecursiveASTVisitor<CppToCVisitor> {
   // Phase 8: Mapping: Standalone functions (by mangled name -> C function)
   std::map<std::string, clang::FunctionDecl *> standaloneFuncMap;
 
+  // Track generated functions to prevent re-processing (fix for pointer recursion bug)
+  std::set<clang::FunctionDecl *> generatedFunctions;
+
   // Phase 11: Template monomorphization infrastructure (v2.4.0)
   std::unique_ptr<TemplateExtractor> m_templateExtractor;
   std::unique_ptr<TemplateMonomorphizer> m_templateMonomorphizer;
   std::unique_ptr<TemplateInstantiationTracker> m_templateTracker;
   std::string m_monomorphizedCode; // Store generated template code
+
+  // Phase 32: C TranslationUnit for generated C code
+  clang::TranslationUnitDecl* C_TranslationUnit;
 
   // Phase 12: Exception handling infrastructure (v2.5.0)
   std::unique_ptr<clang::TryCatchTransformer> m_tryCatchTransformer;
@@ -106,9 +128,46 @@ class CppToCVisitor : public clang::RecursiveASTVisitor<CppToCVisitor> {
   std::unique_ptr<TypeidTranslator> m_typeidTranslator;
   std::unique_ptr<DynamicCastTranslator> m_dynamicCastTranslator;
 
+  // Phase 1: Multidimensional subscript operator support (C++23)
+  std::unique_ptr<MultidimSubscriptTranslator> m_multidimSubscriptTrans;
+
+  // Phase 2: Static operator() and operator[] support (C++23)
+  std::unique_ptr<StaticOperatorTranslator> m_staticOperatorTrans;
+
+  // Phase 3: [[assume]] attribute handling (C++23)
+  std::unique_ptr<AssumeAttributeHandler> m_assumeHandler;
+
+  // Phase 4: Deducing this / explicit object parameter support (C++23 P0847R7)
+  std::unique_ptr<DeducingThisTranslator> m_deducingThisTrans;
+
+  // Phase 5: if consteval support (C++23 P1938R3)
+  std::unique_ptr<clang::ConstevalIfTranslator> m_constevalIfTrans;
+
+  // Phase 6: auto(x) decay-copy and partial constexpr support (C++23 P0849R8)
+  std::unique_ptr<AutoDecayCopyTranslator> m_autoDecayTrans;
+  std::unique_ptr<ConstexprEnhancementHandler> m_constexprHandler;
+
+  // Phase 47: Scoped enum translation
+  std::unique_ptr<cpptoc::EnumTranslator> m_enumTranslator;
+
+  // Phase 50: Arithmetic operator overloading support (v2.10.0)
+  std::unique_ptr<ArithmeticOperatorTranslator> m_arithmeticOpTrans;
+
+  // Phase 51: Comparison & logical operator overloading support (v2.11.0)
+  std::unique_ptr<ComparisonOperatorTranslator> m_comparisonOpTrans;
+
   // Current translation context (Story #19)
   clang::ParmVarDecl *currentThisParam = nullptr;
   clang::CXXMethodDecl *currentMethod = nullptr;
+
+  // Bug #38 FIX: Track nested class mappings during template method translation
+  // Maps original nested class name (e.g., "Node") to monomorphized name (e.g., "LinkedList_int_Node")
+  const std::map<std::string, std::string>* currentNestedClassMappings = nullptr;
+
+  // Bug #37 FIX: Track enum constant mappings for scoped enums
+  // Maps C++ EnumConstantDecl* -> C EnumConstantDecl* for scoped enum translation
+  // E.g., GameState::Menu (C++) -> GameState__Menu (C)
+  std::map<const clang::EnumConstantDecl*, clang::EnumConstantDecl*> enumConstantMap;
 
   // Story #44: Track local objects with destructors for current function
   std::vector<clang::VarDecl *> currentFunctionObjectsToDestroy;
@@ -157,7 +216,35 @@ class CppToCVisitor : public clang::RecursiveASTVisitor<CppToCVisitor> {
 
 public:
   explicit CppToCVisitor(clang::ASTContext &Context,
-                         clang::CNodeBuilder &Builder);
+                         clang::CNodeBuilder &Builder,
+                         cpptoc::FileOriginTracker &tracker,
+                         clang::TranslationUnitDecl *C_TU,
+                         const std::string& currentFile = "");
+
+  // ============================================================================
+  // RecursiveASTVisitor Configuration (Bug #17: System Header Hang Fix)
+  // ============================================================================
+
+  // Bug #33 FIX: DO NOT override shouldVisitTemplateInstantiations()!
+  //
+  // Previous (incorrect) approach:
+  // - Returned false to skip ALL template instantiations
+  // - This prevented discovering user code templates (LinkedList<int>, etc.)
+  // - Result: Template monomorphization found 0 instantiations
+  //
+  // Current (correct) approach:
+  // - Let RecursiveASTVisitor visit template instantiations normally
+  // - Filter system headers in VisitClassTemplateSpecializationDecl using FileOriginTracker
+  // - This allows discovering user templates while skipping STL templates
+  //
+  // Note: We removed the shouldVisitTemplateInstantiations() override entirely
+
+  // Override shouldVisitImplicitCode to skip compiler-generated implicit code.
+  // This prevents visiting massive amounts of implicit constructors, destructors,
+  // and operators from system headers.
+  bool shouldVisitImplicitCode() const {
+    return false;  // Skip implicit code - we handle explicit user code only
+  }
 
   // Visit C++ class/struct declarations
   bool VisitCXXRecordDecl(clang::CXXRecordDecl *D);
@@ -177,6 +264,14 @@ public:
   // Visit variable declarations (including member variables)
   bool VisitVarDecl(clang::VarDecl *VD);
 
+  // Bug #23: Visit enum declarations to translate enum class to C typedef enum
+  bool VisitEnumDecl(clang::EnumDecl *ED);
+
+  // Phase 47-01 Group 1 Task 1: Extract underlying type from EnumDecl
+  // Returns the underlying integer type of an enum (e.g., uint8_t, int32_t)
+  // Returns QualType() if no explicit type is specified
+  clang::QualType extractUnderlyingType(const clang::EnumDecl *ED) const;
+
   // Visit compound statements for scope tracking (Story #46)
   bool VisitCompoundStmt(clang::CompoundStmt *CS);
 
@@ -186,11 +281,15 @@ public:
   clang::Expr *translateMemberExpr(clang::MemberExpr *ME);
   clang::Expr *translateCallExpr(clang::CallExpr *CE);
   clang::Expr *translateBinaryOperator(clang::BinaryOperator *BO);
+  clang::Expr *translateConstructExpr(clang::CXXConstructExpr *CCE);
+  clang::Expr *translateNewExpr(clang::CXXNewExpr *NE); // Bug #29.3
+  clang::Expr *translateDeleteExpr(clang::CXXDeleteExpr *DE); // Bug #29.2
 
   // Statement translation (Story #19)
   clang::Stmt *translateStmt(clang::Stmt *S);
   clang::Stmt *translateReturnStmt(clang::ReturnStmt *RS);
   clang::Stmt *translateCompoundStmt(clang::CompoundStmt *CS);
+  clang::Stmt *translateDeclStmt(clang::DeclStmt *DS); // Phase 34-05
 
   // Story #45: Return statement visitor for early return detection
   bool VisitReturnStmt(clang::ReturnStmt *RS);
@@ -230,6 +329,18 @@ public:
   bool VisitCXXTypeidExpr(clang::CXXTypeidExpr *E);
   bool VisitCXXDynamicCastExpr(clang::CXXDynamicCastExpr *E);
 
+  // Phase 1: Multidimensional subscript operator visitor (C++23)
+  bool VisitCXXOperatorCallExpr(clang::CXXOperatorCallExpr *E);
+
+  // Phase 3: [[assume]] attribute visitor (C++23)
+  bool VisitAttributedStmt(clang::AttributedStmt *S);
+
+  // Phase 5: if consteval visitor (C++23 P1938R3)
+  bool VisitIfStmt(clang::IfStmt *S);
+
+  // Phase 6: auto(x) decay-copy visitor (C++23 P0849R8)
+  bool VisitCXXFunctionalCastExpr(clang::CXXFunctionalCastExpr *E);
+
   // Retrieve generated C struct by class name (for testing)
   clang::RecordDecl *getCStruct(llvm::StringRef className) const;
 
@@ -258,6 +369,19 @@ public:
    * @return String containing all monomorphized C code
    */
   std::string getMonomorphizedCode() const { return m_monomorphizedCode; }
+
+  /**
+   * @brief Get the C TranslationUnit containing generated C AST nodes
+   * @return Pointer to C TranslationUnitDecl
+   *
+   * Phase 32: Fix transpiler architecture - use C AST for output generation.
+   * This method returns the C TranslationUnit that contains all generated C
+   * AST nodes (structs, functions, etc.) which should be used for code
+   * generation instead of the original C++ AST.
+   */
+  clang::TranslationUnitDecl* getCTranslationUnit() const {
+    return C_TranslationUnit;
+  }
 
 private:
   // Epic #5: RAII helper methods
@@ -335,6 +459,16 @@ private:
    * Called when visiting VarDecls with non-trivial destructors.
    */
   void trackObjectInCurrentScope(clang::VarDecl *VD);
+
+  /**
+   * @brief Check if a statement contains RecoveryExpr (parsing errors)
+   * @param S The statement to check
+   * @return true if S or any of its sub-expressions contains RecoveryExpr
+   *
+   * Bug #8: Skip statements with RecoveryExpr from missing system headers
+   * Recursively checks if any expression in the statement tree is RecoveryExpr.
+   */
+  bool containsRecoveryExpr(clang::Stmt *S);
 
   /**
    * @brief Analyze goto-label pairs and determine objects needing destruction
@@ -584,4 +718,19 @@ private:
 
   // Storage for ACSL annotations when using separate output mode
   std::map<std::string, std::string> m_acslAnnotations;
+
+  // ============================================================================
+  // Phase 31-03: COM-Style Static Declarations for All Methods
+  // ============================================================================
+
+  /**
+   * @brief Generate static declarations for ALL methods (virtual and non-virtual)
+   * @param RD The class declaration
+   * @return C code for static function declarations
+   *
+   * Generates static function declarations for all methods in a class,
+   * providing compile-time type safety for all method signatures.
+   * This includes constructors, destructors, and all regular methods.
+   */
+  std::string generateAllMethodDeclarations(clang::CXXRecordDecl* RD);
 };

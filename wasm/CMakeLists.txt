@@ -4,8 +4,11 @@ project(cpptoc_wasm)
 # Detect Emscripten build
 if(EMSCRIPTEN)
     message(STATUS "Building for WebAssembly with Emscripten")
-    message(STATUS "NOTE: Bindings are PLACEHOLDER implementations")
-    message(STATUS "Full transpiler integration requires Clang LibTooling → WASM (future work)")
+    message(STATUS "Using REAL Clang LibTooling transpiler")
+
+    # Find Clang/LLVM for WASM build
+    find_package(LLVM REQUIRED CONFIG)
+    find_package(Clang REQUIRED CONFIG)
 
     # Enable C++ exceptions (required for try/catch)
     set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fexceptions")
@@ -29,6 +32,11 @@ if(EMSCRIPTEN)
     # ========================================================================
     add_executable(cpptoc-wasm-minimal
         bindings/minimal.cpp
+        bindings/TranspilerAPIStub.cpp
+    )
+
+    target_include_directories(cpptoc-wasm-minimal PRIVATE
+        ${CMAKE_CURRENT_SOURCE_DIR}/../include
     )
 
     target_compile_definitions(cpptoc-wasm-minimal PRIVATE
@@ -58,15 +66,63 @@ if(EMSCRIPTEN)
     # ========================================================================
     add_executable(cpptoc-wasm-full
         bindings/full.cpp
+        # REAL TRANSPILER IMPLEMENTATION - ALL SOURCE FILES
+        ../src/TranspilerAPI.cpp
+        ../src/CppToCVisitor.cpp
+        ../src/CFGAnalyzer.cpp
+        ../src/NameMangler.cpp
+        ../src/CodeGenerator.cpp
+        ../src/ACSLGenerator.cpp
+        ../src/ACSLFunctionAnnotator.cpp
+        ../src/ACSLLoopAnnotator.cpp
+        ../src/ACSLClassAnnotator.cpp
+        ../src/ACSLStatementAnnotator.cpp
+        ../src/ACSLTypeInvariantGenerator.cpp
+        ../src/ACSLAxiomaticBuilder.cpp
+        ../src/ACSLGhostCodeInjector.cpp
+        ../src/ACSLBehaviorAnnotator.cpp
+        ../src/ACSLMemoryPredicateAnalyzer.cpp
+        ../src/HeaderSeparator.cpp
+        ../src/IncludeGuardGenerator.cpp
+        ../src/DependencyAnalyzer.cpp
+        ../src/DependencyGraphVisualizer.cpp
+        ../src/FileOutputManager.cpp
+        ../src/VirtualMethodAnalyzer.cpp
+        ../src/VptrInjector.cpp
+        ../src/VirtualInheritanceAnalyzer.cpp
+        ../src/MoveConstructorTranslator.cpp
+        ../src/MoveAssignmentTranslator.cpp
+        ../src/StdMoveTranslator.cpp
+        ../src/RvalueRefParamTranslator.cpp
+        ../src/VtableGenerator.cpp
+        ../src/MethodSignatureHelper.cpp
+        ../src/OverrideResolver.cpp
+        ../src/VtableInitializer.cpp
+    )
+
+    target_include_directories(cpptoc-wasm-full PRIVATE
+        ${CMAKE_CURRENT_SOURCE_DIR}/../include
+        ${LLVM_INCLUDE_DIRS}
+        ${CLANG_INCLUDE_DIRS}
     )
 
     target_compile_definitions(cpptoc-wasm-full PRIVATE
-        EMSCRIPTEN
+        ${LLVM_DEFINITIONS}
     )
 
-    # Full build: performance over size
+    # Link Clang/LLVM libraries
+    target_link_libraries(cpptoc-wasm-full PRIVATE
+        clangTooling
+        clangFrontend
+        clangAST
+        clangBasic
+        LLVMSupport
+    )
+
+    # Full build: performance over size, increased memory for Clang
+    # Using 64-bit WASM (MEMORY64) for much larger address space needed by Clang/LLVM
     set_target_properties(cpptoc-wasm-full PROPERTIES
-        LINK_FLAGS "${WASM_COMMON_FLAGS} -O3 -s INITIAL_MEMORY=67108864 -s MAXIMUM_MEMORY=536870912 -s ASSERTIONS=1 -s STACK_OVERFLOW_CHECK=1 -s AGGRESSIVE_VARIABLE_ELIMINATION=1 -g1"
+        LINK_FLAGS "${WASM_COMMON_FLAGS} -O3 -sMEMORY64=2 -s INITIAL_MEMORY=268435456 -s MAXIMUM_MEMORY=4294967296 -s ASSERTIONS=1 -s STACK_OVERFLOW_CHECK=1 -s AGGRESSIVE_VARIABLE_ELIMINATION=1 -g1"
         OUTPUT_NAME "cpptoc-full"
     )
 

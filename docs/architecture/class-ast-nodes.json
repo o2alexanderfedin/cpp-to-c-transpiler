@@ -1,0 +1,185 @@
+{
+  "category": "class_struct",
+  "description": "AST nodes for C++ classes, structs, and member functions",
+  "nodes": [
+    {
+      "name": "RecordDecl",
+      "purpose": "Represents a C struct declaration",
+      "inherits_from": "TagDecl \u2192 TypeDecl \u2192 NamedDecl \u2192 Decl",
+      "key_methods": [
+        "field_begin(), field_end() - Iterators over fields",
+        "isStruct() - True for struct",
+        "isUnion() - True for union"
+      ],
+      "used_for": [
+        "C structs",
+        "C unions"
+      ],
+      "c_equivalent": "C struct (direct mapping)",
+      "complexity": 2,
+      "translation_notes": "Direct mapping for pure C structs.",
+      "example_cpp": "struct Point { int x; int y; };",
+      "example_c": "struct Point { int x; int y; };"
+    },
+    {
+      "name": "CXXRecordDecl",
+      "purpose": "Represents a C++ class or struct declaration",
+      "inherits_from": "RecordDecl \u2192 TagDecl \u2192 TypeDecl \u2192 NamedDecl \u2192 Decl",
+      "key_methods": [
+        "bases() - Iterator over base classes",
+        "methods() - Iterator over member functions",
+        "ctors() - Iterator over constructors",
+        "hasDefinition() - True if class is defined",
+        "isAbstract() - True if has pure virtual methods"
+      ],
+      "used_for": [
+        "C++ classes",
+        "C++ structs with methods"
+      ],
+      "c_equivalent": "C struct (methods become separate functions)",
+      "complexity": 3,
+      "translation_notes": "Translate to C struct. Methods become functions with 'this' parameter.",
+      "example_cpp": "class Counter { int count; void inc(); };",
+      "example_c": "struct Counter { int count; }; void Counter_inc(struct Counter* this);"
+    },
+    {
+      "name": "FieldDecl",
+      "purpose": "Represents a field (member variable) in a struct/class",
+      "inherits_from": "DeclaratorDecl \u2192 ValueDecl \u2192 NamedDecl \u2192 Decl",
+      "key_methods": [
+        "getType() - Field type",
+        "getAccess() - Access specifier (public/private/protected)"
+      ],
+      "used_for": [
+        "Struct/class fields"
+      ],
+      "c_equivalent": "C struct field",
+      "complexity": 1,
+      "translation_notes": "Direct mapping. All fields become public in C struct.",
+      "example_cpp": "private: int count;",
+      "example_c": "int count;"
+    },
+    {
+      "name": "CXXMethodDecl",
+      "purpose": "Represents a C++ member function",
+      "inherits_from": "FunctionDecl \u2192 DeclaratorDecl \u2192 ValueDecl \u2192 NamedDecl \u2192 Decl",
+      "key_methods": [
+        "isVirtual() - True if virtual method",
+        "isStatic() - True if static method",
+        "isConst() - True if const method",
+        "getParent() - Returns CXXRecordDecl of containing class"
+      ],
+      "used_for": [
+        "Member functions"
+      ],
+      "c_equivalent": "C function with explicit 'this' parameter",
+      "complexity": 3,
+      "translation_notes": "Add 'struct ClassName* this' as first parameter. Name becomes ClassName_methodName.",
+      "example_cpp": "void Counter::increment() { count++; }",
+      "example_c": "void Counter_increment(struct Counter* this) { this->count++; }"
+    },
+    {
+      "name": "CXXConstructorDecl",
+      "purpose": "Represents a C++ constructor",
+      "inherits_from": "CXXMethodDecl \u2192 FunctionDecl \u2192 DeclaratorDecl \u2192 ValueDecl \u2192 NamedDecl \u2192 Decl",
+      "key_methods": [
+        "inits() - Iterator over member initializers",
+        "isDefaultConstructor() - True if default constructor",
+        "isCopyConstructor() - True if copy constructor"
+      ],
+      "used_for": [
+        "Constructors"
+      ],
+      "c_equivalent": "C initialization function",
+      "complexity": 3,
+      "translation_notes": "Translate to ClassName__ctor function with 'this' parameter. Initialize fields.",
+      "example_cpp": "Counter::Counter(int n) : count(n) {}",
+      "example_c": "void Counter__ctor(struct Counter* this, int n) { this->count = n; }"
+    },
+    {
+      "name": "CXXDestructorDecl",
+      "purpose": "Represents a C++ destructor",
+      "inherits_from": "CXXMethodDecl \u2192 FunctionDecl \u2192 DeclaratorDecl \u2192 ValueDecl \u2192 NamedDecl \u2192 Decl",
+      "key_methods": [
+        "isVirtual() - True if virtual destructor"
+      ],
+      "used_for": [
+        "Destructors"
+      ],
+      "c_equivalent": "C cleanup function",
+      "complexity": 3,
+      "translation_notes": "Translate to ClassName__dtor function. Call cleanup for fields.",
+      "example_cpp": "~Counter() { /* cleanup */ }",
+      "example_c": "void Counter__dtor(struct Counter* this) { /* cleanup */ }"
+    },
+    {
+      "name": "MemberExpr",
+      "purpose": "Represents a member access expression (obj.field or ptr->field)",
+      "inherits_from": "Expr \u2192 ValueStmt \u2192 Stmt",
+      "key_methods": [
+        "getBase() - Base expression (object being accessed)",
+        "getMemberDecl() - The field or method being accessed",
+        "isArrow() - True for -> operator"
+      ],
+      "used_for": [
+        "Field access",
+        "Method access"
+      ],
+      "c_equivalent": "C field access (. or ->)",
+      "complexity": 2,
+      "translation_notes": "For field access, direct mapping. For methods, see CXXMemberCallExpr.",
+      "example_cpp": "obj.count, ptr->count",
+      "example_c": "obj.count, ptr->count"
+    },
+    {
+      "name": "CXXMemberCallExpr",
+      "purpose": "Represents a call to a member function",
+      "inherits_from": "CallExpr \u2192 Expr \u2192 ValueStmt \u2192 Stmt",
+      "key_methods": [
+        "getImplicitObjectArgument() - Returns object expression (this)",
+        "getMethodDecl() - Returns CXXMethodDecl being called"
+      ],
+      "used_for": [
+        "Method calls"
+      ],
+      "c_equivalent": "C function call with object as first argument",
+      "complexity": 3,
+      "translation_notes": "Translate obj.method(args) to ClassName_method(&obj, args).",
+      "example_cpp": "counter.increment()",
+      "example_c": "Counter_increment(&counter)"
+    },
+    {
+      "name": "CXXThisExpr",
+      "purpose": "Represents the 'this' pointer in member functions",
+      "inherits_from": "Expr \u2192 ValueStmt \u2192 Stmt",
+      "key_methods": [
+        "getType() - Type of 'this' (pointer to class)"
+      ],
+      "used_for": [
+        "'this' references in methods"
+      ],
+      "c_equivalent": "C function parameter 'this'",
+      "complexity": 2,
+      "translation_notes": "Replace with 'this' parameter name.",
+      "example_cpp": "this->count",
+      "example_c": "this->count"
+    },
+    {
+      "name": "CXXOperatorCallExpr",
+      "purpose": "Represents a call to an overloaded operator",
+      "inherits_from": "CallExpr \u2192 Expr \u2192 ValueStmt \u2192 Stmt",
+      "key_methods": [
+        "getOperator() - Returns operator kind (OO_Plus, OO_EqualEqual, etc.)",
+        "getNumArgs() - Number of operands"
+      ],
+      "used_for": [
+        "Overloaded operators (operator+, operator==, etc.)"
+      ],
+      "c_equivalent": "C function call",
+      "complexity": 4,
+      "translation_notes": "Translate to function call: ClassName_operator_add(lhs, rhs).",
+      "example_cpp": "a + b // where + is overloaded",
+      "example_c": "Vector_operator_add(&a, &b)"
+    }
+  ]
+}

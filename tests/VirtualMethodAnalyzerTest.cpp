@@ -23,11 +23,7 @@ std::unique_ptr<ASTUnit> buildAST(const char *code) {
     return tooling::buildASTFromCodeWithArgs(code, args, "input.cc");
 }
 
-// Test helper macros
-    if (!(cond)) { \
-        std::cerr << "\nASSERT FAILED: " << msg << std::endl; \
-        return; \
-    }
+// Test helper macros (removed - using GTest ASSERT macros instead)
 
 // Helper function to find class by name
 CXXRecordDecl* findClass(TranslationUnitDecl* TU, const std::string& name) {
@@ -69,7 +65,7 @@ TEST_F(VirtualMethodAnalyzerTest, DetectSingleVirtualMethod) {
 
         // Test: Should have exactly 1 virtual method
         auto virtualMethods = analyzer.getVirtualMethods(Base);
-        ASSERT_TRUE(virtualMethods.size() == 1) << "Expected 1 virtual method, got: " + std::to_string(virtualMethods.size(;));
+        ASSERT_TRUE(virtualMethods.size() == 1) << "Expected 1 virtual method, got: " + std::to_string(virtualMethods.size());
 
         // Test: Should not be abstract (no pure virtual)
         ASSERT_TRUE(!analyzer.isAbstractClass(Base)) << "Base should not be abstract";
@@ -100,7 +96,7 @@ TEST_F(VirtualMethodAnalyzerTest, DetectPureVirtualMethod) {
         // Test: Method should be pure virtual
         auto virtualMethods = analyzer.getVirtualMethods(Abstract);
         ASSERT_TRUE(virtualMethods.size() == 1) << "Expected 1 virtual method";
-        ASSERT_TRUE(analyzer.isPureVirtual(virtualMethods[0])) << "foo(;should be pure virtual");
+        ASSERT_TRUE(analyzer.isPureVirtual(virtualMethods[0])) << "foo() should be pure virtual";
 }
 
 TEST_F(VirtualMethodAnalyzerTest, DetectMultipleVirtualMethods) {
@@ -126,7 +122,7 @@ TEST_F(VirtualMethodAnalyzerTest, DetectMultipleVirtualMethods) {
 
         // Test: Should have 3 virtual methods
         auto virtualMethods = analyzer.getVirtualMethods(Shape);
-        ASSERT_TRUE(virtualMethods.size() == 3) << "Expected 3 virtual methods, got: " + std::to_string(virtualMethods.size(;));
+        ASSERT_TRUE(virtualMethods.size() == 3) << "Expected 3 virtual methods, got: " + std::to_string(virtualMethods.size());
 }
 
 TEST_F(VirtualMethodAnalyzerTest, DetectInheritedVirtualMethods) {
@@ -163,7 +159,7 @@ TEST_F(VirtualMethodAnalyzerTest, DetectInheritedVirtualMethods) {
 
         // Test: Derived has 2 virtual methods (foo override + bar)
         auto derivedMethods = analyzer.getVirtualMethods(Derived);
-        ASSERT_TRUE(derivedMethods.size() == 2) << "Expected 2 virtual methods in Derived, got: " + std::to_string(derivedMethods.size(;));
+        ASSERT_TRUE(derivedMethods.size() == 2) << "Expected 2 virtual methods in Derived, got: " + std::to_string(derivedMethods.size());
 }
 
 TEST_F(VirtualMethodAnalyzerTest, NonPolymorphicClass) {
@@ -188,7 +184,7 @@ TEST_F(VirtualMethodAnalyzerTest, NonPolymorphicClass) {
 
         // Test: Should have 0 virtual methods
         auto virtualMethods = analyzer.getVirtualMethods(Regular);
-        ASSERT_TRUE(virtualMethods.size() == 0) << "Expected 0 virtual methods, got: " + std::to_string(virtualMethods.size(;));
+        ASSERT_TRUE(virtualMethods.size() == 0) << "Expected 0 virtual methods, got: " + std::to_string(virtualMethods.size());
 
         // Test: Should not be abstract
         ASSERT_TRUE(!analyzer.isAbstractClass(Regular)) << "Regular should not be abstract";
@@ -218,7 +214,7 @@ TEST_F(VirtualMethodAnalyzerTest, MixedVirtualMethods) {
 
         // Test: Should have exactly 2 virtual methods
         auto virtualMethods = analyzer.getVirtualMethods(Mixed);
-        ASSERT_TRUE(virtualMethods.size() == 2) << "Expected 2 virtual methods, got: " + std::to_string(virtualMethods.size(;));
+        ASSERT_TRUE(virtualMethods.size() == 2) << "Expected 2 virtual methods, got: " + std::to_string(virtualMethods.size());
 }
 
 TEST_F(VirtualMethodAnalyzerTest, VirtualDestructor) {
@@ -242,5 +238,5 @@ TEST_F(VirtualMethodAnalyzerTest, VirtualDestructor) {
 
         // Test: Should have virtual methods (destructor is a virtual method)
         auto virtualMethods = analyzer.getVirtualMethods(WithVirtualDestructor);
-        ASSERT_TRUE(virtualMethods.size() >= 1) << "Expected at least 1 virtual method (destructor;");
+        ASSERT_TRUE(virtualMethods.size() >= 1) << "Expected at least 1 virtual method (destructor)";
 }

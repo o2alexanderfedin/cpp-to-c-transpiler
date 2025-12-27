@@ -1,0 +1,51 @@
+// Generated from: /Users/alexanderfedin/Projects/hapyy/hupyy-cpp-to-c/./tests/unit/smart_pointers/SharedPtrTest_old.cpp
+// Header file
+
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+#include <math.h>
+#include <stdint.h>
+#include <stdbool.h>
+
+void test_shared_ptr_basic_constructor();
+void test_shared_ptr_copy_constructor_increments_refcount();
+void test_shared_ptr_copy_assignment_increments_refcount();
+void test_shared_ptr_use_count_returns_ref_count();
+void test_shared_ptr_unique_checks_sole_ownership();
+void test_shared_ptr_reset_releases_ownership();
+void test_shared_ptr_reset_with_new_pointer();
+void test_shared_ptr_get_returns_raw_pointer();
+void test_shared_ptr_bool_conversion();
+void test_shared_ptr_dereference_operators();
+void test_make_shared_basic_usage();
+void test_make_shared_with_multiple_arguments();
+void test_make_shared_single_allocation_optimization();
+void test_make_shared_with_default_constructor();
+void test_make_shared_exception_safety();
+void test_weak_ptr_basic_creation_from_shared_ptr();
+void test_weak_ptr_lock_creates_shared_ptr();
+void test_weak_ptr_lock_returns_null_when_expired();
+void test_weak_ptr_expired_checks_validity();
+void test_weak_ptr_use_count_returns_shared_count();
+void test_weak_ptr_reset_releases_weak_reference();
+void test_weak_ptr_breaks_cyclic_reference();
+void test_weak_ptr_copy_constructor();
+void test_weak_ptr_assignment_operator();
+void test_weak_ptr_swap();
+void test_shared_ptr_atomic_reference_counting();
+void test_shared_ptr_copy_thread_safe();
+void test_atomic_load_shared_ptr();
+void test_atomic_store_shared_ptr();
+void test_atomic_exchange_shared_ptr();
+void test_shared_ptr_with_custom_deleter();
+void test_shared_ptr_with_array_deleter();
+void test_shared_ptr_aliasing_constructor();
+void test_shared_ptr_with_polymorphism();
+void test_shared_ptr_enable_shared_from_this();
+void test_shared_ptr_in_container();
+void test_shared_ptr_comparison_operators();
+void test_shared_ptr_owner_before_strict_weak_ordering();
+void test_shared_ptr_move_constructor_no_refcount_change();
+void test_shared_ptr_move_assignment_no_refcount_change();
+int main();

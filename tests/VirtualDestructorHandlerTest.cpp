@@ -19,6 +19,7 @@ std::unique_ptr<ASTUnit> buildAST(const char *code) {
     return tooling::buildASTFromCodeWithArgs(code, args, "input.cc");
 }
 
+#define ASSERT_MSG(cond, msg) \
     if (!(cond)) { \
         std::cerr << "\nASSERT FAILED: " << msg << std::endl; \
         return; \
@@ -127,7 +128,7 @@ TEST_F(VirtualDestructorHandlerTest, VirtualDestructorInVtable) {
 
         // Check that destructor is included when getting vtable methods
         bool hasDestructor = handler.hasVirtualDestructor(Base);
-        ASSERT_TRUE(hasDestructor) << "Class with virtual destructor should report hasVirtualDestructor(;");
+        ASSERT_TRUE(hasDestructor) << "Class with virtual destructor should report hasVirtualDestructor()";
 }
 
 TEST_F(VirtualDestructorHandlerTest, GetDestructorVtableName) {
@@ -204,7 +205,7 @@ TEST_F(VirtualDestructorHandlerTest, InheritedVirtualDestructor) {
 
         // Both should have virtual destructors
         ASSERT_TRUE(handler.hasVirtualDestructor(Base)) << "Base should have virtual destructor";
-        ASSERT_TRUE(handler.hasVirtualDestructor(Derived)) << "Derived should have virtual destructor (inherited;");
+        ASSERT_TRUE(handler.hasVirtualDestructor(Derived)) << "Derived should have virtual destructor (inherited)";
 
         CXXDestructorDecl* DerivedDestructor = Derived->getDestructor();
         ASSERT_TRUE(DerivedDestructor) << "Derived destructor not found";

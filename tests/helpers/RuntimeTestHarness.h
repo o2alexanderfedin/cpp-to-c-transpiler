@@ -83,14 +83,23 @@ public:
     // @param cpp_code: C++ source code
     // @param clang_args: Additional Clang compiler arguments for transpilation
     // @param runtime_args: Command line arguments for execution
+    // @param stdin_data: Data to pipe to stdin
     // @return: ExecutionResult with success status and outputs
     ExecutionResult transpileCompileExecute(
         const std::string& cpp_code,
         const std::vector<std::string>& clang_args = {},
-        const std::vector<std::string>& runtime_args = {});
+        const std::vector<std::string>& runtime_args = {},
+        const std::string& stdin_data = "");
 
     // Get temporary directory path
     const std::string& getTempDir() const { return temp_dir_; }
+
+    // Get temporary file path with given filename
+    // @param filename: Name of the temporary file
+    // @return: Full path to temporary file
+    std::string getTempPath(const std::string& filename) const {
+        return temp_dir_ + "/" + filename;
+    }
 
     // Create temporary header file with given content
     // @param content: Header file content
@@ -99,18 +108,18 @@ public:
     std::string createTempHeaderFile(const std::string& content,
                                      const std::string& filename = "custom.h");
 
+    // Create temporary file with given content (public for test use)
+    // @param content: File content
+    // @param extension: File extension (e.g., ".c", ".cpp", ".txt")
+    // @return: Path to created file
+    std::string createTempFile(const std::string& content, const std::string& extension);
+
 private:
     std::string temp_dir_;
     std::vector<std::string> temp_files_;
 
     // Cleanup temporary files and directory
     void cleanup();
-
-    // Create temporary file with given content
-    // @param content: File content
-    // @param extension: File extension (e.g., ".c", ".cpp")
-    // @return: Path to created file
-    std::string createTempFile(const std::string& content, const std::string& extension);
 
     // Execute shell command and capture output
     // @param command: Shell command to execute

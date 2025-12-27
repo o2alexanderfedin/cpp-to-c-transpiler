@@ -25,12 +25,6 @@ std::unique_ptr<ASTUnit> buildAST(const char *code) {
     return tooling::buildASTFromCodeWithArgs(code, args, "input.cc");
 }
 
-// Test helper macros
-    if (!(cond)) { \
-        std::cerr << "\nASSERT FAILED: " << msg << std::endl; \
-        return; \
-    }
-
 // Test 1: Simple class template instantiation
 
 // Test fixture
@@ -63,7 +57,7 @@ TEST_F(TemplateExtractorTest, SimpleClassTemplateInstantiation) {
 
         auto instantiations = extractor.getClassInstantiations();
 
-        ASSERT_TRUE(instantiations.size() == 2) << "Expected 2 instantiations, got: " + std::to_string(instantiations.size(;));
+        ASSERT_TRUE(instantiations.size() == 2) << "Expected 2 instantiations, got: " + std::to_string(instantiations.size());
 
         // Verify Stack<int>
         bool foundInt = false;
@@ -110,7 +104,7 @@ TEST_F(TemplateExtractorTest, TemplateFunctionInstantiation) {
 
         auto funcInstantiations = extractor.getFunctionInstantiations();
 
-        ASSERT_TRUE(funcInstantiations.size() >= 2) << "Expected at least 2 function instantiations, got: " + std::to_string(funcInstantiations.size(;));
+        ASSERT_TRUE(funcInstantiations.size() >= 2) << "Expected at least 2 function instantiations, got: " + std::to_string(funcInstantiations.size());
 }
 
 TEST_F(TemplateExtractorTest, MultipleInstantiationsOfSameTemplate) {
@@ -136,7 +130,7 @@ TEST_F(TemplateExtractorTest, MultipleInstantiationsOfSameTemplate) {
         auto instantiations = extractor.getClassInstantiations();
 
         // Should have 2 unique instantiations (int and double), not 4
-        ASSERT_TRUE(instantiations.size() == 2) << "Expected 2 unique instantiations, got: " + std::to_string(instantiations.size(;));
+        ASSERT_TRUE(instantiations.size() == 2) << "Expected 2 unique instantiations, got: " + std::to_string(instantiations.size());
 }
 
 TEST_F(TemplateExtractorTest, NestedTemplateInstantiation) {
@@ -165,8 +159,8 @@ TEST_F(TemplateExtractorTest, NestedTemplateInstantiation) {
         auto instantiations = extractor.getClassInstantiations();
 
         // Should find both Inner<int> and Outer<Inner<int>>
-        ASSERT_TRUE(instantiations.size() == 2) << "Expected 2 instantiations (Inner<int> and Outer<Inner<int>>;, got: " +
-               std::to_string(instantiations.size()));
+        ASSERT_TRUE(instantiations.size() == 2)
+            << "Expected 2 instantiations (Inner<int> and Outer<Inner<int>>), got: " + std::to_string(instantiations.size());
 
         bool foundInner = false;
         bool foundOuter = false;
@@ -207,8 +201,8 @@ TEST_F(TemplateExtractorTest, ImplicitTemplateInstantiation) {
 
         auto classInstantiations = extractor.getClassInstantiations();
 
-        ASSERT_TRUE(classInstantiations.size() >= 1) << "Expected at least 1 class instantiation (Box<int>;, got: " +
-               std::to_string(classInstantiations.size()));
+        ASSERT_TRUE(classInstantiations.size() >= 1)
+            << "Expected at least 1 class instantiation (Box<int>), got: " + std::to_string(classInstantiations.size());
 
         // Verify Box<int> was found
         bool foundBox = false;

@@ -137,6 +137,29 @@ public:
      */
     std::string mangleStandaloneFunction(clang::FunctionDecl *FD);
 
+    /**
+     * @brief Mangle a C++ static data member to C global variable name
+     * @param RD Class/record declaration containing the static member
+     * @param VD Static data member declaration
+     * @return Mangled name (e.g., "ClassName__memberName")
+     *
+     * Phase 49: Static data member support
+     * Translates C++ static data members to C global variables.
+     * Pattern: ClassName__memberName (double underscore)
+     *
+     * Handles:
+     * - Simple classes: Counter::count → Counter__count
+     * - Nested classes: Outer::Inner::x → Outer__Inner__x
+     * - Namespaced classes: ns::Class::val → ns__Class__val
+     * - Namespace + nested: ns::Outer::Inner::x → ns__Outer__Inner__x
+     *
+     * Name collision avoidance:
+     * - Static members use double underscore: Class__member
+     * - Methods use single underscore: Class_method
+     * - This prevents collisions between static int getValue and int getValue()
+     */
+    std::string mangleStaticMember(clang::CXXRecordDecl *RD, clang::VarDecl *VD);
+
 private:
     /**
      * @brief Build qualified name from namespace hierarchy
@@ -144,9 +167,22 @@ private:
      * @return Vector of namespace names (outermost first)
      *
      * Story #65: Extracts namespace hierarchy for mangling
+     * Phase 48: Enhanced with anonymous namespace support
      * Example: ns1::ns2::Class returns {"ns1", "ns2"}
+     * Example: namespace { func; } returns {"_anon_<unique_id>"}
      */
     std::vector<std::string> extractNamespaceHierarchy(clang::Decl *D);
+
+    /**
+     * @brief Generate unique identifier for anonymous namespace
+     * @param ND Anonymous namespace declaration
+     * @return Unique identifier based on source location
+     *
+     * Phase 48: Anonymous namespace support
+     * Pattern: _anon_<basename>_<line>
+     * Example: _anon_utils_cpp_42 for anonymous namespace at line 42 in utils.cpp
+     */
+    std::string getAnonymousNamespaceID(clang::NamespaceDecl *ND);
     /**
      * @brief Get simple type name for mangling
      * @param T QualType to convert

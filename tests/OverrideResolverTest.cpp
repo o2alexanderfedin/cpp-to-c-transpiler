@@ -24,11 +24,7 @@ std::unique_ptr<ASTUnit> buildAST(const char *code) {
     return tooling::buildASTFromCodeWithArgs(code, args, "input.cc");
 }
 
-// Test helper macros
-    if (!(cond)) { \
-        std::cerr << "\nASSERT FAILED: " << msg << std::endl; \
-        return; \
-    }
+// Test helper macros (removed - using GTest ASSERT macros instead)
 
 // Helper function to find class by name
 CXXRecordDecl* findClass(TranslationUnitDecl* TU, const std::string& name) {
@@ -92,7 +88,7 @@ TEST_F(OverrideResolverTest, SingleMethodOverride) {
         ASSERT_TRUE(fooMethod) << "foo method not found in vtable";
 
         // Test: foo should be from Derived, not Base
-        ASSERT_TRUE(fooMethod->getParent()->getNameAsString() == "Derived") << "foo should be from Derived class (override;");
+        ASSERT_TRUE(fooMethod->getParent()->getNameAsString() == "Derived") << "foo should be from Derived class (override)";
 }
 
 TEST_F(OverrideResolverTest, InheritedMethod) {
@@ -141,10 +137,10 @@ TEST_F(OverrideResolverTest, InheritedMethod) {
         ASSERT_TRUE(barMethod) << "bar not found in vtable";
 
         // Test: foo should be overridden (from Derived)
-        ASSERT_TRUE(fooMethod->getParent()->getNameAsString() == "Derived") << "foo should be from Derived (overridden;");
+        ASSERT_TRUE(fooMethod->getParent()->getNameAsString() == "Derived") << "foo should be from Derived (overridden)";
 
         // Test: bar should be inherited (from Base)
-        ASSERT_TRUE(barMethod->getParent()->getNameAsString() == "Base") << "bar should be from Base (inherited;");
+        ASSERT_TRUE(barMethod->getParent()->getNameAsString() == "Base") << "bar should be from Base (inherited)";
 }
 
 TEST_F(OverrideResolverTest, MultiLevelInheritance) {
@@ -256,9 +252,9 @@ TEST_F(OverrideResolverTest, VtableSlotConsistency) {
             auto* baseMethod = baseMethods[baseStart + i];
             auto* derivedMethod = derivedMethods[derivedStart + i];
 
-            ASSERT_TRUE(baseMethod->getNameAsString() == derivedMethod->getNameAsString()) << "Method order must be consistent: " +
-                   baseMethod->getNameAsString(;+ " vs " +
-                   derivedMethod->getNameAsString());
+            ASSERT_TRUE(baseMethod->getNameAsString() == derivedMethod->getNameAsString())
+                << "Method order must be consistent: " << baseMethod->getNameAsString()
+                << " vs " << derivedMethod->getNameAsString();
         }
 }
 
@@ -302,7 +298,7 @@ TEST_F(OverrideResolverTest, MultipleOverrides) {
         }
 
         // Test: All 3 methods should be from Derived (all overridden)
-        ASSERT_TRUE(derivedMethodCount == 3) << "Expected 3 methods from Derived, got: " + std::to_string(derivedMethodCount;);
+        ASSERT_TRUE(derivedMethodCount == 3) << "Expected 3 methods from Derived, got: " + std::to_string(derivedMethodCount);
 }
 
 TEST_F(OverrideResolverTest, PartialOverride) {
@@ -391,7 +387,7 @@ TEST_F(OverrideResolverTest, CovariantReturnTypes) {
         ASSERT_TRUE(cloneMethod) << "clone method not found";
 
         // Test: clone should be from Derived (covariant override)
-        ASSERT_TRUE(cloneMethod->getParent()->getNameAsString() == "Derived") << "clone should be from Derived (covariant override;");
+        ASSERT_TRUE(cloneMethod->getParent()->getNameAsString() == "Derived") << "clone should be from Derived (covariant override)";
 }
 
 TEST_F(OverrideResolverTest, MethodWithParameters) {

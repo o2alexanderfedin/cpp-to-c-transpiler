@@ -194,6 +194,12 @@ RuntimeTestHarness::ExecutionResult RuntimeTestHarness::execute(
         cmd << " '" << arg << "'";
     }
 
+    // If stdin_data provided, pipe it to the command
+    if (!stdin_data.empty()) {
+        std::string stdin_file = createTempFile(stdin_data, ".stdin");
+        cmd << " < " << stdin_file;
+    }
+
     // Create temporary output files
     std::string stdout_file = createTempFile("", ".stdout");
     std::string stderr_file = createTempFile("", ".stderr");
@@ -221,7 +227,8 @@ RuntimeTestHarness::ExecutionResult RuntimeTestHarness::execute(
 RuntimeTestHarness::ExecutionResult RuntimeTestHarness::transpileCompileExecute(
     const std::string& cpp_code,
     const std::vector<std::string>& clang_args,
-    const std::vector<std::string>& runtime_args) {
+    const std::vector<std::string>& runtime_args,
+    const std::string& stdin_data) {
 
     ExecutionResult result;
     result.success = false;
@@ -244,7 +251,7 @@ RuntimeTestHarness::ExecutionResult RuntimeTestHarness::transpileCompileExecute(
     }
 
     // Step 3: Execute compiled binary
-    result = execute(compile_result.binary_path, runtime_args);
+    result = execute(compile_result.binary_path, runtime_args, stdin_data);
 
     return result;
 }

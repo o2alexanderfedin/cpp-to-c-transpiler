@@ -10,6 +10,7 @@
 #include <gtest/gtest.h>
 #include "CppToCVisitor.h"
 #include "CNodeBuilder.h"
+#include "FileOriginTracker.h"
 #include "CodeGenerator.h"
 #include "clang/AST/ASTContext.h"
 #include "clang/Frontend/ASTUnit.h"
@@ -25,7 +26,7 @@ bool contains(const std::string &haystack, const std::string &needle) {
     return haystack.find(needle) != std::string::npos;
 }
 
-TEST(MemberInitList, BasicMemberInitList:_Simple_primitive_member_initialization) {
+TEST(MemberInitList, BasicMemberInitListSimplePrimitiveMemberInitialization) {
     const char *cpp = R"(
             class Vector {
                 double x, y, z;
@@ -40,7 +41,10 @@ TEST(MemberInitList, BasicMemberInitList:_Simple_primitive_member_initialization
         }
 
         CNodeBuilder builder(AST->getASTContext());
-        CppToCVisitor visitor(AST->getASTContext(), builder);
+        cpptoc::FileOriginTracker tracker(AST->getASTContext().getSourceManager());
+    tracker.addUserHeaderPath("<stdin>");
+    clang::TranslationUnitDecl *C_TU = clang::TranslationUnitDecl::Create(AST->getASTContext());
+    CppToCVisitor visitor(AST->getASTContext(), builder, tracker, C_TU);
         visitor.TraverseDecl(AST->getASTContext().getTranslationUnitDecl());
 
         // Get the generated constructor function
@@ -51,7 +55,7 @@ TEST(MemberInitList, BasicMemberInitList:_Simple_primitive_member_initialization
 
         // Generate C code from the function
         std::string output;
-        raw_string_ostream OS(output);
+        llvm::raw_string_ostream OS(output);
         CodeGenerator gen(OS, AST->getASTContext());
         gen.printDecl(CtorFunc);
         OS.flush();
@@ -81,7 +85,7 @@ TEST(MemberInitList, BasicMemberInitList:_Simple_primitive_member_initialization
         }
 }
 
-TEST(MemberInitList, MixedTypesMemberInitList:_int,_double,_char*_initialization) {
+TEST(MemberInitList, MixedTypesMemberInitListIntDoubleCharPtrInitialization) {
     const char *cpp = R"(
             class Entity {
                 int id;
@@ -99,7 +103,10 @@ TEST(MemberInitList, MixedTypesMemberInitList:_int,_double,_char*_initialization
         }
 
         CNodeBuilder builder(AST->getASTContext());
-        CppToCVisitor visitor(AST->getASTContext(), builder);
+        cpptoc::FileOriginTracker tracker(AST->getASTContext().getSourceManager());
+    tracker.addUserHeaderPath("<stdin>");
+    clang::TranslationUnitDecl *C_TU = clang::TranslationUnitDecl::Create(AST->getASTContext());
+    CppToCVisitor visitor(AST->getASTContext(), builder, tracker, C_TU);
         visitor.TraverseDecl(AST->getASTContext().getTranslationUnitDecl());
 
         FunctionDecl *CtorFunc = visitor.getCtor("Entity__ctor");
@@ -108,7 +115,7 @@ TEST(MemberInitList, MixedTypesMemberInitList:_int,_double,_char*_initialization
         }
 
         std::string output;
-        raw_string_ostream OS(output);
+        llvm::raw_string_ostream OS(output);
         CodeGenerator gen(OS, AST->getASTContext());
         gen.printDecl(CtorFunc);
         OS.flush();
@@ -125,7 +132,7 @@ TEST(MemberInitList, MixedTypesMemberInitList:_int,_double,_char*_initialization
         }
 }
 
-TEST(MemberInitList, PartialMemberInitList:_Only_some_members_initialized) {
+TEST(MemberInitList, PartialMemberInitListOnlySomeMembersInitialized) {
     const char *cpp = R"(
             class Particle {
                 double x, y;
@@ -141,7 +148,10 @@ TEST(MemberInitList, PartialMemberInitList:_Only_some_members_initialized) {
         }
 
         CNodeBuilder builder(AST->getASTContext());
-        CppToCVisitor visitor(AST->getASTContext(), builder);
+        cpptoc::FileOriginTracker tracker(AST->getASTContext().getSourceManager());
+    tracker.addUserHeaderPath("<stdin>");
+    clang::TranslationUnitDecl *C_TU = clang::TranslationUnitDecl::Create(AST->getASTContext());
+    CppToCVisitor visitor(AST->getASTContext(), builder, tracker, C_TU);
         visitor.TraverseDecl(AST->getASTContext().getTranslationUnitDecl());
 
         FunctionDecl *CtorFunc = visitor.getCtor("Particle__ctor");
@@ -150,7 +160,7 @@ TEST(MemberInitList, PartialMemberInitList:_Only_some_members_initialized) {
         }
 
         std::string output;
-        raw_string_ostream OS(output);
+        llvm::raw_string_ostream OS(output);
         CodeGenerator gen(OS, AST->getASTContext());
         gen.printDecl(CtorFunc);
         OS.flush();
@@ -171,7 +181,7 @@ TEST(MemberInitList, PartialMemberInitList:_Only_some_members_initialized) {
         }
 }
 
-TEST(MemberInitList, MemberInitListWithConstants:_Constant_value_initialization) {
+TEST(MemberInitList, MemberInitListWithConstantsConstantValueInitialization) {
     const char *cpp = R"(
             class Config {
                 int version;
@@ -187,7 +197,10 @@ TEST(MemberInitList, MemberInitListWithConstants:_Constant_value_initialization)
         }
 
         CNodeBuilder builder(AST->getASTContext());
-        CppToCVisitor visitor(AST->getASTContext(), builder);
+        cpptoc::FileOriginTracker tracker(AST->getASTContext().getSourceManager());
+    tracker.addUserHeaderPath("<stdin>");
+    clang::TranslationUnitDecl *C_TU = clang::TranslationUnitDecl::Create(AST->getASTContext());
+    CppToCVisitor visitor(AST->getASTContext(), builder, tracker, C_TU);
         visitor.TraverseDecl(AST->getASTContext().getTranslationUnitDecl());
 
         FunctionDecl *CtorFunc = visitor.getCtor("Config__ctor");
@@ -196,7 +209,7 @@ TEST(MemberInitList, MemberInitListWithConstants:_Constant_value_initialization)
         }
 
         std::string output;
-        raw_string_ostream OS(output);
+        llvm::raw_string_ostream OS(output);
         CodeGenerator gen(OS, AST->getASTContext());
         gen.printDecl(CtorFunc);
         OS.flush();
@@ -212,7 +225,7 @@ TEST(MemberInitList, MemberInitListWithConstants:_Constant_value_initialization)
         }
 }
 
-TEST(MemberInitList, DeclarationOrderPreserved:_Init_order_follows_declaration,_not_init_list) {
+TEST(MemberInitList, DeclarationOrderPreservedInitOrderFollowsDeclarationNotInitList) {
     const char *cpp = R"(
             class Test {
                 int a, b, c;
@@ -227,7 +240,10 @@ TEST(MemberInitList, DeclarationOrderPreserved:_Init_order_follows_declaration,_
         }
 
         CNodeBuilder builder(AST->getASTContext());
-        CppToCVisitor visitor(AST->getASTContext(), builder);
+        cpptoc::FileOriginTracker tracker(AST->getASTContext().getSourceManager());
+    tracker.addUserHeaderPath("<stdin>");
+    clang::TranslationUnitDecl *C_TU = clang::TranslationUnitDecl::Create(AST->getASTContext());
+    CppToCVisitor visitor(AST->getASTContext(), builder, tracker, C_TU);
         visitor.TraverseDecl(AST->getASTContext().getTranslationUnitDecl());
 
         FunctionDecl *CtorFunc = visitor.getCtor("Test__ctor");
@@ -236,7 +252,7 @@ TEST(MemberInitList, DeclarationOrderPreserved:_Init_order_follows_declaration,_
         }
 
         std::string output;
-        raw_string_ostream OS(output);
+        llvm::raw_string_ostream OS(output);
         CodeGenerator gen(OS, AST->getASTContext());
         gen.printDecl(CtorFunc);
         OS.flush();
@@ -254,6 +270,6 @@ TEST(MemberInitList, DeclarationOrderPreserved:_Init_order_follows_declaration,_
         size_t c_pos = output.find("this->c = 3");
 
         if (!(a_pos < b_pos && b_pos < c_pos)) {
-            FAIL() << "Members not in declaration order (should be a, b, c;");
+            FAIL() << "Members not in declaration order (should be a, b, c)";
         }
 }

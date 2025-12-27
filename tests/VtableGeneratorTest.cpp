@@ -15,6 +15,7 @@
 #include "clang/Frontend/ASTUnit.h"
 #include "../include/VtableGenerator.h"
 #include "../include/VirtualMethodAnalyzer.h"
+#include "../include/OverrideResolver.h"
 #include <cassert>
 #include <sstream>
 
@@ -25,11 +26,7 @@ std::unique_ptr<ASTUnit> buildAST(const char *code) {
     return tooling::buildASTFromCodeWithArgs(code, args, "input.cc");
 }
 
-// Test helper macros
-    if (!(cond)) { \
-        std::cerr << "\nASSERT FAILED: " << msg << std::endl; \
-        return; \
-    }
+// Test helper macros (removed - using GTest ASSERT macros instead)
 
 // Helper function to find class by name
 CXXRecordDecl* findClass(TranslationUnitDecl* TU, const std::string& name) {
@@ -63,7 +60,8 @@ TEST_F(VtableGeneratorTest, GenerateSimpleVtable) {
         ASSERT_TRUE(AST) << "Failed to parse C++ code";
 
         VirtualMethodAnalyzer analyzer(AST->getASTContext());
-        VtableGenerator generator(AST->getASTContext(), analyzer);
+        OverrideResolver resolver(AST->getASTContext(), analyzer);
+        VtableGenerator generator(AST->getASTContext(), analyzer, &resolver);
 
         auto *TU = AST->getASTContext().getTranslationUnitDecl();
         auto *Base = findClass(TU, "Base");
@@ -93,7 +91,8 @@ TEST_F(VtableGeneratorTest, VtableMethodOrder) {
         ASSERT_TRUE(AST) << "Failed to parse C++ code";
 
         VirtualMethodAnalyzer analyzer(AST->getASTContext());
-        VtableGenerator generator(AST->getASTContext(), analyzer);
+        OverrideResolver resolver(AST->getASTContext(), analyzer);
+        VtableGenerator generator(AST->getASTContext(), analyzer, &resolver);
 
         auto *TU = AST->getASTContext().getTranslationUnitDecl();
         auto *Shape = findClass(TU, "Shape");
@@ -102,7 +101,7 @@ TEST_F(VtableGeneratorTest, VtableMethodOrder) {
         // Get method order
         auto methods = generator.getVtableMethodOrder(Shape);
 
-        ASSERT_TRUE(methods.size() >= 2) << "Expected at least 2 methods (destructor + virtual methods;");
+        ASSERT_TRUE(methods.size() >= 2) << "Expected at least 2 methods (destructor + virtual methods)";
 
         // First method should be destructor
         ASSERT_TRUE(isa<CXXDestructorDecl>(methods[0]) || methods[0]->getNameAsString().find("dtor") != std::string::npos) << "First method should be destructor";
@@ -123,7 +122,8 @@ TEST_F(VtableGeneratorTest, MultipleVirtualMethods) {
         ASSERT_TRUE(AST) << "Failed to parse C++ code";
 
         VirtualMethodAnalyzer analyzer(AST->getASTContext());
-        VtableGenerator generator(AST->getASTContext(), analyzer);
+        OverrideResolver resolver(AST->getASTContext(), analyzer);
+        VtableGenerator generator(AST->getASTContext(), analyzer, &resolver);
 
         auto *TU = AST->getASTContext().getTranslationUnitDecl();
         auto *Widget = findClass(TU, "Widget");
@@ -157,7 +157,8 @@ TEST_F(VtableGeneratorTest, InheritedVirtualMethods) {
         ASSERT_TRUE(AST) << "Failed to parse C++ code";
 
         VirtualMethodAnalyzer analyzer(AST->getASTContext());
-        VtableGenerator generator(AST->getASTContext(), analyzer);
+        OverrideResolver resolver(AST->getASTContext(), analyzer);
+        VtableGenerator generator(AST->getASTContext(), analyzer, &resolver);
 
         auto *TU = AST->getASTContext().getTranslationUnitDecl();
         auto *Derived = findClass(TU, "Derived");
@@ -167,8 +168,8 @@ TEST_F(VtableGeneratorTest, InheritedVirtualMethods) {
 
         // Verify derived vtable includes both inherited and new methods
         ASSERT_TRUE(vtableCode.find("struct Derived_vtable") != std::string::npos) << "Expected Derived_vtable struct";
-        ASSERT_TRUE(vtableCode.find("foo") != std::string::npos) << "Expected foo (overridden;method");
-        ASSERT_TRUE(vtableCode.find("bar") != std::string::npos) << "Expected bar (new;method");
+        ASSERT_TRUE(vtableCode.find("foo") != std::string::npos) << "Expected foo (overridden method)";
+        ASSERT_TRUE(vtableCode.find("bar") != std::string::npos) << "Expected bar (new method)";
 }
 
 TEST_F(VtableGeneratorTest, FunctionPointerTypes) {
@@ -185,7 +186,8 @@ TEST_F(VtableGeneratorTest, FunctionPointerTypes) {
         ASSERT_TRUE(AST) << "Failed to parse C++ code";
 
         VirtualMethodAnalyzer analyzer(AST->getASTContext());
-        VtableGenerator generator(AST->getASTContext(), analyzer);
+        OverrideResolver resolver(AST->getASTContext(), analyzer);
+        VtableGenerator generator(AST->getASTContext(), analyzer, &resolver);
 
         auto *TU = AST->getASTContext().getTranslationUnitDecl();
         auto *Calculator = findClass(TU, "Calculator");
@@ -194,9 +196,9 @@ TEST_F(VtableGeneratorTest, FunctionPointerTypes) {
         std::string vtableCode = generator.generateVtableStruct(Calculator);
 
         // Verify function pointer signatures
-        ASSERT_TRUE(vtableCode.find("int (*add)") != std::string::npos) << "Expected 'int (*add;' function pointer");
+        ASSERT_TRUE(vtableCode.find("int (*add)") != std::string::npos) << "Expected 'int (*add)' function pointer";
         ASSERT_TRUE(vtableCode.find("double (*multiply)") != std::string::npos ||
-               vtableCode.find("float (*multiply)") != std::string::npos) << "Expected 'double (*multiply;' function pointer");
+               vtableCode.find("float (*multiply)") != std::string::npos) << "Expected 'double (*multiply)' function pointer";
 }
 
 TEST_F(VtableGeneratorTest, NonPolymorphicClass) {
@@ -212,7 +214,8 @@ TEST_F(VtableGeneratorTest, NonPolymorphicClass) {
         ASSERT_TRUE(AST) << "Failed to parse C++ code";
 
         VirtualMethodAnalyzer analyzer(AST->getASTContext());
-        VtableGenerator generator(AST->getASTContext(), analyzer);
+        OverrideResolver resolver(AST->getASTContext(), analyzer);
+        VtableGenerator generator(AST->getASTContext(), analyzer, &resolver);
 
         auto *TU = AST->getASTContext().getTranslationUnitDecl();
         auto *Regular = findClass(TU, "Regular");
@@ -238,7 +241,8 @@ TEST_F(VtableGeneratorTest, PureVirtualMethods) {
         ASSERT_TRUE(AST) << "Failed to parse C++ code";
 
         VirtualMethodAnalyzer analyzer(AST->getASTContext());
-        VtableGenerator generator(AST->getASTContext(), analyzer);
+        OverrideResolver resolver(AST->getASTContext(), analyzer);
+        VtableGenerator generator(AST->getASTContext(), analyzer, &resolver);
 
         auto *TU = AST->getASTContext().getTranslationUnitDecl();
         auto *Abstract = findClass(TU, "Abstract");
@@ -277,7 +281,8 @@ TEST_F(VtableGeneratorTest, ComplexInheritance) {
         ASSERT_TRUE(AST) << "Failed to parse C++ code";
 
         VirtualMethodAnalyzer analyzer(AST->getASTContext());
-        VtableGenerator generator(AST->getASTContext(), analyzer);
+        OverrideResolver resolver(AST->getASTContext(), analyzer);
+        VtableGenerator generator(AST->getASTContext(), analyzer, &resolver);
 
         auto *TU = AST->getASTContext().getTranslationUnitDecl();
         auto *Derived = findClass(TU, "Derived");

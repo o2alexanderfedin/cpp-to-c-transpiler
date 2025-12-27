@@ -54,3 +54,28 @@ bool HeaderSeparator::VisitFunctionDecl(clang::FunctionDecl *D) {
     }
     return true;  // Continue traversal
 }
+
+bool HeaderSeparator::VisitVarDecl(clang::VarDecl *D) {
+    // Skip function parameters (ParmVarDecl is a subclass of VarDecl)
+    if (llvm::isa<clang::ParmVarDecl>(D)) {
+        return true;  // Continue traversal, but don't add to lists
+    }
+
+    // Skip if this is a local variable or static local
+    // We only want global/namespace-level variables
+    if (D->isLocalVarDecl() || D->isStaticLocal()) {
+        return true;  // Continue traversal, but don't add to lists
+    }
+
+    // Global variables with initializers go to implementation
+    if (D->hasInit()) {
+        implDecls.push_back(D);
+        // Also add to header as extern declaration
+        // (Code generator will handle this appropriately)
+        headerDecls.push_back(D);
+    } else {
+        // Variable declaration without initializer: goes to header
+        headerDecls.push_back(D);
+    }
+    return true;  // Continue traversal
+}

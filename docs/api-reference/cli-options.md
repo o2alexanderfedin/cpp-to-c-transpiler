@@ -429,6 +429,43 @@ cpptoc file1.cpp file2.cpp file3.cpp -- \
        -I./include \
        -I./third_party \
        -std=c++20
+
+# Each file generates separate .h and .c files:
+# file1.h + file1.c
+# file2.h + file2.c
+# file3.h + file3.c
+```
+
+### Example 3a: Multiple Files with Output Directory
+
+```bash
+# Transpile multiple files to specific directory
+cpptoc Point.cpp Circle.cpp Rectangle.cpp \
+       --output-dir ./generated \
+       --
+
+# Output structure:
+# ./generated/Point.h
+# ./generated/Point.c
+# ./generated/Circle.h
+# ./generated/Circle.c
+# ./generated/Rectangle.h
+# ./generated/Rectangle.c
+```
+
+### Example 3b: Multi-Module Project
+
+```bash
+# Transpile complete multi-module project
+cpptoc src/math.cpp src/utils.cpp src/main.cpp \
+       --output-dir ./build/generated \
+       -- -I./include -I./third_party -std=c++20
+
+# Then compile the generated C code
+gcc -c build/generated/math.c -I./build/generated
+gcc -c build/generated/utils.c -I./build/generated
+gcc -c build/generated/main.c -I./build/generated
+gcc math.o utils.o main.o -o program
 ```
 
 ### Example 4: Safety-Critical Inline Mode

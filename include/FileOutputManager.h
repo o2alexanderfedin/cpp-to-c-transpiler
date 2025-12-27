@@ -2,6 +2,7 @@
 #define FILE_OUTPUT_MANAGER_H
 
 #include <string>
+#include <vector>
 
 /// @brief Manages file output for generated .h and .c files
 ///
@@ -10,11 +11,16 @@
 ///
 /// Default behavior: input.cpp → input.h + input.c
 /// Custom behavior: --output-header and --output-impl override defaults
+/// Output directory: --output-dir specifies output directory for generated files
 class FileOutputManager {
 public:
     /// @brief Set input filename (used to derive default output names)
     /// @param filename Input C++ source filename (e.g., "Point.cpp")
     void setInputFilename(const std::string& filename);
+
+    /// @brief Set output directory for generated files
+    /// @param dir Output directory path (e.g., "/tmp/out" or "build")
+    void setOutputDir(const std::string& dir);
 
     /// @brief Set custom output header filename
     /// @param filename Custom header filename (e.g., "custom.h")
@@ -24,12 +30,20 @@ public:
     /// @param filename Custom implementation filename (e.g., "custom.c")
     void setOutputImpl(const std::string& filename);
 
-    /// @brief Get header filename (custom or default)
-    /// @return Header filename
+    /// @brief Set source root directory for structure preservation
+    /// @param root Source root directory path (e.g., "src/")
+    void setSourceDir(const std::string& root);
+
+    /// @brief Get source root directory
+    /// @return Source root directory path
+    std::string getSourceDir() const;
+
+    /// @brief Get header filename (custom or default, with output dir if set)
+    /// @return Header filename with full path
     std::string getHeaderFilename() const;
 
-    /// @brief Get implementation filename (custom or default)
-    /// @return Implementation filename
+    /// @brief Get implementation filename (custom or default, with output dir if set)
+    /// @return Implementation filename with full path
     std::string getImplFilename() const;
 
     /// @brief Write header and implementation files
@@ -39,14 +53,60 @@ public:
     bool writeFiles(const std::string& headerContent,
                     const std::string& implContent);
 
+    // NEW: Multi-file output API for Phase 34-04
+
+    /// @brief Structure to hold content for a single source file's transpiled output
+    struct FileContent {
+        std::string originFile;     ///< Original source file (e.g., "Point.h", "Point.cpp")
+        std::string headerContent;  ///< Generated C header content
+        std::string implContent;    ///< Generated C implementation content
+    };
+
+    /// @brief Write multiple output file pairs (multi-file transpilation)
+    /// @param files Vector of FileContent entries (one per source file)
+    /// @return true if successful, false on error
+    ///
+    /// This method enables multi-file C++ project transpilation.
+    /// For each FileContent entry:
+    /// 1. Calculates output paths based on originFile
+    /// 2. Merges content if multiple sources map to same output (e.g., Point.h + Point.cpp)
+    /// 3. Writes header and implementation files
+    ///
+    /// Example:
+    /// - Input: Point.h, Point.cpp, main.cpp
+    /// - Output: Point_transpiled.h, Point_transpiled.c, main_transpiled.h, main_transpiled.c
+    bool writeMultiFileOutput(const std::vector<FileContent>& files);
+
+    /// @brief Calculate output path for a specific source file
+    /// @param sourceFile Original source filename (e.g., "include/Point.h")
+    /// @param isHeader true for .h output, false for .c output
+    /// @return Full output path (e.g., "output/include/Point_transpiled.h")
+    ///
+    /// Uses existing path calculation logic with sourceDir preservation.
+    /// Strips .cpp/.h extension and adds _transpiled.h or _transpiled.c suffix.
+    std::string calculateOutputPathForFile(const std::string& sourceFile,
+                                           bool isHeader) const;
+
 private:
     std::string inputFilename;    ///< Input C++ filename
+    std::string outputDir;        ///< Output directory (if set)
     std::string outputHeader;     ///< Custom header filename (if set)
     std::string outputImpl;       ///< Custom impl filename (if set)
+    std::string sourceDir;        ///< Source root directory for structure preservation
 
     /// @brief Derive base name from input filename
     /// @return Base name without extension (e.g., "Point" from "Point.cpp")
     std::string getBaseName() const;
+
+    /// @brief Combine output directory with filename if output dir is set
+    /// @param filename Base filename
+    /// @return Full path with output directory prefix, or just filename if no dir set
+    std::string getFullPath(const std::string& filename) const;
+
+    /// @brief Calculate output path with optional structure preservation
+    /// @param extension File extension (e.g., ".h" or ".c")
+    /// @return Output path (preserves structure if sourceDir is set)
+    std::string calculateOutputPath(const std::string& extension) const;
 
     /// @brief Write content to file with error handling
     /// @param filename Output filename

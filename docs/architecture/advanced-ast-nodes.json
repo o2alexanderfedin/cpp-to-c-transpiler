@@ -1,0 +1,246 @@
+{
+  "category": "advanced",
+  "description": "AST nodes for templates, inheritance, enums, and advanced type system",
+  "nodes": [
+    {
+      "name": "EnumDecl",
+      "purpose": "Represents an enum declaration (scoped or unscoped)",
+      "inherits_from": "TagDecl \u2192 TypeDecl \u2192 NamedDecl \u2192 Decl",
+      "key_methods": [
+        "enumerators() - Iterator over enum constants",
+        "isScoped() - True for enum class",
+        "getIntegerType() - Underlying integer type"
+      ],
+      "used_for": [
+        "Enum declarations"
+      ],
+      "c_equivalent": "C enum (unscoped) or enum with prefixed names (scoped)",
+      "complexity": 2,
+      "translation_notes": "Unscoped: direct mapping. Scoped: prefix constants with EnumName__.",
+      "example_cpp": "enum class State { Idle, Running };",
+      "example_c": "enum State { State__Idle, State__Running };"
+    },
+    {
+      "name": "EnumConstantDecl",
+      "purpose": "Represents a single enumerator constant",
+      "inherits_from": "ValueDecl \u2192 NamedDecl \u2192 Decl",
+      "key_methods": [
+        "getInitVal() - Returns integer value",
+        "getInitExpr() - Returns initializer expression"
+      ],
+      "used_for": [
+        "Enum constants"
+      ],
+      "c_equivalent": "C enum constant",
+      "complexity": 1,
+      "translation_notes": "For scoped enums, prefix with enum name.",
+      "example_cpp": "Idle, Running",
+      "example_c": "State__Idle, State__Running"
+    },
+    {
+      "name": "CXXBaseSpecifier",
+      "purpose": "Represents a base class in inheritance hierarchy",
+      "inherits_from": "Not a Decl - standalone class",
+      "key_methods": [
+        "getType() - Type of base class",
+        "isVirtual() - True for virtual inheritance",
+        "getAccessSpecifier() - public/protected/private"
+      ],
+      "used_for": [
+        "Base class specifications in inheritance"
+      ],
+      "c_equivalent": "Embedded struct or struct composition",
+      "complexity": 4,
+      "translation_notes": "Embed base class struct as first field. Adjust field offsets.",
+      "example_cpp": "class Derived : public Base",
+      "example_c": "struct Derived { struct Base base; /* derived fields */ };"
+    },
+    {
+      "name": "ClassTemplateDecl",
+      "purpose": "Represents a class template declaration",
+      "inherits_from": "RedeclarableTemplateDecl \u2192 TemplateDecl \u2192 NamedDecl \u2192 Decl",
+      "key_methods": [
+        "getTemplateParameters() - Returns template parameter list",
+        "specializations() - Iterator over specializations",
+        "getTemplatedDecl() - Returns CXXRecordDecl"
+      ],
+      "used_for": [
+        "Class templates"
+      ],
+      "c_equivalent": "Multiple concrete structs (one per instantiation)",
+      "complexity": 5,
+      "translation_notes": "Monomorphization: create separate struct for each instantiation. Name: ClassName_T1_T2.",
+      "example_cpp": "template<typename T> class Box { T value; };",
+      "example_c": "struct Box_int { int value; }; struct Box_float { float value; };"
+    },
+    {
+      "name": "FunctionTemplateDecl",
+      "purpose": "Represents a function template declaration",
+      "inherits_from": "RedeclarableTemplateDecl \u2192 TemplateDecl \u2192 NamedDecl \u2192 Decl",
+      "key_methods": [
+        "getTemplateParameters() - Returns template parameter list",
+        "specializations() - Iterator over specializations",
+        "getTemplatedDecl() - Returns FunctionDecl"
+      ],
+      "used_for": [
+        "Function templates"
+      ],
+      "c_equivalent": "Multiple concrete functions (one per instantiation)",
+      "complexity": 5,
+      "translation_notes": "Monomorphization: create separate function for each instantiation. Name: funcName_T1_T2.",
+      "example_cpp": "template<typename T> T max(T a, T b);",
+      "example_c": "int max_int(int a, int b); float max_float(float a, float b);"
+    },
+    {
+      "name": "TemplateTypeParmDecl",
+      "purpose": "Represents a template type parameter",
+      "inherits_from": "TypeDecl \u2192 NamedDecl \u2192 Decl",
+      "key_methods": [
+        "hasDefaultArgument() - True if has default type",
+        "getDefaultArgument() - Returns default type"
+      ],
+      "used_for": [
+        "Template type parameters (typename T, class T)"
+      ],
+      "c_equivalent": "Replaced with concrete type in monomorphization",
+      "complexity": 5,
+      "translation_notes": "Substitute with actual type during instantiation.",
+      "example_cpp": "typename T, class U",
+      "example_c": "int, float // after substitution"
+    },
+    {
+      "name": "ClassTemplateSpecializationDecl",
+      "purpose": "Represents an instantiation of a class template",
+      "inherits_from": "CXXRecordDecl \u2192 RecordDecl \u2192 TagDecl \u2192 TypeDecl \u2192 NamedDecl \u2192 Decl",
+      "key_methods": [
+        "getTemplateArgs() - Returns template arguments",
+        "getSpecializedTemplate() - Returns ClassTemplateDecl"
+      ],
+      "used_for": [
+        "Template instantiations (Box<int>, Box<float>)"
+      ],
+      "c_equivalent": "Concrete struct with substituted types",
+      "complexity": 5,
+      "translation_notes": "This is the result of monomorphization. Generate concrete struct.",
+      "example_cpp": "Box<int> intBox;",
+      "example_c": "struct Box_int { int value; }; struct Box_int intBox;"
+    },
+    {
+      "name": "NamespaceDecl",
+      "purpose": "Represents a namespace declaration",
+      "inherits_from": "NamedDecl \u2192 Decl",
+      "key_methods": [
+        "decls() - Iterator over declarations in namespace",
+        "getNameAsString() - Namespace name"
+      ],
+      "used_for": [
+        "Namespace declarations"
+      ],
+      "c_equivalent": "Name prefix for all declarations",
+      "complexity": 3,
+      "translation_notes": "Prefix all names with namespace: namespace_name_symbol_name.",
+      "example_cpp": "namespace math { int add(int a, int b); }",
+      "example_c": "int math_add(int a, int b);"
+    },
+    {
+      "name": "QualType",
+      "purpose": "Represents a type with qualifiers (const, volatile)",
+      "inherits_from": "Not a Decl - type wrapper",
+      "key_methods": [
+        "getTypePtr() - Returns underlying Type*",
+        "isConstQualified() - True if const",
+        "isVolatileQualified() - True if volatile"
+      ],
+      "used_for": [
+        "All types in Clang AST"
+      ],
+      "c_equivalent": "C type with qualifiers",
+      "complexity": 2,
+      "translation_notes": "Preserve const/volatile qualifiers. Extract underlying type.",
+      "example_cpp": "const int, volatile float*",
+      "example_c": "const int, volatile float*"
+    },
+    {
+      "name": "BuiltinType",
+      "purpose": "Represents a built-in type (int, float, char, etc.)",
+      "inherits_from": "Type",
+      "key_methods": [
+        "getKind() - Returns kind (Int, Float, Char, etc.)",
+        "getName() - Returns type name as string"
+      ],
+      "used_for": [
+        "Primitive types"
+      ],
+      "c_equivalent": "C built-in types (same)",
+      "complexity": 1,
+      "translation_notes": "Direct mapping. Handle bool -> int.",
+      "example_cpp": "int, float, double, bool",
+      "example_c": "int, float, double, int // bool -> int"
+    },
+    {
+      "name": "PointerType",
+      "purpose": "Represents a pointer type",
+      "inherits_from": "Type",
+      "key_methods": [
+        "getPointeeType() - Returns type being pointed to"
+      ],
+      "used_for": [
+        "Pointer types"
+      ],
+      "c_equivalent": "C pointer type (same)",
+      "complexity": 1,
+      "translation_notes": "Direct mapping.",
+      "example_cpp": "int*, char**",
+      "example_c": "int*, char**"
+    },
+    {
+      "name": "ReferenceType",
+      "purpose": "Represents a reference type (C++ only)",
+      "inherits_from": "Type",
+      "key_methods": [
+        "getPointeeType() - Returns type being referenced"
+      ],
+      "used_for": [
+        "Reference types (T&, T&&)"
+      ],
+      "c_equivalent": "C pointer type",
+      "complexity": 2,
+      "translation_notes": "Convert references to pointers. T& -> T*.",
+      "example_cpp": "int&, const std::string&",
+      "example_c": "int*, const char*"
+    },
+    {
+      "name": "RecordType",
+      "purpose": "Represents a struct/class/union type",
+      "inherits_from": "Type",
+      "key_methods": [
+        "getDecl() - Returns RecordDecl or CXXRecordDecl"
+      ],
+      "used_for": [
+        "Struct/class types"
+      ],
+      "c_equivalent": "C struct type",
+      "complexity": 2,
+      "translation_notes": "Map to C struct type. Use translated struct name.",
+      "example_cpp": "Counter, std::vector<int>",
+      "example_c": "struct Counter, struct vector_int"
+    },
+    {
+      "name": "TemplateSpecializationType",
+      "purpose": "Represents a template specialization type",
+      "inherits_from": "Type",
+      "key_methods": [
+        "getTemplateName() - Template being specialized",
+        "getArgs() - Template arguments"
+      ],
+      "used_for": [
+        "Template instantiation types (Box<int>)"
+      ],
+      "c_equivalent": "Concrete struct type after monomorphization",
+      "complexity": 5,
+      "translation_notes": "Map to monomorphized struct name.",
+      "example_cpp": "Box<int>, std::vector<float>",
+      "example_c": "struct Box_int, struct vector_float"
+    }
+  ]
+}
