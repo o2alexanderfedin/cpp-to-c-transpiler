@@ -218,6 +218,7 @@ add_library(cpptoc_core STATIC
     src/VirtualMethodAnalyzer.cpp
     src/VptrInjector.cpp
     src/VirtualInheritanceAnalyzer.cpp
+    src/MultipleInheritanceAnalyzer.cpp
     src/MoveConstructorTranslator.cpp
     src/MoveAssignmentTranslator.cpp
     src/StdMoveTranslator.cpp
@@ -1279,6 +1280,32 @@ target_link_libraries(VirtualMethodAnalyzerTest PRIVATE cpptoc_core
 
 # Register with CTest
 gtest_discover_tests(VirtualMethodAnalyzerTest
+    WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
+)
+
+# Phase 46 Group 1 Task 1: Multiple Inheritance Analyzer Tests
+add_executable(MultipleInheritanceAnalyzerTest
+    tests/unit/MultipleInheritanceAnalyzerTest.cpp
+)
+
+target_compile_definitions(MultipleInheritanceAnalyzerTest PRIVATE ${LLVM_DEFINITIONS})
+
+target_include_directories(MultipleInheritanceAnalyzerTest PRIVATE
+    ${CMAKE_SOURCE_DIR}/include
+    ${LLVM_INCLUDE_DIRS}
+    ${CLANG_INCLUDE_DIRS}
+)
+
+target_link_libraries(MultipleInheritanceAnalyzerTest PRIVATE cpptoc_core
+    clangTooling
+    clangFrontend
+    clangAST
+    clangBasic
+    GTest::gtest
+    GTest::gtest_main)
+
+# Register with CTest
+gtest_discover_tests(MultipleInheritanceAnalyzerTest
     WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
 )
 
