@@ -126,6 +126,38 @@ target_include_directories(VirtualMethodsIntegrationTest PRIVATE
     ${CMAKE_SOURCE_DIR}/../../src
 )
 
+# Phase 46: Multiple Inheritance Integration Tests
+add_executable(MultipleInheritanceIntegrationTest
+    handlers/MultipleInheritanceIntegrationTest.cpp
+    ${CMAKE_SOURCE_DIR}/../../src/handlers/HandlerContext.cpp
+    ${CMAKE_SOURCE_DIR}/../../src/handlers/FunctionHandler.cpp
+    ${CMAKE_SOURCE_DIR}/../../src/handlers/VariableHandler.cpp
+    ${CMAKE_SOURCE_DIR}/../../src/handlers/ExpressionHandler.cpp
+    ${CMAKE_SOURCE_DIR}/../../src/handlers/StatementHandler.cpp
+    ${CMAKE_SOURCE_DIR}/../../src/handlers/RecordHandler.cpp
+    ${CMAKE_SOURCE_DIR}/../../src/handlers/MethodHandler.cpp
+    ${CMAKE_SOURCE_DIR}/../../src/handlers/ConstructorHandler.cpp
+    ${CMAKE_SOURCE_DIR}/../../src/handlers/DestructorHandler.cpp
+    ${CMAKE_SOURCE_DIR}/../../src/VirtualMethodAnalyzer.cpp
+    ${CMAKE_SOURCE_DIR}/../../src/VtableGenerator.cpp
+    ${CMAKE_SOURCE_DIR}/../../src/VptrInjector.cpp
+    ${CMAKE_SOURCE_DIR}/../../src/VtableInitializer.cpp
+    ${CMAKE_SOURCE_DIR}/../../src/VirtualCallTranslator.cpp
+    ${CMAKE_SOURCE_DIR}/../../src/OverrideResolver.cpp
+    ${CMAKE_SOURCE_DIR}/../../src/MethodSignatureHelper.cpp
+    ${CMAKE_SOURCE_DIR}/../../src/VirtualInheritanceAnalyzer.cpp
+    ${CMAKE_SOURCE_DIR}/../../src/helpers/VtableTypedefGenerator.cpp
+    ${CMAKE_SOURCE_DIR}/../../src/MultipleInheritanceAnalyzer.cpp
+    ${CMAKE_SOURCE_DIR}/../../src/ThunkGenerator.cpp
+    ${CMAKE_SOURCE_DIR}/../../src/BaseOffsetCalculator.cpp
+)
+target_link_libraries(MultipleInheritanceIntegrationTest GTest::gtest GTest::gtest_main ${CLANG_LIBS})
+target_include_directories(MultipleInheritanceIntegrationTest PRIVATE
+    ${CMAKE_SOURCE_DIR}/../../include
+    ${CMAKE_SOURCE_DIR}/../../include/handlers
+    ${CMAKE_SOURCE_DIR}/../../src
+)
+
 # Enable testing
 enable_testing()
 include(GoogleTest)
@@ -156,6 +188,10 @@ gtest_discover_tests(VirtualMethodsIntegrationTest
     WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
     PROPERTIES LABELS "integration;virtual_methods;phase45"
 )
+gtest_discover_tests(MultipleInheritanceIntegrationTest
+    WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
+    PROPERTIES LABELS "integration;multiple_inheritance;phase46"
+)
 
 message(STATUS "Integration tests configured:")
 message(STATUS "  - FeatureInteractionTest: 30 tests")
@@ -168,4 +204,5 @@ message(STATUS "  - PointersIntegrationTest: 24 tests (Phase 42)")
 message(STATUS "  - StructsIntegrationTest: 25 tests (Phase 43)")
 message(STATUS "  - ClassesIntegrationTest: 35 tests (Phase 44)")
 message(STATUS "  - VirtualMethodsIntegrationTest: 35 tests (Phase 45)")
-message(STATUS "  Total: 265 integration tests")
+message(STATUS "  - MultipleInheritanceIntegrationTest: 37 tests (Phase 46)")
+message(STATUS "  Total: 302 integration tests")
