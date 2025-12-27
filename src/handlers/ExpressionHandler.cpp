@@ -9,6 +9,8 @@
 #include "handlers/ExpressionHandler.h"
 #include "handlers/HandlerContext.h"
 #include "CNodeBuilder.h"
+#include "MultipleInheritanceAnalyzer.h"
+#include "BaseOffsetCalculator.h"
 #include "clang/AST/Expr.h"
 #include "clang/AST/ExprCXX.h"
 #include "llvm/Support/Casting.h"
@@ -33,6 +35,8 @@ bool ExpressionHandler::canHandle(const clang::Expr* E) const {
            llvm::isa<clang::ParenExpr>(E) ||
            llvm::isa<clang::ImplicitCastExpr>(E) ||
            llvm::isa<clang::CStyleCastExpr>(E) ||
+           llvm::isa<clang::CXXStaticCastExpr>(E) ||
+           llvm::isa<clang::CXXReinterpretCastExpr>(E) ||
            llvm::isa<clang::ArraySubscriptExpr>(E) ||
            llvm::isa<clang::InitListExpr>(E) ||
            llvm::isa<clang::CXXNullPtrLiteralExpr>(E) ||
@@ -71,6 +75,14 @@ clang::Expr* ExpressionHandler::handleExpr(const clang::Expr* E, HandlerContext&
     }
     if (auto* ICE = llvm::dyn_cast<clang::ImplicitCastExpr>(E)) {
         return translateImplicitCastExpr(ICE, ctx);
+    }
+    // IMPORTANT: Check C++ cast expressions BEFORE CStyleCastExpr
+    // because CXXStaticCastExpr and CXXReinterpretCastExpr inherit from CStyleCastExpr
+    if (auto* SCE = llvm::dyn_cast<clang::CXXStaticCastExpr>(E)) {
+        return translateCXXStaticCastExpr(SCE, ctx);
+    }
+    if (auto* RCE = llvm::dyn_cast<clang::CXXReinterpretCastExpr>(E)) {
+        return translateCXXReinterpretCastExpr(RCE, ctx);
     }
     if (auto* CCE = llvm::dyn_cast<clang::CStyleCastExpr>(E)) {
         return translateCStyleCastExpr(CCE, ctx);
@@ -328,6 +340,117 @@ clang::Expr* ExpressionHandler::translateImplicitCastExpr(
 
     if (!SubExpr) {
         return nullptr;
+    }
+
+    // Phase 46 Group 4 Task 11: Handle implicit DerivedToBase casts
+    // These occur in assignments, function calls, and return statements
+    // We need to apply the same pointer adjustment logic as explicit static_cast
+    if (ICE->getCastKind() == clang::CK_DerivedToBase ||
+        ICE->getCastKind() == clang::CK_UncheckedDerivedToBase) {
+
+        // Get source and target types
+        clang::QualType SourceType = ICE->getSubExpr()->getType();
+        clang::QualType TargetType = ICE->getType();
+
+        // Check if both are pointer types to record types
+        if (SourceType->isPointerType() && TargetType->isPointerType()) {
+            clang::QualType SourcePointeeType = SourceType->getPointeeType();
+            clang::QualType TargetPointeeType = TargetType->getPointeeType();
+
+            const clang::CXXRecordDecl* SourceRecord = SourcePointeeType->getAsCXXRecordDecl();
+            const clang::CXXRecordDecl* TargetRecord = TargetPointeeType->getAsCXXRecordDecl();
+
+            // If both are C++ classes, check if this is a base cast
+            if (SourceRecord && TargetRecord) {
+                // Verify this is indeed a base cast
+                bool IsBaseCast = false;
+                for (const auto& Base : SourceRecord->bases()) {
+                    if (Base.getType()->getAsCXXRecordDecl() == TargetRecord) {
+                        IsBaseCast = true;
+                        break;
+                    }
+                }
+
+                if (IsBaseCast) {
+                    // Calculate the offset
+                    clang::ASTContext& cppCtx = ctx.getCppContext();
+                    clang::ASTContext& cCtx = ctx.getCContext();
+                    BaseOffsetCalculator offsetCalc(cppCtx);
+
+                    uint64_t offset = offsetCalc.getBaseOffset(SourceRecord, TargetRecord);
+
+                    if (offset == 0) {
+                        // Primary base - simple cast
+                        return clang::CStyleCastExpr::Create(
+                            cCtx,
+                            TargetType,
+                            ICE->getValueKind(),
+                            clang::CK_BitCast,
+                            SubExpr,
+                            nullptr,
+                            clang::FPOptionsOverride(),
+                            cCtx.getTrivialTypeSourceInfo(TargetType),
+                            ICE->getBeginLoc(),
+                            ICE->getEndLoc()
+                        );
+                    } else {
+                        // Non-primary base - need pointer arithmetic
+                        // Generate: (TargetType)((char*)SubExpr + offset)
+
+                        // Cast to char*
+                        clang::QualType CharPtrType = cCtx.getPointerType(cCtx.CharTy);
+                        clang::Expr* CharPtrCast = clang::CStyleCastExpr::Create(
+                            cCtx,
+                            CharPtrType,
+                            clang::VK_PRValue,
+                            clang::CK_BitCast,
+                            SubExpr,
+                            nullptr,
+                            clang::FPOptionsOverride(),
+                            cCtx.getTrivialTypeSourceInfo(CharPtrType),
+                            ICE->getBeginLoc(),
+                            ICE->getBeginLoc()
+                        );
+
+                        // Create offset literal
+                        llvm::APInt OffsetValue(64, offset);
+                        clang::IntegerLiteral* OffsetLiteral = clang::IntegerLiteral::Create(
+                            cCtx,
+                            OffsetValue,
+                            cCtx.UnsignedLongTy,
+                            ICE->getBeginLoc()
+                        );
+
+                        // Add offset
+                        clang::Expr* OffsetPointer = clang::BinaryOperator::Create(
+                            cCtx,
+                            CharPtrCast,
+                            OffsetLiteral,
+                            clang::BO_Add,
+                            CharPtrType,
+                            clang::VK_PRValue,
+                            clang::OK_Ordinary,
+                            ICE->getBeginLoc(),
+                            clang::FPOptionsOverride()
+                        );
+
+                        // Cast to target type
+                        return clang::CStyleCastExpr::Create(
+                            cCtx,
+                            TargetType,
+                            ICE->getValueKind(),
+                            clang::CK_BitCast,
+                            OffsetPointer,
+                            nullptr,
+                            clang::FPOptionsOverride(),
+                            cCtx.getTrivialTypeSourceInfo(TargetType),
+                            ICE->getBeginLoc(),
+                            ICE->getEndLoc()
+                        );
+                    }
+                }
+            }
+        }
     }
 
     // For most implicit casts, we can just return the subexpression
@@ -1074,6 +1197,239 @@ bool ExpressionHandler::isVirtualCall(const clang::CXXMemberCallExpr* MCE) const
     // 2. It overrides a virtual method from a base class
     // The isVirtual() method checks both conditions
     return method->isVirtual();
+}
+
+// ============================================================================
+// C++ Cast Expression Translation (Phase 46 Group 4 Task 9)
+// ============================================================================
+
+clang::Expr* ExpressionHandler::translateCXXStaticCastExpr(
+    const clang::CXXStaticCastExpr* SCE,
+    HandlerContext& ctx
+) {
+    // Phase 46 Group 4 Task 9: Base Cast Detection
+    // Handle static_cast<Base*>(derived) with proper offset adjustment
+    //
+    // Strategy:
+    // 1. Check if this is a cast to a base class
+    // 2. Determine if the base is primary or non-primary
+    // 3. For primary base: simple C-style cast
+    // 4. For non-primary base: cast with pointer arithmetic: (Base*)((char*)derived + offset)
+
+    clang::ASTContext& cCtx = ctx.getCContext();
+
+    // Translate the subexpression (the object being cast)
+    clang::Expr* SubExpr = handleExpr(SCE->getSubExpr(), ctx);
+    if (!SubExpr) {
+        return nullptr;
+    }
+
+    // Get source and target types
+    // IMPORTANT: Skip implicit casts to get the real source type
+    // Clang inserts implicit casts before explicit casts, so we need to look at the original type
+    const clang::Expr* OriginalSubExpr = SCE->getSubExpr()->IgnoreImplicit();
+    clang::QualType SourceType = OriginalSubExpr->getType();
+    clang::QualType TargetType = SCE->getType();
+
+    // Check if this is a cast from derived class to base class
+    // Both must be pointer types to record types
+    if (!SourceType->isPointerType() || !TargetType->isPointerType()) {
+        // Not a pointer cast - just do a simple C-style cast
+        return clang::CStyleCastExpr::Create(
+            cCtx,
+            TargetType,
+            SCE->getValueKind(),
+            SCE->getCastKind(),
+            SubExpr,
+            nullptr,
+            SCE->getFPFeatures(),
+            cCtx.getTrivialTypeSourceInfo(TargetType),
+            SCE->getBeginLoc(),
+            SCE->getEndLoc()
+        );
+    }
+
+    // Get the pointee types (the actual class types)
+    clang::QualType SourcePointeeType = SourceType->getPointeeType();
+    clang::QualType TargetPointeeType = TargetType->getPointeeType();
+
+    const clang::CXXRecordDecl* SourceRecord = SourcePointeeType->getAsCXXRecordDecl();
+    const clang::CXXRecordDecl* TargetRecord = TargetPointeeType->getAsCXXRecordDecl();
+
+    // If either is not a C++ class, just do a simple cast
+    if (!SourceRecord || !TargetRecord) {
+        return clang::CStyleCastExpr::Create(
+            cCtx,
+            TargetType,
+            SCE->getValueKind(),
+            SCE->getCastKind(),
+            SubExpr,
+            nullptr,
+            SCE->getFPFeatures(),
+            cCtx.getTrivialTypeSourceInfo(TargetType),
+            SCE->getBeginLoc(),
+            SCE->getEndLoc()
+        );
+    }
+
+    // Check if TargetRecord is a base of SourceRecord (upcast)
+    bool IsUpcast = false;
+    for (const auto& Base : SourceRecord->bases()) {
+        if (Base.getType()->getAsCXXRecordDecl() == TargetRecord) {
+            IsUpcast = true;
+            break;
+        }
+    }
+
+    // Check if SourceRecord is a base of TargetRecord (downcast)
+    bool IsDowncast = false;
+    for (const auto& Base : TargetRecord->bases()) {
+        if (Base.getType()->getAsCXXRecordDecl() == SourceRecord) {
+            IsDowncast = true;
+            break;
+        }
+    }
+
+    // If neither upcast nor downcast, just do a simple C-style cast
+    if (!IsUpcast && !IsDowncast) {
+        return clang::CStyleCastExpr::Create(
+            cCtx,
+            TargetType,
+            SCE->getValueKind(),
+            SCE->getCastKind(),
+            SubExpr,
+            nullptr,
+            SCE->getFPFeatures(),
+            cCtx.getTrivialTypeSourceInfo(TargetType),
+            SCE->getBeginLoc(),
+            SCE->getEndLoc()
+        );
+    }
+
+    // Use BaseOffsetCalculator to determine the offset
+    clang::ASTContext& cppCtx = ctx.getCppContext();
+    BaseOffsetCalculator offsetCalc(cppCtx);
+
+    uint64_t offset;
+    if (IsUpcast) {
+        // Upcast: Derived* → Base*
+        offset = offsetCalc.getBaseOffset(SourceRecord, TargetRecord);
+    } else {
+        // Downcast: Base* → Derived*
+        // For downcast, we need the offset from Derived to Base (positive)
+        // but we'll subtract it (negative adjustment)
+        offset = offsetCalc.getBaseOffset(TargetRecord, SourceRecord);
+    }
+
+    if (offset == 0) {
+        // Primary base - no offset adjustment needed
+        return clang::CStyleCastExpr::Create(
+            cCtx,
+            TargetType,
+            SCE->getValueKind(),
+            clang::CK_BitCast,
+            SubExpr,
+            nullptr,
+            SCE->getFPFeatures(),
+            cCtx.getTrivialTypeSourceInfo(TargetType),
+            SCE->getBeginLoc(),
+            SCE->getEndLoc()
+        );
+    }
+
+    // Non-primary base - need offset adjustment
+    // For upcast: (TargetType)((char*)SubExpr + offset)
+    // For downcast: (TargetType)((char*)SubExpr - offset)
+
+    // Step 1: Cast SubExpr to char*
+    clang::QualType CharPtrType = cCtx.getPointerType(cCtx.CharTy);
+    clang::Expr* CharPtrCast = clang::CStyleCastExpr::Create(
+        cCtx,
+        CharPtrType,
+        clang::VK_PRValue,
+        clang::CK_BitCast,
+        SubExpr,
+        nullptr,
+        clang::FPOptionsOverride(),
+        cCtx.getTrivialTypeSourceInfo(CharPtrType),
+        SCE->getBeginLoc(),
+        SCE->getBeginLoc()
+    );
+
+    // Step 2: Create integer literal for offset
+    llvm::APInt OffsetValue(64, offset);
+    clang::IntegerLiteral* OffsetLiteral = clang::IntegerLiteral::Create(
+        cCtx,
+        OffsetValue,
+        cCtx.UnsignedLongTy,
+        SCE->getBeginLoc()
+    );
+
+    // Step 3: Add or subtract offset based on cast direction
+    // Upcast: (char*)SubExpr + offset
+    // Downcast: (char*)SubExpr - offset
+    clang::BinaryOperatorKind op = IsUpcast ? clang::BO_Add : clang::BO_Sub;
+    clang::Expr* OffsetPointer = clang::BinaryOperator::Create(
+        cCtx,
+        CharPtrCast,
+        OffsetLiteral,
+        op,
+        CharPtrType,
+        clang::VK_PRValue,
+        clang::OK_Ordinary,
+        SCE->getBeginLoc(),
+        clang::FPOptionsOverride()
+    );
+
+    // Step 4: Cast result to target type
+    return clang::CStyleCastExpr::Create(
+        cCtx,
+        TargetType,
+        SCE->getValueKind(),
+        clang::CK_BitCast,
+        OffsetPointer,
+        nullptr,
+        SCE->getFPFeatures(),
+        cCtx.getTrivialTypeSourceInfo(TargetType),
+        SCE->getBeginLoc(),
+        SCE->getEndLoc()
+    );
+}
+
+clang::Expr* ExpressionHandler::translateCXXReinterpretCastExpr(
+    const clang::CXXReinterpretCastExpr* RCE,
+    HandlerContext& ctx
+) {
+    // Phase 46 Group 4 Task 9: Base Cast Detection
+    // reinterpret_cast normally doesn't adjust pointers, but for base class casts
+    // in a multiple inheritance scenario, we should handle them like static_cast
+    // to maintain proper type safety
+
+    // For now, delegate to static_cast logic by creating a temporary static_cast node
+    // In practice, most uses of reinterpret_cast for base casts should use static_cast instead
+
+    // Simple approach: just translate the subexpression and create a C-style cast
+    clang::ASTContext& cCtx = ctx.getCContext();
+
+    clang::Expr* SubExpr = handleExpr(RCE->getSubExpr(), ctx);
+    if (!SubExpr) {
+        return nullptr;
+    }
+
+    // For reinterpret_cast, we do a simple bit cast without offset adjustment
+    // This matches C++'s behavior where reinterpret_cast doesn't adjust pointers
+    return clang::CStyleCastExpr::Create(
+        cCtx,
+        RCE->getType(),
+        RCE->getValueKind(),
+        clang::CK_BitCast,
+        SubExpr,
+        nullptr,
+        RCE->getFPFeatures(),
+        cCtx.getTrivialTypeSourceInfo(RCE->getType()),
+        RCE->getBeginLoc(),
+        RCE->getEndLoc()
+    );
 }
 
 } // namespace cpptoc

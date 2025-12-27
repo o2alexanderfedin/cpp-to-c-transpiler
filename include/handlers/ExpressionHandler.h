@@ -279,6 +279,45 @@ private:
         const clang::CXXMethodDecl* method,
         HandlerContext& ctx
     );
+
+    /**
+     * @brief Translate C++ static_cast to C cast with offset adjustment (Phase 46 Group 4 Task 9)
+     * @param SCE C++ CXXStaticCastExpr
+     * @param ctx Handler context
+     * @return C CastExpr with pointer arithmetic for non-primary bases
+     *
+     * Translates static_cast<BaseX*>(derived) to C with proper offset adjustment.
+     *
+     * Translation rules:
+     * - Cast to primary base: (Base1*)derived  (no offset)
+     * - Cast to non-primary base: (Base2*)((char*)derived + offset)
+     *
+     * Examples:
+     * C++: static_cast<Base1*>(d)  // primary base
+     * C:   (struct Base1*)d
+     *
+     * C++: static_cast<Base2*>(d)  // non-primary base
+     * C:   (struct Base2*)((char*)d + 8)
+     */
+    clang::Expr* translateCXXStaticCastExpr(
+        const clang::CXXStaticCastExpr* SCE,
+        HandlerContext& ctx
+    );
+
+    /**
+     * @brief Translate C++ reinterpret_cast to C cast (Phase 46 Group 4 Task 9)
+     * @param RCE C++ CXXReinterpretCastExpr
+     * @param ctx Handler context
+     * @return C CastExpr
+     *
+     * Note: reinterpret_cast doesn't adjust pointers automatically,
+     * but for base class casts, we still need to handle them like static_cast
+     * to maintain type safety.
+     */
+    clang::Expr* translateCXXReinterpretCastExpr(
+        const clang::CXXReinterpretCastExpr* RCE,
+        HandlerContext& ctx
+    );
 };
 
 } // namespace cpptoc

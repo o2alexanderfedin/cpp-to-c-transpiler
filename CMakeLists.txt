@@ -4222,6 +4222,93 @@ gtest_discover_tests(ExpressionHandlerTest_VirtualCall
 )
 
 # ============================================================================
+# Phase 46 Group 4 Task 10: Virtual Call Through Base Pointer (Multiple Inheritance)
+# ============================================================================
+
+add_executable(ExpressionHandlerTest_VirtualCallMultipleInheritance
+    tests/unit/handlers/ExpressionHandlerTest_VirtualCallMultipleInheritance.cpp
+)
+
+target_include_directories(ExpressionHandlerTest_VirtualCallMultipleInheritance PRIVATE
+    ${CMAKE_SOURCE_DIR}/tests/fixtures
+    ${CMAKE_SOURCE_DIR}/include
+    ${LLVM_INCLUDE_DIRS}
+    ${CLANG_INCLUDE_DIRS}
+)
+
+target_link_libraries(ExpressionHandlerTest_VirtualCallMultipleInheritance PRIVATE
+    test_fixtures
+    cpptoc_core
+    clangTooling
+    clangAST
+    clangBasic
+    GTest::gtest
+    GTest::gtest_main
+)
+
+gtest_discover_tests(ExpressionHandlerTest_VirtualCallMultipleInheritance
+    WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
+)
+
+# ============================================================================
+# Phase 46 Group 4 Task 9: ExpressionHandler Base Cast Detection Unit Tests
+# ============================================================================
+
+add_executable(ExpressionHandlerBaseCastTest
+    tests/unit/handlers/ExpressionHandlerBaseCastTest.cpp
+)
+
+target_include_directories(ExpressionHandlerBaseCastTest PRIVATE
+    ${CMAKE_SOURCE_DIR}/tests/fixtures
+    ${CMAKE_SOURCE_DIR}/include
+    ${LLVM_INCLUDE_DIRS}
+    ${CLANG_INCLUDE_DIRS}
+)
+
+target_link_libraries(ExpressionHandlerBaseCastTest PRIVATE
+    test_fixtures
+    cpptoc_core
+    clangTooling
+    clangAST
+    clangBasic
+    GTest::gtest
+    GTest::gtest_main
+)
+
+gtest_discover_tests(ExpressionHandlerBaseCastTest
+    WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
+)
+
+# ============================================================================
+# Phase 46 Group 4 Task 11: Pointer Adjustment Code Generation Tests
+# ============================================================================
+
+add_executable(ExpressionHandlerPointerAdjustmentTest
+    tests/unit/handlers/ExpressionHandlerPointerAdjustmentTest.cpp
+)
+
+target_include_directories(ExpressionHandlerPointerAdjustmentTest PRIVATE
+    ${CMAKE_SOURCE_DIR}/tests/fixtures
+    ${CMAKE_SOURCE_DIR}/include
+    ${LLVM_INCLUDE_DIRS}
+    ${CLANG_INCLUDE_DIRS}
+)
+
+target_link_libraries(ExpressionHandlerPointerAdjustmentTest PRIVATE
+    test_fixtures
+    cpptoc_core
+    clangTooling
+    clangAST
+    clangBasic
+    GTest::gtest
+    GTest::gtest_main
+)
+
+gtest_discover_tests(ExpressionHandlerPointerAdjustmentTest
+    WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
+)
+
+# ============================================================================
 # Phase 39-01b: VariableHandler Unit Tests
 # ============================================================================
 
