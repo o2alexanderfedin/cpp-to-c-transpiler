@@ -147,14 +147,48 @@ public:
 
 #### ✅ Namespaces
 ```cpp
-// SUPPORTED
+// SUPPORTED - Single namespaces
 namespace math {
-    class Vector3D {
-        // ...
-    };
+    class Vector3D { /* ... */ };
+    void rotate(Vector3D& v);
 }
 
-// Transpiles to: Name mangling (math_Vector3D)
+// Transpiles to: Name mangling
+// struct math_Vector3D { /* ... */ };
+// void math_rotate(struct math_Vector3D* v);
+
+// SUPPORTED - Nested namespaces
+namespace graphics::rendering {
+    class Renderer { /* ... */ };
+}
+
+// Transpiles to:
+// struct graphics_rendering_Renderer { /* ... */ };
+
+// SUPPORTED - Anonymous namespaces (file-local scope)
+namespace {
+    void internalHelper() { /* ... */ }
+}
+
+// Transpiles to:
+// static void _anon_file_cpp_42_internalHelper(void) { /* ... */ }
+
+// SUPPORTED - Scoped enums in namespaces
+namespace game {
+    enum class State { Menu, Playing, Paused };
+}
+
+// Transpiles to:
+// enum { game_State__Menu, game_State__Playing, game_State__Paused };
+
+// NOT SUPPORTED - using directives
+// using namespace std;  // NOT SUPPORTED - use explicit qualification
+
+// NOT SUPPORTED - Namespace aliases
+// namespace short_name = very::long::namespace;  // NOT SUPPORTED
+
+// Pattern: namespace1_namespace2_identifier
+// See: docs/features/NAMESPACE_GUIDE.md for complete documentation
 ```
 
 ---

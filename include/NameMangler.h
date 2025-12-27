@@ -144,9 +144,22 @@ private:
      * @return Vector of namespace names (outermost first)
      *
      * Story #65: Extracts namespace hierarchy for mangling
+     * Phase 48: Enhanced with anonymous namespace support
      * Example: ns1::ns2::Class returns {"ns1", "ns2"}
+     * Example: namespace { func; } returns {"_anon_<unique_id>"}
      */
     std::vector<std::string> extractNamespaceHierarchy(clang::Decl *D);
+
+    /**
+     * @brief Generate unique identifier for anonymous namespace
+     * @param ND Anonymous namespace declaration
+     * @return Unique identifier based on source location
+     *
+     * Phase 48: Anonymous namespace support
+     * Pattern: _anon_<basename>_<line>
+     * Example: _anon_utils_cpp_42 for anonymous namespace at line 42 in utils.cpp
+     */
+    std::string getAnonymousNamespaceID(clang::NamespaceDecl *ND);
     /**
      * @brief Get simple type name for mangling
      * @param T QualType to convert

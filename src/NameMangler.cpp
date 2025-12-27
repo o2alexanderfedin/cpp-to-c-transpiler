@@ -4,9 +4,12 @@
  *
  * Story #18: Basic Name Mangling
  * Story #65: Namespace-Aware Name Mangling
+ * Phase 48: Anonymous Namespace Support
  */
 
 #include "NameMangler.h"
+#include "clang/Basic/SourceManager.h"
+#include "llvm/Support/Path.h"
 #include <algorithm>
 
 using namespace clang;
@@ -123,17 +126,49 @@ std::string NameMangler::getSimpleTypeName(QualType T) {
 // Story #65: Namespace-Aware Name Mangling
 // ============================================================================
 
+std::string NameMangler::getAnonymousNamespaceID(NamespaceDecl *ND) {
+    // Phase 48: Generate unique ID for anonymous namespace
+    // Pattern: _anon_<basename>_<line>
+    // Example: _anon_utils_cpp_42 for line 42 in utils.cpp
+
+    SourceLocation Loc = ND->getLocation();
+    SourceManager &SM = Ctx.getSourceManager();
+
+    // Get file name
+    llvm::StringRef FileName = SM.getFilename(Loc);
+    std::string FileBaseName = llvm::sys::path::filename(FileName).str();
+
+    // Get line number
+    unsigned LineNum = SM.getSpellingLineNumber(Loc);
+
+    // Generate unique ID
+    std::string uniqueId = "_anon_" + FileBaseName + "_" + std::to_string(LineNum);
+
+    // Replace special characters in filename to make valid C identifier
+    std::replace(uniqueId.begin(), uniqueId.end(), '.', '_');
+    std::replace(uniqueId.begin(), uniqueId.end(), '-', '_');
+    std::replace(uniqueId.begin(), uniqueId.end(), ' ', '_');
+
+    return uniqueId;
+}
+
 std::vector<std::string> NameMangler::extractNamespaceHierarchy(Decl *D) {
     // Build namespace hierarchy from outermost to innermost
     // Example: ns1::ns2::func returns {"ns1", "ns2"}
+    // Phase 48: Enhanced with anonymous namespace support
+    // Example: namespace { func; } returns {"_anon_file_cpp_42"}
     std::vector<std::string> namespaces;
 
     DeclContext *DC = D->getDeclContext();
     while (DC) {
         if (auto *ND = dyn_cast<NamespaceDecl>(DC)) {
-            // Skip anonymous namespaces
             if (!ND->isAnonymousNamespace()) {
+                // Named namespace: use name directly
                 namespaces.push_back(ND->getName().str());
+            } else {
+                // Anonymous namespace: generate unique ID
+                std::string uniqueId = getAnonymousNamespaceID(ND);
+                namespaces.push_back(uniqueId);
             }
         }
         DC = DC->getParent();
