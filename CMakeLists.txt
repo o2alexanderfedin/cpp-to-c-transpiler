@@ -244,6 +244,7 @@ add_library(cpptoc_core STATIC
     src/StaticOperatorTranslator.cpp
     src/ArithmeticOperatorTranslator.cpp
     src/ComparisonOperatorTranslator.cpp
+    src/SpecialOperatorTranslator.cpp
     src/AssumeAttributeHandler.cpp
     src/DeducingThisTranslator.cpp
     src/ConstevalIfTranslator.cpp

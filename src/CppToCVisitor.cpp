@@ -150,6 +150,10 @@ CppToCVisitor::CppToCVisitor(ASTContext &Context, CNodeBuilder &Builder,
   m_comparisonOpTrans = std::make_unique<ComparisonOperatorTranslator>(Builder, Mangler);
   llvm::outs() << "Comparison & logical operator overloading support initialized (Phase 51)\n";
 
+  // Phase 52: Initialize special operator translator
+  m_specialOpTrans = std::make_unique<SpecialOperatorTranslator>(Builder, Mangler);
+  llvm::outs() << "Special operator overloading support initialized (Phase 52)\n";
+
   // Phase 35-02 (Bug #30 FIX): C_TranslationUnit passed as constructor parameter
   // Each source file has its own C_TU in the shared target context
   llvm::outs() << "[Bug #30 FIX] CppToCVisitor using C_TU @ " << (void*)C_TranslationUnit << "\n";
@@ -492,6 +496,21 @@ bool CppToCVisitor::VisitCXXMethodDecl(CXXMethodDecl *MD) {
     return true;
   }
 
+  // Phase 52: Handle special operator overloading (v2.12.0)
+  // Includes: operator[], operator(), operator->, operator*, operator<<, operator>>,
+  // operator=, operator&, operator, (comma)
+  if (MD->isOverloadedOperator() && m_specialOpTrans->isSpecialOperator(MD->getOverloadedOperator())) {
+    llvm::outs() << "Translating special operator: "
+                 << MD->getQualifiedNameAsString() << "\n";
+    auto* C_Func = m_specialOpTrans->transformMethod(MD, Context, C_TranslationUnit);
+    if (C_Func) {
+      // Store in method map for later call site transformation
+      methodToCFunc[MD] = C_Func;
+      llvm::outs() << "  -> " << C_Func->getNameAsString() << "\n";
+    }
+    return true;
+  }
+
   // Edge case 4: Skip virtual methods (handled by vtable infrastructure)
   if (MD->isVirtual()) {
     llvm::outs() << "Skipping virtual method (handled by vtable): "
@@ -499,27 +518,11 @@ bool CppToCVisitor::VisitCXXMethodDecl(CXXMethodDecl *MD) {
     return true;
   }
 
-  // Story #131: Handle move assignment operators
-  if (MoveAssignTranslator.isMoveAssignmentOperator(MD)) {
-    llvm::outs() << "Translating move assignment operator: "
-                 << MD->getQualifiedNameAsString() << "\n";
-    std::string cCode = MoveAssignTranslator.generateMoveAssignment(MD);
-    if (!cCode.empty()) {
-      llvm::outs() << "Generated move assignment C code:\n" << cCode << "\n";
-      // TODO: Store generated function for later output
-    }
-    return true;
-  }
-
-  // Story #134: Handle copy assignment operators (skip for now, similar to
-  // move)
-  if (MD->isCopyAssignmentOperator()) {
-    llvm::outs() << "Translating copy assignment operator: "
-                 << MD->getQualifiedNameAsString() << "\n";
-    // Copy assignment operators are handled similar to move assignments
-    // TODO: Generate C code for copy assignment
-    return true;
-  }
+  // Story #131 & Story #134: Move and copy assignment operators
+  // RESOLVED by Phase 52 (v2.12.0): Now handled by SpecialOperatorTranslator above
+  // Both copy assignment (operator=(const T&)) and move assignment (operator=(T&&))
+  // are properly translated as special operators with explicit this parameter
+  // Old TODOs at lines 528 and 539 are now RESOLVED
 
   llvm::outs() << "Translating method: " << MD->getQualifiedNameAsString()
                << "\n";
@@ -585,6 +588,33 @@ bool CppToCVisitor::VisitCXXMethodDecl(CXXMethodDecl *MD) {
 
   llvm::outs() << "  -> " << funcName << " with " << params.size()
                << " parameters\n";
+
+  return true;
+}
+
+// Phase 52: Conversion Operator Translation (v2.12.0)
+// Handles operator T(), explicit operator bool(), etc.
+bool CppToCVisitor::VisitCXXConversionDecl(CXXConversionDecl *CD) {
+  if (!CD || CD->isImplicit()) {
+    return true;
+  }
+
+  // Skip if not from current file
+  if (fileOriginFilter && !fileOriginFilter->shouldProcess(CD)) {
+    return true;
+  }
+
+  llvm::outs() << "Translating conversion operator: "
+               << CD->getQualifiedNameAsString() << "\n";
+
+  // Use SpecialOperatorTranslator to handle conversion operators
+  auto* C_Func = m_specialOpTrans->transformConversion(CD, Context, C_TranslationUnit);
+  if (C_Func) {
+    // Store in method map for later call site transformation
+    // Note: CXXConversionDecl is a subclass of CXXMethodDecl
+    methodToCFunc[CD] = C_Func;
+    llvm::outs() << "  -> " << C_Func->getNameAsString() << "\n";
+  }
 
   return true;
 }
@@ -4277,6 +4307,20 @@ bool CppToCVisitor::VisitCXXOperatorCallExpr(CXXOperatorCallExpr *E) {
       // Translation successful
       // Note: AST replacement would happen here in a full implementation
       llvm::outs() << "     Generated comparison/logical operator call (returns bool)\n";
+    }
+    return true;
+  }
+
+  // Phase 52: Handle special operator call sites (v2.12.0)
+  // Includes: operator[], operator(), operator->, operator*, operator<<, operator>>,
+  // operator=, operator&, operator, (comma)
+  if (m_specialOpTrans->isSpecialOperator(E->getOperator())) {
+    llvm::outs() << "  -> Translating special operator call\n";
+    auto* C_Call = m_specialOpTrans->transformCall(E, Context);
+    if (C_Call) {
+      // Translation successful
+      // Note: AST replacement would happen here in a full implementation
+      llvm::outs() << "     Generated special operator call\n";
     }
     return true;
   }
