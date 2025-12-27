@@ -10,9 +10,15 @@
 
 #include "handlers/RecordHandler.h"
 #include "handlers/HandlerContext.h"
+#include "helpers/VtableTypedefGenerator.h"
 #include "clang/AST/Decl.h"
 #include "clang/AST/DeclCXX.h"
+#include "clang/AST/VTableBuilder.h"
 #include "llvm/Support/Casting.h"
+#include <functional>
+#include <set>
+#include <map>
+#include <vector>
 
 namespace cpptoc {
 
@@ -84,6 +90,13 @@ clang::Decl* RecordHandler::handleDecl(const clang::Decl* D, HandlerContext& ctx
 
         // Complete the definition
         cRecord->completeDefinition();
+
+        // Step 7: Generate vtable struct for polymorphic classes (Phase 45)
+        if (const auto* cxxRecord = llvm::dyn_cast<clang::CXXRecordDecl>(cppRecord)) {
+            if (cxxRecord->isPolymorphic()) {
+                generateVtableStruct(cxxRecord, ctx);
+            }
+        }
     }
 
     return cRecord;
@@ -258,6 +271,173 @@ void RecordHandler::translateNestedRecords(
             cRecord->addDecl(nestedCRecord);
         }
     }
+}
+
+clang::RecordDecl* RecordHandler::generateVtableStruct(
+    const clang::CXXRecordDecl* cxxRecord,
+    HandlerContext& ctx
+) {
+    // Only generate vtable for polymorphic classes
+    if (!cxxRecord || !cxxRecord->isPolymorphic()) {
+        return nullptr;
+    }
+
+    clang::ASTContext& cCtx = ctx.getCContext();
+    std::string className = cxxRecord->getNameAsString();
+    std::string vtableName = className + "_vtable";
+
+    // Create vtable struct identifier
+    clang::IdentifierInfo& vtableII = cCtx.Idents.get(vtableName);
+
+    // Create vtable struct
+    clang::RecordDecl* vtableStruct = clang::RecordDecl::Create(
+        cCtx,
+        clang::TagTypeKind::Struct,
+        cCtx.getTranslationUnitDecl(),
+        clang::SourceLocation(),
+        clang::SourceLocation(),
+        &vtableII
+    );
+
+    // Start vtable definition
+    vtableStruct->startDefinition();
+
+    // Collect virtual methods in vtable order
+    std::vector<const clang::CXXMethodDecl*> virtualMethods = collectVirtualMethods(cxxRecord);
+
+    // Create VtableTypedefGenerator for generating function pointer typedefs
+    VtableTypedefGenerator typedefGen(cCtx, ctx.getBuilder());
+
+    // Generate function pointer field for each virtual method
+    for (const auto* method : virtualMethods) {
+        std::string fieldName;
+        clang::QualType funcPtrType;
+
+        // Check if this is a destructor
+        if (const auto* dtor = llvm::dyn_cast<clang::CXXDestructorDecl>(method)) {
+            fieldName = "destructor";
+
+            // Generate typedef for destructor
+            clang::TypedefDecl* typedefDecl = typedefGen.generateTypedefForDestructor(dtor, className);
+            if (!typedefDecl) {
+                continue; // Skip on error
+            }
+
+            // Use the typedef as the field type
+            funcPtrType = cCtx.getTypedefType(typedefDecl);
+        } else {
+            fieldName = method->getNameAsString();
+
+            // Generate typedef for method
+            clang::TypedefDecl* typedefDecl = typedefGen.generateTypedef(method, className);
+            if (!typedefDecl) {
+                continue; // Skip on error
+            }
+
+            // Use the typedef as the field type
+            funcPtrType = cCtx.getTypedefType(typedefDecl);
+        }
+
+        // Create field identifier
+        clang::IdentifierInfo& fieldII = cCtx.Idents.get(fieldName);
+
+        // Create function pointer field
+        clang::FieldDecl* funcPtrField = clang::FieldDecl::Create(
+            cCtx,
+            vtableStruct,
+            clang::SourceLocation(),
+            clang::SourceLocation(),
+            &fieldII,
+            funcPtrType,
+            cCtx.getTrivialTypeSourceInfo(funcPtrType),
+            nullptr, // No bitwidth
+            false,   // Not mutable
+            clang::ICIS_NoInit
+        );
+
+        // Add field to vtable struct
+        vtableStruct->addDecl(funcPtrField);
+    }
+
+    // Complete vtable definition
+    vtableStruct->completeDefinition();
+
+    // Add vtable struct to translation unit
+    cCtx.getTranslationUnitDecl()->addDecl(vtableStruct);
+
+    return vtableStruct;
+}
+
+std::vector<const clang::CXXMethodDecl*> RecordHandler::collectVirtualMethods(
+    const clang::CXXRecordDecl* cxxRecord
+) {
+    std::vector<const clang::CXXMethodDecl*> virtualMethods;
+
+    if (!cxxRecord) {
+        return virtualMethods;
+    }
+
+    // Use a vector to preserve declaration order, and a map to track which slots are filled
+    std::map<std::string, const clang::CXXMethodDecl*> vtableSlotMap;
+    std::vector<std::string> slotOrder; // Preserve slot order
+
+    // Step 1: Collect virtual methods from base classes (if any)
+    for (const auto& base : cxxRecord->bases()) {
+        const auto* baseRecord = base.getType()->getAsCXXRecordDecl();
+        if (!baseRecord) continue;
+
+        // Recursively collect base class virtual methods
+        std::vector<const clang::CXXMethodDecl*> baseMethods = collectVirtualMethods(baseRecord);
+
+        // Add base methods to slots (will be overridden if derived class overrides them)
+        // Preserve the order from base class
+        for (const auto* baseMethod : baseMethods) {
+            std::string methodName;
+            if (llvm::isa<clang::CXXDestructorDecl>(baseMethod)) {
+                methodName = "destructor";
+            } else {
+                methodName = baseMethod->getNameAsString();
+            }
+
+            // Only add if we haven't seen this slot before
+            if (vtableSlotMap.find(methodName) == vtableSlotMap.end()) {
+                slotOrder.push_back(methodName);
+            }
+            vtableSlotMap[methodName] = baseMethod;
+        }
+    }
+
+    // Step 2: Add/override with this class's virtual methods
+    for (const auto* method : cxxRecord->methods()) {
+        // Only process virtual methods
+        if (!method->isVirtual()) {
+            continue;
+        }
+
+        std::string methodName;
+        if (const auto* dtor = llvm::dyn_cast<clang::CXXDestructorDecl>(method)) {
+            methodName = "destructor";
+        } else {
+            methodName = method->getNameAsString();
+        }
+
+        // Add to vtable - either override existing slot or add new slot at end
+        if (vtableSlotMap.find(methodName) != vtableSlotMap.end()) {
+            // Override existing slot (preserve position in slotOrder)
+            vtableSlotMap[methodName] = method;
+        } else {
+            // New virtual method - add at end
+            slotOrder.push_back(methodName);
+            vtableSlotMap[methodName] = method;
+        }
+    }
+
+    // Step 3: Build ordered vector from slot order
+    for (const auto& methodName : slotOrder) {
+        virtualMethods.push_back(vtableSlotMap[methodName]);
+    }
+
+    return virtualMethods;
 }
 
 

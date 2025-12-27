@@ -4165,6 +4165,32 @@ gtest_discover_tests(RecordHandlerTest
     WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
 )
 
+# RecordHandler Vtable unit tests (Phase 45, Group 1 Task 2)
+add_executable(RecordHandlerTest_Vtable
+    tests/unit/handlers/RecordHandlerTest_Vtable.cpp
+)
+
+target_include_directories(RecordHandlerTest_Vtable PRIVATE
+    ${CMAKE_SOURCE_DIR}/tests/fixtures
+    ${CMAKE_SOURCE_DIR}/include
+    ${LLVM_INCLUDE_DIRS}
+    ${CLANG_INCLUDE_DIRS}
+)
+
+target_link_libraries(RecordHandlerTest_Vtable PRIVATE
+    test_fixtures
+    cpptoc_core
+    clangTooling
+    clangAST
+    clangBasic
+    GTest::gtest
+    GTest::gtest_main
+)
+
+gtest_discover_tests(RecordHandlerTest_Vtable
+    WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
+)
+
 # Phase 44-01 Task 3: MethodHandler Tests
 add_executable(MethodHandlerTest
     tests/unit/handlers/MethodHandlerTest.cpp
