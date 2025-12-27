@@ -13,6 +13,7 @@
 #include "../include/MethodSignatureHelper.h"
 #include "../include/OverrideResolver.h"
 #include "../include/VirtualInheritanceAnalyzer.h"
+#include "../include/MultipleInheritanceAnalyzer.h"
 #include "clang/AST/DeclCXX.h"
 #include "clang/AST/RecordLayout.h"
 #include <string>
@@ -296,3 +297,144 @@ std::string VtableGenerator::generateVirtualBaseAccessHelper(
 
     return code;
 }
+
+// ============================================================================
+// Phase 46: Multiple Inheritance Vtable Generation
+// ============================================================================
+
+std::string VtableGenerator::generateVtableForBase(
+    const CXXRecordDecl* Derived,
+    const CXXRecordDecl* Base) {
+
+    if (!Derived || !Base) {
+        return "";
+    }
+
+    // Check if base is polymorphic
+    if (!Base->isPolymorphic()) {
+        return "";
+    }
+
+    // Pre-allocate string buffer
+    std::string code;
+    code.reserve(512);
+
+    std::string derivedName = Derived->getNameAsString();
+    std::string baseName = Base->getNameAsString();
+
+    // Generate vtable struct name: Derived_Base_vtable
+    code += "struct ";
+    code += derivedName;
+    code += "_";
+    code += baseName;
+    code += "_vtable {\n";
+
+    // Add type_info pointer
+    code += "    const struct __class_type_info *type_info;  /**< RTTI type_info pointer */\n";
+
+    // Get virtual methods from base class
+    // We only include methods that are part of this base's interface
+    std::vector<CXXMethodDecl*> baseMethods;
+
+    // Walk through base's methods
+    for (auto* method : Base->methods()) {
+        if (method->isVirtual()) {
+            baseMethods.push_back(method);
+        }
+    }
+
+    // For overridden methods in derived class, we still use the signature
+    // from the base class interface
+    for (auto* baseMethod : baseMethods) {
+        code += "    ";
+
+        // Find if this method is overridden in derived
+        CXXMethodDecl* implMethod = nullptr;
+        for (auto* derivedMethod : Derived->methods()) {
+            if (derivedMethod->isVirtual() &&
+                derivedMethod->getNameAsString() == baseMethod->getNameAsString()) {
+                implMethod = derivedMethod;
+                break;
+            }
+        }
+
+        // Use derived method if found, otherwise base method
+        CXXMethodDecl* methodToUse = implMethod ? implMethod : baseMethod;
+
+        // Generate function pointer with derived class as 'this' type
+        QualType returnType = methodToUse->getReturnType();
+        code += getTypeString(returnType);
+        code += " ";
+
+        // Function pointer name
+        if (isa<CXXDestructorDecl>(methodToUse)) {
+            code += "(*destructor)";
+        } else {
+            code += "(*";
+            code += methodToUse->getNameAsString();
+            code += ")";
+        }
+
+        // Parameters: 'this' pointer is always to Derived class
+        code += "(struct ";
+        code += derivedName;
+        code += " *this";
+
+        // Add method parameters
+        for (unsigned i = 0; i < methodToUse->getNumParams(); ++i) {
+            const ParmVarDecl* param = methodToUse->getParamDecl(i);
+            code += ", ";
+            code += getTypeString(param->getType());
+
+            if (!param->getName().empty()) {
+                code += " ";
+                code += param->getNameAsString();
+            } else {
+                code += " arg";
+                code += std::to_string(i);
+            }
+        }
+
+        code += ");\n";
+    }
+
+    code += "};\n";
+
+    return code;
+}
+
+std::string VtableGenerator::generateAllVtablesForMultipleInheritance(
+    const CXXRecordDecl* Record) {
+
+    if (!Record) {
+        return "";
+    }
+
+    // Use MultipleInheritanceAnalyzer to get polymorphic bases
+    MultipleInheritanceAnalyzer miAnalyzer(Context);
+    auto bases = miAnalyzer.analyzePolymorphicBases(Record);
+
+    if (bases.empty()) {
+        return "";
+    }
+
+    // If only one polymorphic base (single inheritance), use regular vtable
+    if (bases.size() == 1) {
+        return generateVtableStruct(Record);
+    }
+
+    // Generate vtable for each polymorphic base
+    std::string code;
+    code.reserve(512 * bases.size());
+
+    for (const auto& baseInfo : bases) {
+        std::string vtable = generateVtableForBase(Record, baseInfo.BaseDecl);
+        if (!vtable.empty()) {
+            code += vtable;
+            code += "\n";
+        }
+    }
+
+    return code;
+}
+

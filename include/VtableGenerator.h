@@ -200,6 +200,35 @@ public:
     std::string generateVirtualBaseAccessHelper(const clang::CXXRecordDecl* Derived,
                                                  const clang::CXXRecordDecl* VirtualBase);
 
+    /**
+     * @brief Generate vtable struct for a specific base class (Phase 46)
+     * @param Derived The derived class
+     * @param Base The base class to generate vtable for
+     * @return C code for vtable struct (e.g., "struct Derived_Base_vtable { ... }")
+     *
+     * Pattern: struct ClassName_BaseName_vtable {
+     *   RetType (*methodName)(struct ClassName *this, ...);
+     *   ...
+     * };
+     *
+     * Only includes methods from the specified base class interface.
+     */
+    std::string generateVtableForBase(const clang::CXXRecordDecl* Derived,
+                                       const clang::CXXRecordDecl* Base);
+
+    /**
+     * @brief Generate all vtables for multiple inheritance (Phase 46)
+     * @param Record The class with multiple inheritance
+     * @return C code for all vtable structs (one per polymorphic base)
+     *
+     * Generates separate vtable struct for each polymorphic base:
+     * - Primary base: ClassName_BaseName_vtable (or ClassName_vtable for backward compatibility)
+     * - Non-primary bases: ClassName_BaseName_vtable
+     *
+     * Uses MultipleInheritanceAnalyzer to identify bases and generate appropriate vtables.
+     */
+    std::string generateAllVtablesForMultipleInheritance(const clang::CXXRecordDecl* Record);
+
 private:
     /**
      * @brief Generate function pointer declaration for a method

@@ -1309,6 +1309,56 @@ gtest_discover_tests(MultipleInheritanceAnalyzerTest
     WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
 )
 
+# Phase 46 Group 1 Task 2: VtableGenerator Multiple Inheritance Tests
+add_executable(VtableGeneratorTest_MultipleInheritance
+    tests/unit/VtableGeneratorTest_MultipleInheritance.cpp
+)
+
+target_compile_definitions(VtableGeneratorTest_MultipleInheritance PRIVATE ${LLVM_DEFINITIONS})
+
+target_include_directories(VtableGeneratorTest_MultipleInheritance PRIVATE
+    ${CMAKE_SOURCE_DIR}/include
+    ${LLVM_INCLUDE_DIRS}
+    ${CLANG_INCLUDE_DIRS}
+)
+
+target_link_libraries(VtableGeneratorTest_MultipleInheritance PRIVATE cpptoc_core
+    clangTooling
+    clangFrontend
+    clangAST
+    clangBasic
+    GTest::gtest
+    GTest::gtest_main)
+
+gtest_discover_tests(VtableGeneratorTest_MultipleInheritance
+    WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
+)
+
+# Phase 46 Group 1 Task 3: RecordHandler Multiple lpVtbl Tests
+add_executable(RecordHandlerTest_MultipleLpVtbl
+    tests/unit/handlers/RecordHandlerTest_MultipleLpVtbl.cpp
+)
+
+target_compile_definitions(RecordHandlerTest_MultipleLpVtbl PRIVATE ${LLVM_DEFINITIONS})
+
+target_include_directories(RecordHandlerTest_MultipleLpVtbl PRIVATE
+    ${CMAKE_SOURCE_DIR}/include
+    ${LLVM_INCLUDE_DIRS}
+    ${CLANG_INCLUDE_DIRS}
+)
+
+target_link_libraries(RecordHandlerTest_MultipleLpVtbl PRIVATE cpptoc_core
+    clangTooling
+    clangFrontend
+    clangAST
+    clangBasic
+    GTest::gtest
+    GTest::gtest_main)
+
+gtest_discover_tests(RecordHandlerTest_MultipleLpVtbl
+    WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
+)
+
 # Story #168: Vtable Struct Generation tests
 add_executable(VtableGeneratorTest
     tests/VtableGeneratorTest.cpp
