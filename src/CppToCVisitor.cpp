@@ -142,6 +142,10 @@ CppToCVisitor::CppToCVisitor(ASTContext &Context, CNodeBuilder &Builder,
   m_enumTranslator = std::make_unique<cpptoc::EnumTranslator>();
   llvm::outs() << "Scoped enum translation support initialized (Phase 47)\n";
 
+  // Phase 50: Initialize arithmetic operator translator
+  m_arithmeticOpTrans = std::make_unique<ArithmeticOperatorTranslator>(Builder, Mangler);
+  llvm::outs() << "Arithmetic operator overloading support initialized (Phase 50)\n";
+
   // Phase 35-02 (Bug #30 FIX): C_TranslationUnit passed as constructor parameter
   // Each source file has its own C_TU in the shared target context
   llvm::outs() << "[Bug #30 FIX] CppToCVisitor using C_TU @ " << (void*)C_TranslationUnit << "\n";
@@ -456,6 +460,19 @@ bool CppToCVisitor::VisitCXXMethodDecl(CXXMethodDecl *MD) {
       }
       return true;
     }
+  }
+
+  // Phase 50: Handle arithmetic operator overloading (v2.10.0)
+  if (MD->isOverloadedOperator() && m_arithmeticOpTrans->isArithmeticOperator(MD->getOverloadedOperator())) {
+    llvm::outs() << "Translating arithmetic operator: "
+                 << MD->getQualifiedNameAsString() << "\n";
+    auto* C_Func = m_arithmeticOpTrans->transformMethod(MD, Context, C_TranslationUnit);
+    if (C_Func) {
+      // Store in method map for later call site transformation
+      methodToCFunc[MD] = C_Func;
+      llvm::outs() << "  -> " << C_Func->getNameAsString() << "\n";
+    }
+    return true;
   }
 
   // Edge case 4: Skip virtual methods (handled by vtable infrastructure)
@@ -4219,6 +4236,18 @@ bool CppToCVisitor::VisitCXXOperatorCallExpr(CXXOperatorCallExpr *E) {
       // Note: AST replacement would happen here in a full implementation
       // For now, we've generated the call expression
       llvm::outs() << "     Generated static operator call\n";
+    }
+    return true;
+  }
+
+  // Phase 50: Handle arithmetic operator call sites (v2.10.0)
+  if (m_arithmeticOpTrans->isArithmeticOperator(E->getOperator())) {
+    llvm::outs() << "  -> Translating arithmetic operator call\n";
+    auto* C_Call = m_arithmeticOpTrans->transformCall(E, Context);
+    if (C_Call) {
+      // Translation successful
+      // Note: AST replacement would happen here in a full implementation
+      llvm::outs() << "     Generated arithmetic operator call\n";
     }
     return true;
   }

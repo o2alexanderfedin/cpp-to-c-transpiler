@@ -242,6 +242,7 @@ add_library(cpptoc_core STATIC
     src/DynamicCastTranslator.cpp
     src/MultidimSubscriptTranslator.cpp
     src/StaticOperatorTranslator.cpp
+    src/ArithmeticOperatorTranslator.cpp
     src/AssumeAttributeHandler.cpp
     src/DeducingThisTranslator.cpp
     src/ConstevalIfTranslator.cpp
