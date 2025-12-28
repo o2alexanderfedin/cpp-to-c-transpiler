@@ -101,9 +101,12 @@ void CodeGenerator::printDecl(Decl *D, bool declarationOnly) {
         }
     } else if (auto *ED = dyn_cast<EnumDecl>(D)) {
         // Bug #23: Print enum as typedef enum for C compatibility
-        // Phase 47 fix: Always print enum definitions (they're type defs, not declarations)
-        // Enums need to be emitted in the output regardless of declarationOnly flag
-        printEnumDecl(ED);
+        // BUG #2 FIX: Enums should only be in header files (like structs)
+        // Enum definitions are type definitions, not function implementations
+        if (declarationOnly) {
+            printEnumDecl(ED);
+        }
+        // When declarationOnly=false, skip enum definitions (already in header)
     } else if (auto *RD = dyn_cast<RecordDecl>(D)) {
         // Bug #24: Use custom printer for struct to add 'struct' prefixes
         // Struct definitions should only be in header files

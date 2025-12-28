@@ -196,6 +196,10 @@ bool CppToCVisitor::VisitEnumDecl(EnumDecl *ED) {
     return false;
   }
 
+  // BUG #2 FIX: Add enum to per-file C_TranslationUnit for emission
+  // EnumTranslator adds enum to shared TU, but we need it in per-file C_TU
+  C_TranslationUnit->addDecl(C_Enum);
+
   // Note: EnumTranslator already registers enum and constant mappings in ctx
   // But CppToCVisitor still uses enumConstantMap for backward compatibility
   // Update enumConstantMap from HandlerContext registrations
@@ -212,7 +216,7 @@ bool CppToCVisitor::VisitEnumDecl(EnumDecl *ED) {
     }
   }
 
-  llvm::outs() << "  -> C enum " << ED->getNameAsString() << " created via EnumTranslator\n";
+  llvm::outs() << "  -> C enum " << ED->getNameAsString() << " created via EnumTranslator and added to C_TU\n";
 
   return true;
 }
@@ -4626,14 +4630,21 @@ void CppToCVisitor::processTemplateInstantiations(TranslationUnitDecl *TU) {
     // Generate monomorphized C struct AST node
     RecordDecl* CStruct = m_templateMonomorphizer->monomorphizeClass(classInst);
     if (CStruct) {
-      // Add to C TranslationUnit (CNodeBuilder already does this)
-      llvm::outs() << "    -> Created struct: " << CStruct->getNameAsString() << "\n";
+      // BUG #3 FIX: Add struct to per-file C_TranslationUnit for emission
+      // CNodeBuilder adds to shared TU, but we need it in per-file C_TU
+      C_TranslationUnit->addDecl(CStruct);
+      llvm::outs() << "    -> Created struct: " << CStruct->getNameAsString() << " and added to C_TU\n";
 
       // Generate method functions
       std::vector<FunctionDecl*> methods =
           m_templateMonomorphizer->monomorphizeClassMethods(classInst, CStruct);
 
-      llvm::outs() << "    -> Created " << methods.size() << " method function(s)\n";
+      // BUG #3 FIX: Add method functions to per-file C_TranslationUnit for emission
+      for (FunctionDecl* method : methods) {
+        C_TranslationUnit->addDecl(method);
+      }
+
+      llvm::outs() << "    -> Created " << methods.size() << " method function(s) and added to C_TU\n";
 
       // BUG FIX: Translate method bodies for monomorphized functions
       // The monomorphizer creates function signatures, but bodies need translation
@@ -4772,8 +4783,10 @@ void CppToCVisitor::processTemplateInstantiations(TranslationUnitDecl *TU) {
     // Generate monomorphized C function AST node
     FunctionDecl* CFunc = m_templateMonomorphizer->monomorphizeFunction(funcInst);
     if (CFunc) {
-      // Add to C TranslationUnit (CNodeBuilder already does this)
-      llvm::outs() << "    -> Created function: " << CFunc->getNameAsString() << "\n";
+      // BUG #3 FIX: Add function to per-file C_TranslationUnit for emission
+      // CNodeBuilder adds to shared TU, but we need it in per-file C_TU
+      C_TranslationUnit->addDecl(CFunc);
+      llvm::outs() << "    -> Created function: " << CFunc->getNameAsString() << " and added to C_TU\n";
     }
   }
 
