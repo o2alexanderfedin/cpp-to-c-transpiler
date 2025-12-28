@@ -42,10 +42,10 @@ FileOriginTracker configured with user header paths
 Translation unit has 99 top-level declarations
 [Bug #30 FIX] Creating independent target ASTContext for C output...
 [Bug #30 FIX] Target ASTContext created successfully:
-  - ASTContext @ 0x127141000
+  - ASTContext @ 0x15887e800
   - Target Triple: arm64-apple-darwin24.5.0
   - Language: C11
-[Bug #30 FIX] Created C_TU @ 0x12714b368 for file: /Users/alexanderfedin/Projects/hapyy/hupyy-cpp-to-c/tests/real-world/simple-validation/01-math-library/src/Matrix3x3.cpp
+[Bug #30 FIX] Created C_TU @ 0x158888b68 for file: /Users/alexanderfedin/Projects/hapyy/hupyy-cpp-to-c/tests/real-world/simple-validation/01-math-library/src/Matrix3x3.cpp
 FileOriginFilter initialized for: /Users/alexanderfedin/Projects/hapyy/hupyy-cpp-to-c/tests/real-world/simple-validation/01-math-library/src/Matrix3x3.cpp
 Virtual method support initialized
 Template monomorphization enabled (limit: 1000 instantiations)
@@ -65,7 +65,7 @@ Comparison & logical operator overloading support initialized (Phase 51)
 SpecialOperatorTranslator initialized (Phase 52)
 Special operator overloading support initialized (Phase 52)
 Type alias and typedef support initialized (Phase 53)
-[Bug #30 FIX] CppToCVisitor using C_TU @ 0x12714b368
+[Bug #30 FIX] CppToCVisitor using C_TU @ 0x158888b68
 Translating class: Vector3D
   -> struct Vector3D NOT added to C_TU (from header Vector3D, current file: Matrix3x3)
   Generating implicit copy constructor
@@ -476,7 +476,7 @@ Generated files:
 Parsed file: /Users/alexanderfedin/Projects/hapyy/hupyy-cpp-to-c/tests/real-world/simple-validation/01-math-library/src/Vector3D.cpp
 FileOriginTracker configured with user header paths
 Translation unit has 493 top-level declarations
-[Bug #30 FIX] Created C_TU @ 0x127151980 for file: /Users/alexanderfedin/Projects/hapyy/hupyy-cpp-to-c/tests/real-world/simple-validation/01-math-library/src/Vector3D.cpp
+[Bug #30 FIX] Created C_TU @ 0x15888e890 for file: /Users/alexanderfedin/Projects/hapyy/hupyy-cpp-to-c/tests/real-world/simple-validation/01-math-library/src/Vector3D.cpp
 FileOriginFilter initialized for: /Users/alexanderfedin/Projects/hapyy/hupyy-cpp-to-c/tests/real-world/simple-validation/01-math-library/src/Vector3D.cpp
 Virtual method support initialized
 Template monomorphization enabled (limit: 1000 instantiations)
@@ -496,7 +496,7 @@ Comparison & logical operator overloading support initialized (Phase 51)
 SpecialOperatorTranslator initialized (Phase 52)
 Special operator overloading support initialized (Phase 52)
 Type alias and typedef support initialized (Phase 53)
-[Bug #30 FIX] CppToCVisitor using C_TU @ 0x127151980
+[Bug #30 FIX] CppToCVisitor using C_TU @ 0x15888e890
 Translating class: Vector3D
 
 *** Dumping AST Record Layout
@@ -989,7 +989,7 @@ Generated files:
 Parsed file: /Users/alexanderfedin/Projects/hapyy/hupyy-cpp-to-c/tests/real-world/simple-validation/01-math-library/main.cpp
 FileOriginTracker configured with user header paths
 Translation unit has 529 top-level declarations
-[Bug #30 FIX] Created C_TU @ 0x12685d7c0 for file: /Users/alexanderfedin/Projects/hapyy/hupyy-cpp-to-c/tests/real-world/simple-validation/01-math-library/main.cpp
+[Bug #30 FIX] Created C_TU @ 0x157986b38 for file: /Users/alexanderfedin/Projects/hapyy/hupyy-cpp-to-c/tests/real-world/simple-validation/01-math-library/main.cpp
 FileOriginFilter initialized for: /Users/alexanderfedin/Projects/hapyy/hupyy-cpp-to-c/tests/real-world/simple-validation/01-math-library/main.cpp
 Virtual method support initialized
 Template monomorphization enabled (limit: 1000 instantiations)
@@ -1009,7 +1009,7 @@ Comparison & logical operator overloading support initialized (Phase 51)
 SpecialOperatorTranslator initialized (Phase 52)
 Special operator overloading support initialized (Phase 52)
 Type alias and typedef support initialized (Phase 53)
-[Bug #30 FIX] CppToCVisitor using C_TU @ 0x12685d7c0
+[Bug #30 FIX] CppToCVisitor using C_TU @ 0x157986b38
 Translating class: Vector3D
 
 *** Dumping AST Record Layout
@@ -1163,39 +1163,120 @@ Translating standalone function: main
       Is a C++ class: Vector3D
       Found C struct: Vector3D
       Creating C variable declaration
-  
+      Has constructor expression
+      [DEBUG] Looking for constructor in SHARED map (size: 5)
+      [DEBUG] Looking for key: Vector3D__ctor_3
+      Found C constructor: Vector3D__ctor_3
+      Creating constructor call
+[DEBUG Bug#26] translateStmt called, type: DeclStmt
+  [Translating DeclStmt]
+    Variable: sum
+      Is a struct/class type
+      Is a C++ class: Vector3D
+      Found C struct: Vector3D
+      Creating C variable declaration
+[DEBUG Bug#26] translateStmt called, type: DeclStmt
+  [Translating DeclStmt]
+    Variable: dot
+[DEBUG Bug#26] translateStmt called, type: DeclStmt
+  [Translating DeclStmt]
+    Variable: cross
+      Is a struct/class type
+      Is a C++ class: Vector3D
+      Found C struct: Vector3D
+      Creating C variable declaration
+[DEBUG Bug#26] translateStmt called, type: CallExpr
+[DEBUG Bug#26] translateStmt called, type: ImplicitCastExpr
+[DEBUG Bug#26] translateStmt called, type: DeclRefExpr
+[DEBUG Bug#26] translateStmt called, type: ImplicitCastExpr
+[DEBUG Bug#26] translateStmt called, type: StringLiteral
+[DEBUG Bug#26] translateStmt called, type: CallExpr
+[DEBUG Bug#26] translateStmt called, type: ImplicitCastExpr
+[DEBUG Bug#26] translateStmt called, type: DeclRefExpr
+[DEBUG Bug#26] translateStmt called, type: ImplicitCastExpr
+[DEBUG Bug#26] translateStmt called, type: StringLiteral
+[DEBUG Bug#26] translateStmt called, type: ImplicitCastExpr
+[DEBUG Bug#26] translateStmt called, type: ImplicitCastExpr
+[DEBUG Bug#26] translateStmt called, type: MemberExpr
+[DEBUG Bug#26] translateStmt called, type: DeclRefExpr
+[DEBUG Bug#26] translateStmt called, type: ImplicitCastExpr
+[DEBUG Bug#26] translateStmt called, type: ImplicitCastExpr
+[DEBUG Bug#26] translateStmt called, type: MemberExpr
+[DEBUG Bug#26] translateStmt called, type: DeclRefExpr
+[DEBUG Bug#26] translateStmt called, type: ImplicitCastExpr
+[DEBUG Bug#26] translateStmt called, type: ImplicitCastExpr
+[DEBUG Bug#26] translateStmt called, type: MemberExpr
+[DEBUG Bug#26] translateStmt called, type: DeclRefExpr
+[DEBUG Bug#26] translateStmt called, type: CallExpr
+[DEBUG Bug#26] translateStmt called, type: ImplicitCastExpr
+[DEBUG Bug#26] translateStmt called, type: DeclRefExpr
+[DEBUG Bug#26] translateStmt called, type: ImplicitCastExpr
+[DEBUG Bug#26] translateStmt called, type: StringLiteral
+[DEBUG Bug#26] translateStmt called, type: ImplicitCastExpr
+[DEBUG Bug#26] translateStmt called, type: ImplicitCastExpr
+[DEBUG Bug#26] translateStmt called, type: MemberExpr
+[DEBUG Bug#26] translateStmt called, type: DeclRefExpr
+[DEBUG Bug#26] translateStmt called, type: ImplicitCastExpr
+[DEBUG Bug#26] translateStmt called, type: ImplicitCastExpr
+[DEBUG Bug#26] translateStmt called, type: MemberExpr
+[DEBUG Bug#26] translateStmt called, type: DeclRefExpr
+[DEBUG Bug#26] translateStmt called, type: ImplicitCastExpr
+[DEBUG Bug#26] translateStmt called, type: ImplicitCastExpr
+[DEBUG Bug#26] translateStmt called, type: MemberExpr
+[DEBUG Bug#26] translateStmt called, type: DeclRefExpr
+[DEBUG Bug#26] translateStmt called, type: CallExpr
+[DEBUG Bug#26] translateStmt called, type: ImplicitCastExpr
+[DEBUG Bug#26] translateStmt called, type: DeclRefExpr
+[DEBUG Bug#26] translateStmt called, type: ImplicitCastExpr
+[DEBUG Bug#26] translateStmt called, type: StringLiteral
+[DEBUG Bug#26] translateStmt called, type: ImplicitCastExpr
+[DEBUG Bug#26] translateStmt called, type: ImplicitCastExpr
+[DEBUG Bug#26] translateStmt called, type: MemberExpr
+[DEBUG Bug#26] translateStmt called, type: DeclRefExpr
+[DEBUG Bug#26] translateStmt called, type: ImplicitCastExpr
+[DEBUG Bug#26] translateStmt called, type: ImplicitCastExpr
+[DEBUG Bug#26] translateStmt called, type: MemberExpr
+[DEBUG Bug#26] translateStmt called, type: DeclRefExpr
+[DEBUG Bug#26] translateStmt called, type: ImplicitCastExpr
+[DEBUG Bug#26] translateStmt called, type: ImplicitCastExpr
+[DEBUG Bug#26] translateStmt called, type: MemberExpr
+[DEBUG Bug#26] translateStmt called, type: DeclRefExpr
+[DEBUG Bug#26] translateStmt called, type: CallExpr
+[DEBUG Bug#26] translateStmt called, type: ImplicitCastExpr
+[DEBUG Bug#26] translateS
 
 !!! SEGFAULT CAUGHT (signal 11) !!!
 Last operation before crash:
 Backtrace:
-0   cpptoc                              0x0000000100b7bc40 _ZL15segfaultHandleri + 120
+0   cpptoc                              0x0000000102603c40 _ZL15segfaultHandleri + 120
 1   libsystem_platform.dylib            0x000000019cb38624 _sigtramp + 56
-2   cpptoc                              0x000000010171e610 _ZN5clang8CallExpr6CreateERKNS_10ASTContextEPNS_4ExprEN4llvm8ArrayRefIS5_EENS_8QualTypeENS_13ExprValueKindENS_14SourceLocationENS_17FPOptionsOverrideEjNS0_11ADLCallKindE + 596
-3   cpptoc                              0x0000000100ce5d0c _ZN5clang12CNodeBuilder4callEPNS_12FunctionDeclEN4llvm8ArrayRefIPNS_4ExprEEE + 176
-4   cpptoc                              0x0000000100cee8b4 _ZN13CppToCVisitor17translateCallExprEPN5clang8CallExprE + 1412
-5   cpptoc                              0x0000000100ce467c _ZN13CppToCVisitor13translateExprEPN5clang4ExprE + 452
-6   cpptoc                              0x0000000100cf4d9c _ZN13CppToCVisitor17translateDeclStmtEPN5clang8DeclStmtE + 4880
-7   cpptoc                              0x0000000100ce1f2c _ZN13CppToCVisitor13translateStmtEPN5clang4StmtE + 244
-8   cpptoc                              0x0000000100cf35a4 _ZN13CppToCVisitor21translateCompoundStmtEPN5clang12CompoundStmtE + 2664
-9   cpptoc                              0x0000000100ce1f00 _ZN13CppToCVisitor13translateStmtEPN5clang4StmtE + 200
-10  cpptoc                              0x0000000100ce938c _ZN13CppToCVisitor17VisitFunctionDeclEPN5clang12FunctionDeclE + 2604
-11  cpptoc                              0x0000000100cb84bc _ZN5clang19RecursiveASTVisitorI13CppToCVisitorE22WalkUpFromFunctionDeclEPNS_12FunctionDeclE + 100
-12  cpptoc                              0x0000000100bbb538 _ZN5clang19RecursiveASTVisitorI13CppToCVisitorE20TraverseFunctionDeclEPNS_12FunctionDeclE + 76
-13  cpptoc                              0x0000000100ba688c _ZN5clang19RecursiveASTVisitorI13CppToCVisitorE12TraverseDeclEPNS_4DeclE + 1968
-14  cpptoc                              0x0000000100c52058 _ZN5clang19RecursiveASTVisitorI13CppToCVisitorE25TraverseDeclContextHelperEPNS_11DeclContextE + 208
-15  cpptoc                              0x0000000100bb6408 _ZN5clang19RecursiveASTVisitorI13CppToCVisitorE27TraverseTranslationUnitDeclEPNS_19TranslationUnitDeclE + 448
-16  cpptoc                              0x0000000100ba622c _ZN5clang19RecursiveASTVisitorI13CppToCVisitorE12TraverseDeclEPNS_4DeclE + 336
-17  cpptoc                              0x0000000100ba49d4 _ZN14CppToCConsumer21HandleTranslationUnitERN5clang10ASTContextE + 700
-18  cpptoc                              0x00000001023bee60 _ZN5clang8ParseASTERNS_4SemaEbb + 976
-19  cpptoc                              0x0000000101403514 _ZN5clang17ASTFrontendAction13ExecuteActionEv + 260
-20  cpptoc                              0x0000000101402dfc _ZN5clang14FrontendAction7ExecuteEv + 36
-21  cpptoc                              0x000000010133d5cc _ZN5clang16CompilerInstance13ExecuteActionERNS_14FrontendActionE + 1392
-22  cpptoc                              0x0000000101303178 _ZN5clang7tooling21FrontendActionFactory13runInvocationENSt3__110shared_ptrINS_18CompilerInvocationEEEPNS_11FileManagerENS3_INS_22PCHContainerOperationsEEEPNS_18DiagnosticConsumerE + 364
-23  cpptoc                              0x0000000101302f70 _ZN5clang7tooling14ToolInvocation13runInvocationEPKcPNS_6driver11CompilationENSt3__110shared_ptrINS_18CompilerInvocationEEENS8_INS_22PCHContainerOperationsEEE + 240
-24  cpptoc                              0x00000001013016f4 _ZN5clang7tooling14ToolInvocation3runEv + 2016
-25  cpptoc                              0x0000000101305534 _ZN5clang7tooling9ClangTool3runEPNS0_10ToolActionE + 5464
-26  cpptoc                              0x0000000100b7b540 main + 1676
-27  dyld                                0x000000019c75eb98 start + 6076
+2   cpptoc                              0x00000001031a69c8 _ZN5clang8CallExpr6CreateERKNS_10ASTContextEPNS_4ExprEN4llvm8ArrayRefIS5_EENS_8QualTypeENS_13ExprValueKindENS_14SourceLocationENS_17FPOptionsOverrideEjNS0_11ADLCallKindE + 596
+3   cpptoc                              0x000000010276df5c _ZN5clang12CNodeBuilder4callEPNS_12FunctionDeclEN4llvm8ArrayRefIPNS_4ExprEEE + 176
+4   cpptoc                              0x0000000102776c0c _ZN13CppToCVisitor17translateCallExprEPN5clang8CallExprE + 1412
+5   cpptoc                              0x000000010276c8cc _ZN13CppToCVisitor13translateExprEPN5clang4ExprE + 452
+6   cpptoc                              0x000000010276a964 _ZN13CppToCVisitor13translateStmtEPN5clang4StmtE + 2404
+7   cpptoc                              0x000000010276a92c _ZN13CppToCVisitor13translateStmtEPN5clang4StmtE + 2348
+8   cpptoc                              0x000000010276a92c _ZN13CppToCVisitor13translateStmtEPN5clang4StmtE + 2348
+9   cpptoc                              0x000000010277b95c _ZN13CppToCVisitor21translateCompoundStmtEPN5clang12CompoundStmtE + 2664
+10  cpptoc                              0x000000010276a0c8 _ZN13CppToCVisitor13translateStmtEPN5clang4StmtE + 200
+11  cpptoc                              0x0000000102771664 _ZN13CppToCVisitor17VisitFunctionDeclEPN5clang12FunctionDeclE + 2740
+12  cpptoc                              0x00000001027404bc _ZN5clang19RecursiveASTVisitorI13CppToCVisitorE22WalkUpFromFunctionDeclEPNS_12FunctionDeclE + 100
+13  cpptoc                              0x0000000102643538 _ZN5clang19RecursiveASTVisitorI13CppToCVisitorE20TraverseFunctionDeclEPNS_12FunctionDeclE + 76
+14  cpptoc                              0x000000010262e88c _ZN5clang19RecursiveASTVisitorI13CppToCVisitorE12TraverseDeclEPNS_4DeclE + 1968
+15  cpptoc                              0x00000001026da058 _ZN5clang19RecursiveASTVisitorI13CppToCVisitorE25TraverseDeclContextHelperEPNS_11DeclContextE + 208
+16  cpptoc                              0x000000010263e408 _ZN5clang19RecursiveASTVisitorI13CppToCVisitorE27TraverseTranslationUnitDeclEPNS_19TranslationUnitDeclE + 448
+17  cpptoc                              0x000000010262e22c _ZN5clang19RecursiveASTVisitorI13CppToCVisitorE12TraverseDeclEPNS_4DeclE + 336
+18  cpptoc                              0x000000010262c9d4 _ZN14CppToCConsumer21HandleTranslationUnitERN5clang10ASTContextE + 700
+19  cpptoc                              0x0000000103e47218 _ZN5clang8ParseASTERNS_4SemaEbb + 976
+20  cpptoc                              0x0000000102e8b8cc _ZN5clang17ASTFrontendAction13ExecuteActionEv + 260
+21  cpptoc                              0x0000000102e8b1b4 _ZN5clang14FrontendAction7ExecuteEv + 36
+22  cpptoc                              0x0000000102dc5984 _ZN5clang16CompilerInstance13ExecuteActionERNS_14FrontendActionE + 1392
+23  cpptoc                              0x0000000102d8b530 _ZN5clang7tooling21FrontendActionFactory13runInvocationENSt3__110shared_ptrINS_18CompilerInvocationEEEPNS_11FileManagerENS3_INS_22PCHContainerOperationsEEEPNS_18DiagnosticConsumerE + 364
+24  cpptoc                              0x0000000102d8b328 _ZN5clang7tooling14ToolInvocation13runInvocationEPKcPNS_6driver11CompilationENSt3__110shared_ptrINS_18CompilerInvocationEEENS8_INS_22PCHContainerOperationsEEE + 240
+25  cpptoc                              0x0000000102d89aac _ZN5clang7tooling14ToolInvocation3runEv + 2016
+26  cpptoc                              0x0000000102d8d8ec _ZN5clang7tooling9ClangTool3runEPNS0_10ToolActionE + 5464
+27  cpptoc                              0x0000000102603540 main + 1676
+28  dyld                                0x000000019c75eb98 start + 6076
 
 !!! CRITICAL: Exiting due to segfault !!!
     [0;31m✗ Transpilation failed[0m
@@ -1235,10 +1316,10 @@ FileOriginTracker configured with user header paths
 Translation unit has 248 top-level declarations
 [Bug #30 FIX] Creating independent target ASTContext for C output...
 [Bug #30 FIX] Target ASTContext created successfully:
-  - ASTContext @ 0x15d227200
+  - ASTContext @ 0x13706b400
   - Target Triple: arm64-apple-darwin24.5.0
   - Language: C11
-[Bug #30 FIX] Created C_TU @ 0x15d231568 for file: /Users/alexanderfedin/Projects/hapyy/hupyy-cpp-to-c/tests/real-world/simple-validation/02-custom-container/main.cpp
+[Bug #30 FIX] Created C_TU @ 0x137075768 for file: /Users/alexanderfedin/Projects/hapyy/hupyy-cpp-to-c/tests/real-world/simple-validation/02-custom-container/main.cpp
 FileOriginFilter initialized for: /Users/alexanderfedin/Projects/hapyy/hupyy-cpp-to-c/tests/real-world/simple-validation/02-custom-container/main.cpp
 Virtual method support initialized
 Template monomorphization enabled (limit: 1000 instantiations)
@@ -1258,7 +1339,7 @@ Comparison & logical operator overloading support initialized (Phase 51)
 SpecialOperatorTranslator initialized (Phase 52)
 Special operator overloading support initialized (Phase 52)
 Type alias and typedef support initialized (Phase 53)
-[Bug #30 FIX] CppToCVisitor using C_TU @ 0x15d231568
+[Bug #30 FIX] CppToCVisitor using C_TU @ 0x137075768
 [FileOriginFilter] Skipping method std::integral_constant::operator type-parameter-0-0 - defined in /Library/Developer/CommandLineTools/SDKs/MacOSX.sdk/usr/include/c++/v1/__type_traits/integral_constant.h, current file is /Users/alexanderfedin/Projects/hapyy/hupyy-cpp-to-c/tests/real-world/simple-validation/02-custom-container/main.cpp
 [FileOriginFilter] Skipping method std::integral_constant::operator() - defined in /Library/Developer/CommandLineTools/SDKs/MacOSX.sdk/usr/include/c++/v1/__type_traits/integral_constant.h, current file is /Users/alexanderfedin/Projects/hapyy/hupyy-cpp-to-c/tests/real-world/simple-validation/02-custom-container/main.cpp
 Found class template: LinkedList
@@ -2108,10 +2189,10 @@ FileOriginTracker configured with user header paths
 Translation unit has 98 top-level declarations
 [Bug #30 FIX] Creating independent target ASTContext for C output...
 [Bug #30 FIX] Target ASTContext created successfully:
-  - ASTContext @ 0x142815000
+  - ASTContext @ 0x125837600
   - Target Triple: arm64-apple-darwin24.5.0
   - Language: C11
-[Bug #30 FIX] Created C_TU @ 0x142839d68 for file: /Users/alexanderfedin/Projects/hapyy/hupyy-cpp-to-c/tests/real-world/simple-validation/03-state-machine/src/StateMachine.cpp
+[Bug #30 FIX] Created C_TU @ 0x12585c368 for file: /Users/alexanderfedin/Projects/hapyy/hupyy-cpp-to-c/tests/real-world/simple-validation/03-state-machine/src/StateMachine.cpp
 FileOriginFilter initialized for: /Users/alexanderfedin/Projects/hapyy/hupyy-cpp-to-c/tests/real-world/simple-validation/03-state-machine/src/StateMachine.cpp
 Virtual method support initialized
 Template monomorphization enabled (limit: 1000 instantiations)
@@ -2131,7 +2212,7 @@ Comparison & logical operator overloading support initialized (Phase 51)
 SpecialOperatorTranslator initialized (Phase 52)
 Special operator overloading support initialized (Phase 52)
 Type alias and typedef support initialized (Phase 53)
-[Bug #30 FIX] CppToCVisitor using C_TU @ 0x142839d68
+[Bug #30 FIX] CppToCVisitor using C_TU @ 0x12585c368
 Translating enum: GameState
     Mapped: Menu (C++) -> GameState__Menu (C)
     Mapped: Playing (C++) -> GameState__Playing (C)
@@ -2288,7 +2369,7 @@ Generated files:
 Parsed file: /Users/alexanderfedin/Projects/hapyy/hupyy-cpp-to-c/tests/real-world/simple-validation/03-state-machine/main.cpp
 FileOriginTracker configured with user header paths
 Translation unit has 209 top-level declarations
-[Bug #30 FIX] Created C_TU @ 0x154035e78 for file: /Users/alexanderfedin/Projects/hapyy/hupyy-cpp-to-c/tests/real-world/simple-validation/03-state-machine/main.cpp
+[Bug #30 FIX] Created C_TU @ 0x10b010478 for file: /Users/alexanderfedin/Projects/hapyy/hupyy-cpp-to-c/tests/real-world/simple-validation/03-state-machine/main.cpp
 FileOriginFilter initialized for: /Users/alexanderfedin/Projects/hapyy/hupyy-cpp-to-c/tests/real-world/simple-validation/03-state-machine/main.cpp
 Virtual method support initialized
 Template monomorphization enabled (limit: 1000 instantiations)
@@ -2308,7 +2389,7 @@ Comparison & logical operator overloading support initialized (Phase 51)
 SpecialOperatorTranslator initialized (Phase 52)
 Special operator overloading support initialized (Phase 52)
 Type alias and typedef support initialized (Phase 53)
-[Bug #30 FIX] CppToCVisitor using C_TU @ 0x154035e78
+[Bug #30 FIX] CppToCVisitor using C_TU @ 0x10b010478
 Translating enum: GameState
     Mapped: Menu (C++) -> GameState__Menu (C)
     Mapped: Playing (C++) -> GameState__Playing (C)
@@ -2413,33 +2494,35 @@ Translating standalone function: main
 !!! SEGFAULT CAUGHT (signal 11) !!!
 Last operation before crash:
 Backtrace:
-0   cpptoc                              0x000000010055fc40 _ZL15segfaultHandleri + 120
+0   cpptoc                              0x00000001042f7c40 _ZL15segfaultHandleri + 120
 1   libsystem_platform.dylib            0x000000019cb38624 _sigtramp + 56
-2   cpptoc                              0x0000000101102610 _ZN5clang8CallExpr6CreateERKNS_10ASTContextEPNS_4ExprEN4llvm8ArrayRefIS5_EENS_8QualTypeENS_13ExprValueKindENS_14SourceLocationENS_17FPOptionsOverrideEjNS0_11ADLCallKindE + 596
-3   cpptoc                              0x00000001006c9d0c _ZN5clang12CNodeBuilder4callEPNS_12FunctionDeclEN4llvm8ArrayRefIPNS_4ExprEEE + 176
-4   cpptoc                              0x00000001006d28b4 _ZN13CppToCVisitor17translateCallExprEPN5clang8CallExprE + 1412
-5   cpptoc                              0x00000001006c867c _ZN13CppToCVisitor13translateExprEPN5clang4ExprE + 452
-6   cpptoc                              0x00000001006c679c _ZN13CppToCVisitor13translateStmtEPN5clang4StmtE + 2404
-7   cpptoc                              0x00000001006d75a4 _ZN13CppToCVisitor21translateCompoundStmtEPN5clang12CompoundStmtE + 2664
-8   cpptoc                              0x00000001006c5f00 _ZN13CppToCVisitor13translateStmtEPN5clang4StmtE + 200
-9   cpptoc                              0x00000001006cd38c _ZN13CppToCVisitor17VisitFunctionDeclEPN5clang12FunctionDeclE + 2604
-10  cpptoc                              0x000000010069c4bc _ZN5clang19RecursiveASTVisitorI13CppToCVisitorE22WalkUpFromFunctionDeclEPNS_12FunctionDeclE + 100
-11  cpptoc                              0x000000010059f538 _ZN5clang19RecursiveASTVisitorI13CppToCVisitorE20TraverseFunctionDeclEPNS_12FunctionDeclE + 76
-12  cpptoc                              0x000000010058a88c _ZN5clang19RecursiveASTVisitorI13CppToCVisitorE12TraverseDeclEPNS_4DeclE + 1968
-13  cpptoc                              0x0000000100636058 _ZN5clang19RecursiveASTVisitorI13CppToCVisitorE25TraverseDeclContextHelperEPNS_11DeclContextE + 208
-14  cpptoc                              0x000000010059a408 _ZN5clang19RecursiveASTVisitorI13CppToCVisitorE27TraverseTranslationUnitDeclEPNS_19TranslationUnitDeclE + 448
-15  cpptoc                              0x000000010058a22c _ZN5clang19RecursiveASTVisitorI13CppToCVisitorE12TraverseDeclEPNS_4DeclE + 336
-16  cpptoc                              0x00000001005889d4 _ZN14CppToCConsumer21HandleTranslationUnitERN5clang10ASTContextE + 700
-17  cpptoc                              0x0000000101da2e60 _ZN5clang8ParseASTERNS_4SemaEbb + 976
-18  cpptoc                              0x0000000100de7514 _ZN5clang17ASTFrontendAction13ExecuteActionEv + 260
-19  cpptoc                              0x0000000100de6dfc _ZN5clang14FrontendAction7ExecuteEv + 36
-20  cpptoc                              0x0000000100d215cc _ZN5clang16CompilerInstance13ExecuteActionERNS_14FrontendActionE + 1392
-21  cpptoc                              0x0000000100ce7178 _ZN5clang7tooling21FrontendActionFactory13runInvocationENSt3__110shared_ptrINS_18CompilerInvocationEEEPNS_11FileManagerENS3_INS_22PCHContainerOperationsEEEPNS_18DiagnosticConsumerE + 364
-22  cpptoc                              0x0000000100ce6f70 _ZN5clang7tooling14ToolInvocation13runInvocationEPKcPNS_6driver11CompilationENSt3__110shared_ptrINS_18CompilerInvocationEEENS8_INS_22PCHContainerOperationsEEE + 240
-23  cpptoc                              0x0000000100ce56f4 _ZN5clang7tooling14ToolInvocation3runEv + 2016
-24  cpptoc                              0x0000000100ce9534 _ZN5clang7tooling9ClangTool3runEPNS0_10ToolActionE + 5464
-25  cpptoc                              0x000000010055f540 main + 1676
-26  dyld                                0x000000019c75eb98 start + 6076
+2   cpptoc                              0x0000000104e9a9c8 _ZN5clang8CallExpr6CreateERKNS_10ASTContextEPNS_4ExprEN4llvm8ArrayRefIS5_EENS_8QualTypeENS_13ExprValueKindENS_14SourceLocationENS_17FPOptionsOverrideEjNS0_11ADLCallKindE + 596
+3   cpptoc                              0x0000000104461f5c _ZN5clang12CNodeBuilder4callEPNS_12FunctionDeclEN4llvm8ArrayRefIPNS_4ExprEEE + 176
+4   cpptoc                              0x000000010446ac0c _ZN13CppToCVisitor17translateCallExprEPN5clang8CallExprE + 1412
+5   cpptoc                              0x00000001044608cc _ZN13CppToCVisitor13translateExprEPN5clang4ExprE + 452
+6   cpptoc                              0x000000010445e964 _ZN13CppToCVisitor13translateStmtEPN5clang4StmtE + 2404
+7   cpptoc                              0x000000010445e92c _ZN13CppToCVisitor13translateStmtEPN5clang4StmtE + 2348
+8   cpptoc                              0x000000010445e92c _ZN13CppToCVisitor13translateStmtEPN5clang4StmtE + 2348
+9   cpptoc                              0x000000010446f95c _ZN13CppToCVisitor21translateCompoundStmtEPN5clang12CompoundStmtE + 2664
+10  cpptoc                              0x000000010445e0c8 _ZN13CppToCVisitor13translateStmtEPN5clang4StmtE + 200
+11  cpptoc                              0x0000000104465664 _ZN13CppToCVisitor17VisitFunctionDeclEPN5clang12FunctionDeclE + 2740
+12  cpptoc                              0x00000001044344bc _ZN5clang19RecursiveASTVisitorI13CppToCVisitorE22WalkUpFromFunctionDeclEPNS_12FunctionDeclE + 100
+13  cpptoc                              0x0000000104337538 _ZN5clang19RecursiveASTVisitorI13CppToCVisitorE20TraverseFunctionDeclEPNS_12FunctionDeclE + 76
+14  cpptoc                              0x000000010432288c _ZN5clang19RecursiveASTVisitorI13CppToCVisitorE12TraverseDeclEPNS_4DeclE + 1968
+15  cpptoc                              0x00000001043ce058 _ZN5clang19RecursiveASTVisitorI13CppToCVisitorE25TraverseDeclContextHelperEPNS_11DeclContextE + 208
+16  cpptoc                              0x0000000104332408 _ZN5clang19RecursiveASTVisitorI13CppToCVisitorE27TraverseTranslationUnitDeclEPNS_19TranslationUnitDeclE + 448
+17  cpptoc                              0x000000010432222c _ZN5clang19RecursiveASTVisitorI13CppToCVisitorE12TraverseDeclEPNS_4DeclE + 336
+18  cpptoc                              0x00000001043209d4 _ZN14CppToCConsumer21HandleTranslationUnitERN5clang10ASTContextE + 700
+19  cpptoc                              0x0000000105b3b218 _ZN5clang8ParseASTERNS_4SemaEbb + 976
+20  cpptoc                              0x0000000104b7f8cc _ZN5clang17ASTFrontendAction13ExecuteActionEv + 260
+21  cpptoc                              0x0000000104b7f1b4 _ZN5clang14FrontendAction7ExecuteEv + 36
+22  cpptoc                              0x0000000104ab9984 _ZN5clang16CompilerInstance13ExecuteActionERNS_14FrontendActionE + 1392
+23  cpptoc                              0x0000000104a7f530 _ZN5clang7tooling21FrontendActionFactory13runInvocationENSt3__110shared_ptrINS_18CompilerInvocationEEEPNS_11FileManagerENS3_INS_22PCHContainerOperationsEEEPNS_18DiagnosticConsumerE + 364
+24  cpptoc                              0x0000000104a7f328 _ZN5clang7tooling14ToolInvocation13runInvocationEPKcPNS_6driver11CompilationENSt3__110shared_ptrINS_18CompilerInvocationEEENS8_INS_22PCHContainerOperationsEEE + 240
+25  cpptoc                              0x0000000104a7daac _ZN5clang7tooling14ToolInvocation3runEv + 2016
+26  cpptoc                              0x0000000104a818ec _ZN5clang7tooling9ClangTool3runEPNS0_10ToolActionE + 5464
+27  cpptoc                              0x00000001042f7540 main + 1676
+28  dyld                                0x000000019c75eb98 start + 6076
 
 !!! CRITICAL: Exiting due to segfault !!!
     [0;31m✗ Transpilation failed[0m
@@ -2481,10 +2564,10 @@ FileOriginTracker configured with user header paths
 Translation unit has 208 top-level declarations
 [Bug #30 FIX] Creating independent target ASTContext for C output...
 [Bug #30 FIX] Target ASTContext created successfully:
-  - ASTContext @ 0x14806ce00
+  - ASTContext @ 0x127066e00
   - Target Triple: arm64-apple-darwin24.5.0
   - Language: C11
-[Bug #30 FIX] Created C_TU @ 0x148077168 for file: /Users/alexanderfedin/Projects/hapyy/hupyy-cpp-to-c/tests/real-world/simple-validation/04-simple-parser/src/Tokenizer.cpp
+[Bug #30 FIX] Created C_TU @ 0x127070768 for file: /Users/alexanderfedin/Projects/hapyy/hupyy-cpp-to-c/tests/real-world/simple-validation/04-simple-parser/src/Tokenizer.cpp
 FileOriginFilter initialized for: /Users/alexanderfedin/Projects/hapyy/hupyy-cpp-to-c/tests/real-world/simple-validation/04-simple-parser/src/Tokenizer.cpp
 Virtual method support initialized
 Template monomorphization enabled (limit: 1000 instantiations)
@@ -2504,7 +2587,7 @@ Comparison & logical operator overloading support initialized (Phase 51)
 SpecialOperatorTranslator initialized (Phase 52)
 Special operator overloading support initialized (Phase 52)
 Type alias and typedef support initialized (Phase 53)
-[Bug #30 FIX] CppToCVisitor using C_TU @ 0x148077168
+[Bug #30 FIX] CppToCVisitor using C_TU @ 0x127070768
 Translating enum: TokenType
     Mapped: Number (C++) -> TokenType__Number (C)
     Mapped: Plus (C++) -> TokenType__Plus (C)
@@ -2804,7 +2887,7 @@ Generated files:
 Parsed file: /Users/alexanderfedin/Projects/hapyy/hupyy-cpp-to-c/tests/real-world/simple-validation/04-simple-parser/src/ExpressionEvaluator.cpp
 FileOriginTracker configured with user header paths
 Translation unit has 113 top-level declarations
-[Bug #30 FIX] Created C_TU @ 0x14807b7d0 for file: /Users/alexanderfedin/Projects/hapyy/hupyy-cpp-to-c/tests/real-world/simple-validation/04-simple-parser/src/ExpressionEvaluator.cpp
+[Bug #30 FIX] Created C_TU @ 0x127074840 for file: /Users/alexanderfedin/Projects/hapyy/hupyy-cpp-to-c/tests/real-world/simple-validation/04-simple-parser/src/ExpressionEvaluator.cpp
 FileOriginFilter initialized for: /Users/alexanderfedin/Projects/hapyy/hupyy-cpp-to-c/tests/real-world/simple-validation/04-simple-parser/src/ExpressionEvaluator.cpp
 Virtual method support initialized
 Template monomorphization enabled (limit: 1000 instantiations)
@@ -2824,7 +2907,7 @@ Comparison & logical operator overloading support initialized (Phase 51)
 SpecialOperatorTranslator initialized (Phase 52)
 Special operator overloading support initialized (Phase 52)
 Type alias and typedef support initialized (Phase 53)
-[Bug #30 FIX] CppToCVisitor using C_TU @ 0x14807b7d0
+[Bug #30 FIX] CppToCVisitor using C_TU @ 0x127074840
 Translating enum: TokenType
     Mapped: Number (C++) -> TokenType__Number (C)
     Mapped: Plus (C++) -> TokenType__Plus (C)
@@ -2869,69 +2952,41 @@ Translating class: ExpressionEvaluator
 
 // Static declarations for all ExpressionEvaluator methods
 static void ExpressionEvaluator__ctor(struct ExpressionEvaluator *this);
-static void ExpressionEvaluaAssertion failed: (Name.isIdentifier() && "Name is not a simple identifier"), function getName, file Decl.h, line 301.
-[DEBUG FileOutputManager] writeFile called with filename: /Users/alexanderfedin/Projects/hapyy/hupyy-cpp-to-c/tests/real-world/simple-validation/04-simple-parser/transpiled/src/Tokenizer.h
-[DEBUG FileOutputManager] Content size: 1096 bytes
-[DEBUG FileOutputManager] Parent directory: "/Users/alexanderfedin/Projects/hapyy/hupyy-cpp-to-c/tests/real-world/simple-validation/04-simple-parser/transpiled/src"
-[DEBUG FileOutputManager] Parent directory empty: no
-[DEBUG FileOutputManager] Parent directory exists: no
-[DEBUG FileOutputManager] Creating parent directory: "/Users/alexanderfedin/Projects/hapyy/hupyy-cpp-to-c/tests/real-world/simple-validation/04-simple-parser/transpiled/src"
-[DEBUG FileOutputManager] Parent directory created successfully
-[DEBUG FileOutputManager] Opening file for writing: /Users/alexanderfedin/Projects/hapyy/hupyy-cpp-to-c/tests/real-world/simple-validation/04-simple-parser/transpiled/src/Tokenizer.h
-[DEBUG FileOutputManager] File opened successfully
-[DEBUG FileOutputManager] Content written successfully
-[DEBUG FileOutputManager] File closed successfully
-[DEBUG FileOutputManager] writeFile returning true
-[DEBUG FileOutputManager] writeFile called with filename: /Users/alexanderfedin/Projects/hapyy/hupyy-cpp-to-c/tests/real-world/simple-validation/04-simple-parser/transpiled/src/Tokenizer.c
-[DEBUG FileOutputManager] Content size: 2556 bytes
-[DEBUG FileOutputManager] Parent directory: "/Users/alexanderfedin/Projects/hapyy/hupyy-cpp-to-c/tests/real-world/simple-validation/04-simple-parser/transpiled/src"
-[DEBUG FileOutputManager] Parent directory empty: no
-[DEBUG FileOutputManager] Parent directory exists: yes
-[DEBUG FileOutputManager] Opening file for writing: /Users/alexanderfedin/Projects/hapyy/hupyy-cpp-to-c/tests/real-world/simple-validation/04-simple-parser/transpiled/src/Tokenizer.c
-[DEBUG FileOutputManager] File opened successfully
-[DEBUG FileOutputManager] Content written successfully
-[DEBUG FileOutputManager] File closed successfully
-[DEBUG FileOutputManager] writeFile returning true
+static void ExpressionEvalua
 
-
-!!! SEGFAULT CAUGHT (signal 6) !!!
+!!! SEGFAULT CAUGHT (signal 11) !!!
 Last operation before crash:
 Backtrace:
-0   cpptoc                              0x00000001024ffc40 _ZL15segfaultHandleri + 120
+0   cpptoc                              0x000000010284bc40 _ZL15segfaultHandleri + 120
 1   libsystem_platform.dylib            0x000000019cb38624 _sigtramp + 56
-2   libsystem_pthread.dylib             0x000000019cafe88c pthread_kill + 296
-3   libsystem_c.dylib                   0x000000019ca07c60 abort + 124
-4   libsystem_c.dylib                   0x000000019ca06eec err + 0
-5   cpptoc                              0x00000001026608cc _ZNK5clang9NamedDecl7getNameEv + 104
-6   cpptoc                              0x00000001028ef3d4 _ZN11NameMangler16mangleMethodNameEPN5clang13CXXMethodDeclE + 364
-7   cpptoc                              0x0000000102c56c98 _ZN25SpecialOperatorTranslator20generateOperatorNameEPKN5clang13CXXMethodDeclE + 88
-8   cpptoc                              0x0000000102c544cc _ZN25SpecialOperatorTranslator23translateMoveAssignmentEPN5clang13CXXMethodDeclERNS0_10ASTContextEPNS0_19TranslationUnitDeclE + 172
-9   cpptoc                              0x0000000102c522ec _ZN25SpecialOperatorTranslator15transformMethodEPN5clang13CXXMethodDeclERNS0_10ASTContextEPNS0_19TranslationUnitDeclE + 624
-10  cpptoc                              0x0000000102c57114 _ZN25SpecialOperatorTranslator20findOrCreateFunctionEPKN5clang13CXXMethodDeclERNS0_10ASTContextEPNS0_19TranslationUnitDeclE + 144
-11  cpptoc                              0x0000000102c56a6c _ZN25SpecialOperatorTranslator23transformAssignmentCallEPN5clang19CXXOperatorCallExprERNS0_10ASTContextE + 164
-12  cpptoc                              0x0000000102c55d48 _ZN25SpecialOperatorTranslator13transformCallEPN5clang19CXXOperatorCallExprERNS0_10ASTContextE + 416
-13  cpptoc                              0x000000010267d260 _ZN13CppToCVisitor24VisitCXXOperatorCallExprEPN5clang19CXXOperatorCallExprE + 716
-14  cpptoc                              0x000000010259d720 _ZN5clang19RecursiveASTVisitorI13CppToCVisitorE29WalkUpFromCXXOperatorCallExprEPNS_19CXXOperatorCallExprE + 100
-15  cpptoc                              0x000000010259d530 _ZN5clang19RecursiveASTVisitorI13CppToCVisitorE27TraverseCXXOperatorCallExprEPNS_19CXXOperatorCallExprEPN4llvm15SmallVectorImplINS5_14PointerIntPairIPNS_4StmtELj1EbNS5_21PointerLikeTypeTraitsIS9_EENS5_18PointerIntPairInfoIS9_Lj1ESB_EEEEEE + 80
-16  cpptoc                              0x000000010258ba70 _ZN5clang19RecursiveASTVisitorI13CppToCVisitorE16dataTraverseNodeEPNS_4StmtEPN4llvm15SmallVectorImplINS5_14PointerIntPairIS4_Lj1EbNS5_21PointerLikeTypeTraitsIS4_EENS5_18PointerIntPairInfoIS4_Lj1ES9_EEEEEE + 2628
-17  cpptoc                              0x0000000102548894 _ZN5clang19RecursiveASTVisitorI13CppToCVisitorE12TraverseStmtEPNS_4StmtEPN4llvm15SmallVectorImplINS5_14PointerIntPairIS4_Lj1EbNS5_21PointerLikeTypeTraitsIS4_EENS5_18PointerIntPairInfoIS4_Lj1ES9_EEEEEE + 652
-18  cpptoc                              0x000000010263cac0 _ZN5clang19RecursiveASTVisitorI13CppToCVisitorE22TraverseFunctionHelperEPNS_12FunctionDeclE + 1468
-19  cpptoc                              0x000000010253f780 _ZN5clang19RecursiveASTVisitorI13CppToCVisitorE21TraverseCXXMethodDeclEPNS_13CXXMethodDeclE + 128
-20  cpptoc                              0x000000010252a8bc _ZN5clang19RecursiveASTVisitorI13CppToCVisitorE12TraverseDeclEPNS_4DeclE + 2016
-21  cpptoc                              0x00000001025d6058 _ZN5clang19RecursiveASTVisitorI13CppToCVisitorE25TraverseDeclContextHelperEPNS_11DeclContextE + 208
-22  cpptoc                              0x000000010253a408 _ZN5clang19RecursiveASTVisitorI13CppToCVisitorE27TraverseTranslationUnitDeclEPNS_19TranslationUnitDeclE + 448
-23  cpptoc                              0x000000010252a22c _ZN5clang19RecursiveASTVisitorI13CppToCVisitorE12TraverseDeclEPNS_4DeclE + 336
-24  cpptoc                              0x00000001025289d4 _ZN14CppToCConsumer21HandleTranslationUnitERN5clang10ASTContextE + 700
-25  cpptoc                              0x0000000103d42e60 _ZN5clang8ParseASTERNS_4SemaEbb + 976
-26  cpptoc                              0x0000000102d87514 _ZN5clang17ASTFrontendAction13ExecuteActionEv + 260
-27  cpptoc                              0x0000000102d86dfc _ZN5clang14FrontendAction7ExecuteEv + 36
-28  cpptoc                              0x0000000102cc15cc _ZN5clang16CompilerInstance13ExecuteActionERNS_14FrontendActionE + 1392
-29  cpptoc                              0x0000000102c87178 _ZN5clang7tooling21FrontendActionFactory13runInvocationENSt3__110shared_ptrINS_18CompilerInvocationEEEPNS_11FileManagerENS3_INS_22PCHContainerOperationsEEEPNS_18DiagnosticConsumerE + 364
-30  cpptoc                              0x0000000102c86f70 _ZN5clang7tooling14ToolInvocation13runInvocationEPKcPNS_6driver11CompilationENSt3__110shared_ptrINS_18CompilerInvocationEEENS8_INS_22PCHContainerOperationsEEE + 240
-31  cpptoc                              0x0000000102c856f4 _ZN5clang7tooling14ToolInvocation3runEv + 2016
-32  cpptoc                              0x0000000102c89534 _ZN5clang7tooling9ClangTool3runEPNS0_10ToolActionE + 5464
-33  cpptoc                              0x00000001024ff540 main + 1676
-34  dyld                                0x000000019c75eb98 start + 6076
+2   cpptoc                              0x00000001033ee9c8 _ZN5clang8CallExpr6CreateERKNS_10ASTContextEPNS_4ExprEN4llvm8ArrayRefIS5_EENS_8QualTypeENS_13ExprValueKindENS_14SourceLocationENS_17FPOptionsOverrideEjNS0_11ADLCallKindE + 596
+3   cpptoc                              0x00000001029b5f5c _ZN5clang12CNodeBuilder4callEPNS_12FunctionDeclEN4llvm8ArrayRefIPNS_4ExprEEE + 176
+4   cpptoc                              0x00000001029bec0c _ZN13CppToCVisitor17translateCallExprEPN5clang8CallExprE + 1412
+5   cpptoc                              0x00000001029b48cc _ZN13CppToCVisitor13translateExprEPN5clang4ExprE + 452
+6   cpptoc                              0x00000001029b2964 _ZN13CppToCVisitor13translateStmtEPN5clang4StmtE + 2404
+7   cpptoc                              0x00000001029b292c _ZN13CppToCVisitor13translateStmtEPN5clang4StmtE + 2348
+8   cpptoc                              0x00000001029b292c _ZN13CppToCVisitor13translateStmtEPN5clang4StmtE + 2348
+9   cpptoc                              0x00000001029b292c _ZN13CppToCVisitor13translateStmtEPN5clang4StmtE + 2348
+10  cpptoc                              0x00000001029c395c _ZN13CppToCVisitor21translateCompoundStmtEPN5clang12CompoundStmtE + 2664
+11  cpptoc                              0x00000001029b20c8 _ZN13CppToCVisitor13translateStmtEPN5clang4StmtE + 200
+12  cpptoc                              0x00000001029b10b0 _ZN13CppToCVisitor18VisitCXXMethodDeclEPN5clang13CXXMethodDeclE + 5204
+13  cpptoc                              0x000000010298b4a8 _ZN5clang19RecursiveASTVisitorI13CppToCVisitorE23WalkUpFromCXXMethodDeclEPNS_13CXXMethodDeclE + 100
+14  cpptoc                              0x000000010288b74c _ZN5clang19RecursiveASTVisitorI13CppToCVisitorE21TraverseCXXMethodDeclEPNS_13CXXMethodDeclE + 76
+15  cpptoc                              0x00000001028768bc _ZN5clang19RecursiveASTVisitorI13CppToCVisitorE12TraverseDeclEPNS_4DeclE + 2016
+16  cpptoc                              0x0000000102922058 _ZN5clang19RecursiveASTVisitorI13CppToCVisitorE25TraverseDeclContextHelperEPNS_11DeclContextE + 208
+17  cpptoc                              0x0000000102886408 _ZN5clang19RecursiveASTVisitorI13CppToCVisitorE27TraverseTranslationUnitDeclEPNS_19TranslationUnitDeclE + 448
+18  cpptoc                              0x000000010287622c _ZN5clang19RecursiveASTVisitorI13CppToCVisitorE12TraverseDeclEPNS_4DeclE + 336
+19  cpptoc                              0x00000001028749d4 _ZN14CppToCConsumer21HandleTranslationUnitERN5clang10ASTContextE + 700
+20  cpptoc                              0x000000010408f218 _ZN5clang8ParseASTERNS_4SemaEbb + 976
+21  cpptoc                              0x00000001030d38cc _ZN5clang17ASTFrontendAction13ExecuteActionEv + 260
+22  cpptoc                              0x00000001030d31b4 _ZN5clang14FrontendAction7ExecuteEv + 36
+23  cpptoc                              0x000000010300d984 _ZN5clang16CompilerInstance13ExecuteActionERNS_14FrontendActionE + 1392
+24  cpptoc                              0x0000000102fd3530 _ZN5clang7tooling21FrontendActionFactory13runInvocationENSt3__110shared_ptrINS_18CompilerInvocationEEEPNS_11FileManagerENS3_INS_22PCHContainerOperationsEEEPNS_18DiagnosticConsumerE + 364
+25  cpptoc                              0x0000000102fd3328 _ZN5clang7tooling14ToolInvocation13runInvocationEPKcPNS_6driver11CompilationENSt3__110shared_ptrINS_18CompilerInvocationEEENS8_INS_22PCHContainerOperationsEEE + 240
+26  cpptoc                              0x0000000102fd1aac _ZN5clang7tooling14ToolInvocation3runEv + 2016
+27  cpptoc                              0x0000000102fd58ec _ZN5clang7tooling9ClangTool3runEPNS0_10ToolActionE + 5464
+28  cpptoc                              0x000000010284b540 main + 1676
+29  dyld                                0x000000019c75eb98 start + 6076
 
 !!! CRITICAL: Exiting due to segfault !!!
     [0;31m✗ Transpilation failed[0m
@@ -2976,10 +3031,10 @@ FileOriginTracker configured with user header paths
 Translation unit has 112 top-level declarations
 [Bug #30 FIX] Creating independent target ASTContext for C output...
 [Bug #30 FIX] Target ASTContext created successfully:
-  - ASTContext @ 0x15504bc00
+  - ASTContext @ 0x120028a00
   - Target Triple: arm64-apple-darwin24.5.0
   - Language: C11
-[Bug #30 FIX] Created C_TU @ 0x155055f68 for file: /Users/alexanderfedin/Projects/hapyy/hupyy-cpp-to-c/tests/real-world/simple-validation/05-game-logic/src/Player.cpp
+[Bug #30 FIX] Created C_TU @ 0x120032d68 for file: /Users/alexanderfedin/Projects/hapyy/hupyy-cpp-to-c/tests/real-world/simple-validation/05-game-logic/src/Player.cpp
 FileOriginFilter initialized for: /Users/alexanderfedin/Projects/hapyy/hupyy-cpp-to-c/tests/real-world/simple-validation/05-game-logic/src/Player.cpp
 Virtual method support initialized
 Template monomorphization enabled (limit: 1000 instantiations)
@@ -2999,7 +3054,7 @@ Comparison & logical operator overloading support initialized (Phase 51)
 SpecialOperatorTranslator initialized (Phase 52)
 Special operator overloading support initialized (Phase 52)
 Type alias and typedef support initialized (Phase 53)
-[Bug #30 FIX] CppToCVisitor using C_TU @ 0x155055f68
+[Bug #30 FIX] CppToCVisitor using C_TU @ 0x120032d68
 Translating class: Entity
   -> struct Entity NOT added to C_TU (from header Entity, current file: Player)
   Generating implicit copy constructor
@@ -3185,7 +3240,7 @@ Generated files:
 Parsed file: /Users/alexanderfedin/Projects/hapyy/hupyy-cpp-to-c/tests/real-world/simple-validation/05-game-logic/src/Entity.cpp
 FileOriginTracker configured with user header paths
 Translation unit has 111 top-level declarations
-[Bug #30 FIX] Created C_TU @ 0x155058e88 for file: /Users/alexanderfedin/Projects/hapyy/hupyy-cpp-to-c/tests/real-world/simple-validation/05-game-logic/src/Entity.cpp
+[Bug #30 FIX] Created C_TU @ 0x1200354a0 for file: /Users/alexanderfedin/Projects/hapyy/hupyy-cpp-to-c/tests/real-world/simple-validation/05-game-logic/src/Entity.cpp
 FileOriginFilter initialized for: /Users/alexanderfedin/Projects/hapyy/hupyy-cpp-to-c/tests/real-world/simple-validation/05-game-logic/src/Entity.cpp
 Virtual method support initialized
 Template monomorphization enabled (limit: 1000 instantiations)
@@ -3205,7 +3260,7 @@ Comparison & logical operator overloading support initialized (Phase 51)
 SpecialOperatorTranslator initialized (Phase 52)
 Special operator overloading support initialized (Phase 52)
 Type alias and typedef support initialized (Phase 53)
-[Bug #30 FIX] CppToCVisitor using C_TU @ 0x155058e88
+[Bug #30 FIX] CppToCVisitor using C_TU @ 0x1200354a0
 Translating class: Entity
   -> struct Entity with 5 fields
   Generating implicit copy constructor
@@ -3353,7 +3408,7 @@ Generated files:
 Parsed file: /Users/alexanderfedin/Projects/hapyy/hupyy-cpp-to-c/tests/real-world/simple-validation/05-game-logic/src/CollisionDetector.cpp
 FileOriginTracker configured with user header paths
 Translation unit has 94 top-level declarations
-[Bug #30 FIX] Created C_TU @ 0x1340c18b0 for file: /Users/alexanderfedin/Projects/hapyy/hupyy-cpp-to-c/tests/real-world/simple-validation/05-game-logic/src/CollisionDetector.cpp
+[Bug #30 FIX] Created C_TU @ 0x120841ab0 for file: /Users/alexanderfedin/Projects/hapyy/hupyy-cpp-to-c/tests/real-world/simple-validation/05-game-logic/src/CollisionDetector.cpp
 FileOriginFilter initialized for: /Users/alexanderfedin/Projects/hapyy/hupyy-cpp-to-c/tests/real-world/simple-validation/05-game-logic/src/CollisionDetector.cpp
 Virtual method support initialized
 Template monomorphization enabled (limit: 1000 instantiations)
@@ -3373,7 +3428,7 @@ Comparison & logical operator overloading support initialized (Phase 51)
 SpecialOperatorTranslator initialized (Phase 52)
 Special operator overloading support initialized (Phase 52)
 Type alias and typedef support initialized (Phase 53)
-[Bug #30 FIX] CppToCVisitor using C_TU @ 0x1340c18b0
+[Bug #30 FIX] CppToCVisitor using C_TU @ 0x120841ab0
 Translating class: Entity
   -> struct Entity NOT added to C_TU (from header Entity, current file: CollisionDetector)
   Generating implicit copy constructor
@@ -3393,553 +3448,38 @@ static void Entity_update_float(struct Entity *this, float deltaTime);
 Generating vtable for polymorphic class: Entity
 Vtable struct generated:
 struct Entity_vtable {
-    const struct __class_type_info *type_info;  /**< RTTI type_info pointer (Itanium ABI vtable[-1]) */
-    void (*destructor)(struct Entity *this);
-    void (*update)(struct Entity *this, float deltaTime);
-};
-
-Vtable instance generated:
-
-// Vtable instance for Entity
-struct Entity_vtable Entity_vtable_instance = {
-    .type_info = &Entity_type_info,  // RTTI type_info (placeholder)
-    .destructor = Entity_destructor,
-    .update = Entity_update,
-};
-
-Found variable: x
-Found variable: y
-Found variable: width
-Found variable: height
-  -> Already translated, skipping redefinition of ~Entity
-Found variable: newX
-Found variable: newY
-Found variable: deltaTime
-Translating class: CollisionDetector
-  -> struct CollisionDetector with 0 fields
-  Generating implicit default constructor
-  Generated default constructor: CollisionDetector__ctor_default
-  Generating implicit copy constructor
-  Generated copy constructor: CollisionDetector__ctor_copy
-  [Phase 31-03] Generated 0 constructor, 0 destructor, 2 method declarations
-
-// Static declarations for all CollisionDetector methods
-static int CollisionDetector_checkCollision_const_Entity_ref_const_Entity_ref(struct CollisionDetector *this, const struct Entity * a, const struct Entity * b);
-static int CollisionDetector_pointInside_float_float_const_Entity_ref(struct CollisionDetector *this, float px, float py, const struct Entity * entity);
-
-Found variable: a
-Found variable: b
-Found variable: px
-Found variable: py
-Found variable: entity
-Translating method: CollisionDetector::checkCollision
-[DEBUG Bug#26] translateStmt called, type: CompoundStmt
-  [Scope] Entering scope at depth 0
-[DEBUG Bug#26] translateStmt called, type: DeclStmt
-  [Translating DeclStmt]
-    Variable: aLeft
-[DEBUG Bug#26] translateStmt called, type: DeclStmt
-  [Translating DeclStmt]
-    Variable: aRight
-[DEBUG Bug#26] translateStmt called, type: DeclStmt
-  [Translating DeclStmt]
-    Variable: aTop
-[DEBUG Bug#26] translateStmt called, type: DeclStmt
-  [Translating DeclStmt]
-    Variable: aBottom
-[DEBUG Bug#26] translateStmt called, type: DeclStmt
-  [Translating DeclStmt]
-    Variable: bLeft
-[DEBUG Bug#26] translateStmt called, type: DeclStmt
-  [Translating DeclStmt]
-    Variable: bRight
-[DEBUG Bug#26] translateStmt called, type: DeclStmt
-  [Translating DeclStmt]
-    Variable: bTop
-[DEBUG Bug#26] translateStmt called, type: DeclStmt
-  [Translating DeclStmt]
-    Variable: bBottom
-[DEBUG Bug#26] translateStmt called, type: ReturnStmt
-[DEBUG Bug#26] Dispatching to translateReturnStmt
-[DEBUG Bug#26] translateReturnStmt called
-[DEBUG Bug#26] RetValue exists, type: UnaryOperator
-[DEBUG Bug#26] No constructor expression detected after unwrapping
-  [Scope] Exiting scope at depth 0 with 0 objects
-  -> CollisionDetector_checkCollision_const_Entity_ref_const_Entity_ref with body translated
-  -> CollisionDetector_checkCollision_const_Entity_ref_const_Entity_ref with 3 parameters
-Found variable: a
-Found variable: b
-Found variable: aLeft
-Found variable: aRight
-Found variable: aTop
-Found variable: aBottom
-Found variable: bLeft
-Found variable: bRight
-Found variable: bTop
-Found variable: bBottom
-Translating method: CollisionDetector::pointInside
-[DEBUG Bug#26] translateStmt called, type: CompoundStmt
-  [Scope] Entering scope at depth 0
-[DEBUG Bug#26] translateStmt called, type: ReturnStmt
-[DEBUG Bug#26] Dispatching to translateReturnStmt
-[DEBUG Bug#26] translateReturnStmt called
-[DEBUG Bug#26] RetValue exists, type: BinaryOperator
-[DEBUG Bug#26] No constructor expression detected after unwrapping
-  [Scope] Exiting scope at depth 0 with 0 objects
-  -> CollisionDetector_pointInside_float_float_const_Entity_ref with body translated
-  -> CollisionDetector_pointInside_float_float_const_Entity_ref with 4 parameters
-Found variable: px
-Found variable: py
-Found variable: entity
-
-========================================
-Processing Template Instantiations
-========================================
-
-Found 0 class template instantiation(s)
-Found 0 function template instantiation(s)
-
-Monomorphizing class templates:
-
-Monomorphizing function templates:
-
-========================================
-Template Monomorphization Complete[DEBUG FileOutputManager] writeFile called with filename: /Users/alexanderfedin/Projects/hapyy/hupyy-cpp-to-c/tests/real-world/simple-validation/05-game-logic/transpiled/src/Player.h
-[DEBUG FileOutputManager] Content size: 954 bytes
-[DEBUG FileOutputManager] Parent directory: "/Users/alexanderfedin/Projects/hapyy/hupyy-cpp-to-c/tests/real-world/simple-validation/05-game-logic/transpiled/src"
-[DEBUG FileOutputManager] Parent directory empty: no
-[DEBUG FileOutputManager] Parent directory exists: no
-[DEBUG FileOutputManager] Creating parent directory: "/Users/alexanderfedin/Projects/hapyy/hupyy-cpp-to-c/tests/real-world/simple-validation/05-game-logic/transpiled/src"
-[DEBUG FileOutputManager] Parent directory created successfully
-[DEBUG FileOutputManager] Opening file for writing: /Users/alexanderfedin/Projects/hapyy/hupyy-cpp-to-c/tests/real-world/simple-validation/05-game-logic/transpiled/src/Player.h
-[DEBUG FileOutputManager] File opened successfully
-[DEBUG FileOutputManager] Content written successfully
-[DEBUG FileOutputManager] File closed successfully
-[DEBUG FileOutputManager] writeFile returning true
-[DEBUG FileOutputManager] writeFile called with filename: /Users/alexanderfedin/Projects/hapyy/hupyy-cpp-to-c/tests/real-world/simple-validation/05-game-logic/transpiled/src/Player.c
-[DEBUG FileOutputManager] Content size: 1126 bytes
-[DEBUG FileOutputManager] Parent directory: "/Users/alexanderfedin/Projects/hapyy/hupyy-cpp-to-c/tests/real-world/simple-validation/05-game-logic/transpiled/src"
-[DEBUG FileOutputManager] Parent directory empty: no
-[DEBUG FileOutputManager] Parent directory exists: yes
-[DEBUG FileOutputManager] Opening file for writing: /Users/alexanderfedin/Projects/hapyy/hupyy-cpp-to-c/tests/real-world/simple-validation/05-game-logic/transpiled/src/Player.c
-[DEBUG FileOutputManager] File opened successfully
-[DEBUG FileOutputManager] Content written successfully
-[DEBUG FileOutputManager] File closed successfully
-[DEBUG FileOutputManager] writeFile returning true
-[DEBUG FileOutputManager] writeFile called with filename: /Users/alexanderfedin/Projects/hapyy/hupyy-cpp-to-c/tests/real-world/simple-validation/05-game-logic/transpiled/src/Entity.h
-[DEBUG FileOutputManager] Content size: 815 bytes
-[DEBUG FileOutputManager] Parent directory: "/Users/alexanderfedin/Projects/hapyy/hupyy-cpp-to-c/tests/real-world/simple-validation/05-game-logic/transpiled/src"
-[DEBUG FileOutputManager] Parent directory empty: no
-[DEBUG FileOutputManager] Parent directory exists: yes
-[DEBUG FileOutputManager] Opening file for writing: /Users/alexanderfedin/Projects/hapyy/hupyy-cpp-to-c/tests/real-world/simple-validation/05-game-logic/transpiled/src/Entity.h
-[DEBUG FileOutputManager] File opened successfully
-[DEBUG FileOutputManager] Content written successfully
-[DEBUG FileOutputManager] File closed successfully
-[DEBUG FileOutputManager] writeFile returning true
-[DEBUG FileOutputManager] writeFile called with filename: /Users/alexanderfedin/Projects/hapyy/hupyy-cpp-to-c/tests/real-world/simple-validation/05-game-logic/transpiled/src/Entity.c
-[DEBUG FileOutputManager] Content size: 955 bytes
-[DEBUG FileOutputManager] Parent directory: "/Users/alexanderfedin/Projects/hapyy/hupyy-cpp-to-c/tests/real-world/simple-validation/05-game-logic/transpiled/src"
-[DEBUG FileOutputManager] Parent directory empty: no
-[DEBUG FileOutputManager] Parent directory exists: yes
-[DEBUG FileOutputManager] Opening file for writing: /Users/alexanderfedin/Projects/hapyy/hupyy-cpp-to-c/tests/real-world/simple-validation/05-game-logic/transpiled/src/Entity.c
-[DEBUG FileOutputManager] File opened successfully
-[DEBUG FileOutputManager] Content written successfully
-[DEBUG FileOutputManager] File closed successfully
-[DEBUG FileOutputManager] writeFile returning true
-[DEBUG FileOutputManager] writeFile called with filename: /Users/alexanderfedin/Projects/hapyy/hupyy-cpp-to-c/tests/real-world/simple-validation/05-game-logic/transpiled/src/CollisionDetector.h
-[DEBUG FileOutputManager] Content size: 929 bytes
-[DEBUG FileOutputManager] Parent directory: "/Users/alexanderfedi[4/5] Processing file /Users/alexanderfedin/Projects/hapyy/hupyy-cpp-to-c/tests/real-world/simple-validation/05-game-logic/src/Enemy.cpp.
-
-  Unique instantiations: 0
-========================================
-
-C TranslationUnit has 6 generated declarations
-[DEBUG] getUserHeaderFiles() returned 2 headers
-[DEBUG]   - /Users/alexanderfedin/Projects/hapyy/hupyy-cpp-to-c/tests/real-world/simple-validation/05-game-logic/include/CollisionDetector.h
-[DEBUG]   - /Users/alexanderfedin/Projects/hapyy/hupyy-cpp-to-c/tests/real-world/simple-validation/05-game-logic/include/Entity.h
-[DEBUG] Skipping self-include: src/CollisionDetector.h (matches current file: CollisionDetector)
-[DEBUG struct filter] Checking struct CollisionDetector
-[DEBUG struct filter]   CurrentInputFile: /Users/alexanderfedin/Projects/hapyy/hupyy-cpp-to-c/tests/real-world/simple-validation/05-game-logic/src/CollisionDetector.cpp
-[DEBUG struct filter]   Invalid location
-Generated files:
-  /Users/alexanderfedin/Projects/hapyy/hupyy-cpp-to-c/tests/real-world/simple-validation/05-game-logic/transpiled/src/CollisionDetector.h
-  /Users/alexanderfedin/Projects/hapyy/hupyy-cpp-to-c/tests/real-world/simple-validation/05-game-logic/transpiled/src/CollisionDetector.c
-Parsed file: /Users/alexanderfedin/Projects/hapyy/hupyy-cpp-to-c/tests/real-world/simple-validation/05-game-logic/src/Enemy.cpp
-FileOriginTracker configured with user header paths
-Translation unit has 109 top-level declarations
-[Bug #30 FIX] Created C_TU @ 0x1538474b0 for file: /Users/alexanderfedin/Projects/hapyy/hupyy-cpp-to-c/tests/real-world/simple-validation/05-game-logic/src/Enemy.cpp
-FileOriginFilter initialized for: /Users/alexanderfedin/Projects/hapyy/hupyy-cpp-to-c/tests/real-world/simple-validation/05-game-logic/src/Enemy.cpp
-Virtual method support initialized
-Template monomorphization enabled (limit: 1000 instantiations)
-Exception handling support initialized (SJLJ model)
-RTTI support initialized (typeid and dynamic_cast)
-Multidimensional subscript operator support initialized (C++23)
-Static operator() and operator[] support initialized (C++23)
-[[assume]] attribute support initialized (C++23)
-Deducing this / explicit object parameter support initialized (C++23 P0847R7)
-if consteval support initialized (C++23 P1938R3) - Runtime strategy
-auto(x) decay-copy and partial constexpr support initialized (C++23 P0849R8)
-Scoped enum translation support initialized (Phase 47)
-ArithmeticOperatorTranslator initialized (Phase 50)
-Arithmetic operator overloading support initialized (Phase 50)
-ComparisonOperatorTranslator initialized (Phase 51)
-Comparison & logical operator overloading support initialized (Phase 51)
-SpecialOperatorTranslator initialized (Phase 52)
-Special operator overloading support initialized (Phase 52)
-Type alias and typedef support initialized (Phase 53)
-[Bug #30 FIX] CppToCVisitor using C_TU @ 0x1538474b0
-Translating class: Entity
-  -> struct Entity NOT added to C_TU (from header Entity, current file: Enemy)
-  Generating implicit copy constructor
-  Generated copy constructor: Entity__ctor_copy
-  [Phase 31-03] Generated 1 constructor, 1 destructor, 6 method declarations
-
-// Static declarations for all Entity methods
-static void Entity__ctor_4(struct Entity *this, float x, float y, float width, float height);
-static void Entity__dtor(struct Entity *this);
-static float Entity_getX(const struct Entity *this);
-static float Entity_getY(const struct Entity *this);
-static float Entity_getWidth(const struct Entity *this);
-static float Entity_getHeight(const struct Entity *this);
-static void Entity_setPosition_float_float(struct Entity *this, float newX, float newY);
-static void Entity_update_float(struct Entity *this, float deltaTime);
-
-Generating vtable for polymorphic class: Entity
-Vtable struct generated:
-struct Entity_vtable {
-    const struct __class_type_info *type_info;  /**< RTTI type_info pointer (Itanium ABI vtable[-1]) */
-    void (*destructor)(struct Entity *this);
-    void (*update)(struct Entity *this, float deltaTime);
-};
-
-Vtable instance generated:
-
-// Vtable instance for Entity
-struct Entity_vtable Entity_vtable_instance = {
-    .type_info = &Entity_type_info,  // RTTI type_info (placeholder)
-    .destructor = Entity_destru[5/5] Processing file /Users/alexanderfedin/Projects/hapyy/hupyy-cpp-to-c/tests/real-world/simple-validation/05-game-logic/main.cpp.
-ctor,
-    .update = Entity_update,
-};
-
-Found variable: x
-Found variable: y
-Found variable: width
-Found variable: height
-  -> Already translated, skipping redefinition of ~Entity
-Found variable: newX
-Found variable: newY
-Found variable: deltaTime
-Translating class: Enemy
-  -> struct Enemy with 7 fields
-  Generating implicit copy constructor
-    TODO: Call base copy constructor: Entity__ctor_copy
-  Generated copy constructor: Enemy__ctor_copy
-  [Phase 31-03] Generated 1 constructor, 1 destructor, 2 method declarations
-
-// Static declarations for all Enemy methods
-static void Enemy__ctor_2(struct Enemy *this, float x, float y);
-static void Enemy__dtor(struct Enemy *this);
-static int Enemy_getDamage(const struct Enemy *this);
-static void Enemy_update_float(struct Enemy *this, float deltaTime);
-
-Generating vtable for polymorphic class: Enemy
-Vtable struct generated:
-struct Enemy_vtable {
-    const struct __class_type_info *type_info;  /**< RTTI type_info pointer (Itanium ABI vtable[-1]) */
-    void (*destructor)(struct Enemy *this);
-    void (*update)(struct Enemy *this, float deltaTime);
-};
-
-Vtable instance generated:
-
-// Vtable instance for Enemy
-struct Enemy_vtable Enemy_vtable_instance = {
-    .type_info = &Enemy_type_info,  // RTTI type_info (placeholder)
-    .destructor = Enemy_destructor,
-    .update = Enemy_update,
-};
-
-Found variable: x
-Found variable: y
-Translating destructor: ~Enemy
-  Emitting base destructor call for: Entity
-  -> Added base destructor call to Entity__dtor
-  -> Enemy__dtor with 1 statements
-  -> Enemy__dtor created
-Found variable: deltaTime
-Translating constructor: Enemy::Enemy
-  -> Injected vptr initialization
-  Translating base class initializer: Entity
-  -> Added base constructor call to Entity__ctor_4
-  [DEBUG] Added constructor to SHARED map: Enemy__ctor_2 (key: Enemy__ctor_2, map size now: 9)
-  -> Enemy__ctor_2 with 3 parameters, 4 statements
-Found variable: x
-Found variable: y
-  -> Already translated, skipping redefinition of ~Enemy
-Translating method: Enemy::getDamage
-[DEBUG Bug#26] translateStmt called, type: CompoundStmt
-  [Scope] Entering scope at depth 0
-[DEBUG Bug#26] translateStmt called, type: ReturnStmt
-[DEBUG Bug#26] Dispatching to translateReturnStmt
-[DEBUG Bug#26] translateReturnStmt called
-[DEBUG Bug#26] RetValue exists, type: ImplicitCastExpr
-[DEBUG Bug#26]   ImplicitCastExpr -> subexpr type: MemberExpr
-[DEBUG Bug#26] No constructor expression detected after unwrapping
-  [Scope] Exiting scope at depth 0 with 0 objects
-  -> Enemy_getDamage with body translated
-  -> Enemy_getDamage with 1 parameters
-Skipping virtual method (handled by vtable): Enemy::update
-Found variable: deltaTime
-
-========================================
-Processing Template Instantiations
-========================================
-
-Found 0 class template instantiation(s)
-Found 0 function template instantiation(s)
-
-Monomorphizing class templates:
-
-Monomorphizing function templates:
-
-========================================
-Template Monomorphization Complete
-  Unique instantiations: 0
-========================================
-
-C TranslationUnit has 6 generated declarations
-[DEBUG] getUserHeaderFiles() returned 2 headers
-[DEBUG]   - /Users/alexanderfedin/Projects/hapyy/hupyy-cpp-to-c/tests/real-world/simple-validation/05-game-logic/include/Enemy.h
-[DEBUG]   - /Users/alexanderfedin/Projects/hapyy/hupyy-cpp-to-c/tests/real-world/simple-validation/05-game-logic/include/Entity.h
-[DEBUG] Skipping self-include: src/Enemy.h (matches current file: Enemy)
-[DEBUG struct filter] Checking struct Enemy
-[DEBUG struct filter]   CurrentInputFile: /Users/alexanderfedin/Projects/hapyy/hupyy-cpp-to-c/tests/real-world/simple-validation/05-game-logic/src/Enemy.cpp
-[DEBUG struct filter]   Invalid location
-Generated files:
-  /Users/alexanderfedin/Projects/hapyy/hupyy-cpp-to-c/tests/real-world/simple-validation/05-game-logic/transpiled/src/Enemy.h
-  /Users/alexanderfedin/Projects/hapyy/hupyy-cpp-to-c/tests/real-world/simple-validation/05-game-logic/transpiled/src/Enemy.c
-Parsed file: /Users/alexanderfedin/Projects/hapyy/hupyy-cpp-to-c/tests/real-world/simple-validation/05-game-logic/main.cpp
-FileOriginTracker configured with user header paths
-Translation unit has 209 top-level declarations
-[Bug #30 FIX] Created C_TU @ 0x15402bf58 for file: /Users/alexanderfedin/Projects/hapyy/hupyy-cpp-to-c/tests/real-world/simple-validation/05-game-logic/main.cpp
-FileOriginFilter initialized for: /Users/alexanderfedin/Projects/hapyy/hupyy-cpp-to-c/tests/real-world/simple-validation/05-game-logic/main.cpp
-Virtual method support initialized
-Template monomorphization enabled (limit: 1000 instantiations)
-Exception handling support initialized (SJLJ model)
-RTTI support initialized (typeid and dynamic_cast)
-Multidimensional subscript operator support initialized (C++23)
-Static operator() and operator[] support initialized (C++23)
-[[assume]] attribute support initialized (C++23)
-Deducing this / explicit object parameter support initialized (C++23 P0847R7)
-if consteval support initialized (C++23 P1938R3) - Runtime strategy
-auto(x) decay-copy and partial constexpr support initialized (C++23 P0849R8)
-Scoped enum translation support initialized (Phase 47)
-ArithmeticOperatorTranslator initialized (Phase 50)
-Arithmetic operator overloading support initialized (Phase 50)
-ComparisonOperatorTranslator initialized (Phase 51)
-Comparison & logical operator overloading support initialized (Phase 51)
-SpecialOperatorTranslator initialized (Phase 52)
-Special operator overloading support initialized (Phase 52)
-Type alias and typedef support initialized (Phase 53)
-[Bug #30 FIX] CppToCVisitor using C_TU @ 0x15402bf58
-Translating class: Entity
-  -> struct Entity NOT added to C_TU (from header Entity, current file: main)
-  Generating implicit copy constructor
-  Generated copy constructor: Entity__ctor_copy
-  [Phase 31-03] Generated 1 constructor, 1 destructor, 6 method declarations
-
-// Static declarations for all Entity methods
-static void Entity__ctor_4(struct Entity *this, float x, float y, float width, float height);
-static void Entity__dtor(struct Entity *this);
-static float Entity_getX(const struct Entity *this);
-static float Entity_getY(const struct Entity *this);
-static float Entity_getWidth(const struct Entity *this);
-static float Entity_getHeight(const struct Entity *this);
-static void Entity_setPosition_float_float(struct Entity *this, float newX, float newY);
-static void Entity_update_float(struct Entity *this, float deltaTime);
-
-Generating vtable for polymorphic class: Entity
-Vtable struct generated:
-struct Entity_vtable {
-    const struct __class_type_info *type_info;  /**< RTTI type_info pointer (Itanium ABI vtable[-1]) */
-    void (*destructor)(struct Entity *this);
-    void (*update)(struct Entity *this, float deltaTime);
-};
-
-Vtable instance generated:
-
-// Vtable instance for Entity
-struct Entity_vtable Entity_vtable_instance = {
-    .type_info = &Entity_type_info,  // RTTI type_info (placeholder)
-    .destructor = Entity_destructor,
-    .update = Entity_update,
-};
-
-Found variable: x
-Found variable: y
-Found variable: width
-Found variable: height
-  -> Already translated, skipping redefinition of ~Entity
-Found variable: newX
-Found variable: newY
-Found variable: deltaTime
-Translating class: Player
-  -> struct Player NOT added to C_TU (from header Player, current file: main)
-  Generating implicit copy constructor
-    TODO: Call base copy constructor: Entity__ctor_copy
-  Generated copy constructor: Player__ctor_copy
-  [Phase 31-03] Generated 1 constructor, 1 destructor, 5 method declarations
-
-// Static declarations for all Player methods
-static void Player__ctor_2(struct Player *this, float x, float y);
-static void Player__dtor(struct Player *this);
-static int Player_getHealth(const struct Player *this);
-static int Player_getScore(const struct Player *this);
-static void Player_takeDamage_int(struct Player *this, int damage);
-static void Player_addScore_int(struct Player *this, int points);
-static void Player_update_float(struct Player *this, float deltaTime);
-
-Generating vtable for polymorphic class: Player
-Vtable struct generated:
-struct Player_vtable {
-    const struct __class_type_info *type_info;  /**< RTTI type_info pointer (Itanium ABI vtable[-1]) */
-    void (*destructor)(struct Player *this);
-    void (*update)(struct Player *this, float deltaTime);
-};
-
-Vtable instance generated:
-
-// Vtable instance for Player
-struct Player_vtable Player_vtable_instance = {
-    .type_info = &Player_type_info,  // RTTI type_info (placeholder)
-    .destructor = Player_destructor,
-    .update = Player_update,
-};
-
-Found variable: x
-Found variable: y
-  -> Already translated, skipping redefinition of ~Player
-Found variable: damage
-Found variable: points
-Found variable: deltaTime
-Translating class: Enemy
-  -> struct Enemy NOT added to C_TU (from header Enemy, current file: main)
-  Generating implicit copy constructor
-    TODO: Call base copy constructor: Entity__ctor_copy
-  Generated copy constructor: Enemy__ctor_copy
-  [Phase 31-03] Generated 1 constructor, 1 destructor, 2 method declarations
-
-// Static declarations for all Enemy methods
-static void Enemy__ctor_2(struct Enemy *this, float x, float y);
-static void Enemy__dtor(struct Enemy *this);
-static int Enemy_getDamage(const struct Enemy *this);
-static void Enemy_update_float(struct Enemy *this, float deltaTime);
-
-Generating vtable for polymorphic class: Enemy
-Vtable struct generated:
-struct Enemy_vtable {
-    const struct __class_type_info *type_info;  /**< RTTI type_info pointer (Itanium ABI vtable[-1]) */
-    void (*destructor)(struct Enemy *this);
-    void (*update)(struct Enemy *this, float deltaTime);
-};
-
-Vtable instance generated:
-
-// Vtable instance for Enemy
-struct Enemy_vtable Enemy_vtable_instance = {
-    .type_info = &Enemy_type_info,  // RTTI type_info (placeholder)
-    .destructor = Enemy_destructor,
-    .update = Enemy_update,
-};
-
-Found variable: x
-Found variable: y
-  -> Already translated, skipping redefinition of ~Enemy
-Found variable: deltaTime
-Translating class: CollisionDetector
-  -> struct CollisionDetector NOT added to C_TU (from header CollisionDetector, current file: main)
-  Generating implicit default constructor
-  Generated default constructor: CollisionDetector__ctor_default
-  Generating implicit copy constructor
-  Generated copy constructor: CollisionDetector__ctor_copy
-  [Phase 31-03] Generated 0 constructor, 0 destructor, 2 method declarations
-
-// Static declarations for all CollisionDetector methods
-static int CollisionDetector_checkCollision_const_Entity_ref_const_Entity_ref(struct CollisionDetector *this, const struct Entity * a, const struct Entity * b);
-static int CollisionDetector_pointInside_float_float_const_Entity_ref(struct CollisionDetector *this, float px, float py, const struct Entity * entity);
-
-Found variable: a
-Found variable: b
-Found variable: px
-Found variable: py
-Found variable: entity
-Analyzing function for RAII: main
-  Found 6 local variables
-  Variable 'player' has destructor
-  Variable 'enemy' has destructor
-  Will inject destructors for 2 objects
-Translating standalone function: main
-  Mangled name: main
-[DEBUG Bug#26] translateStmt called, type: CompoundStmt
-  [Scope] Entering scope at depth 0
-[DEBUG Bug#26] translateStmt called, type: CallExpr
-[DEBUG Bug#26] translateStmt called, type: ImplicitCastExpr
-[DEBUG Bug#26] translateStmt called, type: DeclRefExpr
-[DEBUG Bug#26] translateStmt called, type: ImplicitCastExpr
-[DEBUG Bug#26] translateStmt called, type: StringLiteral
-  [Scope] Tracked object 'player' in scope depth 0
-[DEBUG Bug#26] translateStmt called, type: DeclStmt
-  [Translating DeclStmt]
-    Variable: player
-      Is a struct/class type
-      Is a C++ class: Player
-      Found C struct: Player
-      Creating C variable declaration
-      Has constructor expression
-      [DEBUG] Looking for constructor in SHARED map (size: 9)
-      [DEBUG] Looking for key: Player__ctor_2
-      Found C constructor: Player__ctor_2
-      Creating constructor call
-  [Scope] Tracked object 'enemy' in scope depth 0
-[DEBUG Bug#26] translateStmt called, type: DeclStmt
-  [Translating DeclStmt]
-    Variable: enemy
-      Is a struct/class type
-      Is a C++ class: Enemy
-      Found C struct: Enemy
-      Creating C variable declara
+    const struct __class_type_info *type_info;  /**< RTTI type_info pointe
 
 !!! SEGFAULT CAUGHT (signal 11) !!!
 Last operation before crash:
 Backtrace:
-0   cpptoc                              0x00000001045cfc40 _ZL15segfaultHandleri + 120
+0   cpptoc                              0x000000010071bc40 _ZL15segfaultHandleri + 120
 1   libsystem_platform.dylib            0x000000019cb38624 _sigtramp + 56
-2   cpptoc                              0x0000000105172610 _ZN5clang8CallExpr6CreateERKNS_10ASTContextEPNS_4ExprEN4llvm8ArrayRefIS5_EENS_8QualTypeENS_13ExprValueKindENS_14SourceLocationENS_17FPOptionsOverrideEjNS0_11ADLCallKindE + 596
-3   cpptoc                              0x0000000104739d0c _ZN5clang12CNodeBuilder4callEPNS_12FunctionDeclEN4llvm8ArrayRefIPNS_4ExprEEE + 176
-4   cpptoc                              0x00000001047428b4 _ZN13CppToCVisitor17translateCallExprEPN5clang8CallExprE + 1412
-5   cpptoc                              0x000000010473867c _ZN13CppToCVisitor13translateExprEPN5clang4ExprE + 452
-6   cpptoc                              0x000000010473679c _ZN13CppToCVisitor13translateStmtEPN5clang4StmtE + 2404
-7   cpptoc                              0x0000000104736764 _ZN13CppToCVisitor13translateStmtEPN5clang4StmtE + 2348
-8   cpptoc                              0x00000001047475a4 _ZN13CppToCVisitor21translateCompoundStmtEPN5clang12CompoundStmtE + 2664
-9   cpptoc                              0x0000000104735f00 _ZN13CppToCVisitor13translateStmtEPN5clang4StmtE + 200
-10  cpptoc                              0x000000010473d38c _ZN13CppToCVisitor17VisitFunctionDeclEPN5clang12FunctionDeclE + 2604
-11  cpptoc                              0x000000010470c4bc _ZN5clang19RecursiveASTVisitorI13CppToCVisitorE22WalkUpFromFunctionDeclEPNS_12FunctionDeclE + 100
-12  cpptoc                              0x000000010460f538 _ZN5clang19RecursiveASTVisitorI13CppToCVisitorE20TraverseFunctionDeclEPNS_12FunctionDeclE + 76
-13  cpptoc                              0x00000001045fa88c _ZN5clang19RecursiveASTVisitorI13CppToCVisitorE12TraverseDeclEPNS_4DeclE + 1968
-14  cpptoc                              0x00000001046a6058 _ZN5clang19RecursiveASTVisitorI13CppToCVisitorE25TraverseDeclContextHelperEPNS_11DeclContextE + 208
-15  cpptoc                              0x000000010460a408 _ZN5clang19RecursiveASTVisitorI13CppToCVisitorE27TraverseTranslationUnitDeclEPNS_19TranslationUnitDeclE + 448
-16  cpptoc                              0x00000001045fa22c _ZN5clang19RecursiveASTVisitorI13CppToCVisitorE12TraverseDeclEPNS_4DeclE + 336
-17  cpptoc                              0x00000001045f89d4 _ZN14CppToCConsumer21HandleTranslationUnitERN5clang10ASTContextE + 700
-18  cpptoc                              0x0000000105e12e60 _ZN5clang8ParseASTERNS_4SemaEbb + 976
-19  cpptoc                              0x0000000104e57514 _ZN5clang17ASTFrontendAction13ExecuteActionEv + 260
-20  cpptoc                              0x0000000104e56dfc _ZN5clang14FrontendAction7ExecuteEv + 36
-21  cpptoc                              0x0000000104d915cc _ZN5clang16CompilerInstance13ExecuteActionERNS_14FrontendActionE + 1392
-22  cpptoc                              0x0000000104d57178 _ZN5clang7tooling21FrontendActionFactory13runInvocationENSt3__110shared_ptrINS_18CompilerInvocationEEEPNS_11FileManagerENS3_INS_22PCHContainerOperationsEEEPNS_18DiagnosticConsumerE + 364
-23  cpptoc                              0x0000000104d56f70 _ZN5clang7tooling14ToolInvocation13runInvocationEPKcPNS_6driver11CompilationENSt3__110shared_ptrINS_18CompilerInvocationEEENS8_INS_22PCHContainerOperationsEEE + 240
-24  cpptoc                              0x0000000104d556f4 _ZN5clang7tooling14ToolInvocation3runEv + 2016
-25  cpptoc                              0x0000000104d59534 _ZN5clang7tooling9ClangTool3runEPNS0_10ToolActionE + 5464
-26  cpptoc                              0x00000001045cf540 main + 1676
+2   cpptoc                              0x00000001012be9c8 _ZN5clang8CallExpr6CreateERKNS_10ASTContextEPNS_4ExprEN4llvm8ArrayRefIS5_EENS_8QualTypeENS_13ExprValueKindENS_14SourceLocationENS_17FPOptionsOverrideEjNS0_11ADLCallKindE + 596
+3   cpptoc                              0x0000000100885f5c _ZN5clang12CNodeBuilder4callEPNS_12FunctionDeclEN4llvm8ArrayRefIPNS_4ExprEEE + 176
+4   cpptoc                              0x000000010088ec0c _ZN13CppToCVisitor17translateCallExprEPN5clang8CallExprE + 1412
+5   cpptoc                              0x00000001008848cc _ZN13CppToCVisitor13translateExprEPN5clang4ExprE + 452
+6   cpptoc                              0x0000000100895154 _ZN13CppToCVisitor17translateDeclStmtEPN5clang8DeclStmtE + 4880
+7   cpptoc                              0x00000001008820f4 _ZN13CppToCVisitor13translateStmtEPN5clang4StmtE + 244
+8   cpptoc                              0x000000010089395c _ZN13CppToCVisitor21translateCompoundStmtEPN5clang12CompoundStmtE + 2664
+9   cpptoc                              0x00000001008820c8 _ZN13CppToCVisitor13translateStmtEPN5clang4StmtE + 200
+10  cpptoc                              0x00000001008810b0 _ZN13CppToCVisitor18VisitCXXMethodDeclEPN5clang13CXXMethodDeclE + 5204
+11  cpptoc                              0x000000010085b4a8 _ZN5clang19RecursiveASTVisitorI13CppToCVisitorE23WalkUpFromCXXMethodDeclEPNS_13CXXMethodDeclE + 100
+12  cpptoc                              0x000000010075b74c _ZN5clang19RecursiveASTVisitorI13CppToCVisitorE21TraverseCXXMethodDeclEPNS_13CXXMethodDeclE + 76
+13  cpptoc                              0x00000001007468bc _ZN5clang19RecursiveASTVisitorI13CppToCVisitorE12TraverseDeclEPNS_4DeclE + 2016
+14  cpptoc                              0x00000001007f2058 _ZN5clang19RecursiveASTVisitorI13CppToCVisitorE25TraverseDeclContextHelperEPNS_11DeclContextE + 208
+15  cpptoc                              0x0000000100756408 _ZN5clang19RecursiveASTVisitorI13CppToCVisitorE27TraverseTranslationUnitDeclEPNS_19TranslationUnitDeclE + 448
+16  cpptoc                              0x000000010074622c _ZN5clang19RecursiveASTVisitorI13CppToCVisitorE12TraverseDeclEPNS_4DeclE + 336
+17  cpptoc                              0x00000001007449d4 _ZN14CppToCConsumer21HandleTranslationUnitERN5clang10ASTContextE + 700
+18  cpptoc                              0x0000000101f5f218 _ZN5clang8ParseASTERNS_4SemaEbb + 976
+19  cpptoc                              0x0000000100fa38cc _ZN5clang17ASTFrontendAction13ExecuteActionEv + 260
+20  cpptoc                              0x0000000100fa31b4 _ZN5clang14FrontendAction7ExecuteEv + 36
+21  cpptoc                              0x0000000100edd984 _ZN5clang16CompilerInstance13ExecuteActionERNS_14FrontendActionE + 1392
+22  cpptoc                              0x0000000100ea3530 _ZN5clang7tooling21FrontendActionFactory13runInvocationENSt3__110shared_ptrINS_18CompilerInvocationEEEPNS_11FileManagerENS3_INS_22PCHContainerOperationsEEEPNS_18DiagnosticConsumerE + 364
+23  cpptoc                              0x0000000100ea3328 _ZN5clang7tooling14ToolInvocation13runInvocationEPKcPNS_6driver11CompilationENSt3__110shared_ptrINS_18CompilerInvocationEEENS8_INS_22PCHContainerOperationsEEE + 240
+24  cpptoc                              0x0000000100ea1aac _ZN5clang7tooling14ToolInvocation3runEv + 2016
+25  cpptoc                              0x0000000100ea58ec _ZN5clang7tooling9ClangTool3runEPNS0_10ToolActionE + 5464
+26  cpptoc                              0x000000010071b540 main + 1676
 27  dyld                                0x000000019c75eb98 start + 6076
 
 !!! CRITICAL: Exiting due to segfault !!!

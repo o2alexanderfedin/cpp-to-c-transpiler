@@ -684,18 +684,35 @@ bool CppToCVisitor::VisitCXXMethodDecl(CXXMethodDecl *MD) {
   ParmVarDecl *thisParam = Builder.param(thisType, "this");
   params.push_back(thisParam);
 
-  // Add original parameters
+  // Add original parameters - convert C++ types to C types
+  // Phase 40 (Bug Fix): Convert references to pointers for C compatibility
   for (ParmVarDecl *Param : MD->parameters()) {
-    ParmVarDecl *CParam = Builder.param(Param->getType(), Param->getName());
+    QualType CppType = Param->getType();
+    QualType CType = CppType;
+
+    // Convert references to pointers
+    if (CppType->isReferenceType()) {
+      QualType PointeeType = CppType.getNonReferenceType();
+      CType = Builder.ptrType(PointeeType);
+    }
+
+    ParmVarDecl *CParam = Builder.param(CType, Param->getName());
     params.push_back(CParam);
   }
 
   // Generate function name using name mangling
   std::string funcName = Mangler.mangleName(MD);
 
+  // Phase 40 (Bug Fix): Convert return type (references → pointers)
+  QualType RetType = MD->getReturnType();
+  if (RetType->isReferenceType()) {
+    QualType PointeeType = RetType.getNonReferenceType();
+    RetType = Builder.ptrType(PointeeType);
+  }
+
   // Create C function (body will be added below)
   FunctionDecl *CFunc =
-      Builder.funcDecl(funcName, MD->getReturnType(), params, nullptr);
+      Builder.funcDecl(funcName, RetType, params, nullptr);
 
   // Set translation context for body translation (Story #19)
   currentThisParam = thisParam;
@@ -858,9 +875,19 @@ bool CppToCVisitor::VisitCXXConstructorDecl(CXXConstructorDecl *CD) {
   ParmVarDecl *thisParam = Builder.param(thisType, "this");
   params.push_back(thisParam);
 
-  // Add original parameters
+  // Add original parameters - convert C++ types to C types
+  // Phase 40 (Bug Fix): Convert references to pointers for C compatibility
   for (ParmVarDecl *Param : CD->parameters()) {
-    ParmVarDecl *CParam = Builder.param(Param->getType(), Param->getName());
+    QualType CppType = Param->getType();
+    QualType CType = CppType;
+
+    // Convert references to pointers
+    if (CppType->isReferenceType()) {
+      QualType PointeeType = CppType.getNonReferenceType();
+      CType = Builder.ptrType(PointeeType);
+    }
+
+    ParmVarDecl *CParam = Builder.param(CType, Param->getName());
     params.push_back(CParam);
   }
 
@@ -1314,8 +1341,17 @@ bool CppToCVisitor::VisitFunctionDecl(FunctionDecl *FD) {
   // Build parameter list for C function
   llvm::SmallVector<ParmVarDecl *, 4> cParams;
   for (ParmVarDecl *Param : FD->parameters()) {
-    // Create parameter with same type and name
-    ParmVarDecl *CParam = Builder.param(Param->getType(), Param->getName());
+    // Phase 40 (Bug Fix): Convert C++ types to C types
+    QualType CppType = Param->getType();
+    QualType CType = CppType;
+
+    // Convert references to pointers
+    if (CppType->isReferenceType()) {
+      QualType PointeeType = CppType.getNonReferenceType();
+      CType = Builder.ptrType(PointeeType);
+    }
+
+    ParmVarDecl *CParam = Builder.param(CType, Param->getName());
     cParams.push_back(CParam);
   }
 
@@ -1329,9 +1365,16 @@ bool CppToCVisitor::VisitFunctionDecl(FunctionDecl *FD) {
   // Check if function is variadic
   bool isVariadic = FD->isVariadic();
 
+  // Phase 40 (Bug Fix): Convert return type (references → pointers)
+  QualType RetType = FD->getReturnType();
+  if (RetType->isReferenceType()) {
+    QualType PointeeType = RetType.getNonReferenceType();
+    RetType = Builder.ptrType(PointeeType);
+  }
+
   // Create C function declaration with mangled name
   FunctionDecl *CFunc =
-      Builder.funcDecl(mangledName, FD->getReturnType(), cParams, translatedBody,
+      Builder.funcDecl(mangledName, RetType, cParams, translatedBody,
                        CC_C,      // Calling convention (default)
                        isVariadic // Variadic property
       );
@@ -2910,14 +2953,31 @@ Expr *CppToCVisitor::translateCallExpr(CallExpr *CE) {
         ParmVarDecl *thisParam = Builder.param(thisType, "this");
         params.push_back(thisParam);
 
-        // Add original parameters
+        // Add original parameters - convert C++ types to C types
+        // Phase 40 (Bug Fix): Convert references to pointers to match arg conversion
         for (ParmVarDecl *Param : Method->parameters()) {
-          ParmVarDecl *CParam = Builder.param(Param->getType(), Param->getName());
+          QualType CppType = Param->getType();
+          QualType CType = CppType;
+
+          // Convert references to pointers
+          if (CppType->isReferenceType()) {
+            QualType PointeeType = CppType.getNonReferenceType();
+            CType = Builder.ptrType(PointeeType);
+          }
+
+          ParmVarDecl *CParam = Builder.param(CType, Param->getName());
           params.push_back(CParam);
         }
 
+        // Phase 40 (Bug Fix): Convert return type (references → pointers)
+        QualType RetType = Method->getReturnType();
+        if (RetType->isReferenceType()) {
+          QualType PointeeType = RetType.getNonReferenceType();
+          RetType = Builder.ptrType(PointeeType);
+        }
+
         // Create function declaration
-        FunctionDecl *CFuncDecl = Builder.funcDecl(funcName, Method->getReturnType(), params, nullptr);
+        FunctionDecl *CFuncDecl = Builder.funcDecl(funcName, RetType, params, nullptr);
 
         // Add declaration to C TranslationUnit so it appears in the header
         C_TranslationUnit->addDecl(CFuncDecl);
