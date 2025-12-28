@@ -10,7 +10,6 @@
 #include <stdint.h>
 #include <stdbool.h>
 
-#include "src/LinkedList.h"
 
 unsigned long LinkedList_size(struct LinkedList * this);
 bool LinkedList_isEmpty(struct LinkedList * this);

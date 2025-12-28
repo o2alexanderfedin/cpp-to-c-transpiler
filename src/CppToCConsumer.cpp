@@ -141,6 +141,48 @@ void CppToCConsumer::HandleTranslationUnit(clang::ASTContext &Context) {
       continue;
     }
 
+    // PHASE 42 (Bug Fix): Skip template-only headers that don't generate separate files
+    // Headers like LinkedList.h containing only templates get monomorphized inline
+    // and don't produce separate transpiled files, so we shouldn't include them
+    bool hasNonTemplateDecls = false;
+    auto headerDecls = fileOriginTracker.getDeclarationsFromFile(headerPath);
+    for (const auto* D : headerDecls) {
+      // Check if this is a non-template declaration that would generate output
+      if (auto* CRD = dyn_cast<clang::CXXRecordDecl>(D)) {
+        bool isNestedInTemplate = false;
+        // Check if this class is nested within a template class
+        if (auto* Parent = dyn_cast_or_null<clang::CXXRecordDecl>(CRD->getParent())) {
+          if (Parent->getDescribedClassTemplate()) {
+            isNestedInTemplate = true;
+          }
+        }
+        // Skip template declarations, implicit declarations, and nested classes in templates
+        if (!CRD->getDescribedClassTemplate() && !CRD->isImplicit() && !isNestedInTemplate) {
+          // This is a regular class, not a template - needs separate file
+          hasNonTemplateDecls = true;
+          break;
+        }
+      } else if (auto* FD = dyn_cast<clang::FunctionDecl>(D)) {
+        // Skip template functions and implicit functions
+        if (!FD->getDescribedFunctionTemplate() && !FD->isImplicit() &&
+            !isa<clang::CXXMethodDecl>(FD)) {  // Methods belong to their class
+          hasNonTemplateDecls = true;
+          break;
+        }
+      } else if (auto* VD = dyn_cast<clang::VarDecl>(D)) {
+        // Non-template variables need separate file
+        if (!VD->isImplicit()) {
+          hasNonTemplateDecls = true;
+          break;
+        }
+      }
+    }
+
+    if (!hasNonTemplateDecls) {
+      // This header contains only templates/nested classes - skip include directive
+      continue;
+    }
+
     // Calculate relative path from sourceDir and generate include path
     std::string includePath;
     if (!SourceDir.empty()) {

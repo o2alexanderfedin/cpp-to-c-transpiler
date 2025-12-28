@@ -9,6 +9,7 @@
 #include "clang/Basic/SourceManager.h"
 #include "llvm/Support/raw_ostream.h"
 #include <algorithm>
+#include <cassert>
 #include <sstream>
 #include <vector>
 
@@ -2347,9 +2348,8 @@ void CppToCVisitor::injectDestructorsAtScopeExit(
 // Translates a QualType from C++ ASTContext to equivalent type in C ASTContext
 // This is CRITICAL because QualTypes from one ASTContext cannot be used in another
 QualType CppToCVisitor::translateTypeToCContext(QualType CppType) {
-  if (CppType.isNull()) {
-    return QualType();
-  }
+  // CRITICAL: Input type must be valid
+  assert(!CppType.isNull() && "translateTypeToCContext: Input QualType is null!");
 
   // Preserve const qualification
   bool isConst = CppType.isConstQualified();
@@ -2376,28 +2376,31 @@ QualType CppToCVisitor::translateTypeToCContext(QualType CppType) {
     CType = Builder.structType(name);
   }
   // Handle builtin types - map to C context builtins
+  // CRITICAL FIX: Use targetCtx.getContext() (C ASTContext) NOT Context (C++ ASTContext)!
+  // Using Context.FloatTy gives us C++ context types that become invalid when C++ AST is destroyed!
   else if (const BuiltinType *BT = CppUnqualType->getAs<BuiltinType>()) {
+    ASTContext &CContext = targetCtx.getContext();
     switch (BT->getKind()) {
-      case BuiltinType::Void:       CType = Context.VoidTy; break;
-      case BuiltinType::Bool:       CType = Context.BoolTy; break;
+      case BuiltinType::Void:       CType = CContext.VoidTy; break;
+      case BuiltinType::Bool:       CType = CContext.BoolTy; break;
       case BuiltinType::Char_S:
-      case BuiltinType::Char_U:     CType = Context.CharTy; break;
-      case BuiltinType::SChar:      CType = Context.SignedCharTy; break;
-      case BuiltinType::UChar:      CType = Context.UnsignedCharTy; break;
-      case BuiltinType::Short:      CType = Context.ShortTy; break;
-      case BuiltinType::UShort:     CType = Context.UnsignedShortTy; break;
-      case BuiltinType::Int:        CType = Context.IntTy; break;
-      case BuiltinType::UInt:       CType = Context.UnsignedIntTy; break;
-      case BuiltinType::Long:       CType = Context.LongTy; break;
-      case BuiltinType::ULong:      CType = Context.UnsignedLongTy; break;
-      case BuiltinType::LongLong:   CType = Context.LongLongTy; break;
-      case BuiltinType::ULongLong:  CType = Context.UnsignedLongLongTy; break;
-      case BuiltinType::Float:      CType = Context.FloatTy; break;
-      case BuiltinType::Double:     CType = Context.DoubleTy; break;
-      case BuiltinType::LongDouble: CType = Context.LongDoubleTy; break;
+      case BuiltinType::Char_U:     CType = CContext.CharTy; break;
+      case BuiltinType::SChar:      CType = CContext.SignedCharTy; break;
+      case BuiltinType::UChar:      CType = CContext.UnsignedCharTy; break;
+      case BuiltinType::Short:      CType = CContext.ShortTy; break;
+      case BuiltinType::UShort:     CType = CContext.UnsignedShortTy; break;
+      case BuiltinType::Int:        CType = CContext.IntTy; break;
+      case BuiltinType::UInt:       CType = CContext.UnsignedIntTy; break;
+      case BuiltinType::Long:       CType = CContext.LongTy; break;
+      case BuiltinType::ULong:      CType = CContext.UnsignedLongTy; break;
+      case BuiltinType::LongLong:   CType = CContext.LongLongTy; break;
+      case BuiltinType::ULongLong:  CType = CContext.UnsignedLongLongTy; break;
+      case BuiltinType::Float:      CType = CContext.FloatTy; break;
+      case BuiltinType::Double:     CType = CContext.DoubleTy; break;
+      case BuiltinType::LongDouble: CType = CContext.LongDoubleTy; break;
       default:
         llvm::outs() << "WARNING: Unhandled builtin type kind, using int as fallback\n";
-        CType = Context.IntTy;
+        CType = CContext.IntTy;
         break;
     }
   }
@@ -2407,18 +2410,21 @@ QualType CppToCVisitor::translateTypeToCContext(QualType CppType) {
     std::string name = ED->getNameAsString();
     // For enums, we need to find the C enum declaration
     // For now, use the underlying type (int)
-    CType = Context.IntTy;
+    CType = targetCtx.getContext().IntTy;
   }
   // Fallback for other types
   else {
     llvm::outs() << "WARNING: Unhandled type in translateTypeToCContext, using int as fallback\n";
-    CType = Context.IntTy;
+    CType = targetCtx.getContext().IntTy;
   }
 
   // Reapply const qualification if needed
   if (isConst && !CType.isNull()) {
     CType.addConst();
   }
+
+  // CRITICAL: We must NEVER return a null type - this causes segfaults downstream
+  assert(!CType.isNull() && "translateTypeToCContext: Returned QualType is null!");
 
   return CType;
 }
@@ -2899,6 +2905,10 @@ Expr *CppToCVisitor::translateCallExpr(CallExpr *CE) {
       std::string methodKey = Mangler.mangleName(CanonicalMethod);
       if (targetCtx.getMethodMap().find(methodKey) != targetCtx.getMethodMap().end()) {
         CFunc = targetCtx.getMethodMap()[methodKey];
+
+        // CRITICAL: Retrieved function must be valid
+        assert(CFunc != nullptr && "translateCallExpr: Retrieved FunctionDecl is null!");
+        assert(!CFunc->getReturnType().isNull() && "translateCallExpr: Retrieved function has null return type!");
       }
 
       if (CFunc) {
@@ -2909,20 +2919,31 @@ Expr *CppToCVisitor::translateCallExpr(CallExpr *CE) {
         Expr *ObjectExpr = MCE->getImplicitObjectArgument();
         if (ObjectExpr) {
           Expr *TranslatedObject = translateExpr(ObjectExpr);
-          if (TranslatedObject) {
-            // Take address if not already a pointer
-            if (!ObjectExpr->getType()->isPointerType()) {
-              TranslatedObject = Builder.addrOf(TranslatedObject);
-            }
-            args.push_back(TranslatedObject);
+          // Phase 40 (Bug Fix): If object translation fails, skip this call entirely
+          if (!TranslatedObject) {
+            llvm::outs() << "  Failed to translate object for method call, skipping call\n";
+            return nullptr;
           }
+          // Take address if not already a pointer
+          if (!ObjectExpr->getType()->isPointerType()) {
+            TranslatedObject = Builder.addrOf(TranslatedObject);
+          }
+          args.push_back(TranslatedObject);
         }
 
         // Add method arguments
         unsigned paramIdx = 0;  // Index into C++ method parameters
         for (Expr *Arg : MCE->arguments()) {
           Expr *TranslatedArg = translateExpr(Arg);
-          Expr *FinalArg = TranslatedArg ? TranslatedArg : Arg;
+
+          // Phase 40 (Bug Fix): If translation fails, skip this call entirely
+          // Never mix C++ and C AST contexts
+          if (!TranslatedArg) {
+            llvm::outs() << "  Failed to translate method call argument, skipping call\n";
+            return nullptr;
+          }
+
+          Expr *FinalArg = TranslatedArg;
 
           // Bug fix #10: Check if C++ parameter was a reference type
           // If so, we need to pass address in C
@@ -2964,20 +2985,30 @@ Expr *CppToCVisitor::translateCallExpr(CallExpr *CE) {
         Expr *ObjectExpr = MCE->getImplicitObjectArgument();
         if (ObjectExpr) {
           Expr *TranslatedObject = translateExpr(ObjectExpr);
-          if (TranslatedObject) {
-            // Take address if not already a pointer
-            if (!ObjectExpr->getType()->isPointerType()) {
-              TranslatedObject = Builder.addrOf(TranslatedObject);
-            }
-            args.push_back(TranslatedObject);
+          // Phase 40 (Bug Fix): If object translation fails, skip this call entirely
+          if (!TranslatedObject) {
+            llvm::outs() << "  Failed to translate object for method call (dynamic path), skipping call\n";
+            return nullptr;
           }
+          // Take address if not already a pointer
+          if (!ObjectExpr->getType()->isPointerType()) {
+            TranslatedObject = Builder.addrOf(TranslatedObject);
+          }
+          args.push_back(TranslatedObject);
         }
 
         // Add method arguments
         unsigned paramIdx = 0;
         for (Expr *Arg : MCE->arguments()) {
           Expr *TranslatedArg = translateExpr(Arg);
-          Expr *FinalArg = TranslatedArg ? TranslatedArg : Arg;
+
+          // Phase 40 (Bug Fix): If translation fails, skip this call entirely
+          if (!TranslatedArg) {
+            llvm::outs() << "  Failed to translate method call argument (dynamic path), skipping call\n";
+            return nullptr;
+          }
+
+          Expr *FinalArg = TranslatedArg;
 
           // Check if C++ parameter was a reference type
           if (paramIdx < Method->param_size()) {
@@ -3035,6 +3066,132 @@ Expr *CppToCVisitor::translateCallExpr(CallExpr *CE) {
 
         // Create and return the call
         return Builder.call(CFuncDecl, args);
+      }
+    }
+  }
+
+  // Phase 40: Check if this is a static method call
+  // Static methods: Class::method() represented as CallExpr with DeclRefExpr to CXXMethodDecl
+  if (Expr *CalleeExpr = CE->getCallee()) {
+    Expr *UnwrappedCallee = CalleeExpr->IgnoreImpCasts();
+    if (DeclRefExpr *DRE = dyn_cast<DeclRefExpr>(UnwrappedCallee)) {
+      if (CXXMethodDecl *Method = dyn_cast<CXXMethodDecl>(DRE->getDecl())) {
+        if (Method->isStatic()) {
+          llvm::outs() << "  Translating static method call: " << Method->getQualifiedNameAsString() << "\n";
+
+          // Use canonical declaration for lookup
+          CXXMethodDecl *CanonicalMethod = cast<CXXMethodDecl>(Method->getCanonicalDecl());
+
+          // Find the corresponding C function
+          FunctionDecl *CFunc = nullptr;
+          std::string methodKey = Mangler.mangleName(CanonicalMethod);
+          if (targetCtx.getMethodMap().find(methodKey) != targetCtx.getMethodMap().end()) {
+            CFunc = targetCtx.getMethodMap()[methodKey];
+
+            assert(CFunc != nullptr && "translateCallExpr: Retrieved static method is null!");
+            assert(!CFunc->getReturnType().isNull() && "translateCallExpr: Retrieved static method has null return type!");
+          }
+
+          if (CFunc) {
+            // Translate to C function call (no 'this' parameter for static methods)
+            std::vector<Expr *> args;
+
+            // Translate arguments
+            unsigned paramIdx = 0;
+            for (Expr *Arg : CE->arguments()) {
+              Expr *TranslatedArg = translateExpr(Arg);
+
+              if (!TranslatedArg) {
+                llvm::outs() << "  Failed to translate static method argument, skipping call\n";
+                return nullptr;
+              }
+
+              Expr *FinalArg = TranslatedArg;
+
+              // Check if C++ parameter was a reference type
+              if (paramIdx < Method->param_size()) {
+                ParmVarDecl *CppParam = Method->getParamDecl(paramIdx);
+                QualType CppParamType = CppParam->getType();
+
+                // If C++ parameter was a reference and argument is not already an address-of
+                if (CppParamType->isReferenceType() && !isa<UnaryOperator>(FinalArg)) {
+                  Expr *UnderlyingExpr = FinalArg->IgnoreImplicitAsWritten();
+
+                  // Only take address if not already a pointer type
+                  if (!UnderlyingExpr->getType()->isPointerType()) {
+                    FinalArg = Builder.addrOf(FinalArg);
+                  }
+                }
+              }
+              args.push_back(FinalArg);
+              paramIdx++;
+            }
+
+            // Create C function call
+            return Builder.call(CFunc, args);
+          } else {
+            // Static method not in map - generate call with mangled name
+            llvm::outs() << "  Warning: Static method not in map, generating call: "
+                         << Method->getQualifiedNameAsString() << "\n";
+
+            std::string funcName = Mangler.mangleName(Method);
+            llvm::outs() << "  Generated function name: " << funcName << "\n";
+
+            // Translate arguments
+            std::vector<Expr *> args;
+            unsigned paramIdx = 0;
+            for (Expr *Arg : CE->arguments()) {
+              Expr *TranslatedArg = translateExpr(Arg);
+
+              if (!TranslatedArg) {
+                llvm::outs() << "  Failed to translate static method argument (dynamic path), skipping call\n";
+                return nullptr;
+              }
+
+              Expr *FinalArg = TranslatedArg;
+
+              // Check if C++ parameter was a reference type
+              if (paramIdx < Method->param_size()) {
+                ParmVarDecl *CppParam = Method->getParamDecl(paramIdx);
+                QualType CppParamType = CppParam->getType();
+
+                if (CppParamType->isReferenceType() && !isa<UnaryOperator>(FinalArg)) {
+                  Expr *UnderlyingExpr = FinalArg->IgnoreImplicitAsWritten();
+
+                  if (!UnderlyingExpr->getType()->isPointerType()) {
+                    FinalArg = Builder.addrOf(FinalArg);
+                  }
+                }
+              }
+              args.push_back(FinalArg);
+              paramIdx++;
+            }
+
+            // Create function declaration for the C function
+            std::vector<ParmVarDecl *> params;
+
+            // Add parameters - convert C++ types to C types
+            for (ParmVarDecl *Param : Method->parameters()) {
+              QualType CppType = Param->getType();
+              QualType CType = translateTypeToCContext(CppType);
+
+              ParmVarDecl *CParam = Builder.param(CType, Param->getName());
+              params.push_back(CParam);
+            }
+
+            // Convert return type
+            QualType RetType = translateTypeToCContext(Method->getReturnType());
+
+            // Create C function declaration
+            FunctionDecl *CFuncDecl = Builder.funcDecl(funcName, RetType, params, nullptr);
+
+            // Store in map for future use
+            targetCtx.getMethodMap()[methodKey] = CFuncDecl;
+
+            // Create and return the call
+            return Builder.call(CFuncDecl, args);
+          }
+        }
       }
     }
   }
@@ -3122,7 +3279,14 @@ Expr *CppToCVisitor::translateConstructExpr(CXXConstructExpr *CCE) {
   for (unsigned i = 0; i < CCE->getNumArgs(); ++i) {
     Expr *Arg = CCE->getArg(i);
     Expr *TranslatedArg = translateExpr(Arg);
-    translatedArgs.push_back(TranslatedArg ? TranslatedArg : Arg);
+
+    // Phase 40 (Bug Fix): If translation fails, skip this constructor entirely
+    if (!TranslatedArg) {
+      llvm::outs() << "  Failed to translate constructor argument, skipping constructor\n";
+      return nullptr;
+    }
+
+    translatedArgs.push_back(TranslatedArg);
   }
 
   // Bug fix #6: Get the C struct type instead of C++ class type
@@ -3401,7 +3565,15 @@ Stmt *CppToCVisitor::translateReturnStmt(ReturnStmt *RS) {
         for (unsigned i = 0; i < CCE->getNumArgs(); ++i) {
           Expr *Arg = CCE->getArg(i);
           Expr *TranslatedArg = translateExpr(Arg);
-          ctorArgs.push_back(TranslatedArg ? TranslatedArg : Arg);
+
+          // Phase 40 (Bug Fix): If translation fails, skip this constructor call
+          if (!TranslatedArg) {
+            llvm::outs() << "  Failed to translate ctor argument (DeclStmt path), skipping\n";
+            // Don't add this to statements - just skip it
+            continue;
+          }
+
+          ctorArgs.push_back(TranslatedArg);
         }
 
         // Handle default arguments if constructor has more parameters

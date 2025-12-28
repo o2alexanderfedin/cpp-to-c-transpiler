@@ -198,15 +198,24 @@ std::string NameMangler::mangleClassName(CXXRecordDecl *RD) {
 }
 
 std::string NameMangler::mangleMethodName(CXXMethodDecl *MD) {
+    // Check if parent is valid (can be null in some edge cases)
+    CXXRecordDecl* Parent = MD->getParent();
+    if (!Parent) {
+        llvm::errs() << "WARNING: CXXMethodDecl has null parent, using method name only: "
+                     << MD->getNameAsString() << "\n";
+        return MD->getNameAsString();
+    }
+
     // Extract namespace hierarchy
-    std::vector<std::string> namespaces = extractNamespaceHierarchy(MD->getParent());
+    std::vector<std::string> namespaces = extractNamespaceHierarchy(Parent);
 
     // Build mangled name: ns1_ns2_ClassName_methodName
+    // CRITICAL: Use getNameAsString() instead of getName().str() to handle operator names
     std::string mangledName;
     for (const auto &ns : namespaces) {
         mangledName += ns + "_";
     }
-    mangledName += MD->getParent()->getName().str() + "_" + MD->getName().str();
+    mangledName += Parent->getName().str() + "_" + MD->getNameAsString();
 
     return mangledName;
 }

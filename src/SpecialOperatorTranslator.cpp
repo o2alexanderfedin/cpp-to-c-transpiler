@@ -778,6 +778,13 @@ std::string SpecialOperatorTranslator::generateOperatorName(const CXXMethodDecl*
         return "";
     }
 
+    // Check if getParent() is valid (can be null in some edge cases)
+    if (!MD->getParent()) {
+        llvm::errs() << "WARNING: CXXMethodDecl has null parent, using method name only: "
+                     << MD->getNameAsString() << "\n";
+        return MD->getNameAsString();
+    }
+
     // Use NameMangler's standard mangling
     return m_mangler.mangleMethodName(const_cast<CXXMethodDecl*>(MD));
 }
