@@ -8,7 +8,7 @@ static void Token__ctor_copy(struct Token * this, const struct Token * other) {
 	this->value = other->value;
 }
 
-void Token__ctor(struct Token * this, TokenType t, int v) {
+void Token__ctor_2(struct Token * this, TokenType t, int v) {
 	this->type = t;
 	this->value = v;
 }
@@ -18,7 +18,7 @@ static void Tokenizer__ctor_copy(struct Tokenizer * this, const struct Tokenizer
 	this->position = other->position;
 }
 
-void Tokenizer__ctor(struct Tokenizer * this, const char * input) {
+void Tokenizer__ctor_1(struct Tokenizer * this, const char * input) {
 	this->input = input;
 	this->position = 0;
 }
@@ -44,7 +44,7 @@ struct Token Tokenizer_nextToken(struct Tokenizer * this) {
 	if (this->input[this->position] == '\x00') 	{
 		{
 			struct Token __return_temp;
-			Token__ctor(&__return_temp, TokenType__EndOfInput);
+			Token__ctor_2(&__return_temp, TokenType__EndOfInput);
 			return __return_temp;
 ;
 		}
@@ -54,7 +54,7 @@ struct Token Tokenizer_nextToken(struct Tokenizer * this) {
 		int value = Tokenizer_parseNumber(this);
 		{
 			struct Token __return_temp;
-			Token__ctor(&__return_temp, TokenType__Number, value);
+			Token__ctor_2(&__return_temp, TokenType__Number, value);
 			return __return_temp;
 ;
 		}
@@ -65,35 +65,35 @@ struct Token Tokenizer_nextToken(struct Tokenizer * this) {
 		case '+':
 			{
 				struct Token __return_temp;
-				Token__ctor(&__return_temp, TokenType__Plus);
+				Token__ctor_2(&__return_temp, TokenType__Plus);
 				return __return_temp;
 ;
 			}
 		case '-':
 			{
 				struct Token __return_temp;
-				Token__ctor(&__return_temp, TokenType__Minus);
+				Token__ctor_2(&__return_temp, TokenType__Minus);
 				return __return_temp;
 ;
 			}
 		case '*':
 			{
 				struct Token __return_temp;
-				Token__ctor(&__return_temp, TokenType__Multiply);
+				Token__ctor_2(&__return_temp, TokenType__Multiply);
 				return __return_temp;
 ;
 			}
 		case '/':
 			{
 				struct Token __return_temp;
-				Token__ctor(&__return_temp, TokenType__Divide);
+				Token__ctor_2(&__return_temp, TokenType__Divide);
 				return __return_temp;
 ;
 			}
 		default:
 			{
 				struct Token __return_temp;
-				Token__ctor(&__return_temp, TokenType__EndOfInput);
+				Token__ctor_2(&__return_temp, TokenType__EndOfInput);
 				return __return_temp;
 ;
 			}

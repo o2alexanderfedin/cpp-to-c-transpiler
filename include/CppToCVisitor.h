@@ -34,6 +34,7 @@
 #include "TemplateExtractor.h"
 #include "TemplateInstantiationTracker.h"
 #include "TemplateMonomorphizer.h"
+#include "TargetContext.h"
 #include "ThrowTranslator.h"
 #include "TryCatchTransformer.h"
 #include "TypeidTranslator.h"
@@ -53,6 +54,7 @@
 class CppToCVisitor : public clang::RecursiveASTVisitor<CppToCVisitor> {
   clang::ASTContext &Context;
   clang::CNodeBuilder &Builder;
+  TargetContext &targetCtx;  // Bug Fix: Shared context for cross-file constructor/method maps
   NameMangler Mangler;
 
   // Phase 34 (v2.5.0): File origin tracking for multi-file transpilation
@@ -96,14 +98,8 @@ class CppToCVisitor : public clang::RecursiveASTVisitor<CppToCVisitor> {
   // Mapping: C++ class -> C struct (Story #15)
   std::map<clang::CXXRecordDecl *, clang::RecordDecl *> cppToCMap;
 
-  // Mapping: C++ method -> C function (Story #16)
-  std::map<clang::CXXMethodDecl *, clang::FunctionDecl *> methodToCFunc;
-
-  // Mapping: C++ constructor -> C function (Story #17)
-  std::map<clang::CXXConstructorDecl *, clang::FunctionDecl *> ctorMap;
-
-  // Mapping: C++ destructor -> C function (Story #152 - Epic #5)
-  std::map<clang::CXXDestructorDecl *, clang::FunctionDecl *> dtorMap;
+  // Bug Fix: C++ method/ctor/dtor -> C function maps moved to TargetContext (shared across files)
+  // Access via: targetCtx.getMethodMap(), targetCtx.getCtorMap(), targetCtx.getDtorMap()
 
   // Phase 8: Mapping: Standalone functions (by mangled name -> C function)
   std::map<std::string, clang::FunctionDecl *> standaloneFuncMap;
@@ -227,6 +223,7 @@ class CppToCVisitor : public clang::RecursiveASTVisitor<CppToCVisitor> {
 public:
   explicit CppToCVisitor(clang::ASTContext &Context,
                          clang::CNodeBuilder &Builder,
+                         TargetContext &targetCtx,
                          cpptoc::FileOriginTracker &tracker,
                          clang::TranslationUnitDecl *C_TU,
                          const std::string& currentFile = "");

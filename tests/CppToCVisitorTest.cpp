@@ -5,6 +5,7 @@
 #include "CppToCVisitor.h"
 #include "CNodeBuilder.h"
 #include "FileOriginTracker.h"
+#include "TargetContext.h"
 #include "clang/Tooling/Tooling.h"
 
 using namespace clang;
@@ -24,12 +25,12 @@ protected:
     // Helper to create a CppToCVisitor with a C TranslationUnitDecl
     std::unique_ptr<CppToCVisitor> createVisitor(ASTUnit &AST, CNodeBuilder &builder,
                                                    cpptoc::FileOriginTracker &tracker) {
-        // Create a C TranslationUnitDecl for the visitor
-        clang::TranslationUnitDecl *C_TU =
-            clang::TranslationUnitDecl::Create(AST.getASTContext());
+        // Get TargetContext and create a C TranslationUnitDecl
+        TargetContext& targetCtx = TargetContext::getInstance();
+        clang::TranslationUnitDecl *C_TU = targetCtx.createTranslationUnit();
 
         return std::make_unique<CppToCVisitor>(AST.getASTContext(), builder,
-                                                tracker, C_TU);
+                                                targetCtx, tracker, C_TU);
     }
 };
 

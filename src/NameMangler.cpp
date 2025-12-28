@@ -18,16 +18,18 @@ std::string NameMangler::mangleName(CXXMethodDecl *MD) {
     // Build base name: ClassName_methodName
     std::string baseName = MD->getParent()->getName().str() + "_" + MD->getName().str();
 
-    // Check if base name is unique (no overloading)
-    if (usedNames.find(baseName) == usedNames.end()) {
-        usedNames.insert(baseName);
-        return baseName;
-    }
-
-    // Handle overload: append parameter types
+    // Phase 40 (Bug Fix): Always append parameter types for cross-file consistency
+    // This ensures method names are the same whether generated from definition or call site
+    // Example: Vector3D::dot(const Vector3D&) -> Vector3D_dot_const_Vector3D_ref
     std::string mangledName = baseName;
     for (ParmVarDecl *Param : MD->parameters()) {
-        mangledName += "_" + getSimpleTypeName(Param->getType());
+        std::string paramType = getSimpleTypeName(Param->getType());
+        mangledName += "_" + paramType;
+    }
+
+    // If no parameters, use base name (for methods like getX(), clear(), etc.)
+    if (MD->param_size() == 0) {
+        mangledName = baseName;
     }
 
     usedNames.insert(mangledName);
@@ -62,26 +64,28 @@ std::string NameMangler::mangleDestructor(CXXDestructorDecl *DD) {
 
 std::string NameMangler::getSimpleTypeName(QualType T) {
     // Story #66: Encode const qualification and reference types explicitly
+    // Phase 40 (Bug Fix): Handle reference types FIRST before checking const
     std::string result;
 
-    // Check for const qualification before removing it
-    bool isConst = T.isConstQualified();
-    if (isConst) {
-        result += "const_";
-    }
-
-    // Check for reference types
+    // CRITICAL: Handle reference types FIRST (before checking const)
+    // For const T&, the const is on the pointee, not the reference itself
     bool isReference = false;
     bool isRValueRef = false;
     if (T->isLValueReferenceType()) {
         isReference = true;
-        T = T.getNonReferenceType();
+        T = T.getNonReferenceType();  // Now T is the pointee type
     } else if (T->isRValueReferenceType()) {
         isRValueRef = true;
         T = T.getNonReferenceType();
     }
 
-    // Remove remaining qualifiers
+    // NOW check for const qualification (after stripping reference)
+    bool isConst = T.isConstQualified();
+    if (isConst) {
+        result += "const_";
+    }
+
+    // Remove const/volatile qualifiers for type matching
     T = T.getUnqualifiedType();
 
     // Handle integer types

@@ -125,7 +125,8 @@ public:
         clang::TranslationUnitDecl* C_TU = targetCtx.createTranslationUnit();
 
         // Create and run visitor to traverse AST
-        CppToCVisitor Visitor(Context, Builder, tracker, C_TU);
+        // Bug Fix: Pass TargetContext for shared constructor/method/destructor maps
+        CppToCVisitor Visitor(Context, Builder, targetCtx, tracker, C_TU);
         auto *TU = Context.getTranslationUnitDecl();
         Visitor.TraverseDecl(TU);
 

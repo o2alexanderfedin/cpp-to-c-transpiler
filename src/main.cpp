@@ -403,6 +403,24 @@ int main(int argc, const char **argv) {
     return 1;  // Non-fatal error code
   }
 
+  // Bug Fix: Sort files to process main files LAST
+  // This ensures library constructors/methods are in the shared map before main.cpp uses them
+  std::stable_sort(sourceFiles.begin(), sourceFiles.end(), [](const std::string& a, const std::string& b) {
+    fs::path pathA(a);
+    fs::path pathB(b);
+    std::string stemA = pathA.stem().string();
+    std::string stemB = pathB.stem().string();
+
+    bool aIsMain = (stemA == "main");
+    bool bIsMain = (stemB == "main");
+
+    // If both are main or both are not main, keep original order (stable)
+    if (aIsMain == bIsMain) return false;
+
+    // main files go to the end (return false if a is main, true if b is main)
+    return !aIsMain;
+  });
+
   llvm::outs() << "Discovered " << sourceFiles.size() << " file(s) for transpilation\n";
 
   // Create ClangTool with discovered or provided files

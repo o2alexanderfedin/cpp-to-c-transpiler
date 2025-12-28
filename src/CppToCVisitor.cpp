@@ -27,10 +27,11 @@ extern bool shouldEnableRTTI();                      // Phase 13 (v2.6.0)
 
 // Epic #193: ACSL Integration - Constructor Implementation
 CppToCVisitor::CppToCVisitor(ASTContext &Context, CNodeBuilder &Builder,
+                             TargetContext &targetCtx_param,
                              cpptoc::FileOriginTracker &tracker,
                              TranslationUnitDecl *C_TU_param,
                              const std::string& currentFile)
-    : Context(Context), Builder(Builder), Mangler(Context),
+    : Context(Context), Builder(Builder), targetCtx(targetCtx_param), Mangler(Context),
       fileOriginTracker(tracker),
       VirtualAnalyzer(Context), VptrInjectorInstance(Context, VirtualAnalyzer),
       MoveCtorTranslator(Context), MoveAssignTranslator(Context),
@@ -289,6 +290,10 @@ bool CppToCVisitor::VisitModuleDecl(Decl *MD) {
 
 // Story #15 + Story #50: Class-to-Struct Conversion with Base Class Embedding
 bool CppToCVisitor::VisitCXXRecordDecl(CXXRecordDecl *D) {
+  // Phase 40 (Bug Fix): Record declaration in FileOriginTracker
+  // This populates fileCategories map, enabling getUserHeaderFiles() to work
+  fileOriginTracker.recordDeclaration(D);
+
   // Phase 34 (v2.5.0): Skip declarations from non-transpilable files (system headers, etc.)
   if (!fileOriginTracker.shouldTranspile(D)) {
     return true;
@@ -359,11 +364,63 @@ bool CppToCVisitor::VisitCXXRecordDecl(CXXRecordDecl *D) {
   // Store mapping for method translation
   cppToCMap[D] = CStruct;
 
-  // Phase 32: Add to C TranslationUnit for output generation
-  C_TranslationUnit->addDecl(CStruct);
+  // Phase 40 (Bug Fix): Smart filtering for cross-file struct definitions
+  // Keep struct if:
+  // 1. From main source file (not user header), OR
+  // 2. From user header whose basename matches current file's basename
+  //    (e.g., Vector3D.cpp keeps struct from Vector3D.h)
+  bool shouldAddToTU = true;
+  if (fileOriginTracker.isFromUserHeader(D)) {
+    // Extract basename from current file
+    std::string currentBasename;
+    {
+      auto &SM = Context.getSourceManager();
+      FileID mainFID = SM.getMainFileID();
+      if (auto mainFile = SM.getFileEntryRefForID(mainFID)) {
+        std::string mainFileName = std::string(mainFile->getName());
+        size_t lastSlash = mainFileName.find_last_of("/\\");
+        size_t lastDot = mainFileName.find_last_of('.');
+        if (lastSlash != std::string::npos) {
+          currentBasename = mainFileName.substr(lastSlash + 1);
+        } else {
+          currentBasename = mainFileName;
+        }
+        if (lastDot != std::string::npos && lastDot > lastSlash) {
+          currentBasename = currentBasename.substr(0, lastDot - (lastSlash != std::string::npos ? lastSlash + 1 : 0));
+        }
+      }
+    }
 
-  llvm::outs() << "  -> struct " << CStruct->getName() << " with "
-               << fields.size() << " fields\n";
+    // Extract basename from struct's source file
+    std::string structBasename;
+    {
+      std::string originFile = fileOriginTracker.getOriginFile(D);
+      size_t lastSlash = originFile.find_last_of("/\\");
+      size_t lastDot = originFile.find_last_of('.');
+      if (lastSlash != std::string::npos) {
+        structBasename = originFile.substr(lastSlash + 1);
+      } else {
+        structBasename = originFile;
+      }
+      if (lastDot != std::string::npos && lastDot > lastSlash) {
+        structBasename = structBasename.substr(0, lastDot - (lastSlash != std::string::npos ? lastSlash + 1 : 0));
+      }
+    }
+
+    // Keep if basenames match (e.g., Vector3D.cpp and Vector3D.h)
+    shouldAddToTU = (currentBasename == structBasename);
+    if (!shouldAddToTU) {
+      llvm::outs() << "  -> struct " << CStruct->getName() << " NOT added to C_TU "
+                   << "(from header " << structBasename << ", current file: " << currentBasename << ")\n";
+    }
+  }
+
+  // Phase 32: Add to C TranslationUnit for output generation
+  if (shouldAddToTU) {
+    C_TranslationUnit->addDecl(CStruct);
+    llvm::outs() << "  -> struct " << CStruct->getName() << " with "
+                 << fields.size() << " fields\n";
+  }
 
   // Story #62: Generate implicit constructors if needed
   generateImplicitConstructors(D);
@@ -514,7 +571,7 @@ bool CppToCVisitor::VisitCXXMethodDecl(CXXMethodDecl *MD) {
   }
 
   // Bug #43 FIX: FileOriginFilter ensures proper file-based filtering
-  // Do NOT check methodToCFunc here - that map is shared across files which causes issues
+  // Do NOT check targetCtx.getMethodMap() here - that map is shared across files which causes issues
   // FileOriginFilter already prevents cross-file pollution
   // We DO need the canonical decl for later storage
   CXXMethodDecl *CanonicalMD = MD->getCanonicalDecl();
@@ -555,7 +612,8 @@ bool CppToCVisitor::VisitCXXMethodDecl(CXXMethodDecl *MD) {
     auto* C_Func = m_arithmeticOpTrans->transformMethod(MD, Context, C_TranslationUnit);
     if (C_Func) {
       // Store in method map for later call site transformation
-      methodToCFunc[MD] = C_Func;
+      std::string methodKey = Mangler.mangleName(MD);
+      targetCtx.getMethodMap()[methodKey] = C_Func;
       llvm::outs() << "  -> " << C_Func->getNameAsString() << "\n";
     }
     return true;
@@ -568,7 +626,8 @@ bool CppToCVisitor::VisitCXXMethodDecl(CXXMethodDecl *MD) {
     auto* C_Func = m_comparisonOpTrans->transformMethod(MD, Context, C_TranslationUnit);
     if (C_Func) {
       // Store in method map for later call site transformation
-      methodToCFunc[MD] = C_Func;
+      std::string methodKey = Mangler.mangleName(MD);
+      targetCtx.getMethodMap()[methodKey] = C_Func;
       llvm::outs() << "  -> " << C_Func->getNameAsString() << " (returns bool)\n";
     }
     return true;
@@ -583,7 +642,8 @@ bool CppToCVisitor::VisitCXXMethodDecl(CXXMethodDecl *MD) {
     auto* C_Func = m_specialOpTrans->transformMethod(MD, Context, C_TranslationUnit);
     if (C_Func) {
       // Store in method map for later call site transformation
-      methodToCFunc[MD] = C_Func;
+      std::string methodKey = Mangler.mangleName(MD);
+      targetCtx.getMethodMap()[methodKey] = C_Func;
       llvm::outs() << "  -> " << C_Func->getNameAsString() << "\n";
     }
     return true;
@@ -656,7 +716,8 @@ bool CppToCVisitor::VisitCXXMethodDecl(CXXMethodDecl *MD) {
   currentMethod = nullptr;
 
   // Store mapping using canonical declaration to prevent duplicate processing
-  methodToCFunc[CanonicalMD] = CFunc;
+  std::string methodKey = Mangler.mangleName(CanonicalMD);
+  targetCtx.getMethodMap()[methodKey] = CFunc;
 
   // Phase 32: Add to C TranslationUnit for output generation
   C_TranslationUnit->addDecl(CFunc);
@@ -690,7 +751,8 @@ bool CppToCVisitor::VisitCXXConversionDecl(CXXConversionDecl *CD) {
   if (C_Func) {
     // Store in method map for later call site transformation
     // Note: CXXConversionDecl is a subclass of CXXMethodDecl
-    methodToCFunc[CD] = C_Func;
+    std::string methodKey = Mangler.mangleName(CD);
+    targetCtx.getMethodMap()[methodKey] = C_Func;
     llvm::outs() << "  -> " << C_Func->getNameAsString() << "\n";
   }
 
@@ -748,10 +810,10 @@ bool CppToCVisitor::VisitCXXConstructorDecl(CXXConstructorDecl *CD) {
 
   // Bug fix #15: Skip constructors already translated to prevent redefinitions
   // Check if this constructor was already processed (prevents duplicate function definitions)
-  // Note: We check the canonical declaration because the AST may contain multiple
-  // CXXConstructorDecl nodes for the same constructor (e.g., declaration vs definition)
+  // Note: We use mangled name as key (not pointer) because each file has its own C++ ASTContext
   CXXConstructorDecl *CanonicalCD = cast<CXXConstructorDecl>(CD->getCanonicalDecl());
-  if (ctorMap.count(CanonicalCD) > 0) {
+  std::string mangledKey = Mangler.mangleConstructor(CD);
+  if (targetCtx.getCtorMap().count(mangledKey) > 0) {
     llvm::outs() << "  -> Already translated, skipping redefinition of "
                  << CD->getParent()->getName() << "::"
                  << CD->getParent()->getName() << "\n";
@@ -771,7 +833,7 @@ bool CppToCVisitor::VisitCXXConstructorDecl(CXXConstructorDecl *CD) {
 
     // Note: For now, we just generate the code for testing/validation
     // Full integration would store this in a function declaration
-    // Continue with normal processing to store in ctorMap for now
+    // Continue with normal processing to store in targetCtx.getCtorMap() for now
   }
 
   llvm::outs() << "Translating constructor: " << CD->getParent()->getName()
@@ -848,8 +910,9 @@ bool CppToCVisitor::VisitCXXConstructorDecl(CXXConstructorDecl *CD) {
         CXXConstructorDecl *TargetCtor = CtorExpr->getConstructor();
 
         // Lookup the C function for the target constructor
-        auto it = ctorMap.find(TargetCtor);
-        if (it != ctorMap.end()) {
+        std::string targetCtorKey = Mangler.mangleConstructor(TargetCtor);
+        auto it = targetCtx.getCtorMap().find(targetCtorKey);
+        if (it != targetCtx.getCtorMap().end()) {
           FunctionDecl *TargetCFunc = it->second;
 
           // Build argument list: this + arguments from delegating call
@@ -909,8 +972,10 @@ bool CppToCVisitor::VisitCXXConstructorDecl(CXXConstructorDecl *CD) {
   // Set function body
   CFunc->setBody(Builder.block(stmts));
 
-  // Store mapping using canonical declaration to prevent duplicate processing
-  ctorMap[CanonicalCD] = CFunc;
+  // Store mapping using mangled name (not pointer) to work across C++ ASTContexts
+  targetCtx.getCtorMap()[mangledKey] = CFunc;
+  llvm::outs() << "  [DEBUG] Added constructor to SHARED map: " << funcName
+               << " (key: " << mangledKey << ", map size now: " << targetCtx.getCtorMap().size() << ")\n";
 
   // Phase 32: Add to C TranslationUnit for output generation
   C_TranslationUnit->addDecl(CFunc);
@@ -945,7 +1010,7 @@ RecordDecl *CppToCVisitor::getCStruct(llvm::StringRef className) const {
 // Retrieve generated C function by name (for testing)
 FunctionDecl *CppToCVisitor::getCFunc(llvm::StringRef funcName) const {
   // Search through method mapping to find function by name
-  for (const auto &entry : methodToCFunc) {
+  for (const auto &entry : targetCtx.getMethodMap()) {
     if (entry.second && entry.second->getName() == funcName) {
       return entry.second;
     }
@@ -963,7 +1028,7 @@ FunctionDecl *CppToCVisitor::getCFunc(llvm::StringRef funcName) const {
 // Retrieve generated C constructor function by name (for testing)
 FunctionDecl *CppToCVisitor::getCtor(llvm::StringRef funcName) const {
   // Search through mapping to find constructor by name
-  for (const auto &entry : ctorMap) {
+  for (const auto &entry : targetCtx.getCtorMap()) {
     if (entry.second && entry.second->getName() == funcName) {
       return entry.second;
     }
@@ -974,7 +1039,7 @@ FunctionDecl *CppToCVisitor::getCtor(llvm::StringRef funcName) const {
 // Retrieve generated C destructor function by name (for testing - Story #152)
 FunctionDecl *CppToCVisitor::getDtor(llvm::StringRef funcName) const {
   // Search through mapping to find destructor by name
-  for (const auto &entry : dtorMap) {
+  for (const auto &entry : targetCtx.getDtorMap()) {
     if (entry.second && entry.second->getName() == funcName) {
       return entry.second;
     }
@@ -1013,7 +1078,8 @@ bool CppToCVisitor::VisitCXXDestructorDecl(CXXDestructorDecl *DD) {
   // Note: We check the canonical declaration because the AST may contain multiple
   // CXXDestructorDecl nodes for the same destructor (e.g., declaration vs definition)
   CXXDestructorDecl *CanonicalDD = cast<CXXDestructorDecl>(DD->getCanonicalDecl());
-  if (dtorMap.count(CanonicalDD) > 0) {
+  std::string dtorKey = Mangler.mangleDestructor(CanonicalDD);
+  if (targetCtx.getDtorMap().count(dtorKey) > 0) {
     llvm::outs() << "  -> Already translated, skipping redefinition of ~"
                  << DD->getParent()->getName() << "\n";
     return true;
@@ -1084,7 +1150,7 @@ bool CppToCVisitor::VisitCXXDestructorDecl(CXXDestructorDecl *DD) {
   currentMethod = nullptr;
 
   // Store mapping using canonical declaration to prevent duplicate processing
-  dtorMap[CanonicalDD] = CFunc;
+  targetCtx.getDtorMap()[dtorKey] = CFunc;
 
   // Phase 32: Add to C TranslationUnit for output generation
   C_TranslationUnit->addDecl(CFunc);
@@ -1370,7 +1436,7 @@ void CppToCVisitor::collectBaseClassFields(CXXRecordDecl *D,
  * 1. Iterate through constructor's member initializer list
  * 2. For each base class initializer:
  *    a. Extract the base class type
- *    b. Get the C constructor function from ctorMap
+ *    b. Get the C constructor function from targetCtx.getCtorMap()
  *    c. Build argument list (this + initializer args)
  *    d. Create call expression to base constructor
  * 3. Add base constructor calls to statement list in order
@@ -1417,8 +1483,9 @@ void CppToCVisitor::emitBaseConstructorCalls(CXXConstructorDecl *CD,
     CXXConstructorDecl *BaseCtorDecl = CtorExpr->getConstructor();
 
     // Lookup the C function for this base constructor
-    auto it = ctorMap.find(BaseCtorDecl);
-    if (it == ctorMap.end()) {
+    std::string baseCtorKey = Mangler.mangleConstructor(BaseCtorDecl);
+    auto it = targetCtx.getCtorMap().find(baseCtorKey);
+    if (it == targetCtx.getCtorMap().end()) {
       llvm::outs() << "  Warning: Base constructor function not found\n";
       continue;
     }
@@ -1461,7 +1528,7 @@ void CppToCVisitor::emitBaseConstructorCalls(CXXConstructorDecl *CD,
  * Implementation Strategy:
  * 1. Get the derived class's base classes
  * 2. For each base class:
- *    a. Find the base destructor in dtorMap
+ *    a. Find the base destructor in targetCtx.getDtorMap()
  *    b. Create call to base destructor with 'this' pointer
  *    c. Append to statement list
  * 3. Base destructors called in order (for single inheritance, only one base)
@@ -1496,8 +1563,9 @@ void CppToCVisitor::emitBaseDestructorCalls(CXXDestructorDecl *DD,
     }
 
     // Lookup the C function for this base destructor
-    auto it = dtorMap.find(BaseDtor);
-    if (it == dtorMap.end()) {
+    std::string baseDtorKey = Mangler.mangleDestructor(BaseDtor);
+    auto it = targetCtx.getDtorMap().find(baseDtorKey);
+    if (it == targetCtx.getDtorMap().end()) {
       llvm::outs() << "  Warning: Base destructor function not found\n";
       continue;
     }
@@ -1565,8 +1633,9 @@ void CppToCVisitor::emitMemberConstructorCalls(CXXConstructorDecl *CD,
           CXXConstructorDecl *MemberCtor = CE->getConstructor();
 
           // Lookup the C constructor function
-          auto it = ctorMap.find(MemberCtor);
-          if (it == ctorMap.end()) {
+          std::string memberCtorKey = Mangler.mangleConstructor(MemberCtor);
+          auto it = targetCtx.getCtorMap().find(memberCtorKey);
+          if (it == targetCtx.getCtorMap().end()) {
             llvm::outs()
                 << "  Warning: Member constructor function not found\n";
             continue;
@@ -1612,8 +1681,9 @@ void CppToCVisitor::emitMemberConstructorCalls(CXXConstructorDecl *CD,
 
         if (DefaultCtor) {
           // Lookup the C constructor function
-          auto it = ctorMap.find(DefaultCtor);
-          if (it != ctorMap.end()) {
+          std::string defaultCtorKey = Mangler.mangleConstructor(DefaultCtor);
+          auto it = targetCtx.getCtorMap().find(defaultCtorKey);
+          if (it != targetCtx.getCtorMap().end()) {
             FunctionDecl *MemberCFunc = it->second;
 
             MemberExpr *ThisMember =
@@ -1670,8 +1740,9 @@ void CppToCVisitor::emitMemberDestructorCalls(CXXRecordDecl *ClassDecl,
       continue;
 
     // Lookup the C destructor function
-    auto it2 = dtorMap.find(FieldDtor);
-    if (it2 == dtorMap.end()) {
+    std::string fieldDtorKey = Mangler.mangleDestructor(FieldDtor);
+    auto it2 = targetCtx.getDtorMap().find(fieldDtorKey);
+    if (it2 == targetCtx.getDtorMap().end()) {
       continue;
     }
 
@@ -2205,8 +2276,9 @@ CallExpr *CppToCVisitor::createDestructorCall(VarDecl *VD) {
 
   // Find the C destructor function
   FunctionDecl *CDtor = nullptr;
-  if (dtorMap.find(Dtor) != dtorMap.end()) {
-    CDtor = dtorMap[Dtor];
+  std::string dtorKey = Mangler.mangleDestructor(Dtor);
+  if (targetCtx.getDtorMap().find(dtorKey) != targetCtx.getDtorMap().end()) {
+    CDtor = targetCtx.getDtorMap()[dtorKey];
   }
 
   if (!CDtor) {
@@ -2725,8 +2797,9 @@ Expr *CppToCVisitor::translateCallExpr(CallExpr *CE) {
 
       // Find the corresponding C function
       FunctionDecl *CFunc = nullptr;
-      if (methodToCFunc.find(CanonicalMethod) != methodToCFunc.end()) {
-        CFunc = methodToCFunc[CanonicalMethod];
+      std::string methodKey = Mangler.mangleName(CanonicalMethod);
+      if (targetCtx.getMethodMap().find(methodKey) != targetCtx.getMethodMap().end()) {
+        CFunc = targetCtx.getMethodMap()[methodKey];
       }
 
       if (CFunc) {
@@ -2778,7 +2851,7 @@ Expr *CppToCVisitor::translateCallExpr(CallExpr *CE) {
       } else {
         // Bug #14 fix: Method not in map (declaration-only in current TU)
         // Generate the C function call anyway using name mangling
-        llvm::outs() << "  Warning: Method not in methodToCFunc map, generating call anyway: "
+        llvm::outs() << "  Warning: Method not in targetCtx.getMethodMap() map, generating call anyway: "
                      << Method->getQualifiedNameAsString() << "\n";
 
         // Generate mangled C function name
@@ -2849,10 +2922,11 @@ Expr *CppToCVisitor::translateCallExpr(CallExpr *CE) {
         // Add declaration to C TranslationUnit so it appears in the header
         C_TranslationUnit->addDecl(CFuncDecl);
 
-        // Bug #43 FIX: Store in methodToCFunc map using canonical decl as key
+        // Bug #43 FIX: Store in targetCtx.getMethodMap() map using canonical decl as key
         // This ensures consistency with VisitCXXMethodDecl which also uses canonical
         CXXMethodDecl *CanonicalMethod = cast<CXXMethodDecl>(Method->getCanonicalDecl());
-        methodToCFunc[CanonicalMethod] = CFuncDecl;
+        std::string methodKey = Mangler.mangleName(CanonicalMethod);
+        targetCtx.getMethodMap()[methodKey] = CFuncDecl;
 
         // Create and return the call
         return Builder.call(CFuncDecl, args);
@@ -3189,11 +3263,12 @@ Stmt *CppToCVisitor::translateReturnStmt(ReturnStmt *RS) {
 
       // Look up the C constructor function using canonical declaration
       CXXConstructorDecl *CanonicalCtor = cast<CXXConstructorDecl>(Ctor->getCanonicalDecl());
-      llvm::outs() << "[DEBUG Bug#26] Looking up in ctorMap (size: " << ctorMap.size() << ")\n";
-      auto it = ctorMap.find(CanonicalCtor);
-      if (it != ctorMap.end()) {
+      std::string canonicalCtorKey = Mangler.mangleConstructor(CanonicalCtor);
+      llvm::outs() << "[DEBUG Bug#26] Looking up in targetCtx.getCtorMap() (size: " << targetCtx.getCtorMap().size() << ")\n";
+      auto it = targetCtx.getCtorMap().find(canonicalCtorKey);
+      if (it != targetCtx.getCtorMap().end()) {
         FunctionDecl *CCtorFunc = it->second;
-        llvm::outs() << "[DEBUG Bug#26] Found in ctorMap! C function: " << CCtorFunc->getNameAsString() << "\n";
+        llvm::outs() << "[DEBUG Bug#26] Found in targetCtx.getCtorMap()! C function: " << CCtorFunc->getNameAsString() << "\n";
 
         // Create a compound statement: { struct Type temp; Type__ctor(&temp, args...); return temp; }
         std::vector<Stmt *> stmts;
@@ -3258,7 +3333,7 @@ Stmt *CppToCVisitor::translateReturnStmt(ReturnStmt *RS) {
         llvm::outs() << "[DEBUG Bug#26] Returning compound statement with " << stmts.size() << " statements\n";
         return Builder.block(stmts);
       } else {
-        llvm::outs() << "[DEBUG Bug#26] WARNING: Constructor not found in ctorMap for return statement\n";
+        llvm::outs() << "[DEBUG Bug#26] WARNING: Constructor not found in targetCtx.getCtorMap() for return statement\n";
         llvm::outs() << "[DEBUG Bug#26] Constructor name: " << CanonicalCtor->getNameAsString() << "\n";
       }
     } else {
@@ -3448,13 +3523,24 @@ Stmt *CppToCVisitor::translateDeclStmt(DeclStmt *DS) {
             llvm::outs() << "      Has constructor expression\n";
             CXXConstructorDecl *Ctor = CCE->getConstructor();
 
+            // Use mangled name as key (not pointer) to work across C++ ASTContexts
+            std::string ctorKey = Mangler.mangleConstructor(Ctor);
+
+            llvm::outs() << "      [DEBUG] Looking for constructor in SHARED map (size: "
+                         << targetCtx.getCtorMap().size() << ")\n";
+            llvm::outs() << "      [DEBUG] Looking for key: " << ctorKey << "\n";
+
             // Find the corresponding C constructor function
             FunctionDecl *CCtorFunc = nullptr;
-            if (ctorMap.find(Ctor) != ctorMap.end()) {
-              CCtorFunc = ctorMap[Ctor];
+            if (targetCtx.getCtorMap().find(ctorKey) != targetCtx.getCtorMap().end()) {
+              CCtorFunc = targetCtx.getCtorMap()[ctorKey];
               llvm::outs() << "      Found C constructor: " << CCtorFunc->getNameAsString() << "\n";
             } else {
-              llvm::outs() << "      WARNING: C constructor not found in ctorMap!\n";
+              llvm::outs() << "      WARNING: C constructor not found in targetCtx.getCtorMap()!\n";
+              llvm::outs() << "      [DEBUG] Map contents:\n";
+              for (const auto& entry : targetCtx.getCtorMap()) {
+                llvm::outs() << "        Key: " << entry.first << " -> " << entry.second->getNameAsString() << "\n";
+              }
             }
 
             if (CCtorFunc) {
@@ -3756,11 +3842,23 @@ void CppToCVisitor::generateImplicitConstructors(CXXRecordDecl *D) {
     llvm::outs() << "  Generating implicit default constructor\n";
     FunctionDecl *DefaultCtor = generateDefaultConstructor(D);
     if (DefaultCtor) {
-      // Store in constructor map for retrieval by tests
-      // Use the FunctionDecl pointer cast as key (implicit ctors don't have
-      // CXXConstructorDecl)
-      ctorMap[reinterpret_cast<CXXConstructorDecl *>(DefaultCtor)] =
-          DefaultCtor;
+      // Store in constructor map for retrieval
+      // Find the C++ implicit default constructor to use as key
+      CXXConstructorDecl *CppDefaultCtor = nullptr;
+      for (CXXConstructorDecl *Ctor : D->ctors()) {
+        if (Ctor->isDefaultConstructor()) {
+          CppDefaultCtor = Ctor;
+          break;
+        }
+      }
+
+      if (CppDefaultCtor) {
+        std::string ctorKey = Mangler.mangleConstructor(CppDefaultCtor);
+        targetCtx.getCtorMap()[ctorKey] = DefaultCtor;
+      } else {
+        // Fallback: use function name as key if no C++ ctor found
+        targetCtx.getCtorMap()[DefaultCtor->getNameAsString()] = DefaultCtor;
+      }
 
       // Phase 32: Add to C TranslationUnit for output generation
       C_TranslationUnit->addDecl(DefaultCtor);
@@ -3772,10 +3870,23 @@ void CppToCVisitor::generateImplicitConstructors(CXXRecordDecl *D) {
     llvm::outs() << "  Generating implicit copy constructor\n";
     FunctionDecl *CopyCtor = generateCopyConstructor(D);
     if (CopyCtor) {
-      // Store in constructor map for retrieval by tests
-      // Use the FunctionDecl pointer cast as key (implicit ctors don't have
-      // CXXConstructorDecl)
-      ctorMap[reinterpret_cast<CXXConstructorDecl *>(CopyCtor)] = CopyCtor;
+      // Store in constructor map for retrieval
+      // Find the C++ implicit copy constructor to use as key
+      CXXConstructorDecl *CppCopyCtor = nullptr;
+      for (CXXConstructorDecl *Ctor : D->ctors()) {
+        if (Ctor->isCopyConstructor()) {
+          CppCopyCtor = Ctor;
+          break;
+        }
+      }
+
+      if (CppCopyCtor) {
+        std::string ctorKey = Mangler.mangleConstructor(CppCopyCtor);
+        targetCtx.getCtorMap()[ctorKey] = CopyCtor;
+      } else {
+        // Fallback: use function name as key if no C++ ctor found
+        targetCtx.getCtorMap()[CopyCtor->getNameAsString()] = CopyCtor;
+      }
 
       // Phase 32: Add to C TranslationUnit for output generation
       C_TranslationUnit->addDecl(CopyCtor);
@@ -4020,8 +4131,9 @@ FunctionDecl *CppToCVisitor::generateCopyConstructor(CXXRecordDecl *D) {
                   << "    On-demand translation of explicit copy constructor\n";
               VisitCXXConstructorDecl(Ctor);
               // After translation, look it up directly using the key
-              auto it = ctorMap.find(Ctor);
-              if (it != ctorMap.end()) {
+              std::string ctorKey = Mangler.mangleConstructor(Ctor);
+              auto it = targetCtx.getCtorMap().find(ctorKey);
+              if (it != targetCtx.getCtorMap().end()) {
                 MemberCopyCtor = it->second;
                 llvm::outs() << "    Found copy constructor: "
                              << MemberCopyCtor->getNameAsString() << "\n";

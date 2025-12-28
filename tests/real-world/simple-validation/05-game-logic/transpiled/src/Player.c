@@ -22,7 +22,7 @@ void Player__dtor(struct Player * this) {
 	Entity__dtor(this);
 }
 
-void Player__ctor(struct Player * this, float x, float y) {
+void Player__ctor_2(struct Player * this, float x, float y) {
 	this = &__vtable_Player;
 	this->health = 100;
 	this->score = 0;
@@ -38,7 +38,7 @@ int Player_getScore(struct Player * this) {
 ;
 }
 
-void Player_takeDamage(struct Player * this, int damage) {
+void Player_takeDamage_int(struct Player * this, int damage) {
 	this->health -= damage;
 	if (this->health < 0) 	{
 		this->health = 0;
@@ -46,7 +46,7 @@ void Player_takeDamage(struct Player * this, int damage) {
 
 }
 
-void Player_addScore(struct Player * this, int points) {
+void Player_addScore_int(struct Player * this, int points) {
 	this->score += points;
 }
 

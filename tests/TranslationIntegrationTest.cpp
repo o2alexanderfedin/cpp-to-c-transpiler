@@ -5,6 +5,7 @@
 #include "CppToCVisitor.h"
 #include "CNodeBuilder.h"
 #include "FileOriginTracker.h"
+#include "TargetContext.h"
 #include "clang/Tooling/Tooling.h"
 #include <gtest/gtest.h>
 #include <iostream>
@@ -19,10 +20,10 @@ std::unique_ptr<ASTUnit> buildAST(const std::string &code) {
 // Helper to create CppToCVisitor with all required components
 std::unique_ptr<CppToCVisitor> createVisitor(ASTUnit &AST, CNodeBuilder &builder,
                                                cpptoc::FileOriginTracker &tracker) {
-    clang::TranslationUnitDecl *C_TU =
-        clang::TranslationUnitDecl::Create(AST.getASTContext());
+    TargetContext& targetCtx = TargetContext::getInstance();
+    clang::TranslationUnitDecl *C_TU = targetCtx.createTranslationUnit();
     return std::make_unique<CppToCVisitor>(AST.getASTContext(), builder,
-                                            tracker, C_TU);
+                                            targetCtx, tracker, C_TU);
 }
 
 // ============================================================================

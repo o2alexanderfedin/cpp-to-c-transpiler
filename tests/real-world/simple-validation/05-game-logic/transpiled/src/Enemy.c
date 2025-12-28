@@ -10,9 +10,6 @@ static void Entity__ctor_copy(struct Entity * this, const struct Entity * other)
 	this->height = other->height;
 }
 
-void Entity__dtor(struct Entity * this) {
-}
-
 static void Enemy__ctor_copy(struct Enemy * this, const struct Enemy * other) {
 	this->damage = other->damage;
 	this->speed = other->speed;
@@ -22,8 +19,9 @@ void Enemy__dtor(struct Enemy * this) {
 	Entity__dtor(this);
 }
 
-void Enemy__ctor(struct Enemy * this, float x, float y) {
+void Enemy__ctor_2(struct Enemy * this, float x, float y) {
 	this = &__vtable_Enemy;
+	Entity__ctor_4(this, x, y, 24.F, 24.F);
 	this->damage = 10;
 	this->speed = 50.F;
 }

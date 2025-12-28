@@ -9,39 +9,39 @@ static void Vector3D__ctor_copy(struct Vector3D * this, const struct Vector3D * 
 	this->z = other->z;
 }
 
-void Vector3D__ctor(struct Vector3D * this, float x, float y, float z) {
+void Vector3D__ctor_3(struct Vector3D * this, float x, float y, float z) {
 	this->x = x;
 	this->y = y;
 	this->z = z;
 }
 
-struct Vector3D Vector3D_add(struct Vector3D * this, const struct Vector3D * other) {
+struct Vector3D Vector3D_add_const_Vector3D_ref(struct Vector3D * this, const struct Vector3D * other) {
 	{
 		struct Vector3D __return_temp;
-		Vector3D__ctor(&__return_temp, this->x + other->x, this->y + other->y, this->z + other->z);
+		Vector3D__ctor_3(&__return_temp, this->x + other->x, this->y + other->y, this->z + other->z);
 		return __return_temp;
 ;
 	}
 }
 
-struct Vector3D Vector3D_subtract(struct Vector3D * this, const struct Vector3D * other) {
+struct Vector3D Vector3D_subtract_const_Vector3D_ref(struct Vector3D * this, const struct Vector3D * other) {
 	{
 		struct Vector3D __return_temp;
-		Vector3D__ctor(&__return_temp, this->x - other->x, this->y - other->y, this->z - other->z);
+		Vector3D__ctor_3(&__return_temp, this->x - other->x, this->y - other->y, this->z - other->z);
 		return __return_temp;
 ;
 	}
 }
 
-float Vector3D_dot(struct Vector3D * this, const struct Vector3D * other) {
+float Vector3D_dot_const_Vector3D_ref(struct Vector3D * this, const struct Vector3D * other) {
 	return this->x * other->x + this->y * other->y + this->z * other->z;
 ;
 }
 
-struct Vector3D Vector3D_cross(struct Vector3D * this, const struct Vector3D * other) {
+struct Vector3D Vector3D_cross_const_Vector3D_ref(struct Vector3D * this, const struct Vector3D * other) {
 	{
 		struct Vector3D __return_temp;
-		Vector3D__ctor(&__return_temp, this->y * other->z - this->z * other->y, this->z * other->x - this->x * other->z, this->x * other->y - this->y * other->x);
+		Vector3D__ctor_3(&__return_temp, this->y * other->z - this->z * other->y, this->z * other->x - this->x * other->z, this->x * other->y - this->y * other->x);
 		return __return_temp;
 ;
 	}

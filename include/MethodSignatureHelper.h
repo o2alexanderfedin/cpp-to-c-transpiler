@@ -96,10 +96,19 @@ private:
      * @param Method The method to generate suffix for
      * @return Suffix based on parameter types, or empty string if not overloaded
      *
-     * Note: For now, we use simple parameter count. Future enhancement
-     * could use full type-based mangling for better overload support.
+     * Phase 40 (Bug Fix): Now includes full type-based mangling for cross-file consistency
      */
     static std::string generateOverloadSuffix(const clang::CXXMethodDecl* Method);
+
+    /**
+     * @brief Get simple type name for mangling purposes
+     * @param T The type to simplify
+     * @return Simplified type name (e.g., "const_Vector3D_ref", "int", "float_ptr")
+     *
+     * Phase 40 (Bug Fix): Used for generating parameter type suffixes in method names
+     * Ensures cross-file consistency in method name generation
+     */
+    static std::string getSimpleTypeName(clang::QualType T);
 };
 
 #endif // METHOD_SIGNATURE_HELPER_H

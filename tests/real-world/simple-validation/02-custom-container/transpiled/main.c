@@ -5,13 +5,11 @@
 
 size_t LinkedList_size(struct LinkedList * this);
 bool LinkedList_isEmpty(struct LinkedList * this);
-void LinkedList_push_back(struct LinkedList * this, const int * value);
+void LinkedList_push_back_const_int_ref(struct LinkedList * this, const int * value);
 int LinkedList_front(struct LinkedList * this);
-void LinkedList_push_front(struct LinkedList * this, const int * value);
+void LinkedList_push_front_const_int_ref(struct LinkedList * this, const int * value);
 void LinkedList_pop_front(struct LinkedList * this);
-void LinkedList_push_back_float_ref(struct LinkedList * this, const float * value);
-size_t LinkedList_size(struct LinkedList * this);
-float LinkedList_front(struct LinkedList * this);
+void LinkedList_push_back_const_float_ref(struct LinkedList * this, const float * value);
 int main() {
 	struct LinkedList_int list;
 	printf("LinkedList<int> Tests:\n");
@@ -44,7 +42,6 @@ int main() {
 ;
 }
 
-void LinkedList_int_Node__ctor(struct LinkedList_int_Node * this, int * value);
 void LinkedList_int_push_back(struct LinkedList_int * this, int * value) {
 	struct LinkedList_int_Node * newNode = malloc(sizeof(struct LinkedList_int_Node));
 	if (this->tail == 0) 	{
@@ -108,11 +105,6 @@ void LinkedList_int_clear(struct LinkedList_int * this) {
 	this->count = 0;
 }
 
-struct LinkedList_int_Node * newNode = malloc(sizeof(struct LinkedList_int_Node));
-struct LinkedList_int_Node * newNode = malloc(sizeof(struct LinkedList_int_Node));
-struct LinkedList_int_Node * temp = this->head;
-struct LinkedList_int_Node * temp = this->head;
-void LinkedList_float_Node__ctor(struct LinkedList_float_Node * this, float * value);
 void LinkedList_float_push_back(struct LinkedList_float * this, float * value) {
 	struct LinkedList_float_Node * newNode = malloc(sizeof(struct LinkedList_float_Node));
 	if (this->tail == 0) 	{

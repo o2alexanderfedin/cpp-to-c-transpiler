@@ -85,4 +85,39 @@ public:
     clang::TranslationUnitDecl* createTranslationUnit() {
         return clang::TranslationUnitDecl::Create(*Context);
     }
+
+    /**
+     * @brief Get the shared constructor map (mangled name -> C function)
+     * @return Reference to the shared ctorMap
+     *
+     * This map is shared across all source files to enable multi-file constructor calls.
+     * Uses mangled names as keys (not pointers) to work across different C++ ASTContexts.
+     */
+    std::map<std::string, clang::FunctionDecl *>& getCtorMap() { return ctorMap; }
+
+    /**
+     * @brief Get the shared method map (mangled name -> C function)
+     * @return Reference to the shared methodMap
+     *
+     * This map is shared across all source files to enable multi-file method calls.
+     * Uses mangled names as keys (not pointers) to work across different C++ ASTContexts.
+     */
+    std::map<std::string, clang::FunctionDecl *>& getMethodMap() { return methodMap; }
+
+    /**
+     * @brief Get the shared destructor map (mangled name -> C function)
+     * @return Reference to the shared dtorMap
+     *
+     * This map is shared across all source files to enable multi-file destructor calls.
+     * Uses mangled names as keys (not pointers) to work across different C++ ASTContexts.
+     */
+    std::map<std::string, clang::FunctionDecl *>& getDtorMap() { return dtorMap; }
+
+private:
+    // Shared maps for multi-file support (Bug Fix: use string keys to work across ASTContexts)
+    // Each file has its own C++ ASTContext, so we can't use C++ AST pointers as keys.
+    // Instead, we use mangled names which are stable across contexts.
+    std::map<std::string, clang::FunctionDecl *> ctorMap;
+    std::map<std::string, clang::FunctionDecl *> methodMap;
+    std::map<std::string, clang::FunctionDecl *> dtorMap;
 };
