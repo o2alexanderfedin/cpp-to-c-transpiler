@@ -168,6 +168,11 @@ CppToCVisitor::CppToCVisitor(ASTContext &Context, CNodeBuilder &Builder,
 
 // Phase 47: Enum Class Translation using EnumTranslator handler
 bool CppToCVisitor::VisitEnumDecl(EnumDecl *ED) {
+  // Phase 47 (Bug Fix): Record enum declaration in FileOriginTracker
+  // This populates fileCategories map, enabling getOriginFile() to work
+  // Following existing pattern from VisitCXXRecordDecl (line 296)
+  fileOriginTracker.recordDeclaration(ED);
+
   // Skip declarations from non-transpilable files (system headers, etc.)
   if (!fileOriginTracker.shouldTranspile(ED)) {
     return true;
@@ -198,9 +203,28 @@ bool CppToCVisitor::VisitEnumDecl(EnumDecl *ED) {
     return false;
   }
 
+  // Phase 47 (Bug Fix): Smart filtering for cross-file enum definitions
+  // Different strategy than structs:
+  // Enums from headers should be included in FIRST .cpp file that uses them
+  // Check if this enum was already added to ANY C_TU via global tracking
+  // For now, simpler approach: Only add enum if it's from main file OR if from header
+  // and this is the first time we've seen it in this transpilation session
+
+  // Simple rule: Add enum if it's from the main source file being transpiled
+  // Skip if it's from a user header (will be included via #include)
+  bool shouldAddToTU = !fileOriginTracker.isFromUserHeader(ED);
+
+  if (!shouldAddToTU) {
+    llvm::outs() << "  -> enum " << ED->getName() << " NOT added to C_TU "
+                 << "(from user header, will be included via #include)\n";
+  }
+
   // BUG #2 FIX: Add enum to per-file C_TranslationUnit for emission
   // EnumTranslator adds enum to shared TU, but we need it in per-file C_TU
-  C_TranslationUnit->addDecl(C_Enum);
+  // Phase 47 (Bug Fix): Only add if shouldAddToTU (prevents duplicates)
+  if (shouldAddToTU) {
+    C_TranslationUnit->addDecl(C_Enum);
+  }
 
   // Note: EnumTranslator already registers enum and constant mappings in ctx
   // But CppToCVisitor still uses enumConstantMap for backward compatibility

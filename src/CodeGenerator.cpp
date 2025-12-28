@@ -103,6 +103,8 @@ void CodeGenerator::printDecl(Decl *D, bool declarationOnly) {
         // Bug #23: Print enum as typedef enum for C compatibility
         // BUG #2 FIX: Enums should only be in header files (like structs)
         // Enum definitions are type definitions, not function implementations
+        // Phase 47 (Bug Fix): Enum deduplication is now handled in CppToCVisitor::VisitEnumDecl
+        // by filtering which enums are added to C_TranslationUnit based on file basenames
         if (declarationOnly) {
             printEnumDecl(ED);
         }
