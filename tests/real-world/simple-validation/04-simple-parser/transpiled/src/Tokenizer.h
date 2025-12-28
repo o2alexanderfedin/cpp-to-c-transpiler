@@ -1,4 +1,4 @@
-// Generated from: /Users/alexanderfedin/Projects/hapyy/hupyy-cpp-to-c/tests/real-world/simple-validation/04-simple-parser/src/Tokenizer.cpp
+// Generated from: /Users/alexanderfedin/Projects/hapyy/hupyy-cpp-to-c/tests/real-world/simple-validation/04-simple-parser/./src/Tokenizer.cpp
 // Header file
 
 #pragma once
@@ -21,7 +21,7 @@ typedef enum {
     TokenType__EndOfInput = 5
 } TokenType;
 static void Token__ctor_copy(struct Token * this, const struct Token * other);
-void Token__ctor_2(struct Token * this, TokenType t, int v);
+void Token__ctor_2(struct Token * this, int t, int v);
 struct Tokenizer {
 	const char * input;
 	int position;

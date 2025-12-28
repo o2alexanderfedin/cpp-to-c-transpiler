@@ -8,13 +8,13 @@ static void StateMachine__ctor_copy(struct StateMachine * this, const struct Sta
 	this->transitionCount = other->transitionCount;
 }
 
-void StateMachine__ctor_1(struct StateMachine * this, GameState initialState) {
+void StateMachine__ctor_1(struct StateMachine * this, int initialState) {
 	this->currentState = initialState;
 	this->transitionCount = 0;
 }
 
-bool StateMachine_isValidTransition_GameState_GameState(struct StateMachine * this, GameState from, GameState to);
-GameState StateMachine_getCurrentState(struct StateMachine * this) {
+bool StateMachine_isValidTransition_GameState_GameState(struct StateMachine * this, int from, int to);
+int StateMachine_getCurrentState(struct StateMachine * this) {
 	return this->currentState;
 ;
 }
@@ -24,7 +24,7 @@ int StateMachine_getTransitionCount(struct StateMachine * this) {
 ;
 }
 
-bool StateMachine_isValidTransition_GameState_GameState(struct StateMachine * this, GameState from, GameState to) {
+bool StateMachine_isValidTransition_GameState_GameState(struct StateMachine * this, int from, int to) {
 	switch (from) 	{
 		case GameState__Menu:
 			return to == GameState__Playing;

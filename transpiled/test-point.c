@@ -8,7 +8,7 @@ static void Point__ctor_copy(struct Point * this, const struct Point * other) {
 	this->y = other->y;
 }
 
-void Point__ctor(struct Point * this, int x, int y) {
+void Point__ctor_2(struct Point * this, int x, int y) {
 	this->x = x;
 	this->y = y;
 }

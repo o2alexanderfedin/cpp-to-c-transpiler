@@ -22,8 +22,8 @@ struct StateMachine {
 	int transitionCount;
 };
 static void StateMachine__ctor_copy(struct StateMachine * this, const struct StateMachine * other);
-void StateMachine__ctor_1(struct StateMachine * this, GameState initialState);
-bool StateMachine_isValidTransition_GameState_GameState(struct StateMachine * this, GameState from, GameState to);
-GameState StateMachine_getCurrentState(struct StateMachine * this);
+void StateMachine__ctor_1(struct StateMachine * this, int initialState);
+bool StateMachine_isValidTransition_GameState_GameState(struct StateMachine * this, int from, int to);
+int StateMachine_getCurrentState(struct StateMachine * this);
 int StateMachine_getTransitionCount(struct StateMachine * this);
-bool StateMachine_isValidTransition_GameState_GameState(struct StateMachine * this, GameState from, GameState to);
+bool StateMachine_isValidTransition_GameState_GameState(struct StateMachine * this, int from, int to);

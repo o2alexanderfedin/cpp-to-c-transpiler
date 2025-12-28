@@ -3,7 +3,7 @@
 
 #include "main.h"
 
-size_t LinkedList_size(struct LinkedList * this);
+unsigned long LinkedList_size(struct LinkedList * this);
 bool LinkedList_isEmpty(struct LinkedList * this);
 void LinkedList_push_back_const_int_ref(struct LinkedList * this, const int * value);
 int LinkedList_front(struct LinkedList * this);

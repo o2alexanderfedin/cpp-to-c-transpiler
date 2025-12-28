@@ -20,9 +20,7 @@ int fibonacci(int n) {
 	}
 
 	int a = 0;
-
 	int b = 1;
-
 	for (int i = 2; i <= n; i++) {
         int temp = a + b;
         a = b;
@@ -40,7 +38,6 @@ int findMax(int * arr, int size) {
 	}
 
 	int max = arr[0];
-
 	for (int i = 1; i < size; i++) {
         if (arr[i] > max) {
                 max = arr[i];

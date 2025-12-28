@@ -22,7 +22,7 @@ static void __cxx_exception_frame__ctor_default(struct __cxx_exception_frame * t
 }
 
 static void __cxx_exception_frame__ctor_copy(struct __cxx_exception_frame * this, const struct __cxx_exception_frame * other) {
-	this->jmpbuf = other->jmpbuf;
+	memcpy(&this->jmpbuf, &other->jmpbuf, sizeof this->jmpbuf);
 	this->next = other->next;
 	this->actions = other->actions;
 	this->exception_object = other->exception_object;
@@ -30,12 +30,23 @@ static void __cxx_exception_frame__ctor_copy(struct __cxx_exception_frame * this
 }
 
 extern void cxx_throw(void * exception, const char * type_info) {
-	struct __cxx_exception_frame *frame = __cxx_exception_stack;
+	struct __cxx_exception_frame * frame = __cxx_exception_stack;
+	if (frame == __null) 	{
+		fprintf(__stderrp, "Uncaught exception: %s\n", type_info);
+		abort();
+	}
 
-	const struct __cxx_action_entry *action = frame->actions;
+	const struct __cxx_action_entry * action = frame->actions;
+	if (action != __null) 	{
+		while (action->destructor != __null) 		{
+			action->destructor(action->object);
+			action++;
+		}
+	}
 
 	__cxx_exception_stack = frame->next;
 	frame->exception_object = exception;
 	frame->exception_type = type_info;
+	longjmp(frame->jmpbuf, 1);
 }
 

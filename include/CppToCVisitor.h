@@ -291,6 +291,11 @@ public:
   // Visit compound statements for scope tracking (Story #46)
   bool VisitCompoundStmt(clang::CompoundStmt *CS);
 
+  // Phase 40 (Bug Fix): Type translation across ASTContexts
+  // Translates a QualType from C++ ASTContext to equivalent type in C ASTContext
+  // Handles: builtins, record types, pointers, const, references->pointers
+  clang::QualType translateTypeToCContext(clang::QualType CppType);
+
   // Expression translation (Story #19)
   clang::Expr *translateExpr(clang::Expr *E);
   clang::Expr *translateDeclRefExpr(clang::DeclRefExpr *DRE);

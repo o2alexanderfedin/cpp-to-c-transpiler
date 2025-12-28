@@ -1,4 +1,4 @@
-// Generated from: /Users/alexanderfedin/Projects/hapyy/hupyy-cpp-to-c/tests/real-world/simple-validation/04-simple-parser/src/Tokenizer.cpp
+// Generated from: /Users/alexanderfedin/Projects/hapyy/hupyy-cpp-to-c/tests/real-world/simple-validation/04-simple-parser/./src/Tokenizer.cpp
 // Implementation file
 
 #include "Tokenizer.h"
@@ -8,7 +8,7 @@ static void Token__ctor_copy(struct Token * this, const struct Token * other) {
 	this->value = other->value;
 }
 
-void Token__ctor_2(struct Token * this, TokenType t, int v) {
+void Token__ctor_2(struct Token * this, int t, int v) {
 	this->type = t;
 	this->value = v;
 }

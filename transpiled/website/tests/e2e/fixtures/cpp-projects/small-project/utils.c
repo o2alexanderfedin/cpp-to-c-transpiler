@@ -4,8 +4,6 @@
 #include "utils.h"
 
 void helper() {
-}
-
-void helper_1() {
+	operator<<(operator<<(std::cout, "Helper function called"), std::endl);
 }
 

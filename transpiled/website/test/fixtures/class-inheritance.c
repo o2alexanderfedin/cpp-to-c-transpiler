@@ -8,7 +8,7 @@ static void Shape__ctor_copy(struct Shape * this, const struct Shape * other) {
 	this->height = other->height;
 }
 
-void Shape__ctor(struct Shape * this, int w, int h) {
+void Shape__ctor_2(struct Shape * this, int w, int h) {
 	this = &__vtable_Shape;
 	this->width = w;
 	this->height = h;
@@ -27,16 +27,16 @@ int Shape_getHeight(struct Shape * this) {
 static void Rectangle__ctor_copy(struct Rectangle * this, const struct Rectangle * other) {
 }
 
-void Rectangle__ctor(struct Rectangle * this, int w, int h) {
+void Rectangle__ctor_2(struct Rectangle * this, int w, int h) {
 	this = &__vtable_Rectangle;
-	Shape__ctor(this, w, h);
+	Shape__ctor_2(this, w, h);
 }
 
 static void Triangle__ctor_copy(struct Triangle * this, const struct Triangle * other) {
 }
 
-void Triangle__ctor(struct Triangle * this, int w, int h) {
+void Triangle__ctor_2(struct Triangle * this, int w, int h) {
 	this = &__vtable_Triangle;
-	Shape__ctor(this, w, h);
+	Shape__ctor_2(this, w, h);
 }
 

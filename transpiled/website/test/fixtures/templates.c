@@ -10,7 +10,6 @@ T maximum(T a, T b) {
 
 void swapValues(T * a, T * b) {
 	T temp = a;
-
 	a = b;
 	b = temp;
 }

@@ -686,15 +686,10 @@ bool CppToCVisitor::VisitCXXMethodDecl(CXXMethodDecl *MD) {
 
   // Add original parameters - convert C++ types to C types
   // Phase 40 (Bug Fix): Convert references to pointers for C compatibility
+  // Use translateTypeToCContext for proper cross-ASTContext type handling
   for (ParmVarDecl *Param : MD->parameters()) {
     QualType CppType = Param->getType();
-    QualType CType = CppType;
-
-    // Convert references to pointers
-    if (CppType->isReferenceType()) {
-      QualType PointeeType = CppType.getNonReferenceType();
-      CType = Builder.ptrType(PointeeType);
-    }
+    QualType CType = translateTypeToCContext(CppType);
 
     ParmVarDecl *CParam = Builder.param(CType, Param->getName());
     params.push_back(CParam);
@@ -704,11 +699,8 @@ bool CppToCVisitor::VisitCXXMethodDecl(CXXMethodDecl *MD) {
   std::string funcName = Mangler.mangleName(MD);
 
   // Phase 40 (Bug Fix): Convert return type (references → pointers)
-  QualType RetType = MD->getReturnType();
-  if (RetType->isReferenceType()) {
-    QualType PointeeType = RetType.getNonReferenceType();
-    RetType = Builder.ptrType(PointeeType);
-  }
+  // Use translateTypeToCContext for proper cross-ASTContext type handling
+  QualType RetType = translateTypeToCContext(MD->getReturnType());
 
   // Create C function (body will be added below)
   FunctionDecl *CFunc =
@@ -876,16 +868,9 @@ bool CppToCVisitor::VisitCXXConstructorDecl(CXXConstructorDecl *CD) {
   params.push_back(thisParam);
 
   // Add original parameters - convert C++ types to C types
-  // Phase 40 (Bug Fix): Convert references to pointers for C compatibility
+  // Phase 40 (Bug Fix): Use translateTypeToCContext for proper cross-ASTContext type handling
   for (ParmVarDecl *Param : CD->parameters()) {
-    QualType CppType = Param->getType();
-    QualType CType = CppType;
-
-    // Convert references to pointers
-    if (CppType->isReferenceType()) {
-      QualType PointeeType = CppType.getNonReferenceType();
-      CType = Builder.ptrType(PointeeType);
-    }
+    QualType CType = translateTypeToCContext(Param->getType());
 
     ParmVarDecl *CParam = Builder.param(CType, Param->getName());
     params.push_back(CParam);
@@ -1341,15 +1326,8 @@ bool CppToCVisitor::VisitFunctionDecl(FunctionDecl *FD) {
   // Build parameter list for C function
   llvm::SmallVector<ParmVarDecl *, 4> cParams;
   for (ParmVarDecl *Param : FD->parameters()) {
-    // Phase 40 (Bug Fix): Convert C++ types to C types
-    QualType CppType = Param->getType();
-    QualType CType = CppType;
-
-    // Convert references to pointers
-    if (CppType->isReferenceType()) {
-      QualType PointeeType = CppType.getNonReferenceType();
-      CType = Builder.ptrType(PointeeType);
-    }
+    // Phase 40 (Bug Fix): Use translateTypeToCContext for proper cross-ASTContext type handling
+    QualType CType = translateTypeToCContext(Param->getType());
 
     ParmVarDecl *CParam = Builder.param(CType, Param->getName());
     cParams.push_back(CParam);
@@ -1365,12 +1343,8 @@ bool CppToCVisitor::VisitFunctionDecl(FunctionDecl *FD) {
   // Check if function is variadic
   bool isVariadic = FD->isVariadic();
 
-  // Phase 40 (Bug Fix): Convert return type (references → pointers)
-  QualType RetType = FD->getReturnType();
-  if (RetType->isReferenceType()) {
-    QualType PointeeType = RetType.getNonReferenceType();
-    RetType = Builder.ptrType(PointeeType);
-  }
+  // Phase 40 (Bug Fix): Convert return type - use translateTypeToCContext
+  QualType RetType = translateTypeToCContext(FD->getReturnType());
 
   // Create C function declaration with mangled name
   FunctionDecl *CFunc =
@@ -2367,6 +2341,88 @@ void CppToCVisitor::injectDestructorsAtScopeExit(
 }
 
 // ============================================================================
+// Phase 40 (Bug Fix): Type Translation Across ASTContexts
+// ============================================================================
+
+// Translates a QualType from C++ ASTContext to equivalent type in C ASTContext
+// This is CRITICAL because QualTypes from one ASTContext cannot be used in another
+QualType CppToCVisitor::translateTypeToCContext(QualType CppType) {
+  if (CppType.isNull()) {
+    return QualType();
+  }
+
+  // Preserve const qualification
+  bool isConst = CppType.isConstQualified();
+  QualType CppUnqualType = CppType.getUnqualifiedType();
+
+  QualType CType;
+
+  // Handle reference types - convert to pointers
+  if (CppUnqualType->isLValueReferenceType()) {
+    QualType CppPointee = CppUnqualType.getNonReferenceType();
+    QualType CPointee = translateTypeToCContext(CppPointee);
+    CType = Builder.ptrType(CPointee);
+  }
+  // Handle pointer types - recursively translate pointee
+  else if (const PointerType *PT = CppUnqualType->getAs<PointerType>()) {
+    QualType CppPointee = PT->getPointeeType();
+    QualType CPointee = translateTypeToCContext(CppPointee);
+    CType = Builder.ptrType(CPointee);
+  }
+  // Handle record types (struct/class) - use name to recreate in C context
+  else if (const RecordType *RT = CppUnqualType->getAs<RecordType>()) {
+    RecordDecl *RD = RT->getDecl();
+    std::string name = RD->getNameAsString();
+    CType = Builder.structType(name);
+  }
+  // Handle builtin types - map to C context builtins
+  else if (const BuiltinType *BT = CppUnqualType->getAs<BuiltinType>()) {
+    switch (BT->getKind()) {
+      case BuiltinType::Void:       CType = Context.VoidTy; break;
+      case BuiltinType::Bool:       CType = Context.BoolTy; break;
+      case BuiltinType::Char_S:
+      case BuiltinType::Char_U:     CType = Context.CharTy; break;
+      case BuiltinType::SChar:      CType = Context.SignedCharTy; break;
+      case BuiltinType::UChar:      CType = Context.UnsignedCharTy; break;
+      case BuiltinType::Short:      CType = Context.ShortTy; break;
+      case BuiltinType::UShort:     CType = Context.UnsignedShortTy; break;
+      case BuiltinType::Int:        CType = Context.IntTy; break;
+      case BuiltinType::UInt:       CType = Context.UnsignedIntTy; break;
+      case BuiltinType::Long:       CType = Context.LongTy; break;
+      case BuiltinType::ULong:      CType = Context.UnsignedLongTy; break;
+      case BuiltinType::LongLong:   CType = Context.LongLongTy; break;
+      case BuiltinType::ULongLong:  CType = Context.UnsignedLongLongTy; break;
+      case BuiltinType::Float:      CType = Context.FloatTy; break;
+      case BuiltinType::Double:     CType = Context.DoubleTy; break;
+      case BuiltinType::LongDouble: CType = Context.LongDoubleTy; break;
+      default:
+        llvm::outs() << "WARNING: Unhandled builtin type kind, using int as fallback\n";
+        CType = Context.IntTy;
+        break;
+    }
+  }
+  // Handle enum types - use name to recreate
+  else if (const EnumType *ET = CppUnqualType->getAs<EnumType>()) {
+    EnumDecl *ED = ET->getDecl();
+    std::string name = ED->getNameAsString();
+    // For enums, we need to find the C enum declaration
+    // For now, use the underlying type (int)
+    CType = Context.IntTy;
+  }
+  // Fallback for other types
+  else {
+    llvm::outs() << "WARNING: Unhandled type in translateTypeToCContext, using int as fallback\n";
+    CType = Context.IntTy;
+  }
+
+  // Reapply const qualification if needed
+  if (isConst && !CType.isNull()) {
+    CType.addConst();
+  }
+
+  return CType;
+}
+
 // Story #19: Member Access Transformation - Expression Translation
 // ============================================================================
 
@@ -2954,27 +3010,16 @@ Expr *CppToCVisitor::translateCallExpr(CallExpr *CE) {
         params.push_back(thisParam);
 
         // Add original parameters - convert C++ types to C types
-        // Phase 40 (Bug Fix): Convert references to pointers to match arg conversion
+        // Phase 40 (Bug Fix): Use translateTypeToCContext for proper cross-ASTContext type handling
         for (ParmVarDecl *Param : Method->parameters()) {
-          QualType CppType = Param->getType();
-          QualType CType = CppType;
-
-          // Convert references to pointers
-          if (CppType->isReferenceType()) {
-            QualType PointeeType = CppType.getNonReferenceType();
-            CType = Builder.ptrType(PointeeType);
-          }
+          QualType CType = translateTypeToCContext(Param->getType());
 
           ParmVarDecl *CParam = Builder.param(CType, Param->getName());
           params.push_back(CParam);
         }
 
-        // Phase 40 (Bug Fix): Convert return type (references → pointers)
-        QualType RetType = Method->getReturnType();
-        if (RetType->isReferenceType()) {
-          QualType PointeeType = RetType.getNonReferenceType();
-          RetType = Builder.ptrType(PointeeType);
-        }
+        // Phase 40 (Bug Fix): Convert return type - use translateTypeToCContext
+        QualType RetType = translateTypeToCContext(Method->getReturnType());
 
         // Create function declaration
         FunctionDecl *CFuncDecl = Builder.funcDecl(funcName, RetType, params, nullptr);
@@ -3624,6 +3669,27 @@ Stmt *CppToCVisitor::translateDeclStmt(DeclStmt *DS) {
               // Create constructor function call
               Expr *CtorCall = Builder.call(CCtorFunc, args);
               statements.push_back(CtorCall);
+            }
+          } else if (Init && !CCE) {
+            // Phase 40 (Bug Fix): Handle non-constructor initializers
+            // Example: Vector3D sum = v1.add(v2); → struct Vector3D sum; sum = Vector3D_add(...);
+            llvm::outs() << "      Has non-constructor initializer (method call, etc.)\n";
+
+            // Translate the initializer expression
+            llvm::outs() << "      [DEBUG] About to translate initializer expr...\n";
+            Expr *TranslatedInit = translateExpr(Init);
+            llvm::outs() << "      [DEBUG] TranslatedInit = " << (void*)TranslatedInit << "\n";
+
+            if (TranslatedInit) {
+              // Create assignment: varRef = translatedInit
+              llvm::outs() << "      [DEBUG] Creating variable reference...\n";
+              DeclRefExpr *VarRef = Builder.ref(CVarDecl);
+              llvm::outs() << "      [DEBUG] Creating assignment...\n";
+              Expr *Assignment = Builder.assign(VarRef, TranslatedInit);
+              llvm::outs() << "      [DEBUG] Adding assignment to statements\n";
+              statements.push_back(Assignment);
+            } else {
+              llvm::outs() << "      [WARNING] translateExpr returned nullptr for initializer\n";
             }
           }
         } else {
