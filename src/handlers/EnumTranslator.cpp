@@ -27,7 +27,9 @@ clang::Decl* EnumTranslator::handleDecl(const clang::Decl* D, HandlerContext& ct
     clang::CNodeBuilder& builder = ctx.getBuilder();
 
     // Get enum name
-    llvm::StringRef enumName = ED->getNameAsString();
+    // CRITICAL: Use getName() not getNameAsString()!
+    // getNameAsString() returns temporary std::string, StringRef becomes dangling pointer
+    llvm::StringRef enumName = ED->getName();
     clang::IdentifierInfo& enumII = C_Ctx.Idents.get(enumName);
 
     // Determine if scoped (enum class)
@@ -102,7 +104,10 @@ clang::EnumConstantDecl* EnumTranslator::translateEnumConstant(
     clang::ASTContext& C_Ctx = ctx.getCContext();
 
     // Get constant name
-    llvm::StringRef originalName = ECD->getNameAsString();
+    // CRITICAL: Use getName() not getNameAsString()!
+    // getNameAsString() returns temporary std::string, StringRef becomes dangling pointer
+    // getName() returns StringRef to stable IdentifierInfo storage
+    llvm::StringRef originalName = ECD->getName();
 
     // Apply prefixing for scoped enums
     std::string constantName;

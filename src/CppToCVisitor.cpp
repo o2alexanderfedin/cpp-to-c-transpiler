@@ -355,7 +355,11 @@ bool CppToCVisitor::VisitCXXRecordDecl(CXXRecordDecl *D) {
   // Add derived class's own fields after base class fields and vptr
   for (FieldDecl *Field : D->fields()) {
     // Create C field with same type and name
-    FieldDecl *CField = Builder.fieldDecl(Field->getType(), Field->getName());
+    // CRITICAL: Translate field type from C++ context to C context!
+    // Field->getType() returns QualType from C++ ASTContext
+    // We must use translateTypeToCContext() to get equivalent type in C ASTContext
+    QualType CFieldType = translateTypeToCContext(Field->getType());
+    FieldDecl *CField = Builder.fieldDecl(CFieldType, Field->getName());
     fields.push_back(CField);
   }
 
@@ -864,8 +868,17 @@ bool CppToCVisitor::VisitCXXConstructorDecl(CXXConstructorDecl *CD) {
   std::vector<ParmVarDecl *> params;
 
   // Add 'this' parameter - use the existing C struct type
-  QualType thisType = Builder.ptrType(Context.getRecordType(CStruct));
+  // CRITICAL: Use C ASTContext (targetCtx.getContext()), NOT C++ Context!
+  // CStruct is from C context, so all types must also be from C context
+  // Context = C++ source ASTContext (member variable)
+  // CTargetContext = C target ASTContext (from targetCtx)
+  ASTContext &CTargetContext = targetCtx.getContext();
+  assert(CStruct != nullptr && "VisitCXXConstructorDecl: CStruct is null!");
+  assert(&CStruct->getASTContext() == &CTargetContext && "VisitCXXConstructorDecl: CStruct is from wrong ASTContext!");
+  QualType thisType = Builder.ptrType(CTargetContext.getRecordType(CStruct));
+  assert(!thisType.isNull() && "VisitCXXConstructorDecl: thisType is null!");
   ParmVarDecl *thisParam = Builder.param(thisType, "this");
+  assert(thisParam != nullptr && "VisitCXXConstructorDecl: thisParam is null!");
   params.push_back(thisParam);
 
   // Add original parameters - convert C++ types to C types
@@ -1113,9 +1126,18 @@ bool CppToCVisitor::VisitCXXDestructorDecl(CXXDestructorDecl *DD) {
   }
 
   // Build parameter list: this pointer only
+  // CRITICAL: Use C ASTContext (targetCtx.getContext()), NOT C++ Context!
+  // CStruct is from C context, so all types must also be from C context
+  // Context = C++ source ASTContext (member variable)
+  // CTargetContext = C target ASTContext (from targetCtx)
+  ASTContext &CTargetContext = targetCtx.getContext();
+  assert(CStruct != nullptr && "VisitCXXDestructorDecl: CStruct is null!");
+  assert(&CStruct->getASTContext() == &CTargetContext && "VisitCXXDestructorDecl: CStruct is from wrong ASTContext!");
   std::vector<ParmVarDecl *> params;
-  QualType thisType = Builder.ptrType(Context.getRecordType(CStruct));
+  QualType thisType = Builder.ptrType(CTargetContext.getRecordType(CStruct));
+  assert(!thisType.isNull() && "VisitCXXDestructorDecl: thisType is null!");
   ParmVarDecl *thisParam = Builder.param(thisType, "this");
+  assert(thisParam != nullptr && "VisitCXXDestructorDecl: thisParam is null!");
   params.push_back(thisParam);
 
   // Generate destructor name using name mangling
@@ -2369,6 +2391,32 @@ QualType CppToCVisitor::translateTypeToCContext(QualType CppType) {
     QualType CPointee = translateTypeToCContext(CppPointee);
     CType = Builder.ptrType(CPointee);
   }
+  // Handle array types - translate element type and preserve dimensions
+  else if (CppUnqualType->isArrayType()) {
+    const ArrayType *AT = CppUnqualType->getAsArrayTypeUnsafe();
+    if (const ConstantArrayType *CAT = dyn_cast<ConstantArrayType>(AT)) {
+      QualType CppElementType = CAT->getElementType();
+      QualType CElementType = translateTypeToCContext(CppElementType);
+
+      // Get array size
+      uint64_t Size = CAT->getSize().getZExtValue();
+
+      // Create constant array type in C context
+      ASTContext &CContext = targetCtx.getContext();
+      llvm::APInt ArraySize(32, Size);
+      CType = CContext.getConstantArrayType(
+          CElementType,
+          ArraySize,
+          nullptr,  // No size expression
+          ArraySizeModifier::Normal,
+          0  // No index type qualifiers
+      );
+    } else {
+      // Variable length array or other array type - fallback to int for now
+      llvm::outs() << "WARNING: Non-constant array type not handled, using int as fallback\n";
+      CType = targetCtx.getContext().IntTy;
+    }
+  }
   // Handle record types (struct/class) - use name to recreate in C context
   else if (const RecordType *RT = CppUnqualType->getAs<RecordType>()) {
     RecordDecl *RD = RT->getDecl();
@@ -2436,6 +2484,11 @@ QualType CppToCVisitor::translateTypeToCContext(QualType CppType) {
 Expr *CppToCVisitor::translateExpr(Expr *E) {
   if (!E)
     return nullptr;
+
+  // CRITICAL: Get C ASTContext for all C AST node allocations
+  // Context = C++ source ASTContext (member variable)
+  // CTargetContext = C target ASTContext (from targetCtx)
+  ASTContext &CTargetContext = targetCtx.getContext();
 
   // Bug #37: Handle ConstantExpr - unwrap and translate subexpression
   // ConstantExpr appears in case labels: case GameState::Menu
@@ -2521,13 +2574,15 @@ Expr *CppToCVisitor::translateExpr(Expr *E) {
 
     // Create malloc call: malloc(sizeof(Type))
     // 1. Create sizeof(Type) expression using UnaryExprOrTypeTraitExpr
-    UnaryExprOrTypeTraitExpr *SizeOfExpr = new (Context) UnaryExprOrTypeTraitExpr(
+    // CRITICAL: Use C ASTContext for C AST node allocation!
+    UnaryExprOrTypeTraitExpr *SizeOfExpr = new (CTargetContext) UnaryExprOrTypeTraitExpr(
         UETT_SizeOf,
-        Context.getTrivialTypeSourceInfo(AllocatedType, SourceLocation()),
-        Context.getSizeType(),
+        CTargetContext.getTrivialTypeSourceInfo(AllocatedType, SourceLocation()),
+        CTargetContext.getSizeType(),
         SourceLocation(),
         SourceLocation()
     );
+    assert(SizeOfExpr != nullptr && "translateExpr: SizeOfExpr is null!");
 
     // 2. Create malloc call using Builder (takes function name as string)
     std::vector<Expr*> MallocArgs;
@@ -2607,10 +2662,13 @@ Expr *CppToCVisitor::translateExpr(Expr *E) {
       Expr *NewIdx = TranslatedIdx ? TranslatedIdx : Idx;
 
       // Create new ArraySubscriptExpr using Clang API
-      return new (Context) ArraySubscriptExpr(
+      // CRITICAL: Use C ASTContext for C AST node allocation!
+      ArraySubscriptExpr *NewASE = new (CTargetContext) ArraySubscriptExpr(
           NewBase, NewIdx, ASE->getType(),
           ASE->getValueKind(), ASE->getObjectKind(),
           ASE->getRBracketLoc());
+      assert(NewASE != nullptr && "translateExpr: ArraySubscriptExpr is null!");
+      return NewASE;
     }
     return ASE;
   }
@@ -2652,13 +2710,16 @@ Expr *CppToCVisitor::translateExpr(Expr *E) {
           QualType CStructType = Context.getRecordType(CRecord);
 
           // Create new sizeof expression with substituted type
-          return new (Context) UnaryExprOrTypeTraitExpr(
+          // CRITICAL: Use C ASTContext for C AST node allocation!
+          UnaryExprOrTypeTraitExpr *NewSizeOf = new (CTargetContext) UnaryExprOrTypeTraitExpr(
               UETT_SizeOf,
-              Context.getTrivialTypeSourceInfo(CStructType, SourceLocation()),
-              Context.getSizeType(),
+              CTargetContext.getTrivialTypeSourceInfo(CStructType, SourceLocation()),
+              CTargetContext.getSizeType(),
               SourceLocation(),
               SourceLocation()
           );
+          assert(NewSizeOf != nullptr && "translateExpr: sizeof substitution is null!");
+          return NewSizeOf;
         }
       }
     }
@@ -2720,7 +2781,8 @@ Expr *CppToCVisitor::translateExpr(Expr *E) {
     Expr *SubExpr = PE->getSubExpr();
     Expr *TranslatedSubExpr = translateExpr(SubExpr);
     if (TranslatedSubExpr && TranslatedSubExpr != SubExpr) {
-      return new (Context) ParenExpr(SourceLocation(), SourceLocation(), TranslatedSubExpr);
+      // CRITICAL: Use C ASTContext for C AST node allocation!
+      return new (CTargetContext) ParenExpr(SourceLocation(), SourceLocation(), TranslatedSubExpr);
     }
     return PE;  // Return original if subexpr unchanged
   }
@@ -3301,14 +3363,16 @@ Expr *CppToCVisitor::translateConstructExpr(CXXConstructExpr *CCE) {
 
   // Bug fix #6: Create InitListExpr for C struct initialization
   // This generates {arg1, arg2, ...} syntax
-  InitListExpr *InitList = new (Context) InitListExpr(
-      Context, SourceLocation(), translatedArgs, SourceLocation());
+  // CRITICAL: Use C ASTContext for C AST node allocation!
+  ASTContext &CTargetContext = targetCtx.getContext();
+  InitListExpr *InitList = new (CTargetContext) InitListExpr(
+      CTargetContext, SourceLocation(), translatedArgs, SourceLocation());
   InitList->setType(resultType);
 
   // Wrap in CompoundLiteralExpr to create (struct Type){...}
   // This is the proper C99 syntax for struct literals in return statements
-  CompoundLiteralExpr *CompoundLit = new (Context) CompoundLiteralExpr(
-      SourceLocation(), Context.getTrivialTypeSourceInfo(resultType),
+  CompoundLiteralExpr *CompoundLit = new (CTargetContext) CompoundLiteralExpr(
+      SourceLocation(), CTargetContext.getTrivialTypeSourceInfo(resultType),
       resultType, VK_PRValue, InitList, false);
 
   return CompoundLit;
@@ -3322,6 +3386,11 @@ Expr *CppToCVisitor::translateConstructExpr(CXXConstructExpr *CCE) {
 Stmt *CppToCVisitor::translateStmt(Stmt *S) {
   if (!S)
     return nullptr;
+
+  // CRITICAL: Get C ASTContext for all C AST node allocations
+  // Context = C++ source ASTContext (member variable)
+  // CTargetContext = C target ASTContext (from targetCtx)
+  ASTContext &CTargetContext = targetCtx.getContext();
 
   llvm::outs() << "[DEBUG Bug#26] translateStmt called, type: " << S->getStmtClassName() << "\n";
 
@@ -3355,8 +3424,9 @@ Stmt *CppToCVisitor::translateStmt(Stmt *S) {
     Stmt *TranslatedBody = Body ? translateStmt(Body) : nullptr;
 
     // Create new ForStmt with translated components
-    return new (Context) ForStmt(
-        Context, TranslatedInit, TranslatedCond, nullptr, TranslatedInc,
+    // CRITICAL: Use C ASTContext for C AST node allocation!
+    return new (CTargetContext) ForStmt(
+        CTargetContext, TranslatedInit, TranslatedCond, nullptr, TranslatedInc,
         TranslatedBody, FS->getForLoc(), FS->getLParenLoc(), FS->getRParenLoc());
   }
 
@@ -3422,7 +3492,8 @@ Stmt *CppToCVisitor::translateStmt(Stmt *S) {
 
     Stmt *TranslatedSubStmt = SubStmt ? translateStmt(SubStmt) : nullptr;
 
-    return new (Context) DefaultStmt(DS->getDefaultLoc(), DS->getColonLoc(), TranslatedSubStmt);
+    // CRITICAL: Use C ASTContext for C AST node allocation!
+    return new (CTargetContext) DefaultStmt(DS->getDefaultLoc(), DS->getColonLoc(), TranslatedSubStmt);
   }
 
   // Bug #26: Recursively visit all children to ensure nested return statements are seen
@@ -4211,8 +4282,19 @@ FunctionDecl *CppToCVisitor::generateDefaultConstructor(CXXRecordDecl *D) {
 
   // Build parameter list: only 'this' parameter
   std::vector<ParmVarDecl *> params;
-  QualType thisType = Builder.ptrType(Context.getRecordType(CStruct));
+
+  // CRITICAL: Use C ASTContext (targetCtx.getContext()), NOT C++ Context!
+  // CStruct is from C context, so all types must also be from C context
+  // Context = C++ source ASTContext (member variable)
+  // CTargetContext = C target ASTContext (from targetCtx)
+  ASTContext &CTargetContext = targetCtx.getContext();
+  assert(CStruct != nullptr && "generateDefaultConstructor: CStruct is null!");
+  // Validate CStruct is from C context, not C++ context
+  assert(&CStruct->getASTContext() == &CTargetContext && "generateDefaultConstructor: CStruct is from wrong ASTContext!");
+  QualType thisType = Builder.ptrType(CTargetContext.getRecordType(CStruct));
+  assert(!thisType.isNull() && "generateDefaultConstructor: thisType is null!");
   ParmVarDecl *thisParam = Builder.param(thisType, "this");
+  assert(thisParam != nullptr && "generateDefaultConstructor: thisParam is null!");
   params.push_back(thisParam);
 
   // Generate constructor name: Class__ctor_default
@@ -4250,12 +4332,18 @@ FunctionDecl *CppToCVisitor::generateDefaultConstructor(CXXRecordDecl *D) {
   }
 
   // 2. Initialize members in declaration order
-  for (FieldDecl *Field : D->fields()) {
+  // CRITICAL: Iterate C struct fields (CStruct), NOT C++ class fields (D)!
+  // D->fields() are from C++ ASTContext, CStruct->fields() are from C ASTContext
+  for (FieldDecl *Field : CStruct->fields()) {
+    assert(Field != nullptr && "generateDefaultConstructor: Field from CStruct is null!");
+    assert(&Field->getASTContext() == &CTargetContext && "generateDefaultConstructor: Field is from wrong ASTContext!");
     QualType fieldType = Field->getType();
+    assert(!fieldType.isNull() && "generateDefaultConstructor: fieldType is null!");
 
     // Create this->field member expression
     MemberExpr *ThisMember =
         Builder.arrowMember(Builder.ref(thisParam), Field->getName());
+    assert(ThisMember != nullptr && "generateDefaultConstructor: ThisMember is null!");
 
     if (fieldType->isRecordType()) {
       // Class-type member: call default constructor
@@ -4355,13 +4443,23 @@ FunctionDecl *CppToCVisitor::generateCopyConstructor(CXXRecordDecl *D) {
   // Build parameter list: this + other
   std::vector<ParmVarDecl *> params;
 
-  QualType thisType = Builder.ptrType(Context.getRecordType(CStruct));
+  // CRITICAL: Use C ASTContext (targetCtx.getContext()), NOT C++ Context!
+  // CStruct is from C context, so all types must also be from C context
+  // Context = C++ source ASTContext (member variable)
+  // CTargetContext = C target ASTContext (from targetCtx)
+  ASTContext &CTargetContext = targetCtx.getContext();
+  assert(CStruct != nullptr && "generateCopyConstructor: CStruct is null!");
+  // Validate CStruct is from C context, not C++ context
+  assert(&CStruct->getASTContext() == &CTargetContext && "generateCopyConstructor: CStruct is from wrong ASTContext!");
+  QualType thisType = Builder.ptrType(CTargetContext.getRecordType(CStruct));
+  assert(!thisType.isNull() && "generateCopyConstructor: thisType is null!");
   ParmVarDecl *thisParam = Builder.param(thisType, "this");
+  assert(thisParam != nullptr && "generateCopyConstructor: thisParam is null!");
   params.push_back(thisParam);
 
   // const struct Class *other
   QualType otherType =
-      Builder.ptrType(Context.getConstType(Context.getRecordType(CStruct)));
+      Builder.ptrType(CTargetContext.getConstType(CTargetContext.getRecordType(CStruct)));
   ParmVarDecl *otherParam = Builder.param(otherType, "other");
   params.push_back(otherParam);
 
@@ -4398,15 +4496,22 @@ FunctionDecl *CppToCVisitor::generateCopyConstructor(CXXRecordDecl *D) {
   }
 
   // 2. Copy members in declaration order
-  for (FieldDecl *Field : D->fields()) {
+  // CRITICAL: Iterate C struct fields (CStruct), NOT C++ class fields (D)!
+  // D->fields() are from C++ ASTContext, CStruct->fields() are from C ASTContext
+  for (FieldDecl *Field : CStruct->fields()) {
+    assert(Field != nullptr && "generateCopyConstructor: Field from CStruct is null!");
+    assert(&Field->getASTContext() == &CTargetContext && "generateCopyConstructor: Field is from wrong ASTContext!");
     QualType fieldType = Field->getType();
+    assert(!fieldType.isNull() && "generateCopyConstructor: fieldType is null!");
 
     // Create this->field and other->field member expressions
     MemberExpr *ThisMember =
         Builder.arrowMember(Builder.ref(thisParam), Field->getName());
+    assert(ThisMember != nullptr && "generateCopyConstructor: ThisMember is null!");
 
     MemberExpr *OtherMember =
         Builder.arrowMember(Builder.ref(otherParam), Field->getName());
+    assert(OtherMember != nullptr && "generateCopyConstructor: OtherMember is null!");
 
     if (fieldType->isRecordType()) {
       // Class-type member: call copy constructor
@@ -4474,20 +4579,21 @@ FunctionDecl *CppToCVisitor::generateCopyConstructor(CXXRecordDecl *D) {
       // memcpy(&this->field, &other->field, sizeof(this->field));
 
       // Get array size
+      // CRITICAL: Use C ASTContext for all C AST operations!
       const ConstantArrayType *ArrayTy =
-          Context.getAsConstantArrayType(fieldType);
+          CTargetContext.getAsConstantArrayType(fieldType);
       if (ArrayTy) {
         // Create memcpy function reference
         // We assume memcpy is available (added in generated headers)
-        IdentifierInfo *MemcpyIdent = &Context.Idents.get("memcpy");
+        IdentifierInfo *MemcpyIdent = &CTargetContext.Idents.get("memcpy");
         DeclarationName MemcpyName(MemcpyIdent);
 
         // Create a placeholder function decl for memcpy
         // void *memcpy(void *dest, const void *src, size_t n)
-        QualType VoidPtrTy = Context.getPointerType(Context.VoidTy);
-        QualType ConstVoidPtrTy = Context.getPointerType(
-            Context.getConstType(Context.VoidTy));
-        QualType SizeTy = Context.getSizeType();
+        QualType VoidPtrTy = CTargetContext.getPointerType(CTargetContext.VoidTy);
+        QualType ConstVoidPtrTy = CTargetContext.getPointerType(
+            CTargetContext.getConstType(CTargetContext.VoidTy));
+        QualType SizeTy = CTargetContext.getSizeType();
 
         std::vector<ParmVarDecl *> memcpyParams;
         memcpyParams.push_back(Builder.param(VoidPtrTy, "dest"));
@@ -4496,16 +4602,25 @@ FunctionDecl *CppToCVisitor::generateCopyConstructor(CXXRecordDecl *D) {
 
         FunctionDecl *MemcpyDecl = Builder.funcDecl(
             "memcpy", VoidPtrTy, memcpyParams, nullptr);
+        assert(MemcpyDecl != nullptr && "generateCopyConstructor: MemcpyDecl is null!");
 
         // Create arguments for memcpy call
         std::vector<Expr *> args;
+        assert(ThisMember != nullptr && "generateCopyConstructor: ThisMember is null before addrOf!");
+        assert(OtherMember != nullptr && "generateCopyConstructor: OtherMember is null before addrOf!");
         args.push_back(Builder.addrOf(ThisMember));    // dest
         args.push_back(Builder.addrOf(OtherMember));   // src
 
-        // sizeof(this->field)
-        Expr *SizeofExpr = new (Context) UnaryExprOrTypeTraitExpr(
-            UETT_SizeOf, ThisMember, Context.getSizeType(),
+        // sizeof(field_type) - use TYPE form, not expression form to avoid constant evaluation
+        // CRITICAL: Use type-based sizeof to avoid triggering Clang's constant evaluator
+        // which crashes when evaluating expressions across different ASTContexts
+        TypeSourceInfo *FieldTSI = CTargetContext.getTrivialTypeSourceInfo(
+            fieldType, SourceLocation());
+        assert(FieldTSI != nullptr && "generateCopyConstructor: FieldTSI is null!");
+        Expr *SizeofExpr = new (CTargetContext) UnaryExprOrTypeTraitExpr(
+            UETT_SizeOf, FieldTSI, CTargetContext.getSizeType(),
             SourceLocation(), SourceLocation());
+        assert(SizeofExpr != nullptr && "generateCopyConstructor: SizeofExpr is null!");
         args.push_back(SizeofExpr);
 
         // Create memcpy call
