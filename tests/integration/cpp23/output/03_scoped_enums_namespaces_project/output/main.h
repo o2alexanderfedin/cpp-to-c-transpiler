@@ -8,16 +8,6 @@
 #include <stdint.h>
 #include <stdbool.h>
 
-typedef enum {
-    Primary__Red = 0,
-    Primary__Green = 1,
-    Primary__Blue = 2
-} Primary;
-typedef enum {
-    Secondary__Cyan = 0,
-    Secondary__Magenta = 1,
-    Secondary__Yellow = 2
-} Secondary;
 struct Pixel {
 	Color::Primary primary;
 	int value;

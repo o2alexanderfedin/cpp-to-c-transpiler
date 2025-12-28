@@ -28,5 +28,5 @@ struct Enemy {
 };
 static void Enemy__ctor_copy(struct Enemy * this, const struct Enemy * other);
 void Enemy__dtor(struct Enemy * this);
-int Enemy_getDamage(struct Enemy * this);
 void Enemy__ctor(struct Enemy * this, float x, float y);
+int Enemy_getDamage(struct Enemy * this);

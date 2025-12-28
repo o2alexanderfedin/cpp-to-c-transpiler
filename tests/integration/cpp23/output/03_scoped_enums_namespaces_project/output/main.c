@@ -40,10 +40,8 @@ bool Pixel_isBlue(struct Pixel * this) {
 
 int main() {
 	struct Pixel redPixel;
-
 	Pixel__ctor(&redPixel, Primary__Red, 255);
 	struct Pixel greenPixel;
-
 	Pixel__ctor(&greenPixel, Primary__Green, 128);
 	return 0;
 ;

@@ -68,7 +68,6 @@ int Diamond_getDiamondValue(struct Diamond * this) {
 
 int main() {
 	struct Diamond d;
-
 	Diamond__ctor(&d, 10, 5, 3, 4, 7);
 	return 0;
 ;

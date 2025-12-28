@@ -6,22 +6,16 @@
 void SimpleList_add(struct SimpleList * this, int value);
 int main() {
 	struct SimpleList_int list;
-
 	SimpleList_add(&list, 10);
 	SimpleList_add(&list, 20);
 	SimpleList_add(&list, 30);
 	SimpleList_add(&list, 40);
 	SimpleList_add(&list, 50);
 	int sum = 0;
-
-	int expected[] = {10, 20, 30, 40, 50};
-
+	int[5] expected = {10, 20, 30, 40, 50};
 	int index = 0;
-
 	struct SimpleList_double doubleList;
-
 	double doubleSum = 0.;
-
 	return 0;
 ;
 }

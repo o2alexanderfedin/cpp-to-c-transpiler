@@ -13,6 +13,14 @@ static void Entity__ctor_copy(struct Entity * this, const struct Entity * other)
 void Entity__dtor(struct Entity * this) {
 }
 
+void Entity__ctor(struct Entity * this, float x, float y, float width, float height) {
+	this = &__vtable_Entity;
+	this->x = x;
+	this->y = y;
+	this->width = width;
+	this->height = height;
+}
+
 float Entity_getX(struct Entity * this) {
 	return this->x;
 ;
@@ -36,13 +44,5 @@ float Entity_getHeight(struct Entity * this) {
 void Entity_setPosition(struct Entity * this, float newX, float newY) {
 	this->x = newX;
 	this->y = newY;
-}
-
-void Entity__ctor(struct Entity * this, float x, float y, float width, float height) {
-	this = &__vtable_Entity;
-	this->x = x;
-	this->y = y;
-	this->width = width;
-	this->height = height;
 }
 

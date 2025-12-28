@@ -43,10 +43,12 @@ struct CollisionDetector {
 };
 static void CollisionDetector__ctor_default(struct CollisionDetector * this);
 static void CollisionDetector__ctor_copy(struct CollisionDetector * this, const struct CollisionDetector * other);
-void Entity_setPosition(struct Entity * this, float newX, float newY);
-int Enemy_getDamage(struct Enemy * this);
-void Player_takeDamage(struct Player * this, int damage);
-void Player_addScore(struct Player * this, int points);
+float Entity_getX(struct Entity * this);
+float Entity_getY(struct Entity * this);
 int Player_getHealth(struct Player * this);
 int Player_getScore(struct Player * this);
+int Enemy_getDamage(struct Enemy * this);
+void Entity_setPosition(struct Entity * this, float newX, float newY);
+void Player_takeDamage(struct Player * this, int damage);
+void Player_addScore(struct Player * this, int points);
 int main();

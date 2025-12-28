@@ -22,14 +22,14 @@ void Enemy__dtor(struct Enemy * this) {
 	Entity__dtor(this);
 }
 
-int Enemy_getDamage(struct Enemy * this) {
-	return this->damage;
-;
-}
-
 void Enemy__ctor(struct Enemy * this, float x, float y) {
 	this = &__vtable_Enemy;
 	this->damage = 10;
 	this->speed = 50.F;
+}
+
+int Enemy_getDamage(struct Enemy * this) {
+	return this->damage;
+;
 }
 

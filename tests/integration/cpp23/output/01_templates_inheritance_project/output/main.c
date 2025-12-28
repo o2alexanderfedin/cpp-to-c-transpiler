@@ -5,9 +5,7 @@
 
 int main() {
 	struct Box_int intBox;
-
 	struct Box_double doubleBox;
-
 	return 0;
 ;
 }

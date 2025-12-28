@@ -8,14 +8,6 @@
 #include <stdint.h>
 #include <stdbool.h>
 
-typedef enum {
-    TokenType__Number = 0,
-    TokenType__Plus = 1,
-    TokenType__Minus = 2,
-    TokenType__Multiply = 3,
-    TokenType__Divide = 4,
-    TokenType__EndOfInput = 5
-} TokenType;
 struct Token {
 	TokenType type;
 	int value;
@@ -27,9 +19,9 @@ struct Tokenizer {
 	int position;
 };
 static void Tokenizer__ctor_copy(struct Tokenizer * this, const struct Tokenizer * other);
+void Tokenizer__ctor(struct Tokenizer * this, const char * input);
 void Tokenizer_skipWhitespace(struct Tokenizer * this);
 int Tokenizer_parseNumber(struct Tokenizer * this);
-void Tokenizer_skipWhitespace(struct Tokenizer * this);
 struct Token Tokenizer_nextToken(struct Tokenizer * this);
 bool Tokenizer_hasMore(struct Tokenizer * this);
-void Tokenizer__ctor(struct Tokenizer * this, const char * input);
+extern int pos;

@@ -502,7 +502,10 @@ bool CppToCVisitor::VisitCXXMethodDecl(CXXMethodDecl *MD) {
   // Bug fix #11: Skip method declarations (no body) to prevent duplicates
   // Only process method definitions to avoid generating the same function twice
   // (once from header declaration, once from .cpp definition)
-  if (!MD->hasBody()) {
+  // Bug fix #44: Use isThisDeclarationADefinition() instead of hasBody()
+  // hasBody() returns true for BOTH declaration and definition in the same TU,
+  // but isThisDeclarationADefinition() only returns true for the actual definition
+  if (!MD->isThisDeclarationADefinition()) {
     return true;
   }
 

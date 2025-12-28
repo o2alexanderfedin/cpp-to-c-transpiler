@@ -18,6 +18,11 @@ static void Tokenizer__ctor_copy(struct Tokenizer * this, const struct Tokenizer
 	this->position = other->position;
 }
 
+void Tokenizer__ctor(struct Tokenizer * this, const char * input) {
+	this->input = input;
+	this->position = 0;
+}
+
 void Tokenizer_skipWhitespace(struct Tokenizer * this) {
 	while (this->input[this->position] == ' ' || this->input[this->position] == '\t') 	{
 		this->position++;
@@ -26,31 +31,40 @@ void Tokenizer_skipWhitespace(struct Tokenizer * this) {
 
 int Tokenizer_parseNumber(struct Tokenizer * this) {
 	int value = 0;
-
+	while (isdigit(this->input[this->position])) 	{
+		value = value * 10 + (this->input[this->position] - '0');
+		this->position++;
+	}
 	return value;
 ;
 }
 
-void Tokenizer_skipWhitespace(struct Tokenizer * this);
 struct Token Tokenizer_nextToken(struct Tokenizer * this) {
 	Tokenizer_skipWhitespace(this);
 	if (this->input[this->position] == '\x00') 	{
 		{
 			struct Token __return_temp;
-
 			Token__ctor(&__return_temp, TokenType__EndOfInput);
 			return __return_temp;
 ;
 		}
 	}
 
-	char current = this->input[this->position++];
+	if (isdigit(this->input[this->position])) 	{
+		int value = Tokenizer_parseNumber(this);
+		{
+			struct Token __return_temp;
+			Token__ctor(&__return_temp, TokenType__Number, value);
+			return __return_temp;
+;
+		}
+	}
 
+	char current = this->input[this->position++];
 	switch (current) 	{
 		case '+':
 			{
 				struct Token __return_temp;
-
 				Token__ctor(&__return_temp, TokenType__Plus);
 				return __return_temp;
 ;
@@ -58,7 +72,6 @@ struct Token Tokenizer_nextToken(struct Tokenizer * this) {
 		case '-':
 			{
 				struct Token __return_temp;
-
 				Token__ctor(&__return_temp, TokenType__Minus);
 				return __return_temp;
 ;
@@ -66,7 +79,6 @@ struct Token Tokenizer_nextToken(struct Tokenizer * this) {
 		case '*':
 			{
 				struct Token __return_temp;
-
 				Token__ctor(&__return_temp, TokenType__Multiply);
 				return __return_temp;
 ;
@@ -74,7 +86,6 @@ struct Token Tokenizer_nextToken(struct Tokenizer * this) {
 		case '/':
 			{
 				struct Token __return_temp;
-
 				Token__ctor(&__return_temp, TokenType__Divide);
 				return __return_temp;
 ;
@@ -82,7 +93,6 @@ struct Token Tokenizer_nextToken(struct Tokenizer * this) {
 		default:
 			{
 				struct Token __return_temp;
-
 				Token__ctor(&__return_temp, TokenType__EndOfInput);
 				return __return_temp;
 ;
@@ -93,7 +103,6 @@ struct Token Tokenizer_nextToken(struct Tokenizer * this) {
 
 bool Tokenizer_hasMore(struct Tokenizer * this) {
 	int pos = this->position;
-
 	while (this->input[pos] == ' ' || this->input[pos] == '\t') 	{
 		pos++;
 	}
@@ -101,8 +110,4 @@ bool Tokenizer_hasMore(struct Tokenizer * this) {
 ;
 }
 
-void Tokenizer__ctor(struct Tokenizer * this, const char * input) {
-	this->input = input;
-	this->position = 0;
-}
-
+int pos = this->position;

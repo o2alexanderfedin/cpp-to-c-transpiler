@@ -1,4 +1,4 @@
-// Generated from: /Users/alexanderfedin/Projects/hapyy/hupyy-cpp-to-c/tests/real-world/simple-validation/03-state-machine/./main.cpp
+// Generated from: /Users/alexanderfedin/Projects/hapyy/hupyy-cpp-to-c/tests/real-world/simple-validation/03-state-machine/main.cpp
 // Implementation file
 
 #include "main.h"
@@ -34,7 +34,6 @@ void StateMachine_transition(struct StateMachine * this, GameState newState);
 int StateMachine_getTransitionCount(struct StateMachine * this);
 int main() {
 	struct StateMachine sm;
-
 	printf("State Machine Tests:\n");
 	printf("  Initial state: %s\n", stateToString(StateMachine_getCurrentState(&sm)));
 	StateMachine_transition(&sm, GameState__Playing);
@@ -51,7 +50,6 @@ int main() {
 	printf("  After GameOver -> Menu: %s\n", stateToString(StateMachine_getCurrentState(&sm)));
 	printf("  Total valid transitions: %d\n", StateMachine_getTransitionCount(&sm));
 	bool passed = true;
-
 	passed = passed && (StateMachine_getCurrentState(&sm) == GameState__Menu);
 	passed = passed && (StateMachine_getTransitionCount(&sm) == 5);
 	printf("\nValidation: %s\n", passed ? "PASS" : "FAIL");

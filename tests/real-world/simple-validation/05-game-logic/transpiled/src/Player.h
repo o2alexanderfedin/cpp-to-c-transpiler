@@ -28,8 +28,8 @@ struct Player {
 };
 static void Player__ctor_copy(struct Player * this, const struct Player * other);
 void Player__dtor(struct Player * this);
+void Player__ctor(struct Player * this, float x, float y);
 int Player_getHealth(struct Player * this);
 int Player_getScore(struct Player * this);
 void Player_takeDamage(struct Player * this, int damage);
 void Player_addScore(struct Player * this, int points);
-void Player__ctor(struct Player * this, float x, float y);

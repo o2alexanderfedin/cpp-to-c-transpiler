@@ -8,14 +8,6 @@
 #include <stdint.h>
 #include <stdbool.h>
 
-typedef enum {
-    TokenType__Number = 0,
-    TokenType__Plus = 1,
-    TokenType__Minus = 2,
-    TokenType__Multiply = 3,
-    TokenType__Divide = 4,
-    TokenType__EndOfInput = 5
-} TokenType;
 struct Token {
 	TokenType type;
 	int value;

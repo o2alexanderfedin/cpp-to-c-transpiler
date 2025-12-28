@@ -1,0 +1,1136 @@
+Starting Integration Tests...
+
+[1;33mRunning: 01_templates_inheritance[0;m
+  [1/5] Compiling C++ version...
+  [2/5] Running C++ version...
+  [3/5] Transpiling to C...
+[DEBUG] Installing segfault handler...
+[DEBUG] Signal handlers installed
+Auto-discovering C++ source files in: /Users/alexanderfedin/Projects/hapyy/hupyy-cpp-to-c/tests/integration/cpp23/output/01_templates_inheritance_project
+Discovered 1 file(s) for transpilation
+[DEBUG] About to call Tool.run()...
+Parsed file: /Users/alexanderfedin/Projects/hapyy/hupyy-cpp-to-c/tests/integration/cpp23/output/01_templates_inheritance_project/main.cpp
+FileOriginTracker configured with user header paths
+Translation unit has 93 top-level declarations
+[Bug #30 FIX] Creating independent target ASTContext for C output...
+[Bug #30 FIX] Target ASTContext created successfully:
+  - ASTContext @ 0x128094c00
+  - Target Triple: arm64-apple-darwin24.5.0
+  - Language: C11
+[Bug #30 FIX] Created C_TU @ 0x12809ef68 for file: /Users/alexanderfedin/Projects/hapyy/hupyy-cpp-to-c/tests/integration/cpp23/output/01_templates_inheritance_project/main.cpp
+FileOriginFilter initialized for: /Users/alexanderfedin/Projects/hapyy/hupyy-cpp-to-c/tests/integration/cpp23/output/01_templates_inheritance_project/main.cpp
+Virtual method support initialized
+Template monomorphization enabled (limit: 1000 instantiations)
+Exception handling support initialized (SJLJ model)
+RTTI support initialized (typeid and dynamic_cast)
+Multidimensional subscript operator support initialized (C++23)
+Static operator() and operator[] support initialized (C++23)
+[[assume]] attribute support initialized (C++23)
+Deducing this / explicit object parameter support initialized (C++23 P0847R7)
+if consteval support initialized (C++23 P1938R3) - Runtime strategy
+auto(x) decay-copy and partial constexpr support initialized (C++23 P0849R8)
+Scoped enum translation support initialized (Phase 47)
+ArithmeticOperatorTranslator initialized (Phase 50)
+Arithmetic operator overloading support initialized (Phase 50)
+ComparisonOperatorTranslator initialized (Phase 51)
+Comparison & logical operator overloading support initialized (Phase 51)
+SpecialOperatorTranslator initialized (Phase 52)
+Special operator overloading support initialized (Phase 52)
+Type alias and typedef support initialized (Phase 53)
+[Bug #30 FIX] CppToCVisitor using C_TU @ 0x12809ef68
+Found class template: Container
+Found variable: v
+Found variable: v
+Found class template: Box
+Found variable: v
+Found variable: m
+Analyzing function for RAII: main
+  Found 2 local variables
+Translating standalone function: main
+  Mangled name: main
+[DEBUG Bug#26] translateStmt called, type: CompoundStmt
+  [Scope] Entering scope at depth 0
+[DEBUG Bug#26] translateStmt called, type: DeclStmt
+  [Translating DeclStmt]
+    Variable: intBox
+      Is a template specialization: Box
+      Monomorphized struct name: Box_int
+  [Bug #8] Skipping statement containing RecoveryExpr
+  [Bug #8] Skipping statement containing RecoveryExpr
+  [Bug #8] Skipping statement containing RecoveryExpr
+  [Bug #8] Skipping statement containing RecoveryExpr
+[DEBUG Bug#26] translateStmt called, type: DeclStmt
+  [Translating DeclStmt]
+    Variable: doubleBox
+      Is a template specialization: Box
+      Monomorphized struct name: Box_double
+  [Bug #8] Skipping statement containing RecoveryExpr
+[DEBUG Bug#26] translateStmt called, type: ReturnStmt
+[DEBUG Bug#26] Dispatching to translateReturnStmt
+[DEBUG Bug#26] translateReturnStmt called
+[DEBUG Bug#26] RetValue exists, type: IntegerLiteral
+[DEBUG Bug#26] No constructor expression detected after unwrapping
+  [Scope] Exiting scope at depth 0 with 0 objects
+  -> C function 'main' created
+  Parameters: 0
+  Return type: int
+Found variable: intBox
+Found variable: doubleBox
+
+========================================
+Processing Template Instantiations
+========================================
+
+[DEBUG TemplateExtractor] VisitClassTemplateDecl: Container
+  -> Processing specializations (0 found)
+[DEBUG TemplateExtractor] VisitClassTemplateDecl: Box
+  -> Processing specializations (2 found)
+    -> Checking specialization
+       -> Adding to collection
+    -> Checking specialization
+       -> Adding to collection
+Found 2 class template instantiation(s)
+Found 0 function template instantiation(s)
+
+Monomorphizing class templates:
+  Generating AST for: Box<int>
+    -> Created struct: Box_int
+    -> Created 2 method function(s)
+      -> Found pattern method: getValue
+      -> Found pattern method: getMultiplier
+      -> Method getValue has inline body
+      -> Translating body for Box_int_getValue
+[DEBUG Bug#26] translateStmt called, type: CompoundStmt
+  [Scope] Entering scope at depth 0
+[DEBUG Bug#26] translateStmt called, type: ReturnStmt
+[DEBUG Bug#26] Dispatching to translateReturnStmt
+[DEBUG Bug#26] translateReturnStmt called
+[DEBUG Bug#26] RetValue exists, type: BinaryOperator
+[DEBUG Bug#26] No constructor expression detected after unwrapping
+  [Scope] Exiting scope at depth 0 with 0 objects
+      -> Body translated successfully
+      -> Method getMultiplier has inline body
+      -> Translating body for Box_int_getMultiplier
+[DEBUG Bug#26] translateStmt called, type: CompoundStmt
+  [Scope] Entering scope at depth 0
+[DEBUG Bug#26] translateStmt called, type: ReturnStmt
+[DEBUG Bug#26] Dispatching to translateReturnStmt
+[DEBUG Bug#26] translateReturnStmt called
+[DEBUG Bug#26] RetValue exists, type: MemberExpr
+[DEBUG Bug#26] No constructor expression detected after unwrapping
+  [Scope] Exiting scope at depth 0 with 0 objects
+      -> Body translated successfully
+  Generating AST for: Box<double>
+    -> Created struct: Box_double
+    -> Created 2 method function(s)
+      -> Found pattern method: getValue
+      -> Found pattern method: getMultiplier
+      -> Method getValue has inline body
+      -> Translating body for Box_double_getValue
+[DEBUG Bug#26] translateStmt called, type: CompoundStmt
+  [Scope] Entering scope at depth 0
+[DEBUG Bug#26] translateStmt called, type: ReturnStmt
+[DEBUG Bug#26] Dispatching to translateReturnStmt
+[DEBUG Bug#26] translateReturnStmt called
+[DEBUG Bug#26] RetValue exists, type: BinaryOperator
+[DEBUG Bug#26] No constructor expression detected after unwrapping
+  [Scope] Exiting scope at depth 0 with 0 objects
+      -> Body translated successfully
+      -> Method getMultiplier has inline body
+      -> Translating body for Box_double_getMultiplier
+[DEBUG Bug#26] translateStmt called, type: CompoundStmt
+  [Scope] Entering scope at depth 0
+[DEBUG Bug#26] translateStmt called, type: ReturnStmt
+[DEBUG Bug#26] Dispatching to translateReturnStmt
+[DEBUG Bug#26] translateReturnStmt called
+[DEBUG Bug#26] RetValue exists, type: MemberExpr
+[DEBUG Bug#26] No constructor expression detected after unwrapping
+  [Scope] Exiting scope at depth 0 with 0 objects
+      -> Body translated successfully
+
+Monomorphizing function templates:
+
+========================================
+Template Monomorphization Complete
+  Unique instantiations: 2
+========================================
+
+C TranslationUnit has 7 generated declarations
+Generated files:
+  /Users/alexanderfedin/Projects/hapyy/hupyy-cpp-to-c/tests/integration/cpp23/output/01_templates_inheritance_project/output/main.h
+  /Users/alexanderfedin/Projects/hapyy/hupyy-cpp-to-c/tests/integration/cpp23/output/01_templates_inheritance_project/output/main.c
+[DEBUG] Tool.run() returned: 1
+[DEBUG] After Tool.run(), about to handle dependencies...
+
+Transpilation completed successfully. Generated 1 file pair(s).
+[DEBUG FileOutputManager] writeFile called with filename: /Users/alexanderfedin/Projects/hapyy/hupyy-cpp-to-c/tests/integration/cpp23/output/01_templates_inheritance_project/output/main.h
+[DEBUG FileOutputManager] Content size: 579 bytes
+[DEBUG FileOutputManager] Parent directory: "/Users/alexanderfedin/Projects/hapyy/hupyy-cpp-to-c/tests/integration/cpp23/output/01_templates_inheritance_project/output"
+[DEBUG FileOutputManager] Parent directory empty: no
+[DEBUG FileOutputManager] Parent directory exists: yes
+[DEBUG FileOutputManager] Opening file for writing: /Users/alexanderfedin/Projects/hapyy/hupyy-cpp-to-c/tests/integration/cpp23/output/01_templates_inheritance_project/output/main.h
+[DEBUG FileOutputManager] File opened successfully
+[DEBUG FileOutputManager] Content written successfully
+[DEBUG FileOutputManager] File closed successfully
+[DEBUG FileOutputManager] writeFile returning true
+[DEBUG FileOutputManager] writeFile called with filename: /Users/alexanderfedin/Projects/hapyy/hupyy-cpp-to-c/tests/integration/cpp23/output/01_templates_inheritance_project/output/main.c
+[DEBUG FileOutputManager] Content size: 634 bytes
+[DEBUG FileOutputManager] Parent directory: "/Users/alexanderfedin/Projects/hapyy/hupyy-cpp-to-c/tests/integration/cpp23/output/01_templates_inheritance_project/output"
+[DEBUG FileOutputManager] Parent directory empty: no
+[DEBUG FileOutputManager] Parent directory exists: yes
+[DEBUG FileOutputManager] Opening file for writing: /Users/alexanderfedin/Projects/hapyy/hupyy-cpp-to-c/tests/integration/cpp23/output/01_templates_inheritance_project/output/main.c
+[DEBUG FileOutputManager] File opened successfully
+[DEBUG FileOutputManager] Content written successfully
+[DEBUG FileOutputManager] File closed successfully
+[DEBUG FileOutputManager] writeFile returning true
+  [4/5] Compiling C version...
+[0;31m  FAIL: C compilation failed[0;m
+/Users/alexanderfedin/Projects/hapyy/hupyy-cpp-to-c/tests/integration/cpp23/output/01_templates_inheritance_project/output/main.c:14:15: error: no member named 'value' in 'struct Box_int'
+   14 |         return this->value * this->multiplier;
+      |                ~~~~  ^
+/Users/alexanderfedin/Projects/hapyy/hupyy-cpp-to-c/tests/integration/cpp23/output/01_templates_inheritance_project/output/main.c:24:15: error: no member named 'value' in 'struct Box_double'
+   24 |         return this->value * this->multiplier;
+      |                ~~~~  ^
+2 errors generated.
+[1;33mRunning: 02_virtual_multiple_inheritance[0;m
+  [1/5] Compiling C++ version...
+  [2/5] Running C++ version...
+  [3/5] Transpiling to C...
+[DEBUG] Installing segfault handler...
+[DEBUG] Signal handlers installed
+Auto-discovering C++ source files in: /Users/alexanderfedin/Projects/hapyy/hupyy-cpp-to-c/tests/integration/cpp23/output/02_virtual_multiple_inheritance_project
+Discovered 1 file(s) for transpilation
+[DEBUG] About to call Tool.run()...
+Parsed file: /Users/alexanderfedin/Projects/hapyy/hupyy-cpp-to-c/tests/integration/cpp23/output/02_virtual_multiple_inheritance_project/main.cpp
+FileOriginTracker configured with user header paths
+Translation unit has 108 top-level declarations
+[Bug #30 FIX] Creating independent target ASTContext for C output...
+[Bug #30 FIX] Target ASTContext created successfully:
+  - ASTContext @ 0x138140400
+  - Target Triple: arm64-apple-darwin24.5.0
+  - Language: C11
+[Bug #30 FIX] Created C_TU @ 0x13814a768 for file: /Users/alexanderfedin/Projects/hapyy/hupyy-cpp-to-c/tests/integration/cpp23/output/02_virtual_multiple_inheritance_project/main.cpp
+FileOriginFilter initialized for: /Users/alexanderfedin/Projects/hapyy/hupyy-cpp-to-c/tests/integration/cpp23/output/02_virtual_multiple_inheritance_project/main.cpp
+Virtual method support initialized
+Template monomorphization enabled (limit: 1000 instantiations)
+Exception handling support initialized (SJLJ model)
+RTTI support initialized (typeid and dynamic_cast)
+Multidimensional subscript operator support initialized (C++23)
+Static operator() and operator[] support initialized (C++23)
+[[assume]] attribute support initialized (C++23)
+Deducing this / explicit object parameter support initialized (C++23 P0847R7)
+if consteval support initialized (C++23 P1938R3) - Runtime strategy
+auto(x) decay-copy and partial constexpr support initialized (C++23 P0849R8)
+Scoped enum translation support initialized (Phase 47)
+ArithmeticOperatorTranslator initialized (Phase 50)
+Arithmetic operator overloading support initialized (Phase 50)
+ComparisonOperatorTranslator initialized (Phase 51)
+Comparison & logical operator overloading support initialized (Phase 51)
+SpecialOperatorTranslator initialized (Phase 52)
+Special operator overloading support initialized (Phase 52)
+Type alias and typedef support initialized (Phase 53)
+[Bug #30 FIX] CppToCVisitor using C_TU @ 0x13814a768
+Translating class: Base
+
+*** Dumping AST Record Layout
+Type: struct Base
+
+Layout: <ASTRecordLayout
+  Size:128
+  DataSize:128
+  Alignment:64
+  FieldOffsets: [0, 64]>
+  -> struct Base with 2 fields
+  Generating implicit copy constructor
+  Generated copy constructor: Base__ctor_copy
+  [Phase 31-03] Generated 1 constructor, 1 destructor, 2 method declarations
+
+// Static declarations for all Base methods
+static void Base__ctor_1(struct Base *this, int v);
+static void Base__dtor(struct Base *this);
+static int Base_compute(const struct Base *this);
+static int Base_getBaseValue(const struct Base *this);
+
+Generating vtable for polymorphic class: Base
+Vtable struct generated:
+struct Base_vtable {
+    const struct __class_type_info *type_info;  /**< RTTI type_info pointer (Itanium ABI vtable[-1]) */
+    void (*destructor)(struct Base *this);
+    int (*compute)(struct Base *this);
+};
+
+Vtable instance generated:
+
+// Vtable instance for Base
+struct Base_vtable Base_vtable_instance = {
+    .type_info = &Base_type_info,  // RTTI type_info (placeholder)
+    .destructor = Base_destructor,
+    .compute = Base_compute,
+};
+
+Translating constructor: Base::Base
+  -> Injected vptr initialization
+  -> Base__ctor with 2 parameters, 2 statements
+Found variable: v
+Translating destructor: ~Base
+  -> Base__dtor with 0 statements
+  -> Base__dtor created
+Skipping virtual method (handled by vtable): Base::compute
+Translating method: Base::getBaseValue
+[DEBUG Bug#26] translateStmt called, type: CompoundStmt
+  [Scope] Entering scope at depth 0
+[DEBUG Bug#26] translateStmt called, type: ReturnStmt
+[DEBUG Bug#26] Dispatching to translateReturnStmt
+[DEBUG Bug#26] translateReturnStmt called
+[DEBUG Bug#26] RetValue exists, type: ImplicitCastExpr
+[DEBUG Bug#26]   ImplicitCastExpr -> subexpr type: MemberExpr
+[DEBUG Bug#26] No constructor expression detected after unwrapping
+  [Scope] Exiting scope at depth 0 with 0 objects
+  -> Base_getBaseValue with body translated
+  -> Base_getBaseValue with 1 parameters
+Translating class: Left
+
+*** Dumping AST Record Layout
+Type: struct Left
+
+Layout: <ASTRecordLayout
+  Size:128
+  DataSize:128
+  Alignment:64
+  FieldOffsets: [0, 64, 96]>
+  -> struct Left with 3 fields
+  Generating implicit copy constructor
+    TODO: Call base copy constructor: Base__ctor_copy
+  Generated copy constructor: Left__ctor_copy
+  [Phase 31-03] Generated 1 constructor, 0 destructor, 2 method declarations
+
+// Static declarations for all Left methods
+static void Left__ctor_2(struct Left *this, int b, int l);
+static int Left_compute(const struct Left *this);
+static int Left_getLeftValue(const struct Left *this);
+
+Generating vtable for polymorphic class: Left
+Vtable struct generated:
+struct Left_vtable {
+    const struct __class_type_info *type_info;  /**< RTTI type_info pointer (Itanium ABI vtable[-1]) */
+    void (*destructor)(struct Left *this);
+    int (*compute)(struct Left *this);
+};
+
+Vtable instance generated:
+
+// Vtable instance for Left
+struct Left_vtable Left_vtable_instance = {
+    .type_info = &Left_type_info,  // RTTI type_info (placeholder)
+    .destructor = Left_destructor,
+    .compute = Left_compute,
+};
+
+Translating constructor: Left::Left
+  -> Injected vptr initialization
+  Translating base class initializer: Base
+  -> Added base constructor call to Base__ctor
+  -> Left__ctor with 3 parameters, 3 statements
+Found variable: b
+Found variable: l
+Skipping virtual method (handled by vtable): Left::compute
+Translating method: Left::getLeftValue
+[DEBUG Bug#26] translateStmt called, type: CompoundStmt
+  [Scope] Entering scope at depth 0
+[DEBUG Bug#26] translateStmt called, type: ReturnStmt
+[DEBUG Bug#26] Dispatching to translateReturnStmt
+[DEBUG Bug#26] translateReturnStmt called
+[DEBUG Bug#26] RetValue exists, type: ImplicitCastExpr
+[DEBUG Bug#26]   ImplicitCastExpr -> subexpr type: MemberExpr
+[DEBUG Bug#26] No constructor expression detected after unwrapping
+  [Scope] Exiting scope at depth 0 with 0 objects
+  -> Left_getLeftValue with body translated
+  -> Left_getLeftValue with 1 parameters
+Translating class: Right
+  -> struct Right with 3 fields
+  Generating implicit copy constructor
+    TODO: Call base copy constructor: Base__ctor_copy
+  Generated copy constructor: Right__ctor_copy
+  [Phase 31-03] Generated 1 constructor, 0 destructor, 2 method declarations
+
+// Static declarations for all Right methods
+static void Right__ctor_2(struct Right *this, int b, int r);
+static int Right_compute(const struct Right *this);
+static int Right_getRightValue(const struct Right *this);
+
+Generating vtable for polymorphic class: Right
+Vtable struct generated:
+struct Right_vtable {
+    const struct __class_type_info *type_info;  /**< RTTI type_info pointer (Itanium ABI vtable[-1]) */
+    void (*destructor)(struct Right *this);
+    int (*compute)(struct Right *this);
+};
+
+Vtable instance generated:
+
+// Vtable instance for Right
+struct Right_vtable Right_vtable_instance = {
+    .type_info = &Right_type_info,  // RTTI type_info (placeholder)
+    .destructor = Right_destructor,
+    .compute = Right_compute,
+};
+
+Translating constructor: Right::Right
+  -> Injected vptr initialization
+  Translating base class initializer: Base
+  -> Added base constructor call to Base__ctor
+  -> Right__ctor with 3 parameters, 3 statements
+Found variable: b
+Found variable: r
+Skipping virtual method (handled by vtable): Right::compute
+Translating method: Right::getRightValue
+[DEBUG Bug#26] translateStmt called, type: CompoundStmt
+  [Scope] Entering scope at depth 0
+[DEBUG Bug#26] translateStmt called, type: ReturnStmt
+[DEBUG Bug#26] Dispatching to translateReturnStmt
+[DEBUG Bug#26] translateReturnStmt called
+[DEBUG Bug#26] RetValue exists, type: ImplicitCastExpr
+[DEBUG Bug#26]   ImplicitCastExpr -> subexpr type: MemberExpr
+[DEBUG Bug#26] No constructor expression detected after unwrapping
+  [Scope] Exiting scope at depth 0 with 0 objects
+  -> Right_getRightValue with body translated
+  -> Right_getRightValue with 1 parameters
+Translating class: Diamond
+  -> struct Diamond with 7 fields
+  Generating implicit copy constructor
+    TODO: Call base copy constructor: Left__ctor_copy
+    TODO: Call base copy constructor: Right__ctor_copy
+  Generated copy constructor: Diamond__ctor_copy
+  [Phase 31-03] Generated 1 constructor, 0 destructor, 2 method declarations
+
+// Static declarations for all Diamond methods
+static void Diamond__ctor_5(struct Diamond *this, int b1, int l, int b2, int r, int d);
+static int Diamond_compute(const struct Diamond *this);
+static int Diamond_getDiamondValue(const struct Diamond *this);
+
+Generating vtable for polymorphic class: Diamond
+Vtable struct generated:
+struct Diamond_vtable {
+    const struct __class_type_info *type_info;  /**< RTTI type_info pointer (Itanium ABI vtable[-1]) */
+    void (*destructor)(struct Diamond *this);
+    int (*compute)(struct Diamond *this);
+};
+
+Vtable instance generated:
+
+// Vtable instance for Diamond
+struct Diamond_vtable Diamond_vtable_instance = {
+    .type_info = &Diamond_type_info,  // RTTI type_info (placeholder)
+    .destructor = Diamond_destructor,
+    .compute = Diamond_compute,
+};
+
+Translating constructor: Diamond::Diamond
+  -> Injected vptr initialization
+  Translating base class initializer: Left
+  -> Added base constructor call to Left__ctor
+  Translating base class initializer: Right
+  -> Added base constructor call to Right__ctor
+  -> Diamond__ctor with 6 parameters, 4 statements
+Found variable: b1
+Found variable: l
+Found variable: b2
+Found variable: r
+Found variable: d
+Skipping virtual method (handled by vtable): Diamond::compute
+Translating method: Diamond::getDiamondValue
+[DEBUG Bug#26] translateStmt called, type: CompoundStmt
+  [Scope] Entering scope at depth 0
+[DEBUG Bug#26] translateStmt called, type: ReturnStmt
+[DEBUG Bug#26] Dispatching to translateReturnStmt
+[DEBUG Bug#26] translateReturnStmt called
+[DEBUG Bug#26] RetValue exists, type: ImplicitCastExpr
+[DEBUG Bug#26]   ImplicitCastExpr -> subexpr type: MemberExpr
+[DEBUG Bug#26] No constructor expression detected after unwrapping
+  [Scope] Exiting scope at depth 0 with 0 objects
+  -> Diamond_getDiamondValue with body translated
+  -> Diamond_getDiamondValue with 1 parameters
+Analyzing function for RAII: main
+  Found 1 local variables
+  Variable 'd' has destructor
+  Will inject destructors for 1 objects
+Translating standalone function: main
+  Mangled name: main
+[DEBUG Bug#26] translateStmt called, type: CompoundStmt
+  [Scope] Entering scope at depth 0
+  [Scope] Tracked object 'd' in scope depth 0
+[DEBUG Bug#26] translateStmt called, type: DeclStmt
+  [Translating DeclStmt]
+    Variable: d
+      Is a struct/class type
+      Is a C++ class: Diamond
+      Found C struct: Diamond
+      Creating C variable declaration
+      Has constructor expression
+      Found C constructor: Diamond__ctor
+      Creating constructor call
+  [Bug #8] Skipping statement containing RecoveryExpr
+  [Bug #8] Skipping statement containing RecoveryExpr
+  [Bug #8] Skipping statement containing RecoveryExpr
+  [Bug #8] Skipping statement containing RecoveryExpr
+[DEBUG Bug#26] translateStmt called, type: ReturnStmt
+[DEBUG Bug#26] Dispatching to translateReturnStmt
+[DEBUG Bug#26] translateReturnStmt called
+[DEBUG Bug#26] RetValue exists, type: IntegerLiteral
+[DEBUG Bug#26] No constructor expression detected after unwrapping
+  [Scope] Exiting scope at depth 0 with 1 objects
+  [Scope] Injecting 1 destructor(s) at end of scope depth 0
+  Warning: Destructor for Diamond not found in mapping
+  [Legacy] Function-level destruction already handled by scope tracking
+  -> C function 'main' created
+  Parameters: 0
+  Return type: int
+Found variable: d
+  Detected return statement for early return analysis
+
+========================================
+Processing Template Instantiations
+========================================
+
+Found 0 class template instantiation(s)
+Found 0 function template instantiation(s)
+
+Monomorphizing class templates:
+
+Monomorphizing function templates:
+
+========================================
+Template Monomorphization Complete
+  Unique instantiations: 0
+========================================
+
+C TranslationUnit has 18 generated declarations
+Generated files:
+  /Users/alexanderfedin/Projects/hapyy/hupyy-cpp-to-c/tests/integration/cpp23/output/02_virtual_multiple_inheritance_project/output/main.h
+  /Users/alexanderfedin/Projects/hapyy/hupyy-cpp-to-c/tests/integration/cpp23/output/02_virtual_multiple_inheritance_project/output/main.c
+[DEBUG] Tool.run() returned: 1
+[DEBUG] After Tool.run(), about to handle dependencies...
+
+Transpilation completed successfully. Generated 1 file pair(s).
+[DEBUG FileOutputManager] writeFile called with filename: /Users/alexanderfedin/Projects/hapyy/hupyy-cpp-to-c/tests/integration/cpp23/output/02_virtual_multiple_inheritance_project/output/main.h
+[DEBUG FileOutputManager] Content size: 1470 bytes
+[DEBUG FileOutputManager] Parent directory: "/Users/alexanderfedin/Projects/hapyy/hupyy-cpp-to-c/tests/integration/cpp23/output/02_virtual_multiple_inheritance_project/output"
+[DEBUG FileOutputManager] Parent directory empty: no
+[DEBUG FileOutputManager] Parent directory exists: yes
+[DEBUG FileOutputManager] Opening file for writing: /Users/alexanderfedin/Projects/hapyy/hupyy-cpp-to-c/tests/integration/cpp23/output/02_virtual_multiple_inheritance_project/output/main.h
+[DEBUG FileOutputManager] File opened successfully
+[DEBUG FileOutputManager] Content written successfully
+[DEBUG FileOutputManager] File closed successfully
+[DEBUG FileOutputManager] writeFile returning true
+[DEBUG FileOutputManager] writeFile called with filename: /Users/alexanderfedin/Projects/hapyy/hupyy-cpp-to-c/tests/integration/cpp23/output/02_virtual_multiple_inheritance_project/output/main.c
+[DEBUG FileOutputManager] Content size: 1652 bytes
+[DEBUG FileOutputManager] Parent directory: "/Users/alexanderfedin/Projects/hapyy/hupyy-cpp-to-c/tests/integration/cpp23/output/02_virtual_multiple_inheritance_project/output"
+[DEBUG FileOutputManager] Parent directory empty: no
+[DEBUG FileOutputManager] Parent directory exists: yes
+[DEBUG FileOutputManager] Opening file for writing: /Users/alexanderfedin/Projects/hapyy/hupyy-cpp-to-c/tests/integration/cpp23/output/02_virtual_multiple_inheritance_project/output/main.c
+[DEBUG FileOutputManager] File opened successfully
+[DEBUG FileOutputManager] Content written successfully
+[DEBUG FileOutputManager] File closed successfully
+[DEBUG FileOutputManager] writeFile returning true
+  [4/5] Compiling C version...
+[0;31m  FAIL: C compilation failed[0;m
+In file included from /Users/alexanderfedin/Projects/hapyy/hupyy-cpp-to-c/tests/integration/cpp23/output/02_virtual_multiple_inheritance_project/output/main.c:4:
+/Users/alexanderfedin/Projects/hapyy/hupyy-cpp-to-c/tests/integration/cpp23/output/02_virtual_multiple_inheritance_project/output/main.h:39:29: error: duplicate member 'vptr'
+   39 |         const struct Base_vtable * vptr;
+      |                                    ^
+/Users/alexanderfedin/Projects/hapyy/hupyy-cpp-to-c/tests/integration/cpp23/output/02_virtual_multiple_inheritance_project/output/main.h:36:29: note: previous declaration is here
+   36 |         const struct Base_vtable * vptr;
+      |                                    ^
+/Users/alexanderfedin/Projects/hapyy/hupyy-cpp-to-c/tests/integration/cpp23/output/02_virtual_multiple_inheritance_project/output/main.h:40:6: error: duplicate member 'baseValue'
+   40 |         int baseValue;
+      |             ^
+[1;33mRunning: 03_scoped_enums_namespaces[0;m
+  [1/5] Compiling C++ version...
+  [2/5] Running C++ version...
+  [3/5] Transpiling to C...
+[DEBUG] Installing segfault handler...
+[DEBUG] Signal handlers installed
+Auto-discovering C++ source files in: /Users/alexanderfedin/Projects/hapyy/hupyy-cpp-to-c/tests/integration/cpp23/output/03_scoped_enums_namespaces_project
+Discovered 1 file(s) for transpilation
+[DEBUG] About to call Tool.run()...
+Parsed file: /Users/alexanderfedin/Projects/hapyy/hupyy-cpp-to-c/tests/integration/cpp23/output/03_scoped_enums_namespaces_project/main.cpp
+FileOriginTracker configured with user header paths
+Translation unit has 92 top-level declarations
+[Bug #30 FIX] Creating independent target ASTContext for C output...
+[Bug #30 FIX] Target ASTContext created successfully:
+  - ASTContext @ 0x140025a00
+  - Target Triple: arm64-apple-darwin24.5.0
+  - Language: C11
+[Bug #30 FIX] Created C_TU @ 0x14002f368 for file: /Users/alexanderfedin/Projects/hapyy/hupyy-cpp-to-c/tests/integration/cpp23/output/03_scoped_enums_namespaces_project/main.cpp
+FileOriginFilter initialized for: /Users/alexanderfedin/Projects/hapyy/hupyy-cpp-to-c/tests/integration/cpp23/output/03_scoped_enums_namespaces_project/main.cpp
+Virtual method support initialized
+Template monomorphization enabled (limit: 1000 instantiations)
+Exception handling support initialized (SJLJ model)
+RTTI support initialized (typeid and dynamic_cast)
+Multidimensional subscript operator support initialized (C++23)
+Static operator() and operator[] support initialized (C++23)
+[[assume]] attribute support initialized (C++23)
+Deducing this / explicit object parameter support initialized (C++23 P0847R7)
+if consteval support initialized (C++23 P1938R3) - Runtime strategy
+auto(x) decay-copy and partial constexpr support initialized (C++23 P0849R8)
+Scoped enum translation support initialized (Phase 47)
+ArithmeticOperatorTranslator initialized (Phase 50)
+Arithmetic operator overloading support initialized (Phase 50)
+ComparisonOperatorTranslator initialized (Phase 51)
+Comparison & logical operator overloading support initialized (Phase 51)
+SpecialOperatorTranslator initialized (Phase 52)
+Special operator overloading support initialized (Phase 52)
+Type alias and typedef support initialized (Phase 53)
+[Bug #30 FIX] CppToCVisitor using C_TU @ 0x14002f368
+Translating enum: Primary
+    Mapped: Red (C++) -> Primary__Red (C)
+    Mapped: Green (C++) -> Primary__Green (C)
+    Mapped: Blue (C++) -> Primary__Blue (C)
+  -> C enum Primary created via EnumTranslator
+Translating enum: Secondary
+    Mapped: Cyan (C++) -> Secondary__Cyan (C)
+    Mapped: Magenta (C++) -> Secondary__Magenta (C)
+    Mapped: Yellow (C++) -> Secondary__Yellow (C)
+  -> C enum Secondary created via EnumTranslator
+Translating class: Pixel
+  -> struct Pixel with 2 fields
+  Generating implicit copy constructor
+  Generated copy constructor: Pixel__ctor_copy
+  [Phase 31-03] Generated 1 constructor, 0 destructor, 5 method declarations
+
+// Static declarations for all Pixel methods
+static void Pixel__ctor_2(struct Pixel *this, Color::Primary p, int v);
+static Color::Primary Pixel_getPrimary(const struct Pixel *this);
+static int Pixel_getValue(const struct Pixel *this);
+static int Pixel_isRed(const struct Pixel *this);
+static int Pixel_isGreen(const struct Pixel *this);
+static int Pixel_isBlue(const struct Pixel *this);
+
+Translating constructor: Pixel::Pixel
+  -> Pixel__ctor with 3 parameters, 2 statements
+Found variable: p
+Found variable: v
+Translating method: Graphics::Pixel::getPrimary
+[DEBUG Bug#26] translateStmt called, type: CompoundStmt
+  [Scope] Entering scope at depth 0
+[DEBUG Bug#26] translateStmt called, type: ReturnStmt
+[DEBUG Bug#26] Dispatching to translateReturnStmt
+[DEBUG Bug#26] translateReturnStmt called
+[DEBUG Bug#26] RetValue exists, type: ImplicitCastExpr
+[DEBUG Bug#26]   ImplicitCastExpr -> subexpr type: MemberExpr
+[DEBUG Bug#26] No constructor expression detected after unwrapping
+  [Scope] Exiting scope at depth 0 with 0 objects
+  -> Pixel_getPrimary with body translated
+  -> Pixel_getPrimary with 1 parameters
+Translating method: Graphics::Pixel::getValue
+[DEBUG Bug#26] translateStmt called, type: CompoundStmt
+  [Scope] Entering scope at depth 0
+[DEBUG Bug#26] translateStmt called, type: ReturnStmt
+[DEBUG Bug#26] Dispatching to translateReturnStmt
+[DEBUG Bug#26] translateReturnStmt called
+[DEBUG Bug#26] RetValue exists, type: ImplicitCastExpr
+[DEBUG Bug#26]   ImplicitCastExpr -> subexpr type: MemberExpr
+[DEBUG Bug#26] No constructor expression detected after unwrapping
+  [Scope] Exiting scope at depth 0 with 0 objects
+  -> Pixel_getValue with body translated
+  -> Pixel_getValue with 1 parameters
+Translating method: Graphics::Pixel::isRed
+[DEBUG Bug#26] translateStmt called, type: CompoundStmt
+  [Scope] Entering scope at depth 0
+[DEBUG Bug#26] translateStmt called, type: ReturnStmt
+[DEBUG Bug#26] Dispatching to translateReturnStmt
+[DEBUG Bug#26] translateReturnStmt called
+[DEBUG Bug#26] RetValue exists, type: BinaryOperator
+[DEBUG Bug#26] No constructor expression detected after unwrapping
+  Translating scoped enum ref: Red -> Primary__Red
+  [Scope] Exiting scope at depth 0 with 0 objects
+  -> Pixel_isRed with body translated
+  -> Pixel_isRed with 1 parameters
+Translating method: Graphics::Pixel::isGreen
+[DEBUG Bug#26] translateStmt called, type: CompoundStmt
+  [Scope] Entering scope at depth 0
+[DEBUG Bug#26] translateStmt called, type: ReturnStmt
+[DEBUG Bug#26] Dispatching to translateReturnStmt
+[DEBUG Bug#26] translateReturnStmt called
+[DEBUG Bug#26] RetValue exists, type: BinaryOperator
+[DEBUG Bug#26] No constructor expression detected after unwrapping
+  Translating scoped enum ref: Green -> Primary__Green
+  [Scope] Exiting scope at depth 0 with 0 objects
+  -> Pixel_isGreen with body translated
+  -> Pixel_isGreen with 1 parameters
+Translating method: Graphics::Pixel::isBlue
+[DEBUG Bug#26] translateStmt called, type: CompoundStmt
+  [Scope] Entering scope at depth 0
+[DEBUG Bug#26] translateStmt called, type: ReturnStmt
+[DEBUG Bug#26] Dispatching to translateReturnStmt
+[DEBUG Bug#26] translateReturnStmt called
+[DEBUG Bug#26] RetValue exists, type: BinaryOperator
+[DEBUG Bug#26] No constructor expression detected after unwrapping
+  Translating scoped enum ref: Blue -> Primary__Blue
+  [Scope] Exiting scope at depth 0 with 0 objects
+  -> Pixel_isBlue with body translated
+  -> Pixel_isBlue with 1 parameters
+Analyzing function for RAII: main
+  Found 2 local variables
+Translating standalone function: main
+  Mangled name: main
+[DEBUG Bug#26] translateStmt called, type: CompoundStmt
+  [Scope] Entering scope at depth 0
+[DEBUG Bug#26] translateStmt called, type: DeclStmt
+  [Translating DeclStmt]
+    Variable: redPixel
+      Is a struct/class type
+      Is a C++ class: Pixel
+      Found C struct: Pixel
+      Creating C variable declaration
+      Has constructor expression
+      Found C constructor: Pixel__ctor
+      Creating constructor call
+  Translating scoped enum ref: Red -> Primary__Red
+  [Bug #8] Skipping statement containing RecoveryExpr
+  [Bug #8] Skipping statement containing RecoveryExpr
+  [Bug #8] Skipping statement containing RecoveryExpr
+  [Bug #8] Skipping statement containing RecoveryExpr
+[DEBUG Bug#26] translateStmt called, type: DeclStmt
+  [Translating DeclStmt]
+    Variable: greenPixel
+      Is a struct/class type
+      Is a C++ class: Pixel
+      Found C struct: Pixel
+      Creating C variable declaration
+      Has constructor expression
+      Found C constructor: Pixel__ctor
+      Creating constructor call
+  Translating scoped enum ref: Green -> Primary__Green
+  [Bug #8] Skipping statement containing RecoveryExpr
+  [Bug #8] Skipping statement containing RecoveryExpr
+  [Bug #8] Skipping statement containing RecoveryExpr
+  [Bug #8] Skipping statement containing RecoveryExpr
+[DEBUG Bug#26] translateStmt called, type: ReturnStmt
+[DEBUG Bug#26] Dispatching to translateReturnStmt
+[DEBUG Bug#26] translateReturnStmt called
+[DEBUG Bug#26] RetValue exists, type: IntegerLiteral
+[DEBUG Bug#26] No constructor expression detected after unwrapping
+  [Scope] Exiting scope at depth 0 with 0 objects
+  -> C function 'main' created
+  Parameters: 0
+  Return type: int
+Found variable: redPixel
+Found variable: greenPixel
+
+========================================
+Processing Template Instantiations
+========================================
+
+Found 0 class template instantiation(s)
+Found 0 function template instantiation(s)
+
+Monomorphizing class templates:
+
+Monomorphizing function templates:
+
+========================================
+Template Monomorphization Complete
+  Unique instantiations: 0
+========================================
+
+C TranslationUnit has 9 generated declarations
+Generated files:
+  /Users/alexanderfedin/Projects/hapyy/hupyy-cpp-to-c/tests/integration/cpp23/output/03_scoped_enums_namespaces_project/output/main.h
+  /Users/alexanderfedin/Projects/hapyy/hupyy-cpp-to-c/tests/integration/cpp23/output/03_scoped_enums_namespaces_project/output/main.c
+[DEBUG] Tool.run() returned: 1
+[DEBUG] After Tool.run(), about to handle dependencies...
+
+Transpilation completed successfully. Generated 1 file pair(s).
+[DEBUG FileOutputManager] writeFile called with filename: /Users/alexanderfedin/Projects/hapyy/hupyy-cpp-to-c/tests/integration/cpp23/output/03_scoped_enums_namespaces_project/output/main.h
+[DEBUG FileOutputManager] Content size: 706 bytes
+[DEBUG FileOutputManager] Parent directory: "/Users/alexanderfedin/Projects/hapyy/hupyy-cpp-to-c/tests/integration/cpp23/output/03_scoped_enums_namespaces_project/output"
+[DEBUG FileOutputManager] Parent directory empty: no
+[DEBUG FileOutputManager] Parent directory exists: yes
+[DEBUG FileOutputManager] Opening file for writing: /Users/alexanderfedin/Projects/hapyy/hupyy-cpp-to-c/tests/integration/cpp23/output/03_scoped_enums_namespaces_project/output/main.h
+[DEBUG FileOutputManager] File opened successfully
+[DEBUG FileOutputManager] Content written successfully
+[DEBUG FileOutputManager] File closed successfully
+[DEBUG FileOutputManager] writeFile returning true
+[DEBUG FileOutputManager] writeFile called with filename: /Users/alexanderfedin/Projects/hapyy/hupyy-cpp-to-c/tests/integration/cpp23/output/03_scoped_enums_namespaces_project/output/main.c
+[DEBUG FileOutputManager] Content size: 1020 bytes
+[DEBUG FileOutputManager] Parent directory: "/Users/alexanderfedin/Projects/hapyy/hupyy-cpp-to-c/tests/integration/cpp23/output/03_scoped_enums_namespaces_project/output"
+[DEBUG FileOutputManager] Parent directory empty: no
+[DEBUG FileOutputManager] Parent directory exists: yes
+[DEBUG FileOutputManager] Opening file for writing: /Users/alexanderfedin/Projects/hapyy/hupyy-cpp-to-c/tests/integration/cpp23/output/03_scoped_enums_namespaces_project/output/main.c
+[DEBUG FileOutputManager] File opened successfully
+[DEBUG FileOutputManager] Content written successfully
+[DEBUG FileOutputManager] File closed successfully
+[DEBUG FileOutputManager] writeFile returning true
+  [4/5] Compiling C version...
+[0;31m  FAIL: C compilation failed[0;m
+In file included from /Users/alexanderfedin/Projects/hapyy/hupyy-cpp-to-c/tests/integration/cpp23/output/03_scoped_enums_namespaces_project/output/main.c:4:
+/Users/alexanderfedin/Projects/hapyy/hupyy-cpp-to-c/tests/integration/cpp23/output/03_scoped_enums_namespaces_project/output/main.h:12:2: error: unknown type name 'Color'
+   12 |         Color::Primary primary;
+      |         ^
+/Users/alexanderfedin/Projects/hapyy/hupyy-cpp-to-c/tests/integration/cpp23/output/03_scoped_enums_namespaces_project/output/main.h:12:7: error: expected member name or ';' after declaration specifiers
+   12 |         Color::Primary primary;
+      |         ~~~~~^
+/Users/alexanderfedin/Projects/hapyy/hupyy-cpp-to-c/tests/integration/cpp23/output/03_scoped_enums_namespaces_project/output/main.h:12:7: error: expected ';' at end of declaration list
+   12 |         Color::Primary primary;
+      |              ^
+[1;33mRunning: 04_operator_overloading_templates[0;m
+  [1/5] Compiling C++ version...
+  [2/5] Running C++ version...
+  [3/5] Transpiling to C...
+[DEBUG] Installing segfault handler...
+[DEBUG] Signal handlers installed
+Auto-discovering C++ source files in: /Users/alexanderfedin/Projects/hapyy/hupyy-cpp-to-c/tests/integration/cpp23/output/04_operator_overloading_templates_project
+Discovered 1 file(s) for transpilation
+[DEBUG] About to call Tool.run()...
+[0;31m  FAIL: Transpilation failed[0;m
+/Users/alexanderfedin/Projects/hapyy/hupyy-cpp-to-c/tests/integration/cpp23/output/04_operator_overloading_templates_project/main.cpp:5:10: fatal error: 'cassert' file not found
+[1;33mRunning: 05_range_for_custom_containers[0;m
+  [1/5] Compiling C++ version...
+  [2/5] Running C++ version...
+  [3/5] Transpiling to C...
+[DEBUG] Installing segfault handler...
+[DEBUG] Signal handlers installed
+Auto-discovering C++ source files in: /Users/alexanderfedin/Projects/hapyy/hupyy-cpp-to-c/tests/integration/cpp23/output/05_range_for_custom_containers_project
+Discovered 1 file(s) for transpilation
+[DEBUG] About to call Tool.run()...
+Parsed file: /Users/alexanderfedin/Projects/hapyy/hupyy-cpp-to-c/tests/integration/cpp23/output/05_range_for_custom_containers_project/main.cpp
+FileOriginTracker configured with user header paths
+Translation unit has 92 top-level declarations
+[Bug #30 FIX] Creating independent target ASTContext for C output...
+[Bug #30 FIX] Target ASTContext created successfully:
+  - ASTContext @ 0x12783ae00
+  - Target Triple: arm64-apple-darwin24.5.0
+  - Language: C11
+[Bug #30 FIX] Created C_TU @ 0x127845168 for file: /Users/alexanderfedin/Projects/hapyy/hupyy-cpp-to-c/tests/integration/cpp23/output/05_range_for_custom_containers_project/main.cpp
+FileOriginFilter initialized for: /Users/alexanderfedin/Projects/hapyy/hupyy-cpp-to-c/tests/integration/cpp23/output/05_range_for_custom_containers_project/main.cpp
+Virtual method support initialized
+Template monomorphization enabled (limit: 1000 instantiations)
+Exception handling support initialized (SJLJ model)
+RTTI support initialized (typeid and dynamic_cast)
+Multidimensional subscript operator support initialized (C++23)
+Static operator() and operator[] support initialized (C++23)
+[[assume]] attribute support initialized (C++23)
+Deducing this / explicit object parameter support initialized (C++23 P0847R7)
+if consteval support initialized (C++23 P1938R3) - Runtime strategy
+auto(x) decay-copy and partial constexpr support initialized (C++23 P0849R8)
+Scoped enum translation support initialized (Phase 47)
+ArithmeticOperatorTranslator initialized (Phase 50)
+Arithmetic operator overloading support initialized (Phase 50)
+ComparisonOperatorTranslator initialized (Phase 51)
+Comparison & logical operator overloading support initialized (Phase 51)
+SpecialOperatorTranslator initialized (Phase 52)
+Special operator overloading support initialized (Phase 52)
+Type alias and typedef support initialized (Phase 53)
+[Bug #30 FIX] CppToCVisitor using C_TU @ 0x127845168
+Found class template: SimpleList
+Found variable: MAX_SIZE
+Found variable: value
+Found variable: index
+Skipping nested class 'Iterator' inside template pattern 'SimpleList'
+Skipping method 'Iterator' of nested class 'Iterator' inside template pattern 'SimpleList'
+Skipping constructor of nested class 'Iterator' inside template pattern 'SimpleList'
+Found variable: p
+Skipping method 'operator*' of nested class 'Iterator' inside template pattern 'SimpleList'
+Skipping method 'operator++' of nested class 'Iterator' inside template pattern 'SimpleList'
+Skipping method 'operator!=' of nested class 'Iterator' inside template pattern 'SimpleList'
+Found variable: other
+Analyzing function for RAII: main
+  Found 6 local variables
+Translating standalone function: main
+  Mangled name: main
+[DEBUG Bug#26] translateStmt called, type: CompoundStmt
+  [Scope] Entering scope at depth 0
+[DEBUG Bug#26] translateStmt called, type: DeclStmt
+  [Translating DeclStmt]
+    Variable: list
+      Is a template specialization: SimpleList
+      Monomorphized struct name: SimpleList_int
+[DEBUG Bug#26] translateStmt called, type: CXXMemberCallExpr
+[DEBUG Bug#26] translateStmt called, type: MemberExpr
+[DEBUG Bug#26] translateStmt called, type: DeclRefExpr
+[DEBUG Bug#26] translateStmt called, type: IntegerLiteral
+  Warning: Method not in methodToCFunc map, generating call anyway: SimpleList<int>::add
+  Generated function name: SimpleList_add
+[DEBUG Bug#26] translateStmt called, type: CXXMemberCallExpr
+[DEBUG Bug#26] translateStmt called, type: MemberExpr
+[DEBUG Bug#26] translateStmt called, type: DeclRefExpr
+[DEBUG Bug#26] translateStmt called, type: IntegerLiteral
+[DEBUG Bug#26] translateStmt called, type: CXXMemberCallExpr
+[DEBUG Bug#26] translateStmt called, type: MemberExpr
+[DEBUG Bug#26] translateStmt called, type: DeclRefExpr
+[DEBUG Bug#26] translateStmt called, type: IntegerLiteral
+[DEBUG Bug#26] translateStmt called, type: CXXMemberCallExpr
+[DEBUG Bug#26] translateStmt called, type: MemberExpr
+[DEBUG Bug#26] translateStmt called, type: DeclRefExpr
+[DEBUG Bug#26] translateStmt called, type: IntegerLiteral
+[DEBUG Bug#26] translateStmt called, type: CXXMemberCallExpr
+[DEBUG Bug#26] translateStmt called, type: MemberExpr
+[DEBUG Bug#26] translateStmt called, type: DeclRefExpr
+[DEBUG Bug#26] translateStmt called, type: IntegerLiteral
+  [Bug #8] Skipping statement containing RecoveryExpr
+[DEBUG Bug#26] translateStmt called, type: DeclStmt
+  [Translating DeclStmt]
+    Variable: sum
+  [Bug #8] Skipping statement containing RecoveryExpr
+[DEBUG Bug#26] translateStmt called, type: DeclStmt
+  [Translating DeclStmt]
+    Variable: expected
+[DEBUG Bug#26] translateStmt called, type: DeclStmt
+  [Translating DeclStmt]
+    Variable: index
+[DEBUG Bug#26] translateStmt called, type: DeclStmt
+  [Translating DeclStmt]
+    Variable: doubleList
+      Is a template specialization: SimpleList
+      Monomorphized struct name: SimpleList_double
+  [Bug #8] Skipping statement containing RecoveryExpr
+  [Bug #8] Skipping statement containing RecoveryExpr
+  [Bug #8] Skipping statement containing RecoveryExpr
+[DEBUG Bug#26] translateStmt called, type: DeclStmt
+  [Translating DeclStmt]
+    Variable: doubleSum
+  [Bug #8] Skipping statement containing RecoveryExpr
+[DEBUG Bug#26] translateStmt called, type: ReturnStmt
+[DEBUG Bug#26] Dispatching to translateReturnStmt
+[DEBUG Bug#26] translateReturnStmt called
+[DEBUG Bug#26] RetValue exists, type: IntegerLiteral
+[DEBUG Bug#26] No constructor expression detected after unwrapping
+  [Scope] Exiting scope at depth 0 with 0 objects
+  -> C function 'main' created
+  Parameters: 0
+  Return type: int
+Found variable: list
+Found variable: sum
+Found variable: expected
+Found variable: index
+Found variable: doubleList
+Found variable: doubleSum
+
+========================================
+Processing Template Instantiations
+========================================
+
+[DEBUG TemplateExtractor] VisitClassTemplateDecl: SimpleList
+  -> Processing specializations (2 found)
+    -> Checking specialization
+       -> Adding to collection
+    -> Checking specialization
+       -> Adding to collection
+Found 2 class template instantiation(s)
+Found 0 function template instantiation(s)
+
+Monomorphizing class templates:
+  Generating AST for: SimpleList<int>
+  Registered nested class mapping: Iterator -> SimpleList_int_Iterator
+  Processing nested class: Iterator
+    -> Generated struct SimpleList_int_Iterator with 1 fields
+    -> Processing nested constructor: Iterator
+      -> Generated constructor function: SimpleList_int_Iterator__ctor
+    -> Created struct: SimpleList_int
+    -> Created 5 method function(s)
+      -> Found pattern method: add
+      -> Found pattern method: getSize
+      -> Found pattern method: get
+      -> Found pattern method: begin
+      -> Found pattern method: end
+      -> Method add has inline body
+      -> Translating body for SimpleList_int_add
+[DEBUG Bug#26] translateStmt called, type: CompoundStmt
+  [Scope] Entering scope at depth 0
+[DEBUG Bug#26] translateStmt called, type: IfStmt
+[DEBUG Bug#26] translateStmt called, type: CompoundStmt
+  [Scope] Entering scope at depth 1
+[DEBUG Bug#26] translateStmt called, type: BinaryOperator
+[DEBUG Bug#26] translateStmt called, type: ArraySubscriptExpr
+[DEBUG Bug#26] translateStmt called, type: MemberExpr
+[DEBUG Bug#26] translateStmt called, type: CXXThisExpr
+[DEBUG Bug#26] translateStmt called, type: UnaryOperator
+[DEBUG Bug#26] translateStmt called, type: MemberExpr
+[DEBUG Bug#26] translateStmt called, type: CXXThisExpr
+[DEBUG Bug#26] translateStmt called, type: DeclRefExpr
+  [Scope] Exiting scope at depth 1 with 0 objects
+  [Scope] Exiting scope at depth 0 with 0 objects
+      -> Body translated successfully
+      -> Method getSize has inline body
+      -> Translating body for SimpleList_int_getSize
+[DEBUG Bug#26] translateStmt called, type: CompoundStmt
+  [Scope] Entering scope at depth 0
+[DEBUG Bug#26] translateStmt called, type: ReturnStmt
+[DEBUG Bug#26] Dispatching to translateReturnStmt
+[DEBUG Bug#26] translateReturnStmt called
+[DEBUG Bug#26] RetValue exists, type: ImplicitCastExpr
+[DEBUG Bug#26]   ImplicitCastExpr -> subexpr type: MemberExpr
+[DEBUG Bug#26] No constructor expression detected after unwrapping
+  [Scope] Exiting scope at depth 0 with 0 objects
+      -> Body translated successfully
+      -> Method get has inline body
+      -> Translating body for SimpleList_int_get
+[DEBUG Bug#26] translateStmt called, type: CompoundStmt
+  [Scope] Entering scope at depth 0
+[DEBUG Bug#26] translateStmt called, type: ReturnStmt
+[DEBUG Bug#26] Dispatching to translateReturnStmt
+[DEBUG Bug#26] translateReturnStmt called
+[DEBUG Bug#26] RetValue exists, type: ArraySubscriptExpr
+[DEBUG Bug#26] No constructor expression detected after unwrapping
+  [Scope] Exiting scope at depth 0 with 0 objects
+      -> Body translated successfully
+      -> Method begin has inline body
+      -> Translating body for SimpleList_int_begin
+[DEBUG Bug#26] translateStmt called, type: CompoundStmt
+  [Scope] Entering scope at depth 0
+[DEBUG Bug#26] translateStmt called, type: ReturnStmt
+[DEBUG Bug#26] Dispatching to translateReturnStmt
+[DEBUG Bug#26] translateReturnStmt called
+[DEBUG Bug#26] RetValue exists, type: CXXUnresolvedConstructExpr
+[DEBUG Bug#26] No constructor expression detected after unwrapping
+  [Scope] Exiting scope at depth 0 with 0 objects
+      -> Body translated successfully
+      -> Method end has inline body
+      -> Translating body for SimpleList_int_end
+[DEBUG Bug#26] translateStmt called, type: CompoundStmt
+  [Scope] Entering scope at depth 0
+[DEBUG Bug#26] translateStmt called, type: ReturnStmt
+[DEBUG Bug#26] Dispatching to translateReturnStmt
+[DEBUG Bug#26] translateReturnStmt called
+[DEBUG Bug#26] RetValue exists, type: CXXUnresolvedConstructExpr
+[DEBUG Bug#26] No constructor expression detected after unwrapping
+  [Scope] Exiting scope at depth 0 with 0 objects
+      -> Body translated successfully
+  Generating AST for: SimpleList<double>
+  Registered nested class mapping: Iterator -> SimpleList_double_Iterator
+  Processing nested class: Iterator
+    -> Generated struct SimpleList_double_Iterator with 1 fields
+    -> Processing nested constructor: Iterator
+      -> Generated constructor function: SimpleList_double_Iterator__ctor
+    -> Created struct: SimpleList_double
+    -> Created 5 method function(s)
+      -> Found pattern method: add
+      -> Found pattern method: getSize
+      -> Found pattern method: get
+      -> Found pattern method: begin
+      -> Found pattern method: end
+      -> Method add has inline body
+      -> Translating body for SimpleList_double_add
+[DEBUG Bug#26] translateStmt called, type: CompoundStmt
+  [Scope] Entering scope at depth 0
+[DEBUG Bug#26] translateStmt called, type: IfStmt
+[DEBUG Bug#26] translateStmt called, type: CompoundStmt
+  [Scope] Entering scope at depth 1
+[DEBUG Bug#26] translateStmt called, type: BinaryOperator
+[DEBUG Bug#26] translateStmt called, type: ArraySubscriptExpr
+[DEBUG Bug#26] translateStmt called, type: MemberExpr
+[DEBUG Bug#26] translateStmt called, type: CXXThisExpr
+[DEBUG Bug#26] translateStmt called, type: UnaryOperator
+[DEBUG Bug#26] translateStmt called, type: MemberExpr
+[DEBUG Bug#26] translateStmt called, type: CXXThisExpr
+[DEBUG Bug#26] translateStmt called, type: DeclRefExpr
+  [Scope] Exiting scope at depth 1 with 0 objects
+  [Scope] Exiting scope at depth 0 with 0 objects
+      -> Body translated successfully
+      -> Method getSize has inline body
+      -> Translating body for SimpleList_double_getSize
+[DEBUG Bug#26] translateStmt called, type: CompoundStmt
+  [Scope] Entering scope at depth 0
+[DEBUG Bug#26] translateStmt called, type: ReturnStmt
+[DEBUG Bug#26] Dispatching to translateReturnStmt
+[DEBUG Bug#26] translateReturnStmt called
+[DEBUG Bug#26] RetValue exists, type: ImplicitCastExpr
+[DEBUG Bug#26]   ImplicitCastExpr -> subexpr type: MemberExpr
+[DEBUG Bug#26] No constructor expression detected after unwrapping
+  [Scope] Exiting scope at depth 0 with 0 objects
+      -> Body translated successfully
+      -> Method get has inline body
+      -> Translating body for SimpleList_double_get
+[DEBUG Bug#26] translateStmt called, type: CompoundStmt
+  [Scope] Entering scope at depth 0
+[DEBUG Bug#26] translateStmt called, type: ReturnStmt
+[DEBUG Bug#26] Dispatching to translateReturnStmt
+[DEBUG Bug#26] translateReturnStmt called
+[DEBUG Bug#26] RetValue exists, type: ArraySubscriptExpr
+[DEBUG Bug#26] No constructor expression detected after unwrapping
+  [Scope] Exiting scope at depth 0 with 0 objects
+      -> Body translated successfully
+      -> Method begin has inline body
+      -> Translating body for SimpleList_double_begin
+[DEBUG Bug#26] translateStmt called, type: CompoundStmt
+  [Scope] Entering scope at depth 0
+[DEBUG Bug#26] translateStmt called, type: ReturnStmt
+[DEBUG Bug#26] Dispatching to translateReturnStmt
+[DEBUG Bug#26] translateReturnStmt called
+[DEBUG Bug#26] RetValue exists, type: CXXUnresolvedConstructExpr
+[DEBUG Bug#26] No constructor expression detected after unwrapping
+  [Scope] Exiting scope at depth 0 with 0 objects
+      -> Body translated successfully
+      -> Method end has inline body
+      -> Translating body for SimpleList_double_end
+[DEBUG Bug#26] translateStmt called, type: CompoundStmt
+  [Scope] Entering scope at depth 0
+[DEBUG Bug#26] translateStmt called, type: ReturnStmt
+[DEBUG Bug#26] Dispatching to translateReturnStmt
+[DEBUG Bug#26] translateReturnStmt called
+[DEBUG Bug#26] RetValue exists, type: CXXUnresolvedConstructExpr
+[DEBUG Bug#26] No constructor expression detected after unwrapping
+  [Scope] Exiting scope at depth 0 with 0 objects
+      -> Body translated successfully
+
+Monomorphizing function templates:
+
+========================================
+Template Monomorphization Complete
+  Unique instantiations: 2
+========================================
+
+C TranslationUnit has 18 generated declarations
+Generated files:
+  /Users/alexanderfedin/Projects/hapyy/hupyy-cpp-to-c/tests/integration/cpp23/output/05_range_for_custom_containers_project/output/main.h
+  /Users/alexanderfedin/Projects/hapyy/hupyy-cpp-to-c/tests/integration/cpp23/output/05_range_for_custom_containers_project/output/main.c
+[DEBUG] Tool.run() returned: 1
+[DEBUG] After Tool.run(), about to handle dependencies...
+
+Transpilation completed successfully. Generated 1 file pair(s).
+[DEBUG FileOutputManager] writeFile called with filename: /Users/alexanderfedin/Projects/hapyy/hupyy-cpp-to-c/tests/integration/cpp23/output/05_range_for_custom_containers_project/output/main.h
+[DEBUG FileOutputManager] Content size: 1494 bytes
+[DEBUG FileOutputManager] Parent directory: "/Users/alexanderfedin/Projects/hapyy/hupyy-cpp-to-c/tests/integration/cpp23/output/05_range_for_custom_containers_project/output"
+[DEBUG FileOutputManager] Parent directory empty: no
+[DEBUG FileOutputManager] Parent directory exists: yes
+[DEBUG FileOutputManager] Opening file for writing: /Users/alexanderfedin/Projects/hapyy/hupyy-cpp-to-c/tests/integration/cpp23/output/05_range_for_custom_containers_project/output/main.h
+[DEBUG FileOutputManager] File opened successfully
+[DEBUG FileOutputManager] Content written successfully
+[DEBUG FileOutputManager] File closed successfully
+[DEBUG FileOutputManager] writeFile returning true
+[DEBUG FileOutputManager] writeFile called with filename: /Users/alexanderfedin/Projects/hapyy/hupyy-cpp-to-c/tests/integration/cpp23/output/05_range_for_custom_containers_project/output/main.c
+[DEBUG FileOutputManager] Content size: 1945 bytes
+[DEBUG FileOutputManager] Parent directory: "/Users/alexanderfedin/Projects/hapyy/hupyy-cpp-to-c/tests/integration/cpp23/output/05_range_for_custom_containers_project/output"
+[DEBUG FileOutputManager] Parent directory empty: no
+[DEBUG FileOutputManager] Parent directory exists: yes
+[DEBUG FileOutputManager] Opening file for writing: /Users/alexanderfedin/Projects/hapyy/hupyy-cpp-to-c/tests/integration/cpp23/output/05_range_for_custom_containers_project/output/main.c
+[DEBUG FileOutputManager] File opened successfully
+[DEBUG FileOutputManager] Content written successfully
+[DEBUG FileOutputManager] File closed successfully
+[DEBUG FileOutputManager] writeFile returning true
+  [4/5] Compiling C version...
+[0;31m  FAIL: C compilation failed[0;m
+In file included from /Users/alexanderfedin/Projects/hapyy/hupyy-cpp-to-c/tests/integration/cpp23/output/05_range_for_custom_containers_project/output/main.c:4:
+/Users/alexanderfedin/Projects/hapyy/hupyy-cpp-to-c/tests/integration/cpp23/output/05_range_for_custom_containers_project/output/main.h:11:28: warning: declaration of 'struct SimpleList' will not be visible outside of this function [-Wvisibility]
+   11 | void SimpleList_add(struct SimpleList * this, int value);
+      |                            ^
+/Users/alexanderfedin/Projects/hapyy/hupyy-cpp-to-c/tests/integration/cpp23/output/05_range_for_custom_containers_project/output/main.c:6:28: warning: declaration of 'struct SimpleList' will not be visible outside of this function [-Wvisibility]
+    6 | void SimpleList_add(struct SimpleList * this, int value);
+      |                            ^
+/Users/alexanderfedin/Projects/hapyy/hupyy-cpp-to-c/tests/integration/cpp23/output/05_range_for_custom_containers_project/output/main.c:6:6: error: conflicting types for 'SimpleList_add'
+    6 | void SimpleList_add(struct SimpleList * this, int value);
+      |      ^
+
+
+======================================
+Test Results Summary:
+  Total:     5
+  [0;32mPassed:[0;m    0
+  [0;31mFailed:[0;m    5
+  Pass Rate: 0%
+======================================
+
+Detailed results saved to: /Users/alexanderfedin/Projects/hapyy/hupyy-cpp-to-c/tests/integration/cpp23/test_results.txt
+Test output saved to: /Users/alexanderfedin/Projects/hapyy/hupyy-cpp-to-c/tests/integration/cpp23/output/
+FAILURE: Pass rate < 60%

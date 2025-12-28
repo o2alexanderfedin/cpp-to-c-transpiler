@@ -29,7 +29,12 @@ MultipleInheritanceAnalyzer::analyzePolymorphicBases(const CXXRecordDecl* Record
     for (const auto& Base : Record->bases()) {
         const CXXRecordDecl* BaseRecord = Base.getType()->getAsCXXRecordDecl();
 
-        if (!BaseRecord || !isPolymorphicBase(BaseRecord)) {
+        // Safety check: skip null base records
+        if (!BaseRecord) {
+            continue;
+        }
+
+        if (!isPolymorphicBase(BaseRecord)) {
             continue;
         }
 
@@ -38,7 +43,14 @@ MultipleInheritanceAnalyzer::analyzePolymorphicBases(const CXXRecordDecl* Record
         info.IsPrimary = !foundPrimary;  // First polymorphic base is primary
         info.VtblIndex = vtblIndex;
         info.VtblFieldName = getVtblFieldName(vtblIndex);
-        info.Offset = calculateBaseOffset(Record, BaseRecord);
+
+        // CRITICAL FIX: Primary base always has offset 0
+        // Only calculate offset for non-primary bases to avoid ASTRecordLayout issues
+        if (info.IsPrimary) {
+            info.Offset = 0;
+        } else {
+            info.Offset = calculateBaseOffset(Record, BaseRecord);
+        }
 
         result.push_back(info);
 
@@ -100,7 +112,12 @@ unsigned MultipleInheritanceAnalyzer::calculateBaseOffset(
     const CXXRecordDecl* Derived,
     const CXXRecordDecl* Base) {
 
+    // Safety checks
     if (!Derived || !Base || !Derived->isCompleteDefinition()) {
+        return 0;
+    }
+
+    if (!Base->isCompleteDefinition()) {
         return 0;
     }
 
@@ -117,11 +134,20 @@ unsigned MultipleInheritanceAnalyzer::calculateBaseOffset(
         return 0;
     }
 
-    // Use Clang's ASTRecordLayout to get base class offset
-    const ASTRecordLayout& Layout = Context.getASTRecordLayout(Derived);
+    // CRITICAL: Use definition pointers to avoid ASTRecordLayout issues
+    const CXXRecordDecl* DerivedDef = Derived->getDefinition();
+    if (!DerivedDef) {
+        return 0;
+    }
 
-    // Get offset for this base
-    CharUnits Offset = Layout.getBaseClassOffset(Base);
+    const CXXRecordDecl* BaseDef = Base->getDefinition();
+    if (!BaseDef) {
+        return 0;
+    }
+
+    // Use Clang's ASTRecordLayout to get base class offset
+    const ASTRecordLayout& Layout = Context.getASTRecordLayout(DerivedDef);
+    CharUnits Offset = Layout.getBaseClassOffset(BaseDef);
 
     return static_cast<unsigned>(Offset.getQuantity());
 }

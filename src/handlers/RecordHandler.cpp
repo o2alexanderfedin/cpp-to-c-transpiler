@@ -479,7 +479,10 @@ std::vector<const clang::CXXMethodDecl*> RecordHandler::collectVirtualMethods(
     // Step 1: Collect virtual methods from base classes (if any)
     for (const auto& base : cxxRecord->bases()) {
         const auto* baseRecord = base.getType()->getAsCXXRecordDecl();
-        if (!baseRecord) continue;
+        // Safety check: skip null base records
+        if (!baseRecord) {
+            continue;
+        }
 
         // Recursively collect base class virtual methods
         std::vector<const clang::CXXMethodDecl*> baseMethods = collectVirtualMethods(baseRecord);
@@ -601,6 +604,11 @@ void RecordHandler::injectLpVtblField(
     bool usesMultipleInheritance = bases.size() > 1;
 
     for (const auto& baseInfo : bases) {
+        // Safety check: skip null base declarations
+        if (!baseInfo.BaseDecl) {
+            continue;
+        }
+
         std::string baseName = baseInfo.BaseDecl->getNameAsString();
         std::string vtableName = usesMultipleInheritance
             ? className + "_" + baseName + "_vtable"
@@ -676,6 +684,11 @@ void RecordHandler::generateVtableInstances(
 
     // Generate vtable instance for each polymorphic base
     for (const auto& baseInfo : bases) {
+        // Safety check: skip null base declarations
+        if (!baseInfo.BaseDecl) {
+            continue;
+        }
+
         generateVtableInstanceForBase(cxxRecord, baseInfo.BaseDecl, baseInfo.IsPrimary, baseInfo.Offset, ctx);
     }
 }
@@ -688,6 +701,7 @@ clang::VarDecl* RecordHandler::generateVtableInstanceForBase(
     unsigned baseOffset,
     HandlerContext& ctx
 ) {
+    // Safety check
     if (!cxxRecord || !baseClass) {
         return nullptr;
     }
@@ -781,11 +795,17 @@ clang::VarDecl* RecordHandler::generateVtableInstanceForBase(
     for (auto it = vtableStruct->field_begin(); it != vtableStruct->field_end(); ++it, ++fieldIndex) {
         clang::FieldDecl* field = *it;
 
+        // Safety check: ensure we don't go past the methods array
         if (fieldIndex >= baseMethods.size()) {
-            break; // Safety check
+            break;
         }
 
         const clang::CXXMethodDecl* baseMethod = baseMethods[fieldIndex];
+
+        // Safety check: skip null methods
+        if (!baseMethod) {
+            continue;
+        }
 
         // Create function name for the method
         // For primary base: use real implementation
@@ -798,7 +818,7 @@ clang::VarDecl* RecordHandler::generateVtableInstanceForBase(
             } else {
                 funcName = className + "_" + baseMethod->getNameAsString();
             }
-        } else {
+        } else{
             // Non-primary base: use thunk (e.g., Shape_serialize_ISerializable_thunk)
             funcName = thunkGen.getThunkName(cxxRecord, baseMethod, baseClass);
 

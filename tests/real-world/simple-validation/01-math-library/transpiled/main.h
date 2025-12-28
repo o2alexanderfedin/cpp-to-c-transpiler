@@ -19,4 +19,5 @@ struct Matrix3x3 {
 };
 static void Matrix3x3__ctor_copy(struct Matrix3x3 * this, const struct Matrix3x3 * other);
 float Vector3D_dot(struct Vector3D * this, const struct Vector3D * other);
+float Matrix3x3_get(struct Matrix3x3 * this, int row, int col);
 int main();
