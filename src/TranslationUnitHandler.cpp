@@ -33,10 +33,18 @@ void TranslationUnitHandler::handleTranslationUnit(
     // Get PathMapper from dispatcher to map C++ source → C target
     cpptoc::PathMapper& pathMapper = disp.getPathMapper();
 
-    // Get source file path from C++ TranslationUnit
-    // Note: For now we use a placeholder - actual implementation needs FileID lookup
-    // TODO: Get actual source file path from SourceManager
-    std::string sourcePath = "<main-file>";  // Placeholder
+    // Get source file path from C++ TranslationUnit via SourceManager
+    const clang::SourceManager& SM = cppASTContext.getSourceManager();
+    clang::FileID MainFileID = SM.getMainFileID();
+    const clang::FileEntry* MainFile = SM.getFileEntryForID(MainFileID);
+
+    std::string sourcePath;
+    if (MainFile) {
+        sourcePath = MainFile->tryGetRealPathName().str();
+    } else {
+        // Fallback for in-memory sources (e.g., tests with buildASTFromCode)
+        sourcePath = "<stdin>";
+    }
 
     // Map C++ source path to C target path
     std::string targetPath = pathMapper.mapSourceToTarget(sourcePath);
