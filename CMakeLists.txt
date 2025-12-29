@@ -213,6 +213,7 @@ add_library(cpptoc_core STATIC
     src/mapping/DeclMapper.cpp
     src/mapping/TypeMapper.cpp
     src/mapping/ExprMapper.cpp
+    src/mapping/StmtMapper.cpp
     src/translation/TypeTranslator.cpp
     src/CFGAnalyzer.cpp
     src/NameMangler.cpp

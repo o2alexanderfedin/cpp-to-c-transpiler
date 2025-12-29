@@ -17,6 +17,7 @@
 #include "mapping/DeclMapper.h"
 #include "mapping/TypeMapper.h"
 #include "mapping/ExprMapper.h"
+#include "mapping/StmtMapper.h"
 #include "TargetContext.h"
 #include "clang/AST/ASTContext.h"
 #include "clang/AST/Expr.h"
@@ -62,8 +63,9 @@ TEST(DeclRefExprHandlerDispatcherTest, Registration) {
     cpptoc::DeclMapper declMapper;
     cpptoc::TypeMapper typeMapper;
     cpptoc::ExprMapper exprMapper;
+    cpptoc::StmtMapper stmtMapper;
 
-    CppToCVisitorDispatcher dispatcher(mapper, locMapper, declMapper, typeMapper, exprMapper);
+    CppToCVisitorDispatcher dispatcher(mapper, locMapper, declMapper, typeMapper, exprMapper, stmtMapper);
     cpptoc::DeclRefExprHandler::registerWith(dispatcher);
 
     TranslationUnitDecl* TU = cppCtx.getTranslationUnitDecl();
@@ -108,8 +110,9 @@ TEST(DeclRefExprHandlerDispatcherTest, ParameterReference) {
     cpptoc::DeclMapper declMapper;
     cpptoc::TypeMapper typeMapper;
     cpptoc::ExprMapper exprMapper;
+    cpptoc::StmtMapper stmtMapper;
 
-    CppToCVisitorDispatcher dispatcher(mapper, locMapper, declMapper, typeMapper, exprMapper);
+    CppToCVisitorDispatcher dispatcher(mapper, locMapper, declMapper, typeMapper, exprMapper, stmtMapper);
     cpptoc::DeclRefExprHandler::registerWith(dispatcher);
 
     TranslationUnitDecl* TU = cppCtx.getTranslationUnitDecl();
@@ -160,8 +163,9 @@ TEST(DeclRefExprHandlerDispatcherTest, LocalVariableReference) {
     cpptoc::DeclMapper declMapper;
     cpptoc::TypeMapper typeMapper;
     cpptoc::ExprMapper exprMapper;
+    cpptoc::StmtMapper stmtMapper;
 
-    CppToCVisitorDispatcher dispatcher(mapper, locMapper, declMapper, typeMapper, exprMapper);
+    CppToCVisitorDispatcher dispatcher(mapper, locMapper, declMapper, typeMapper, exprMapper, stmtMapper);
     cpptoc::DeclRefExprHandler::registerWith(dispatcher);
 
     TranslationUnitDecl* TU = cppCtx.getTranslationUnitDecl();
@@ -206,8 +210,9 @@ TEST(DeclRefExprHandlerDispatcherTest, MultipleDeclRefExprs) {
     cpptoc::DeclMapper declMapper;
     cpptoc::TypeMapper typeMapper;
     cpptoc::ExprMapper exprMapper;
+    cpptoc::StmtMapper stmtMapper;
 
-    CppToCVisitorDispatcher dispatcher(mapper, locMapper, declMapper, typeMapper, exprMapper);
+    CppToCVisitorDispatcher dispatcher(mapper, locMapper, declMapper, typeMapper, exprMapper, stmtMapper);
     cpptoc::DeclRefExprHandler::registerWith(dispatcher);
 
     // Find all DeclRefExprs manually
@@ -269,8 +274,9 @@ TEST(DeclRefExprHandlerDispatcherTest, NonDeclRefExprNotHandled) {
     cpptoc::DeclMapper declMapper;
     cpptoc::TypeMapper typeMapper;
     cpptoc::ExprMapper exprMapper;
+    cpptoc::StmtMapper stmtMapper;
 
-    CppToCVisitorDispatcher dispatcher(mapper, locMapper, declMapper, typeMapper, exprMapper);
+    CppToCVisitorDispatcher dispatcher(mapper, locMapper, declMapper, typeMapper, exprMapper, stmtMapper);
     cpptoc::DeclRefExprHandler::registerWith(dispatcher);
 
     TranslationUnitDecl* TU = cppCtx.getTranslationUnitDecl();

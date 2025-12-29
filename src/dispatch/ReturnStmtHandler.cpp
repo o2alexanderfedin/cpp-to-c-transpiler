@@ -9,6 +9,7 @@
 #include "dispatch/ReturnStmtHandler.h"
 #include "mapping/DeclMapper.h"
 #include "mapping/ExprMapper.h"
+#include "mapping/StmtMapper.h"
 #include "translation/TypeTranslator.h"
 #include "llvm/Support/Casting.h"
 #include "llvm/Support/raw_ostream.h"
@@ -92,20 +93,15 @@ void ReturnStmtHandler::handleReturnStmt(
     assert(cReturn && "Failed to create C ReturnStmt");
 
     // Store mapping so parent handler (e.g., CompoundStmt handler) can retrieve this statement
-    // Note: For statements, we use DeclMapper's statement mapping capability
-    // (DeclMapper handles both Decl and Stmt mappings in the current architecture)
-    cpptoc::DeclMapper& declMapper = disp.getDeclMapper();
+    cpptoc::StmtMapper& stmtMapper = disp.getStmtMapper();
+    stmtMapper.setCreatedStmt(cppReturn, cReturn);
 
     // Debug output for verification
     if (cppRetValue) {
-        llvm::outs() << "[ReturnStmtHandler] Translated return statement with value\n";
+        llvm::outs() << "[ReturnStmtHandler] Created C ReturnStmt with value and stored in StmtMapper\n";
     } else {
-        llvm::outs() << "[ReturnStmtHandler] Translated void return statement\n";
+        llvm::outs() << "[ReturnStmtHandler] Created C ReturnStmt (void) and stored in StmtMapper\n";
     }
-
-    // Note: The created ReturnStmt will be used by parent handler (e.g., CompoundStmtHandler)
-    // It's not added directly to any parent - the parent handler will retrieve it
-    // For now in Phase 1, we just create the node and verify it's properly formed
 }
 
 } // namespace cpptoc

@@ -4,7 +4,7 @@
  */
 
 #include "dispatch/CompoundStmtHandler.h"
-#include "mapping/ExprMapper.h"
+#include "mapping/StmtMapper.h"
 #include "clang/AST/Stmt.h"
 #include "llvm/Support/Casting.h"
 #include "llvm/Support/raw_ostream.h"
@@ -39,6 +39,15 @@ void CompoundStmtHandler::handleCompoundStmt(
 
     const auto* cppCompound = llvm::cast<clang::CompoundStmt>(S);
 
+    // Get StmtMapper for retrieving and storing statement mappings
+    cpptoc::StmtMapper& stmtMapper = disp.getStmtMapper();
+
+    // Check if already processed
+    if (stmtMapper.hasCreatedStmt(S)) {
+        llvm::outs() << "[CompoundStmtHandler] CompoundStmt already translated, skipping\n";
+        return;
+    }
+
     llvm::outs() << "[CompoundStmtHandler] Processing CompoundStmt with "
                  << cppCompound->size() << " statements\n";
 
@@ -66,17 +75,41 @@ void CompoundStmtHandler::handleCompoundStmt(
             continue;
         }
 
-        // For now, we don't have a StmtMapper to retrieve the translated statement
-        // Once we add StmtMapper, we'll retrieve the translated statement here
-        // For now, this handler just ensures statements are dispatched
-        llvm::outs() << "[CompoundStmtHandler] Statement dispatched successfully\n";
+        // Retrieve translated statement from StmtMapper
+        clang::Stmt* cStmt = stmtMapper.getCreatedStmt(cppStmt);
+        if (!cStmt) {
+            llvm::errs() << "[CompoundStmtHandler] WARNING: Statement dispatched but not in StmtMapper: "
+                         << cppStmt->getStmtClassName() << "\n";
+            llvm::errs() << "  Skipping statement not found in mapper\n";
+            // Continue with next statement - allows graceful degradation
+            continue;
+        }
+
+        // Add translated statement to collection
+        cStmts.push_back(cStmt);
+        llvm::outs() << "[CompoundStmtHandler] Statement translated successfully: "
+                     << cStmt->getStmtClassName() << "\n";
     }
 
-    llvm::outs() << "[CompoundStmtHandler] Processed CompoundStmt with "
-                 << cStmts.size() << " translated statements\n";
+    llvm::outs() << "[CompoundStmtHandler] Collected " << cStmts.size()
+                 << " translated statements (out of " << cppCompound->size() << " original)\n";
 
-    // TODO: Once we have StmtMapper, create C CompoundStmt and store mapping
-    // For now, this handler is primarily for dispatching child statements
+    // Create C CompoundStmt with translated statements
+    clang::CompoundStmt* cCompound = clang::CompoundStmt::Create(
+        cASTContext,
+        cStmts,
+        clang::FPOptionsOverride(),
+        clang::SourceLocation(),
+        clang::SourceLocation()
+    );
+
+    llvm::outs() << "[CompoundStmtHandler] Created C CompoundStmt with "
+                 << cCompound->size() << " statements\n";
+
+    // Store mapping in StmtMapper
+    stmtMapper.setCreatedStmt(S, cCompound);
+
+    llvm::outs() << "[CompoundStmtHandler] CompoundStmt translation complete and stored in StmtMapper\n";
 }
 
 } // namespace cpptoc

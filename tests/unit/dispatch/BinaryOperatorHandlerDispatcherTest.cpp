@@ -24,6 +24,7 @@
 #include "mapping/DeclMapper.h"
 #include "mapping/TypeMapper.h"
 #include "mapping/ExprMapper.h"
+#include "mapping/StmtMapper.h"
 #include "TargetContext.h"
 #include "clang/AST/ASTContext.h"
 #include "clang/AST/Expr.h"
@@ -69,8 +70,9 @@ TEST(BinaryOperatorHandlerDispatcherTest, Registration) {
     cpptoc::DeclMapper declMapper;
     cpptoc::TypeMapper typeMapper;
     cpptoc::ExprMapper exprMapper;
+    cpptoc::StmtMapper stmtMapper;
 
-    CppToCVisitorDispatcher dispatcher(mapper, locMapper, declMapper, typeMapper, exprMapper);
+    CppToCVisitorDispatcher dispatcher(mapper, locMapper, declMapper, typeMapper, exprMapper, stmtMapper);
     cpptoc::LiteralHandler::registerWith(dispatcher);
     cpptoc::DeclRefExprHandler::registerWith(dispatcher);
     cpptoc::ImplicitCastExprHandler::registerWith(dispatcher);
@@ -121,8 +123,9 @@ TEST(BinaryOperatorHandlerDispatcherTest, AdditionWithLiterals) {
     cpptoc::DeclMapper declMapper;
     cpptoc::TypeMapper typeMapper;
     cpptoc::ExprMapper exprMapper;
+    cpptoc::StmtMapper stmtMapper;
 
-    CppToCVisitorDispatcher dispatcher(mapper, locMapper, declMapper, typeMapper, exprMapper);
+    CppToCVisitorDispatcher dispatcher(mapper, locMapper, declMapper, typeMapper, exprMapper, stmtMapper);
     cpptoc::LiteralHandler::registerWith(dispatcher);
     cpptoc::DeclRefExprHandler::registerWith(dispatcher);
     cpptoc::ImplicitCastExprHandler::registerWith(dispatcher);
@@ -185,8 +188,9 @@ TEST(BinaryOperatorHandlerDispatcherTest, ArithmeticOperators) {
     cpptoc::DeclMapper declMapper;
     cpptoc::TypeMapper typeMapper;
     cpptoc::ExprMapper exprMapper;
+    cpptoc::StmtMapper stmtMapper;
 
-    CppToCVisitorDispatcher dispatcher(mapper, locMapper, declMapper, typeMapper, exprMapper);
+    CppToCVisitorDispatcher dispatcher(mapper, locMapper, declMapper, typeMapper, exprMapper, stmtMapper);
     cpptoc::LiteralHandler::registerWith(dispatcher);
     cpptoc::DeclRefExprHandler::registerWith(dispatcher);
     cpptoc::ImplicitCastExprHandler::registerWith(dispatcher);
@@ -251,8 +255,9 @@ TEST(BinaryOperatorHandlerDispatcherTest, ComparisonOperators) {
     cpptoc::DeclMapper declMapper;
     cpptoc::TypeMapper typeMapper;
     cpptoc::ExprMapper exprMapper;
+    cpptoc::StmtMapper stmtMapper;
 
-    CppToCVisitorDispatcher dispatcher(mapper, locMapper, declMapper, typeMapper, exprMapper);
+    CppToCVisitorDispatcher dispatcher(mapper, locMapper, declMapper, typeMapper, exprMapper, stmtMapper);
     cpptoc::DeclRefExprHandler::registerWith(dispatcher);
     cpptoc::ImplicitCastExprHandler::registerWith(dispatcher);
     cpptoc::ParenExprHandler::registerWith(dispatcher);
@@ -313,8 +318,9 @@ TEST(BinaryOperatorHandlerDispatcherTest, LogicalOperators) {
     cpptoc::DeclMapper declMapper;
     cpptoc::TypeMapper typeMapper;
     cpptoc::ExprMapper exprMapper;
+    cpptoc::StmtMapper stmtMapper;
 
-    CppToCVisitorDispatcher dispatcher(mapper, locMapper, declMapper, typeMapper, exprMapper);
+    CppToCVisitorDispatcher dispatcher(mapper, locMapper, declMapper, typeMapper, exprMapper, stmtMapper);
     cpptoc::DeclRefExprHandler::registerWith(dispatcher);
     cpptoc::ImplicitCastExprHandler::registerWith(dispatcher);
     cpptoc::ParenExprHandler::registerWith(dispatcher);
@@ -364,8 +370,9 @@ TEST(BinaryOperatorHandlerDispatcherTest, NestedExpressions) {
     cpptoc::DeclMapper declMapper;
     cpptoc::TypeMapper typeMapper;
     cpptoc::ExprMapper exprMapper;
+    cpptoc::StmtMapper stmtMapper;
 
-    CppToCVisitorDispatcher dispatcher(mapper, locMapper, declMapper, typeMapper, exprMapper);
+    CppToCVisitorDispatcher dispatcher(mapper, locMapper, declMapper, typeMapper, exprMapper, stmtMapper);
     cpptoc::DeclRefExprHandler::registerWith(dispatcher);
     cpptoc::ImplicitCastExprHandler::registerWith(dispatcher);
     cpptoc::ParenExprHandler::registerWith(dispatcher);
@@ -431,8 +438,9 @@ TEST(BinaryOperatorHandlerDispatcherTest, DeepRecursion) {
     cpptoc::DeclMapper declMapper;
     cpptoc::TypeMapper typeMapper;
     cpptoc::ExprMapper exprMapper;
+    cpptoc::StmtMapper stmtMapper;
 
-    CppToCVisitorDispatcher dispatcher(mapper, locMapper, declMapper, typeMapper, exprMapper);
+    CppToCVisitorDispatcher dispatcher(mapper, locMapper, declMapper, typeMapper, exprMapper, stmtMapper);
     cpptoc::DeclRefExprHandler::registerWith(dispatcher);
     cpptoc::ImplicitCastExprHandler::registerWith(dispatcher);
     cpptoc::ParenExprHandler::registerWith(dispatcher);
@@ -507,8 +515,9 @@ TEST(BinaryOperatorHandlerDispatcherTest, MixedTypes) {
     cpptoc::DeclMapper declMapper;
     cpptoc::TypeMapper typeMapper;
     cpptoc::ExprMapper exprMapper;
+    cpptoc::StmtMapper stmtMapper;
 
-    CppToCVisitorDispatcher dispatcher(mapper, locMapper, declMapper, typeMapper, exprMapper);
+    CppToCVisitorDispatcher dispatcher(mapper, locMapper, declMapper, typeMapper, exprMapper, stmtMapper);
     cpptoc::LiteralHandler::registerWith(dispatcher);
     cpptoc::DeclRefExprHandler::registerWith(dispatcher);
     cpptoc::ImplicitCastExprHandler::registerWith(dispatcher);

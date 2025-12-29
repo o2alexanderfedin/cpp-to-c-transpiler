@@ -22,6 +22,7 @@
 #include "mapping/DeclMapper.h"
 #include "mapping/TypeMapper.h"
 #include "mapping/ExprMapper.h"
+#include "mapping/StmtMapper.h"
 #include "TargetContext.h"
 #include "clang/AST/ASTContext.h"
 #include "clang/AST/Expr.h"
@@ -67,8 +68,9 @@ TEST(UnaryOperatorHandlerDispatcherTest, Registration) {
     cpptoc::DeclMapper declMapper;
     cpptoc::TypeMapper typeMapper;
     cpptoc::ExprMapper exprMapper;
+    cpptoc::StmtMapper stmtMapper;
 
-    CppToCVisitorDispatcher dispatcher(mapper, locMapper, declMapper, typeMapper, exprMapper);
+    CppToCVisitorDispatcher dispatcher(mapper, locMapper, declMapper, typeMapper, exprMapper, stmtMapper);
     cpptoc::DeclRefExprHandler::registerWith(dispatcher);
     cpptoc::ImplicitCastExprHandler::registerWith(dispatcher);
     cpptoc::ParenExprHandler::registerWith(dispatcher);
@@ -117,8 +119,9 @@ TEST(UnaryOperatorHandlerDispatcherTest, LogicalNOT) {
     cpptoc::DeclMapper declMapper;
     cpptoc::TypeMapper typeMapper;
     cpptoc::ExprMapper exprMapper;
+    cpptoc::StmtMapper stmtMapper;
 
-    CppToCVisitorDispatcher dispatcher(mapper, locMapper, declMapper, typeMapper, exprMapper);
+    CppToCVisitorDispatcher dispatcher(mapper, locMapper, declMapper, typeMapper, exprMapper, stmtMapper);
     cpptoc::DeclRefExprHandler::registerWith(dispatcher);
     cpptoc::ImplicitCastExprHandler::registerWith(dispatcher);
     cpptoc::ParenExprHandler::registerWith(dispatcher);
@@ -170,8 +173,9 @@ TEST(UnaryOperatorHandlerDispatcherTest, UnaryMinus) {
     cpptoc::DeclMapper declMapper;
     cpptoc::TypeMapper typeMapper;
     cpptoc::ExprMapper exprMapper;
+    cpptoc::StmtMapper stmtMapper;
 
-    CppToCVisitorDispatcher dispatcher(mapper, locMapper, declMapper, typeMapper, exprMapper);
+    CppToCVisitorDispatcher dispatcher(mapper, locMapper, declMapper, typeMapper, exprMapper, stmtMapper);
     cpptoc::LiteralHandler::registerWith(dispatcher);
     cpptoc::ImplicitCastExprHandler::registerWith(dispatcher);
     cpptoc::ParenExprHandler::registerWith(dispatcher);
@@ -226,8 +230,9 @@ TEST(UnaryOperatorHandlerDispatcherTest, PrefixIncrement) {
     cpptoc::DeclMapper declMapper;
     cpptoc::TypeMapper typeMapper;
     cpptoc::ExprMapper exprMapper;
+    cpptoc::StmtMapper stmtMapper;
 
-    CppToCVisitorDispatcher dispatcher(mapper, locMapper, declMapper, typeMapper, exprMapper);
+    CppToCVisitorDispatcher dispatcher(mapper, locMapper, declMapper, typeMapper, exprMapper, stmtMapper);
     cpptoc::DeclRefExprHandler::registerWith(dispatcher);
     cpptoc::ImplicitCastExprHandler::registerWith(dispatcher);
     cpptoc::ParenExprHandler::registerWith(dispatcher);
@@ -275,8 +280,9 @@ TEST(UnaryOperatorHandlerDispatcherTest, PrefixDecrement) {
     cpptoc::DeclMapper declMapper;
     cpptoc::TypeMapper typeMapper;
     cpptoc::ExprMapper exprMapper;
+    cpptoc::StmtMapper stmtMapper;
 
-    CppToCVisitorDispatcher dispatcher(mapper, locMapper, declMapper, typeMapper, exprMapper);
+    CppToCVisitorDispatcher dispatcher(mapper, locMapper, declMapper, typeMapper, exprMapper, stmtMapper);
     cpptoc::DeclRefExprHandler::registerWith(dispatcher);
     cpptoc::ImplicitCastExprHandler::registerWith(dispatcher);
     cpptoc::ParenExprHandler::registerWith(dispatcher);
@@ -324,8 +330,9 @@ TEST(UnaryOperatorHandlerDispatcherTest, AddressOf) {
     cpptoc::DeclMapper declMapper;
     cpptoc::TypeMapper typeMapper;
     cpptoc::ExprMapper exprMapper;
+    cpptoc::StmtMapper stmtMapper;
 
-    CppToCVisitorDispatcher dispatcher(mapper, locMapper, declMapper, typeMapper, exprMapper);
+    CppToCVisitorDispatcher dispatcher(mapper, locMapper, declMapper, typeMapper, exprMapper, stmtMapper);
     cpptoc::DeclRefExprHandler::registerWith(dispatcher);
     cpptoc::ImplicitCastExprHandler::registerWith(dispatcher);
     cpptoc::ParenExprHandler::registerWith(dispatcher);
@@ -373,8 +380,9 @@ TEST(UnaryOperatorHandlerDispatcherTest, Dereference) {
     cpptoc::DeclMapper declMapper;
     cpptoc::TypeMapper typeMapper;
     cpptoc::ExprMapper exprMapper;
+    cpptoc::StmtMapper stmtMapper;
 
-    CppToCVisitorDispatcher dispatcher(mapper, locMapper, declMapper, typeMapper, exprMapper);
+    CppToCVisitorDispatcher dispatcher(mapper, locMapper, declMapper, typeMapper, exprMapper, stmtMapper);
     cpptoc::DeclRefExprHandler::registerWith(dispatcher);
     cpptoc::ImplicitCastExprHandler::registerWith(dispatcher);
     cpptoc::ParenExprHandler::registerWith(dispatcher);
@@ -422,8 +430,9 @@ TEST(UnaryOperatorHandlerDispatcherTest, BitwiseNOT) {
     cpptoc::DeclMapper declMapper;
     cpptoc::TypeMapper typeMapper;
     cpptoc::ExprMapper exprMapper;
+    cpptoc::StmtMapper stmtMapper;
 
-    CppToCVisitorDispatcher dispatcher(mapper, locMapper, declMapper, typeMapper, exprMapper);
+    CppToCVisitorDispatcher dispatcher(mapper, locMapper, declMapper, typeMapper, exprMapper, stmtMapper);
     cpptoc::DeclRefExprHandler::registerWith(dispatcher);
     cpptoc::ImplicitCastExprHandler::registerWith(dispatcher);
     cpptoc::ParenExprHandler::registerWith(dispatcher);
@@ -471,8 +480,9 @@ TEST(UnaryOperatorHandlerDispatcherTest, NestedUnaryOperators) {
     cpptoc::DeclMapper declMapper;
     cpptoc::TypeMapper typeMapper;
     cpptoc::ExprMapper exprMapper;
+    cpptoc::StmtMapper stmtMapper;
 
-    CppToCVisitorDispatcher dispatcher(mapper, locMapper, declMapper, typeMapper, exprMapper);
+    CppToCVisitorDispatcher dispatcher(mapper, locMapper, declMapper, typeMapper, exprMapper, stmtMapper);
     cpptoc::DeclRefExprHandler::registerWith(dispatcher);
     cpptoc::ImplicitCastExprHandler::registerWith(dispatcher);
     cpptoc::ParenExprHandler::registerWith(dispatcher);
@@ -543,8 +553,9 @@ TEST(UnaryOperatorHandlerDispatcherTest, NonUnaryOperatorNotHandled) {
     cpptoc::DeclMapper declMapper;
     cpptoc::TypeMapper typeMapper;
     cpptoc::ExprMapper exprMapper;
+    cpptoc::StmtMapper stmtMapper;
 
-    CppToCVisitorDispatcher dispatcher(mapper, locMapper, declMapper, typeMapper, exprMapper);
+    CppToCVisitorDispatcher dispatcher(mapper, locMapper, declMapper, typeMapper, exprMapper, stmtMapper);
     cpptoc::ParenExprHandler::registerWith(dispatcher);
     cpptoc::UnaryOperatorHandler::registerWith(dispatcher);
 

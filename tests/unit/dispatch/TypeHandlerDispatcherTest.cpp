@@ -16,6 +16,8 @@
 #include "mapping/DeclLocationMapper.h"
 #include "mapping/DeclMapper.h"
 #include "mapping/TypeMapper.h"
+#include "mapping/ExprMapper.h"
+#include "mapping/StmtMapper.h"
 #include "TargetContext.h"
 #include "clang/AST/ASTContext.h"
 #include "clang/AST/Type.h"
@@ -53,9 +55,11 @@ TEST(TypeHandlerDispatcherTest, Registration) {
     cpptoc::DeclLocationMapper locMapper(mapper);
     cpptoc::DeclMapper declMapper;
     cpptoc::TypeMapper typeMapper;
+    cpptoc::ExprMapper exprMapper;
+    cpptoc::StmtMapper stmtMapper;
 
     // Create dispatcher
-    CppToCVisitorDispatcher dispatcher(mapper, locMapper, declMapper, typeMapper);
+    CppToCVisitorDispatcher dispatcher(mapper, locMapper, declMapper, typeMapper, exprMapper, stmtMapper);
 
     // Register TypeHandler
     cpptoc::TypeHandler::registerWith(dispatcher);
@@ -114,8 +118,10 @@ TEST(TypeHandlerDispatcherTest, LValueReferenceTranslation) {
     cpptoc::DeclLocationMapper locMapper(mapper);
     cpptoc::DeclMapper declMapper;
     cpptoc::TypeMapper typeMapper;
+    cpptoc::ExprMapper exprMapper;
+    cpptoc::StmtMapper stmtMapper;
 
-    CppToCVisitorDispatcher dispatcher(mapper, locMapper, declMapper, typeMapper);
+    CppToCVisitorDispatcher dispatcher(mapper, locMapper, declMapper, typeMapper, exprMapper, stmtMapper);
     cpptoc::TypeHandler::registerWith(dispatcher);
 
     // Find the function parameter type
@@ -168,8 +174,10 @@ TEST(TypeHandlerDispatcherTest, RValueReferenceTranslation) {
     cpptoc::DeclLocationMapper locMapper(mapper);
     cpptoc::DeclMapper declMapper;
     cpptoc::TypeMapper typeMapper;
+    cpptoc::ExprMapper exprMapper;
+    cpptoc::StmtMapper stmtMapper;
 
-    CppToCVisitorDispatcher dispatcher(mapper, locMapper, declMapper, typeMapper);
+    CppToCVisitorDispatcher dispatcher(mapper, locMapper, declMapper, typeMapper, exprMapper, stmtMapper);
     cpptoc::TypeHandler::registerWith(dispatcher);
 
     // Find the function parameter type
@@ -224,8 +232,10 @@ TEST(TypeHandlerDispatcherTest, ConstReferenceTranslation) {
     cpptoc::DeclLocationMapper locMapper(mapper);
     cpptoc::DeclMapper declMapper;
     cpptoc::TypeMapper typeMapper;
+    cpptoc::ExprMapper exprMapper;
+    cpptoc::StmtMapper stmtMapper;
 
-    CppToCVisitorDispatcher dispatcher(mapper, locMapper, declMapper, typeMapper);
+    CppToCVisitorDispatcher dispatcher(mapper, locMapper, declMapper, typeMapper, exprMapper, stmtMapper);
     cpptoc::TypeHandler::registerWith(dispatcher);
 
     // Find the function parameter type
@@ -279,8 +289,10 @@ TEST(TypeHandlerDispatcherTest, PassThroughNonReferenceTypes) {
     cpptoc::DeclLocationMapper locMapper(mapper);
     cpptoc::DeclMapper declMapper;
     cpptoc::TypeMapper typeMapper;
+    cpptoc::ExprMapper exprMapper;
+    cpptoc::StmtMapper stmtMapper;
 
-    CppToCVisitorDispatcher dispatcher(mapper, locMapper, declMapper, typeMapper);
+    CppToCVisitorDispatcher dispatcher(mapper, locMapper, declMapper, typeMapper, exprMapper, stmtMapper);
     cpptoc::TypeHandler::registerWith(dispatcher);
 
     // Find the function parameter type
@@ -326,8 +338,10 @@ TEST(TypeHandlerDispatcherTest, MultipleTypeTranslations) {
     cpptoc::DeclLocationMapper locMapper(mapper);
     cpptoc::DeclMapper declMapper;
     cpptoc::TypeMapper typeMapper;
+    cpptoc::ExprMapper exprMapper;
+    cpptoc::StmtMapper stmtMapper;
 
-    CppToCVisitorDispatcher dispatcher(mapper, locMapper, declMapper, typeMapper);
+    CppToCVisitorDispatcher dispatcher(mapper, locMapper, declMapper, typeMapper, exprMapper, stmtMapper);
     cpptoc::TypeHandler::registerWith(dispatcher);
 
     // Find the function

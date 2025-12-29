@@ -7,6 +7,8 @@
 #include "mapping/DeclLocationMapper.h"
 #include "mapping/DeclMapper.h"
 #include "mapping/TypeMapper.h"
+#include "mapping/ExprMapper.h"
+#include "mapping/StmtMapper.h"
 #include "TargetContext.h"
 #include "clang/Tooling/Tooling.h"
 #include <gtest/gtest.h>
@@ -47,9 +49,11 @@ TEST(DispatcherTest, TranslationUnitHandler) {
     cpptoc::DeclLocationMapper locMapper(mapper);
     cpptoc::DeclMapper declMapper;
     cpptoc::TypeMapper typeMapper;
+    cpptoc::ExprMapper exprMapper;
+    cpptoc::StmtMapper stmtMapper;
 
     // Create dispatcher with all utilities
-    CppToCVisitorDispatcher dispatcher(mapper, locMapper, declMapper, typeMapper);
+    CppToCVisitorDispatcher dispatcher(mapper, locMapper, declMapper, typeMapper, exprMapper, stmtMapper);
 
     // Register production TranslationUnitHandler
     cpptoc::TranslationUnitHandler::registerWith(dispatcher);
@@ -82,8 +86,10 @@ TEST(DispatcherTest, HandlerChainOrder) {
     cpptoc::DeclLocationMapper locMapper(mapper);
     cpptoc::DeclMapper declMapper;
     cpptoc::TypeMapper typeMapper;
+    cpptoc::ExprMapper exprMapper;
+    cpptoc::StmtMapper stmtMapper;
 
-    CppToCVisitorDispatcher dispatcher(mapper, locMapper, declMapper, typeMapper);
+    CppToCVisitorDispatcher dispatcher(mapper, locMapper, declMapper, typeMapper, exprMapper, stmtMapper);
 
     std::vector<std::string> invocations;
 
@@ -131,8 +137,10 @@ TEST(DispatcherTest, NoHandlerMatch) {
     cpptoc::DeclLocationMapper locMapper(mapper);
     cpptoc::DeclMapper declMapper;
     cpptoc::TypeMapper typeMapper;
+    cpptoc::ExprMapper exprMapper;
+    cpptoc::StmtMapper stmtMapper;
 
-    CppToCVisitorDispatcher dispatcher(mapper, locMapper, declMapper, typeMapper);
+    CppToCVisitorDispatcher dispatcher(mapper, locMapper, declMapper, typeMapper, exprMapper, stmtMapper);
 
     // No handlers registered
     TranslationUnitDecl* TU = cppCtx.getTranslationUnitDecl();
@@ -159,8 +167,10 @@ TEST(DispatcherTest, PathMapperAccess) {
     cpptoc::DeclLocationMapper locMapper(mapper);
     cpptoc::DeclMapper declMapper;
     cpptoc::TypeMapper typeMapper;
+    cpptoc::ExprMapper exprMapper;
+    cpptoc::StmtMapper stmtMapper;
 
-    CppToCVisitorDispatcher dispatcher(mapper, locMapper, declMapper, typeMapper);
+    CppToCVisitorDispatcher dispatcher(mapper, locMapper, declMapper, typeMapper, exprMapper, stmtMapper);
 
     bool mapperAccessed = false;
 

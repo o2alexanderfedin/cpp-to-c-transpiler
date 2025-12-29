@@ -3,12 +3,14 @@
  * @brief Implementation of FunctionHandler dispatcher pattern
  *
  * Integrates with CppToCVisitorDispatcher to handle free function translation.
- * Phase 1 implementation: Signature translation only (no function bodies).
+ * Translates C++ function signatures and bodies to C equivalents.
+ * Retrieves translated function bodies from StmtMapper via CompoundStmtHandler.
  */
 
 #include "dispatch/FunctionHandler.h"
 #include "CNodeBuilder.h"
 #include "mapping/DeclMapper.h"
+#include "mapping/StmtMapper.h"
 #include "mapping/TypeMapper.h"
 #include "clang/AST/DeclCXX.h"
 #include "llvm/Support/Casting.h"
@@ -81,31 +83,53 @@ void FunctionHandler::handleFunction(
     std::vector<clang::ParmVarDecl*> cParams = translateParameters(cppFunc, disp, cppASTContext, cASTContext);
 
     // Translate function body (if exists) via CompoundStmtHandler
-    clang::Stmt* cBody = nullptr;
+    clang::CompoundStmt* cBody = nullptr;
     if (cppFunc->hasBody()) {
         const clang::Stmt* cppBody = cppFunc->getBody();
         if (cppBody) {
             // Dispatch body to CompoundStmtHandler
             bool bodyHandled = disp.dispatch(cppASTContext, cASTContext, const_cast<clang::Stmt*>(cppBody));
             if (bodyHandled) {
-                // Retrieve created C body from StmtMapper (TODO: implement StmtMapper)
-                // For now, we assume CompoundStmtHandler stores result somewhere accessible
-                // This is a limitation that will be addressed when StmtMapper is implemented
-                llvm::outs() << "[FunctionHandler] Body dispatched successfully\n";
+                // Retrieve created C body from StmtMapper
+                cpptoc::StmtMapper& stmtMapper = disp.getStmtMapper();
+                clang::Stmt* cStmt = stmtMapper.getCreatedStmt(cppBody);
+
+                if (cStmt) {
+                    // Ensure it's a CompoundStmt as expected for function bodies
+                    cBody = llvm::dyn_cast<clang::CompoundStmt>(cStmt);
+                    if (cBody) {
+                        llvm::outs() << "[FunctionHandler] Body dispatched and retrieved successfully "
+                                     << "(" << cBody->size() << " statements)\n";
+                    } else {
+                        llvm::errs() << "[FunctionHandler] Error: Retrieved statement is not CompoundStmt for function: "
+                                     << name << "\n";
+                    }
+                } else {
+                    llvm::errs() << "[FunctionHandler] Warning: CompoundStmtHandler did not create C body for function: "
+                                 << name << "\n";
+                }
             }
         }
     }
 
     // Create C function using CNodeBuilder
+    // CNodeBuilder will set the body on the function if cBody is not nullptr
     clang::CNodeBuilder builder(cASTContext);
     clang::FunctionDecl* cFunc = builder.funcDecl(
         name,
         cReturnType,
         cParams,
-        cBody  // Body is nullptr if not translated, or CompoundStmt if translated
+        cBody  // Body is nullptr if not translated, or CompoundStmt if successfully translated
     );
 
     assert(cFunc && "Failed to create C FunctionDecl");
+
+    // Verify body was properly attached
+    if (cBody) {
+        assert(cFunc->hasBody() && "Function should have body after creation");
+        assert(cFunc->getBody() == cBody && "Function body should match provided body");
+        llvm::outs() << "[FunctionHandler] Function body successfully attached to: " << name << "\n";
+    }
 
     // Get target path for this C++ source file
     std::string targetPath = disp.getTargetPath(cppASTContext, D);
