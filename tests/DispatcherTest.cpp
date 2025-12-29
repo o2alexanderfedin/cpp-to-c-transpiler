@@ -2,6 +2,7 @@
 // Demonstrates Chain of Responsibility pattern for AST node handling
 
 #include "CppToCVisitorDispatcher.h"
+#include "TranslationUnitHandler.h"
 #include "PathMapper.h"
 #include "TargetContext.h"
 #include "clang/Tooling/Tooling.h"
@@ -42,54 +43,15 @@ TEST(DispatcherTest, TranslationUnitHandler) {
     // Create dispatcher with PathMapper
     CppToCVisitorDispatcher dispatcher(mapper);
 
-    // Track which declarations we process
-    std::vector<std::string> processedDecls;
-
-    // Register TranslationUnitDecl handler
-    dispatcher.addHandler(
-        // Predicate: Match TranslationUnitDecl
-        [](const clang::Decl* D) -> bool {
-            return llvm::isa<clang::TranslationUnitDecl>(D);
-        },
-
-        // Visitor: Process TranslationUnit and recursively dispatch child decls
-        [&processedDecls](const CppToCVisitorDispatcher& disp,
-                          const clang::ASTContext& cppASTContext,
-                          clang::ASTContext& cASTContext,
-                          const clang::Decl* D) {
-            auto* TU = llvm::cast<clang::TranslationUnitDecl>(D);
-
-            processedDecls.push_back("TranslationUnit");
-
-            // Recursively dispatch all top-level declarations
-            for (auto* TopLevelDecl : TU->decls()) {
-                // For this test, just record what we see
-                if (auto* ClassDecl = llvm::dyn_cast<clang::CXXRecordDecl>(TopLevelDecl)) {
-                    if (ClassDecl->isThisDeclarationADefinition()) {
-                        processedDecls.push_back("Class: " + ClassDecl->getNameAsString());
-                    }
-                } else if (auto* FuncDecl = llvm::dyn_cast<clang::FunctionDecl>(TopLevelDecl)) {
-                    processedDecls.push_back("Function: " + FuncDecl->getNameAsString());
-                }
-
-                // Could recursively dispatch here:
-                // disp.dispatch(cppASTContext, cASTContext, TopLevelDecl);
-            }
-        }
-    );
+    // Register production TranslationUnitHandler
+    cpptoc::TranslationUnitHandler::registerWith(dispatcher);
 
     // Dispatch the TranslationUnit
     TranslationUnitDecl* TU = cppCtx.getTranslationUnitDecl();
     bool handled = dispatcher.dispatch(cppCtx, cCtx, TU);
 
     // Verify handler was invoked
-    EXPECT_TRUE(handled) << "TranslationUnit should be handled";
-
-    // Verify we processed the expected declarations
-    ASSERT_GE(processedDecls.size(), 3) << "Should process TU + class + function";
-    EXPECT_EQ(processedDecls[0], "TranslationUnit");
-    EXPECT_EQ(processedDecls[1], "Class: Point");
-    EXPECT_EQ(processedDecls[2], "Function: globalFunc");
+    EXPECT_TRUE(handled) << "TranslationUnit should be handled by TranslationUnitHandler";
 }
 
 // ============================================================================

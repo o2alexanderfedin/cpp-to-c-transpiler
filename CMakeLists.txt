@@ -196,6 +196,7 @@ add_library(cpptoc_core STATIC
     src/TargetContext.cpp
     src/CppToCVisitor.cpp
     src/CppToCVisitorDispatcher.cpp
+    src/TranslationUnitHandler.cpp
     src/CFGAnalyzer.cpp
     src/NameMangler.cpp
     src/CodeGenerator.cpp
