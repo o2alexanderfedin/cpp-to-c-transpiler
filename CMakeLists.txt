@@ -195,6 +195,7 @@ add_library(cpptoc_core STATIC
     src/TranspilerAPI.cpp
     src/TargetContext.cpp
     src/CppToCVisitor.cpp
+    src/CppToCVisitorDispatcher.cpp
     src/CFGAnalyzer.cpp
     src/NameMangler.cpp
     src/CodeGenerator.cpp
@@ -215,6 +216,8 @@ add_library(cpptoc_core STATIC
     src/FileOutputManager.cpp
     src/FileOriginTracker.cpp
     src/FileOriginFilter.cpp
+    src/PathMapper.cpp
+    src/DependencyTracker.cpp
     src/VirtualMethodAnalyzer.cpp
     src/VptrInjector.cpp
     src/VirtualInheritanceAnalyzer.cpp
@@ -3478,6 +3481,32 @@ target_link_libraries(CallingConventionTest PRIVATE cpptoc_core
 
 # Register with CTest
 gtest_discover_tests(CallingConventionTest
+    WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
+)
+
+# DeclContext parent-child relationship test
+add_executable(DeclContextTest
+    tests/DeclContextTest.cpp
+)
+
+target_compile_definitions(DeclContextTest PRIVATE ${LLVM_DEFINITIONS})
+
+target_include_directories(DeclContextTest PRIVATE
+    ${CMAKE_SOURCE_DIR}/include
+    ${LLVM_INCLUDE_DIRS}
+    ${CLANG_INCLUDE_DIRS}
+)
+
+target_link_libraries(DeclContextTest PRIVATE
+    clangTooling
+    clangFrontend
+    clangAST
+    clangBasic
+    clangASTMatchers
+    GTest::gtest
+    GTest::gtest_main)
+
+gtest_discover_tests(DeclContextTest
     WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
 )
 
