@@ -48,19 +48,6 @@ public:
 
 private:
     /**
-     * @brief Helper: Get source file path from TranslationUnit
-     * @param cppASTContext C++ ASTContext containing SourceManager
-     * @return Source file path (absolute path or "<stdin>" for in-memory sources)
-     *
-     * Implementation:
-     * - Get main FileID from SourceManager
-     * - Get FileEntry for main file
-     * - Extract real path name
-     * - Fallback to "<stdin>" for in-memory sources
-     */
-    static std::string getSourceFilePath(const clang::ASTContext& cppASTContext);
-
-    /**
      * @brief Predicate: Check if declaration is EXACTLY TranslationUnitDecl
      * @param D Declaration to check (must not be null)
      * @return true if D is exactly TranslationUnitDecl (not derived types)

@@ -1,4 +1,28 @@
 #include "CppToCVisitorDispatcher.h"
+#include "PathMapper.h"
+#include "clang/Basic/SourceManager.h"
+
+// ============================================================================
+// Helper Methods
+// ============================================================================
+
+std::string CppToCVisitorDispatcher::getTargetPath(const clang::ASTContext& cppASTContext) const {
+    // Get source file path from SourceManager
+    const clang::SourceManager& SM = cppASTContext.getSourceManager();
+    clang::FileID MainFileID = SM.getMainFileID();
+    const clang::FileEntry* MainFile = SM.getFileEntryForID(MainFileID);
+
+    std::string sourcePath;
+    if (MainFile) {
+        sourcePath = MainFile->tryGetRealPathName().str();
+    } else {
+        // Fallback for in-memory sources (e.g., tests with buildASTFromCode)
+        sourcePath = "<stdin>";
+    }
+
+    // Map source path to target path
+    return pathMapper.mapSourceToTarget(sourcePath);
+}
 
 // ============================================================================
 // Core AST Node Handlers

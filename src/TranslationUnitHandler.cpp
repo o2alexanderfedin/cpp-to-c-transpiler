@@ -11,19 +11,6 @@ void TranslationUnitHandler::registerWith(CppToCVisitorDispatcher& dispatcher) {
     );
 }
 
-std::string TranslationUnitHandler::getSourceFilePath(const clang::ASTContext& cppASTContext) {
-    const clang::SourceManager& SM = cppASTContext.getSourceManager();
-    clang::FileID MainFileID = SM.getMainFileID();
-    const clang::FileEntry* MainFile = SM.getFileEntryForID(MainFileID);
-
-    if (MainFile) {
-        return MainFile->tryGetRealPathName().str();
-    } else {
-        // Fallback for in-memory sources (e.g., tests with buildASTFromCode)
-        return "<stdin>";
-    }
-}
-
 bool TranslationUnitHandler::canHandle(const clang::Decl* D) {
     assert(D && "Declaration must not be null");
 
@@ -43,14 +30,11 @@ void TranslationUnitHandler::handleTranslationUnit(
 
     const auto* cppTU = llvm::cast<clang::TranslationUnitDecl>(D);
 
-    // Get PathMapper from dispatcher
-    cpptoc::PathMapper& pathMapper = disp.getPathMapper();
-
-    // Get source file path and map to C target path
-    std::string sourcePath = getSourceFilePath(cppASTContext);
-    std::string targetPath = pathMapper.mapSourceToTarget(sourcePath);
+    // Get C target path from dispatcher (encapsulates source path extraction + mapping)
+    std::string targetPath = disp.getTargetPath(cppASTContext);
 
     // Get or create C TranslationUnit for this target file
+    cpptoc::PathMapper& pathMapper = disp.getPathMapper();
     clang::TranslationUnitDecl* cTU = pathMapper.getOrCreateTU(targetPath);
     assert(cTU && "Failed to create C TranslationUnit");
 
