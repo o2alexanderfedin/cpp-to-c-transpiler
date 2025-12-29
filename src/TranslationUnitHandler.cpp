@@ -11,7 +11,9 @@ void TranslationUnitHandler::registerWith(CppToCVisitorDispatcher& dispatcher) {
 }
 
 bool TranslationUnitHandler::canHandle(const clang::Decl* D) {
-    return llvm::isa<clang::TranslationUnitDecl>(D);
+    // Check for EXACT type match (not derived classes)
+    // Important: Other handlers should follow this pattern for type safety
+    return D && D->getKind() == clang::Decl::TranslationUnit;
 }
 
 void TranslationUnitHandler::handleTranslationUnit(

@@ -48,9 +48,12 @@ public:
 
 private:
     /**
-     * @brief Predicate: Check if declaration is a TranslationUnitDecl
+     * @brief Predicate: Check if declaration is EXACTLY TranslationUnitDecl
      * @param D Declaration to check
-     * @return true if D is TranslationUnitDecl
+     * @return true if D is exactly TranslationUnitDecl (not derived types)
+     *
+     * Implementation uses D->getKind() for exact type matching.
+     * This is the recommended pattern for all handlers to ensure type safety.
      */
     static bool canHandle(const clang::Decl* D);
 
