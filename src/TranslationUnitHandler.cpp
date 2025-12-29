@@ -28,10 +28,26 @@ void TranslationUnitHandler::handleTranslationUnit(
     assert(D && "Declaration must not be null");
     assert(D->getKind() == clang::Decl::TranslationUnit && "Must be TranslationUnitDecl");
 
-    const auto* TU = llvm::cast<clang::TranslationUnitDecl>(D);
+    const auto* cppTU = llvm::cast<clang::TranslationUnitDecl>(D);
+
+    // Get PathMapper from dispatcher to map C++ source → C target
+    cpptoc::PathMapper& pathMapper = disp.getPathMapper();
+
+    // Get source file path from C++ TranslationUnit
+    // Note: For now we use a placeholder - actual implementation needs FileID lookup
+    // TODO: Get actual source file path from SourceManager
+    std::string sourcePath = "<main-file>";  // Placeholder
+
+    // Map C++ source path to C target path
+    std::string targetPath = pathMapper.mapSourceToTarget(sourcePath);
+
+    // Get or create C TranslationUnit for this target file
+    clang::TranslationUnitDecl* cTU = pathMapper.getOrCreateTU(targetPath);
+    assert(cTU && "Failed to create C TranslationUnit");
 
     // Recursively dispatch all top-level declarations
-    for (auto* TopLevelDecl : TU->decls()) {
+    // Child handlers will add their C declarations to cTU
+    for (auto* TopLevelDecl : cppTU->decls()) {
         // Dispatch to appropriate handler via dispatcher
         disp.dispatch(cppASTContext, cASTContext, TopLevelDecl);
     }
