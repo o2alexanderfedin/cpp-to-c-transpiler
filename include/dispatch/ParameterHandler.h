@@ -85,23 +85,6 @@ private:
         clang::ASTContext& cASTContext,
         const clang::Decl* D
     );
-
-    /**
-     * @brief Translate C++ type to C type (helper)
-     * @param cppType C++ type
-     * @param cASTContext Target C ASTContext
-     * @return C type (with references converted to pointers)
-     *
-     * Translation rules:
-     * - T& (lvalue reference) → T*
-     * - T&& (rvalue reference) → T*
-     * - const T& → const T*
-     * - All other types → unchanged
-     */
-    static clang::QualType translateType(
-        clang::QualType cppType,
-        clang::ASTContext& cASTContext
-    );
 };
 
 } // namespace cpptoc
