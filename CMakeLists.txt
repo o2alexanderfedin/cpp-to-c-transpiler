@@ -211,6 +211,7 @@ add_library(cpptoc_core STATIC
     src/dispatch/ImplicitCastExprHandler.cpp
     src/dispatch/ParenExprHandler.cpp
     src/dispatch/StaticMethodHandler.cpp
+    src/dispatch/InstanceMethodHandler.cpp
     src/mapping/PathMapper.cpp
     src/mapping/DeclLocationMapper.cpp
     # NodeMapper is header-only template - no .cpp files needed
@@ -805,6 +806,35 @@ target_link_libraries(StaticMethodHandlerDispatcherTest PRIVATE cpptoc_core
 
 # Register with CTest
 gtest_discover_tests(StaticMethodHandlerDispatcherTest
+    WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
+)
+
+# ============================================================================
+# InstanceMethodHandler Dispatcher Tests
+# ============================================================================
+
+add_executable(InstanceMethodHandlerDispatcherTest
+    tests/unit/dispatch/InstanceMethodHandlerDispatcherTest.cpp
+)
+
+target_compile_definitions(InstanceMethodHandlerDispatcherTest PRIVATE ${LLVM_DEFINITIONS})
+
+target_include_directories(InstanceMethodHandlerDispatcherTest PRIVATE
+    ${CMAKE_SOURCE_DIR}/include
+    ${LLVM_INCLUDE_DIRS}
+    ${CLANG_INCLUDE_DIRS}
+)
+
+target_link_libraries(InstanceMethodHandlerDispatcherTest PRIVATE cpptoc_core
+    clangTooling
+    clangFrontend
+    clangAST
+    clangBasic
+    GTest::gtest
+    GTest::gtest_main)
+
+# Register with CTest
+gtest_discover_tests(InstanceMethodHandlerDispatcherTest
     WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
 )
 
