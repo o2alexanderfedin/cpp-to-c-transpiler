@@ -31,6 +31,7 @@
 // Forward declarations
 namespace cpptoc {
     class PathMapper;
+    class DeclLocationMapper;
 }
 
 /**
@@ -126,13 +127,17 @@ private:
     // Path mapper for C++ source file → C target file mapping
     cpptoc::PathMapper& pathMapper;
 
+    // Location mapper for extracting target paths from AST nodes
+    cpptoc::DeclLocationMapper& declLocationMapper;
+
 public:
     /**
-     * @brief Construct dispatcher with required path mapper
+     * @brief Construct dispatcher with required dependencies
      * @param mapper PathMapper for source-to-target file mapping (required)
+     * @param locMapper DeclLocationMapper for extracting paths from AST nodes (required)
      */
-    explicit CppToCVisitorDispatcher(cpptoc::PathMapper& mapper)
-        : pathMapper(mapper) {}
+    explicit CppToCVisitorDispatcher(cpptoc::PathMapper& mapper, cpptoc::DeclLocationMapper& locMapper)
+        : pathMapper(mapper), declLocationMapper(locMapper) {}
 
     /**
      * @brief Get the path mapper

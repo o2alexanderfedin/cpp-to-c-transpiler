@@ -4,6 +4,7 @@
 #include "CppToCVisitorDispatcher.h"
 #include "TranslationUnitHandler.h"
 #include "PathMapper.h"
+#include "DeclLocationMapper.h"
 #include "TargetContext.h"
 #include "clang/Tooling/Tooling.h"
 #include <gtest/gtest.h>
@@ -38,10 +39,13 @@ TEST(DispatcherTest, TranslationUnitHandler) {
     ASTContext& cppCtx = AST->getASTContext();
     TargetContext& targetCtx = TargetContext::getInstance();
     ASTContext& cCtx = targetCtx.getContext();
-    cpptoc::PathMapper& mapper = cpptoc::PathMapper::getInstance("/src", "/output");
 
-    // Create dispatcher with PathMapper
-    CppToCVisitorDispatcher dispatcher(mapper);
+    // Create path mapping utilities
+    cpptoc::PathMapper& mapper = cpptoc::PathMapper::getInstance("/src", "/output");
+    cpptoc::DeclLocationMapper locMapper(mapper);
+
+    // Create dispatcher with both utilities
+    CppToCVisitorDispatcher dispatcher(mapper, locMapper);
 
     // Register production TranslationUnitHandler
     cpptoc::TranslationUnitHandler::registerWith(dispatcher);
@@ -69,9 +73,11 @@ TEST(DispatcherTest, HandlerChainOrder) {
     ASTContext& cppCtx = AST->getASTContext();
     TargetContext& targetCtx = TargetContext::getInstance();
     ASTContext& cCtx = targetCtx.getContext();
-    cpptoc::PathMapper& mapper = cpptoc::PathMapper::getInstance("/src", "/output");
 
-    CppToCVisitorDispatcher dispatcher(mapper);
+    cpptoc::PathMapper& mapper = cpptoc::PathMapper::getInstance("/src", "/output");
+    cpptoc::DeclLocationMapper locMapper(mapper);
+
+    CppToCVisitorDispatcher dispatcher(mapper, locMapper);
 
     std::vector<std::string> invocations;
 
@@ -114,9 +120,11 @@ TEST(DispatcherTest, NoHandlerMatch) {
     ASTContext& cppCtx = AST->getASTContext();
     TargetContext& targetCtx = TargetContext::getInstance();
     ASTContext& cCtx = targetCtx.getContext();
-    cpptoc::PathMapper& mapper = cpptoc::PathMapper::getInstance("/src", "/output");
 
-    CppToCVisitorDispatcher dispatcher(mapper);
+    cpptoc::PathMapper& mapper = cpptoc::PathMapper::getInstance("/src", "/output");
+    cpptoc::DeclLocationMapper locMapper(mapper);
+
+    CppToCVisitorDispatcher dispatcher(mapper, locMapper);
 
     // No handlers registered
     TranslationUnitDecl* TU = cppCtx.getTranslationUnitDecl();
@@ -138,9 +146,11 @@ TEST(DispatcherTest, PathMapperAccess) {
     ASTContext& cppCtx = AST->getASTContext();
     TargetContext& targetCtx = TargetContext::getInstance();
     ASTContext& cCtx = targetCtx.getContext();
-    cpptoc::PathMapper& mapper = cpptoc::PathMapper::getInstance("/src", "/output");
 
-    CppToCVisitorDispatcher dispatcher(mapper);
+    cpptoc::PathMapper& mapper = cpptoc::PathMapper::getInstance("/src", "/output");
+    cpptoc::DeclLocationMapper locMapper(mapper);
+
+    CppToCVisitorDispatcher dispatcher(mapper, locMapper);
 
     bool mapperAccessed = false;
 
