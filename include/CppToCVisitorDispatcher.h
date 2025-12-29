@@ -124,21 +124,21 @@ private:
     std::vector<std::tuple<CommentPredicate, CommentVisitor>> commentHandlers;
 
     // Path mapper for C++ source file → C target file mapping
-    cpptoc::PathMapper* pathMapper;
+    cpptoc::PathMapper& pathMapper;
 
 public:
     /**
-     * @brief Construct dispatcher with optional path mapper
-     * @param mapper PathMapper for source-to-target file mapping (can be nullptr)
+     * @brief Construct dispatcher with required path mapper
+     * @param mapper PathMapper for source-to-target file mapping (required)
      */
-    explicit CppToCVisitorDispatcher(cpptoc::PathMapper* mapper = nullptr)
+    explicit CppToCVisitorDispatcher(cpptoc::PathMapper& mapper)
         : pathMapper(mapper) {}
 
     /**
      * @brief Get the path mapper
-     * @return Pointer to PathMapper (may be nullptr)
+     * @return Reference to PathMapper
      */
-    cpptoc::PathMapper* getPathMapper() const { return pathMapper; }
+    cpptoc::PathMapper& getPathMapper() const { return pathMapper; }
 
     // Core AST node handlers
     void addHandler(DeclPredicate predicate, DeclVisitor handler);
