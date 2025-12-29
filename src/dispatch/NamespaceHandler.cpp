@@ -107,14 +107,14 @@ std::string NamespaceHandler::getNamespacePath(const clang::NamespaceDecl* NS) {
     // Reverse to get outer-to-inner order (A, B, C instead of C, B, A)
     std::reverse(parts.begin(), parts.end());
 
-    // Join with "_" separator
+    // Join with "__" separator
     if (parts.empty()) {
         return "";
     }
 
     std::string result = parts[0];
     for (size_t i = 1; i < parts.size(); ++i) {
-        result += "_" + parts[i];
+        result += "__" + parts[i];
     }
 
     return result;

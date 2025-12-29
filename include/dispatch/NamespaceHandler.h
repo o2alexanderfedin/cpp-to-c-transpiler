@@ -6,7 +6,7 @@
  * Tracks namespace paths and flattens namespace-qualified names to C identifiers.
  *
  * Phase 1 Scope: Namespace tracking ONLY
- * - Compute namespace paths (A::B → A_B)
+ * - Compute namespace paths (A::B → A__B)
  * - Store namespace mappings (for reference tracking)
  * - Recursively dispatch child declarations
  * - Handle anonymous namespaces with deterministic IDs
@@ -35,7 +35,7 @@ namespace cpptoc {
  *
  * Responsibilities:
  * - Match NamespaceDecl nodes (predicate)
- * - Compute namespace path recursively (A::B::C → A_B_C)
+ * - Compute namespace path recursively (A::B::C → A__B__C)
  * - Generate deterministic IDs for anonymous namespaces
  * - Store namespace mappings (for tracking, NO C equivalent created)
  * - Recursively dispatch child declarations
@@ -57,7 +57,7 @@ namespace cpptoc {
  *
  * C flattened name (child handler applies prefix):
  * @code
- * void MyApp_foo() {}
+ * void MyApp__foo() {}
  * @endcode
  *
  * C++ nested namespace:
@@ -71,7 +71,7 @@ namespace cpptoc {
  *
  * C flattened name:
  * @code
- * void A_B_bar() {}
+ * void A__B__bar() {}
  * @endcode
  *
  * C++ C++17 nested namespace syntax:
@@ -83,7 +83,7 @@ namespace cpptoc {
  *
  * C flattened name:
  * @code
- * void A_B_C_baz() {}
+ * void A__B__C__baz() {}
  * @endcode
  *
  * C++ anonymous namespace:
@@ -122,23 +122,23 @@ public:
     /**
      * @brief Compute full namespace path recursively
      * @param NS Namespace declaration to compute path for
-     * @return Namespace path with "_" separator (e.g., "A_B_C")
+     * @return Namespace path with "__" separator (e.g., "A__B__C")
      *
      * Algorithm:
      * 1. Walk parent DeclContexts from inner to outer
      * 2. Collect namespace names (skip anonymous namespaces)
      * 3. Reverse collected names
-     * 4. Join with "_" separator
+     * 4. Join with "__" separator
      *
      * Examples:
      * - Single level: "MyApp" → "MyApp"
-     * - Nested: A::B → "A_B"
-     * - Triple nested: A::B::C → "A_B_C"
-     * - Anonymous skipped: A::<anon>::B → "A_B"
+     * - Nested: A::B → "A__B"
+     * - Triple nested: A::B::C → "A__B__C"
+     * - Anonymous skipped: A::<anon>::B → "A__B"
      *
      * Handles C++17 nested namespace syntax:
      * - namespace A::B::C {} is equivalent to namespace A { namespace B { namespace C {} } }
-     * - Both produce path "A_B_C"
+     * - Both produce path "A__B__C"
      *
      * Made public for testing
      */
@@ -198,8 +198,8 @@ private:
      * 5. Compute full namespace path recursively:
      *    - Walk parent DeclContexts
      *    - Collect all namespace names from inner to outer
-     *    - Reverse and join with "_" separator
-     *    - Example: A::B::C → ["C", "B", "A"] → reverse → "A_B_C"
+     *    - Reverse and join with "__" separator
+     *    - Example: A::B::C → ["C", "B", "A"] → reverse → "A__B__C"
      * 6. Store namespace mapping for tracking:
      *    - declMapper.setCreated(cppNamespace, nullptr)
      *    - NO C NamespaceDecl created (C has no namespaces)

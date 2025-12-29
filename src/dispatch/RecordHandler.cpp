@@ -65,7 +65,7 @@ void RecordHandler::handleRecord(
     if (const auto* nsDecl = llvm::dyn_cast<clang::NamespaceDecl>(cppRecord->getDeclContext())) {
         std::string nsPrefix = cpptoc::NamespaceHandler::getNamespacePath(nsDecl);
         if (!nsPrefix.empty()) {
-            mangledName = nsPrefix + "_" + name;
+            mangledName = nsPrefix + "__" + name;
             llvm::outs() << "[RecordHandler] Applied namespace prefix: "
                          << name << " → " << mangledName << "\n";
         }

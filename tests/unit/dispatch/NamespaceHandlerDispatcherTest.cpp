@@ -226,7 +226,7 @@ TEST(NamespaceHandlerDispatcherTest, NestedNamespaces) {
 
     // Test namespace path computation
     std::string path_B = cpptoc::NamespaceHandler::getNamespacePath(cppNS_B);
-    EXPECT_EQ(path_B, "A_B") << "Nested namespace path should be A_B";
+    EXPECT_EQ(path_B, "A__B") << "Nested namespace path should be A__B";
 }
 
 // ============================================================================
@@ -290,7 +290,7 @@ TEST(NamespaceHandlerDispatcherTest, Cpp17NestedNamespaceSyntax) {
 
     // Test namespace path for innermost namespace
     std::string path_C = cpptoc::NamespaceHandler::getNamespacePath(cppNS_C);
-    EXPECT_EQ(path_C, "A_B_C") << "C++17 nested namespace path should be A_B_C";
+    EXPECT_EQ(path_C, "A__B__C") << "C++17 nested namespace path should be A__B__C";
 }
 
 // ============================================================================
@@ -555,8 +555,8 @@ TEST(NamespaceHandlerDispatcherTest, NamespacePathComputation) {
     EXPECT_EQ(path_A, "A") << "Single namespace should be just 'A'";
 
     std::string path_B = cpptoc::NamespaceHandler::getNamespacePath(cppNS_B);
-    EXPECT_EQ(path_B, "A_B") << "Nested namespace should be 'A_B'";
+    EXPECT_EQ(path_B, "A__B") << "Nested namespace should be 'A__B'";
 
     std::string path_C = cpptoc::NamespaceHandler::getNamespacePath(cppNS_C);
-    EXPECT_EQ(path_C, "A_B_C") << "Triple nested namespace should be 'A_B_C'";
+    EXPECT_EQ(path_C, "A__B__C") << "Triple nested namespace should be 'A__B__C'";
 }
