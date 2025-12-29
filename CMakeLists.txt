@@ -197,6 +197,7 @@ add_library(cpptoc_core STATIC
     src/CppToCVisitor.cpp
     src/dispatch/CppToCVisitorDispatcher.cpp
     src/dispatch/TranslationUnitHandler.cpp
+    src/dispatch/NamespaceHandler.cpp
     src/dispatch/FunctionHandler.cpp
     src/dispatch/ParameterHandler.cpp
     src/dispatch/RecordHandler.cpp
@@ -745,6 +746,35 @@ target_link_libraries(FunctionHandlerDispatcherTest PRIVATE cpptoc_core
 
 # Register with CTest
 gtest_discover_tests(FunctionHandlerDispatcherTest
+    WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
+)
+
+# ============================================================================
+# NamespaceHandler Dispatcher Tests
+# ============================================================================
+
+add_executable(NamespaceHandlerDispatcherTest
+    tests/unit/dispatch/NamespaceHandlerDispatcherTest.cpp
+)
+
+target_compile_definitions(NamespaceHandlerDispatcherTest PRIVATE ${LLVM_DEFINITIONS})
+
+target_include_directories(NamespaceHandlerDispatcherTest PRIVATE
+    ${CMAKE_SOURCE_DIR}/include
+    ${LLVM_INCLUDE_DIRS}
+    ${CLANG_INCLUDE_DIRS}
+)
+
+target_link_libraries(NamespaceHandlerDispatcherTest PRIVATE cpptoc_core
+    clangTooling
+    clangFrontend
+    clangAST
+    clangBasic
+    clangLex
+    GTest::gtest_main)
+
+# Register with CTest
+gtest_discover_tests(NamespaceHandlerDispatcherTest
     WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
 )
 
