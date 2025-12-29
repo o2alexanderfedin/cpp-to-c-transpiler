@@ -696,3 +696,246 @@ TEST(VirtualMethodHandlerDispatcherTest, MultipleVirtualMethods) {
     EXPECT_EQ(cGetPerimeter->getNameAsString(), "Shape__getPerimeter");
     EXPECT_EQ(cDraw->getNameAsString(), "Shape__draw");
 }
+
+// ============================================================================
+// Test 11: VtableStructGeneration - Per-class vtable struct with strongly typed pointers
+// ============================================================================
+
+TEST(VirtualMethodHandlerDispatcherTest, VtableStructGeneration) {
+    const char *cpp = R"(
+        class Shape {
+        public:
+            virtual int getArea() { return 0; }
+        };
+    )";
+
+    std::unique_ptr<ASTUnit> AST = buildAST(cpp);
+    ASSERT_NE(AST, nullptr);
+
+    ASTContext& cppCtx = AST->getASTContext();
+    TargetContext& targetCtx = TargetContext::getInstance();
+    ASTContext& cCtx = targetCtx.getContext();
+
+    // Find class and method
+    CXXRecordDecl* shapeClass = findClass(cppCtx, "Shape");
+    ASSERT_NE(shapeClass, nullptr);
+
+    CXXMethodDecl* getArea = findVirtualMethod(cppCtx, "Shape", "getArea");
+    ASSERT_NE(getArea, nullptr);
+
+    // Test vtable struct name
+    std::string vtableStructName = cpptoc::VirtualMethodHandler::getVtableStructName(shapeClass);
+    EXPECT_EQ(vtableStructName, "Shape__vtable") << "Vtable struct name should be Shape__vtable";
+
+    // Generate vtable struct
+    std::vector<const clang::CXXMethodDecl*> virtualMethods = { getArea };
+    std::string vtableStruct = cpptoc::VirtualMethodHandler::generateVtableStruct(
+        shapeClass, virtualMethods, cCtx
+    );
+
+    // Verify vtable struct contains:
+    // - struct Shape__vtable {
+    // - const struct __class_type_info *type_info;
+    // - int (*getArea)(struct Shape *this);
+    // - };
+    EXPECT_NE(vtableStruct.find("struct Shape__vtable {"), std::string::npos)
+        << "Should contain vtable struct definition";
+    EXPECT_NE(vtableStruct.find("const struct __class_type_info *type_info;"), std::string::npos)
+        << "Should contain RTTI type_info pointer";
+    EXPECT_NE(vtableStruct.find("int (*getArea)(struct Shape *this);"), std::string::npos)
+        << "Should contain strongly typed getArea function pointer";
+}
+
+// ============================================================================
+// Test 12: VtableInstanceGeneration - Per-class vtable instance initialization
+// ============================================================================
+
+TEST(VirtualMethodHandlerDispatcherTest, VtableInstanceGeneration) {
+    const char *cpp = R"(
+        class Shape {
+        public:
+            virtual int getArea() { return 0; }
+        };
+    )";
+
+    std::unique_ptr<ASTUnit> AST = buildAST(cpp);
+    ASSERT_NE(AST, nullptr);
+
+    ASTContext& cppCtx = AST->getASTContext();
+    TargetContext& targetCtx = TargetContext::getInstance();
+    ASTContext& cCtx = targetCtx.getContext();
+
+    // Find class and method
+    CXXRecordDecl* shapeClass = findClass(cppCtx, "Shape");
+    ASSERT_NE(shapeClass, nullptr);
+
+    CXXMethodDecl* getArea = findVirtualMethod(cppCtx, "Shape", "getArea");
+    ASSERT_NE(getArea, nullptr);
+
+    // Test vtable instance name
+    std::string vtableInstanceName = cpptoc::VirtualMethodHandler::getVtableInstanceName(shapeClass);
+    EXPECT_EQ(vtableInstanceName, "Shape__vtable_instance")
+        << "Vtable instance name should be Shape__vtable_instance";
+
+    // Generate vtable instance
+    std::vector<const clang::CXXMethodDecl*> virtualMethods = { getArea };
+    std::string vtableInstance = cpptoc::VirtualMethodHandler::generateVtableInstance(
+        shapeClass, virtualMethods, cCtx
+    );
+
+    // Verify vtable instance contains:
+    // - static struct Shape__vtable Shape__vtable_instance = {
+    // - .type_info = &Shape__type_info,
+    // - .getArea = Shape__getArea
+    // - };
+    EXPECT_NE(vtableInstance.find("static struct Shape__vtable Shape__vtable_instance = {"), std::string::npos)
+        << "Should contain vtable instance definition";
+    EXPECT_NE(vtableInstance.find(".type_info = &Shape__type_info,"), std::string::npos)
+        << "Should initialize RTTI type_info pointer";
+    EXPECT_NE(vtableInstance.find(".getArea = Shape__getArea,"), std::string::npos)
+        << "Should initialize getArea function pointer";
+}
+
+// ============================================================================
+// Test 13: MultipleVirtualMethodsVtable - Vtable with multiple methods in correct order
+// ============================================================================
+
+TEST(VirtualMethodHandlerDispatcherTest, MultipleVirtualMethodsVtable) {
+    const char *cpp = R"(
+        class Shape {
+        public:
+            virtual int getArea() { return 0; }
+            virtual void draw() {}
+        };
+    )";
+
+    std::unique_ptr<ASTUnit> AST = buildAST(cpp);
+    ASSERT_NE(AST, nullptr);
+
+    ASTContext& cppCtx = AST->getASTContext();
+    TargetContext& targetCtx = TargetContext::getInstance();
+    ASTContext& cCtx = targetCtx.getContext();
+
+    // Find class and methods
+    CXXRecordDecl* shapeClass = findClass(cppCtx, "Shape");
+    ASSERT_NE(shapeClass, nullptr);
+
+    CXXMethodDecl* getArea = findVirtualMethod(cppCtx, "Shape", "getArea");
+    CXXMethodDecl* draw = findVirtualMethod(cppCtx, "Shape", "draw");
+    ASSERT_NE(getArea, nullptr);
+    ASSERT_NE(draw, nullptr);
+
+    // Generate vtable struct with both methods
+    std::vector<const clang::CXXMethodDecl*> virtualMethods = { getArea, draw };
+    std::string vtableStruct = cpptoc::VirtualMethodHandler::generateVtableStruct(
+        shapeClass, virtualMethods, cCtx
+    );
+
+    // Verify both methods in vtable
+    EXPECT_NE(vtableStruct.find("int (*getArea)(struct Shape *this);"), std::string::npos)
+        << "Should contain getArea function pointer";
+    EXPECT_NE(vtableStruct.find("void (*draw)(struct Shape *this);"), std::string::npos)
+        << "Should contain draw function pointer";
+
+    // Verify vtable instance has both initializers
+    std::string vtableInstance = cpptoc::VirtualMethodHandler::generateVtableInstance(
+        shapeClass, virtualMethods, cCtx
+    );
+
+    EXPECT_NE(vtableInstance.find(".getArea = Shape__getArea,"), std::string::npos)
+        << "Should initialize getArea";
+    EXPECT_NE(vtableInstance.find(".draw = Shape__draw,"), std::string::npos)
+        << "Should initialize draw";
+}
+
+// ============================================================================
+// Test 14: NamespacedClassVtable - Namespace prefix in vtable names
+// ============================================================================
+
+TEST(VirtualMethodHandlerDispatcherTest, NamespacedClassVtable) {
+    const char *cpp = R"(
+        namespace game {
+            class Entity {
+            public:
+                virtual void update() {}
+            };
+        }
+    )";
+
+    std::unique_ptr<ASTUnit> AST = buildAST(cpp);
+    ASSERT_NE(AST, nullptr);
+
+    ASTContext& cppCtx = AST->getASTContext();
+    TargetContext& targetCtx = TargetContext::getInstance();
+    ASTContext& cCtx = targetCtx.getContext();
+
+    // Find namespace
+    TranslationUnitDecl* TU = cppCtx.getTranslationUnitDecl();
+    NamespaceDecl* gameNS = nullptr;
+    for (auto* D : TU->decls()) {
+        if (auto* NS = dyn_cast<NamespaceDecl>(D)) {
+            if (NS->getNameAsString() == "game") {
+                gameNS = NS;
+                break;
+            }
+        }
+    }
+    ASSERT_NE(gameNS, nullptr);
+
+    // Find class inside namespace
+    CXXRecordDecl* entityClass = nullptr;
+    for (auto* D : gameNS->decls()) {
+        if (auto* CRD = dyn_cast<CXXRecordDecl>(D)) {
+            if (CRD->getNameAsString() == "Entity" && CRD->isCompleteDefinition()) {
+                entityClass = CRD;
+                break;
+            }
+        }
+    }
+    ASSERT_NE(entityClass, nullptr);
+
+    // Find virtual method
+    CXXMethodDecl* update = nullptr;
+    for (auto* M : entityClass->methods()) {
+        if (M->getNameAsString() == "update" && M->isVirtual()) {
+            update = M;
+            break;
+        }
+    }
+    ASSERT_NE(update, nullptr);
+
+    // Test vtable struct name with namespace prefix
+    std::string vtableStructName = cpptoc::VirtualMethodHandler::getVtableStructName(entityClass);
+    EXPECT_EQ(vtableStructName, "game__Entity__vtable")
+        << "Vtable struct name should include namespace prefix";
+
+    // Test vtable instance name with namespace prefix
+    std::string vtableInstanceName = cpptoc::VirtualMethodHandler::getVtableInstanceName(entityClass);
+    EXPECT_EQ(vtableInstanceName, "game__Entity__vtable_instance")
+        << "Vtable instance name should include namespace prefix";
+
+    // Generate vtable struct
+    std::vector<const clang::CXXMethodDecl*> virtualMethods = { update };
+    std::string vtableStruct = cpptoc::VirtualMethodHandler::generateVtableStruct(
+        entityClass, virtualMethods, cCtx
+    );
+
+    // Verify namespace prefix in struct definition
+    EXPECT_NE(vtableStruct.find("struct game__Entity__vtable {"), std::string::npos)
+        << "Should use namespace prefix in vtable struct name";
+    EXPECT_NE(vtableStruct.find("void (*update)(struct game__Entity *this);"), std::string::npos)
+        << "Should use namespace prefix in function pointer type";
+
+    // Generate vtable instance
+    std::string vtableInstance = cpptoc::VirtualMethodHandler::generateVtableInstance(
+        entityClass, virtualMethods, cCtx
+    );
+
+    // Verify namespace prefix in instance
+    EXPECT_NE(vtableInstance.find("static struct game__Entity__vtable game__Entity__vtable_instance = {"), std::string::npos)
+        << "Should use namespace prefix in vtable instance";
+    EXPECT_NE(vtableInstance.find(".type_info = &game__Entity__type_info,"), std::string::npos)
+        << "Should use namespace prefix in type_info reference";
+    EXPECT_NE(vtableInstance.find(".update = game__Entity__update,"), std::string::npos)
+        << "Should use namespace prefix in method reference";
+}

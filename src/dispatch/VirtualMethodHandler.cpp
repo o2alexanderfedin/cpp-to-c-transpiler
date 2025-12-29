@@ -17,6 +17,7 @@
 #include "llvm/Support/Casting.h"
 #include "llvm/Support/raw_ostream.h"
 #include <cassert>
+#include <sstream>
 
 namespace cpptoc {
 
@@ -377,6 +378,154 @@ std::string VirtualMethodHandler::getNamespacePrefix(const clang::CXXRecordDecl*
     }
     // No namespace
     return "";
+}
+
+std::string VirtualMethodHandler::getVtableStructName(const clang::CXXRecordDecl* classDecl) {
+    std::string className = classDecl->getNameAsString();
+
+    // Apply namespace prefix if in namespace
+    if (const auto* ns = llvm::dyn_cast<clang::NamespaceDecl>(
+            classDecl->getDeclContext())) {
+        std::string nsPath = NamespaceHandler::getNamespacePath(ns);
+        if (!nsPath.empty()) {
+            className = nsPath + "__" + className;
+        }
+    }
+
+    return className + "__vtable";
+}
+
+std::string VirtualMethodHandler::getVtableInstanceName(const clang::CXXRecordDecl* classDecl) {
+    std::string className = classDecl->getNameAsString();
+
+    // Apply namespace prefix if in namespace
+    if (const auto* ns = llvm::dyn_cast<clang::NamespaceDecl>(
+            classDecl->getDeclContext())) {
+        std::string nsPath = NamespaceHandler::getNamespacePath(ns);
+        if (!nsPath.empty()) {
+            className = nsPath + "__" + className;
+        }
+    }
+
+    return className + "__vtable_instance";
+}
+
+std::string VirtualMethodHandler::generateFunctionPointerType(
+    const clang::CXXMethodDecl* method,
+    const std::string& className,
+    clang::ASTContext& cASTContext)
+{
+    std::string result;
+
+    // Get return type
+    clang::QualType returnType = method->getReturnType();
+    std::string returnTypeStr = returnType.getAsString();
+
+    // Build parameter list: struct ClassName *this + method parameters
+    std::string params = "struct " + className + " *this";
+
+    for (const auto* param : method->parameters()) {
+        params += ", ";
+        params += param->getType().getAsString();
+    }
+
+    // Format: ReturnType (*)(params)
+    result = returnTypeStr + " (*)(" + params + ")";
+
+    return result;
+}
+
+std::string VirtualMethodHandler::generateVtableStruct(
+    const clang::CXXRecordDecl* classDecl,
+    const std::vector<const clang::CXXMethodDecl*>& virtualMethods,
+    clang::ASTContext& cASTContext)
+{
+    std::string className = classDecl->getNameAsString();
+
+    // Apply namespace prefix if needed
+    if (const auto* ns = llvm::dyn_cast<clang::NamespaceDecl>(
+            classDecl->getDeclContext())) {
+        std::string nsPath = NamespaceHandler::getNamespacePath(ns);
+        if (!nsPath.empty()) {
+            className = nsPath + "__" + className;
+        }
+    }
+
+    std::string vtableStructName = className + "__vtable";
+
+    std::stringstream ss;
+    ss << "struct " << vtableStructName << " {\n";
+
+    // RTTI type_info pointer (first field - Itanium ABI)
+    ss << "    const struct __class_type_info *type_info;\n";
+
+    // Virtual methods (destructor first if present, then in declaration order)
+    for (const auto* method : virtualMethods) {
+        std::string fieldName = method->getNameAsString();
+
+        // Special case for destructor
+        if (llvm::isa<clang::CXXDestructorDecl>(method)) {
+            ss << "    void (*destructor)(struct " << className << " *this);\n";
+        } else {
+            // Generate strongly typed function pointer
+            std::string returnType = method->getReturnType().getAsString();
+
+            // Build parameter list
+            std::string params = "struct " + className + " *this";
+            for (const auto* param : method->parameters()) {
+                params += ", ";
+                params += param->getType().getAsString();
+            }
+
+            ss << "    " << returnType << " (*" << fieldName << ")(" << params << ");\n";
+        }
+    }
+
+    ss << "};\n";
+
+    return ss.str();
+}
+
+std::string VirtualMethodHandler::generateVtableInstance(
+    const clang::CXXRecordDecl* classDecl,
+    const std::vector<const clang::CXXMethodDecl*>& virtualMethods,
+    clang::ASTContext& cASTContext)
+{
+    std::string className = classDecl->getNameAsString();
+
+    // Apply namespace prefix
+    if (const auto* ns = llvm::dyn_cast<clang::NamespaceDecl>(
+            classDecl->getDeclContext())) {
+        std::string nsPath = NamespaceHandler::getNamespacePath(ns);
+        if (!nsPath.empty()) {
+            className = nsPath + "__" + className;
+        }
+    }
+
+    std::string vtableStructName = className + "__vtable";
+    std::string vtableInstanceName = className + "__vtable_instance";
+
+    std::stringstream ss;
+    ss << "static struct " << vtableStructName << " " << vtableInstanceName << " = {\n";
+
+    // RTTI type_info pointer
+    ss << "    .type_info = &" << className << "__type_info,\n";
+
+    // Virtual method pointers
+    for (const auto* method : virtualMethods) {
+        std::string methodName = getMangledName(method, classDecl);
+        std::string fieldName = method->getNameAsString();
+
+        if (llvm::isa<clang::CXXDestructorDecl>(method)) {
+            ss << "    .destructor = " << className << "__dtor,\n";
+        } else {
+            ss << "    ." << fieldName << " = " << methodName << ",\n";
+        }
+    }
+
+    ss << "};\n";
+
+    return ss.str();
 }
 
 } // namespace cpptoc

@@ -417,6 +417,146 @@ private:
      * - Consistent with other handlers
      */
     static std::string getNamespacePrefix(const clang::CXXRecordDecl* classDecl);
+
+public:
+    /**
+     * @brief Generate vtable struct definition for a class
+     * @param classDecl C++ class declaration
+     * @param virtualMethods List of virtual methods in vtable order
+     * @param cASTContext C AST context
+     * @return Vtable struct definition string
+     *
+     * Algorithm:
+     * 1. Get class name with namespace prefix
+     * 2. Generate struct ClassName__vtable {
+     * 3. Add RTTI type_info pointer as first field
+     * 4. For each virtual method:
+     *    - Generate strongly typed function pointer field
+     *    - Special case for destructor: void (*destructor)(struct ClassName *this)
+     *    - Regular method: ReturnType (*methodName)(struct ClassName *this, params...)
+     * 5. Close struct definition
+     *
+     * Example Output:
+     * struct Shape__vtable {
+     *     const struct __class_type_info *type_info;
+     *     void (*destructor)(struct Shape *this);
+     *     int (*getArea)(struct Shape *this);
+     *     void (*draw)(struct Shape *this);
+     * };
+     *
+     * Critical: Strongly typed function pointers (NOT generic void*)
+     * - Each class gets its own vtable struct type
+     * - Function signatures match exact method signatures
+     * - COM/DCOM pattern for type safety
+     *
+     * Made public for testing
+     */
+    static std::string generateVtableStruct(
+        const clang::CXXRecordDecl* classDecl,
+        const std::vector<const clang::CXXMethodDecl*>& virtualMethods,
+        clang::ASTContext& cASTContext
+    );
+
+    /**
+     * @brief Generate vtable instance initialization
+     * @param classDecl C++ class declaration
+     * @param virtualMethods List of virtual methods in vtable order
+     * @param cASTContext C AST context
+     * @return Vtable instance initialization string
+     *
+     * Algorithm:
+     * 1. Get class name with namespace prefix
+     * 2. Generate static struct ClassName__vtable ClassName__vtable_instance = {
+     * 3. Initialize .type_info = &ClassName__type_info
+     * 4. For each virtual method:
+     *    - Initialize .destructor = ClassName__dtor (for destructor)
+     *    - Initialize .methodName = ClassName__methodName (for methods)
+     * 5. Close initializer
+     *
+     * Example Output:
+     * static struct Shape__vtable Shape__vtable_instance = {
+     *     .type_info = &Shape__type_info,
+     *     .destructor = Shape__dtor,
+     *     .getArea = Shape__getArea,
+     *     .draw = Shape__draw
+     * };
+     *
+     * Critical: Uses designated initializers (C99)
+     * - Type-safe assignment of function pointers
+     * - Compiler verifies signature matches vtable struct
+     *
+     * Made public for testing
+     */
+    static std::string generateVtableInstance(
+        const clang::CXXRecordDecl* classDecl,
+        const std::vector<const clang::CXXMethodDecl*>& virtualMethods,
+        clang::ASTContext& cASTContext
+    );
+
+    /**
+     * @brief Get mangled vtable struct name
+     * @param classDecl C++ class declaration
+     * @return Vtable struct name (e.g., "Shape__vtable")
+     *
+     * Algorithm:
+     * 1. Get class name
+     * 2. Apply namespace prefix if in namespace
+     * 3. Append "__vtable"
+     *
+     * Examples:
+     * - Simple: Shape → "Shape__vtable"
+     * - Namespace: game::Entity → "game__Entity__vtable"
+     *
+     * Made public for testing
+     */
+    static std::string getVtableStructName(const clang::CXXRecordDecl* classDecl);
+
+    /**
+     * @brief Get mangled vtable instance name
+     * @param classDecl C++ class declaration
+     * @return Vtable instance name (e.g., "Shape__vtable_instance")
+     *
+     * Algorithm:
+     * 1. Get class name
+     * 2. Apply namespace prefix if in namespace
+     * 3. Append "__vtable_instance"
+     *
+     * Examples:
+     * - Simple: Shape → "Shape__vtable_instance"
+     * - Namespace: game::Entity → "game__Entity__vtable_instance"
+     *
+     * Made public for testing
+     */
+    static std::string getVtableInstanceName(const clang::CXXRecordDecl* classDecl);
+
+private:
+    /**
+     * @brief Generate function pointer type for vtable field
+     * @param method Virtual method declaration
+     * @param className Fully qualified class name (with namespace prefix)
+     * @param cASTContext C AST context
+     * @return Function pointer type string
+     *
+     * Algorithm:
+     * 1. Get return type (translate via type helpers)
+     * 2. Build parameter list: struct ClassName *this + method params
+     * 3. Format as: ReturnType (*)(struct ClassName *this, params...)
+     *
+     * Example Output:
+     * - int (*)(struct Shape *this)
+     * - void (*)(struct Shape *this, int x, int y)
+     *
+     * Critical: Strongly typed signature
+     * - NOT generic void* function pointers
+     * - Exact parameter types preserved
+     *
+     * Helper for generateVtableStruct()
+     */
+    static std::string generateFunctionPointerType(
+        const clang::CXXMethodDecl* method,
+        const std::string& className,
+        clang::ASTContext& cASTContext
+    );
 };
 
 } // namespace cpptoc
