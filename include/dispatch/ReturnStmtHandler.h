@@ -79,22 +79,26 @@ private:
 
     /**
      * @brief Visitor: Translate C++ return statement to C return statement
-     * @param disp Dispatcher for accessing DeclMapper
+     * @param disp Dispatcher for dispatching return value expression
      * @param cppASTContext Source C++ ASTContext (read-only)
      * @param cASTContext Target C ASTContext (write)
      * @param S ReturnStmt to process (must not be null)
      *
-     * Algorithm:
+     * Algorithm (following Chain of Responsibility pattern):
      * 1. Assert S is not null and is ReturnStmt
      * 2. Cast S to ReturnStmt
      * 3. Extract return value expression (may be nullptr for void return)
-     * 4. If return value exists, translate its type using TypeTranslator
+     * 4. If return value exists:
+     *    a. Dispatch expression to ExpressionHandler via dispatcher
+     *    b. If handled, retrieve translated C expression (requires ExprMapper - future)
+     *    c. If not handled, use fallback (Phase 1: original expression)
      * 5. Create C ReturnStmt using clang::ReturnStmt::Create()
-     * 6. Store mapping in DeclMapper for parent handler retrieval
+     * 6. Store mapping for parent handler retrieval
      *
-     * Phase 1 Limitation: Uses existing expression AST node
-     * - Deep expression translation requires ExpressionHandler (future phase)
-     * - This phase focuses on statement structure translation
+     * Chain of Responsibility: Delegates expression translation to ExpressionHandler
+     * - Similar to how FunctionHandler delegates parameters to ParameterHandler
+     * - When ExpressionHandler exists, will retrieve translated expr from ExprMapper
+     * - Phase 1: Falls back to original expression when no handler registered
      *
      * @pre S != nullptr && S->getStmtClass() == Stmt::ReturnStmtClass (asserted)
      */

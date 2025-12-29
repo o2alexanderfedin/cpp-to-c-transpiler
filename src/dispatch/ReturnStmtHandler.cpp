@@ -47,13 +47,29 @@ void ReturnStmtHandler::handleReturnStmt(
 
     // Create C return statement
     clang::ReturnStmt* cReturn = nullptr;
+    clang::Expr* cRetValue = nullptr;
 
     if (cppRetValue) {
-        // Phase 1: Use existing expression AST node directly
-        // Deep expression translation will be handled by ExpressionHandler in future phase
-        // For now, we just pass through the expression
-        // Note: We cast away const because ReturnStmt::Create requires non-const Expr*
-        clang::Expr* cRetValue = const_cast<clang::Expr*>(cppRetValue);
+        // Following Chain of Responsibility pattern: Dispatch expression to ExpressionHandler
+        // Cast away const for dispatch (dispatcher interface requires non-const)
+        clang::Expr* cppRetValueNonConst = const_cast<clang::Expr*>(cppRetValue);
+
+        // Dispatch expression to handler (will be handled by ExpressionHandler when it exists)
+        bool handled = disp.dispatch(cppASTContext, cASTContext, cppRetValueNonConst);
+
+        if (handled) {
+            // TODO: When ExpressionHandler is implemented, retrieve translated expression
+            // from ExprMapper (similar to how FunctionHandler retrieves parameters from DeclMapper)
+            // For now, ExprMapper doesn't exist yet, so this branch won't execute
+            // cpptoc::ExprMapper& exprMapper = disp.getExprMapper();
+            // cRetValue = exprMapper.getCreatedExpr(cppRetValue);
+            llvm::outs() << "[ReturnStmtHandler] Expression dispatched and handled\n";
+        } else {
+            // Phase 1 fallback: No ExpressionHandler registered yet
+            // Use the C++ expression node directly (will need proper translation in future)
+            llvm::outs() << "[ReturnStmtHandler] No ExpressionHandler - using fallback\n";
+            cRetValue = cppRetValueNonConst;
+        }
 
         // Create C return statement with return value
         cReturn = clang::ReturnStmt::Create(
