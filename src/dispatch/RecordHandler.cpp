@@ -8,6 +8,7 @@
  */
 
 #include "dispatch/RecordHandler.h"
+#include "dispatch/NamespaceHandler.h"
 #include "CNodeBuilder.h"
 #include "mapping/DeclMapper.h"
 #include "mapping/TypeMapper.h"
@@ -59,7 +60,18 @@ void RecordHandler::handleRecord(
 
     // Check if this is a nested struct and compute mangled name
     std::string mangledName = name;
-    if (const auto* parentDC = llvm::dyn_cast<clang::RecordDecl>(cppRecord->getDeclContext())) {
+
+    // Check for namespace parent (apply namespace prefix)
+    if (const auto* nsDecl = llvm::dyn_cast<clang::NamespaceDecl>(cppRecord->getDeclContext())) {
+        std::string nsPrefix = cpptoc::NamespaceHandler::getNamespacePath(nsDecl);
+        if (!nsPrefix.empty()) {
+            mangledName = nsPrefix + "_" + name;
+            llvm::outs() << "[RecordHandler] Applied namespace prefix: "
+                         << name << " → " << mangledName << "\n";
+        }
+    }
+    // Check for nested struct parent (apply struct name prefix)
+    else if (const auto* parentDC = llvm::dyn_cast<clang::RecordDecl>(cppRecord->getDeclContext())) {
         std::string parentName = parentDC->getNameAsString();
         // Skip if parent has the same name (self-reference / Clang artifact)
         if (parentName != name) {

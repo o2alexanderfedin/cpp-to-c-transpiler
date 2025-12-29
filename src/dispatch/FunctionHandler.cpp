@@ -8,6 +8,7 @@
  */
 
 #include "dispatch/FunctionHandler.h"
+#include "dispatch/NamespaceHandler.h"
 #include "CNodeBuilder.h"
 #include "mapping/DeclMapper.h"
 #include "mapping/StmtMapper.h"
@@ -61,6 +62,17 @@ void FunctionHandler::handleFunction(
 
     // Extract function properties
     std::string name = cppFunc->getNameAsString();
+
+    // Check if function is in a namespace and apply namespace prefix
+    if (const auto* nsDecl = llvm::dyn_cast<clang::NamespaceDecl>(cppFunc->getDeclContext())) {
+        std::string nsPrefix = cpptoc::NamespaceHandler::getNamespacePath(nsDecl);
+        if (!nsPrefix.empty()) {
+            name = nsPrefix + "_" + name;
+            llvm::outs() << "[FunctionHandler] Applied namespace prefix: "
+                         << cppFunc->getNameAsString() << " → " << name << "\n";
+        }
+    }
+
     clang::QualType cppReturnType = cppFunc->getReturnType();
 
     // Translate return type via TypeHandler (convert references to pointers)
