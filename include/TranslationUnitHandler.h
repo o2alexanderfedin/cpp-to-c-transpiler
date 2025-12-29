@@ -49,11 +49,14 @@ public:
 private:
     /**
      * @brief Predicate: Check if declaration is EXACTLY TranslationUnitDecl
-     * @param D Declaration to check
+     * @param D Declaration to check (must not be null)
      * @return true if D is exactly TranslationUnitDecl (not derived types)
      *
-     * Implementation uses D->getKind() for exact type matching.
-     * This is the recommended pattern for all handlers to ensure type safety.
+     * Implementation pattern for all handlers:
+     * 1. Assert D is not null (fails fast on programming errors)
+     * 2. Use D->getKind() for exact type matching (not isa<>)
+     *
+     * @pre D != nullptr (asserted)
      */
     static bool canHandle(const clang::Decl* D);
 
@@ -62,14 +65,17 @@ private:
      * @param disp Dispatcher for recursive dispatch
      * @param cppASTContext Source C++ ASTContext (read-only)
      * @param cASTContext Target C ASTContext (write)
-     * @param D TranslationUnitDecl to process
+     * @param D TranslationUnitDecl to process (must not be null)
      *
      * Algorithm:
-     * 1. Cast D to TranslationUnitDecl
-     * 2. Iterate all top-level declarations: TU->decls()
-     * 3. For each child declaration:
+     * 1. Assert D is not null and is TranslationUnitDecl
+     * 2. Cast D to TranslationUnitDecl
+     * 3. Iterate all top-level declarations: TU->decls()
+     * 4. For each child declaration:
      *    - Recursively dispatch: disp.dispatch(cppASTContext, cASTContext, child)
-     * 4. Handler for child will create C AST nodes in cASTContext
+     * 5. Handler for child will create C AST nodes in cASTContext
+     *
+     * @pre D != nullptr && D->getKind() == Decl::TranslationUnit (asserted)
      */
     static void handleTranslationUnit(
         const CppToCVisitorDispatcher& disp,

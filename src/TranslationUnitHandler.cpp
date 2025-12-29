@@ -1,5 +1,6 @@
 #include "TranslationUnitHandler.h"
 #include "llvm/Support/Casting.h"
+#include <cassert>
 
 namespace cpptoc {
 
@@ -11,9 +12,11 @@ void TranslationUnitHandler::registerWith(CppToCVisitorDispatcher& dispatcher) {
 }
 
 bool TranslationUnitHandler::canHandle(const clang::Decl* D) {
+    assert(D && "Declaration must not be null");
+
     // Check for EXACT type match (not derived classes)
     // Important: Other handlers should follow this pattern for type safety
-    return D && D->getKind() == clang::Decl::TranslationUnit;
+    return D->getKind() == clang::Decl::TranslationUnit;
 }
 
 void TranslationUnitHandler::handleTranslationUnit(
@@ -22,6 +25,9 @@ void TranslationUnitHandler::handleTranslationUnit(
     clang::ASTContext& cASTContext,
     const clang::Decl* D
 ) {
+    assert(D && "Declaration must not be null");
+    assert(D->getKind() == clang::Decl::TranslationUnit && "Must be TranslationUnitDecl");
+
     auto* TU = llvm::cast<clang::TranslationUnitDecl>(D);
 
     // Recursively dispatch all top-level declarations
