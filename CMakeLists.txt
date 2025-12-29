@@ -212,6 +212,7 @@ add_library(cpptoc_core STATIC
     src/dispatch/ImplicitCastExprHandler.cpp
     src/dispatch/ArraySubscriptExprHandler.cpp
     src/dispatch/ParenExprHandler.cpp
+    src/dispatch/CXXOperatorCallExprHandler.cpp
     src/dispatch/MemberExprHandler.cpp
     src/dispatch/StaticMethodHandler.cpp
     src/dispatch/InstanceMethodHandler.cpp
@@ -1051,6 +1052,31 @@ target_link_libraries(UnaryOperatorHandlerDispatcherTest
 )
 
 gtest_discover_tests(UnaryOperatorHandlerDispatcherTest
+    WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
+)
+
+# CXXOperatorCallExprHandler Tests
+add_executable(CXXOperatorCallExprHandlerDispatcherTest
+    tests/unit/dispatch/CXXOperatorCallExprHandlerDispatcherTest.cpp
+)
+
+target_compile_definitions(CXXOperatorCallExprHandlerDispatcherTest PRIVATE ${LLVM_DEFINITIONS})
+
+target_include_directories(CXXOperatorCallExprHandlerDispatcherTest PRIVATE
+    ${CMAKE_SOURCE_DIR}/include
+    ${LLVM_INCLUDE_DIRS}
+    ${CLANG_INCLUDE_DIRS}
+)
+
+target_link_libraries(CXXOperatorCallExprHandlerDispatcherTest
+    cpptoc_core
+    ${LLVM_LIBS}
+    ${CLANG_LIBS}
+    ${SYSTEM_LIBS}
+    GTest::gtest_main
+)
+
+gtest_discover_tests(CXXOperatorCallExprHandlerDispatcherTest
     WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
 )
 
