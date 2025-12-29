@@ -1,10 +1,10 @@
 // Tests for CppToCVisitorDispatcher
 // Demonstrates Chain of Responsibility pattern for AST node handling
 
-#include "CppToCVisitorDispatcher.h"
-#include "TranslationUnitHandler.h"
-#include "PathMapper.h"
-#include "DeclLocationMapper.h"
+#include "dispatch/CppToCVisitorDispatcher.h"
+#include "dispatch/TranslationUnitHandler.h"
+#include "mapping/PathMapper.h"
+#include "mapping/DeclLocationMapper.h"
 #include "TargetContext.h"
 #include "clang/Tooling/Tooling.h"
 #include <gtest/gtest.h>

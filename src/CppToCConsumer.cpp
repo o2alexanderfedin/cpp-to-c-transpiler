@@ -4,6 +4,7 @@
 #include "CodeGenerator.h"
 #include "FileOutputManager.h"
 #include "TargetContext.h"
+#include "mapping/PathMapper.h"
 #include "clang/Basic/SourceManager.h"
 #include "llvm/Support/raw_ostream.h"
 #include <algorithm>
@@ -13,8 +14,9 @@
 
 namespace fs = std::filesystem;
 
-// External accessor for output directory (defined in main.cpp)
+// External accessors (defined in main.cpp)
 extern std::string getOutputDir();
+extern std::string getSourceDir();
 
 // Global counter for successfully generated files
 // This allows main() to return success even if there were parse errors
@@ -55,18 +57,40 @@ void CppToCConsumer::HandleTranslationUnit(clang::ASTContext &Context) {
   // All C nodes from all files are created in this shared context
   clang::CNodeBuilder Builder(targetCtx.getContext());
 
-  // Create a new C_TranslationUnit for THIS source file
-  // Each file gets its own C_TU for separate .c/.h output
-  clang::TranslationUnitDecl* C_TU = targetCtx.createTranslationUnit();
-  llvm::outs() << "[Bug #30 FIX] Created C_TU @ " << (void*)C_TU << " for file: " << InputFilename << "\n";
+  // PathMapper Integration: Get singleton PathMapper instance
+  // All files share the same PathMapper to ensure consistent C_TU instances
+  std::string sourceDir = getSourceDir();
+  std::string outputDir = getOutputDir();
+  if (outputDir.empty()) {
+    outputDir = ".";  // Default to current directory
+  }
+
+  // Get the shared PathMapper instance (initializes on first call)
+  cpptoc::PathMapper& pathMapper = cpptoc::PathMapper::getInstance(sourceDir, outputDir);
+
+  // Map source file to target path and get/create C_TU
+  std::string targetPath = pathMapper.mapSourceToTarget(InputFilename);
+  clang::TranslationUnitDecl* C_TU = pathMapper.getOrCreateTU(targetPath);
+  llvm::outs() << "[PathMapper] Mapped " << InputFilename << " -> " << targetPath << "\n";
+  llvm::outs() << "[PathMapper] C_TU @ " << (void*)C_TU << " for target: " << targetPath << "\n";
 
   // Create and run visitor to traverse AST
   // Phase 34: Pass FileOriginTracker to visitor for multi-file support
-  // Pass the C_TU to the Visitor so it knows where to add declarations
-  // Bug #43 FIX: Pass current filename for FileOriginFilter
   // Bug Fix: Pass TargetContext for shared constructor/method/destructor maps
-  CppToCVisitor Visitor(Context, Builder, targetCtx, fileOriginTracker, C_TU, InputFilename);
+  // PathMapper Integration: Pass PathMapper for declaration routing
+  // Refactoring: Removed C_TU parameter - visitor now uses location-based getTargetForNode()
+  CppToCVisitor Visitor(Context, Builder, targetCtx, fileOriginTracker, &pathMapper);
   Visitor.TraverseDecl(TU);
+
+  // DEBUG: Check how many declarations are in C_TU IMMEDIATELY after traversal
+  llvm::outs() << "[DEBUG AFTER TRAVERSAL] C_TU @ " << (void*)C_TU << " has "
+               << std::distance(C_TU->decls().begin(), C_TU->decls().end())
+               << " declarations after traversal\n";
+  for (auto *D : C_TU->decls()) {
+    if (auto* FD = dyn_cast<clang::FunctionDecl>(D)) {
+      llvm::outs() << "  [AFTER TRAVERSAL] FunctionDecl: " << FD->getNameAsString() << "\n";
+    }
+  }
 
   // Phase 11 (v2.4.0): Process template instantiations after AST traversal
   // This generates monomorphized C code for all template instantiations
@@ -260,7 +284,56 @@ void CppToCConsumer::HandleTranslationUnit(clang::ASTContext &Context) {
     headerOS << "\n";  // Blank line after user includes
   }
 
+  // JSON LOG: Starting iteration
+  int declCount = std::distance(C_TU->decls().begin(), C_TU->decls().end());
+  llvm::outs() << "{\"event\":\"iterate_HEADER_START\",\"ctu\":\"" << (void*)C_TU << "\""
+               << ",\"ctuAsDeclContext\":\"" << (void*)static_cast<clang::DeclContext*>(C_TU) << "\""
+               << ",\"declCount\":" << declCount
+               << ",\"file\":\"" << InputFilename << "\"}\n";
+
+  // DEBUG: Log all declarations being emitted in header
+  llvm::outs() << "[DEBUG] Starting header emission - C_TU @ " << (void*)C_TU << " has "
+               << declCount << " total declarations\n";
+
   for (auto *D : C_TU->decls()) {  // Use C_TU instead of TU
+    // JSON LOG: Each declaration found during iteration
+    if (auto* FD = dyn_cast<clang::FunctionDecl>(D)) {
+      llvm::outs() << "{\"event\":\"iterate_HEADER_FOUND\",\"declType\":\"FunctionDecl\""
+                   << ",\"name\":\"" << FD->getNameAsString() << "\""
+                   << ",\"declPtr\":\"" << (void*)FD << "\""
+                   << ",\"isImplicit\":" << (FD->isImplicit() ? "true" : "false")
+                   << ",\"declContext\":\"" << (void*)FD->getDeclContext() << "\"}\n";
+      llvm::outs() << "[DEBUG-HEADER] Processing FunctionDecl: " << FD->getNameAsString()
+                   << " @ " << (void*)FD << " (implicit=" << FD->isImplicit() << ")\n";
+    } else if (auto* VD = dyn_cast<clang::VarDecl>(D)) {
+      llvm::outs() << "{\"event\":\"iterate_HEADER_FOUND\",\"declType\":\"VarDecl\""
+                   << ",\"name\":\"" << VD->getNameAsString() << "\""
+                   << ",\"declPtr\":\"" << (void*)VD << "\""
+                   << ",\"isImplicit\":" << (VD->isImplicit() ? "true" : "false") << "}\n";
+      llvm::outs() << "[DEBUG-HEADER] Processing VarDecl: " << VD->getNameAsString()
+                   << " (implicit=" << VD->isImplicit() << ")\n";
+    } else if (auto* ED = dyn_cast<clang::EnumDecl>(D)) {
+      llvm::outs() << "{\"event\":\"iterate_HEADER_FOUND\",\"declType\":\"EnumDecl\""
+                   << ",\"name\":\"" << ED->getNameAsString() << "\""
+                   << ",\"declPtr\":\"" << (void*)ED << "\""
+                   << ",\"isImplicit\":" << (ED->isImplicit() ? "true" : "false") << "}\n";
+      llvm::outs() << "[DEBUG-HEADER] Processing EnumDecl: " << ED->getNameAsString()
+                   << " (implicit=" << ED->isImplicit() << ")\n";
+    } else if (auto* RD = dyn_cast<clang::RecordDecl>(D)) {
+      llvm::outs() << "{\"event\":\"iterate_HEADER_FOUND\",\"declType\":\"RecordDecl\""
+                   << ",\"name\":\"" << RD->getNameAsString() << "\""
+                   << ",\"declPtr\":\"" << (void*)RD << "\""
+                   << ",\"isImplicit\":" << (RD->isImplicit() ? "true" : "false") << "}\n";
+      llvm::outs() << "[DEBUG-HEADER] Processing RecordDecl: " << RD->getNameAsString()
+                   << " (implicit=" << RD->isImplicit() << ")\n";
+    } else {
+      llvm::outs() << "{\"event\":\"iterate_HEADER_FOUND\",\"declType\":\"" << D->getDeclKindName() << "\""
+                   << ",\"declPtr\":\"" << (void*)D << "\""
+                   << ",\"isImplicit\":" << (D->isImplicit() ? "true" : "false") << "}\n";
+      llvm::outs() << "[DEBUG-HEADER] Processing declaration of type: " << D->getDeclKindName()
+                   << " (implicit=" << D->isImplicit() << ")\n";
+    }
+
     if (!D->isImplicit()) {
       headerGen.printDecl(D, true);  // declarationOnly=true for headers
     }
@@ -286,7 +359,29 @@ void CppToCConsumer::HandleTranslationUnit(clang::ASTContext &Context) {
   }
   implOS << "#include \"" << baseName << ".h\"\n\n";
 
+  // DEBUG: Log all declarations being emitted in implementation
+  llvm::outs() << "[DEBUG] Starting implementation emission - C_TU @ " << (void*)C_TU << " has "
+               << std::distance(C_TU->decls().begin(), C_TU->decls().end())
+               << " total declarations\n";
   for (auto *D : C_TU->decls()) {  // Use C_TU instead of TU
+    // Print declaration details
+    if (auto* FD = dyn_cast<clang::FunctionDecl>(D)) {
+      llvm::outs() << "[DEBUG-IMPL] Processing FunctionDecl: " << FD->getNameAsString()
+                   << " (implicit=" << FD->isImplicit() << ")\n";
+    } else if (auto* VD = dyn_cast<clang::VarDecl>(D)) {
+      llvm::outs() << "[DEBUG-IMPL] Processing VarDecl: " << VD->getNameAsString()
+                   << " (implicit=" << VD->isImplicit() << ")\n";
+    } else if (auto* ED = dyn_cast<clang::EnumDecl>(D)) {
+      llvm::outs() << "[DEBUG-IMPL] Processing EnumDecl: " << ED->getNameAsString()
+                   << " (implicit=" << ED->isImplicit() << ")\n";
+    } else if (auto* RD = dyn_cast<clang::RecordDecl>(D)) {
+      llvm::outs() << "[DEBUG-IMPL] Processing RecordDecl: " << RD->getNameAsString()
+                   << " (implicit=" << RD->isImplicit() << ")\n";
+    } else {
+      llvm::outs() << "[DEBUG-IMPL] Processing declaration of type: " << D->getDeclKindName()
+                   << " (implicit=" << D->isImplicit() << ")\n";
+    }
+
     if (!D->isImplicit()) {
       implGen.printDecl(D, false);  // declarationOnly=false for implementation
     }
@@ -300,8 +395,7 @@ void CppToCConsumer::HandleTranslationUnit(clang::ASTContext &Context) {
   FileOutputManager outputMgr;
   outputMgr.setInputFilename(InputFilename);
 
-  // Set output directory if specified
-  std::string outputDir = getOutputDir();
+  // Set output directory if specified (reuse outputDir from PathMapper creation above)
   if (!outputDir.empty()) {
     outputMgr.setOutputDir(outputDir);
   }

@@ -195,10 +195,10 @@ add_library(cpptoc_core STATIC
     src/TranspilerAPI.cpp
     src/TargetContext.cpp
     src/CppToCVisitor.cpp
-    src/CppToCVisitorDispatcher.cpp
-    src/TranslationUnitHandler.cpp
-    src/PathMapper.cpp
-    src/DeclLocationMapper.cpp
+    src/dispatch/CppToCVisitorDispatcher.cpp
+    src/dispatch/TranslationUnitHandler.cpp
+    src/mapping/PathMapper.cpp
+    src/mapping/DeclLocationMapper.cpp
     src/CFGAnalyzer.cpp
     src/NameMangler.cpp
     src/CodeGenerator.cpp
@@ -219,7 +219,6 @@ add_library(cpptoc_core STATIC
     src/FileOutputManager.cpp
     src/FileOriginTracker.cpp
     src/FileOriginFilter.cpp
-    src/PathMapper.cpp
     src/DependencyTracker.cpp
     src/VirtualMethodAnalyzer.cpp
     src/VptrInjector.cpp

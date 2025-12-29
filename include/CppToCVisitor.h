@@ -30,6 +30,7 @@
 #include "handlers/TypeAliasAnalyzer.h"
 #include "handlers/TypedefGenerator.h"
 #include "OverrideResolver.h"
+#include "mapping/PathMapper.h"
 #include "RvalueRefParamTranslator.h"
 #include "TemplateExtractor.h"
 #include "TemplateInstantiationTracker.h"
@@ -60,6 +61,9 @@ class CppToCVisitor : public clang::RecursiveASTVisitor<CppToCVisitor> {
   // Phase 34 (v2.5.0): File origin tracking for multi-file transpilation
   cpptoc::FileOriginTracker &fileOriginTracker;
   std::unique_ptr<cpptoc::FileOriginFilter> fileOriginFilter;
+
+  // Path mapper for source-to-target file mapping and C_TU management
+  cpptoc::PathMapper* pathMapper;
 
   // Phase 9 (v2.2.0): Virtual method support
   VirtualMethodAnalyzer VirtualAnalyzer;
@@ -113,8 +117,8 @@ class CppToCVisitor : public clang::RecursiveASTVisitor<CppToCVisitor> {
   std::unique_ptr<TemplateInstantiationTracker> m_templateTracker;
   std::string m_monomorphizedCode; // Store generated template code
 
-  // Phase 32: C TranslationUnit for generated C code
-  clang::TranslationUnitDecl* C_TranslationUnit;
+  // Refactoring: C_TranslationUnit member removed - now using location-based getTargetForNode()
+  // Each declaration gets the correct C_TU based on its source file location via PathMapper
 
   // Phase 12: Exception handling infrastructure (v2.5.0)
   std::unique_ptr<clang::TryCatchTransformer> m_tryCatchTransformer;
@@ -225,8 +229,7 @@ public:
                          clang::CNodeBuilder &Builder,
                          TargetContext &targetCtx,
                          cpptoc::FileOriginTracker &tracker,
-                         clang::TranslationUnitDecl *C_TU,
-                         const std::string& currentFile = "");
+                         cpptoc::PathMapper* pathMapper = nullptr);
 
   // ============================================================================
   // RecursiveASTVisitor Configuration (Bug #17: System Header Hang Fix)
@@ -391,20 +394,35 @@ public:
    */
   std::string getMonomorphizedCode() const { return m_monomorphizedCode; }
 
-  /**
-   * @brief Get the C TranslationUnit containing generated C AST nodes
-   * @return Pointer to C TranslationUnitDecl
-   *
-   * Phase 32: Fix transpiler architecture - use C AST for output generation.
-   * This method returns the C TranslationUnit that contains all generated C
-   * AST nodes (structs, functions, etc.) which should be used for code
-   * generation instead of the original C++ AST.
-   */
-  clang::TranslationUnitDecl* getCTranslationUnit() const {
-    return C_TranslationUnit;
-  }
+  // Refactoring: getCTranslationUnit() removed
+  // C_TUs are now managed by PathMapper and accessed via getTargetForNode()
 
 private:
+  // ============================================================================
+  // Location-based File Organization (Refactoring Task)
+  // ============================================================================
+
+  /**
+   * @brief Get source file path from C++ AST node location
+   * @param node The C++ declaration node
+   * @return Source file path as string, or empty string if location is invalid
+   *
+   * Uses SourceManager to extract the file path from the node's location.
+   * This enables location-based file organization without instance variables.
+   */
+  std::string getSourceFileFromNode(const clang::Decl* node) const;
+
+  /**
+   * @brief Get target file path and C_TU for a C++ AST node
+   * @param cppNode The C++ declaration node
+   * @return Pair of (targetPath, C_TranslationUnitDecl*)
+   *
+   * Maps the node's source location to target file path using PathMapper,
+   * then retrieves or creates the corresponding C TranslationUnit.
+   * This replaces m_currentTargetPath and provides correct C_TU per node.
+   */
+  std::pair<std::string, clang::TranslationUnitDecl*> getTargetForNode(const clang::Decl* cppNode);
+
   // Epic #5: RAII helper methods
 
   /**
