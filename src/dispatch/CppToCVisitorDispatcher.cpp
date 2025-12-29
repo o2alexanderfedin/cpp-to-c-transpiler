@@ -19,7 +19,7 @@ void CppToCVisitorDispatcher::addHandler(DeclPredicate predicate, DeclVisitor ha
     declHandlers.emplace_back(predicate, handler);
 }
 
-bool CppToCVisitorDispatcher::dispatch(const clang::ASTContext& cppASTContext, clang::ASTContext& cASTContext, clang::Decl* cppDecl) const {
+bool CppToCVisitorDispatcher::dispatch(const clang::ASTContext& cppASTContext, clang::ASTContext& cASTContext, const clang::Decl* cppDecl) const {
     for (const auto& [predicate, handler] : declHandlers) {
         if (predicate(cppDecl)) {
             handler(*this, cppASTContext, cASTContext, cppDecl);
@@ -34,7 +34,7 @@ void CppToCVisitorDispatcher::addHandler(StmtPredicate predicate, StmtVisitor ha
     stmtHandlers.emplace_back(predicate, handler);
 }
 
-bool CppToCVisitorDispatcher::dispatch(const clang::ASTContext& cppASTContext, clang::ASTContext& cASTContext, clang::Stmt* cppStmt) const {
+bool CppToCVisitorDispatcher::dispatch(const clang::ASTContext& cppASTContext, clang::ASTContext& cASTContext, const clang::Stmt* cppStmt) const {
     for (const auto& [predicate, handler] : stmtHandlers) {
         if (predicate(cppStmt)) {
             handler(*this, cppASTContext, cASTContext, cppStmt);
@@ -49,7 +49,7 @@ void CppToCVisitorDispatcher::addHandler(ExprPredicate predicate, ExprVisitor ha
     exprHandlers.emplace_back(predicate, handler);
 }
 
-bool CppToCVisitorDispatcher::dispatch(const clang::ASTContext& cppASTContext, clang::ASTContext& cASTContext, clang::Expr* cppExpr) const {
+bool CppToCVisitorDispatcher::dispatch(const clang::ASTContext& cppASTContext, clang::ASTContext& cASTContext, const clang::Expr* cppExpr) const {
     for (const auto& [predicate, handler] : exprHandlers) {
         if (predicate(cppExpr)) {
             handler(*this, cppASTContext, cASTContext, cppExpr);
@@ -64,7 +64,7 @@ void CppToCVisitorDispatcher::addHandler(TypePredicate predicate, TypeVisitor ha
     typeHandlers.emplace_back(predicate, handler);
 }
 
-bool CppToCVisitorDispatcher::dispatch(const clang::ASTContext& cppASTContext, clang::ASTContext& cASTContext, clang::Type* cppType) const {
+bool CppToCVisitorDispatcher::dispatch(const clang::ASTContext& cppASTContext, clang::ASTContext& cASTContext, const clang::Type* cppType) const {
     for (const auto& [predicate, handler] : typeHandlers) {
         if (predicate(cppType)) {
             handler(*this, cppASTContext, cASTContext, cppType);
@@ -83,7 +83,7 @@ void CppToCVisitorDispatcher::addHandler(AttrPredicate predicate, AttrVisitor ha
     attrHandlers.emplace_back(predicate, handler);
 }
 
-bool CppToCVisitorDispatcher::dispatch(const clang::ASTContext& cppASTContext, clang::ASTContext& cASTContext, clang::Attr* attr) const {
+bool CppToCVisitorDispatcher::dispatch(const clang::ASTContext& cppASTContext, clang::ASTContext& cASTContext, const clang::Attr* attr) const {
     for (const auto& [predicate, handler] : attrHandlers) {
         if (predicate(attr)) {
             handler(*this, cppASTContext, cASTContext, attr);
@@ -98,7 +98,7 @@ void CppToCVisitorDispatcher::addHandler(NestedNameSpecifierPredicate predicate,
     nestedNameSpecifierHandlers.emplace_back(predicate, handler);
 }
 
-bool CppToCVisitorDispatcher::dispatch(const clang::ASTContext& cppASTContext, clang::ASTContext& cASTContext, clang::NestedNameSpecifier* nns) const {
+bool CppToCVisitorDispatcher::dispatch(const clang::ASTContext& cppASTContext, clang::ASTContext& cASTContext, const clang::NestedNameSpecifier* nns) const {
     for (const auto& [predicate, handler] : nestedNameSpecifierHandlers) {
         if (predicate(nns)) {
             handler(*this, cppASTContext, cASTContext, nns);
@@ -128,7 +128,7 @@ void CppToCVisitorDispatcher::addHandler(CXXCtorInitializerPredicate predicate, 
     ctorInitializerHandlers.emplace_back(predicate, handler);
 }
 
-bool CppToCVisitorDispatcher::dispatch(const clang::ASTContext& cppASTContext, clang::ASTContext& cASTContext, clang::CXXCtorInitializer* init) const {
+bool CppToCVisitorDispatcher::dispatch(const clang::ASTContext& cppASTContext, clang::ASTContext& cASTContext, const clang::CXXCtorInitializer* init) const {
     for (const auto& [predicate, handler] : ctorInitializerHandlers) {
         if (predicate(init)) {
             handler(*this, cppASTContext, cASTContext, init);
@@ -143,7 +143,7 @@ void CppToCVisitorDispatcher::addHandler(CXXBaseSpecifierPredicate predicate, CX
     baseSpecifierHandlers.emplace_back(predicate, handler);
 }
 
-bool CppToCVisitorDispatcher::dispatch(const clang::ASTContext& cppASTContext, clang::ASTContext& cASTContext, clang::CXXBaseSpecifier* base) const {
+bool CppToCVisitorDispatcher::dispatch(const clang::ASTContext& cppASTContext, clang::ASTContext& cASTContext, const clang::CXXBaseSpecifier* base) const {
     for (const auto& [predicate, handler] : baseSpecifierHandlers) {
         if (predicate(base)) {
             handler(*this, cppASTContext, cASTContext, base);
@@ -158,7 +158,7 @@ void CppToCVisitorDispatcher::addHandler(TypeLocPredicate predicate, TypeLocVisi
     typeLocHandlers.emplace_back(predicate, handler);
 }
 
-bool CppToCVisitorDispatcher::dispatch(const clang::ASTContext& cppASTContext, clang::ASTContext& cASTContext, clang::TypeLoc* typeLoc) const {
+bool CppToCVisitorDispatcher::dispatch(const clang::ASTContext& cppASTContext, clang::ASTContext& cASTContext, const clang::TypeLoc* typeLoc) const {
     for (const auto& [predicate, handler] : typeLocHandlers) {
         if (predicate(typeLoc)) {
             handler(*this, cppASTContext, cASTContext, typeLoc);
@@ -173,7 +173,7 @@ void CppToCVisitorDispatcher::addHandler(TemplateNamePredicate predicate, Templa
     templateNameHandlers.emplace_back(predicate, handler);
 }
 
-bool CppToCVisitorDispatcher::dispatch(const clang::ASTContext& cppASTContext, clang::ASTContext& cASTContext, clang::TemplateName* name) const {
+bool CppToCVisitorDispatcher::dispatch(const clang::ASTContext& cppASTContext, clang::ASTContext& cASTContext, const clang::TemplateName* name) const {
     for (const auto& [predicate, handler] : templateNameHandlers) {
         if (predicate(name)) {
             handler(*this, cppASTContext, cASTContext, name);
@@ -188,7 +188,7 @@ void CppToCVisitorDispatcher::addHandler(CommentPredicate predicate, CommentVisi
     commentHandlers.emplace_back(predicate, handler);
 }
 
-bool CppToCVisitorDispatcher::dispatch(const clang::ASTContext& cppASTContext, clang::ASTContext& cASTContext, clang::comments::Comment* comment) const {
+bool CppToCVisitorDispatcher::dispatch(const clang::ASTContext& cppASTContext, clang::ASTContext& cASTContext, const clang::comments::Comment* comment) const {
     for (const auto& [predicate, handler] : commentHandlers) {
         if (predicate(comment)) {
             handler(*this, cppASTContext, cASTContext, comment);

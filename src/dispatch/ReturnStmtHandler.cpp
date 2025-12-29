@@ -8,6 +8,7 @@
 
 #include "dispatch/ReturnStmtHandler.h"
 #include "mapping/DeclMapper.h"
+#include "mapping/ExprMapper.h"
 #include "translation/TypeTranslator.h"
 #include "llvm/Support/Casting.h"
 #include "llvm/Support/raw_ostream.h"
@@ -54,21 +55,21 @@ void ReturnStmtHandler::handleReturnStmt(
         // Cast away const for dispatch (dispatcher interface requires non-const)
         clang::Expr* cppRetValueNonConst = const_cast<clang::Expr*>(cppRetValue);
 
-        // Dispatch expression to handler (will be handled by ExpressionHandler when it exists)
+        // Dispatch expression to handler (will be handled by LiteralHandler, DeclRefExprHandler,
+        // BinaryOperatorHandler, UnaryOperatorHandler, etc.)
         bool handled = disp.dispatch(cppASTContext, cASTContext, cppRetValueNonConst);
 
         if (handled) {
-            // TODO: When ExpressionHandler is implemented, retrieve translated expression
-            // from ExprMapper (similar to how FunctionHandler retrieves parameters from DeclMapper)
-            // For now, ExprMapper doesn't exist yet, so this branch won't execute
-            // cpptoc::ExprMapper& exprMapper = disp.getExprMapper();
-            // cRetValue = exprMapper.getCreatedExpr(cppRetValue);
-            llvm::outs() << "[ReturnStmtHandler] Expression dispatched and handled\n";
+            // Retrieve translated expression from ExprMapper
+            cpptoc::ExprMapper& exprMapper = disp.getExprMapper();
+            cRetValue = exprMapper.getCreatedExpr(cppRetValue);
+
+            assert(cRetValue && "Expression must be in ExprMapper after successful dispatch");
+            llvm::outs() << "[ReturnStmtHandler] Expression dispatched and retrieved from ExprMapper\n";
         } else {
-            // Phase 1 fallback: No ExpressionHandler registered yet
-            // Use the C++ expression node directly (will need proper translation in future)
-            llvm::outs() << "[ReturnStmtHandler] No ExpressionHandler - using fallback\n";
-            cRetValue = cppRetValueNonConst;
+            // No handler matched - this is an error
+            llvm::errs() << "[ReturnStmtHandler] ERROR: Return value expression not handled by any handler\n";
+            assert(false && "Return value expression must be handled");
         }
 
         // Create C return statement with return value

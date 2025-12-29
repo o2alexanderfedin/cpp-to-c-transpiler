@@ -201,10 +201,18 @@ add_library(cpptoc_core STATIC
     src/dispatch/ParameterHandler.cpp
     src/dispatch/TypeHandler.cpp
     src/dispatch/ReturnStmtHandler.cpp
+    src/dispatch/CompoundStmtHandler.cpp
+    src/dispatch/LiteralHandler.cpp
+    src/dispatch/DeclRefExprHandler.cpp
+    src/dispatch/BinaryOperatorHandler.cpp
+    src/dispatch/UnaryOperatorHandler.cpp
+    src/dispatch/ImplicitCastExprHandler.cpp
+    src/dispatch/ParenExprHandler.cpp
     src/mapping/PathMapper.cpp
     src/mapping/DeclLocationMapper.cpp
     src/mapping/DeclMapper.cpp
     src/mapping/TypeMapper.cpp
+    src/mapping/ExprMapper.cpp
     src/translation/TypeTranslator.cpp
     src/CFGAnalyzer.cpp
     src/NameMangler.cpp
@@ -791,6 +799,131 @@ target_link_libraries(ReturnStmtHandlerDispatcherTest PRIVATE cpptoc_core
 
 # Register with CTest
 gtest_discover_tests(ReturnStmtHandlerDispatcherTest
+    WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
+)
+
+# LiteralHandler Tests
+add_executable(LiteralHandlerDispatcherTest
+    tests/unit/dispatch/LiteralHandlerDispatcherTest.cpp
+)
+
+target_compile_definitions(LiteralHandlerDispatcherTest PRIVATE ${LLVM_DEFINITIONS})
+
+target_include_directories(LiteralHandlerDispatcherTest PRIVATE
+    ${CMAKE_SOURCE_DIR}/include
+    ${LLVM_INCLUDE_DIRS}
+    ${CLANG_INCLUDE_DIRS}
+)
+
+target_link_libraries(LiteralHandlerDispatcherTest
+    cpptoc_core
+    ${LLVM_LIBS}
+    ${CLANG_LIBS}
+    ${SYSTEM_LIBS}
+    GTest::gtest_main
+)
+
+gtest_discover_tests(LiteralHandlerDispatcherTest
+    WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
+)
+
+# DeclRefExprHandler Tests
+add_executable(DeclRefExprHandlerDispatcherTest
+    tests/unit/dispatch/DeclRefExprHandlerDispatcherTest.cpp
+)
+
+target_compile_definitions(DeclRefExprHandlerDispatcherTest PRIVATE ${LLVM_DEFINITIONS})
+
+target_include_directories(DeclRefExprHandlerDispatcherTest PRIVATE
+    ${CMAKE_SOURCE_DIR}/include
+    ${LLVM_INCLUDE_DIRS}
+    ${CLANG_INCLUDE_DIRS}
+)
+
+target_link_libraries(DeclRefExprHandlerDispatcherTest
+    cpptoc_core
+    ${LLVM_LIBS}
+    ${CLANG_LIBS}
+    ${SYSTEM_LIBS}
+    GTest::gtest_main
+)
+
+gtest_discover_tests(DeclRefExprHandlerDispatcherTest
+    WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
+)
+
+# BinaryOperatorHandler Tests
+add_executable(BinaryOperatorHandlerDispatcherTest
+    tests/unit/dispatch/BinaryOperatorHandlerDispatcherTest.cpp
+)
+
+target_compile_definitions(BinaryOperatorHandlerDispatcherTest PRIVATE ${LLVM_DEFINITIONS})
+
+target_include_directories(BinaryOperatorHandlerDispatcherTest PRIVATE
+    ${CMAKE_SOURCE_DIR}/include
+    ${LLVM_INCLUDE_DIRS}
+    ${CLANG_INCLUDE_DIRS}
+)
+
+target_link_libraries(BinaryOperatorHandlerDispatcherTest
+    cpptoc_core
+    ${LLVM_LIBS}
+    ${CLANG_LIBS}
+    ${SYSTEM_LIBS}
+    GTest::gtest_main
+)
+
+gtest_discover_tests(BinaryOperatorHandlerDispatcherTest
+    WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
+)
+
+# UnaryOperatorHandler Tests
+add_executable(UnaryOperatorHandlerDispatcherTest
+    tests/unit/dispatch/UnaryOperatorHandlerDispatcherTest.cpp
+)
+
+target_compile_definitions(UnaryOperatorHandlerDispatcherTest PRIVATE ${LLVM_DEFINITIONS})
+
+target_include_directories(UnaryOperatorHandlerDispatcherTest PRIVATE
+    ${CMAKE_SOURCE_DIR}/include
+    ${LLVM_INCLUDE_DIRS}
+    ${CLANG_INCLUDE_DIRS}
+)
+
+target_link_libraries(UnaryOperatorHandlerDispatcherTest
+    cpptoc_core
+    ${LLVM_LIBS}
+    ${CLANG_LIBS}
+    ${SYSTEM_LIBS}
+    GTest::gtest_main
+)
+
+gtest_discover_tests(UnaryOperatorHandlerDispatcherTest
+    WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
+)
+
+# ImplicitCastExprHandler Tests
+add_executable(ImplicitCastExprHandlerDispatcherTest
+    tests/unit/dispatch/ImplicitCastExprHandlerDispatcherTest.cpp
+)
+
+target_compile_definitions(ImplicitCastExprHandlerDispatcherTest PRIVATE ${LLVM_DEFINITIONS})
+
+target_include_directories(ImplicitCastExprHandlerDispatcherTest PRIVATE
+    ${CMAKE_SOURCE_DIR}/include
+    ${LLVM_INCLUDE_DIRS}
+    ${CLANG_INCLUDE_DIRS}
+)
+
+target_link_libraries(ImplicitCastExprHandlerDispatcherTest
+    cpptoc_core
+    ${LLVM_LIBS}
+    ${CLANG_LIBS}
+    ${SYSTEM_LIBS}
+    GTest::gtest_main
+)
+
+gtest_discover_tests(ImplicitCastExprHandlerDispatcherTest
     WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
 )
 
@@ -2096,6 +2229,50 @@ target_link_libraries(ExceptionHandlingIntegrationTest PRIVATE cpptoc_core
 
 # Register with CTest
 gtest_discover_tests(ExceptionHandlingIntegrationTest
+    WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
+)
+
+# Function Translation Integration Test (End-to-end dispatcher pipeline test)
+add_executable(FunctionTranslationIntegrationTest
+    tests/integration/FunctionTranslationIntegrationTest.cpp
+    src/dispatch/CppToCVisitorDispatcher.cpp
+    src/dispatch/FunctionHandler.cpp
+    src/dispatch/ParameterHandler.cpp
+    src/dispatch/TypeHandler.cpp
+    src/dispatch/CompoundStmtHandler.cpp
+    src/dispatch/ReturnStmtHandler.cpp
+    src/dispatch/LiteralHandler.cpp
+    src/dispatch/DeclRefExprHandler.cpp
+    src/dispatch/BinaryOperatorHandler.cpp
+    src/dispatch/ParenExprHandler.cpp
+    src/dispatch/ImplicitCastExprHandler.cpp
+    src/mapping/PathMapper.cpp
+    src/mapping/DeclLocationMapper.cpp
+    src/mapping/DeclMapper.cpp
+    src/mapping/TypeMapper.cpp
+    src/mapping/ExprMapper.cpp
+    src/TargetContext.cpp
+)
+
+target_compile_definitions(FunctionTranslationIntegrationTest PRIVATE ${LLVM_DEFINITIONS})
+
+target_include_directories(FunctionTranslationIntegrationTest PRIVATE
+    ${CMAKE_SOURCE_DIR}/include
+    ${LLVM_INCLUDE_DIRS}
+    ${CLANG_INCLUDE_DIRS}
+)
+
+target_link_libraries(FunctionTranslationIntegrationTest PRIVATE
+    clangTooling
+    clangFrontend
+    clangAST
+    clangBasic
+    GTest::gtest
+    GTest::gtest_main
+)
+
+# Register with CTest
+gtest_discover_tests(FunctionTranslationIntegrationTest
     WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
 )
 

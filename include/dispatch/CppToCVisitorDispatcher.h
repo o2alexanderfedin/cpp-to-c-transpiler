@@ -34,6 +34,8 @@ namespace cpptoc {
     class DeclLocationMapper;
     class DeclMapper;
     class TypeMapper;
+    class ExprMapper;
+    class StmtMapper;
 }
 
 /**
@@ -85,29 +87,29 @@ public:
     typedef std::function<bool(const clang::Type*)> TypePredicate;
     typedef std::function<void(const CppToCVisitorDispatcher&, const clang::ASTContext&, clang::ASTContext&, const clang::Type*)> TypeVisitor;
 
-    typedef std::function<bool(clang::Attr*)> AttrPredicate;
-    typedef std::function<void(const CppToCVisitorDispatcher&, const clang::ASTContext&, clang::ASTContext&, clang::Attr*)> AttrVisitor;
+    typedef std::function<bool(const clang::Attr*)> AttrPredicate;
+    typedef std::function<void(const CppToCVisitorDispatcher&, const clang::ASTContext&, clang::ASTContext&, const clang::Attr*)> AttrVisitor;
 
-    typedef std::function<bool(clang::NestedNameSpecifier*)> NestedNameSpecifierPredicate;
-    typedef std::function<void(const CppToCVisitorDispatcher&, const clang::ASTContext&, clang::ASTContext&, clang::NestedNameSpecifier*)> NestedNameSpecifierVisitor;
+    typedef std::function<bool(const clang::NestedNameSpecifier*)> NestedNameSpecifierPredicate;
+    typedef std::function<void(const CppToCVisitorDispatcher&, const clang::ASTContext&, clang::ASTContext&, const clang::NestedNameSpecifier*)> NestedNameSpecifierVisitor;
 
     typedef std::function<bool(const clang::TemplateArgument*)> TemplateArgumentPredicate;
     typedef std::function<void(const CppToCVisitorDispatcher&, const clang::ASTContext&, clang::ASTContext&, const clang::TemplateArgument*)> TemplateArgumentVisitor;
 
-    typedef std::function<bool(clang::CXXCtorInitializer*)> CXXCtorInitializerPredicate;
-    typedef std::function<void(const CppToCVisitorDispatcher&, const clang::ASTContext&, clang::ASTContext&, clang::CXXCtorInitializer*)> CXXCtorInitializerVisitor;
+    typedef std::function<bool(const clang::CXXCtorInitializer*)> CXXCtorInitializerPredicate;
+    typedef std::function<void(const CppToCVisitorDispatcher&, const clang::ASTContext&, clang::ASTContext&, const clang::CXXCtorInitializer*)> CXXCtorInitializerVisitor;
 
-    typedef std::function<bool(clang::CXXBaseSpecifier*)> CXXBaseSpecifierPredicate;
-    typedef std::function<void(const CppToCVisitorDispatcher&, const clang::ASTContext&, clang::ASTContext&, clang::CXXBaseSpecifier*)> CXXBaseSpecifierVisitor;
+    typedef std::function<bool(const clang::CXXBaseSpecifier*)> CXXBaseSpecifierPredicate;
+    typedef std::function<void(const CppToCVisitorDispatcher&, const clang::ASTContext&, clang::ASTContext&, const clang::CXXBaseSpecifier*)> CXXBaseSpecifierVisitor;
 
-    typedef std::function<bool(clang::TypeLoc*)> TypeLocPredicate;
-    typedef std::function<void(const CppToCVisitorDispatcher&, const clang::ASTContext&, clang::ASTContext&, clang::TypeLoc*)> TypeLocVisitor;
+    typedef std::function<bool(const clang::TypeLoc*)> TypeLocPredicate;
+    typedef std::function<void(const CppToCVisitorDispatcher&, const clang::ASTContext&, clang::ASTContext&, const clang::TypeLoc*)> TypeLocVisitor;
 
-    typedef std::function<bool(clang::TemplateName*)> TemplateNamePredicate;
-    typedef std::function<void(const CppToCVisitorDispatcher&, const clang::ASTContext&, clang::ASTContext&, clang::TemplateName*)> TemplateNameVisitor;
+    typedef std::function<bool(const clang::TemplateName*)> TemplateNamePredicate;
+    typedef std::function<void(const CppToCVisitorDispatcher&, const clang::ASTContext&, clang::ASTContext&, const clang::TemplateName*)> TemplateNameVisitor;
 
-    typedef std::function<bool(clang::comments::Comment*)> CommentPredicate;
-    typedef std::function<void(const CppToCVisitorDispatcher&, const clang::ASTContext&, clang::ASTContext&, clang::comments::Comment*)> CommentVisitor;
+    typedef std::function<bool(const clang::comments::Comment*)> CommentPredicate;
+    typedef std::function<void(const CppToCVisitorDispatcher&, const clang::ASTContext&, clang::ASTContext&, const clang::comments::Comment*)> CommentVisitor;
 
 private:
     // Core AST handler vectors
@@ -138,6 +140,12 @@ private:
     // Type mapper for C++ → C type mappings
     cpptoc::TypeMapper& typeMapper;
 
+    // Expression mapper for C++ → C expression mappings
+    cpptoc::ExprMapper& exprMapper;
+
+    // Statement mapper for C++ → C statement mappings
+    cpptoc::StmtMapper& stmtMapper;
+
 public:
     /**
      * @brief Construct dispatcher with required dependencies
@@ -145,13 +153,17 @@ public:
      * @param locMapper DeclLocationMapper for extracting paths from AST nodes (required)
      * @param dMapper DeclMapper for C++ → C declaration mappings (required)
      * @param tMapper TypeMapper for C++ → C type mappings (required)
+     * @param eMapper ExprMapper for C++ → C expression mappings (required)
+     * @param sMapper StmtMapper for C++ → C statement mappings (required)
      */
     explicit CppToCVisitorDispatcher(
         cpptoc::PathMapper& mapper,
         cpptoc::DeclLocationMapper& locMapper,
         cpptoc::DeclMapper& dMapper,
-        cpptoc::TypeMapper& tMapper
-    ) : pathMapper(mapper), declLocationMapper(locMapper), declMapper(dMapper), typeMapper(tMapper) {}
+        cpptoc::TypeMapper& tMapper,
+        cpptoc::ExprMapper& eMapper,
+        cpptoc::StmtMapper& sMapper
+    ) : pathMapper(mapper), declLocationMapper(locMapper), declMapper(dMapper), typeMapper(tMapper), exprMapper(eMapper), stmtMapper(sMapper) {}
 
     /**
      * @brief Get the path mapper
@@ -172,6 +184,18 @@ public:
     cpptoc::TypeMapper& getTypeMapper() const { return typeMapper; }
 
     /**
+     * @brief Get the expression mapper
+     * @return Reference to ExprMapper
+     */
+    cpptoc::ExprMapper& getExprMapper() const { return exprMapper; }
+
+    /**
+     * @brief Get the statement mapper
+     * @return Reference to StmtMapper
+     */
+    cpptoc::StmtMapper& getStmtMapper() const { return stmtMapper; }
+
+    /**
      * @brief Helper: Get C target path for AST node's source file
      * @param cppASTContext C++ ASTContext containing SourceManager
      * @param D AST node to get file location from
@@ -189,39 +213,39 @@ public:
 
     // Core AST node handlers
     void addHandler(DeclPredicate predicate, DeclVisitor handler);
-    bool dispatch(const clang::ASTContext& cppASTContext, clang::ASTContext& cASTContext, clang::Decl* cppDecl) const;
+    bool dispatch(const clang::ASTContext& cppASTContext, clang::ASTContext& cASTContext, const clang::Decl* cppDecl) const;
 
     void addHandler(StmtPredicate predicate, StmtVisitor handler);
-    bool dispatch(const clang::ASTContext& cppASTContext, clang::ASTContext& cASTContext, clang::Stmt* cppStmt) const;
+    bool dispatch(const clang::ASTContext& cppASTContext, clang::ASTContext& cASTContext, const clang::Stmt* cppStmt) const;
 
     void addHandler(ExprPredicate predicate, ExprVisitor handler);
-    bool dispatch(const clang::ASTContext& cppASTContext, clang::ASTContext& cASTContext, clang::Expr* cppExpr) const;
+    bool dispatch(const clang::ASTContext& cppASTContext, clang::ASTContext& cASTContext, const clang::Expr* cppExpr) const;
 
     void addHandler(TypePredicate predicate, TypeVisitor handler);
-    bool dispatch(const clang::ASTContext& cppASTContext, clang::ASTContext& cASTContext, clang::Type* cppType) const;
+    bool dispatch(const clang::ASTContext& cppASTContext, clang::ASTContext& cASTContext, const clang::Type* cppType) const;
 
     // Additional AST node handlers
     void addHandler(AttrPredicate predicate, AttrVisitor handler);
-    bool dispatch(const clang::ASTContext& cppASTContext, clang::ASTContext& cASTContext, clang::Attr* attr) const;
+    bool dispatch(const clang::ASTContext& cppASTContext, clang::ASTContext& cASTContext, const clang::Attr* attr) const;
 
     void addHandler(NestedNameSpecifierPredicate predicate, NestedNameSpecifierVisitor handler);
-    bool dispatch(const clang::ASTContext& cppASTContext, clang::ASTContext& cASTContext, clang::NestedNameSpecifier* nns) const;
+    bool dispatch(const clang::ASTContext& cppASTContext, clang::ASTContext& cASTContext, const clang::NestedNameSpecifier* nns) const;
 
     void addHandler(TemplateArgumentPredicate predicate, TemplateArgumentVisitor handler);
     bool dispatch(const clang::ASTContext& cppASTContext, clang::ASTContext& cASTContext, const clang::TemplateArgument* arg) const;
 
     void addHandler(CXXCtorInitializerPredicate predicate, CXXCtorInitializerVisitor handler);
-    bool dispatch(const clang::ASTContext& cppASTContext, clang::ASTContext& cASTContext, clang::CXXCtorInitializer* init) const;
+    bool dispatch(const clang::ASTContext& cppASTContext, clang::ASTContext& cASTContext, const clang::CXXCtorInitializer* init) const;
 
     void addHandler(CXXBaseSpecifierPredicate predicate, CXXBaseSpecifierVisitor handler);
-    bool dispatch(const clang::ASTContext& cppASTContext, clang::ASTContext& cASTContext, clang::CXXBaseSpecifier* base) const;
+    bool dispatch(const clang::ASTContext& cppASTContext, clang::ASTContext& cASTContext, const clang::CXXBaseSpecifier* base) const;
 
     void addHandler(TypeLocPredicate predicate, TypeLocVisitor handler);
-    bool dispatch(const clang::ASTContext& cppASTContext, clang::ASTContext& cASTContext, clang::TypeLoc* typeLoc) const;
+    bool dispatch(const clang::ASTContext& cppASTContext, clang::ASTContext& cASTContext, const clang::TypeLoc* typeLoc) const;
 
     void addHandler(TemplateNamePredicate predicate, TemplateNameVisitor handler);
-    bool dispatch(const clang::ASTContext& cppASTContext, clang::ASTContext& cASTContext, clang::TemplateName* name) const;
+    bool dispatch(const clang::ASTContext& cppASTContext, clang::ASTContext& cASTContext, const clang::TemplateName* name) const;
 
     void addHandler(CommentPredicate predicate, CommentVisitor handler);
-    bool dispatch(const clang::ASTContext& cppASTContext, clang::ASTContext& cASTContext, clang::comments::Comment* comment) const;
+    bool dispatch(const clang::ASTContext& cppASTContext, clang::ASTContext& cASTContext, const clang::comments::Comment* comment) const;
 };
