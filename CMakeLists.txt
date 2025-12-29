@@ -199,10 +199,12 @@ add_library(cpptoc_core STATIC
     src/dispatch/TranslationUnitHandler.cpp
     src/dispatch/FunctionHandler.cpp
     src/dispatch/ParameterHandler.cpp
+    src/dispatch/TypeHandler.cpp
     src/dispatch/ReturnStmtHandler.cpp
     src/mapping/PathMapper.cpp
     src/mapping/DeclLocationMapper.cpp
     src/mapping/DeclMapper.cpp
+    src/mapping/TypeMapper.cpp
     src/translation/TypeTranslator.cpp
     src/CFGAnalyzer.cpp
     src/NameMangler.cpp
@@ -735,6 +737,35 @@ target_link_libraries(FunctionHandlerDispatcherTest PRIVATE cpptoc_core
 
 # Register with CTest
 gtest_discover_tests(FunctionHandlerDispatcherTest
+    WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
+)
+
+# ============================================================================
+# TypeHandler Dispatcher Tests
+# ============================================================================
+
+add_executable(TypeHandlerDispatcherTest
+    tests/unit/dispatch/TypeHandlerDispatcherTest.cpp
+)
+
+target_compile_definitions(TypeHandlerDispatcherTest PRIVATE ${LLVM_DEFINITIONS})
+
+target_include_directories(TypeHandlerDispatcherTest PRIVATE
+    ${CMAKE_SOURCE_DIR}/include
+    ${LLVM_INCLUDE_DIRS}
+    ${CLANG_INCLUDE_DIRS}
+)
+
+target_link_libraries(TypeHandlerDispatcherTest PRIVATE cpptoc_core
+    clangTooling
+    clangFrontend
+    clangAST
+    clangBasic
+    GTest::gtest
+    GTest::gtest_main)
+
+# Register with CTest
+gtest_discover_tests(TypeHandlerDispatcherTest
     WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
 )
 

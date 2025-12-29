@@ -9,7 +9,7 @@
 #include "dispatch/FunctionHandler.h"
 #include "CNodeBuilder.h"
 #include "mapping/DeclMapper.h"
-#include "translation/TypeTranslator.h"
+#include "mapping/TypeMapper.h"
 #include "clang/AST/DeclCXX.h"
 #include "llvm/Support/Casting.h"
 #include "llvm/Support/raw_ostream.h"
@@ -61,8 +61,21 @@ void FunctionHandler::handleFunction(
     std::string name = cppFunc->getNameAsString();
     clang::QualType cppReturnType = cppFunc->getReturnType();
 
-    // Translate return type (convert references to pointers)
-    clang::QualType cReturnType = TypeTranslator::translateType(cppReturnType, cASTContext);
+    // Translate return type via TypeHandler (convert references to pointers)
+    // Dispatch the return type to TypeHandler, which stores mapping in TypeMapper
+    const clang::Type* cppReturnTypePtr = cppReturnType.getTypePtr();
+    bool typeHandled = disp.dispatch(cppASTContext, cASTContext, const_cast<clang::Type*>(cppReturnTypePtr));
+
+    // Retrieve translated type from TypeMapper
+    cpptoc::TypeMapper& typeMapper = disp.getTypeMapper();
+    clang::QualType cReturnType = typeMapper.getCreatedType(cppReturnTypePtr);
+
+    // If TypeHandler didn't handle this type (pass-through), use original type
+    if (cReturnType.isNull()) {
+        cReturnType = cppReturnType;
+        llvm::outs() << "[FunctionHandler] TypeHandler pass-through for return type: "
+                     << cppReturnType.getAsString() << "\n";
+    }
 
     // Translate parameters by dispatching to ParameterHandler
     std::vector<clang::ParmVarDecl*> cParams = translateParameters(cppFunc, disp, cppASTContext, cASTContext);

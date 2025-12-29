@@ -33,6 +33,7 @@ namespace cpptoc {
     class PathMapper;
     class DeclLocationMapper;
     class DeclMapper;
+    class TypeMapper;
 }
 
 /**
@@ -134,18 +135,23 @@ private:
     // Declaration mapper for C++ → C declaration mappings
     cpptoc::DeclMapper& declMapper;
 
+    // Type mapper for C++ → C type mappings
+    cpptoc::TypeMapper& typeMapper;
+
 public:
     /**
      * @brief Construct dispatcher with required dependencies
      * @param mapper PathMapper for source-to-target file mapping (required)
      * @param locMapper DeclLocationMapper for extracting paths from AST nodes (required)
      * @param dMapper DeclMapper for C++ → C declaration mappings (required)
+     * @param tMapper TypeMapper for C++ → C type mappings (required)
      */
     explicit CppToCVisitorDispatcher(
         cpptoc::PathMapper& mapper,
         cpptoc::DeclLocationMapper& locMapper,
-        cpptoc::DeclMapper& dMapper
-    ) : pathMapper(mapper), declLocationMapper(locMapper), declMapper(dMapper) {}
+        cpptoc::DeclMapper& dMapper,
+        cpptoc::TypeMapper& tMapper
+    ) : pathMapper(mapper), declLocationMapper(locMapper), declMapper(dMapper), typeMapper(tMapper) {}
 
     /**
      * @brief Get the path mapper
@@ -158,6 +164,12 @@ public:
      * @return Reference to DeclMapper
      */
     cpptoc::DeclMapper& getDeclMapper() const { return declMapper; }
+
+    /**
+     * @brief Get the type mapper
+     * @return Reference to TypeMapper
+     */
+    cpptoc::TypeMapper& getTypeMapper() const { return typeMapper; }
 
     /**
      * @brief Helper: Get C target path for AST node's source file

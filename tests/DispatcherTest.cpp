@@ -5,6 +5,8 @@
 #include "dispatch/TranslationUnitHandler.h"
 #include "mapping/PathMapper.h"
 #include "mapping/DeclLocationMapper.h"
+#include "mapping/DeclMapper.h"
+#include "mapping/TypeMapper.h"
 #include "TargetContext.h"
 #include "clang/Tooling/Tooling.h"
 #include <gtest/gtest.h>
@@ -43,9 +45,11 @@ TEST(DispatcherTest, TranslationUnitHandler) {
     // Create path mapping utilities
     cpptoc::PathMapper& mapper = cpptoc::PathMapper::getInstance("/src", "/output");
     cpptoc::DeclLocationMapper locMapper(mapper);
+    cpptoc::DeclMapper declMapper;
+    cpptoc::TypeMapper typeMapper;
 
-    // Create dispatcher with both utilities
-    CppToCVisitorDispatcher dispatcher(mapper, locMapper);
+    // Create dispatcher with all utilities
+    CppToCVisitorDispatcher dispatcher(mapper, locMapper, declMapper, typeMapper);
 
     // Register production TranslationUnitHandler
     cpptoc::TranslationUnitHandler::registerWith(dispatcher);
@@ -76,8 +80,10 @@ TEST(DispatcherTest, HandlerChainOrder) {
 
     cpptoc::PathMapper& mapper = cpptoc::PathMapper::getInstance("/src", "/output");
     cpptoc::DeclLocationMapper locMapper(mapper);
+    cpptoc::DeclMapper declMapper;
+    cpptoc::TypeMapper typeMapper;
 
-    CppToCVisitorDispatcher dispatcher(mapper, locMapper);
+    CppToCVisitorDispatcher dispatcher(mapper, locMapper, declMapper, typeMapper);
 
     std::vector<std::string> invocations;
 
@@ -123,8 +129,10 @@ TEST(DispatcherTest, NoHandlerMatch) {
 
     cpptoc::PathMapper& mapper = cpptoc::PathMapper::getInstance("/src", "/output");
     cpptoc::DeclLocationMapper locMapper(mapper);
+    cpptoc::DeclMapper declMapper;
+    cpptoc::TypeMapper typeMapper;
 
-    CppToCVisitorDispatcher dispatcher(mapper, locMapper);
+    CppToCVisitorDispatcher dispatcher(mapper, locMapper, declMapper, typeMapper);
 
     // No handlers registered
     TranslationUnitDecl* TU = cppCtx.getTranslationUnitDecl();
@@ -149,8 +157,10 @@ TEST(DispatcherTest, PathMapperAccess) {
 
     cpptoc::PathMapper& mapper = cpptoc::PathMapper::getInstance("/src", "/output");
     cpptoc::DeclLocationMapper locMapper(mapper);
+    cpptoc::DeclMapper declMapper;
+    cpptoc::TypeMapper typeMapper;
 
-    CppToCVisitorDispatcher dispatcher(mapper, locMapper);
+    CppToCVisitorDispatcher dispatcher(mapper, locMapper, declMapper, typeMapper);
 
     bool mapperAccessed = false;
 

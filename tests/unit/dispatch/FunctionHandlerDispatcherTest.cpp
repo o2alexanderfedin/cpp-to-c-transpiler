@@ -12,10 +12,12 @@
 
 #include "dispatch/FunctionHandler.h"
 #include "dispatch/ParameterHandler.h"
+#include "dispatch/TypeHandler.h"
 #include "dispatch/CppToCVisitorDispatcher.h"
 #include "mapping/PathMapper.h"
 #include "mapping/DeclLocationMapper.h"
 #include "mapping/DeclMapper.h"
+#include "mapping/TypeMapper.h"
 #include "TargetContext.h"
 #include "clang/AST/ASTContext.h"
 #include "clang/AST/Decl.h"
@@ -55,12 +57,14 @@ TEST(FunctionHandlerDispatcherTest, Registration) {
     cpptoc::PathMapper& mapper = cpptoc::PathMapper::getInstance("/src", "/output");
     cpptoc::DeclLocationMapper locMapper(mapper);
     cpptoc::DeclMapper declMapper;
+    cpptoc::TypeMapper typeMapper;
 
     // Create dispatcher
-    CppToCVisitorDispatcher dispatcher(mapper, locMapper, declMapper);
+    CppToCVisitorDispatcher dispatcher(mapper, locMapper, declMapper, typeMapper);
 
-    // Register handlers (ParameterHandler must be registered before FunctionHandler)
-    // FunctionHandler depends on ParameterHandler to translate parameters
+    // Register handlers (TypeHandler and ParameterHandler must be registered before FunctionHandler)
+    // FunctionHandler depends on TypeHandler for type translation and ParameterHandler for parameters
+    cpptoc::TypeHandler::registerWith(dispatcher);
     cpptoc::ParameterHandler::registerWith(dispatcher);
     cpptoc::FunctionHandler::registerWith(dispatcher);
 
@@ -108,11 +112,12 @@ TEST(FunctionHandlerDispatcherTest, PredicateExcludesMethods) {
     cpptoc::PathMapper& mapper = cpptoc::PathMapper::getInstance("/src", "/output");
     cpptoc::DeclLocationMapper locMapper(mapper);
     cpptoc::DeclMapper declMapper;
+    cpptoc::TypeMapper typeMapper;
 
-    CppToCVisitorDispatcher dispatcher(mapper, locMapper, declMapper);
+    CppToCVisitorDispatcher dispatcher(mapper, locMapper, declMapper, typeMapper);
 
-    // Register handlers (ParameterHandler must be registered before FunctionHandler)
-    // FunctionHandler depends on ParameterHandler to translate parameters
+    // Register handlers (TypeHandler and ParameterHandler must be registered before FunctionHandler)
+    cpptoc::TypeHandler::registerWith(dispatcher);
     cpptoc::ParameterHandler::registerWith(dispatcher);
     cpptoc::FunctionHandler::registerWith(dispatcher);
 
@@ -170,10 +175,12 @@ TEST(FunctionHandlerDispatcherTest, FreeFunctionVsMethod) {
     cpptoc::PathMapper& mapper = cpptoc::PathMapper::getInstance("/src", "/output");
     cpptoc::DeclLocationMapper locMapper(mapper);
     cpptoc::DeclMapper declMapper;
+    cpptoc::TypeMapper typeMapper;
 
-    CppToCVisitorDispatcher dispatcher(mapper, locMapper, declMapper);
+    CppToCVisitorDispatcher dispatcher(mapper, locMapper, declMapper, typeMapper);
 
     // Register handlers
+    cpptoc::TypeHandler::registerWith(dispatcher);
     cpptoc::ParameterHandler::registerWith(dispatcher);
     cpptoc::FunctionHandler::registerWith(dispatcher);
 
@@ -241,10 +248,12 @@ TEST(FunctionHandlerDispatcherTest, ReferenceToPointerTranslation) {
     cpptoc::PathMapper& mapper = cpptoc::PathMapper::getInstance("/src", "/output");
     cpptoc::DeclLocationMapper locMapper(mapper);
     cpptoc::DeclMapper declMapper;
+    cpptoc::TypeMapper typeMapper;
 
-    CppToCVisitorDispatcher dispatcher(mapper, locMapper, declMapper);
+    CppToCVisitorDispatcher dispatcher(mapper, locMapper, declMapper, typeMapper);
 
     // Register handlers
+    cpptoc::TypeHandler::registerWith(dispatcher);
     cpptoc::ParameterHandler::registerWith(dispatcher);
     cpptoc::FunctionHandler::registerWith(dispatcher);
 
@@ -323,10 +332,12 @@ TEST(FunctionHandlerDispatcherTest, Phase1NoFunctionBody) {
     cpptoc::PathMapper& mapper = cpptoc::PathMapper::getInstance("/src", "/output");
     cpptoc::DeclLocationMapper locMapper(mapper);
     cpptoc::DeclMapper declMapper;
+    cpptoc::TypeMapper typeMapper;
 
-    CppToCVisitorDispatcher dispatcher(mapper, locMapper, declMapper);
+    CppToCVisitorDispatcher dispatcher(mapper, locMapper, declMapper, typeMapper);
 
     // Register handlers
+    cpptoc::TypeHandler::registerWith(dispatcher);
     cpptoc::ParameterHandler::registerWith(dispatcher);
     cpptoc::FunctionHandler::registerWith(dispatcher);
 
