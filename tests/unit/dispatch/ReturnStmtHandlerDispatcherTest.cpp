@@ -10,6 +10,11 @@
  */
 
 #include "dispatch/ReturnStmtHandler.h"
+#include "dispatch/LiteralHandler.h"
+#include "dispatch/DeclRefExprHandler.h"
+#include "dispatch/BinaryOperatorHandler.h"
+#include "dispatch/ImplicitCastExprHandler.h"
+#include "dispatch/ParenExprHandler.h"
 #include "dispatch/CppToCVisitorDispatcher.h"
 #include "mapping/PathMapper.h"
 #include "mapping/DeclLocationMapper.h"
@@ -60,6 +65,19 @@ ReturnStmt* findReturnStmt(FunctionDecl* func) {
     return nullptr;
 }
 
+// Helper to register all handlers needed for ReturnStmt tests
+void registerAllHandlers(CppToCVisitorDispatcher& dispatcher) {
+    // Register expression handlers (required for return value expressions)
+    cpptoc::LiteralHandler::registerWith(dispatcher);
+    cpptoc::DeclRefExprHandler::registerWith(dispatcher);
+    cpptoc::BinaryOperatorHandler::registerWith(dispatcher);
+    cpptoc::ImplicitCastExprHandler::registerWith(dispatcher);
+    cpptoc::ParenExprHandler::registerWith(dispatcher);
+
+    // Register statement handler (the one we're testing)
+    cpptoc::ReturnStmtHandler::registerWith(dispatcher);
+}
+
 // ============================================================================
 // Test: ReturnStmtHandler Registration
 // ============================================================================
@@ -90,8 +108,8 @@ TEST(ReturnStmtHandlerDispatcherTest, Registration) {
     // Create dispatcher
     CppToCVisitorDispatcher dispatcher(mapper, locMapper, declMapper, typeMapper, exprMapper, stmtMapper);
 
-    // Register handler
-    cpptoc::ReturnStmtHandler::registerWith(dispatcher);
+    // Register all necessary handlers
+    registerAllHandlers(dispatcher);
 
     // Find the return statement
     TranslationUnitDecl* TU = cppCtx.getTranslationUnitDecl();
@@ -135,7 +153,7 @@ TEST(ReturnStmtHandlerDispatcherTest, PredicateMatchesOnlyReturnStmt) {
     cpptoc::StmtMapper stmtMapper;
 
     CppToCVisitorDispatcher dispatcher(mapper, locMapper, declMapper, typeMapper, exprMapper, stmtMapper);
-    cpptoc::ReturnStmtHandler::registerWith(dispatcher);
+    registerAllHandlers(dispatcher);
 
     // Find the function
     TranslationUnitDecl* TU = cppCtx.getTranslationUnitDecl();
@@ -196,7 +214,7 @@ TEST(ReturnStmtHandlerDispatcherTest, ReturnWithIntegerLiteral) {
     cpptoc::StmtMapper stmtMapper;
 
     CppToCVisitorDispatcher dispatcher(mapper, locMapper, declMapper, typeMapper, exprMapper, stmtMapper);
-    cpptoc::ReturnStmtHandler::registerWith(dispatcher);
+    registerAllHandlers(dispatcher);
 
     // Find the return statement
     TranslationUnitDecl* TU = cppCtx.getTranslationUnitDecl();
@@ -240,7 +258,7 @@ TEST(ReturnStmtHandlerDispatcherTest, ReturnWithExpression) {
     cpptoc::StmtMapper stmtMapper;
 
     CppToCVisitorDispatcher dispatcher(mapper, locMapper, declMapper, typeMapper, exprMapper, stmtMapper);
-    cpptoc::ReturnStmtHandler::registerWith(dispatcher);
+    registerAllHandlers(dispatcher);
 
     // Find the return statement
     TranslationUnitDecl* TU = cppCtx.getTranslationUnitDecl();
@@ -288,7 +306,7 @@ TEST(ReturnStmtHandlerDispatcherTest, ReturnWithReference) {
     cpptoc::StmtMapper stmtMapper;
 
     CppToCVisitorDispatcher dispatcher(mapper, locMapper, declMapper, typeMapper, exprMapper, stmtMapper);
-    cpptoc::ReturnStmtHandler::registerWith(dispatcher);
+    registerAllHandlers(dispatcher);
 
     // Find the return statement
     TranslationUnitDecl* TU = cppCtx.getTranslationUnitDecl();
@@ -338,7 +356,7 @@ TEST(ReturnStmtHandlerDispatcherTest, VoidReturn) {
     cpptoc::StmtMapper stmtMapper;
 
     CppToCVisitorDispatcher dispatcher(mapper, locMapper, declMapper, typeMapper, exprMapper, stmtMapper);
-    cpptoc::ReturnStmtHandler::registerWith(dispatcher);
+    registerAllHandlers(dispatcher);
 
     // Find the return statement
     TranslationUnitDecl* TU = cppCtx.getTranslationUnitDecl();
@@ -386,7 +404,7 @@ TEST(ReturnStmtHandlerDispatcherTest, MultipleReturnStatements) {
     cpptoc::StmtMapper stmtMapper;
 
     CppToCVisitorDispatcher dispatcher(mapper, locMapper, declMapper, typeMapper, exprMapper, stmtMapper);
-    cpptoc::ReturnStmtHandler::registerWith(dispatcher);
+    registerAllHandlers(dispatcher);
 
     // Find the function
     TranslationUnitDecl* TU = cppCtx.getTranslationUnitDecl();
@@ -428,7 +446,7 @@ TEST(ReturnStmtHandlerDispatcherTest, ReturnWithVariable) {
     cpptoc::StmtMapper stmtMapper;
 
     CppToCVisitorDispatcher dispatcher(mapper, locMapper, declMapper, typeMapper, exprMapper, stmtMapper);
-    cpptoc::ReturnStmtHandler::registerWith(dispatcher);
+    registerAllHandlers(dispatcher);
 
     // Find the function
     TranslationUnitDecl* TU = cppCtx.getTranslationUnitDecl();
