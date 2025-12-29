@@ -93,7 +93,7 @@ TEST(TypeHandlerDispatcherTest, Registration) {
     EXPECT_TRUE(handled) << "LValueReferenceType should be handled by TypeHandler";
 
     // Verify type was mapped
-    QualType translatedType = typeMapper.getCreatedType(refTypePtr);
+    QualType translatedType = typeMapper.getCreated(refTypePtr);
     EXPECT_FALSE(translatedType.isNull()) << "TypeHandler should create mapping";
     EXPECT_TRUE(translatedType->isPointerType()) << "Reference should be translated to pointer";
 }
@@ -144,7 +144,7 @@ TEST(TypeHandlerDispatcherTest, LValueReferenceTranslation) {
     ASSERT_TRUE(handled);
 
     // Verify translation: int& → int*
-    QualType translatedType = typeMapper.getCreatedType(refTypePtr);
+    QualType translatedType = typeMapper.getCreated(refTypePtr);
     ASSERT_FALSE(translatedType.isNull());
     EXPECT_TRUE(translatedType->isPointerType()) << "int& should become int*";
 
@@ -202,7 +202,7 @@ TEST(TypeHandlerDispatcherTest, RValueReferenceTranslation) {
     ASSERT_TRUE(handled);
 
     // Verify translation: int&& → int*
-    QualType translatedType = typeMapper.getCreatedType(rrefTypePtr);
+    QualType translatedType = typeMapper.getCreated(rrefTypePtr);
     ASSERT_FALSE(translatedType.isNull());
     EXPECT_TRUE(translatedType->isPointerType()) << "int&& should become int*";
 
@@ -258,7 +258,7 @@ TEST(TypeHandlerDispatcherTest, ConstReferenceTranslation) {
     ASSERT_TRUE(handled);
 
     // Verify translation: const int& → const int*
-    QualType translatedType = typeMapper.getCreatedType(crefTypePtr);
+    QualType translatedType = typeMapper.getCreated(crefTypePtr);
     ASSERT_FALSE(translatedType.isNull());
     EXPECT_TRUE(translatedType->isPointerType()) << "const int& should become const int*";
 
@@ -369,24 +369,24 @@ TEST(TypeHandlerDispatcherTest, MultipleTypeTranslations) {
     // Verify all reference types were translated
     // ref1: int& → int*
     const Type* ref1Type = funcDecl->getParamDecl(0)->getType().getTypePtr();
-    QualType ref1Translated = typeMapper.getCreatedType(ref1Type);
+    QualType ref1Translated = typeMapper.getCreated(ref1Type);
     EXPECT_FALSE(ref1Translated.isNull());
     EXPECT_TRUE(ref1Translated->isPointerType());
 
     // ref2: const int& → const int*
     const Type* ref2Type = funcDecl->getParamDecl(1)->getType().getTypePtr();
-    QualType ref2Translated = typeMapper.getCreatedType(ref2Type);
+    QualType ref2Translated = typeMapper.getCreated(ref2Type);
     EXPECT_FALSE(ref2Translated.isNull());
     EXPECT_TRUE(ref2Translated->isPointerType());
 
     // rref: int&& → int*
     const Type* rrefType = funcDecl->getParamDecl(2)->getType().getTypePtr();
-    QualType rrefTranslated = typeMapper.getCreatedType(rrefType);
+    QualType rrefTranslated = typeMapper.getCreated(rrefType);
     EXPECT_FALSE(rrefTranslated.isNull());
     EXPECT_TRUE(rrefTranslated->isPointerType());
 
     // val: int (no translation, should not be in map)
     const Type* valType = funcDecl->getParamDecl(3)->getType().getTypePtr();
-    QualType valTranslated = typeMapper.getCreatedType(valType);
+    QualType valTranslated = typeMapper.getCreated(valType);
     EXPECT_TRUE(valTranslated.isNull()) << "Non-reference types should not be mapped";
 }

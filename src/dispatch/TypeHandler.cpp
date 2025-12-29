@@ -42,7 +42,7 @@ void TypeHandler::handleType(
     cpptoc::TypeMapper& typeMapper = disp.getTypeMapper();
 
     // Check if already processed
-    if (typeMapper.hasCreatedType(T)) {
+    if (typeMapper.hasCreated(T)) {
         llvm::outs() << "[TypeHandler] Type already translated, skipping: "
                      << clang::QualType(T, 0).getAsString() << "\n";
         return;
@@ -83,7 +83,7 @@ void TypeHandler::handleType(
     }
 
     // Store type mapping in TypeMapper
-    typeMapper.setCreatedType(T, cType);
+    typeMapper.setCreated(T, cType);
 }
 
 } // namespace cpptoc

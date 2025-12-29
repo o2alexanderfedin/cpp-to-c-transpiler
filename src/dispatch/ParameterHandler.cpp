@@ -53,7 +53,7 @@ void ParameterHandler::handleParameter(
 
     // Retrieve translated type from TypeMapper
     cpptoc::TypeMapper& typeMapper = disp.getTypeMapper();
-    clang::QualType cParamType = typeMapper.getCreatedType(cppParamTypePtr);
+    clang::QualType cParamType = typeMapper.getCreated(cppParamTypePtr);
 
     // If TypeHandler didn't handle this type (pass-through), use original type
     if (cParamType.isNull()) {
@@ -80,7 +80,7 @@ void ParameterHandler::handleParameter(
 
     // Store mapping so FunctionHandler can retrieve this created parameter
     cpptoc::DeclMapper& declMapper = disp.getDeclMapper();
-    declMapper.setCreatedDecl(cppParam, cParam);
+    declMapper.setCreated(cppParam, cParam);
 
     // Debug output for verification
     llvm::outs() << "[ParameterHandler] Translated parameter: " << paramName

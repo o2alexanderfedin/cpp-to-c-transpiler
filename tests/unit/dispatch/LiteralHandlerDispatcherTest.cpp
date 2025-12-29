@@ -123,7 +123,7 @@ TEST(LiteralHandlerDispatcherTest, Registration) {
     EXPECT_TRUE(handled) << "IntegerLiteral should be handled by LiteralHandler";
 
     // Verify expression was mapped
-    Expr* translatedExpr = exprMapper.getCreatedExpr(intLit);
+    Expr* translatedExpr = exprMapper.getCreated(intLit);
     EXPECT_NE(translatedExpr, nullptr) << "LiteralHandler should create mapping";
     EXPECT_TRUE(isa<IntegerLiteral>(translatedExpr)) << "Translated expression should be IntegerLiteral";
 }
@@ -173,7 +173,7 @@ TEST(LiteralHandlerDispatcherTest, IntegerLiteralTranslation) {
     ASSERT_TRUE(handled);
 
     // Verify translation
-    Expr* cExpr = exprMapper.getCreatedExpr(cppIntLit);
+    Expr* cExpr = exprMapper.getCreated(cppIntLit);
     ASSERT_NE(cExpr, nullptr);
 
     auto* cIntLit = dyn_cast<IntegerLiteral>(cExpr);
@@ -226,7 +226,7 @@ TEST(LiteralHandlerDispatcherTest, FloatingLiteralTranslation) {
     ASSERT_TRUE(handled);
 
     // Verify translation
-    Expr* cExpr = exprMapper.getCreatedExpr(cppFloatLit);
+    Expr* cExpr = exprMapper.getCreated(cppFloatLit);
     ASSERT_NE(cExpr, nullptr);
     EXPECT_TRUE(isa<FloatingLiteral>(cExpr));
 }
@@ -276,7 +276,7 @@ TEST(LiteralHandlerDispatcherTest, StringLiteralTranslation) {
     ASSERT_TRUE(handled);
 
     // Verify translation
-    Expr* cExpr = exprMapper.getCreatedExpr(cppStrLit);
+    Expr* cExpr = exprMapper.getCreated(cppStrLit);
     ASSERT_NE(cExpr, nullptr);
 
     auto* cStrLit = dyn_cast<StringLiteral>(cExpr);
@@ -329,7 +329,7 @@ TEST(LiteralHandlerDispatcherTest, CharacterLiteralTranslation) {
     ASSERT_TRUE(handled);
 
     // Verify translation
-    Expr* cExpr = exprMapper.getCreatedExpr(cppCharLit);
+    Expr* cExpr = exprMapper.getCreated(cppCharLit);
     ASSERT_NE(cExpr, nullptr);
 
     auto* cCharLit = dyn_cast<CharacterLiteral>(cExpr);
@@ -383,7 +383,7 @@ TEST(LiteralHandlerDispatcherTest, BoolLiteralTranslation) {
     ASSERT_TRUE(handled);
 
     // Verify translation: true → 1 (IntegerLiteral)
-    Expr* cExpr = exprMapper.getCreatedExpr(cppBoolLit);
+    Expr* cExpr = exprMapper.getCreated(cppBoolLit);
     ASSERT_NE(cExpr, nullptr);
 
     auto* cIntLit = dyn_cast<IntegerLiteral>(cExpr);
@@ -448,7 +448,7 @@ TEST(LiteralHandlerDispatcherTest, MultipleLiterals) {
 
     // Verify all were translated
     for (auto* lit : literals) {
-        Expr* cExpr = exprMapper.getCreatedExpr(lit);
+        Expr* cExpr = exprMapper.getCreated(lit);
         EXPECT_NE(cExpr, nullptr);
         EXPECT_TRUE(isa<IntegerLiteral>(cExpr));
     }

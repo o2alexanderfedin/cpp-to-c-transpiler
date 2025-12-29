@@ -46,7 +46,7 @@ void LiteralHandler::handleLiteral(
     cpptoc::ExprMapper& exprMapper = disp.getExprMapper();
 
     // Check if already processed
-    if (exprMapper.hasCreatedExpr(E)) {
+    if (exprMapper.hasCreated(E)) {
         llvm::outs() << "[LiteralHandler] Literal already translated, skipping\n";
         return;
     }
@@ -74,7 +74,7 @@ void LiteralHandler::handleLiteral(
     assert(cLiteral && "Failed to create C literal");
 
     // Store mapping in ExprMapper
-    exprMapper.setCreatedExpr(E, cLiteral);
+    exprMapper.setCreated(E, cLiteral);
 }
 
 // ============================================================================

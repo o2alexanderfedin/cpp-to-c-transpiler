@@ -63,7 +63,7 @@ void ReturnStmtHandler::handleReturnStmt(
         if (handled) {
             // Retrieve translated expression from ExprMapper
             cpptoc::ExprMapper& exprMapper = disp.getExprMapper();
-            cRetValue = exprMapper.getCreatedExpr(cppRetValue);
+            cRetValue = exprMapper.getCreated(cppRetValue);
 
             assert(cRetValue && "Expression must be in ExprMapper after successful dispatch");
             llvm::outs() << "[ReturnStmtHandler] Expression dispatched and retrieved from ExprMapper\n";
@@ -94,7 +94,7 @@ void ReturnStmtHandler::handleReturnStmt(
 
     // Store mapping so parent handler (e.g., CompoundStmt handler) can retrieve this statement
     cpptoc::StmtMapper& stmtMapper = disp.getStmtMapper();
-    stmtMapper.setCreatedStmt(cppReturn, cReturn);
+    stmtMapper.setCreated(cppReturn, cReturn);
 
     // Debug output for verification
     if (cppRetValue) {

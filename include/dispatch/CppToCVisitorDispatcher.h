@@ -32,11 +32,13 @@
 namespace cpptoc {
     class PathMapper;
     class DeclLocationMapper;
-    class DeclMapper;
-    class TypeMapper;
-    class ExprMapper;
-    class StmtMapper;
 }
+
+// Include mapper type aliases (now based on NodeMapper template)
+#include "mapping/DeclMapper.h"
+#include "mapping/TypeMapper.h"
+#include "mapping/ExprMapper.h"
+#include "mapping/StmtMapper.h"
 
 /**
  * @class CppToCVisitorDispatcher

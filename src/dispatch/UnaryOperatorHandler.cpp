@@ -40,7 +40,7 @@ void UnaryOperatorHandler::handleUnaryOperator(
     cpptoc::ExprMapper& exprMapper = disp.getExprMapper();
 
     // Check if already processed
-    if (exprMapper.hasCreatedExpr(E)) {
+    if (exprMapper.hasCreated(E)) {
         llvm::outs() << "[UnaryOperatorHandler] UnaryOperator already translated, skipping\n";
         return;
     }
@@ -62,7 +62,7 @@ void UnaryOperatorHandler::handleUnaryOperator(
     }
 
     // Retrieve translated operand from ExprMapper
-    clang::Expr* cOperand = exprMapper.getCreatedExpr(cppOperand);
+    clang::Expr* cOperand = exprMapper.getCreated(cppOperand);
     assert(cOperand && "Operand must be in ExprMapper after dispatch");
 
     llvm::outs() << "[UnaryOperatorHandler] Operand translated successfully\n";
@@ -84,7 +84,7 @@ void UnaryOperatorHandler::handleUnaryOperator(
                  << clang::UnaryOperator::getOpcodeStr(cppUnOp->getOpcode()).str() << "\n";
 
     // Store mapping in ExprMapper
-    exprMapper.setCreatedExpr(E, cUnOp);
+    exprMapper.setCreated(E, cUnOp);
 }
 
 } // namespace cpptoc

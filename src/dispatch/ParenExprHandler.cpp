@@ -40,7 +40,7 @@ void ParenExprHandler::handleParenExpr(
     cpptoc::ExprMapper& exprMapper = disp.getExprMapper();
 
     // Check if already processed
-    if (exprMapper.hasCreatedExpr(cppParen)) {
+    if (exprMapper.hasCreated(cppParen)) {
         llvm::outs() << "[ParenExprHandler] ParenExpr already translated, skipping\n";
         return;
     }
@@ -60,7 +60,7 @@ void ParenExprHandler::handleParenExpr(
     );
 
     // Retrieve translated inner expression from ExprMapper
-    clang::Expr* cInnerExpr = exprMapper.getCreatedExpr(cppInnerExpr);
+    clang::Expr* cInnerExpr = exprMapper.getCreated(cppInnerExpr);
 
     if (!cInnerExpr) {
         llvm::errs() << "[ParenExprHandler] ERROR: Failed to retrieve translated inner expression\n";
@@ -83,7 +83,7 @@ void ParenExprHandler::handleParenExpr(
     llvm::outs() << "[ParenExprHandler] Created C ParenExpr\n";
 
     // Store mapping in ExprMapper
-    exprMapper.setCreatedExpr(cppParen, cParen);
+    exprMapper.setCreated(cppParen, cParen);
 }
 
 } // namespace cpptoc

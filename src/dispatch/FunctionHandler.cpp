@@ -70,7 +70,7 @@ void FunctionHandler::handleFunction(
 
     // Retrieve translated type from TypeMapper
     cpptoc::TypeMapper& typeMapper = disp.getTypeMapper();
-    clang::QualType cReturnType = typeMapper.getCreatedType(cppReturnTypePtr);
+    clang::QualType cReturnType = typeMapper.getCreated(cppReturnTypePtr);
 
     // If TypeHandler didn't handle this type (pass-through), use original type
     if (cReturnType.isNull()) {
@@ -92,7 +92,7 @@ void FunctionHandler::handleFunction(
             if (bodyHandled) {
                 // Retrieve created C body from StmtMapper
                 cpptoc::StmtMapper& stmtMapper = disp.getStmtMapper();
-                clang::Stmt* cStmt = stmtMapper.getCreatedStmt(cppBody);
+                clang::Stmt* cStmt = stmtMapper.getCreated(cppBody);
 
                 if (cStmt) {
                     // Ensure it's a CompoundStmt as expected for function bodies
@@ -177,7 +177,7 @@ std::vector<clang::ParmVarDecl*> FunctionHandler::translateParameters(
 
         // Retrieve created C parameter from DeclMapper
         cpptoc::DeclMapper& declMapper = disp.getDeclMapper();
-        clang::Decl* cDecl = declMapper.getCreatedDecl(cppParam);
+        clang::Decl* cDecl = declMapper.getCreated(cppParam);
 
         if (!cDecl) {
             llvm::errs() << "[FunctionHandler] Error: ParameterHandler did not create C parameter for: "

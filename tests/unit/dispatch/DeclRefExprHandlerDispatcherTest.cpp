@@ -84,7 +84,7 @@ TEST(DeclRefExprHandlerDispatcherTest, Registration) {
     bool handled = dispatcher.dispatch(cppCtx, cCtx, declRef);
     EXPECT_TRUE(handled);
 
-    Expr* cExpr = exprMapper.getCreatedExpr(declRef);
+    Expr* cExpr = exprMapper.getCreated(declRef);
     EXPECT_NE(cExpr, nullptr);
     EXPECT_TRUE(isa<DeclRefExpr>(cExpr));
 }
@@ -132,7 +132,7 @@ TEST(DeclRefExprHandlerDispatcherTest, ParameterReference) {
     bool handled = dispatcher.dispatch(cppCtx, cCtx, declRef);
     ASSERT_TRUE(handled);
 
-    Expr* cExpr = exprMapper.getCreatedExpr(declRef);
+    Expr* cExpr = exprMapper.getCreated(declRef);
     ASSERT_NE(cExpr, nullptr);
 
     auto* cDeclRef = dyn_cast<DeclRefExpr>(cExpr);
@@ -185,7 +185,7 @@ TEST(DeclRefExprHandlerDispatcherTest, LocalVariableReference) {
     bool handled = dispatcher.dispatch(cppCtx, cCtx, declRef);
     EXPECT_TRUE(handled);
 
-    Expr* cExpr = exprMapper.getCreatedExpr(declRef);
+    Expr* cExpr = exprMapper.getCreated(declRef);
     EXPECT_NE(cExpr, nullptr);
 }
 
@@ -247,7 +247,7 @@ TEST(DeclRefExprHandlerDispatcherTest, MultipleDeclRefExprs) {
 
     // Verify both were mapped
     for (auto* dr : declRefs) {
-        Expr* cExpr = exprMapper.getCreatedExpr(dr);
+        Expr* cExpr = exprMapper.getCreated(dr);
         EXPECT_NE(cExpr, nullptr);
         EXPECT_TRUE(isa<DeclRefExpr>(cExpr));
     }

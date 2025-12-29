@@ -40,7 +40,7 @@ void BinaryOperatorHandler::handleBinaryOperator(
     cpptoc::ExprMapper& exprMapper = disp.getExprMapper();
 
     // Check if already processed
-    if (exprMapper.hasCreatedExpr(E)) {
+    if (exprMapper.hasCreated(E)) {
         llvm::outs() << "[BinaryOperatorHandler] BinaryOperator already translated, skipping\n";
         return;
     }
@@ -63,7 +63,7 @@ void BinaryOperatorHandler::handleBinaryOperator(
     }
 
     // Retrieve translated LHS from ExprMapper
-    clang::Expr* cLHS = exprMapper.getCreatedExpr(cppLHS);
+    clang::Expr* cLHS = exprMapper.getCreated(cppLHS);
     assert(cLHS && "LHS must be in ExprMapper after dispatch");
 
     // Dispatch RHS via dispatcher (recursive)
@@ -76,7 +76,7 @@ void BinaryOperatorHandler::handleBinaryOperator(
     }
 
     // Retrieve translated RHS from ExprMapper
-    clang::Expr* cRHS = exprMapper.getCreatedExpr(cppRHS);
+    clang::Expr* cRHS = exprMapper.getCreated(cppRHS);
     assert(cRHS && "RHS must be in ExprMapper after dispatch");
 
     llvm::outs() << "[BinaryOperatorHandler] Both operands translated successfully\n";
@@ -98,7 +98,7 @@ void BinaryOperatorHandler::handleBinaryOperator(
                  << cppBinOp->getOpcodeStr().str() << "\n";
 
     // Store mapping in ExprMapper
-    exprMapper.setCreatedExpr(E, cBinOp);
+    exprMapper.setCreated(E, cBinOp);
 }
 
 } // namespace cpptoc

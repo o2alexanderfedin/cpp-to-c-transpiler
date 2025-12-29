@@ -93,7 +93,7 @@ TEST(UnaryOperatorHandlerDispatcherTest, Registration) {
     bool handled = dispatcher.dispatch(cppCtx, cCtx, unOp);
     EXPECT_TRUE(handled);
 
-    Expr* cExpr = exprMapper.getCreatedExpr(unOp);
+    Expr* cExpr = exprMapper.getCreated(unOp);
     EXPECT_NE(cExpr, nullptr);
     EXPECT_TRUE(isa<UnaryOperator>(cExpr));
 }
@@ -144,7 +144,7 @@ TEST(UnaryOperatorHandlerDispatcherTest, LogicalNOT) {
     bool handled = dispatcher.dispatch(cppCtx, cCtx, unOp);
     ASSERT_TRUE(handled);
 
-    Expr* cExpr = exprMapper.getCreatedExpr(unOp);
+    Expr* cExpr = exprMapper.getCreated(unOp);
     ASSERT_NE(cExpr, nullptr);
 
     auto* cUnOp = dyn_cast<UnaryOperator>(cExpr);
@@ -198,7 +198,7 @@ TEST(UnaryOperatorHandlerDispatcherTest, UnaryMinus) {
     bool handled = dispatcher.dispatch(cppCtx, cCtx, unOp);
     ASSERT_TRUE(handled);
 
-    Expr* cExpr = exprMapper.getCreatedExpr(unOp);
+    Expr* cExpr = exprMapper.getCreated(unOp);
     ASSERT_NE(cExpr, nullptr);
 
     auto* cUnOp = dyn_cast<UnaryOperator>(cExpr);
@@ -255,7 +255,7 @@ TEST(UnaryOperatorHandlerDispatcherTest, PrefixIncrement) {
     bool handled = dispatcher.dispatch(cppCtx, cCtx, unOp);
     EXPECT_TRUE(handled);
 
-    Expr* cExpr = exprMapper.getCreatedExpr(unOp);
+    Expr* cExpr = exprMapper.getCreated(unOp);
     EXPECT_NE(cExpr, nullptr);
 }
 
@@ -305,7 +305,7 @@ TEST(UnaryOperatorHandlerDispatcherTest, PrefixDecrement) {
     bool handled = dispatcher.dispatch(cppCtx, cCtx, unOp);
     EXPECT_TRUE(handled);
 
-    Expr* cExpr = exprMapper.getCreatedExpr(unOp);
+    Expr* cExpr = exprMapper.getCreated(unOp);
     EXPECT_NE(cExpr, nullptr);
 }
 
@@ -355,7 +355,7 @@ TEST(UnaryOperatorHandlerDispatcherTest, AddressOf) {
     bool handled = dispatcher.dispatch(cppCtx, cCtx, unOp);
     EXPECT_TRUE(handled);
 
-    Expr* cExpr = exprMapper.getCreatedExpr(unOp);
+    Expr* cExpr = exprMapper.getCreated(unOp);
     EXPECT_NE(cExpr, nullptr);
 }
 
@@ -405,7 +405,7 @@ TEST(UnaryOperatorHandlerDispatcherTest, Dereference) {
     bool handled = dispatcher.dispatch(cppCtx, cCtx, unOp);
     EXPECT_TRUE(handled);
 
-    Expr* cExpr = exprMapper.getCreatedExpr(unOp);
+    Expr* cExpr = exprMapper.getCreated(unOp);
     EXPECT_NE(cExpr, nullptr);
 }
 
@@ -455,7 +455,7 @@ TEST(UnaryOperatorHandlerDispatcherTest, BitwiseNOT) {
     bool handled = dispatcher.dispatch(cppCtx, cCtx, unOp);
     EXPECT_TRUE(handled);
 
-    Expr* cExpr = exprMapper.getCreatedExpr(unOp);
+    Expr* cExpr = exprMapper.getCreated(unOp);
     EXPECT_NE(cExpr, nullptr);
 }
 
@@ -525,10 +525,10 @@ TEST(UnaryOperatorHandlerDispatcherTest, NestedUnaryOperators) {
     ASSERT_TRUE(handled);
 
     // Verify both were translated
-    Expr* cOuterExpr = exprMapper.getCreatedExpr(outer);
+    Expr* cOuterExpr = exprMapper.getCreated(outer);
     ASSERT_NE(cOuterExpr, nullptr);
 
-    Expr* cInnerExpr = exprMapper.getCreatedExpr(inner);
+    Expr* cInnerExpr = exprMapper.getCreated(inner);
     ASSERT_NE(cInnerExpr, nullptr);
 }
 

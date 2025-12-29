@@ -210,10 +210,8 @@ add_library(cpptoc_core STATIC
     src/dispatch/ParenExprHandler.cpp
     src/mapping/PathMapper.cpp
     src/mapping/DeclLocationMapper.cpp
-    src/mapping/DeclMapper.cpp
-    src/mapping/TypeMapper.cpp
-    src/mapping/ExprMapper.cpp
-    src/mapping/StmtMapper.cpp
+    # NodeMapper is header-only template - no .cpp files needed
+    # DeclMapper, TypeMapper, ExprMapper, StmtMapper are now type aliases
     src/translation/TypeTranslator.cpp
     src/CFGAnalyzer.cpp
     src/NameMangler.cpp
@@ -2249,9 +2247,7 @@ add_executable(FunctionTranslationIntegrationTest
     src/dispatch/ImplicitCastExprHandler.cpp
     src/mapping/PathMapper.cpp
     src/mapping/DeclLocationMapper.cpp
-    src/mapping/DeclMapper.cpp
-    src/mapping/TypeMapper.cpp
-    src/mapping/ExprMapper.cpp
+    # NodeMapper is header-only template - no .cpp files needed
     src/TargetContext.cpp
 )
 

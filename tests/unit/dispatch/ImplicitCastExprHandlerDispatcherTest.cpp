@@ -128,7 +128,7 @@ TEST(ImplicitCastExprHandlerDispatcherTest, Registration) {
     EXPECT_TRUE(handled) << "ImplicitCastExpr should be handled by ImplicitCastExprHandler";
 
     // Verify expression was stored in ExprMapper
-    EXPECT_TRUE(exprMapper.hasCreatedExpr(retExpr)) << "ImplicitCastExpr should be in ExprMapper";
+    EXPECT_TRUE(exprMapper.hasCreated(retExpr)) << "ImplicitCastExpr should be in ExprMapper";
 }
 
 // ============================================================================
@@ -247,7 +247,7 @@ TEST(ImplicitCastExprHandlerDispatcherTest, LValueToRValueCast) {
         cCtx.getTrivialTypeSourceInfo(param->getType()),
         SC_None, nullptr
     );
-    declMapper.setCreatedDecl(param, cParam);
+    declMapper.setCreated(param, cParam);
 
     const Expr* retExpr = findFirstExpr(getValue);
     ASSERT_NE(retExpr, nullptr);
@@ -261,8 +261,8 @@ TEST(ImplicitCastExprHandlerDispatcherTest, LValueToRValueCast) {
     EXPECT_TRUE(handled) << "ImplicitCastExpr should be handled";
 
     // Verify both ImplicitCastExpr and its subexpression are in ExprMapper
-    EXPECT_TRUE(exprMapper.hasCreatedExpr(retExpr)) << "Cast should be in ExprMapper";
-    EXPECT_TRUE(exprMapper.hasCreatedExpr(castExpr->getSubExpr()))
+    EXPECT_TRUE(exprMapper.hasCreated(retExpr)) << "Cast should be in ExprMapper";
+    EXPECT_TRUE(exprMapper.hasCreated(castExpr->getSubExpr()))
         << "Subexpression (DeclRefExpr) should be in ExprMapper";
 }
 
@@ -310,7 +310,7 @@ TEST(ImplicitCastExprHandlerDispatcherTest, NestedImplicitCast) {
         cCtx.getTrivialTypeSourceInfo(param->getType()),
         SC_None, nullptr
     );
-    declMapper.setCreatedDecl(param, cParam);
+    declMapper.setCreated(param, cParam);
 
     const Expr* retExpr = findFirstExpr(getValue);
     ASSERT_NE(retExpr, nullptr);
@@ -324,7 +324,7 @@ TEST(ImplicitCastExprHandlerDispatcherTest, NestedImplicitCast) {
     EXPECT_TRUE(handled) << "Outer ImplicitCastExpr should be handled";
 
     // Verify outer cast is in ExprMapper
-    EXPECT_TRUE(exprMapper.hasCreatedExpr(retExpr)) << "Outer cast should be in ExprMapper";
+    EXPECT_TRUE(exprMapper.hasCreated(retExpr)) << "Outer cast should be in ExprMapper";
 }
 
 // ============================================================================
@@ -383,7 +383,7 @@ TEST(ImplicitCastExprHandlerDispatcherTest, ImplicitCastWithLiteral) {
     // Just dispatch and verify it's handled
     bool handled = dispatcher.dispatch(cppCtx, cCtx, const_cast<Expr*>(initExpr));
     EXPECT_TRUE(handled) << "Expression should be handled";
-    EXPECT_TRUE(exprMapper.hasCreatedExpr(initExpr)) << "Expression should be in ExprMapper";
+    EXPECT_TRUE(exprMapper.hasCreated(initExpr)) << "Expression should be in ExprMapper";
 }
 
 // ============================================================================
@@ -433,7 +433,7 @@ TEST(ImplicitCastExprHandlerDispatcherTest, MultipleImplicitCasts) {
             cCtx.getTrivialTypeSourceInfo(param->getType()),
             SC_None, nullptr
         );
-        declMapper.setCreatedDecl(param, cParam);
+        declMapper.setCreated(param, cParam);
     }
 
     // The test just verifies handler can process ImplicitCastExpr

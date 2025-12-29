@@ -97,7 +97,7 @@ TEST(BinaryOperatorHandlerDispatcherTest, Registration) {
     bool handled = dispatcher.dispatch(cppCtx, cCtx, binOp);
     EXPECT_TRUE(handled);
 
-    Expr* cExpr = exprMapper.getCreatedExpr(binOp);
+    Expr* cExpr = exprMapper.getCreated(binOp);
     EXPECT_NE(cExpr, nullptr);
     EXPECT_TRUE(isa<BinaryOperator>(cExpr));
 }
@@ -149,7 +149,7 @@ TEST(BinaryOperatorHandlerDispatcherTest, AdditionWithLiterals) {
     bool handled = dispatcher.dispatch(cppCtx, cCtx, binOp);
     ASSERT_TRUE(handled);
 
-    Expr* cExpr = exprMapper.getCreatedExpr(binOp);
+    Expr* cExpr = exprMapper.getCreated(binOp);
     ASSERT_NE(cExpr, nullptr);
 
     auto* cBinOp = dyn_cast<BinaryOperator>(cExpr);
@@ -227,7 +227,7 @@ TEST(BinaryOperatorHandlerDispatcherTest, ArithmeticOperators) {
 
     // Verify all were translated
     for (auto* bo : binOps) {
-        Expr* cExpr = exprMapper.getCreatedExpr(bo);
+        Expr* cExpr = exprMapper.getCreated(bo);
         EXPECT_NE(cExpr, nullptr);
     }
 }
@@ -290,7 +290,7 @@ TEST(BinaryOperatorHandlerDispatcherTest, ComparisonOperators) {
     }
 
     for (auto* bo : binOps) {
-        Expr* cExpr = exprMapper.getCreatedExpr(bo);
+        Expr* cExpr = exprMapper.getCreated(bo);
         EXPECT_NE(cExpr, nullptr);
     }
 }
@@ -343,7 +343,7 @@ TEST(BinaryOperatorHandlerDispatcherTest, LogicalOperators) {
     bool handled = dispatcher.dispatch(cppCtx, cCtx, binOp);
     EXPECT_TRUE(handled);
 
-    Expr* cExpr = exprMapper.getCreatedExpr(binOp);
+    Expr* cExpr = exprMapper.getCreated(binOp);
     EXPECT_NE(cExpr, nullptr);
 }
 
@@ -404,10 +404,10 @@ TEST(BinaryOperatorHandlerDispatcherTest, NestedExpressions) {
     ASSERT_TRUE(handled);
 
     // Verify both outer and inner were translated
-    Expr* cOuterExpr = exprMapper.getCreatedExpr(outerAdd);
+    Expr* cOuterExpr = exprMapper.getCreated(outerAdd);
     ASSERT_NE(cOuterExpr, nullptr);
 
-    Expr* cInnerExpr = exprMapper.getCreatedExpr(innerMul);
+    Expr* cInnerExpr = exprMapper.getCreated(innerMul);
     ASSERT_NE(cInnerExpr, nullptr);
 
     auto* cOuterBinOp = dyn_cast<BinaryOperator>(cOuterExpr);
@@ -486,7 +486,7 @@ TEST(BinaryOperatorHandlerDispatcherTest, DeepRecursion) {
 
     // Verify all 3 operators were translated
     for (auto* bo : binOps) {
-        Expr* cExpr = exprMapper.getCreatedExpr(bo);
+        Expr* cExpr = exprMapper.getCreated(bo);
         EXPECT_NE(cExpr, nullptr) << "Operator not translated: "
             << BinaryOperator::getOpcodeStr(bo->getOpcode()).str();
     }
@@ -541,6 +541,6 @@ TEST(BinaryOperatorHandlerDispatcherTest, MixedTypes) {
     bool handled = dispatcher.dispatch(cppCtx, cCtx, root);
     EXPECT_TRUE(handled);
 
-    Expr* cExpr = exprMapper.getCreatedExpr(root);
+    Expr* cExpr = exprMapper.getCreated(root);
     EXPECT_NE(cExpr, nullptr);
 }

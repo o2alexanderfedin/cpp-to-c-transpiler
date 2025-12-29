@@ -43,7 +43,7 @@ void CompoundStmtHandler::handleCompoundStmt(
     cpptoc::StmtMapper& stmtMapper = disp.getStmtMapper();
 
     // Check if already processed
-    if (stmtMapper.hasCreatedStmt(S)) {
+    if (stmtMapper.hasCreated(S)) {
         llvm::outs() << "[CompoundStmtHandler] CompoundStmt already translated, skipping\n";
         return;
     }
@@ -76,7 +76,7 @@ void CompoundStmtHandler::handleCompoundStmt(
         }
 
         // Retrieve translated statement from StmtMapper
-        clang::Stmt* cStmt = stmtMapper.getCreatedStmt(cppStmt);
+        clang::Stmt* cStmt = stmtMapper.getCreated(cppStmt);
         if (!cStmt) {
             llvm::errs() << "[CompoundStmtHandler] WARNING: Statement dispatched but not in StmtMapper: "
                          << cppStmt->getStmtClassName() << "\n";
@@ -107,7 +107,7 @@ void CompoundStmtHandler::handleCompoundStmt(
                  << cCompound->size() << " statements\n";
 
     // Store mapping in StmtMapper
-    stmtMapper.setCreatedStmt(S, cCompound);
+    stmtMapper.setCreated(S, cCompound);
 
     llvm::outs() << "[CompoundStmtHandler] CompoundStmt translation complete and stored in StmtMapper\n";
 }

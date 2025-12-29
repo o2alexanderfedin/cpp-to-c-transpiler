@@ -40,7 +40,7 @@ void ImplicitCastExprHandler::handleImplicitCast(
     cpptoc::ExprMapper& exprMapper = disp.getExprMapper();
 
     // Check if already processed
-    if (exprMapper.hasCreatedExpr(cppCast)) {
+    if (exprMapper.hasCreated(cppCast)) {
         llvm::outs() << "[ImplicitCastExprHandler] ImplicitCastExpr already translated, skipping\n";
         return;
     }
@@ -61,7 +61,7 @@ void ImplicitCastExprHandler::handleImplicitCast(
     );
 
     // Retrieve translated subexpression from ExprMapper
-    clang::Expr* cSubExpr = exprMapper.getCreatedExpr(cppSubExpr);
+    clang::Expr* cSubExpr = exprMapper.getCreated(cppSubExpr);
 
     if (!cSubExpr) {
         llvm::errs() << "[ImplicitCastExprHandler] ERROR: Failed to retrieve translated subexpression\n";
@@ -90,7 +90,7 @@ void ImplicitCastExprHandler::handleImplicitCast(
                  << cCast->getCastKindName() << "\n";
 
     // Store mapping in ExprMapper
-    exprMapper.setCreatedExpr(cppCast, cCast);
+    exprMapper.setCreated(cppCast, cCast);
 }
 
 } // namespace cpptoc

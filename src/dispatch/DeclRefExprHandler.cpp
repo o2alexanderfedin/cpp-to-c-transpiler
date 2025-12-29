@@ -42,7 +42,7 @@ void DeclRefExprHandler::handleDeclRefExpr(
     cpptoc::ExprMapper& exprMapper = disp.getExprMapper();
 
     // Check if already processed
-    if (exprMapper.hasCreatedExpr(E)) {
+    if (exprMapper.hasCreated(E)) {
         llvm::outs() << "[DeclRefExprHandler] DeclRefExpr already translated, skipping\n";
         return;
     }
@@ -53,7 +53,7 @@ void DeclRefExprHandler::handleDeclRefExpr(
     // Try to retrieve C declaration from DeclMapper
     // (It should have been created by ParameterHandler, VarDeclHandler, etc.)
     cpptoc::DeclMapper& declMapper = disp.getDeclMapper();
-    clang::Decl* cDecl = declMapper.getCreatedDecl(cppDecl);
+    clang::Decl* cDecl = declMapper.getCreated(cppDecl);
 
     // If C declaration doesn't exist yet, this is a forward reference issue
     // For Phase 1, we'll use the C++ declaration as fallback
@@ -85,7 +85,7 @@ void DeclRefExprHandler::handleDeclRefExpr(
                  << cppDecl->getNameAsString() << "\n";
 
     // Store mapping in ExprMapper
-    exprMapper.setCreatedExpr(E, cDeclRef);
+    exprMapper.setCreated(E, cDeclRef);
 }
 
 } // namespace cpptoc
