@@ -25,12 +25,11 @@ protected:
     // Helper to create a CppToCVisitor with a C TranslationUnitDecl
     std::unique_ptr<CppToCVisitor> createVisitor(ASTUnit &AST, CNodeBuilder &builder,
                                                    cpptoc::FileOriginTracker &tracker) {
-        // Get TargetContext and create a C TranslationUnitDecl
+        // Get TargetContext
         TargetContext& targetCtx = TargetContext::getInstance();
-        clang::TranslationUnitDecl *C_TU = targetCtx.createTranslationUnit();
 
         return std::make_unique<CppToCVisitor>(AST.getASTContext(), builder,
-                                                targetCtx, tracker, C_TU);
+                                                targetCtx, tracker, nullptr);
     }
 };
 

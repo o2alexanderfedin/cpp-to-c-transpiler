@@ -3,11 +3,6 @@
 
 #include "main.h"
 
-static void StateMachine__ctor_copy(struct StateMachine * this, const struct StateMachine * other) {
-	this->currentState = other->currentState;
-	this->transitionCount = other->transitionCount;
-}
-
 const char * stateToString(int state) {
 	switch (state) 	{
 		case GameState__Menu:

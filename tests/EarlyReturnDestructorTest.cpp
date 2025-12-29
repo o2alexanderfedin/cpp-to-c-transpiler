@@ -416,7 +416,7 @@ void test_InjectBeforeEarlyReturn() {
     tracker.addUserHeaderPath("<stdin>");
     TargetContext& targetCtx = TargetContext::getInstance();
     clang::TranslationUnitDecl *C_TU = targetCtx.createTranslationUnit();
-    CppToCVisitor visitor(Ctx, builder, targetCtx, tracker, C_TU);
+    CppToCVisitor visitor(Ctx, builder, targetCtx, tracker, nullptr);
     visitor.TraverseDecl(Ctx.getTranslationUnitDecl());
 
     // Verify destructor was generated
@@ -462,7 +462,7 @@ void test_MaintainLIFOOrder() {
     tracker.addUserHeaderPath("<stdin>");
     TargetContext& targetCtx = TargetContext::getInstance();
     clang::TranslationUnitDecl *C_TU = targetCtx.createTranslationUnit();
-    CppToCVisitor visitor(Ctx, builder, targetCtx, tracker, C_TU);
+    CppToCVisitor visitor(Ctx, builder, targetCtx, tracker, nullptr);
     visitor.TraverseDecl(Ctx.getTranslationUnitDecl());
 
     // Verify destructors were generated
@@ -514,7 +514,7 @@ void test_MultipleReturnsWithDifferentSets() {
     tracker.addUserHeaderPath("<stdin>");
     TargetContext& targetCtx = TargetContext::getInstance();
     clang::TranslationUnitDecl *C_TU = targetCtx.createTranslationUnit();
-    CppToCVisitor visitor(Ctx, builder, targetCtx, tracker, C_TU);
+    CppToCVisitor visitor(Ctx, builder, targetCtx, tracker, nullptr);
     visitor.TraverseDecl(Ctx.getTranslationUnitDecl());
 
     FunctionDecl *Dtor = visitor.getDtor("Obj__dtor");
@@ -552,7 +552,7 @@ void test_NoDuplicateDestructorCalls() {
     tracker.addUserHeaderPath("<stdin>");
     TargetContext& targetCtx = TargetContext::getInstance();
     clang::TranslationUnitDecl *C_TU = targetCtx.createTranslationUnit();
-    CppToCVisitor visitor(Ctx, builder, targetCtx, tracker, C_TU);
+    CppToCVisitor visitor(Ctx, builder, targetCtx, tracker, nullptr);
     visitor.TraverseDecl(Ctx.getTranslationUnitDecl());
 
     FunctionDecl *Dtor = visitor.getDtor("Unique__dtor");
@@ -638,7 +638,7 @@ void test_EarlyReturnPlusNormalExit() {
     tracker.addUserHeaderPath("<stdin>");
     TargetContext& targetCtx = TargetContext::getInstance();
     clang::TranslationUnitDecl *C_TU = targetCtx.createTranslationUnit();
-    CppToCVisitor visitor(Ctx, builder, targetCtx, tracker, C_TU);
+    CppToCVisitor visitor(Ctx, builder, targetCtx, tracker, nullptr);
     visitor.TraverseDecl(Ctx.getTranslationUnitDecl());
 
     FunctionDecl *Dtor = visitor.getDtor("Guard__dtor");
@@ -716,7 +716,7 @@ void test_ReturnWithValueAndObjects() {
     tracker.addUserHeaderPath("<stdin>");
     TargetContext& targetCtx = TargetContext::getInstance();
     clang::TranslationUnitDecl *C_TU = targetCtx.createTranslationUnit();
-    CppToCVisitor visitor(Ctx, builder, targetCtx, tracker, C_TU);
+    CppToCVisitor visitor(Ctx, builder, targetCtx, tracker, nullptr);
     visitor.TraverseDecl(Ctx.getTranslationUnitDecl());
 
     FunctionDecl *Dtor = visitor.getDtor("Processor__dtor");

@@ -10,5 +10,5 @@
 #include <stdint.h>
 #include <stdbool.h>
 
-T maximum(T a, T b);
-void swapValues(T * a, T * b);
+int maximum(int a, int b);
+void swapValues(int * a, int * b);

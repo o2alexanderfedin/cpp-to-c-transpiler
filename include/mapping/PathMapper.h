@@ -213,37 +213,6 @@ public:
    */
   std::vector<const clang::Decl*> getAllNodesForFile(const std::string& file) const;
 
-  /**
-   * @brief Store mapping from C++ declaration to created C declaration
-   * @param cppDecl Source C++ declaration
-   * @param cDecl Created C declaration
-   *
-   * Enables parent handlers to retrieve child declarations created by child handlers.
-   * Critical for Chain of Responsibility pattern where FunctionHandler needs to retrieve
-   * parameter declarations created by ParameterHandler.
-   *
-   * Example:
-   * ```cpp
-   * // ParameterHandler creates C parameter and stores mapping
-   * clang::ParmVarDecl* cParam = createCParameter(...);
-   * pathMapper.setCreatedDecl(cppParam, cParam);
-   *
-   * // FunctionHandler retrieves created parameter
-   * clang::Decl* cParam = pathMapper.getCreatedDecl(cppParam);
-   * ```
-   */
-  void setCreatedDecl(const clang::Decl* cppDecl, clang::Decl* cDecl);
-
-  /**
-   * @brief Get C declaration created for a C++ declaration
-   * @param cppDecl Source C++ declaration
-   * @return Created C declaration, or nullptr if not found
-   *
-   * Retrieves C declaration previously stored via setCreatedDecl().
-   * Returns nullptr if no mapping exists for the given C++ declaration.
-   */
-  clang::Decl* getCreatedDecl(const clang::Decl* cppDecl) const;
-
 private:
   // Core references (not owned)
   TargetContext& targetCtx_;           ///< Shared target context for C AST creation
@@ -260,11 +229,6 @@ private:
   std::map<const clang::Decl*, std::string> declToTarget_;
   ///< Maps declarations (from source C++ AST) to their target output files
   ///< Example: CXXRecordDecl pointer → "/output/Point_transpiled.c"
-
-  std::map<const clang::Decl*, clang::Decl*> cppToCDeclMap_;
-  ///< Maps C++ source declarations to created C declarations
-  ///< Example: C++ ParmVarDecl → C ParmVarDecl
-  ///< Enables parent handlers to retrieve child declarations from child handlers
 
   /**
    * @brief Helper: Normalize a path (remove redundant separators, resolve . and ..)

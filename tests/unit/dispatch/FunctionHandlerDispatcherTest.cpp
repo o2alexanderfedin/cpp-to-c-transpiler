@@ -15,6 +15,7 @@
 #include "dispatch/CppToCVisitorDispatcher.h"
 #include "mapping/PathMapper.h"
 #include "mapping/DeclLocationMapper.h"
+#include "mapping/DeclMapper.h"
 #include "TargetContext.h"
 #include "clang/AST/ASTContext.h"
 #include "clang/AST/Decl.h"
@@ -50,12 +51,13 @@ TEST(FunctionHandlerDispatcherTest, Registration) {
     TargetContext& targetCtx = TargetContext::getInstance();
     ASTContext& cCtx = targetCtx.getContext();
 
-    // Create path mapping utilities
+    // Create mapping utilities
     cpptoc::PathMapper& mapper = cpptoc::PathMapper::getInstance("/src", "/output");
     cpptoc::DeclLocationMapper locMapper(mapper);
+    cpptoc::DeclMapper declMapper;
 
     // Create dispatcher
-    CppToCVisitorDispatcher dispatcher(mapper, locMapper);
+    CppToCVisitorDispatcher dispatcher(mapper, locMapper, declMapper);
 
     // Register handlers (ParameterHandler must be registered before FunctionHandler)
     // FunctionHandler depends on ParameterHandler to translate parameters
@@ -105,8 +107,9 @@ TEST(FunctionHandlerDispatcherTest, PredicateExcludesMethods) {
 
     cpptoc::PathMapper& mapper = cpptoc::PathMapper::getInstance("/src", "/output");
     cpptoc::DeclLocationMapper locMapper(mapper);
+    cpptoc::DeclMapper declMapper;
 
-    CppToCVisitorDispatcher dispatcher(mapper, locMapper);
+    CppToCVisitorDispatcher dispatcher(mapper, locMapper, declMapper);
 
     // Register handlers (ParameterHandler must be registered before FunctionHandler)
     // FunctionHandler depends on ParameterHandler to translate parameters
@@ -166,8 +169,9 @@ TEST(FunctionHandlerDispatcherTest, FreeFunctionVsMethod) {
 
     cpptoc::PathMapper& mapper = cpptoc::PathMapper::getInstance("/src", "/output");
     cpptoc::DeclLocationMapper locMapper(mapper);
+    cpptoc::DeclMapper declMapper;
 
-    CppToCVisitorDispatcher dispatcher(mapper, locMapper);
+    CppToCVisitorDispatcher dispatcher(mapper, locMapper, declMapper);
 
     // Register handlers
     cpptoc::ParameterHandler::registerWith(dispatcher);
@@ -236,8 +240,9 @@ TEST(FunctionHandlerDispatcherTest, ReferenceToPointerTranslation) {
 
     cpptoc::PathMapper& mapper = cpptoc::PathMapper::getInstance("/src", "/output");
     cpptoc::DeclLocationMapper locMapper(mapper);
+    cpptoc::DeclMapper declMapper;
 
-    CppToCVisitorDispatcher dispatcher(mapper, locMapper);
+    CppToCVisitorDispatcher dispatcher(mapper, locMapper, declMapper);
 
     // Register handlers
     cpptoc::ParameterHandler::registerWith(dispatcher);
@@ -317,8 +322,9 @@ TEST(FunctionHandlerDispatcherTest, Phase1NoFunctionBody) {
 
     cpptoc::PathMapper& mapper = cpptoc::PathMapper::getInstance("/src", "/output");
     cpptoc::DeclLocationMapper locMapper(mapper);
+    cpptoc::DeclMapper declMapper;
 
-    CppToCVisitorDispatcher dispatcher(mapper, locMapper);
+    CppToCVisitorDispatcher dispatcher(mapper, locMapper, declMapper);
 
     // Register handlers
     cpptoc::ParameterHandler::registerWith(dispatcher);

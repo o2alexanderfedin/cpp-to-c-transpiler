@@ -11,19 +11,8 @@
 #include <stdbool.h>
 
 
-typedef enum {
-    GameState__Menu = 0,
-    GameState__Playing = 1,
-    GameState__Paused = 2,
-    GameState__GameOver = 3
-} GameState;
-struct StateMachine {
-	GameState currentState;
-	int transitionCount;
-};
-static void StateMachine__ctor_copy(struct StateMachine * this, const struct StateMachine * other);
 void StateMachine__ctor_1(struct StateMachine * this, int initialState);
-bool StateMachine_isValidTransition_GameState_GameState(struct StateMachine * this, int from, int to);
-int StateMachine_getCurrentState(struct StateMachine * this);
-int StateMachine_getTransitionCount(struct StateMachine * this);
-bool StateMachine_isValidTransition_GameState_GameState(struct StateMachine * this, int from, int to);
+extern void StateMachine_transition_GameState(struct StateMachine * this, int newState);
+extern int StateMachine_getCurrentState(struct StateMachine * this);
+extern int StateMachine_getTransitionCount(struct StateMachine * this);
+extern bool StateMachine_isValidTransition_GameState_GameState(struct StateMachine * this, int from, int to);

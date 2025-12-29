@@ -30,19 +30,15 @@ extern bool shouldEnableRTTI();                      // Phase 13 (v2.6.0)
 CppToCVisitor::CppToCVisitor(ASTContext &Context, CNodeBuilder &Builder,
                              TargetContext &targetCtx_param,
                              cpptoc::FileOriginTracker &tracker,
-                             TranslationUnitDecl *C_TU_param,
-                             const std::string& currentFile)
+                             cpptoc::PathMapper* pathMapper_param)
     : Context(Context), Builder(Builder), targetCtx(targetCtx_param), Mangler(Context),
-      fileOriginTracker(tracker),
+      fileOriginTracker(tracker), pathMapper(pathMapper_param),
       VirtualAnalyzer(Context), VptrInjectorInstance(Context, VirtualAnalyzer),
       MoveCtorTranslator(Context), MoveAssignTranslator(Context),
-      RvalueRefParamTrans(Context), C_TranslationUnit(C_TU_param) {
+      RvalueRefParamTrans(Context) {
 
-  // Initialize FileOriginFilter for proper file-based filtering
-  if (!currentFile.empty()) {
-    fileOriginFilter = std::make_unique<cpptoc::FileOriginFilter>(tracker, currentFile);
-    llvm::outs() << "FileOriginFilter initialized for: " << currentFile << "\n";
-  }
+  // Phase 34 (v2.5.0): FileOriginFilter will be initialized per-file as needed
+  // No longer using instance variable m_currentSourceFile for initialization
 
   // Initialize ACSL annotators if --generate-acsl flag is enabled
   if (shouldGenerateACSL()) {
@@ -161,9 +157,53 @@ CppToCVisitor::CppToCVisitor(ASTContext &Context, CNodeBuilder &Builder,
   m_typedefGenerator = std::make_unique<cpptoc::TypedefGenerator>(Builder.getContext(), Builder);
   llvm::outs() << "Type alias and typedef support initialized (Phase 53)\n";
 
-  // Phase 35-02 (Bug #30 FIX): C_TranslationUnit passed as constructor parameter
-  // Each source file has its own C_TU in the shared target context
-  llvm::outs() << "[Bug #30 FIX] CppToCVisitor using C_TU @ " << (void*)C_TranslationUnit << "\n";
+  // Refactoring: C_TranslationUnit removed - now using location-based getTargetForNode()
+  // Each declaration gets the correct C_TU based on its source file location
+}
+
+// ============================================================================
+// Location-based File Organization Helper Methods
+// ============================================================================
+
+std::string CppToCVisitor::getSourceFileFromNode(const Decl* node) const {
+  if (!node) {
+    return "";
+  }
+
+  SourceLocation loc = node->getLocation();
+  if (loc.isInvalid()) {
+    return "";
+  }
+
+  SourceManager &SM = Context.getSourceManager();
+  FileID fid = SM.getFileID(loc);
+
+  // Get FileEntry for this FileID
+  OptionalFileEntryRef entryRef = SM.getFileEntryRefForID(fid);
+  if (!entryRef) {
+    return "";
+  }
+
+  return std::string(entryRef->getName());
+}
+
+std::pair<std::string, TranslationUnitDecl*>
+CppToCVisitor::getTargetForNode(const Decl* cppNode) {
+  std::string sourceFile = getSourceFileFromNode(cppNode);
+  if (sourceFile.empty()) {
+    llvm::outs() << "[ERROR] Cannot determine source file for node\n";
+    return {"", nullptr};
+  }
+
+  if (!pathMapper) {
+    llvm::outs() << "[ERROR] PathMapper is null, cannot map source to target\n";
+    return {"", nullptr};
+  }
+
+  std::string targetPath = pathMapper->mapSourceToTarget(sourceFile);
+  TranslationUnitDecl* C_TU = pathMapper->getOrCreateTU(targetPath);
+
+  return {targetPath, C_TU};
 }
 
 // Phase 47: Enum Class Translation using EnumTranslator handler
@@ -190,6 +230,37 @@ bool CppToCVisitor::VisitEnumDecl(EnumDecl *ED) {
 
   llvm::outs() << "Translating enum: " << ED->getNameAsString() << "\n";
 
+  // Phase 2.1: Check if enum already exists (deduplication)
+  std::string enumName = ED->getNameAsString();
+  clang::EnumDecl* existingEnum = targetCtx.findEnum(enumName);
+
+  if (existingEnum) {
+    // Enum already created by another file - reuse it, don't add to C_TU
+    llvm::outs() << "  -> DEDUPLICATION: Enum " << enumName
+                 << " already exists, skipping creation and C_TU addition\n";
+
+    // Update enumConstantMap for scoped enums (needed for references)
+    if (ED->isScoped()) {
+      for (const EnumConstantDecl* CPP_ECD : ED->enumerators()) {
+        // Find corresponding C enum constant by name
+        std::string cConstantName = enumName + "__" + CPP_ECD->getNameAsString();
+        for (auto* ECD : existingEnum->enumerators()) {
+          if (ECD->getNameAsString() == cConstantName) {
+            enumConstantMap[CPP_ECD] = ECD;
+            llvm::outs() << "    Mapped: " << CPP_ECD->getName() << " (C++) -> "
+                         << ECD->getName() << " (C) from existing enum\n";
+            break;
+          }
+        }
+      }
+    }
+
+    return true;  // Skip creation and C_TU addition
+  }
+
+  // Enum doesn't exist yet - create it
+  llvm::outs() << "  -> NEW ENUM: Creating and registering " << enumName << "\n";
+
   // Phase 47: Use EnumTranslator handler for translation
   // Create HandlerContext for enum translation
   cpptoc::HandlerContext ctx(Context, Builder.getContext(), Builder);
@@ -203,28 +274,23 @@ bool CppToCVisitor::VisitEnumDecl(EnumDecl *ED) {
     return false;
   }
 
-  // Phase 47 (Bug Fix): Smart filtering for cross-file enum definitions
-  // Different strategy than structs:
-  // Enums from headers should be included in FIRST .cpp file that uses them
-  // Check if this enum was already added to ANY C_TU via global tracking
-  // For now, simpler approach: Only add enum if it's from main file OR if from header
-  // and this is the first time we've seen it in this transpilation session
+  // Phase 2.1: Get target location for enum
+  auto [enumTargetPath, enumC_TU] = getTargetForNode(ED);
 
-  // Simple rule: Add enum if it's from the main source file being transpiled
-  // Skip if it's from a user header (will be included via #include)
-  bool shouldAddToTU = !fileOriginTracker.isFromUserHeader(ED);
-
-  if (!shouldAddToTU) {
-    llvm::outs() << "  -> enum " << ED->getName() << " NOT added to C_TU "
-                 << "(from user header, will be included via #include)\n";
+  // Record this enum in globalEnums and track its location
+  clang::EnumDecl* C_EnumDecl = llvm::dyn_cast<clang::EnumDecl>(C_Enum);
+  if (C_EnumDecl) {
+    targetCtx.recordNode(C_EnumDecl, enumTargetPath);
+    llvm::outs() << "  -> Recorded enum " << enumName
+                 << " with location: " << enumTargetPath << "\n";
   }
+
+  llvm::outs() << "  -> enum " << ED->getName() << " added to C_TU "
+               << "(will be declared in this file's header)\n";
 
   // BUG #2 FIX: Add enum to per-file C_TranslationUnit for emission
   // EnumTranslator adds enum to shared TU, but we need it in per-file C_TU
-  // Phase 47 (Bug Fix): Only add if shouldAddToTU (prevents duplicates)
-  if (shouldAddToTU) {
-    C_TranslationUnit->addDecl(C_Enum);
-  }
+  enumC_TU->addDecl(C_Enum);
 
   // Note: EnumTranslator already registers enum and constant mappings in ctx
   // But CppToCVisitor still uses enumConstantMap for backward compatibility
@@ -268,6 +334,20 @@ bool CppToCVisitor::VisitTypeAliasDecl(TypeAliasDecl *TAD) {
 
   llvm::outs() << "Translating type alias: " << TAD->getNameAsString() << "\n";
 
+  // Phase 2.4: Check if typedef already exists (deduplication)
+  std::string typedefName = TAD->getNameAsString();
+  clang::TypedefDecl* existingTypedef = targetCtx.findTypedef(typedefName);
+
+  if (existingTypedef) {
+    // Typedef already created by another file - skip creation and C_TU addition
+    llvm::outs() << "  -> DEDUPLICATION: Typedef " << typedefName
+                 << " already exists, skipping creation and C_TU addition\n";
+    return true;
+  }
+
+  // Typedef doesn't exist yet - create it
+  llvm::outs() << "  -> NEW TYPEDEF: Creating and registering " << typedefName << "\n";
+
   // Analyze the type alias
   cpptoc::TypeAliasInfo info = m_typeAliasAnalyzer->analyzeTypeAlias(TAD);
 
@@ -280,7 +360,14 @@ bool CppToCVisitor::VisitTypeAliasDecl(TypeAliasDecl *TAD) {
     return false;
   }
 
-  llvm::outs() << "  -> C typedef " << info.aliasName << " created\n";
+  // Phase 2.4: Record typedef location and add to C_TU
+  auto [typedefTargetPath, typedefC_TU] = getTargetForNode(TAD);
+  targetCtx.recordNode(C_Typedef, typedefTargetPath);
+  llvm::outs() << "  -> Recorded typedef " << typedefName
+               << " with location: " << typedefTargetPath << "\n";
+
+  typedefC_TU->addDecl(C_Typedef);
+  llvm::outs() << "  -> C typedef " << info.aliasName << " added to C_TU @ " << typedefTargetPath << "\n";
 
   return true;
 }
@@ -315,22 +402,30 @@ bool CppToCVisitor::VisitModuleDecl(Decl *MD) {
 
 // Story #15 + Story #50: Class-to-Struct Conversion with Base Class Embedding
 bool CppToCVisitor::VisitCXXRecordDecl(CXXRecordDecl *D) {
+  // DEBUG: Log all CXXRecordDecl visits
+  llvm::outs() << "[DEBUG] VisitCXXRecordDecl called for: " << D->getNameAsString() << "\n";
+
   // Phase 40 (Bug Fix): Record declaration in FileOriginTracker
   // This populates fileCategories map, enabling getUserHeaderFiles() to work
   fileOriginTracker.recordDeclaration(D);
 
   // Phase 34 (v2.5.0): Skip declarations from non-transpilable files (system headers, etc.)
   if (!fileOriginTracker.shouldTranspile(D)) {
+    llvm::outs() << "[DEBUG]   -> Skipped: shouldTranspile returned false\n";
     return true;
   }
 
   // Edge case 1: Forward declarations - skip
-  if (!D->isCompleteDefinition())
+  if (!D->isCompleteDefinition()) {
+    llvm::outs() << "[DEBUG]   -> Skipped: Forward declaration\n";
     return true;
+  }
 
   // Edge case 2: Compiler-generated classes - skip
-  if (D->isImplicit())
+  if (D->isImplicit()) {
+    llvm::outs() << "[DEBUG]   -> Skipped: Implicit class\n";
     return true;
+  }
 
   // Edge case 3: Template patterns - skip (Bug #17)
   // Template patterns are handled by template monomorphization
@@ -338,6 +433,7 @@ bool CppToCVisitor::VisitCXXRecordDecl(CXXRecordDecl *D) {
   if (D->getDescribedClassTemplate() != nullptr) {
     // This is a template pattern (e.g., template<typename T> class LinkedList)
     // Skip it - we'll generate monomorphized versions from TemplateMonomorphizer
+    llvm::outs() << "[DEBUG]   -> Skipped: Template pattern\n";
     return true;
   }
 
@@ -363,6 +459,42 @@ bool CppToCVisitor::VisitCXXRecordDecl(CXXRecordDecl *D) {
     return true;
 
   llvm::outs() << "Translating class: " << D->getNameAsString() << "\n";
+
+  // Phase 2.2: Determine target file using location-based approach
+  // Get source file and target path from the declaration's location
+  std::string declSourceFile = getSourceFileFromNode(D);
+  auto [declTargetPath, declC_TU] = getTargetForNode(D);
+
+  llvm::outs() << "  -> Struct origin: " << declSourceFile
+               << " -> target: " << declTargetPath << "\n";
+
+  // Phase 2.3: Check if struct already exists (deduplication)
+  std::string structName = D->getNameAsString();
+  clang::RecordDecl* existingStruct = targetCtx.findStruct(structName);
+
+  if (existingStruct) {
+    // Struct already created - reuse it and update mappings
+    llvm::outs() << "  -> DEDUPLICATION: Struct " << structName
+                 << " already exists, reusing and adding to this file's C_TU\n";
+
+    // Update cppToCMap for method translation
+    cppToCMap[D] = existingStruct;
+
+    // Add to this file's C_TU (using location-based C_TU from declC_TU)
+    // addDecl is idempotent, so safe to add multiple times
+    declC_TU->addDecl(existingStruct);
+    if (pathMapper) {
+      pathMapper->setNodeLocation(existingStruct, declTargetPath);
+    }
+
+    // Generate implicit constructors for this class
+    generateImplicitConstructors(D);
+
+    return true;
+  }
+
+  // Struct doesn't exist yet - create it
+  llvm::outs() << "  -> NEW STRUCT: Creating and registering " << structName << "\n";
 
   // Build field list for C struct
   std::vector<FieldDecl *> fields;
@@ -390,66 +522,22 @@ bool CppToCVisitor::VisitCXXRecordDecl(CXXRecordDecl *D) {
   // Create C struct using CNodeBuilder
   RecordDecl *CStruct = Builder.structDecl(D->getName(), fields);
 
+  // Phase 2.2: Record this struct in globalStructs and track its location
+  targetCtx.recordNode(CStruct, declTargetPath);
+  llvm::outs() << "  -> Recorded struct " << structName
+               << " with location: " << declTargetPath << "\n";
+
   // Store mapping for method translation
   cppToCMap[D] = CStruct;
 
-  // Phase 40 (Bug Fix): Smart filtering for cross-file struct definitions
-  // Keep struct if:
-  // 1. From main source file (not user header), OR
-  // 2. From user header whose basename matches current file's basename
-  //    (e.g., Vector3D.cpp keeps struct from Vector3D.h)
-  bool shouldAddToTU = true;
-  if (fileOriginTracker.isFromUserHeader(D)) {
-    // Extract basename from current file
-    std::string currentBasename;
-    {
-      auto &SM = Context.getSourceManager();
-      FileID mainFID = SM.getMainFileID();
-      if (auto mainFile = SM.getFileEntryRefForID(mainFID)) {
-        std::string mainFileName = std::string(mainFile->getName());
-        size_t lastSlash = mainFileName.find_last_of("/\\");
-        size_t lastDot = mainFileName.find_last_of('.');
-        if (lastSlash != std::string::npos) {
-          currentBasename = mainFileName.substr(lastSlash + 1);
-        } else {
-          currentBasename = mainFileName;
-        }
-        if (lastDot != std::string::npos && lastDot > lastSlash) {
-          currentBasename = currentBasename.substr(0, lastDot - (lastSlash != std::string::npos ? lastSlash + 1 : 0));
-        }
-      }
-    }
-
-    // Extract basename from struct's source file
-    std::string structBasename;
-    {
-      std::string originFile = fileOriginTracker.getOriginFile(D);
-      size_t lastSlash = originFile.find_last_of("/\\");
-      size_t lastDot = originFile.find_last_of('.');
-      if (lastSlash != std::string::npos) {
-        structBasename = originFile.substr(lastSlash + 1);
-      } else {
-        structBasename = originFile;
-      }
-      if (lastDot != std::string::npos && lastDot > lastSlash) {
-        structBasename = structBasename.substr(0, lastDot - (lastSlash != std::string::npos ? lastSlash + 1 : 0));
-      }
-    }
-
-    // Keep if basenames match (e.g., Vector3D.cpp and Vector3D.h)
-    shouldAddToTU = (currentBasename == structBasename);
-    if (!shouldAddToTU) {
-      llvm::outs() << "  -> struct " << CStruct->getName() << " NOT added to C_TU "
-                   << "(from header " << structBasename << ", current file: " << currentBasename << ")\n";
-    }
+  // Phase 2.2: Add newly created struct to location-based C_TranslationUnit
+  // Deduplication already handled above - if we reached here, this is a new struct
+  declC_TU->addDecl(CStruct);
+  if (pathMapper) {
+    pathMapper->setNodeLocation(CStruct, declTargetPath);
   }
-
-  // Phase 32: Add to C TranslationUnit for output generation
-  if (shouldAddToTU) {
-    C_TranslationUnit->addDecl(CStruct);
-    llvm::outs() << "  -> struct " << CStruct->getName() << " with "
-                 << fields.size() << " fields\n";
-  }
+  llvm::outs() << "  -> struct " << CStruct->getName() << " with "
+               << fields.size() << " fields added to C_TU @ " << declTargetPath << "\n";
 
   // Story #62: Generate implicit constructors if needed
   generateImplicitConstructors(D);
@@ -538,20 +626,27 @@ bool CppToCVisitor::VisitCXXRecordDecl(CXXRecordDecl *D) {
 
 // Story #16: Method-to-Function Conversion
 bool CppToCVisitor::VisitCXXMethodDecl(CXXMethodDecl *MD) {
+  // DEBUG: Log all method visits
+  llvm::outs() << "[DEBUG] VisitCXXMethodDecl called for: "
+               << MD->getParent()->getNameAsString() << "::" << MD->getNameAsString() << "\n";
+
   // Bug #43 FIX: Use FileOriginFilter for proper file-based filtering
   // This ensures method bodies from StateMachine.cpp don't get processed when
   // we're translating main.cpp (even though main.cpp includes StateMachine.h)
   if (fileOriginFilter && !fileOriginFilter->shouldProcessMethod(MD)) {
+    llvm::outs() << "[DEBUG]   -> Skipped: FileOriginFilter returned false\n";
     return true;
   }
 
   // Fallback to old tracker if filter not initialized
   if (!fileOriginFilter && !fileOriginTracker.shouldTranspile(MD)) {
+    llvm::outs() << "[DEBUG]   -> Skipped: shouldTranspile returned false\n";
     return true;
   }
 
   // Edge case 1: Skip implicit methods (compiler-generated)
   if (MD->isImplicit()) {
+    llvm::outs() << "[DEBUG]   -> Skipped: Implicit method\n";
     return true;
   }
 
@@ -596,8 +691,10 @@ bool CppToCVisitor::VisitCXXMethodDecl(CXXMethodDecl *MD) {
   // hasBody() returns true for BOTH declaration and definition in the same TU,
   // but isThisDeclarationADefinition() only returns true for the actual definition
   if (!MD->isThisDeclarationADefinition()) {
+    llvm::outs() << "[DEBUG]   -> Skipped: Not a definition (declaration only, no body)\n";
     return true;
   }
+  llvm::outs() << "[DEBUG]   -> Is a definition with body, proceeding to translate\n";
 
   // Bug #43 FIX: FileOriginFilter ensures proper file-based filtering
   // Do NOT check targetCtx.getMethodMap() here - that map is shared across files which causes issues
@@ -609,7 +706,8 @@ bool CppToCVisitor::VisitCXXMethodDecl(CXXMethodDecl *MD) {
   if (MD->isExplicitObjectMemberFunction()) {
     llvm::outs() << "Translating explicit object member function: "
                  << MD->getQualifiedNameAsString() << "\n";
-    auto C_Funcs = m_deducingThisTrans->transformMethod(MD, Context, C_TranslationUnit);
+    auto [methodTargetPath, methodC_TU] = getTargetForNode(MD);
+    auto C_Funcs = m_deducingThisTrans->transformMethod(MD, Context, methodC_TU);
     if (!C_Funcs.empty()) {
       llvm::outs() << "  -> Generated " << C_Funcs.size() << " overload(s):\n";
       for (auto* C_Func : C_Funcs) {
@@ -625,9 +723,10 @@ bool CppToCVisitor::VisitCXXMethodDecl(CXXMethodDecl *MD) {
     if (Op == OO_Call || Op == OO_Subscript) {
       llvm::outs() << "Translating static operator: "
                    << MD->getQualifiedNameAsString() << "\n";
-      auto* C_Func = m_staticOperatorTrans->transformMethod(MD, Context, C_TranslationUnit);
+      auto [methodTargetPath, methodC_TU] = getTargetForNode(MD);
+      auto* C_Func = m_staticOperatorTrans->transformMethod(MD, Context, methodC_TU);
       if (C_Func) {
-        // Function already added to C_TranslationUnit by translator
+        // Function already added to correct C_TU by translator
         llvm::outs() << "  -> " << C_Func->getNameAsString() << "\n";
       }
       return true;
@@ -638,7 +737,8 @@ bool CppToCVisitor::VisitCXXMethodDecl(CXXMethodDecl *MD) {
   if (MD->isOverloadedOperator() && m_arithmeticOpTrans->isArithmeticOperator(MD->getOverloadedOperator())) {
     llvm::outs() << "Translating arithmetic operator: "
                  << MD->getQualifiedNameAsString() << "\n";
-    auto* C_Func = m_arithmeticOpTrans->transformMethod(MD, Context, C_TranslationUnit);
+    auto [methodTargetPath, methodC_TU] = getTargetForNode(MD);
+    auto* C_Func = m_arithmeticOpTrans->transformMethod(MD, Context, methodC_TU);
     if (C_Func) {
       // Store in method map for later call site transformation
       std::string methodKey = Mangler.mangleName(MD);
@@ -652,7 +752,8 @@ bool CppToCVisitor::VisitCXXMethodDecl(CXXMethodDecl *MD) {
   if (MD->isOverloadedOperator() && m_comparisonOpTrans->isComparisonOperator(MD->getOverloadedOperator())) {
     llvm::outs() << "Translating comparison/logical operator: "
                  << MD->getQualifiedNameAsString() << "\n";
-    auto* C_Func = m_comparisonOpTrans->transformMethod(MD, Context, C_TranslationUnit);
+    auto [methodTargetPath, methodC_TU] = getTargetForNode(MD);
+    auto* C_Func = m_comparisonOpTrans->transformMethod(MD, Context, methodC_TU);
     if (C_Func) {
       // Store in method map for later call site transformation
       std::string methodKey = Mangler.mangleName(MD);
@@ -668,7 +769,8 @@ bool CppToCVisitor::VisitCXXMethodDecl(CXXMethodDecl *MD) {
   if (MD->isOverloadedOperator() && m_specialOpTrans->isSpecialOperator(MD->getOverloadedOperator())) {
     llvm::outs() << "Translating special operator: "
                  << MD->getQualifiedNameAsString() << "\n";
-    auto* C_Func = m_specialOpTrans->transformMethod(MD, Context, C_TranslationUnit);
+    auto [methodTargetPath, methodC_TU] = getTargetForNode(MD);
+    auto* C_Func = m_specialOpTrans->transformMethod(MD, Context, methodC_TU);
     if (C_Func) {
       // Store in method map for later call site transformation
       std::string methodKey = Mangler.mangleName(MD);
@@ -726,14 +828,31 @@ bool CppToCVisitor::VisitCXXMethodDecl(CXXMethodDecl *MD) {
 
   // Generate function name using name mangling
   std::string funcName = Mangler.mangleName(MD);
+  llvm::outs() << "  -> [DEBUG funcName] Generated name for " << MD->getNameAsString()
+               << ": " << funcName << "\n";
 
   // Phase 40 (Bug Fix): Convert return type (references → pointers)
   // Use translateTypeToCContext for proper cross-ASTContext type handling
   QualType RetType = translateTypeToCContext(MD->getReturnType());
 
+  // Phase 2.3: Get target location for method to determine correct C_TU
+  auto [methodTargetPath, methodC_TU] = getTargetForNode(MD);
+
   // Create C function (body will be added below)
+  // Pass methodC_TU as DeclContext for proper file organization
   FunctionDecl *CFunc =
-      Builder.funcDecl(funcName, RetType, params, nullptr);
+      Builder.funcDecl(funcName, RetType, params, nullptr, CC_C, false, methodC_TU);
+
+  // CRITICAL FIX: Set storage class to extern so methods are visible across files
+  // Without this, methods default to static (internal linkage) and can't be called from other files
+  // C++ methods have external linkage by default (unless in anonymous namespace)
+  CFunc->setStorageClass(SC_Extern);
+  llvm::outs() << "  -> Method linkage: extern (publicly visible)\n";
+  if (pathMapper) {
+    pathMapper->setNodeLocation(CFunc, methodTargetPath);
+    llvm::outs() << "  -> Recorded method " << funcName
+                 << " with location: " << methodTargetPath << "\n";
+  }
 
   // Set translation context for body translation (Story #19)
   currentThisParam = thisParam;
@@ -758,7 +877,30 @@ bool CppToCVisitor::VisitCXXMethodDecl(CXXMethodDecl *MD) {
   targetCtx.getMethodMap()[methodKey] = CFunc;
 
   // Phase 32: Add to C TranslationUnit for output generation
-  C_TranslationUnit->addDecl(CFunc);
+  // Note: DeclContext was already set by FunctionDecl::Create() with C_TranslationUnit parameter
+  // No need to call setDeclContext() afterward - addDecl() expects it to already be set
+
+  // JSON LOG: Before addDecl
+  llvm::outs() << "{\"event\":\"addDecl_METHOD\",\"funcName\":\"" << funcName << "\""
+               << ",\"funcDecl\":\"" << (void*)CFunc << "\""
+               << ",\"targetCTU\":\"" << (void*)methodC_TU << "\""
+               << ",\"declContext\":\"" << (void*)CFunc->getDeclContext() << "\""
+               << ",\"ctxAsDeclContext\":\"" << (void*)static_cast<DeclContext*>(methodC_TU) << "\""
+               << ",\"hasBody\":" << (CFunc->hasBody() ? "true" : "false")
+               << ",\"isImplicit\":" << (CFunc->isImplicit() ? "true" : "false")
+               << ",\"sourceFile\":\"" << getSourceFileFromNode(MD) << "\""
+               << ",\"targetFile\":\"" << methodTargetPath << "\"}\n";
+
+  methodC_TU->addDecl(CFunc);
+
+  llvm::outs() << "  -> [DEBUG addDecl] Added " << funcName << " (FuncDecl @ " << (void*)CFunc
+               << ") to C_TU @ " << (void*)methodC_TU << " (" << methodTargetPath << ")"
+               << (CFunc->hasBody() ? " [HAS BODY]" : " [NO BODY]")
+               << " [DeclContext @ " << (void*)CFunc->getDeclContext() << "]";
+  if (CFunc->getPreviousDecl()) {
+    llvm::outs() << " [has previous decl @ " << (void*)CFunc->getPreviousDecl() << "]";
+  }
+  llvm::outs() << "\n";
 
   // Mark as generated to prevent re-processing as standalone function
   generatedFunctions.insert(CFunc);
@@ -785,7 +927,8 @@ bool CppToCVisitor::VisitCXXConversionDecl(CXXConversionDecl *CD) {
                << CD->getQualifiedNameAsString() << "\n";
 
   // Use SpecialOperatorTranslator to handle conversion operators
-  auto* C_Func = m_specialOpTrans->transformConversion(CD, Context, C_TranslationUnit);
+  auto [convTargetPath, convC_TU] = getTargetForNode(CD);
+  auto* C_Func = m_specialOpTrans->transformConversion(CD, Context, convC_TU);
   if (C_Func) {
     // Store in method map for later call site transformation
     // Note: CXXConversionDecl is a subclass of CXXMethodDecl
@@ -917,9 +1060,13 @@ bool CppToCVisitor::VisitCXXConstructorDecl(CXXConstructorDecl *CD) {
   // Generate constructor name using name mangling
   std::string funcName = Mangler.mangleConstructor(CD);
 
+  // Get target location for constructor to determine correct C_TU
+  auto [ctorTargetPath, ctorC_TU] = getTargetForNode(CD);
+
   // Create C init function (body will be added below)
+  // Pass ctorC_TU as DeclContext for proper file organization
   FunctionDecl *CFunc =
-      Builder.funcDecl(funcName, Builder.voidType(), params, nullptr);
+      Builder.funcDecl(funcName, Builder.voidType(), params, nullptr, CC_C, false, ctorC_TU);
 
   // Build function body
   std::vector<Stmt *> stmts;
@@ -1028,7 +1175,26 @@ bool CppToCVisitor::VisitCXXConstructorDecl(CXXConstructorDecl *CD) {
                << " (key: " << mangledKey << ", map size now: " << targetCtx.getCtorMap().size() << ")\n";
 
   // Phase 32: Add to C TranslationUnit for output generation
-  C_TranslationUnit->addDecl(CFunc);
+  // Note: DeclContext was already set by FunctionDecl::Create() with ctorC_TU parameter
+  // No need to call setDeclContext() afterward - addDecl() expects it to already be set
+
+  // JSON LOG: Before addDecl
+  llvm::outs() << "{\"event\":\"addDecl_CTOR\",\"funcName\":\"" << funcName << "\""
+               << ",\"funcDecl\":\"" << (void*)CFunc << "\""
+               << ",\"targetCTU\":\"" << (void*)ctorC_TU << "\""
+               << ",\"declContext\":\"" << (void*)CFunc->getDeclContext() << "\""
+               << ",\"ctxAsDeclContext\":\"" << (void*)static_cast<DeclContext*>(ctorC_TU) << "\""
+               << ",\"hasBody\":" << (CFunc->hasBody() ? "true" : "false")
+               << ",\"isImplicit\":" << (CFunc->isImplicit() ? "true" : "false")
+               << ",\"sourceFile\":\"" << getSourceFileFromNode(CD) << "\""
+               << ",\"targetFile\":\"" << ctorTargetPath << "\"}\n";
+
+  ctorC_TU->addDecl(CFunc);
+
+  llvm::outs() << "  -> [DEBUG addDecl CTOR] Added " << funcName << " (FuncDecl @ " << (void*)CFunc
+               << ") to C_TU @ " << (void*)ctorC_TU << " (" << ctorTargetPath << ")"
+               << (CFunc->hasBody() ? " [HAS BODY]" : " [NO BODY]")
+               << " [DeclContext @ " << (void*)CFunc->getDeclContext() << "]" << "\n";
 
   llvm::outs() << "  -> " << funcName << " with " << params.size()
                << " parameters, " << stmts.size() << " statements\n";
@@ -1167,9 +1333,13 @@ bool CppToCVisitor::VisitCXXDestructorDecl(CXXDestructorDecl *DD) {
   // Generate destructor name using name mangling
   std::string funcName = Mangler.mangleDestructor(DD);
 
+  // Get target location for destructor to determine correct C_TU
+  auto [dtorTargetPath, dtorC_TU] = getTargetForNode(DD);
+
   // Create C cleanup function
+  // Pass dtorC_TU as DeclContext for proper file organization
   FunctionDecl *CFunc =
-      Builder.funcDecl(funcName, Builder.voidType(), params, nullptr);
+      Builder.funcDecl(funcName, Builder.voidType(), params, nullptr, CC_C, false, dtorC_TU);
 
   // Set translation context for body translation
   currentThisParam = thisParam;
@@ -1212,9 +1382,9 @@ bool CppToCVisitor::VisitCXXDestructorDecl(CXXDestructorDecl *DD) {
   targetCtx.getDtorMap()[dtorKey] = CFunc;
 
   // Phase 32: Add to C TranslationUnit for output generation
-  C_TranslationUnit->addDecl(CFunc);
+  dtorC_TU->addDecl(CFunc);
 
-  llvm::outs() << "  -> " << funcName << " created\n";
+  llvm::outs() << "  -> " << funcName << " created and added to C_TU @ " << dtorTargetPath << "\n";
 
   return true;
 }
@@ -1393,11 +1563,15 @@ bool CppToCVisitor::VisitFunctionDecl(FunctionDecl *FD) {
   // Phase 40 (Bug Fix): Convert return type - use translateTypeToCContext
   QualType RetType = translateTypeToCContext(FD->getReturnType());
 
+  // Get target location for function to determine correct C_TU
+  auto [funcTargetPath, funcC_TU] = getTargetForNode(FD);
+
   // Create C function declaration with mangled name
   FunctionDecl *CFunc =
       Builder.funcDecl(mangledName, RetType, cParams, translatedBody,
-                       CC_C,      // Calling convention (default)
-                       isVariadic // Variadic property
+                       CC_C,              // Calling convention (default)
+                       isVariadic,        // Variadic property
+                       funcC_TU           // DeclContext for proper file organization
       );
 
   // Preserve linkage and storage class
@@ -1424,7 +1598,9 @@ bool CppToCVisitor::VisitFunctionDecl(FunctionDecl *FD) {
   standaloneFuncMap[mangledName] = CFunc;
 
   // Phase 32: Add to C TranslationUnit for output generation
-  C_TranslationUnit->addDecl(CFunc);
+  // Note: DeclContext was already set by FunctionDecl::Create() with funcC_TU parameter
+  // No need to call setDeclContext() afterward - addDecl() expects it to already be set
+  funcC_TU->addDecl(CFunc);
 
   // Mark as generated to prevent re-processing
   generatedFunctions.insert(CFunc);
@@ -2784,7 +2960,9 @@ Expr *CppToCVisitor::translateExpr(Expr *E) {
         std::vector<ParmVarDecl *> Params;
 
         // Create function decl
-        FunctionDecl *FuncDecl = Builder.funcDecl(FuncName, RetType, Params, nullptr);
+        // Note: This is a temporary forward decl used only for CallExpr creation
+        // We use nullptr as DeclContext since we don't have the original declaration
+        FunctionDecl *FuncDecl = Builder.funcDecl(FuncName, RetType, Params, nullptr, CC_C, false, nullptr);
 
         // Create call expression
         CallExpr *Call = Builder.call(FuncDecl, Args);
@@ -3138,11 +3316,22 @@ Expr *CppToCVisitor::translateCallExpr(CallExpr *CE) {
         // Phase 40 (Bug Fix): Convert return type - use translateTypeToCContext
         QualType RetType = translateTypeToCContext(Method->getReturnType());
 
+        // Get target location for this forward declaration
+        auto [fwdTargetPath, fwdC_TU] = getTargetForNode(Method);
+
         // Create function declaration
-        FunctionDecl *CFuncDecl = Builder.funcDecl(funcName, RetType, params, nullptr);
+        FunctionDecl *CFuncDecl = Builder.funcDecl(funcName, RetType, params, nullptr, CC_C, false, fwdC_TU);
 
         // Add declaration to C TranslationUnit so it appears in the header
-        C_TranslationUnit->addDecl(CFuncDecl);
+        fwdC_TU->addDecl(CFuncDecl);
+        llvm::outs() << "  -> [DEBUG addDecl FORWARD] Added forward decl " << funcName
+                     << " (FuncDecl @ " << (void*)CFuncDecl << ") to C_TU @ " << (void*)fwdC_TU << " (" << fwdTargetPath << ")"
+                     << (CFuncDecl->hasBody() ? " [HAS BODY]" : " [NO BODY]")
+                     << " [DeclContext @ " << (void*)CFuncDecl->getDeclContext() << "]";
+        if (CFuncDecl->getPreviousDecl()) {
+          llvm::outs() << " [has previous decl @ " << (void*)CFuncDecl->getPreviousDecl() << "]";
+        }
+        llvm::outs() << "\n";
 
         // Bug #43 FIX: Store in targetCtx.getMethodMap() map using canonical decl as key
         // This ensures consistency with VisitCXXMethodDecl which also uses canonical
@@ -3268,8 +3457,11 @@ Expr *CppToCVisitor::translateCallExpr(CallExpr *CE) {
             // Convert return type
             QualType RetType = translateTypeToCContext(Method->getReturnType());
 
+            // Get target location for this forward declaration
+            auto [staticFwdTargetPath, staticFwdC_TU] = getTargetForNode(Method);
+
             // Create C function declaration
-            FunctionDecl *CFuncDecl = Builder.funcDecl(funcName, RetType, params, nullptr);
+            FunctionDecl *CFuncDecl = Builder.funcDecl(funcName, RetType, params, nullptr, CC_C, false, staticFwdC_TU);
 
             // Store in map for future use
             targetCtx.getMethodMap()[methodKey] = CFuncDecl;
@@ -4254,7 +4446,11 @@ void CppToCVisitor::generateImplicitConstructors(CXXRecordDecl *D) {
       }
 
       // Phase 32: Add to C TranslationUnit for output generation
-      C_TranslationUnit->addDecl(DefaultCtor);
+      // Note: DeclContext was already set in generateDefaultConstructor()
+      TranslationUnitDecl* defaultCtorC_TU = dyn_cast<TranslationUnitDecl>(DefaultCtor->getDeclContext());
+      if (defaultCtorC_TU) {
+        defaultCtorC_TU->addDecl(DefaultCtor);
+      }
     }
   }
 
@@ -4282,7 +4478,11 @@ void CppToCVisitor::generateImplicitConstructors(CXXRecordDecl *D) {
       }
 
       // Phase 32: Add to C TranslationUnit for output generation
-      C_TranslationUnit->addDecl(CopyCtor);
+      // Note: DeclContext was already set in generateCopyConstructor()
+      TranslationUnitDecl* copyCtorC_TU = dyn_cast<TranslationUnitDecl>(CopyCtor->getDeclContext());
+      if (copyCtorC_TU) {
+        copyCtorC_TU->addDecl(CopyCtor);
+      }
     }
   }
 }
@@ -4324,9 +4524,13 @@ FunctionDecl *CppToCVisitor::generateDefaultConstructor(CXXRecordDecl *D) {
   // Generate constructor name: Class__ctor_default
   std::string funcName = D->getName().str() + "__ctor_default";
 
+  // Get target location for implicit default constructor
+  auto [defaultCtorTargetPath, defaultCtorC_TU] = getTargetForNode(D);
+
   // Create C init function
+  // Pass defaultCtorC_TU as DeclContext for proper file organization
   FunctionDecl *CFunc =
-      Builder.funcDecl(funcName, Builder.voidType(), params, nullptr);
+      Builder.funcDecl(funcName, Builder.voidType(), params, nullptr, CC_C, false, defaultCtorC_TU);
 
   // Bug #19: Make implicit constructors static to avoid linker conflicts
   // Since this is an implicit constructor, it's generated in every translation
@@ -4490,9 +4694,13 @@ FunctionDecl *CppToCVisitor::generateCopyConstructor(CXXRecordDecl *D) {
   // Generate constructor name: Class__ctor_copy
   std::string funcName = D->getName().str() + "__ctor_copy";
 
+  // Get target location for implicit copy constructor
+  auto [copyCtorTargetPath, copyCtorC_TU] = getTargetForNode(D);
+
   // Create C init function
+  // Pass copyCtorC_TU as DeclContext for proper file organization
   FunctionDecl *CFunc =
-      Builder.funcDecl(funcName, Builder.voidType(), params, nullptr);
+      Builder.funcDecl(funcName, Builder.voidType(), params, nullptr, CC_C, false, copyCtorC_TU);
 
   // Bug #19: Make implicit constructors static to avoid linker conflicts
   // Since this is an implicit constructor, it's generated in every translation
@@ -4624,8 +4832,9 @@ FunctionDecl *CppToCVisitor::generateCopyConstructor(CXXRecordDecl *D) {
         memcpyParams.push_back(Builder.param(ConstVoidPtrTy, "src"));
         memcpyParams.push_back(Builder.param(SizeTy, "n"));
 
+        // Use the same C_TU that we determined earlier for the copy constructor
         FunctionDecl *MemcpyDecl = Builder.funcDecl(
-            "memcpy", VoidPtrTy, memcpyParams, nullptr);
+            "memcpy", VoidPtrTy, memcpyParams, nullptr, CC_C, false, copyCtorC_TU);
         assert(MemcpyDecl != nullptr && "generateCopyConstructor: MemcpyDecl is null!");
 
         // Create arguments for memcpy call
@@ -4958,11 +5167,12 @@ bool CppToCVisitor::VisitCXXOperatorCallExpr(CXXOperatorCallExpr *E) {
     llvm::outs() << "  -> Translating multidimensional subscript operator ["
                  << (E->getNumArgs() - 1) << "D]\n";
 
-    auto* C_Call = m_multidimSubscriptTrans->transform(E, Context, C_TranslationUnit);
+    auto [subscriptTargetPath, subscriptC_TU] = getTargetForNode(MethodDecl);
+    auto* C_Call = m_multidimSubscriptTrans->transform(E, Context, subscriptC_TU);
     if (C_Call) {
       // Translation successful
       // Note: AST replacement would happen here in a full implementation
-      // For now, we've generated the function declaration in C_TranslationUnit
+      // For now, we've generated the function declaration in the correct C_TU
     }
   }
 
@@ -5176,13 +5386,16 @@ void CppToCVisitor::processTemplateInstantiations(TranslationUnitDecl *TU) {
 
     llvm::outs() << "  Generating AST for: " << key << "\n";
 
+    // Get target location for template instantiation
+    auto [templateTargetPath, templateC_TU] = getTargetForNode(classInst);
+
     // Generate monomorphized C struct AST node
     RecordDecl* CStruct = m_templateMonomorphizer->monomorphizeClass(classInst);
     if (CStruct) {
       // BUG #3 FIX: Add struct to per-file C_TranslationUnit for emission
       // CNodeBuilder adds to shared TU, but we need it in per-file C_TU
-      C_TranslationUnit->addDecl(CStruct);
-      llvm::outs() << "    -> Created struct: " << CStruct->getNameAsString() << " and added to C_TU\n";
+      templateC_TU->addDecl(CStruct);
+      llvm::outs() << "    -> Created struct: " << CStruct->getNameAsString() << " and added to C_TU @ " << templateTargetPath << "\n";
 
       // Generate method functions
       std::vector<FunctionDecl*> methods =
@@ -5190,7 +5403,7 @@ void CppToCVisitor::processTemplateInstantiations(TranslationUnitDecl *TU) {
 
       // BUG #3 FIX: Add method functions to per-file C_TranslationUnit for emission
       for (FunctionDecl* method : methods) {
-        C_TranslationUnit->addDecl(method);
+        templateC_TU->addDecl(method);
       }
 
       llvm::outs() << "    -> Created " << methods.size() << " method function(s) and added to C_TU\n";
@@ -5329,13 +5542,16 @@ void CppToCVisitor::processTemplateInstantiations(TranslationUnitDecl *TU) {
 
     llvm::outs() << "  Generating AST for: " << key << "\n";
 
+    // Get target location for template function instantiation
+    auto [funcTemplateTargetPath, funcTemplateC_TU] = getTargetForNode(funcInst);
+
     // Generate monomorphized C function AST node
     FunctionDecl* CFunc = m_templateMonomorphizer->monomorphizeFunction(funcInst);
     if (CFunc) {
       // BUG #3 FIX: Add function to per-file C_TranslationUnit for emission
       // CNodeBuilder adds to shared TU, but we need it in per-file C_TU
-      C_TranslationUnit->addDecl(CFunc);
-      llvm::outs() << "    -> Created function: " << CFunc->getNameAsString() << " and added to C_TU\n";
+      funcTemplateC_TU->addDecl(CFunc);
+      llvm::outs() << "    -> Created function: " << CFunc->getNameAsString() << " and added to C_TU @ " << funcTemplateTargetPath << "\n";
     }
   }
 

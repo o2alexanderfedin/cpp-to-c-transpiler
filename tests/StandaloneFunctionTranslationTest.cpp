@@ -51,7 +51,8 @@ TEST_F(StandaloneFunctionTranslationTest, SimpleFunctionDeclaration) {
       cpptoc::FileOriginTracker tracker(AST->getASTContext().getSourceManager());
     tracker.addUserHeaderPath("<stdin>");
     clang::TranslationUnitDecl *C_TU = clang::TranslationUnitDecl::Create(AST->getASTContext());
-    CppToCVisitor visitor(AST->getASTContext(), builder, tracker, C_TU);
+    TargetContext& targetCtx = TargetContext::getInstance();
+    CppToCVisitor visitor(AST->getASTContext(), builder, targetCtx, tracker, C_TU, nullptr);
 
       // Run visitor on AST
       visitor.TraverseDecl(AST->getASTContext().getTranslationUnitDecl());
@@ -78,7 +79,8 @@ TEST_F(StandaloneFunctionTranslationTest, FunctionWithPointerReturn) {
       cpptoc::FileOriginTracker tracker(AST->getASTContext().getSourceManager());
     tracker.addUserHeaderPath("<stdin>");
     clang::TranslationUnitDecl *C_TU = clang::TranslationUnitDecl::Create(AST->getASTContext());
-    CppToCVisitor visitor(AST->getASTContext(), builder, tracker, C_TU);
+    TargetContext& targetCtx = TargetContext::getInstance();
+    CppToCVisitor visitor(AST->getASTContext(), builder, targetCtx, tracker, C_TU, nullptr);
 
       visitor.TraverseDecl(AST->getASTContext().getTranslationUnitDecl());
 
@@ -106,7 +108,8 @@ TEST_F(StandaloneFunctionTranslationTest, OverloadedFunctions) {
       cpptoc::FileOriginTracker tracker(AST->getASTContext().getSourceManager());
     tracker.addUserHeaderPath("<stdin>");
     clang::TranslationUnitDecl *C_TU = clang::TranslationUnitDecl::Create(AST->getASTContext());
-    CppToCVisitor visitor(AST->getASTContext(), builder, tracker, C_TU);
+    TargetContext& targetCtx = TargetContext::getInstance();
+    CppToCVisitor visitor(AST->getASTContext(), builder, targetCtx, tracker, C_TU, nullptr);
 
       visitor.TraverseDecl(AST->getASTContext().getTranslationUnitDecl());
 
@@ -135,7 +138,8 @@ TEST_F(StandaloneFunctionTranslationTest, RecursiveFunction) {
       cpptoc::FileOriginTracker tracker(AST->getASTContext().getSourceManager());
     tracker.addUserHeaderPath("<stdin>");
     clang::TranslationUnitDecl *C_TU = clang::TranslationUnitDecl::Create(AST->getASTContext());
-    CppToCVisitor visitor(AST->getASTContext(), builder, tracker, C_TU);
+    TargetContext& targetCtx = TargetContext::getInstance();
+    CppToCVisitor visitor(AST->getASTContext(), builder, targetCtx, tracker, C_TU, nullptr);
 
       visitor.TraverseDecl(AST->getASTContext().getTranslationUnitDecl());
 
@@ -158,7 +162,8 @@ TEST_F(StandaloneFunctionTranslationTest, MainFunction) {
       cpptoc::FileOriginTracker tracker(AST->getASTContext().getSourceManager());
     tracker.addUserHeaderPath("<stdin>");
     clang::TranslationUnitDecl *C_TU = clang::TranslationUnitDecl::Create(AST->getASTContext());
-    CppToCVisitor visitor(AST->getASTContext(), builder, tracker, C_TU);
+    TargetContext& targetCtx = TargetContext::getInstance();
+    CppToCVisitor visitor(AST->getASTContext(), builder, targetCtx, tracker, C_TU, nullptr);
 
       visitor.TraverseDecl(AST->getASTContext().getTranslationUnitDecl());
 
@@ -183,7 +188,8 @@ TEST_F(StandaloneFunctionTranslationTest, StaticFunction) {
       cpptoc::FileOriginTracker tracker(AST->getASTContext().getSourceManager());
     tracker.addUserHeaderPath("<stdin>");
     clang::TranslationUnitDecl *C_TU = clang::TranslationUnitDecl::Create(AST->getASTContext());
-    CppToCVisitor visitor(AST->getASTContext(), builder, tracker, C_TU);
+    TargetContext& targetCtx = TargetContext::getInstance();
+    CppToCVisitor visitor(AST->getASTContext(), builder, targetCtx, tracker, C_TU, nullptr);
 
       visitor.TraverseDecl(AST->getASTContext().getTranslationUnitDecl());
 
@@ -209,7 +215,8 @@ TEST_F(StandaloneFunctionTranslationTest, ExternFunction) {
       cpptoc::FileOriginTracker tracker(AST->getASTContext().getSourceManager());
     tracker.addUserHeaderPath("<stdin>");
     clang::TranslationUnitDecl *C_TU = clang::TranslationUnitDecl::Create(AST->getASTContext());
-    CppToCVisitor visitor(AST->getASTContext(), builder, tracker, C_TU);
+    TargetContext& targetCtx = TargetContext::getInstance();
+    CppToCVisitor visitor(AST->getASTContext(), builder, targetCtx, tracker, C_TU, nullptr);
 
       visitor.TraverseDecl(AST->getASTContext().getTranslationUnitDecl());
 
@@ -234,7 +241,8 @@ TEST_F(StandaloneFunctionTranslationTest, VariadicFunction) {
       cpptoc::FileOriginTracker tracker(AST->getASTContext().getSourceManager());
     tracker.addUserHeaderPath("<stdin>");
     clang::TranslationUnitDecl *C_TU = clang::TranslationUnitDecl::Create(AST->getASTContext());
-    CppToCVisitor visitor(AST->getASTContext(), builder, tracker, C_TU);
+    TargetContext& targetCtx = TargetContext::getInstance();
+    CppToCVisitor visitor(AST->getASTContext(), builder, targetCtx, tracker, C_TU, nullptr);
 
       visitor.TraverseDecl(AST->getASTContext().getTranslationUnitDecl());
 
@@ -258,7 +266,8 @@ TEST_F(StandaloneFunctionTranslationTest, InlineFunction) {
       cpptoc::FileOriginTracker tracker(AST->getASTContext().getSourceManager());
     tracker.addUserHeaderPath("<stdin>");
     clang::TranslationUnitDecl *C_TU = clang::TranslationUnitDecl::Create(AST->getASTContext());
-    CppToCVisitor visitor(AST->getASTContext(), builder, tracker, C_TU);
+    TargetContext& targetCtx = TargetContext::getInstance();
+    CppToCVisitor visitor(AST->getASTContext(), builder, targetCtx, tracker, C_TU, nullptr);
 
       visitor.TraverseDecl(AST->getASTContext().getTranslationUnitDecl());
 
@@ -290,7 +299,8 @@ TEST_F(StandaloneFunctionTranslationTest, MutuallyRecursiveFunctions) {
       cpptoc::FileOriginTracker tracker(AST->getASTContext().getSourceManager());
     tracker.addUserHeaderPath("<stdin>");
     clang::TranslationUnitDecl *C_TU = clang::TranslationUnitDecl::Create(AST->getASTContext());
-    CppToCVisitor visitor(AST->getASTContext(), builder, tracker, C_TU);
+    TargetContext& targetCtx = TargetContext::getInstance();
+    CppToCVisitor visitor(AST->getASTContext(), builder, targetCtx, tracker, C_TU, nullptr);
 
       visitor.TraverseDecl(AST->getASTContext().getTranslationUnitDecl());
 
@@ -316,7 +326,8 @@ TEST_F(StandaloneFunctionTranslationTest, ConstQualifiedParameter) {
       cpptoc::FileOriginTracker tracker(AST->getASTContext().getSourceManager());
     tracker.addUserHeaderPath("<stdin>");
     clang::TranslationUnitDecl *C_TU = clang::TranslationUnitDecl::Create(AST->getASTContext());
-    CppToCVisitor visitor(AST->getASTContext(), builder, tracker, C_TU);
+    TargetContext& targetCtx = TargetContext::getInstance();
+    CppToCVisitor visitor(AST->getASTContext(), builder, targetCtx, tracker, C_TU, nullptr);
 
       visitor.TraverseDecl(AST->getASTContext().getTranslationUnitDecl());
 
@@ -343,7 +354,8 @@ TEST_F(StandaloneFunctionTranslationTest, VoidReturnFunction) {
       cpptoc::FileOriginTracker tracker(AST->getASTContext().getSourceManager());
     tracker.addUserHeaderPath("<stdin>");
     clang::TranslationUnitDecl *C_TU = clang::TranslationUnitDecl::Create(AST->getASTContext());
-    CppToCVisitor visitor(AST->getASTContext(), builder, tracker, C_TU);
+    TargetContext& targetCtx = TargetContext::getInstance();
+    CppToCVisitor visitor(AST->getASTContext(), builder, targetCtx, tracker, C_TU, nullptr);
 
       visitor.TraverseDecl(AST->getASTContext().getTranslationUnitDecl());
 
@@ -367,7 +379,8 @@ TEST_F(StandaloneFunctionTranslationTest, OverloadingDifferentParamCounts) {
       cpptoc::FileOriginTracker tracker(AST->getASTContext().getSourceManager());
     tracker.addUserHeaderPath("<stdin>");
     clang::TranslationUnitDecl *C_TU = clang::TranslationUnitDecl::Create(AST->getASTContext());
-    CppToCVisitor visitor(AST->getASTContext(), builder, tracker, C_TU);
+    TargetContext& targetCtx = TargetContext::getInstance();
+    CppToCVisitor visitor(AST->getASTContext(), builder, targetCtx, tracker, C_TU, nullptr);
 
       visitor.TraverseDecl(AST->getASTContext().getTranslationUnitDecl());
 
@@ -402,7 +415,8 @@ TEST_F(StandaloneFunctionTranslationTest, NoParameterFunction) {
       cpptoc::FileOriginTracker tracker(AST->getASTContext().getSourceManager());
     tracker.addUserHeaderPath("<stdin>");
     clang::TranslationUnitDecl *C_TU = clang::TranslationUnitDecl::Create(AST->getASTContext());
-    CppToCVisitor visitor(AST->getASTContext(), builder, tracker, C_TU);
+    TargetContext& targetCtx = TargetContext::getInstance();
+    CppToCVisitor visitor(AST->getASTContext(), builder, targetCtx, tracker, C_TU, nullptr);
 
       visitor.TraverseDecl(AST->getASTContext().getTranslationUnitDecl());
 

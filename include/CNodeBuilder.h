@@ -890,7 +890,7 @@ public:
   FunctionDecl *funcDecl(llvm::StringRef name, QualType retType,
                          llvm::ArrayRef<ParmVarDecl *> params,
                          Stmt *body = nullptr, CallingConv callConv = CC_C,
-                         bool isVariadic = false) {
+                         bool isVariadic = false, DeclContext *DC = nullptr) {
     // CRITICAL: Return type must be valid
     assert(!retType.isNull() && "funcDecl: Return type is null!");
 
@@ -915,8 +915,12 @@ public:
     QualType funcType = Ctx.getFunctionType(retType, paramTypes, EPI);
     assert(!funcType.isNull() && "funcDecl: Function type is null!");
 
+    // Use provided DeclContext if given, otherwise fall back to global TU
+    // IMPORTANT: Callers should provide file-specific TU for proper organization
+    DeclContext *declCtx = DC ? DC : Ctx.getTranslationUnitDecl();
+
     FunctionDecl *FD = FunctionDecl::Create(
-        Ctx, Ctx.getTranslationUnitDecl(), SourceLocation(), SourceLocation(),
+        Ctx, declCtx, SourceLocation(), SourceLocation(),
         DN, funcType, Ctx.getTrivialTypeSourceInfo(funcType), SC_None);
 
     assert(FD != nullptr && "funcDecl: FunctionDecl::Create returned null!");
@@ -933,8 +937,9 @@ public:
       FD->setBody(body);
     }
 
-    // CRITICAL FIX: Add the function to the TranslationUnitDecl so it gets printed
-    Ctx.getTranslationUnitDecl()->addDecl(FD);
+    // REMOVED: Auto-add to shared TU conflicts with per-file TU organization (Bug #30 fix)
+    // Callers now explicitly add to their target C_TranslationUnit via addDecl()
+    // Ctx.getTranslationUnitDecl()->addDecl(FD);
 
     return FD;
   }

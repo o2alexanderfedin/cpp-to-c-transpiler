@@ -22,7 +22,7 @@ static void __cxx_exception_frame__ctor_default(struct __cxx_exception_frame * t
 }
 
 static void __cxx_exception_frame__ctor_copy(struct __cxx_exception_frame * this, const struct __cxx_exception_frame * other) {
-	memcpy(&this->jmpbuf, &other->jmpbuf, sizeof this->jmpbuf);
+	memcpy(&this->jmpbuf, &other->jmpbuf, sizeof(jmp_buf));
 	this->next = other->next;
 	this->actions = other->actions;
 	this->exception_object = other->exception_object;

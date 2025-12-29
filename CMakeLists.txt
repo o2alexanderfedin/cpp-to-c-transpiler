@@ -201,6 +201,7 @@ add_library(cpptoc_core STATIC
     src/dispatch/ParameterHandler.cpp
     src/mapping/PathMapper.cpp
     src/mapping/DeclLocationMapper.cpp
+    src/mapping/DeclMapper.cpp
     src/CFGAnalyzer.cpp
     src/NameMangler.cpp
     src/CodeGenerator.cpp

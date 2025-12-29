@@ -155,3 +155,15 @@ gh api repos/o2alexanderfedin/cpp-to-c-transpiler/collaborators/EitanNahmias -X 
 
 **Committed:** develop branch (0dfb254), merged to main (ed13964)
 
+## Implement Virtual Inheritance - 2025-12-28 01:19
+
+- **Implement virtual inheritance translation** - Add support for C++ virtual inheritance (virtual base classes) in the transpiler. **Problem:** Currently marked as "ON (not implemented)" in runtime configuration. Virtual inheritance is used to prevent diamond problem in multiple inheritance hierarchies - need to translate vtable offsets and ensure single copy of base class members. **Files:** `src/CppToCVisitor.cpp` (class translation), `include/VirtualMethodAnalyzer.h`, `src/VtableGenerator.cpp` (vtable structure). **Solution:** Track virtual bases separately from direct bases, emit offset adjustments in derived class constructors, modify vtable generation to include virtual base offsets.
+
+## Implement Coroutines - 2025-12-28 01:19
+
+- **Implement C++20 coroutines translation** - Add support for co_await, co_yield, and co_return in the transpiler. **Problem:** Currently marked as "ON (not implemented)" in runtime configuration. Coroutines require state machine generation with suspend/resume points. **Files:** `src/CppToCVisitor.cpp` (coroutine detection), `include/CNodeBuilder.h` (new), `runtime/coroutine_runtime.c` (new). **Solution:** Detect coroutine_traits, transform coroutine body into state machine with switch statement, emit promise object and coroutine handle structures, implement RAII for coroutine frame allocation/deallocation.
+
+## Implement Exception Handling - 2025-12-28 01:19
+
+- **Complete exception handling implementation** - Finish or improve exception handling translation (try/catch/throw). **Problem:** Marked as "ON" in runtime configuration but may have incomplete implementation. Exception handling requires stack unwinding, cleanup of automatic objects, and type-based catch matching. **Files:** `src/TryCatchTransformer.cpp`, `src/ThrowTranslator.cpp`, `runtime/exception_runtime.cpp`, `src/ExceptionFrameGenerator.cpp`. **Solution:** Verify setjmp/longjmp implementation handles all edge cases, ensure destructor injection at throw points, test exception safety with RAII objects, validate type matching for catch clauses.
+

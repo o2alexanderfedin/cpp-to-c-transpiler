@@ -10,7 +10,3 @@
 #include <stdint.h>
 #include <stdbool.h>
 
-#include "src/CNodeBuilder.h"
-
-static void CNodeBuilder__ctor_default(struct CNodeBuilder * this);
-static void CNodeBuilder__ctor_copy(struct CNodeBuilder * this, const struct CNodeBuilder * other);

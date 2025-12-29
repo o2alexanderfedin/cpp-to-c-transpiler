@@ -10,7 +10,3 @@
 #include <stdint.h>
 #include <stdbool.h>
 
-#include "src/BaseOffsetCalculator.h"
-
-static void BaseOffsetCalculator__ctor_default(struct BaseOffsetCalculator * this);
-static void BaseOffsetCalculator__ctor_copy(struct BaseOffsetCalculator * this, const struct BaseOffsetCalculator * other);

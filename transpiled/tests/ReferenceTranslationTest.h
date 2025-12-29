@@ -10,10 +10,3 @@
 #include <stdint.h>
 #include <stdbool.h>
 
-#include "src/CNodeBuilder.h"
-#include "src/CodeGenerator.h"
-
-static void CodeGenerator__ctor_default(struct CodeGenerator * this);
-static void CodeGenerator__ctor_copy(struct CodeGenerator * this, const struct CodeGenerator * other);
-static void CNodeBuilder__ctor_default(struct CNodeBuilder * this);
-static void CNodeBuilder__ctor_copy(struct CNodeBuilder * this, const struct CNodeBuilder * other);

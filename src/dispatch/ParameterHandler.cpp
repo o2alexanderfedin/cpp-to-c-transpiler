@@ -7,7 +7,7 @@
  */
 
 #include "dispatch/ParameterHandler.h"
-#include "mapping/PathMapper.h"
+#include "mapping/DeclMapper.h"
 #include "llvm/Support/Casting.h"
 #include "llvm/Support/raw_ostream.h"
 #include <cassert>
@@ -64,8 +64,8 @@ void ParameterHandler::handleParameter(
     assert(cParam && "Failed to create C ParmVarDecl");
 
     // Store mapping so FunctionHandler can retrieve this created parameter
-    cpptoc::PathMapper& pathMapper = disp.getPathMapper();
-    pathMapper.setCreatedDecl(cppParam, cParam);
+    cpptoc::DeclMapper& declMapper = disp.getDeclMapper();
+    declMapper.setCreatedDecl(cppParam, cParam);
 
     // Debug output for verification
     llvm::outs() << "[ParameterHandler] Translated parameter: " << paramName

@@ -126,7 +126,9 @@ public:
 
         // Create and run visitor to traverse AST
         // Bug Fix: Pass TargetContext for shared constructor/method/destructor maps
-        CppToCVisitor Visitor(Context, Builder, targetCtx, tracker, C_TU);
+        // PathMapper integration: Pass nullptr for now (PathMapper managed externally)
+        // Refactoring: Removed C_TU parameter - visitor now uses location-based getTargetForNode()
+        CppToCVisitor Visitor(Context, Builder, targetCtx, tracker, nullptr);
         auto *TU = Context.getTranslationUnitDecl();
         Visitor.TraverseDecl(TU);
 

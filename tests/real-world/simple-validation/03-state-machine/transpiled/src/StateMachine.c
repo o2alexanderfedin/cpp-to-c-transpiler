@@ -3,28 +3,30 @@
 
 #include "StateMachine.h"
 
-static void StateMachine__ctor_copy(struct StateMachine * this, const struct StateMachine * other) {
-	this->currentState = other->currentState;
-	this->transitionCount = other->transitionCount;
-}
-
 void StateMachine__ctor_1(struct StateMachine * this, int initialState) {
 	this->currentState = initialState;
 	this->transitionCount = 0;
 }
 
-bool StateMachine_isValidTransition_GameState_GameState(struct StateMachine * this, int from, int to);
-int StateMachine_getCurrentState(struct StateMachine * this) {
+extern void StateMachine_transition_GameState(struct StateMachine * this, int newState) {
+	if (StateMachine_isValidTransition_GameState_GameState(this, this->currentState, newState)) 	{
+		this->currentState = newState;
+		this->transitionCount++;
+	}
+
+}
+
+extern int StateMachine_getCurrentState(struct StateMachine * this) {
 	return this->currentState;
 ;
 }
 
-int StateMachine_getTransitionCount(struct StateMachine * this) {
+extern int StateMachine_getTransitionCount(struct StateMachine * this) {
 	return this->transitionCount;
 ;
 }
 
-bool StateMachine_isValidTransition_GameState_GameState(struct StateMachine * this, int from, int to) {
+extern bool StateMachine_isValidTransition_GameState_GameState(struct StateMachine * this, int from, int to) {
 	switch (from) 	{
 		case GameState__Menu:
 			return to == GameState__Playing;

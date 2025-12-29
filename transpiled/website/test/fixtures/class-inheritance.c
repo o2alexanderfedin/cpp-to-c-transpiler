@@ -4,6 +4,7 @@
 #include "class-inheritance.h"
 
 static void Shape__ctor_copy(struct Shape * this, const struct Shape * other) {
+	this->vptr = other->vptr;
 	this->width = other->width;
 	this->height = other->height;
 }
@@ -25,6 +26,9 @@ int Shape_getHeight(struct Shape * this) {
 }
 
 static void Rectangle__ctor_copy(struct Rectangle * this, const struct Rectangle * other) {
+	this->vptr = other->vptr;
+	this->width = other->width;
+	this->height = other->height;
 }
 
 void Rectangle__ctor_2(struct Rectangle * this, int w, int h) {
@@ -33,6 +37,9 @@ void Rectangle__ctor_2(struct Rectangle * this, int w, int h) {
 }
 
 static void Triangle__ctor_copy(struct Triangle * this, const struct Triangle * other) {
+	this->vptr = other->vptr;
+	this->width = other->width;
+	this->height = other->height;
 }
 
 void Triangle__ctor_2(struct Triangle * this, int w, int h) {

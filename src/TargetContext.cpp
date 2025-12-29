@@ -117,3 +117,63 @@ void TargetContext::cleanup() {
         instance = nullptr;
     }
 }
+
+// Phase 1.1: Node tracking and deduplication methods
+
+clang::EnumDecl* TargetContext::findEnum(const std::string& name) {
+    auto it = globalEnums.find(name);
+    if (it != globalEnums.end()) {
+        return it->second;
+    }
+    return nullptr;
+}
+
+clang::RecordDecl* TargetContext::findStruct(const std::string& name) {
+    auto it = globalStructs.find(name);
+    if (it != globalStructs.end()) {
+        return it->second;
+    }
+    return nullptr;
+}
+
+clang::TypedefDecl* TargetContext::findTypedef(const std::string& name) {
+    auto it = globalTypedefs.find(name);
+    if (it != globalTypedefs.end()) {
+        return it->second;
+    }
+    return nullptr;
+}
+
+void TargetContext::recordNode(const clang::Decl* node, const std::string& location) {
+    if (!node) return;
+
+    nodeToLocation[node] = location;
+
+    // Also record in type-specific maps for deduplication
+    if (auto enumDecl = llvm::dyn_cast<clang::EnumDecl>(node)) {
+        std::string name = enumDecl->getNameAsString();
+        if (!name.empty()) {
+            globalEnums[name] = const_cast<clang::EnumDecl*>(enumDecl);
+        }
+    } else if (auto recordDecl = llvm::dyn_cast<clang::RecordDecl>(node)) {
+        std::string name = recordDecl->getNameAsString();
+        if (!name.empty()) {
+            globalStructs[name] = const_cast<clang::RecordDecl*>(recordDecl);
+        }
+    } else if (auto typedefDecl = llvm::dyn_cast<clang::TypedefDecl>(node)) {
+        std::string name = typedefDecl->getNameAsString();
+        if (!name.empty()) {
+            globalTypedefs[name] = const_cast<clang::TypedefDecl*>(typedefDecl);
+        }
+    }
+}
+
+std::string TargetContext::getLocation(const clang::Decl* node) const {
+    if (!node) return "";
+
+    auto it = nodeToLocation.find(node);
+    if (it != nodeToLocation.end()) {
+        return it->second;
+    }
+    return "";
+}

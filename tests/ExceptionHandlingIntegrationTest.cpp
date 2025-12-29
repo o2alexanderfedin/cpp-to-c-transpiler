@@ -169,7 +169,8 @@ bool runVisitorOnCode(const std::string& cpp_code) {
     cpptoc::FileOriginTracker tracker(Context.getSourceManager());
     tracker.addUserHeaderPath("<stdin>");
     clang::TranslationUnitDecl *C_TU = clang::TranslationUnitDecl::Create(Context);
-    CppToCVisitor Visitor(Context, Builder, tracker, C_TU);
+    TargetContext& targetCtx = TargetContext::getInstance();
+    CppToCVisitor Visitor(Context, Builder, targetCtx, tracker, C_TU, nullptr);
 
     // Traverse the AST
     Visitor.TraverseDecl(Context.getTranslationUnitDecl());

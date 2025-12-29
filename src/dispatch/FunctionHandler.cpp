@@ -8,6 +8,7 @@
 
 #include "dispatch/FunctionHandler.h"
 #include "CNodeBuilder.h"
+#include "mapping/DeclMapper.h"
 #include "clang/AST/DeclCXX.h"
 #include "llvm/Support/Casting.h"
 #include "llvm/Support/raw_ostream.h"
@@ -147,9 +148,9 @@ std::vector<clang::ParmVarDecl*> FunctionHandler::translateParameters(
             continue;
         }
 
-        // Retrieve created C parameter from PathMapper
-        cpptoc::PathMapper& pathMapper = disp.getPathMapper();
-        clang::Decl* cDecl = pathMapper.getCreatedDecl(cppParam);
+        // Retrieve created C parameter from DeclMapper
+        cpptoc::DeclMapper& declMapper = disp.getDeclMapper();
+        clang::Decl* cDecl = declMapper.getCreatedDecl(cppParam);
 
         if (!cDecl) {
             llvm::errs() << "[FunctionHandler] Error: ParameterHandler did not create C parameter for: "

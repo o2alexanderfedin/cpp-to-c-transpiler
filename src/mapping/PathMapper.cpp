@@ -242,36 +242,4 @@ std::vector<const clang::Decl*> PathMapper::getAllNodesForFile(const std::string
   return result;
 }
 
-// C++ → C declaration mapping methods
-
-void PathMapper::setCreatedDecl(const clang::Decl* cppDecl, clang::Decl* cDecl) {
-  if (!cppDecl || !cDecl) {
-    llvm::outs() << "[PathMapper::setCreatedDecl] Warning: nullptr argument\n";
-    return;
-  }
-
-  cppToCDeclMap_[cppDecl] = cDecl;
-
-  llvm::outs() << "[PathMapper::setCreatedDecl] Mapped C++ decl " << (const void*)cppDecl
-               << " → C decl " << (const void*)cDecl << "\n";
-}
-
-clang::Decl* PathMapper::getCreatedDecl(const clang::Decl* cppDecl) const {
-  if (!cppDecl) {
-    llvm::outs() << "[PathMapper::getCreatedDecl] Warning: nullptr cppDecl\n";
-    return nullptr;
-  }
-
-  auto it = cppToCDeclMap_.find(cppDecl);
-  if (it != cppToCDeclMap_.end()) {
-    llvm::outs() << "[PathMapper::getCreatedDecl] Found C decl " << (const void*)it->second
-                 << " for C++ decl " << (const void*)cppDecl << "\n";
-    return it->second;
-  }
-
-  llvm::outs() << "[PathMapper::getCreatedDecl] Warning: No C decl found for C++ decl "
-               << (const void*)cppDecl << "\n";
-  return nullptr;
-}
-
 } // namespace cpptoc

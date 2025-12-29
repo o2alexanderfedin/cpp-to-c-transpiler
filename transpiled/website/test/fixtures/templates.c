@@ -3,12 +3,12 @@
 
 #include "templates.h"
 
-T maximum(T a, T b) {
+int maximum(int a, int b) {
 	return (a > b) ? a : b;
 ;
 }
 
-void swapValues(T * a, T * b) {
+void swapValues(int * a, int * b) {
 	T temp = a;
 	a = b;
 	b = temp;
