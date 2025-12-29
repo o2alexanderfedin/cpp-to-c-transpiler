@@ -18,10 +18,10 @@ TargetContext::TargetContext() {
     // 2. Create DiagnosticsEngine with diagnostic options
     // Bug #31 FIX: Store DiagClient in unique_ptr to ensure proper cleanup
     clang::IntrusiveRefCntPtr<clang::DiagnosticIDs> DiagID(new clang::DiagnosticIDs());
-    auto DiagOpts = std::make_unique<clang::DiagnosticOptions>();
+    clang::IntrusiveRefCntPtr<clang::DiagnosticOptions> DiagOpts(new clang::DiagnosticOptions());
     DiagClient = std::make_unique<clang::IgnoringDiagConsumer>();
     Diagnostics = std::make_unique<clang::DiagnosticsEngine>(
-        DiagID, *DiagOpts, DiagClient.get());
+        DiagID, DiagOpts, DiagClient.get());
 
     // 3. Create SourceManager
     SourceMgr = std::make_unique<clang::SourceManager>(*Diagnostics, *FileMgr);
@@ -30,7 +30,7 @@ TargetContext::TargetContext() {
     std::string TargetTriple = llvm::sys::getDefaultTargetTriple();
     auto TargetOpts = std::make_shared<clang::TargetOptions>();
     TargetOpts->Triple = TargetTriple;
-    Target.reset(clang::TargetInfo::CreateTargetInfo(*Diagnostics, *TargetOpts));
+    Target.reset(clang::TargetInfo::CreateTargetInfo(*Diagnostics, TargetOpts));
 
     // 5. Create LangOptions for C11
     clang::LangOptions LangOpts;

@@ -30,9 +30,9 @@ std::string transpileToCCode(const std::string &cppCode) {
     CNodeBuilder builder(Context);
     cpptoc::FileOriginTracker tracker(Context.getSourceManager());
     tracker.addUserHeaderPath(".");
-    clang::TranslationUnitDecl *C_TU = clang::TranslationUnitDecl::Create(Context);
+    TargetContext& targetCtx = TargetContext::getInstance();
 
-    CppToCVisitor visitor(Context, builder, tracker, C_TU);
+    CppToCVisitor visitor(Context, builder, targetCtx, tracker, nullptr);
     visitor.TraverseDecl(Context.getTranslationUnitDecl());
 
     // Generate C code output from AST

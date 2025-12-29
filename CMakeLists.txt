@@ -2388,6 +2388,7 @@ add_executable(FunctionTranslationIntegrationTest
     src/dispatch/FunctionHandler.cpp
     src/dispatch/ParameterHandler.cpp
     src/dispatch/TypeHandler.cpp
+    src/dispatch/NamespaceHandler.cpp
     src/dispatch/CompoundStmtHandler.cpp
     src/dispatch/ReturnStmtHandler.cpp
     src/dispatch/LiteralHandler.cpp
