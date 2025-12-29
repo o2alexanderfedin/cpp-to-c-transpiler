@@ -11,6 +11,19 @@ void TranslationUnitHandler::registerWith(CppToCVisitorDispatcher& dispatcher) {
     );
 }
 
+std::string TranslationUnitHandler::getSourceFilePath(const clang::ASTContext& cppASTContext) {
+    const clang::SourceManager& SM = cppASTContext.getSourceManager();
+    clang::FileID MainFileID = SM.getMainFileID();
+    const clang::FileEntry* MainFile = SM.getFileEntryForID(MainFileID);
+
+    if (MainFile) {
+        return MainFile->tryGetRealPathName().str();
+    } else {
+        // Fallback for in-memory sources (e.g., tests with buildASTFromCode)
+        return "<stdin>";
+    }
+}
+
 bool TranslationUnitHandler::canHandle(const clang::Decl* D) {
     assert(D && "Declaration must not be null");
 
@@ -30,23 +43,11 @@ void TranslationUnitHandler::handleTranslationUnit(
 
     const auto* cppTU = llvm::cast<clang::TranslationUnitDecl>(D);
 
-    // Get PathMapper from dispatcher to map C++ source → C target
+    // Get PathMapper from dispatcher
     cpptoc::PathMapper& pathMapper = disp.getPathMapper();
 
-    // Get source file path from C++ TranslationUnit via SourceManager
-    const clang::SourceManager& SM = cppASTContext.getSourceManager();
-    clang::FileID MainFileID = SM.getMainFileID();
-    const clang::FileEntry* MainFile = SM.getFileEntryForID(MainFileID);
-
-    std::string sourcePath;
-    if (MainFile) {
-        sourcePath = MainFile->tryGetRealPathName().str();
-    } else {
-        // Fallback for in-memory sources (e.g., tests with buildASTFromCode)
-        sourcePath = "<stdin>";
-    }
-
-    // Map C++ source path to C target path
+    // Get source file path and map to C target path
+    std::string sourcePath = getSourceFilePath(cppASTContext);
     std::string targetPath = pathMapper.mapSourceToTarget(sourcePath);
 
     // Get or create C TranslationUnit for this target file
@@ -56,7 +57,6 @@ void TranslationUnitHandler::handleTranslationUnit(
     // Recursively dispatch all top-level declarations
     // Child handlers will add their C declarations to cTU
     for (auto* TopLevelDecl : cppTU->decls()) {
-        // Dispatch to appropriate handler via dispatcher
         disp.dispatch(cppASTContext, cASTContext, TopLevelDecl);
     }
 }
