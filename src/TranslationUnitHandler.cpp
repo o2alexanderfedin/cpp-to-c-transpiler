@@ -28,7 +28,7 @@ void TranslationUnitHandler::handleTranslationUnit(
     assert(D && "Declaration must not be null");
     assert(D->getKind() == clang::Decl::TranslationUnit && "Must be TranslationUnitDecl");
 
-    auto* TU = llvm::cast<clang::TranslationUnitDecl>(D);
+    const auto* TU = llvm::cast<clang::TranslationUnitDecl>(D);
 
     // Recursively dispatch all top-level declarations
     for (auto* TopLevelDecl : TU->decls()) {
