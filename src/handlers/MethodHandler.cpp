@@ -18,14 +18,20 @@
 namespace cpptoc {
 
 bool MethodHandler::canHandle(const clang::Decl* D) const {
-    // Only handle CXXMethodDecl, but exclude constructors and destructors
+    // Only handle CXXMethodDecl, but exclude constructors, destructors, and static methods
     // Constructors and destructors are handled by separate handlers
+    // Static methods are handled by StaticMethodHandler
     if (const auto* MD = llvm::dyn_cast<clang::CXXMethodDecl>(D)) {
         // Exclude constructors and destructors
         if (llvm::isa<clang::CXXConstructorDecl>(MD) ||
             llvm::isa<clang::CXXDestructorDecl>(MD)) {
             return false;
         }
+        // Exclude static methods (handled by StaticMethodHandler)
+        if (MD->isStatic()) {
+            return false;
+        }
+        // Handle instance methods only
         return true;
     }
     return false;
