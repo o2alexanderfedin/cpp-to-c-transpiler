@@ -674,6 +674,35 @@ gtest_discover_tests(TranslationIntegrationTest
 )
 
 # ============================================================================
+# CppToCVisitorDispatcher Tests
+# ============================================================================
+
+add_executable(DispatcherTest
+    tests/DispatcherTest.cpp
+)
+
+target_compile_definitions(DispatcherTest PRIVATE ${LLVM_DEFINITIONS})
+
+target_include_directories(DispatcherTest PRIVATE
+    ${CMAKE_SOURCE_DIR}/include
+    ${LLVM_INCLUDE_DIRS}
+    ${CLANG_INCLUDE_DIRS}
+)
+
+target_link_libraries(DispatcherTest PRIVATE cpptoc_core
+    clangTooling
+    clangFrontend
+    clangAST
+    clangBasic
+    GTest::gtest
+    GTest::gtest_main)
+
+# Register with CTest
+gtest_discover_tests(DispatcherTest
+    WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
+)
+
+# ============================================================================
 # Epic #4: CodeGenerator Tests (Story #21)
 # ============================================================================
 
