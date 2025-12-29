@@ -30,8 +30,8 @@ void TranslationUnitHandler::handleTranslationUnit(
 
     const auto* cppTU = llvm::cast<clang::TranslationUnitDecl>(D);
 
-    // Get C target path from dispatcher (encapsulates source path extraction + mapping)
-    std::string targetPath = disp.getTargetPath(cppASTContext);
+    // Get C target path from dispatcher (uses AST node's actual location)
+    std::string targetPath = disp.getTargetPath(cppASTContext, D);
 
     // Get or create C TranslationUnit for this target file
     cpptoc::PathMapper& pathMapper = disp.getPathMapper();

@@ -6,15 +6,18 @@
 // Helper Methods
 // ============================================================================
 
-std::string CppToCVisitorDispatcher::getTargetPath(const clang::ASTContext& cppASTContext) const {
-    // Get source file path from SourceManager
+std::string CppToCVisitorDispatcher::getTargetPath(const clang::ASTContext& cppASTContext, const clang::Decl* D) const {
+    assert(D && "AST node must not be null");
+
+    // Get source file path from AST node's location
     const clang::SourceManager& SM = cppASTContext.getSourceManager();
-    clang::FileID MainFileID = SM.getMainFileID();
-    const clang::FileEntry* MainFile = SM.getFileEntryForID(MainFileID);
+    clang::SourceLocation Loc = D->getLocation();
+    clang::FileID FID = SM.getFileID(Loc);
+    const clang::FileEntry* File = SM.getFileEntryForID(FID);
 
     std::string sourcePath;
-    if (MainFile) {
-        sourcePath = MainFile->tryGetRealPathName().str();
+    if (File) {
+        sourcePath = File->tryGetRealPathName().str();
     } else {
         // Fallback for in-memory sources (e.g., tests with buildASTFromCode)
         sourcePath = "<stdin>";

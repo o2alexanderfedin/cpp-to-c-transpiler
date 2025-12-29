@@ -141,18 +141,20 @@ public:
     cpptoc::PathMapper& getPathMapper() const { return pathMapper; }
 
     /**
-     * @brief Helper: Get C target path for current C++ source file
+     * @brief Helper: Get C target path for AST node's source file
      * @param cppASTContext C++ ASTContext containing SourceManager
+     * @param D AST node to get file location from
      * @return C target file path (e.g., "/output/file.c")
      *
      * Common pattern for all handlers:
-     * 1. Extract source file path from C++ ASTContext
+     * 1. Extract source file path from AST node's SourceLocation
      * 2. Map source path to target path via PathMapper
      * 3. Return target path
      *
      * This encapsulates the boilerplate that all handlers need.
+     * More accurate than getMainFileID() - uses actual node location.
      */
-    std::string getTargetPath(const clang::ASTContext& cppASTContext) const;
+    std::string getTargetPath(const clang::ASTContext& cppASTContext, const clang::Decl* D) const;
 
     // Core AST node handlers
     void addHandler(DeclPredicate predicate, DeclVisitor handler);
