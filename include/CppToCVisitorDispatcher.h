@@ -28,6 +28,11 @@
 #include <tuple>
 #include <vector>
 
+// Forward declarations
+namespace cpptoc {
+    class PathMapper;
+}
+
 /**
  * @class CppToCVisitorDispatcher
  * @brief Dispatches Clang AST nodes to registered handlers
@@ -118,8 +123,22 @@ private:
     std::vector<std::tuple<TemplateNamePredicate, TemplateNameVisitor>> templateNameHandlers;
     std::vector<std::tuple<CommentPredicate, CommentVisitor>> commentHandlers;
 
+    // Path mapper for C++ source file → C target file mapping
+    cpptoc::PathMapper* pathMapper;
+
 public:
-    CppToCVisitorDispatcher() = default;
+    /**
+     * @brief Construct dispatcher with optional path mapper
+     * @param mapper PathMapper for source-to-target file mapping (can be nullptr)
+     */
+    explicit CppToCVisitorDispatcher(cpptoc::PathMapper* mapper = nullptr)
+        : pathMapper(mapper) {}
+
+    /**
+     * @brief Get the path mapper
+     * @return Pointer to PathMapper (may be nullptr)
+     */
+    cpptoc::PathMapper* getPathMapper() const { return pathMapper; }
 
     // Core AST node handlers
     void addHandler(DeclPredicate predicate, DeclVisitor handler);
