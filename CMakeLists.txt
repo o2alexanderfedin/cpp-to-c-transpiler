@@ -208,8 +208,11 @@ add_library(cpptoc_core STATIC
     src/dispatch/DeclRefExprHandler.cpp
     src/dispatch/BinaryOperatorHandler.cpp
     src/dispatch/UnaryOperatorHandler.cpp
+    src/dispatch/CommaOperatorHandler.cpp
     src/dispatch/ImplicitCastExprHandler.cpp
+    src/dispatch/ArraySubscriptExprHandler.cpp
     src/dispatch/ParenExprHandler.cpp
+    src/dispatch/MemberExprHandler.cpp
     src/dispatch/StaticMethodHandler.cpp
     src/dispatch/InstanceMethodHandler.cpp
     src/dispatch/VirtualMethodHandler.cpp
@@ -1051,6 +1054,56 @@ gtest_discover_tests(UnaryOperatorHandlerDispatcherTest
     WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
 )
 
+# MemberExprHandler Tests
+add_executable(MemberExprHandlerDispatcherTest
+    tests/unit/dispatch/MemberExprHandlerDispatcherTest.cpp
+)
+
+target_compile_definitions(MemberExprHandlerDispatcherTest PRIVATE ${LLVM_DEFINITIONS})
+
+target_include_directories(MemberExprHandlerDispatcherTest PRIVATE
+    ${CMAKE_SOURCE_DIR}/include
+    ${LLVM_INCLUDE_DIRS}
+    ${CLANG_INCLUDE_DIRS}
+)
+
+target_link_libraries(MemberExprHandlerDispatcherTest
+    cpptoc_core
+    ${LLVM_LIBS}
+    ${CLANG_LIBS}
+    ${SYSTEM_LIBS}
+    GTest::gtest_main
+)
+
+gtest_discover_tests(MemberExprHandlerDispatcherTest
+    WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
+)
+
+# CommaOperatorHandler Tests
+add_executable(CommaOperatorHandlerDispatcherTest
+    tests/unit/dispatch/CommaOperatorHandlerDispatcherTest.cpp
+)
+
+target_compile_definitions(CommaOperatorHandlerDispatcherTest PRIVATE ${LLVM_DEFINITIONS})
+
+target_include_directories(CommaOperatorHandlerDispatcherTest PRIVATE
+    ${CMAKE_SOURCE_DIR}/include
+    ${LLVM_INCLUDE_DIRS}
+    ${CLANG_INCLUDE_DIRS}
+)
+
+target_link_libraries(CommaOperatorHandlerDispatcherTest
+    cpptoc_core
+    ${LLVM_LIBS}
+    ${CLANG_LIBS}
+    ${SYSTEM_LIBS}
+    GTest::gtest_main
+)
+
+gtest_discover_tests(CommaOperatorHandlerDispatcherTest
+    WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
+)
+
 # ImplicitCastExprHandler Tests
 add_executable(ImplicitCastExprHandlerDispatcherTest
     tests/unit/dispatch/ImplicitCastExprHandlerDispatcherTest.cpp
@@ -1073,6 +1126,31 @@ target_link_libraries(ImplicitCastExprHandlerDispatcherTest
 )
 
 gtest_discover_tests(ImplicitCastExprHandlerDispatcherTest
+    WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
+)
+
+# ArraySubscriptExprHandler Tests
+add_executable(ArraySubscriptExprHandlerDispatcherTest
+    tests/unit/dispatch/ArraySubscriptExprHandlerDispatcherTest.cpp
+)
+
+target_compile_definitions(ArraySubscriptExprHandlerDispatcherTest PRIVATE ${LLVM_DEFINITIONS})
+
+target_include_directories(ArraySubscriptExprHandlerDispatcherTest PRIVATE
+    ${CMAKE_SOURCE_DIR}/include
+    ${LLVM_INCLUDE_DIRS}
+    ${CLANG_INCLUDE_DIRS}
+)
+
+target_link_libraries(ArraySubscriptExprHandlerDispatcherTest
+    cpptoc_core
+    ${LLVM_LIBS}
+    ${CLANG_LIBS}
+    ${SYSTEM_LIBS}
+    GTest::gtest_main
+)
+
+gtest_discover_tests(ArraySubscriptExprHandlerDispatcherTest
     WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
 )
 
@@ -2422,6 +2500,50 @@ target_link_libraries(FunctionTranslationIntegrationTest PRIVATE
 # Register with CTest
 gtest_discover_tests(FunctionTranslationIntegrationTest
     WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
+)
+
+# ============================================================================
+# Integration Test: All Operator Handlers Working Together
+# ============================================================================
+
+add_executable(OperatorIntegrationTest
+    tests/integration/OperatorIntegrationTest.cpp
+    src/dispatch/CppToCVisitorDispatcher.cpp
+    src/dispatch/BinaryOperatorHandler.cpp
+    src/dispatch/UnaryOperatorHandler.cpp
+    src/dispatch/CommaOperatorHandler.cpp
+    src/dispatch/MemberExprHandler.cpp
+    src/dispatch/ArraySubscriptExprHandler.cpp
+    src/dispatch/LiteralHandler.cpp
+    src/dispatch/DeclRefExprHandler.cpp
+    src/dispatch/ImplicitCastExprHandler.cpp
+    src/dispatch/ParenExprHandler.cpp
+    src/mapping/PathMapper.cpp
+    src/mapping/DeclLocationMapper.cpp
+    src/TargetContext.cpp
+)
+
+target_compile_definitions(OperatorIntegrationTest PRIVATE ${LLVM_DEFINITIONS})
+
+target_include_directories(OperatorIntegrationTest PRIVATE
+    ${CMAKE_SOURCE_DIR}/include
+    ${LLVM_INCLUDE_DIRS}
+    ${CLANG_INCLUDE_DIRS}
+)
+
+target_link_libraries(OperatorIntegrationTest PRIVATE
+    clangTooling
+    clangFrontend
+    clangAST
+    clangBasic
+    GTest::gtest
+    GTest::gtest_main
+)
+
+# Register with CTest
+gtest_discover_tests(OperatorIntegrationTest
+    WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
+    PROPERTIES LABELS "integration;operators;dispatch"
 )
 
 # ============================================================================
