@@ -197,6 +197,8 @@ add_library(cpptoc_core STATIC
     src/CppToCVisitor.cpp
     src/dispatch/CppToCVisitorDispatcher.cpp
     src/dispatch/TranslationUnitHandler.cpp
+    src/dispatch/FunctionHandler.cpp
+    src/dispatch/ParameterHandler.cpp
     src/mapping/PathMapper.cpp
     src/mapping/DeclLocationMapper.cpp
     src/CFGAnalyzer.cpp
@@ -701,6 +703,35 @@ target_link_libraries(DispatcherTest PRIVATE cpptoc_core
 
 # Register with CTest
 gtest_discover_tests(DispatcherTest
+    WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
+)
+
+# ============================================================================
+# FunctionHandler Dispatcher Tests
+# ============================================================================
+
+add_executable(FunctionHandlerDispatcherTest
+    tests/unit/dispatch/FunctionHandlerDispatcherTest.cpp
+)
+
+target_compile_definitions(FunctionHandlerDispatcherTest PRIVATE ${LLVM_DEFINITIONS})
+
+target_include_directories(FunctionHandlerDispatcherTest PRIVATE
+    ${CMAKE_SOURCE_DIR}/include
+    ${LLVM_INCLUDE_DIRS}
+    ${CLANG_INCLUDE_DIRS}
+)
+
+target_link_libraries(FunctionHandlerDispatcherTest PRIVATE cpptoc_core
+    clangTooling
+    clangFrontend
+    clangAST
+    clangBasic
+    GTest::gtest
+    GTest::gtest_main)
+
+# Register with CTest
+gtest_discover_tests(FunctionHandlerDispatcherTest
     WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
 )
 
