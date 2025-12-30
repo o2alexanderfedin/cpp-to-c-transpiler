@@ -32,12 +32,11 @@
 class TemplateMonomorphizer {
 public:
     /**
-     * @brief Construct monomorphizer with AST context, name mangler, and AST builder
+     * @brief Construct monomorphizer with AST context and AST builder
      * @param Context Clang AST context
-     * @param Mangler Name mangler for generating unique C identifiers
      * @param Builder CNodeBuilder for creating C AST nodes
      */
-    TemplateMonomorphizer(clang::ASTContext& Context, NameMangler& Mangler, clang::CNodeBuilder& Builder);
+    TemplateMonomorphizer(clang::ASTContext& Context, clang::CNodeBuilder& Builder);
 
     /**
      * @brief Generate C struct AST node for a class template instantiation
@@ -87,7 +86,6 @@ public:
 
 private:
     clang::ASTContext& Context;
-    NameMangler& Mangler;
     clang::CNodeBuilder& Builder;
 
     // BUG FIX (Bug #18): Track nested class mappings for type substitution

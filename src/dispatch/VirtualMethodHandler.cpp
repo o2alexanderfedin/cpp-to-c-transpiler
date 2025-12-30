@@ -88,11 +88,9 @@ void VirtualMethodHandler::handleVirtualMethod(
     const clang::CXXRecordDecl* classDecl = cppMethod->getParent();
     assert(classDecl && "Virtual method must have parent class");
 
-    // Phase 3: Use NameMangler with OverloadRegistry for deterministic naming
-    // NameMangler handles: namespace prefix, class prefix, overload resolution
-    cpptoc::OverloadRegistry& registry = cpptoc::OverloadRegistry::getInstance();
-    NameMangler mangler(const_cast<clang::ASTContext&>(cppASTContext), registry);
-    std::string mangledName = mangler.mangleName(const_cast<clang::CXXMethodDecl*>(cppMethod));
+    // Phase 3: Use NameMangler free function for deterministic naming
+    // mangle_method() handles: namespace prefix, class prefix, overload resolution
+    std::string mangledName = cpptoc::mangle_method(cppMethod);
 
     // Generate COM-style static declaration (for compile-time type safety)
     // This is output before vtable struct definitions
@@ -502,12 +500,10 @@ std::string VirtualMethodHandler::generateVtableInstance(
     ss << "    .type_info = &" << className << "__type_info,\n";
 
     // Virtual method pointers
-    // Phase 3: Use NameMangler with OverloadRegistry for each method
+    // Phase 3: Use NameMangler free function for each method
     for (const auto* method : virtualMethods) {
-        // Get method's source ASTContext and use NameMangler
-        cpptoc::OverloadRegistry& registry = cpptoc::OverloadRegistry::getInstance();
-        NameMangler mangler(const_cast<clang::ASTContext&>(method->getASTContext()), registry);
-        std::string methodName = mangler.mangleName(const_cast<clang::CXXMethodDecl*>(method));
+        // Use mangle_method() for deterministic naming
+        std::string methodName = cpptoc::mangle_method(method);
         std::string fieldName = method->getNameAsString();
 
         if (llvm::isa<clang::CXXDestructorDecl>(method)) {

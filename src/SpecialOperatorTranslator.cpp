@@ -7,6 +7,7 @@
  */
 
 #include "SpecialOperatorTranslator.h"
+#include "NameMangler.h"
 #include "clang/AST/Decl.h"
 #include "clang/AST/DeclCXX.h"
 #include "clang/AST/Expr.h"
@@ -21,9 +22,8 @@ using namespace clang;
 // Constructor
 // ============================================================================
 
-SpecialOperatorTranslator::SpecialOperatorTranslator(CNodeBuilder& Builder,
-                                                     NameMangler& Mangler)
-    : m_builder(Builder), m_mangler(Mangler) {
+SpecialOperatorTranslator::SpecialOperatorTranslator(CNodeBuilder& Builder)
+    : m_builder(Builder) {
     llvm::outs() << "SpecialOperatorTranslator initialized (Phase 52)\n";
 }
 
@@ -438,7 +438,7 @@ FunctionDecl* SpecialOperatorTranslator::translateBoolConversion(CXXConversionDe
                  << CD->getQualifiedNameAsString() << "\n";
 
     // Phase 53: Use NameMangler for conversion operator names
-    std::string FnName = m_mangler.mangleConversionOperator(const_cast<CXXConversionDecl*>(CD));
+    std::string FnName = cpptoc::mangle_method(CD);
 
     const CXXRecordDecl* ClassDecl = CD->getParent();
     QualType ClassType = Ctx.getRecordType(ClassDecl);
@@ -466,7 +466,7 @@ FunctionDecl* SpecialOperatorTranslator::translateConversionOperator(CXXConversi
                  << CD->getQualifiedNameAsString() << "\n";
 
     // Phase 53: Use NameMangler for conversion operator names
-    std::string FnName = m_mangler.mangleConversionOperator(const_cast<CXXConversionDecl*>(CD));
+    std::string FnName = cpptoc::mangle_method(CD);
 
     const CXXRecordDecl* ClassDecl = CD->getParent();
     QualType ClassType = Ctx.getRecordType(ClassDecl);
@@ -788,7 +788,7 @@ std::string SpecialOperatorTranslator::generateOperatorName(const CXXMethodDecl*
     }
 
     // Use NameMangler's standard mangling
-    return m_mangler.mangleMethodName(const_cast<CXXMethodDecl*>(MD));
+    return cpptoc::mangle_method(MD);
 }
 
 // Phase 53: Removed generateConversionName() - now using NameMangler::mangleConversionOperator()

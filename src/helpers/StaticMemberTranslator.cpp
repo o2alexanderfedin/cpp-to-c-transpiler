@@ -204,10 +204,9 @@ std::string StaticMemberTranslator::getMangledName(
     VarDecl* member,
     HandlerContext& ctx
 ) {
-    // Phase 2: Use NameMangler with OverloadRegistry for deterministic names
-    cpptoc::OverloadRegistry& registry = cpptoc::OverloadRegistry::getInstance();
-    NameMangler mangler(ctx.getCppContext(), registry);
-    return mangler.mangleStaticMember(record, member);
+    // Use the new NameMangler free function API
+    // mangle_static_member takes a const VarDecl* and returns the mangled name
+    return cpptoc::mangle_static_member(member);
 }
 
 } // namespace cpptoc

@@ -2,9 +2,10 @@
  * @file RecordHandler.cpp
  * @brief Implementation of RecordHandler dispatcher pattern
  *
- * Phase 3: NameMangler Integration
- * - Uses NameMangler::mangleClassName for all class/struct name mangling
- * - Removed custom getMangledName() implementation
+ * Phase 4: NameMangler Free Function API
+ * - Uses cpptoc::mangle_class() free function for all class/struct name mangling
+ * - Eliminated NameMangler instantiation and const_cast calls
+ * - Simplified API: pass const pointers directly to free functions
  * - Consistent with InstanceMethodHandler and StaticMethodHandler
  *
  * Integrates with CppToCVisitorDispatcher to handle struct/class translation.
@@ -18,7 +19,6 @@
 #include "mapping/DeclMapper.h"
 #include "mapping/TypeMapper.h"
 #include "NameMangler.h"
-#include "OverloadRegistry.h"
 #include "clang/AST/DeclCXX.h"
 #include "llvm/Support/Casting.h"
 #include "llvm/Support/raw_ostream.h"
@@ -65,16 +65,12 @@ void RecordHandler::handleRecord(
     // Extract struct/class properties
     std::string name = cppRecord->getNameAsString();
 
-    // Phase 3: Use NameMangler for all name mangling (replaces custom logic)
-    // NameMangler handles both namespace prefixes and nested struct mangling
-    cpptoc::OverloadRegistry& registry = cpptoc::OverloadRegistry::getInstance();
-    NameMangler mangler(const_cast<clang::ASTContext&>(cppASTContext), registry);
-
-    // Convert RecordDecl to CXXRecordDecl for NameMangler
-    // Note: Plain structs (RecordDecl) need to be handled carefully
+    // Phase 4: Use NameMangler free function API (mangle_class)
+    // mangle_class handles both namespace prefixes and nested struct mangling
     std::string mangledName;
     if (const auto* cxxRecord = llvm::dyn_cast<clang::CXXRecordDecl>(cppRecord)) {
-        mangledName = mangler.mangleClassName(const_cast<clang::CXXRecordDecl*>(cxxRecord));
+        // Use new free function API - no instantiation, no const_cast needed
+        mangledName = cpptoc::mangle_class(cxxRecord);
     } else {
         // Plain C struct (RecordDecl) - use simple name
         // TODO: May need to enhance NameMangler to handle RecordDecl too
@@ -277,8 +273,9 @@ void RecordHandler::translateNestedStructs(
     }
 }
 
-// Phase 3: Removed custom getMangledName() - now uses NameMangler::mangleClassName()
-// NameMangler provides unified name mangling for all declarations (classes, methods, functions)
-// and handles both namespaces (single _) and nested structs (double __) correctly
+// Phase 4: Migrated to NameMangler free function API (mangle_class)
+// Free functions provide unified name mangling for all declarations (classes, methods, functions)
+// and handle both namespaces (single _) and nested structs (double __) correctly
+// Benefits: no instantiation overhead, no const_cast needed, cleaner code
 
 } // namespace cpptoc

@@ -22,9 +22,8 @@ using namespace clang;
 // Constructor
 // ============================================================================
 
-ComparisonOperatorTranslator::ComparisonOperatorTranslator(CNodeBuilder& Builder,
-                                                           NameMangler& Mangler)
-    : m_builder(Builder), m_mangler(Mangler) {
+ComparisonOperatorTranslator::ComparisonOperatorTranslator(CNodeBuilder& Builder)
+    : m_builder(Builder) {
     llvm::outs() << "ComparisonOperatorTranslator initialized (Phase 51)\n";
 }
 
@@ -310,8 +309,8 @@ CallExpr* ComparisonOperatorTranslator::transformUnaryLogicalCall(CXXOperatorCal
 // ============================================================================
 
 std::string ComparisonOperatorTranslator::generateOperatorName(const CXXMethodDecl* MD) {
-    // Delegate to NameMangler for consistent naming
-    return m_mangler.mangleMethodName(const_cast<CXXMethodDecl*>(MD));
+    // Delegate to cpptoc::mangle_method for consistent naming
+    return cpptoc::mangle_method(MD);
 }
 
 FunctionDecl* ComparisonOperatorTranslator::findOrCreateFunction(const CXXMethodDecl* MD,

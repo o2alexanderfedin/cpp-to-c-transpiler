@@ -13,7 +13,6 @@
 #include "dispatch/StaticMethodHandler.h"
 #include "CNodeBuilder.h"
 #include "NameMangler.h"
-#include "OverloadRegistry.h"
 #include "mapping/DeclMapper.h"
 #include "mapping/StmtMapper.h"
 #include "mapping/TypeMapper.h"
@@ -74,12 +73,11 @@ void StaticMethodHandler::handleStaticMethod(
     const clang::CXXRecordDecl* classDecl = cppMethod->getParent();
     assert(classDecl && "Static method must have parent class");
 
-    // Phase 3: Use NameMangler with OverloadRegistry for deterministic naming
-    // Static methods are treated as standalone functions (no 'this' parameter)
-    // NameMangler handles: namespace prefix, class prefix, overload resolution
-    cpptoc::OverloadRegistry& registry = cpptoc::OverloadRegistry::getInstance();
-    NameMangler mangler(const_cast<clang::ASTContext&>(cppASTContext), registry);
-    std::string mangledName = mangler.mangleStandaloneFunction(const_cast<clang::CXXMethodDecl*>(cppMethod));
+    // Phase 3: Use free function NameMangler API for deterministic naming
+    // Static methods are still class methods (just without 'this' parameter)
+    // They should include class name in mangling to avoid collisions: namespace_Class_method
+    // cpptoc::mangle_method handles: namespace prefix, class prefix, overload resolution
+    std::string mangledName = cpptoc::mangle_method(cppMethod);
 
     // Extract method properties
     clang::QualType cppReturnType = cppMethod->getReturnType();

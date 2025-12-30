@@ -90,11 +90,9 @@ void InstanceMethodHandler::handleInstanceMethod(
     const clang::CXXRecordDecl* classDecl = cppMethod->getParent();
     assert(classDecl && "Instance method must have parent class");
 
-    // Phase 3: Use NameMangler with OverloadRegistry for deterministic naming
-    // NameMangler handles: namespace prefix, class prefix, overload resolution
-    cpptoc::OverloadRegistry& registry = cpptoc::OverloadRegistry::getInstance();
-    NameMangler mangler(const_cast<clang::ASTContext&>(cppASTContext), registry);
-    std::string mangledName = mangler.mangleName(const_cast<clang::CXXMethodDecl*>(cppMethod));
+    // Phase 3: Use NameMangler free function API for deterministic naming
+    // mangle_method() includes namespace prefix, class prefix, and handles overload resolution
+    std::string mangledName = cpptoc::mangle_method(cppMethod);
 
     // Extract method properties
     clang::QualType cppReturnType = cppMethod->getReturnType();
