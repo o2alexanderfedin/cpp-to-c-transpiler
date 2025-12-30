@@ -213,6 +213,8 @@ add_library(cpptoc_core STATIC
     src/dispatch/ArraySubscriptExprHandler.cpp
     src/dispatch/ParenExprHandler.cpp
     src/dispatch/CXXOperatorCallExprHandler.cpp
+    src/dispatch/CXXTypeidExprHandler.cpp
+    src/dispatch/CXXDynamicCastExprHandler.cpp
     src/dispatch/MemberExprHandler.cpp
     src/dispatch/StaticMethodHandler.cpp
     src/dispatch/InstanceMethodHandler.cpp
@@ -1077,6 +1079,56 @@ target_link_libraries(CXXOperatorCallExprHandlerDispatcherTest
 )
 
 gtest_discover_tests(CXXOperatorCallExprHandlerDispatcherTest
+    WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
+)
+
+# CXXTypeidExprHandler Tests
+add_executable(CXXTypeidExprHandlerDispatcherTest
+    tests/unit/dispatch/CXXTypeidExprHandlerDispatcherTest.cpp
+)
+
+target_compile_definitions(CXXTypeidExprHandlerDispatcherTest PRIVATE ${LLVM_DEFINITIONS})
+
+target_include_directories(CXXTypeidExprHandlerDispatcherTest PRIVATE
+    ${CMAKE_SOURCE_DIR}/include
+    ${LLVM_INCLUDE_DIRS}
+    ${CLANG_INCLUDE_DIRS}
+)
+
+target_link_libraries(CXXTypeidExprHandlerDispatcherTest
+    cpptoc_core
+    ${LLVM_LIBS}
+    ${CLANG_LIBS}
+    ${SYSTEM_LIBS}
+    GTest::gtest_main
+)
+
+gtest_discover_tests(CXXTypeidExprHandlerDispatcherTest
+    WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
+)
+
+# CXXDynamicCastExprHandler Tests
+add_executable(CXXDynamicCastExprHandlerDispatcherTest
+    tests/unit/dispatch/CXXDynamicCastExprHandlerDispatcherTest.cpp
+)
+
+target_compile_definitions(CXXDynamicCastExprHandlerDispatcherTest PRIVATE ${LLVM_DEFINITIONS})
+
+target_include_directories(CXXDynamicCastExprHandlerDispatcherTest PRIVATE
+    ${CMAKE_SOURCE_DIR}/include
+    ${LLVM_INCLUDE_DIRS}
+    ${CLANG_INCLUDE_DIRS}
+)
+
+target_link_libraries(CXXDynamicCastExprHandlerDispatcherTest
+    cpptoc_core
+    ${LLVM_LIBS}
+    ${CLANG_LIBS}
+    ${SYSTEM_LIBS}
+    GTest::gtest_main
+)
+
+gtest_discover_tests(CXXDynamicCastExprHandlerDispatcherTest
     WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
 )
 
