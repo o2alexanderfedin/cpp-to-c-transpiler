@@ -27,7 +27,7 @@
  *      };
  */
 
-#include "handlers/RecordHandler.h"
+#include "dispatch/RecordHandler.h"
 #include "handlers/HandlerContext.h"
 #include "CNodeBuilder.h"
 #include "MultipleInheritanceAnalyzer.h"

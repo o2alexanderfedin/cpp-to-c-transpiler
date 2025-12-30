@@ -5,8 +5,6 @@
 #include "CodeGenerator.h"
 #include "CNodeBuilder.h"
 #include "FileOriginTracker.h"
-#include "CppToCVisitor.h"
-#include "FileOriginTracker.h"
 #include "clang/Tooling/Tooling.h"
 #include "llvm/Support/raw_ostream.h"
 #include <memory>

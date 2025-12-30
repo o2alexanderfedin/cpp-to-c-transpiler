@@ -21,13 +21,13 @@
  * - Edge cases (11 tests)
  */
 
-#include "handlers/FunctionHandler.h"
+#include "dispatch/FunctionHandler.h"
 #include "handlers/VariableHandler.h"
 #include "handlers/ExpressionHandler.h"
 #include "handlers/StatementHandler.h"
-#include "handlers/RecordHandler.h"
+#include "dispatch/RecordHandler.h"
 #include "handlers/MethodHandler.h"
-#include "handlers/ConstructorHandler.h"
+#include "dispatch/ConstructorHandler.h"
 #include "handlers/DestructorHandler.h"
 #include "handlers/HandlerContext.h"
 #include "CNodeBuilder.h"

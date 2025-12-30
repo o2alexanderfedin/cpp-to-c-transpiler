@@ -6,7 +6,6 @@
 //
 // TDD Approach: Comprehensive tests drive implementation
 
-#include "CppToCVisitor.h"
 #include "CNodeBuilder.h"
 #include "FileOriginTracker.h"
 #include "TargetContext.h"

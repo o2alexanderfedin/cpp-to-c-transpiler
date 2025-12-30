@@ -143,7 +143,27 @@ CXXRecordDecl* findClass(ASTContext& ctx, const std::string& className) {
 // Test 1: Registration - Handler registers and processes virtual method
 // ============================================================================
 
-TEST(VirtualMethodHandlerDispatcherTest, Registration) {
+// ============================================================================
+// Test Fixture: Provides clean state between tests
+// ============================================================================
+
+class VirtualMethodHandlerDispatcherTest : public ::testing::Test {
+protected:
+    void SetUp() override {
+        // Reset singletons before each test to ensure test isolation
+        cpptoc::OverloadRegistry::getInstance().reset();
+        TargetContext::cleanup();
+        cpptoc::PathMapper::reset();
+    }
+
+    void TearDown() override {
+        // Clean up after each test
+        cpptoc::OverloadRegistry::getInstance().reset();
+        TargetContext::cleanup();
+        cpptoc::PathMapper::reset();
+    }
+};
+TEST_F(VirtualMethodHandlerDispatcherTest, Registration) {
     const char *cpp = R"(
         class Shape {
         public:
@@ -194,7 +214,7 @@ TEST(VirtualMethodHandlerDispatcherTest, Registration) {
 // Test 2: SimpleVirtualMethod - Shape::getArea() translation
 // ============================================================================
 
-TEST(VirtualMethodHandlerDispatcherTest, SimpleVirtualMethod) {
+TEST_F(VirtualMethodHandlerDispatcherTest, SimpleVirtualMethod) {
     const char *cpp = R"(
         class Shape {
         public:
@@ -257,7 +277,7 @@ TEST(VirtualMethodHandlerDispatcherTest, SimpleVirtualMethod) {
 // Test 3: VirtualMethodWithParameters - Parameters translated correctly
 // ============================================================================
 
-TEST(VirtualMethodHandlerDispatcherTest, VirtualMethodWithParameters) {
+TEST_F(VirtualMethodHandlerDispatcherTest, VirtualMethodWithParameters) {
     const char *cpp = R"(
         class Calculator {
         public:
@@ -293,7 +313,7 @@ TEST(VirtualMethodHandlerDispatcherTest, VirtualMethodWithParameters) {
     // Verify C function has correct parameters: this, a, b
     FunctionDecl* cFunc = llvm::dyn_cast_or_null<FunctionDecl>(declMapper.getCreated(add));
     ASSERT_NE(cFunc, nullptr);
-    EXPECT_EQ(cFunc->getNameAsString(), "Calculator_add");
+    EXPECT_EQ(cFunc->getNameAsString(), "Calculator_add_int_int");
 
     // Should have 3 parameters: this, a, b
     ASSERT_EQ(cFunc->getNumParams(), 3u) << "Should have 3 parameters (this, a, b)";
@@ -314,7 +334,7 @@ TEST(VirtualMethodHandlerDispatcherTest, VirtualMethodWithParameters) {
 // Test 4: VirtualMethodInNamespace - Namespace prefix applied
 // ============================================================================
 
-TEST(VirtualMethodHandlerDispatcherTest, VirtualMethodInNamespace) {
+TEST_F(VirtualMethodHandlerDispatcherTest, VirtualMethodInNamespace) {
     const char *cpp = R"(
         namespace game {
             class Entity {
@@ -375,7 +395,7 @@ TEST(VirtualMethodHandlerDispatcherTest, VirtualMethodInNamespace) {
 // Test 5: InheritanceWithOverride - Override resolution
 // ============================================================================
 
-TEST(VirtualMethodHandlerDispatcherTest, InheritanceWithOverride) {
+TEST_F(VirtualMethodHandlerDispatcherTest, InheritanceWithOverride) {
     const char *cpp = R"(
         class Shape {
         public:
@@ -438,7 +458,7 @@ TEST(VirtualMethodHandlerDispatcherTest, InheritanceWithOverride) {
 // Test 6: VirtualDestructor - Destructor should be excluded
 // ============================================================================
 
-TEST(VirtualMethodHandlerDispatcherTest, VirtualDestructor) {
+TEST_F(VirtualMethodHandlerDispatcherTest, VirtualDestructor) {
     const char *cpp = R"(
         class Shape {
         public:
@@ -480,7 +500,7 @@ TEST(VirtualMethodHandlerDispatcherTest, VirtualDestructor) {
 // Test 7: PureVirtualMethod - Abstract method translation
 // ============================================================================
 
-TEST(VirtualMethodHandlerDispatcherTest, PureVirtualMethod) {
+TEST_F(VirtualMethodHandlerDispatcherTest, PureVirtualMethod) {
     const char *cpp = R"(
         class Shape {
         public:
@@ -530,7 +550,7 @@ TEST(VirtualMethodHandlerDispatcherTest, PureVirtualMethod) {
 // Test 8: TypeConversions - Reference to pointer conversion
 // ============================================================================
 
-TEST(VirtualMethodHandlerDispatcherTest, TypeConversions) {
+TEST_F(VirtualMethodHandlerDispatcherTest, TypeConversions) {
     const char *cpp = R"(
         class Processor {
         public:
@@ -578,7 +598,7 @@ TEST(VirtualMethodHandlerDispatcherTest, TypeConversions) {
 // Test 9: ExclusionTests - Non-virtual/static/ctor excluded
 // ============================================================================
 
-TEST(VirtualMethodHandlerDispatcherTest, ExclusionTests) {
+TEST_F(VirtualMethodHandlerDispatcherTest, ExclusionTests) {
     const char *cpp = R"(
         class Test {
         public:
@@ -645,7 +665,7 @@ TEST(VirtualMethodHandlerDispatcherTest, ExclusionTests) {
 // Test 10: MultipleVirtualMethods - Multiple virtual methods in one class
 // ============================================================================
 
-TEST(VirtualMethodHandlerDispatcherTest, MultipleVirtualMethods) {
+TEST_F(VirtualMethodHandlerDispatcherTest, MultipleVirtualMethods) {
     const char *cpp = R"(
         class Shape {
         public:
@@ -707,7 +727,7 @@ TEST(VirtualMethodHandlerDispatcherTest, MultipleVirtualMethods) {
 // Test 11: VtableStructGeneration - Per-class vtable struct with strongly typed pointers
 // ============================================================================
 
-TEST(VirtualMethodHandlerDispatcherTest, VtableStructGeneration) {
+TEST_F(VirtualMethodHandlerDispatcherTest, VtableStructGeneration) {
     const char *cpp = R"(
         class Shape {
         public:
@@ -756,7 +776,7 @@ TEST(VirtualMethodHandlerDispatcherTest, VtableStructGeneration) {
 // Test 12: VtableInstanceGeneration - Per-class vtable instance initialization
 // ============================================================================
 
-TEST(VirtualMethodHandlerDispatcherTest, VtableInstanceGeneration) {
+TEST_F(VirtualMethodHandlerDispatcherTest, VtableInstanceGeneration) {
     const char *cpp = R"(
         class Shape {
         public:
@@ -806,7 +826,7 @@ TEST(VirtualMethodHandlerDispatcherTest, VtableInstanceGeneration) {
 // Test 13: MultipleVirtualMethodsVtable - Vtable with multiple methods in correct order
 // ============================================================================
 
-TEST(VirtualMethodHandlerDispatcherTest, MultipleVirtualMethodsVtable) {
+TEST_F(VirtualMethodHandlerDispatcherTest, MultipleVirtualMethodsVtable) {
     const char *cpp = R"(
         class Shape {
         public:
@@ -858,7 +878,7 @@ TEST(VirtualMethodHandlerDispatcherTest, MultipleVirtualMethodsVtable) {
 // Test 14: NamespacedClassVtable - Namespace prefix in vtable names
 // ============================================================================
 
-TEST(VirtualMethodHandlerDispatcherTest, NamespacedClassVtable) {
+TEST_F(VirtualMethodHandlerDispatcherTest, NamespacedClassVtable) {
     const char *cpp = R"(
         namespace game {
             class Entity {

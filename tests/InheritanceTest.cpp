@@ -2,7 +2,6 @@
 // Story #50: Base Class Embedding in Struct Layout
 
 #include <gtest/gtest.h>
-#include "CppToCVisitor.h"
 #include "CNodeBuilder.h"
 #include "FileOriginTracker.h"
 #include "clang/Tooling/Tooling.h"

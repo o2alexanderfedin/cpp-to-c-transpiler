@@ -2,7 +2,6 @@
 // Tests full end-to-end translation of C++ classes to C structs + functions
 // Migrated to Google Test
 
-#include "CppToCVisitor.h"
 #include "CNodeBuilder.h"
 #include "FileOriginTracker.h"
 #include "TargetContext.h"

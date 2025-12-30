@@ -111,10 +111,31 @@ CXXConstructorDecl* findConstructor(ASTContext& ctx, const std::string& classNam
 }
 
 // ============================================================================
+// Test Fixture: Provides clean state between tests
+// ============================================================================
+
+class InstanceMethodHandlerDispatcherTest : public ::testing::Test {
+protected:
+    void SetUp() override {
+        // Reset singletons before each test to ensure test isolation
+        cpptoc::OverloadRegistry::getInstance().reset();
+        TargetContext::cleanup();
+        cpptoc::PathMapper::reset();
+    }
+
+    void TearDown() override {
+        // Clean up after each test
+        cpptoc::OverloadRegistry::getInstance().reset();
+        TargetContext::cleanup();
+        cpptoc::PathMapper::reset();
+    }
+};
+
+// ============================================================================
 // Test 1: Registration - Handler registers and processes instance method
 // ============================================================================
 
-TEST(InstanceMethodHandlerDispatcherTest, Registration) {
+TEST_F(InstanceMethodHandlerDispatcherTest, Registration) {
     const char *cpp = R"(
         class Counter {
         public:
@@ -166,10 +187,10 @@ TEST(InstanceMethodHandlerDispatcherTest, Registration) {
 }
 
 // ============================================================================
-// Test 2: SimpleInstanceMethod - Counter::increment() → Counter__increment(struct Counter* this)
+// Test 2: SimpleInstanceMethod - Counter::increment() → Counter_increment(struct Counter* this)
 // ============================================================================
 
-TEST(InstanceMethodHandlerDispatcherTest, SimpleInstanceMethod) {
+TEST_F(InstanceMethodHandlerDispatcherTest, SimpleInstanceMethod) {
     const char *cpp = R"(
         class Counter {
         public:
@@ -218,14 +239,14 @@ TEST(InstanceMethodHandlerDispatcherTest, SimpleInstanceMethod) {
     FunctionDecl* cIncrement = nullptr;
     for (auto* D : cTU->decls()) {
         if (auto* FD = dyn_cast<FunctionDecl>(D)) {
-            if (FD->getNameAsString() == "Counter__increment") {
+            if (FD->getNameAsString() == "Counter_increment") {
                 cIncrement = FD;
                 break;
             }
         }
     }
 
-    ASSERT_NE(cIncrement, nullptr) << "Should find translated function 'Counter__increment'";
+    ASSERT_NE(cIncrement, nullptr) << "Should find translated function 'Counter_increment'";
 
     // Verify function signature: Must have "this" parameter
     EXPECT_EQ(cIncrement->getNumParams(), 1) << "Instance method should have 'this' parameter";
@@ -250,10 +271,10 @@ TEST(InstanceMethodHandlerDispatcherTest, SimpleInstanceMethod) {
 }
 
 // ============================================================================
-// Test 3: InstanceMethodWithParameters - Math::add(int,int) → Math__add(struct Math* this, int, int)
+// Test 3: InstanceMethodWithParameters - Math::add(int,int) → Math_add(struct Math* this, int, int)
 // ============================================================================
 
-TEST(InstanceMethodHandlerDispatcherTest, InstanceMethodWithParameters) {
+TEST_F(InstanceMethodHandlerDispatcherTest, InstanceMethodWithParameters) {
     const char *cpp = R"(
         class Math {
         public:
@@ -300,14 +321,14 @@ TEST(InstanceMethodHandlerDispatcherTest, InstanceMethodWithParameters) {
     FunctionDecl* cAdd = nullptr;
     for (auto* D : cTU->decls()) {
         if (auto* FD = dyn_cast<FunctionDecl>(D)) {
-            if (FD->getNameAsString() == "Math__add") {
+            if (FD->getNameAsString() == "Math_add_int_int") {
                 cAdd = FD;
                 break;
             }
         }
     }
 
-    ASSERT_NE(cAdd, nullptr) << "Should find 'Math__add'";
+    ASSERT_NE(cAdd, nullptr) << "Should find 'Math_add_int_int'";
 
     // Verify parameters: "this" + 2 method parameters = 3 total
     EXPECT_EQ(cAdd->getNumParams(), 3) << "Should have 3 parameters (this + a + b)";
@@ -320,10 +341,10 @@ TEST(InstanceMethodHandlerDispatcherTest, InstanceMethodWithParameters) {
 }
 
 // ============================================================================
-// Test 4: InstanceMethodInNamespace - game::Entity::update() → game__Entity__update(struct game__Entity* this)
+// Test 4: InstanceMethodInNamespace - game::Entity::update() → game_Entity_update(struct game_Entity* this)
 // ============================================================================
 
-TEST(InstanceMethodHandlerDispatcherTest, InstanceMethodInNamespace) {
+TEST_F(InstanceMethodHandlerDispatcherTest, InstanceMethodInNamespace) {
     const char *cpp = R"(
         namespace game {
             class Entity {
@@ -404,14 +425,14 @@ TEST(InstanceMethodHandlerDispatcherTest, InstanceMethodInNamespace) {
     FunctionDecl* cUpdate = nullptr;
     for (auto* D : cTU->decls()) {
         if (auto* FD = dyn_cast<FunctionDecl>(D)) {
-            if (FD->getNameAsString() == "game__Entity__update") {
+            if (FD->getNameAsString() == "game_Entity_update") {
                 cUpdate = FD;
                 break;
             }
         }
     }
 
-    ASSERT_NE(cUpdate, nullptr) << "Should find 'game__Entity__update'";
+    ASSERT_NE(cUpdate, nullptr) << "Should find 'game_Entity_update'";
 
     // Verify "this" parameter
     EXPECT_EQ(cUpdate->getNumParams(), 1) << "Should have 'this' parameter";
@@ -421,7 +442,7 @@ TEST(InstanceMethodHandlerDispatcherTest, InstanceMethodInNamespace) {
 // Test 5: NestedNamespaceInstanceMethod - ns1::ns2::Calc::mul() → ns1__ns2__Calc__mul(struct ns1__ns2__Calc* this, ...)
 // ============================================================================
 
-TEST(InstanceMethodHandlerDispatcherTest, NestedNamespaceInstanceMethod) {
+TEST_F(InstanceMethodHandlerDispatcherTest, NestedNamespaceInstanceMethod) {
     const char *cpp = R"(
         namespace ns1 {
             namespace ns2 {
@@ -511,14 +532,14 @@ TEST(InstanceMethodHandlerDispatcherTest, NestedNamespaceInstanceMethod) {
     FunctionDecl* cMul = nullptr;
     for (auto* D : cTU->decls()) {
         if (auto* FD = dyn_cast<FunctionDecl>(D)) {
-            if (FD->getNameAsString() == "ns1__ns2__Calc__mul") {
+            if (FD->getNameAsString() == "ns1_ns2_Calc_mul_int_int") {
                 cMul = FD;
                 break;
             }
         }
     }
 
-    ASSERT_NE(cMul, nullptr) << "Should find 'ns1__ns2__Calc__mul'";
+    ASSERT_NE(cMul, nullptr) << "Should find 'ns1_ns2_Calc_mul_int_int'";
 
     // Verify parameters: this + 2 method params = 3
     EXPECT_EQ(cMul->getNumParams(), 3) << "Should have 3 parameters";
@@ -528,7 +549,7 @@ TEST(InstanceMethodHandlerDispatcherTest, NestedNamespaceInstanceMethod) {
 // Test 6: ReferenceParameterConversion - References → pointers
 // ============================================================================
 
-TEST(InstanceMethodHandlerDispatcherTest, ReferenceParameterConversion) {
+TEST_F(InstanceMethodHandlerDispatcherTest, ReferenceParameterConversion) {
     const char *cpp = R"(
         class Processor {
         public:
@@ -573,7 +594,7 @@ TEST(InstanceMethodHandlerDispatcherTest, ReferenceParameterConversion) {
     FunctionDecl* cProcess = nullptr;
     for (auto* D : cTU->decls()) {
         if (auto* FD = dyn_cast<FunctionDecl>(D)) {
-            if (FD->getNameAsString() == "Processor__process") {
+            if (FD->getNameAsString() == "Processor_process_int_ref_const_int_ref") {
                 cProcess = FD;
                 break;
             }
@@ -593,7 +614,7 @@ TEST(InstanceMethodHandlerDispatcherTest, ReferenceParameterConversion) {
 // Test 7: ReferenceReturnTypeConversion - Return references → pointers
 // ============================================================================
 
-TEST(InstanceMethodHandlerDispatcherTest, ReferenceReturnTypeConversion) {
+TEST_F(InstanceMethodHandlerDispatcherTest, ReferenceReturnTypeConversion) {
     const char *cpp = R"(
         class Container {
         public:
@@ -640,7 +661,7 @@ TEST(InstanceMethodHandlerDispatcherTest, ReferenceReturnTypeConversion) {
     FunctionDecl* cGet = nullptr;
     for (auto* D : cTU->decls()) {
         if (auto* FD = dyn_cast<FunctionDecl>(D)) {
-            if (FD->getNameAsString() == "Container__get") {
+            if (FD->getNameAsString() == "Container_get") {
                 cGet = FD;
                 break;
             }
@@ -657,7 +678,7 @@ TEST(InstanceMethodHandlerDispatcherTest, ReferenceReturnTypeConversion) {
 // Test 8: IgnoresStaticMethods - Handler rejects static methods
 // ============================================================================
 
-TEST(InstanceMethodHandlerDispatcherTest, IgnoresStaticMethods) {
+TEST_F(InstanceMethodHandlerDispatcherTest, IgnoresStaticMethods) {
     const char *cpp = R"(
         class Calculator {
         public:
@@ -706,7 +727,7 @@ TEST(InstanceMethodHandlerDispatcherTest, IgnoresStaticMethods) {
 // Test 9: IgnoresVirtualMethods - Handler rejects virtual methods
 // ============================================================================
 
-TEST(InstanceMethodHandlerDispatcherTest, IgnoresVirtualMethods) {
+TEST_F(InstanceMethodHandlerDispatcherTest, IgnoresVirtualMethods) {
     const char *cpp = R"(
         class Base {
         public:
@@ -753,7 +774,7 @@ TEST(InstanceMethodHandlerDispatcherTest, IgnoresVirtualMethods) {
 // Test 10: IgnoresConstructors - Handler rejects constructors
 // ============================================================================
 
-TEST(InstanceMethodHandlerDispatcherTest, IgnoresConstructors) {
+TEST_F(InstanceMethodHandlerDispatcherTest, IgnoresConstructors) {
     const char *cpp = R"(
         class Widget {
         public:
@@ -797,7 +818,7 @@ TEST(InstanceMethodHandlerDispatcherTest, IgnoresConstructors) {
 // Test 11: MixedStaticAndInstanceMethods - Only instance handled
 // ============================================================================
 
-TEST(InstanceMethodHandlerDispatcherTest, MixedStaticAndInstanceMethods) {
+TEST_F(InstanceMethodHandlerDispatcherTest, MixedStaticAndInstanceMethods) {
     const char *cpp = R"(
         class MixedClass {
         public:
@@ -851,7 +872,7 @@ TEST(InstanceMethodHandlerDispatcherTest, MixedStaticAndInstanceMethods) {
 // Test 12: NameManglingHelper - Direct test of getMangledName()
 // ============================================================================
 
-TEST(InstanceMethodHandlerDispatcherTest, NameManglingHelper) {
+TEST_F(InstanceMethodHandlerDispatcherTest, NameManglingHelper) {
     const char *cpp = R"(
         namespace app {
             class Service {
@@ -904,16 +925,16 @@ TEST(InstanceMethodHandlerDispatcherTest, NameManglingHelper) {
     NameMangler mangler(cppCtx, registry);
     std::string mangledName = mangler.mangleMethodName(initialize);
 
-    // Verify mangled name includes namespace and class with __ separator
-    EXPECT_EQ(mangledName, "app__Service__initialize")
-        << "Mangled name should be 'app__Service__initialize'";
+    // Verify mangled name includes namespace and class with _ separator
+    EXPECT_EQ(mangledName, "app_Service_initialize")
+        << "Mangled name should be 'app_Service_initialize'";
 }
 
 // ============================================================================
 // Test 13: ThisParameterCreation - Direct test of createThisParameter()
 // ============================================================================
 
-TEST(InstanceMethodHandlerDispatcherTest, ThisParameterCreation) {
+TEST_F(InstanceMethodHandlerDispatcherTest, ThisParameterCreation) {
     const char *cpp = R"(
         namespace game {
             class Player {

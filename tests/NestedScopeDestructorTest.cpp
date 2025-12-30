@@ -4,7 +4,6 @@
 // Tests that destructors are injected at end of nested scopes
 // TDD Approach: Tests verify actual destructor injection and ordering
 
-#include "CppToCVisitor.h"
 #include "CNodeBuilder.h"
 #include "clang/Tooling/Tooling.h"
 #include "clang/Frontend/ASTUnit.h"

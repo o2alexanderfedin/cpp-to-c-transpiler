@@ -13,7 +13,7 @@
  * ...and more
  */
 
-#include "handlers/FunctionHandler.h"
+#include "dispatch/FunctionHandler.h"
 #include "handlers/HandlerContext.h"
 #include "CNodeBuilder.h"
 #include "clang/Tooling/Tooling.h"

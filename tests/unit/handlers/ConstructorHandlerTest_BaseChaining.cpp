@@ -62,7 +62,7 @@
  * - This ensures polymorphic behavior (calls resolve to most-derived implementation)
  */
 
-#include "handlers/ConstructorHandler.h"
+#include "dispatch/ConstructorHandler.h"
 #include "handlers/HandlerContext.h"
 #include "CNodeBuilder.h"
 #include "MultipleInheritanceAnalyzer.h"

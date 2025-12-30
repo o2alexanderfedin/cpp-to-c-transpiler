@@ -30,7 +30,7 @@
  *      }
  */
 
-#include "handlers/ConstructorHandler.h"
+#include "dispatch/ConstructorHandler.h"
 #include "handlers/HandlerContext.h"
 #include "CNodeBuilder.h"
 #include "clang/Tooling/Tooling.h"

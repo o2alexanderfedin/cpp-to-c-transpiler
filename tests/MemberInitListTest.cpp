@@ -8,7 +8,6 @@
 // - Unit tests verify correct translation
 
 #include <gtest/gtest.h>
-#include "CppToCVisitor.h"
 #include "CNodeBuilder.h"
 #include "FileOriginTracker.h"
 #include "CodeGenerator.h"

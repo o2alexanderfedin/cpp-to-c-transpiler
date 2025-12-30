@@ -213,6 +213,17 @@ public:
    */
   std::vector<const clang::Decl*> getAllNodesForFile(const std::string& file) const;
 
+  /**
+   * @brief Reset all internal state (for testing)
+   *
+   * Clears all maps to ensure test isolation:
+   * - fileToTU_
+   * - declToTarget_
+   *
+   * NOTE: Does NOT reset sourceDir_/outputDir_ or destroy singletons
+   */
+  static void reset();
+
 private:
   // Core references (not owned)
   TargetContext& targetCtx_;           ///< Shared target context for C AST creation

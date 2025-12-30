@@ -12,11 +12,11 @@
  * - Integration with control flow, arrays, and pointers
  */
 
-#include "handlers/FunctionHandler.h"
+#include "dispatch/FunctionHandler.h"
 #include "handlers/VariableHandler.h"
 #include "handlers/ExpressionHandler.h"
 #include "handlers/StatementHandler.h"
-#include "handlers/RecordHandler.h"
+#include "dispatch/RecordHandler.h"
 #include "handlers/HandlerContext.h"
 #include "CNodeBuilder.h"
 #include "clang/Tooling/Tooling.h"

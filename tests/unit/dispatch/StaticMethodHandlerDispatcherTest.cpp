@@ -6,8 +6,8 @@
  * - Handler registration with dispatcher
  * - canHandle predicate behavior (static methods yes, instance methods no)
  * - Static method signature translation (no "this" parameter)
- * - Class name prefixing with __ separator
- * - Namespace handling (namespace::Class::method → namespace__Class__method)
+ * - Class name prefixing with appropriate separators
+ * - Namespace handling (namespace::Class::method → namespace_Class_method)
  * - Integration with PathMapper and TranslationUnit management
  * - ParameterHandler integration (StaticMethodHandler dispatches parameters)
  * - Exclusion of constructors and destructors
@@ -92,10 +92,30 @@ CXXConstructorDecl* findConstructor(ASTContext& ctx, const std::string& classNam
 }
 
 // ============================================================================
+// Test Fixture: Provides clean state between tests
+// ============================================================================
+
+class StaticMethodHandlerDispatcherTest : public ::testing::Test {
+protected:
+    void SetUp() override {
+        // Reset singletons before each test to ensure test isolation
+        cpptoc::OverloadRegistry::getInstance().reset();
+        TargetContext::cleanup();
+        cpptoc::PathMapper::reset();
+    }
+
+    void TearDown() override {
+        // Clean up after each test
+        cpptoc::OverloadRegistry::getInstance().reset();
+        TargetContext::cleanup();
+        cpptoc::PathMapper::reset();
+    }
+};
+// ============================================================================
 // Test 1: Registration - Handler registers and processes static method
 // ============================================================================
 
-TEST(StaticMethodHandlerDispatcherTest, Registration) {
+TEST_F(StaticMethodHandlerDispatcherTest, Registration) {
     const char *cpp = R"(
         class Counter {
         public:
@@ -144,10 +164,10 @@ TEST(StaticMethodHandlerDispatcherTest, Registration) {
 }
 
 // ============================================================================
-// Test 2: SimpleStaticMethod - Counter::getValue() → Counter__getValue
+// Test 2: SimpleStaticMethod - Counter::getValue() → Counter_getValue
 // ============================================================================
 
-TEST(StaticMethodHandlerDispatcherTest, SimpleStaticMethod) {
+TEST_F(StaticMethodHandlerDispatcherTest, SimpleStaticMethod) {
     const char *cpp = R"(
         class Counter {
         public:
@@ -194,14 +214,14 @@ TEST(StaticMethodHandlerDispatcherTest, SimpleStaticMethod) {
     FunctionDecl* cGetValue = nullptr;
     for (auto* D : cTU->decls()) {
         if (auto* FD = dyn_cast<FunctionDecl>(D)) {
-            if (FD->getNameAsString() == "Counter__getValue") {
+            if (FD->getNameAsString() == "Counter_getValue") {
                 cGetValue = FD;
                 break;
             }
         }
     }
 
-    ASSERT_NE(cGetValue, nullptr) << "Should find translated function 'Counter__getValue'";
+    ASSERT_NE(cGetValue, nullptr) << "Should find translated function 'Counter_getValue' (single _ for class_method)";
 
     // Verify function signature
     EXPECT_EQ(cGetValue->getNumParams(), 0) << "Static method should have NO 'this' parameter";
@@ -209,10 +229,10 @@ TEST(StaticMethodHandlerDispatcherTest, SimpleStaticMethod) {
 }
 
 // ============================================================================
-// Test 3: StaticMethodWithParameters - Math::add(int,int) → Math__add
+// Test 3: StaticMethodWithParameters - Math::add(int,int) → Math_add
 // ============================================================================
 
-TEST(StaticMethodHandlerDispatcherTest, StaticMethodWithParameters) {
+TEST_F(StaticMethodHandlerDispatcherTest, StaticMethodWithParameters) {
     const char *cpp = R"(
         class Math {
         public:
@@ -257,24 +277,24 @@ TEST(StaticMethodHandlerDispatcherTest, StaticMethodWithParameters) {
     FunctionDecl* cAdd = nullptr;
     for (auto* D : cTU->decls()) {
         if (auto* FD = dyn_cast<FunctionDecl>(D)) {
-            if (FD->getNameAsString() == "Math__add") {
+            if (FD->getNameAsString() == "Math_add") {
                 cAdd = FD;
                 break;
             }
         }
     }
 
-    ASSERT_NE(cAdd, nullptr) << "Should find 'Math__add'";
+    ASSERT_NE(cAdd, nullptr) << "Should find 'Math_add' (single _ for class_method)";
 
     // Verify parameters (should have 2 parameters, NO "this")
     EXPECT_EQ(cAdd->getNumParams(), 2) << "Should have 2 parameters (no 'this')";
 }
 
 // ============================================================================
-// Test 4: StaticMethodInNamespace - game::Entity::getMax() → game__Entity__getMax
+// Test 4: StaticMethodInNamespace - game::Entity::getMax() → game_Entity_getMax
 // ============================================================================
 
-TEST(StaticMethodHandlerDispatcherTest, StaticMethodInNamespace) {
+TEST_F(StaticMethodHandlerDispatcherTest, StaticMethodInNamespace) {
     const char *cpp = R"(
         namespace game {
             class Entity {
@@ -353,21 +373,21 @@ TEST(StaticMethodHandlerDispatcherTest, StaticMethodInNamespace) {
     FunctionDecl* cGetMax = nullptr;
     for (auto* D : cTU->decls()) {
         if (auto* FD = dyn_cast<FunctionDecl>(D)) {
-            if (FD->getNameAsString() == "game__Entity__getMax") {
+            if (FD->getNameAsString() == "game_Entity_getMax") {
                 cGetMax = FD;
                 break;
             }
         }
     }
 
-    ASSERT_NE(cGetMax, nullptr) << "Should find 'game__Entity__getMax'";
+    ASSERT_NE(cGetMax, nullptr) << "Should find 'game_Entity_getMax' (single _ for namespace_class_method)";
 }
 
 // ============================================================================
-// Test 5: NestedNamespaceStaticMethod - ns1::ns2::Math::mul() → ns1__ns2__Math__mul
+// Test 5: NestedNamespaceStaticMethod - ns1::ns2::Math::mul() → ns1_ns2_Math_mul
 // ============================================================================
 
-TEST(StaticMethodHandlerDispatcherTest, NestedNamespaceStaticMethod) {
+TEST_F(StaticMethodHandlerDispatcherTest, NestedNamespaceStaticMethod) {
     const char *cpp = R"(
         namespace ns1 {
             namespace ns2 {
@@ -457,21 +477,21 @@ TEST(StaticMethodHandlerDispatcherTest, NestedNamespaceStaticMethod) {
     FunctionDecl* cMul = nullptr;
     for (auto* D : cTU->decls()) {
         if (auto* FD = dyn_cast<FunctionDecl>(D)) {
-            if (FD->getNameAsString() == "ns1__ns2__Math__mul") {
+            if (FD->getNameAsString() == "ns1_ns2_Math_mul") {
                 cMul = FD;
                 break;
             }
         }
     }
 
-    ASSERT_NE(cMul, nullptr) << "Should find 'ns1__ns2__Math__mul'";
+    ASSERT_NE(cMul, nullptr) << "Should find 'ns1_ns2_Math_mul' (single _ for nested namespaces_class_method)";
 }
 
 // ============================================================================
 // Test 6: ReferenceParameterConversion - References → pointers
 // ============================================================================
 
-TEST(StaticMethodHandlerDispatcherTest, ReferenceParameterConversion) {
+TEST_F(StaticMethodHandlerDispatcherTest, ReferenceParameterConversion) {
     const char *cpp = R"(
         class Processor {
         public:
@@ -516,14 +536,14 @@ TEST(StaticMethodHandlerDispatcherTest, ReferenceParameterConversion) {
     FunctionDecl* cProcess = nullptr;
     for (auto* D : cTU->decls()) {
         if (auto* FD = dyn_cast<FunctionDecl>(D)) {
-            if (FD->getNameAsString() == "Processor__process") {
+            if (FD->getNameAsString() == "Processor_process") {
                 cProcess = FD;
                 break;
             }
         }
     }
 
-    ASSERT_NE(cProcess, nullptr);
+    ASSERT_NE(cProcess, nullptr) << "Should find 'Processor_process' (single _ for class_method)";
     EXPECT_EQ(cProcess->getNumParams(), 2) << "Should have 2 parameters (no 'this')";
 
     // Note: Full type checking requires TypeHandler integration
@@ -534,7 +554,7 @@ TEST(StaticMethodHandlerDispatcherTest, ReferenceParameterConversion) {
 // Test 7: IgnoresInstanceMethods - Handler rejects non-static methods
 // ============================================================================
 
-TEST(StaticMethodHandlerDispatcherTest, IgnoresInstanceMethods) {
+TEST_F(StaticMethodHandlerDispatcherTest, IgnoresInstanceMethods) {
     const char *cpp = R"(
         class Calculator {
         public:
@@ -583,7 +603,7 @@ TEST(StaticMethodHandlerDispatcherTest, IgnoresInstanceMethods) {
 // Test 8: IgnoresConstructors - Handler rejects constructors
 // ============================================================================
 
-TEST(StaticMethodHandlerDispatcherTest, IgnoresConstructors) {
+TEST_F(StaticMethodHandlerDispatcherTest, IgnoresConstructors) {
     const char *cpp = R"(
         class Widget {
         public:
@@ -627,7 +647,7 @@ TEST(StaticMethodHandlerDispatcherTest, IgnoresConstructors) {
 // Test 9: MixedStaticAndInstanceMethods - Only static handled
 // ============================================================================
 
-TEST(StaticMethodHandlerDispatcherTest, MixedStaticAndInstanceMethods) {
+TEST_F(StaticMethodHandlerDispatcherTest, MixedStaticAndInstanceMethods) {
     const char *cpp = R"(
         class MixedClass {
         public:
@@ -681,7 +701,7 @@ TEST(StaticMethodHandlerDispatcherTest, MixedStaticAndInstanceMethods) {
 // Test 10: NameManglingHelper - Direct test of getMangledName()
 // ============================================================================
 
-TEST(StaticMethodHandlerDispatcherTest, NameManglingHelper) {
+TEST_F(StaticMethodHandlerDispatcherTest, NameManglingHelper) {
     const char *cpp = R"(
         namespace app {
             class Service {
@@ -734,7 +754,9 @@ TEST(StaticMethodHandlerDispatcherTest, NameManglingHelper) {
     NameMangler mangler(cppCtx, registry);
     std::string mangledName = mangler.mangleMethodName(initialize);
 
-    // Verify mangled name includes namespace and class with __ separator
-    EXPECT_EQ(mangledName, "app__Service__initialize")
-        << "Mangled name should be 'app__Service__initialize'";
+    // Verify mangled name includes namespace and class with correct separators
+    // Namespace → class: single underscore (_)
+    // Class → method: single underscore (_)
+    EXPECT_EQ(mangledName, "app_Service_initialize")
+        << "Mangled name should be 'app_Service_initialize' (single _ for namespace→class→method)";
 }

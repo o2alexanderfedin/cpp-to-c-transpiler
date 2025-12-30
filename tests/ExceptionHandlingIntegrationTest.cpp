@@ -40,7 +40,6 @@
 #include "clang/AST/RecursiveASTVisitor.h"
 #include "clang/Frontend/CompilerInstance.h"
 #include "clang/Tooling/Tooling.h"
-#include "CppToCVisitor.h"
 #include "CNodeBuilder.h"
 #include "FileOriginTracker.h"
 #include "ACSLGenerator.h"

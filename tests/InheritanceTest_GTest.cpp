@@ -5,7 +5,6 @@
 //                Member Access, Upcasting, Method Overriding, and more
 
 #include <gtest/gtest.h>
-#include "CppToCVisitor.h"
 #include "CNodeBuilder.h"
 #include "FileOriginTracker.h"
 #include <clang/AST/ASTContext.h>

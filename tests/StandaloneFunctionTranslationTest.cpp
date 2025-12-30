@@ -15,7 +15,6 @@
 #include <gtest/gtest.h>
 #include "CNodeBuilder.h"
 #include "FileOriginTracker.h"
-#include "CppToCVisitor.h"
 #include "NameMangler.h"
 #include "clang/Tooling/Tooling.h"
 #include <memory>

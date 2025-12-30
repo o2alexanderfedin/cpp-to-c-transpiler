@@ -4,7 +4,6 @@
 // Epic #7: Advanced Constructor/Destructor Features
 
 #include <gtest/gtest.h>
-#include "CppToCVisitor.h"
 #include "CNodeBuilder.h"
 #include "FileOriginTracker.h"
 #include "CodeGenerator.h"

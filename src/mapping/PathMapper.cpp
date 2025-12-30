@@ -13,6 +13,14 @@ PathMapper& PathMapper::getInstance(const std::string& sourceDir, const std::str
   return instance;
 }
 
+// Reset method for test isolation
+void PathMapper::reset() {
+  // Get instance without arguments (uses empty defaults)
+  PathMapper& instance = getInstance();
+  instance.fileToTU_.clear();
+  instance.declToTarget_.clear();
+}
+
 // Private constructor
 PathMapper::PathMapper(const std::string& sourceDir, const std::string& outputDir)
     : targetCtx_(TargetContext::getInstance()),

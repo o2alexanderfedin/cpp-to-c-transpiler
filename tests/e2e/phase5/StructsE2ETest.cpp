@@ -9,11 +9,11 @@
  * Validation: Compile C code with gcc and execute
  */
 
-#include "handlers/FunctionHandler.h"
+#include "dispatch/FunctionHandler.h"
 #include "handlers/VariableHandler.h"
 #include "handlers/ExpressionHandler.h"
 #include "handlers/StatementHandler.h"
-#include "handlers/RecordHandler.h"
+#include "dispatch/RecordHandler.h"
 #include "handlers/HandlerContext.h"
 #include "CNodeBuilder.h"
 #include "CodeGenerator.h"

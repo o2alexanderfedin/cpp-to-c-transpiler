@@ -2,7 +2,6 @@
 // Story #15: Class-to-struct conversion
 
 #include <gtest/gtest.h>
-#include "CppToCVisitor.h"
 #include "CNodeBuilder.h"
 #include "FileOriginTracker.h"
 #include "TargetContext.h"

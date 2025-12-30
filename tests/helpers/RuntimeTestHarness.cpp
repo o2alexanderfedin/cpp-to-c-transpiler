@@ -11,7 +11,6 @@
 // Include transpiler API for transpilation
 #include "clang/Tooling/Tooling.h"
 #include "clang/Frontend/ASTUnit.h"
-#include "CppToCVisitor.h"
 #include "CodeGenerator.h"
 #include "llvm/Support/raw_ostream.h"
 

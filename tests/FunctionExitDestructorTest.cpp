@@ -6,7 +6,6 @@
 //
 // TDD Approach: Tests verify actual behavior, not just AST building
 
-#include "CppToCVisitor.h"
 #include "CNodeBuilder.h"
 #include "clang/Tooling/Tooling.h"
 #include "clang/Frontend/ASTUnit.h"

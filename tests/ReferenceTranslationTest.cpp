@@ -23,7 +23,6 @@
 #include <gtest/gtest.h>
 #include "CodeGenerator.h"
 #include "CNodeBuilder.h"
-#include "CppToCVisitor.h"
 #include "FileOriginTracker.h"
 #include "clang/Tooling/Tooling.h"
 #include "llvm/Support/raw_ostream.h"

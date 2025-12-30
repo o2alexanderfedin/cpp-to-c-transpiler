@@ -2,7 +2,6 @@
 // Tests the ability to detect and query language linkage (extern "C" vs C++)
 
 #include <gtest/gtest.h>
-#include "CppToCVisitor.h"
 #include "CNodeBuilder.h"
 #include "clang/Tooling/Tooling.h"
 #include "clang/ASTMatchers/ASTMatchers.h"
