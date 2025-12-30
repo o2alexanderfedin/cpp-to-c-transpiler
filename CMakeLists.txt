@@ -226,6 +226,7 @@ add_library(cpptoc_core STATIC
     src/translation/TypeTranslator.cpp
     src/CFGAnalyzer.cpp
     src/NameMangler.cpp
+    src/OverloadRegistry.cpp
     src/CodeGenerator.cpp
     src/ACSLGenerator.cpp
     src/ACSLFunctionAnnotator.cpp
@@ -480,6 +481,32 @@ target_link_libraries(NameManglerTest PRIVATE cpptoc_core
 
 # Register with CTest
 gtest_discover_tests(NameManglerTest
+    WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
+)
+
+# Phase 1: OverloadRegistry foundation tests
+add_executable(OverloadRegistryTest
+    tests/unit/OverloadRegistryTest.cpp
+)
+
+target_compile_definitions(OverloadRegistryTest PRIVATE ${LLVM_DEFINITIONS})
+
+target_include_directories(OverloadRegistryTest PRIVATE
+    ${CMAKE_SOURCE_DIR}/include
+    ${LLVM_INCLUDE_DIRS}
+    ${CLANG_INCLUDE_DIRS}
+)
+
+target_link_libraries(OverloadRegistryTest PRIVATE cpptoc_core
+    clangTooling
+    clangFrontend
+    clangAST
+    clangBasic
+    GTest::gtest
+    GTest::gtest_main)
+
+# Register with CTest
+gtest_discover_tests(OverloadRegistryTest
     WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
 )
 
