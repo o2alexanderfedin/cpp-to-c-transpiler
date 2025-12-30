@@ -23,6 +23,7 @@
 #include "MoveConstructorTranslator.h"
 #include "MultidimSubscriptTranslator.h"
 #include "NameMangler.h"
+#include "OverloadRegistry.h"
 #include "StaticOperatorTranslator.h"
 #include "ArithmeticOperatorTranslator.h"
 #include "ComparisonOperatorTranslator.h"
@@ -56,6 +57,9 @@ class CppToCVisitor : public clang::RecursiveASTVisitor<CppToCVisitor> {
   clang::ASTContext &Context;
   clang::CNodeBuilder &Builder;
   TargetContext &targetCtx;  // Bug Fix: Shared context for cross-file constructor/method maps
+
+  // Phase 2: OverloadRegistry for deterministic cross-file name mangling
+  cpptoc::OverloadRegistry& overloadRegistry_;
   NameMangler Mangler;
 
   // Phase 34 (v2.5.0): File origin tracking for multi-file transpilation

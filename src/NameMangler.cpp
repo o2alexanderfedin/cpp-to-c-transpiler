@@ -4,7 +4,13 @@
  *
  * Story #18: Basic Name Mangling
  * Story #65: Namespace-Aware Name Mangling
+ * Phase 2: OverloadRegistry Integration
  * Phase 48: Anonymous Namespace Support
+ *
+ * Key Changes (Phase 2):
+ * - Removed per-instance usedNames set
+ * - All mangling uses OverloadRegistry for cross-file consistency
+ * - Deterministic ordering ensures same input → same output
  */
 
 #include "NameMangler.h"
@@ -13,12 +19,14 @@
 #include <algorithm>
 
 using namespace clang;
+using namespace cpptoc;
 
 std::string NameMangler::mangleName(CXXMethodDecl *MD) {
+    // Phase 2: Registry-backed mangling for cross-file consistency
     // Build base name: ClassName_methodName
     std::string baseName = MD->getParent()->getName().str() + "_" + MD->getName().str();
 
-    // Phase 40 (Bug Fix): Always append parameter types for cross-file consistency
+    // Always append parameter types for cross-file consistency
     // This ensures method names are the same whether generated from definition or call site
     // Example: Vector3D::dot(const Vector3D&) -> Vector3D_dot_const_Vector3D_ref
     std::string mangledName = baseName;
@@ -32,33 +40,49 @@ std::string NameMangler::mangleName(CXXMethodDecl *MD) {
         mangledName = baseName;
     }
 
-    usedNames.insert(mangledName);
+    // Register with global registry for cross-file tracking
+    registry_.registerOverload(baseName, MD, mangledName);
+
     return mangledName;
 }
 
 std::string NameMangler::mangleConstructor(CXXConstructorDecl *CD) {
+    // Phase 2: Registry-backed constructor mangling
     // Base name: ClassName__ctor
     std::string baseName = CD->getParent()->getName().str() + "__ctor";
 
-    // Check if base name is unique
-    if (usedNames.find(baseName) == usedNames.end()) {
-        usedNames.insert(baseName);
-        return baseName;
+    // Check if already registered (may be called multiple times for same constructor)
+    std::string existing = registry_.getMangledName(baseName, CD);
+    if (!existing.empty()) {
+        return existing;
     }
 
-    // Handle overloaded constructors: append parameter count
-    std::string mangledName = baseName + "_" + std::to_string(CD->getNumParams());
+    // Determine mangled name based on existing overloads
+    std::string mangledName;
+    if (!registry_.hasMultipleOverloads(baseName) && registry_.countOverloads(baseName) == 0) {
+        // First constructor - use simple name
+        mangledName = baseName;
+    } else {
+        // Handle overloaded constructors: append parameter count
+        mangledName = baseName + "_" + std::to_string(CD->getNumParams());
+    }
 
-    usedNames.insert(mangledName);
+    // Register with global registry
+    registry_.registerOverload(baseName, CD, mangledName);
+
     return mangledName;
 }
 
 std::string NameMangler::mangleDestructor(CXXDestructorDecl *DD) {
+    // Phase 2: Registry-backed destructor mangling
     // Destructor name: ClassName__dtor
     // Note: Destructors cannot be overloaded, so no suffix needed
-    std::string mangledName = DD->getParent()->getName().str() + "__dtor";
+    std::string baseName = DD->getParent()->getName().str() + "__dtor";
+    std::string mangledName = baseName;
 
-    usedNames.insert(mangledName);
+    // Register with global registry (destructors not overloaded, but still track)
+    registry_.registerOverload(baseName, DD, mangledName);
+
     return mangledName;
 }
 
@@ -246,6 +270,7 @@ std::string NameMangler::mangleFunctionName(FunctionDecl *FD) {
 // ============================================================================
 
 std::string NameMangler::mangleStandaloneFunction(FunctionDecl *FD) {
+    // Phase 2: Registry-backed standalone function mangling
     // Special case 1: main() function - never mangle
     if (FD->getName() == "main") {
         return "main";
@@ -266,35 +291,34 @@ std::string NameMangler::mangleStandaloneFunction(FunctionDecl *FD) {
     }
     baseName += FD->getName().str();
 
-    // Check if base name is unique (no overloading)
-    if (usedNames.find(baseName) == usedNames.end()) {
-        usedNames.insert(baseName);
-        return baseName;
+    // Check if already registered (may be called multiple times for same function)
+    std::string existing = registry_.getMangledName(baseName, FD);
+    if (!existing.empty()) {
+        return existing;
     }
 
-    // Handle overload: append parameter types
-    // Pattern: functionName_paramType1_paramType2_...
-    // Note: Skip 'this' parameter (implicit in C++ methods) for cleaner names
-    std::string mangledName = baseName;
-    for (ParmVarDecl *Param : FD->parameters()) {
-        // Skip 'this' parameter - it's implicit in C++ and shouldn't affect overload resolution
-        if (Param->getName() == "this") {
-            continue;
+    // Determine mangled name based on existing overloads
+    std::string mangledName;
+    if (!registry_.hasMultipleOverloads(baseName) && registry_.countOverloads(baseName) == 0) {
+        // First occurrence - use simple base name
+        mangledName = baseName;
+    } else {
+        // Handle overload: append parameter types
+        // Pattern: functionName_paramType1_paramType2_...
+        mangledName = baseName;
+        for (ParmVarDecl *Param : FD->parameters()) {
+            // Skip 'this' parameter - it's implicit in C++ and shouldn't affect overload resolution
+            if (Param->getName() == "this") {
+                continue;
+            }
+            mangledName += "_" + getSimpleTypeName(Param->getType());
         }
-        mangledName += "_" + getSimpleTypeName(Param->getType());
     }
 
-    // Handle case where even with param types, name collides (multiple overloads)
-    // In this case, append a counter
-    std::string finalName = mangledName;
-    int counter = 1;
-    while (usedNames.find(finalName) != usedNames.end()) {
-        finalName = mangledName + "_" + std::to_string(counter);
-        counter++;
-    }
+    // Register with global registry for cross-file tracking
+    registry_.registerOverload(baseName, FD, mangledName);
 
-    usedNames.insert(finalName);
-    return finalName;
+    return mangledName;
 }
 
 // ============================================================================

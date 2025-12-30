@@ -17,6 +17,7 @@
 #include "CNodeBuilder.h"
 #include "CppToCVisitor.h"
 #include "NameMangler.h"
+#include "OverloadRegistry.h"
 #include "clang/Tooling/Tooling.h"
 #include <iostream>
 #include <memory>
@@ -370,7 +371,9 @@ TEST_F(StandaloneFunctionTranslationTestFixture, NameMangler_StandaloneFunctionM
     ASSERT_NE(AST, nullptr) << "Failed to parse C++ code";
 
     ASTContext &Ctx = AST->getASTContext();
-    NameMangler mangler(Ctx);
+    cpptoc::OverloadRegistry& registry = cpptoc::OverloadRegistry::getInstance();
+    registry.reset();
+    NameMangler mangler(Ctx, registry);
 
     // Find the overloaded functions in AST
     bool foundIntVersion = false;

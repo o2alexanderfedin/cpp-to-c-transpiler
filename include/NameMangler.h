@@ -3,17 +3,20 @@
  * @brief Name mangling for C++ methods to generate unique C function names
  *
  * Story #18: Basic Name Mangling
- * Implements simple name mangling for converting C++ method names to unique
- * C function names. Handles overloading by appending parameter types.
+ * Phase 2: OverloadRegistry Integration
+ * Implements deterministic name mangling using global OverloadRegistry for
+ * cross-file consistency. Handles overloading by querying registry state.
  *
  * Design Principles:
  * - SOLID: Single Responsibility (name generation only)
  * - KISS: Simple ClassName_methodName pattern
  * - DRY: Reusable type name extraction
+ * - Deterministic: Same function always gets same mangled name
  *
  * Usage Example:
  * @code
- *   NameMangler mangler(Context);
+ *   OverloadRegistry& registry = OverloadRegistry::getInstance();
+ *   NameMangler mangler(Context, registry);
  *   std::string name = mangler.mangleName(methodDecl);  // "Point_getX"
  * @endcode
  */
@@ -22,8 +25,8 @@
 
 #include "clang/AST/ASTContext.h"
 #include "clang/AST/DeclCXX.h"
+#include "OverloadRegistry.h"
 #include <string>
-#include <set>
 #include <vector>
 
 /**
@@ -46,15 +49,21 @@ private:
     /// Reference to ASTContext for type analysis
     clang::ASTContext &Ctx;
 
-    /// Track used names to ensure uniqueness
-    std::set<std::string> usedNames;
+    /// Reference to global overload registry for deterministic mangling
+    cpptoc::OverloadRegistry& registry_;
 
 public:
     /**
      * @brief Construct a new NameMangler
      * @param Ctx ASTContext reference for type queries
+     * @param registry Reference to OverloadRegistry for tracking overloads
+     *
+     * Phase 2: Constructor now requires OverloadRegistry for deterministic
+     * name mangling. This ensures the same function gets the same mangled name
+     * regardless of file processing order.
      */
-    explicit NameMangler(clang::ASTContext &Ctx) : Ctx(Ctx) {}
+    explicit NameMangler(clang::ASTContext &Ctx, cpptoc::OverloadRegistry& registry)
+        : Ctx(Ctx), registry_(registry) {}
 
     /**
      * @brief Mangle a C++ method name to a unique C function name

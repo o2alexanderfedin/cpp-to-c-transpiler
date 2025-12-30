@@ -3,6 +3,7 @@
 #include "clang/Frontend/ASTUnit.h"
 #include "clang/AST/DeclCXX.h"
 #include "../include/NameMangler.h"
+#include "../include/OverloadRegistry.h"
 #include <cassert>
 
 using namespace clang;
@@ -27,7 +28,9 @@ TEST_F(NameManglerTest, SimpleClassName) {
         std::unique_ptr<ASTUnit> AST = buildAST(code);
         ASSERT_TRUE(AST) << "Failed to parse C++ code";
 
-        NameMangler mangler(AST->getASTContext());
+        cpptoc::OverloadRegistry& registry = cpptoc::OverloadRegistry::getInstance();
+        registry.reset();
+        NameMangler mangler(AST->getASTContext(), registry);
 
         // Find MyClass
         auto *TU = AST->getASTContext().getTranslationUnitDecl();
@@ -58,7 +61,9 @@ TEST_F(NameManglerTest, ClassMethod) {
         std::unique_ptr<ASTUnit> AST = buildAST(code);
         ASSERT_TRUE(AST) << "Failed to parse C++ code";
 
-        NameMangler mangler(AST->getASTContext());
+        cpptoc::OverloadRegistry& registry = cpptoc::OverloadRegistry::getInstance();
+        registry.reset();
+        NameMangler mangler(AST->getASTContext(), registry);
 
         // Find MyClass::method
         auto *TU = AST->getASTContext().getTranslationUnitDecl();
@@ -92,7 +97,9 @@ TEST_F(NameManglerTest, NamespaceFunction) {
         std::unique_ptr<ASTUnit> AST = buildAST(code);
         ASSERT_TRUE(AST) << "Failed to parse C++ code";
 
-        NameMangler mangler(AST->getASTContext());
+        cpptoc::OverloadRegistry& registry = cpptoc::OverloadRegistry::getInstance();
+        registry.reset();
+        NameMangler mangler(AST->getASTContext(), registry);
 
         // Find ns::func
         auto *TU = AST->getASTContext().getTranslationUnitDecl();
@@ -130,7 +137,9 @@ TEST_F(NameManglerTest, NestedNamespaces) {
         std::unique_ptr<ASTUnit> AST = buildAST(code);
         ASSERT_TRUE(AST) << "Failed to parse C++ code";
 
-        NameMangler mangler(AST->getASTContext());
+        cpptoc::OverloadRegistry& registry = cpptoc::OverloadRegistry::getInstance();
+        registry.reset();
+        NameMangler mangler(AST->getASTContext(), registry);
 
         // Find ns1::ns2::func
         auto *TU = AST->getASTContext().getTranslationUnitDecl();
@@ -175,7 +184,9 @@ TEST_F(NameManglerTest, NamespaceClassMethod) {
         std::unique_ptr<ASTUnit> AST = buildAST(code);
         ASSERT_TRUE(AST) << "Failed to parse C++ code";
 
-        NameMangler mangler(AST->getASTContext());
+        cpptoc::OverloadRegistry& registry = cpptoc::OverloadRegistry::getInstance();
+        registry.reset();
+        NameMangler mangler(AST->getASTContext(), registry);
 
         // Find ns::MyClass::method
         auto *TU = AST->getASTContext().getTranslationUnitDecl();
@@ -219,7 +230,9 @@ TEST_F(NameManglerTest, AnonymousNamespaceFunction) {
         std::unique_ptr<ASTUnit> AST = buildAST(code);
         ASSERT_TRUE(AST) << "Failed to parse C++ code";
 
-        NameMangler mangler(AST->getASTContext());
+        cpptoc::OverloadRegistry& registry = cpptoc::OverloadRegistry::getInstance();
+        registry.reset();
+        NameMangler mangler(AST->getASTContext(), registry);
 
         // Find anonymous namespace function
         auto *TU = AST->getASTContext().getTranslationUnitDecl();
@@ -260,7 +273,9 @@ TEST_F(NameManglerTest, AnonymousNamespaceClass) {
         std::unique_ptr<ASTUnit> AST = buildAST(code);
         ASSERT_TRUE(AST) << "Failed to parse C++ code";
 
-        NameMangler mangler(AST->getASTContext());
+        cpptoc::OverloadRegistry& registry = cpptoc::OverloadRegistry::getInstance();
+        registry.reset();
+        NameMangler mangler(AST->getASTContext(), registry);
 
         // Find anonymous namespace class
         auto *TU = AST->getASTContext().getTranslationUnitDecl();
@@ -300,7 +315,9 @@ TEST_F(NameManglerTest, NestedAnonymousNamespace) {
         std::unique_ptr<ASTUnit> AST = buildAST(code);
         ASSERT_TRUE(AST) << "Failed to parse C++ code";
 
-        NameMangler mangler(AST->getASTContext());
+        cpptoc::OverloadRegistry& registry = cpptoc::OverloadRegistry::getInstance();
+        registry.reset();
+        NameMangler mangler(AST->getASTContext(), registry);
 
         // Find nested anonymous namespace function
         auto *TU = AST->getASTContext().getTranslationUnitDecl();
@@ -348,7 +365,9 @@ TEST_F(NameManglerTest, AnonymousNamespaceMethodInClass) {
         std::unique_ptr<ASTUnit> AST = buildAST(code);
         ASSERT_TRUE(AST) << "Failed to parse C++ code";
 
-        NameMangler mangler(AST->getASTContext());
+        cpptoc::OverloadRegistry& registry = cpptoc::OverloadRegistry::getInstance();
+        registry.reset();
+        NameMangler mangler(AST->getASTContext(), registry);
 
         // Find method in anonymous namespace class
         auto *TU = AST->getASTContext().getTranslationUnitDecl();
@@ -396,7 +415,9 @@ TEST_F(NameManglerTest, ExternCInNamespace) {
         std::unique_ptr<ASTUnit> AST = buildAST(code);
         ASSERT_TRUE(AST) << "Failed to parse C++ code";
 
-        NameMangler mangler(AST->getASTContext());
+        cpptoc::OverloadRegistry& registry = cpptoc::OverloadRegistry::getInstance();
+        registry.reset();
+        NameMangler mangler(AST->getASTContext(), registry);
 
         // Find extern "C" function - it might be at TU level or in namespace
         auto *TU = AST->getASTContext().getTranslationUnitDecl();
@@ -452,7 +473,9 @@ TEST_F(NameManglerTest, DeepNesting) {
         std::unique_ptr<ASTUnit> AST = buildAST(code);
         ASSERT_TRUE(AST) << "Failed to parse C++ code";
 
-        NameMangler mangler(AST->getASTContext());
+        cpptoc::OverloadRegistry& registry = cpptoc::OverloadRegistry::getInstance();
+        registry.reset();
+        NameMangler mangler(AST->getASTContext(), registry);
 
         // Find deeply nested function
         auto *TU = AST->getASTContext().getTranslationUnitDecl();
@@ -511,7 +534,9 @@ TEST_F(NameManglerTest, StaticMethodInNamespace) {
         std::unique_ptr<ASTUnit> AST = buildAST(code);
         ASSERT_TRUE(AST) << "Failed to parse C++ code";
 
-        NameMangler mangler(AST->getASTContext());
+        cpptoc::OverloadRegistry& registry = cpptoc::OverloadRegistry::getInstance();
+        registry.reset();
+        NameMangler mangler(AST->getASTContext(), registry);
 
         // Find static method
         auto *TU = AST->getASTContext().getTranslationUnitDecl();
@@ -558,7 +583,9 @@ TEST_F(NameManglerTest, NestedClassInNamespace) {
         std::unique_ptr<ASTUnit> AST = buildAST(code);
         ASSERT_TRUE(AST) << "Failed to parse C++ code";
 
-        NameMangler mangler(AST->getASTContext());
+        cpptoc::OverloadRegistry& registry = cpptoc::OverloadRegistry::getInstance();
+        registry.reset();
+        NameMangler mangler(AST->getASTContext(), registry);
 
         // Find nested class
         auto *TU = AST->getASTContext().getTranslationUnitDecl();
@@ -607,7 +634,9 @@ TEST_F(NameManglerTest, ConstructorInNamespacedClass) {
         std::unique_ptr<ASTUnit> AST = buildAST(code);
         ASSERT_TRUE(AST) << "Failed to parse C++ code";
 
-        NameMangler mangler(AST->getASTContext());
+        cpptoc::OverloadRegistry& registry = cpptoc::OverloadRegistry::getInstance();
+        registry.reset();
+        NameMangler mangler(AST->getASTContext(), registry);
 
         // Find constructors
         auto *TU = AST->getASTContext().getTranslationUnitDecl();
@@ -660,7 +689,9 @@ TEST_F(NameManglerTest, OverloadedFunctionsInNamespace) {
         std::unique_ptr<ASTUnit> AST = buildAST(code);
         ASSERT_TRUE(AST) << "Failed to parse C++ code";
 
-        NameMangler mangler(AST->getASTContext());
+        cpptoc::OverloadRegistry& registry = cpptoc::OverloadRegistry::getInstance();
+        registry.reset();
+        NameMangler mangler(AST->getASTContext(), registry);
 
         // Find both overloaded functions
         auto *TU = AST->getASTContext().getTranslationUnitDecl();
@@ -714,7 +745,9 @@ TEST_F(NameManglerTest, MultipleNamespacesInSameFile) {
         std::unique_ptr<ASTUnit> AST = buildAST(code);
         ASSERT_TRUE(AST) << "Failed to parse C++ code";
 
-        NameMangler mangler(AST->getASTContext());
+        cpptoc::OverloadRegistry& registry = cpptoc::OverloadRegistry::getInstance();
+        registry.reset();
+        NameMangler mangler(AST->getASTContext(), registry);
 
         // Find both functions
         auto *TU = AST->getASTContext().getTranslationUnitDecl();
@@ -765,7 +798,9 @@ TEST_F(NameManglerTest, Cpp17NestedNamespaceSyntax) {
         std::unique_ptr<ASTUnit> AST = buildAST(code);
         ASSERT_TRUE(AST) << "Failed to parse C++ code";
 
-        NameMangler mangler(AST->getASTContext());
+        cpptoc::OverloadRegistry& registry = cpptoc::OverloadRegistry::getInstance();
+        registry.reset();
+        NameMangler mangler(AST->getASTContext(), registry);
 
         // Find function in C++17 nested namespace
         auto *TU = AST->getASTContext().getTranslationUnitDecl();

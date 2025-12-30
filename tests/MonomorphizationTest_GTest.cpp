@@ -6,6 +6,7 @@
 #include "TemplateMonomorphizer.h"
 #include "TemplateExtractor.h"
 #include "NameMangler.h"
+#include "OverloadRegistry.h"
 #include <clang/AST/ASTContext.h>
 #include <clang/Frontend/ASTUnit.h>
 #include <clang/Tooling/Tooling.h>
@@ -60,7 +61,9 @@ TEST_F(MonomorphizationTestFixture, BasicClassTemplateMonomorphization) {
     auto classInsts = extractor.getClassInstantiations();
     ASSERT_GE(classInsts.size(), 2u) << "Expected at least 2 class instantiations";
 
-    NameMangler mangler(Context);
+    cpptoc::OverloadRegistry& registry = cpptoc::OverloadRegistry::getInstance();
+    registry.reset();
+    NameMangler mangler(Context, registry);
     TemplateMonomorphizer monomorphizer(Context, mangler);
 
     for (auto* inst : classInsts) {
@@ -108,7 +111,9 @@ TEST_F(MonomorphizationTestFixture, FunctionTemplateMonomorphization) {
     auto funcInsts = extractor.getFunctionInstantiations();
     ASSERT_GE(funcInsts.size(), 2u) << "Expected at least 2 function instantiations";
 
-    NameMangler mangler(Context);
+    cpptoc::OverloadRegistry& registry = cpptoc::OverloadRegistry::getInstance();
+    registry.reset();
+    NameMangler mangler(Context, registry);
     TemplateMonomorphizer monomorphizer(Context, mangler);
 
     for (auto* inst : funcInsts) {
@@ -155,7 +160,9 @@ TEST_F(MonomorphizationTestFixture, TypeSubstitution) {
     auto classInsts = extractor.getClassInstantiations();
     ASSERT_GE(classInsts.size(), 1u) << "Expected at least 1 class instantiation";
 
-    NameMangler mangler(Context);
+    cpptoc::OverloadRegistry& registry = cpptoc::OverloadRegistry::getInstance();
+    registry.reset();
+    NameMangler mangler(Context, registry);
     TemplateMonomorphizer monomorphizer(Context, mangler);
 
     std::string cCode = monomorphizer.monomorphizeClass(classInsts[0]);
@@ -195,7 +202,9 @@ TEST_F(MonomorphizationTestFixture, Deduplication) {
 
     auto classInsts = extractor.getClassInstantiations();
 
-    NameMangler mangler(Context);
+    cpptoc::OverloadRegistry& registry = cpptoc::OverloadRegistry::getInstance();
+    registry.reset();
+    NameMangler mangler(Context, registry);
     TemplateMonomorphizer monomorphizer(Context, mangler);
 
     std::set<std::string> generatedCode;
@@ -242,7 +251,9 @@ TEST_F(MonomorphizationTestFixture, MethodGeneration) {
     auto classInsts = extractor.getClassInstantiations();
     ASSERT_GE(classInsts.size(), 1u) << "Expected at least 1 class instantiation";
 
-    NameMangler mangler(Context);
+    cpptoc::OverloadRegistry& registry = cpptoc::OverloadRegistry::getInstance();
+    registry.reset();
+    NameMangler mangler(Context, registry);
     TemplateMonomorphizer monomorphizer(Context, mangler);
 
     std::string cCode = monomorphizer.monomorphizeClass(classInsts[0]);
@@ -284,7 +295,9 @@ TEST_F(MonomorphizationTestFixture, NonTypeTemplateParameters) {
     auto classInsts = extractor.getClassInstantiations();
     ASSERT_GE(classInsts.size(), 2u) << "Expected at least 2 class instantiations";
 
-    NameMangler mangler(Context);
+    cpptoc::OverloadRegistry& registry = cpptoc::OverloadRegistry::getInstance();
+    registry.reset();
+    NameMangler mangler(Context, registry);
     TemplateMonomorphizer monomorphizer(Context, mangler);
 
     for (auto* inst : classInsts) {

@@ -27,11 +27,14 @@ extern std::string getExceptionModel();              // Phase 12 (v2.5.0)
 extern bool shouldEnableRTTI();                      // Phase 13 (v2.6.0)
 
 // Epic #193: ACSL Integration - Constructor Implementation
+// Phase 2: OverloadRegistry integration for deterministic mangling
 CppToCVisitor::CppToCVisitor(ASTContext &Context, CNodeBuilder &Builder,
                              TargetContext &targetCtx_param,
                              cpptoc::FileOriginTracker &tracker,
                              cpptoc::PathMapper* pathMapper_param)
-    : Context(Context), Builder(Builder), targetCtx(targetCtx_param), Mangler(Context),
+    : Context(Context), Builder(Builder), targetCtx(targetCtx_param),
+      overloadRegistry_(cpptoc::OverloadRegistry::getInstance()),
+      Mangler(Context, overloadRegistry_),
       fileOriginTracker(tracker), pathMapper(pathMapper_param),
       VirtualAnalyzer(Context), VptrInjectorInstance(Context, VirtualAnalyzer),
       MoveCtorTranslator(Context), MoveAssignTranslator(Context),
