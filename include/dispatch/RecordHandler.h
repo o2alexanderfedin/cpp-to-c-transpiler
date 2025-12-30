@@ -11,6 +11,11 @@
  * - Nested struct flattening (Outer__Inner pattern with double underscore)
  * - Forward declarations vs complete definitions
  *
+ * Phase 3: NameMangler Integration
+ * - Uses NameMangler::mangleClassName for all class/struct name mangling
+ * - Removed custom getMangledName() - replaced by NameMangler
+ * - Consistent with InstanceMethodHandler and StaticMethodHandler
+ *
  * Future Phases:
  * - Methods translation (CXXMethodDecl → static functions)
  * - Polymorphism support (vtables)
@@ -227,15 +232,9 @@ private:
         const std::string& outerName
     );
 
-    /**
-     * @brief Get mangled name for nested struct
-     * @param outerName Outer struct name
-     * @param innerName Inner struct name
-     * @return Mangled name (Outer__Inner with double underscore)
-     *
-     * Example: getMangledName("Outer", "Inner") → "Outer__Inner"
-     */
-    static std::string getMangledName(const std::string& outerName, const std::string& innerName);
+    // Phase 3: Removed getMangledName() declaration
+    // Name mangling now handled by NameMangler::mangleClassName()
+    // This provides unified, consistent name mangling across all handlers
 };
 
 } // namespace cpptoc

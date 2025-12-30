@@ -4,11 +4,16 @@
  *
  * Integrates with CppToCVisitorDispatcher to handle static method translation.
  * Translates C++ static methods to C free functions with class name prefixing.
+ *
+ * Phase 3: OverloadRegistry Integration
+ * - Uses NameMangler for all name mangling (replaces custom getMangledName)
+ * - Ensures deterministic cross-file naming via OverloadRegistry
  */
 
 #include "dispatch/StaticMethodHandler.h"
-#include "dispatch/NamespaceHandler.h"
 #include "CNodeBuilder.h"
+#include "NameMangler.h"
+#include "OverloadRegistry.h"
 #include "mapping/DeclMapper.h"
 #include "mapping/StmtMapper.h"
 #include "mapping/TypeMapper.h"
@@ -69,8 +74,12 @@ void StaticMethodHandler::handleStaticMethod(
     const clang::CXXRecordDecl* classDecl = cppMethod->getParent();
     assert(classDecl && "Static method must have parent class");
 
-    // Compute mangled name (apply class and namespace prefix)
-    std::string mangledName = getMangledName(cppMethod, classDecl);
+    // Phase 3: Use NameMangler with OverloadRegistry for deterministic naming
+    // Static methods are treated as standalone functions (no 'this' parameter)
+    // NameMangler handles: namespace prefix, class prefix, overload resolution
+    cpptoc::OverloadRegistry& registry = cpptoc::OverloadRegistry::getInstance();
+    NameMangler mangler(const_cast<clang::ASTContext&>(cppASTContext), registry);
+    std::string mangledName = mangler.mangleStandaloneFunction(const_cast<clang::CXXMethodDecl*>(cppMethod));
 
     // Extract method properties
     clang::QualType cppReturnType = cppMethod->getReturnType();
@@ -169,28 +178,8 @@ void StaticMethodHandler::handleStaticMethod(
                  << " → " << mangledName << " → " << targetPath << "\n";
 }
 
-std::string StaticMethodHandler::getMangledName(
-    const clang::CXXMethodDecl* method,
-    const clang::CXXRecordDecl* classDecl
-) {
-    std::string methodName = method->getNameAsString();
-    std::string className = classDecl->getNameAsString();
-
-    // Check if class is in namespace and apply namespace prefix
-    if (const auto* ns = llvm::dyn_cast<clang::NamespaceDecl>(
-            classDecl->getDeclContext())) {
-        std::string nsPath = NamespaceHandler::getNamespacePath(ns);
-        if (!nsPath.empty()) {
-            // Apply namespace prefix to class name
-            className = nsPath + "__" + className;
-        }
-    }
-
-    // Combine class name and method name with __ separator
-    // C++ Counter::getValue() → C Counter__getValue()
-    // C++ game::Entity::getMax() → C game__Entity__getMax()
-    return className + "__" + methodName;
-}
+// Phase 3: Removed custom getMangledName() - now uses NameMangler::mangleStandaloneFunction()
+// This ensures deterministic naming via OverloadRegistry across all translation units
 
 std::vector<clang::ParmVarDecl*> StaticMethodHandler::translateParameters(
     const clang::CXXMethodDecl* method,

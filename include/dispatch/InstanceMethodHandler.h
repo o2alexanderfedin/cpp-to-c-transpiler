@@ -7,17 +7,16 @@
  * class/namespace prefixing.
  *
  * Phase 1 Scope: Instance method signature translation
- * - Instance method name with class/namespace prefix (Class__method)
+ * - Instance method name with class/namespace prefix
  * - Return type and parameter translation
  * - Explicit "this" parameter as FIRST parameter (struct ClassName* this)
  * - Function bodies translated via CompoundStmtHandler
  * - EXCLUDES: static methods, virtual methods, constructors, destructors
  *
- * Future Phases:
- * - Method overloading resolution
- * - Template instance methods
- * - Const method handling (const qualifier on "this")
- * - Member function pointers
+ * Phase 3: OverloadRegistry Integration
+ * - Uses NameMangler::mangleName() for all name mangling
+ * - Ensures deterministic cross-file naming via OverloadRegistry
+ * - Handles overload resolution automatically
  *
  * Design Pattern: Chain of Responsibility handler for dispatcher
  */
@@ -111,41 +110,8 @@ public:
      */
     static void registerWith(CppToCVisitorDispatcher& dispatcher);
 
-    /**
-     * @brief Compute mangled name for instance method
-     * @param method Instance method declaration
-     * @param classDecl Parent class declaration
-     * @return Mangled name with class prefix (e.g., "Counter__increment")
-     *
-     * Algorithm:
-     * 1. Get class name from parent CXXRecordDecl
-     * 2. Get method name from CXXMethodDecl
-     * 3. Check if class is in namespace:
-     *    - Walk parent DeclContexts to find NamespaceDecl
-     *    - Compute namespace path (A::B → A__B)
-     *    - Prefix class name with namespace path
-     * 4. Combine class name and method name with __ separator
-     * 5. Return mangled name
-     *
-     * Examples:
-     * - Simple: Counter::increment() → "Counter__increment"
-     * - Namespace: game::Entity::update() → "game__Entity__update"
-     * - Nested namespace: ns1::ns2::Math::add() → "ns1__ns2__Math__add"
-     *
-     * Critical: Uses __ separator (NOT _) for all C++ scope resolution
-     * - C++ :: becomes C __
-     * - Ensures consistency with StaticMethodHandler and other handlers
-     *
-     * Note: SAME implementation as StaticMethodHandler::getMangledName()
-     * - Both static and instance methods use identical name mangling
-     * - Only difference is "this" parameter presence
-     *
-     * Made public for testing
-     */
-    static std::string getMangledName(
-        const clang::CXXMethodDecl* method,
-        const clang::CXXRecordDecl* classDecl
-    );
+    // Phase 3: Removed getMangledName() - now uses NameMangler::mangleName()
+    // This ensures deterministic naming via OverloadRegistry across all translation units
 
     /**
      * @brief Create "this" parameter for instance method
@@ -234,10 +200,10 @@ private:
      * 1. Assert D is not null and is instance CXXMethodDecl
      * 2. Cast D to CXXMethodDecl
      * 3. Get parent class (CXXRecordDecl)
-     * 4. Compute mangled name using getMangledName():
-     *    - Apply class name prefix
-     *    - Apply namespace prefix if applicable
-     *    - Use __ separator for all scope resolution
+     * 4. Phase 3: Compute mangled name using NameMangler::mangleName():
+     *    - Uses OverloadRegistry for deterministic cross-file naming
+     *    - Handles namespace prefix, class prefix, and overload resolution
+     *    - Ensures same function gets same name across translation units
      * 5. Translate return type via TypeHandler:
      *    - Dispatch return type to TypeHandler
      *    - Retrieve translated type from TypeMapper

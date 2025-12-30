@@ -15,8 +15,12 @@
  * - Class/namespace prefixing with __ separator
  * - Function bodies translated via CompoundStmtHandler
  *
+ * Phase 3: OverloadRegistry Integration
+ * - Uses NameMangler with OverloadRegistry for all name mangling
+ * - Ensures deterministic cross-file naming
+ * - Removed custom getMangledName() - now uses NameMangler::mangleName()
+ *
  * Future Phases:
- * - Virtual method overloading resolution
  * - Template virtual methods
  * - Virtual base offset tables
  * - RTTI type_info integration
@@ -134,42 +138,9 @@ public:
      */
     static void registerWith(CppToCVisitorDispatcher& dispatcher);
 
-    /**
-     * @brief Compute mangled name for virtual method
-     * @param method Virtual method declaration
-     * @param classDecl Parent class declaration
-     * @return Mangled name with class prefix (e.g., "Shape__getArea")
-     *
-     * Algorithm:
-     * 1. Get class name from parent CXXRecordDecl
-     * 2. Get method name from CXXMethodDecl
-     * 3. Check if class is in namespace:
-     *    - Walk parent DeclContexts to find NamespaceDecl
-     *    - Compute namespace path (A::B → A__B)
-     *    - Prefix class name with namespace path
-     * 4. Combine class name and method name with __ separator
-     * 5. Return mangled name
-     *
-     * Examples:
-     * - Simple: Shape::getArea() → "Shape__getArea"
-     * - Namespace: game::Entity::update() → "game__Entity__update"
-     * - Nested namespace: ns1::ns2::Math::add() → "ns1__ns2__Math__add"
-     *
-     * Critical: Uses __ separator (NOT _) for all C++ scope resolution
-     * - C++ :: becomes C __
-     * - Ensures consistency with StaticMethodHandler and InstanceMethodHandler
-     *
-     * Note: SAME implementation as StaticMethodHandler::getMangledName()
-     * and InstanceMethodHandler::getMangledName()
-     * - All method types use identical name mangling
-     * - Only difference is vtable generation for virtual methods
-     *
-     * Made public for testing
-     */
-    static std::string getMangledName(
-        const clang::CXXMethodDecl* method,
-        const clang::CXXRecordDecl* classDecl
-    );
+    // Phase 3: Removed getMangledName() - now uses NameMangler::mangleName()
+    // All name mangling now delegated to NameMangler with OverloadRegistry for deterministic naming
+    // This ensures consistent cross-file naming and proper overload resolution
 
     /**
      * @brief Create "this" parameter for virtual method
@@ -220,10 +191,11 @@ public:
      * @param method Virtual method declaration
      * @param classDecl Parent class declaration
      * @param cASTContext Target C ASTContext
+     * @param mangledName Pre-computed mangled name (from NameMangler)
      * @return Static declaration string (e.g., "static int Shape__getArea(struct Shape *this);")
      *
      * Algorithm:
-     * 1. Get mangled name using getMangledName()
+     * 1. Use pre-computed mangledName (Phase 3: computed via NameMangler by caller)
      * 2. Get return type (translate via TypeHandler)
      * 3. Build parameter list (this + method params)
      * 4. Format as: "static ReturnType MangledName(params);"
@@ -239,12 +211,15 @@ public:
      *
      * Placement: Generated BEFORE vtable struct definitions
      *
+     * Phase 3: mangledName parameter added to accept pre-computed name from NameMangler
+     *
      * Made public for testing
      */
     static std::string generateStaticDeclaration(
         const clang::CXXMethodDecl* method,
         const clang::CXXRecordDecl* classDecl,
-        clang::ASTContext& cASTContext
+        clang::ASTContext& cASTContext,
+        const std::string& mangledName
     );
 
 private:
@@ -299,10 +274,12 @@ private:
      * 1. Assert D is not null and is virtual CXXMethodDecl
      * 2. Cast D to CXXMethodDecl
      * 3. Get parent class (CXXRecordDecl)
-     * 4. Compute mangled name using getMangledName():
+     * 4. Compute mangled name using NameMangler (Phase 3):
+     *    - Use NameMangler with OverloadRegistry for deterministic naming
      *    - Apply class name prefix
      *    - Apply namespace prefix if applicable
      *    - Use __ separator for all scope resolution
+     *    - Handle overload resolution automatically
      * 5. Generate COM-style static declaration:
      *    - Call generateStaticDeclaration()
      *    - Store for later output (before vtable struct)

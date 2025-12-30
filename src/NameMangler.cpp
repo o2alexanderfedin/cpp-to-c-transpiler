@@ -185,6 +185,8 @@ std::vector<std::string> NameMangler::extractNamespaceHierarchy(Decl *D) {
     // Example: ns1::ns2::func returns {"ns1", "ns2"}
     // Phase 48: Enhanced with anonymous namespace support
     // Example: namespace { func; } returns {"_anon_file_cpp_42"}
+    // Phase 3: Enhanced with nested struct/class support
+    // Example: Outer::Inner returns {"Outer"} (marked as struct parent)
     std::vector<std::string> namespaces;
 
     DeclContext *DC = D->getDeclContext();
@@ -192,12 +194,17 @@ std::vector<std::string> NameMangler::extractNamespaceHierarchy(Decl *D) {
         if (auto *ND = dyn_cast<NamespaceDecl>(DC)) {
             if (!ND->isAnonymousNamespace()) {
                 // Named namespace: use name directly
-                namespaces.push_back(ND->getName().str());
+                // Mark with prefix to distinguish from struct parents
+                namespaces.push_back("ns:" + ND->getName().str());
             } else {
                 // Anonymous namespace: generate unique ID
                 std::string uniqueId = getAnonymousNamespaceID(ND);
-                namespaces.push_back(uniqueId);
+                namespaces.push_back("ns:" + uniqueId);
             }
+        } else if (auto *RD = dyn_cast<RecordDecl>(DC)) {
+            // Phase 3: Handle nested structs/classes
+            // Mark with prefix to distinguish from namespace parents
+            namespaces.push_back("rec:" + RD->getName().str());
         }
         DC = DC->getParent();
     }
@@ -208,13 +215,23 @@ std::vector<std::string> NameMangler::extractNamespaceHierarchy(Decl *D) {
 }
 
 std::string NameMangler::mangleClassName(CXXRecordDecl *RD) {
-    // Extract namespace hierarchy
-    std::vector<std::string> namespaces = extractNamespaceHierarchy(RD);
+    // Phase 3: Extract namespace and nested struct hierarchy
+    // Supports both namespaces (single _) and nested structs (double __)
+    std::vector<std::string> hierarchy = extractNamespaceHierarchy(RD);
 
-    // Build mangled name: ns1_ns2_ClassName
+    // Build mangled name with proper separators:
+    // - Namespace: single underscore (_)
+    // - Nested struct: double underscore (__)
+    // Example: ns::Outer::Inner → ns_Outer__Inner
     std::string mangledName;
-    for (const auto &ns : namespaces) {
-        mangledName += ns + "_";
+    for (const auto &item : hierarchy) {
+        if (item.substr(0, 3) == "ns:") {
+            // Namespace: use single underscore
+            mangledName += item.substr(3) + "_";
+        } else if (item.substr(0, 4) == "rec:") {
+            // Nested struct: use double underscore
+            mangledName += item.substr(4) + "__";
+        }
     }
     mangledName += RD->getName().str();
 
@@ -230,14 +247,24 @@ std::string NameMangler::mangleMethodName(CXXMethodDecl *MD) {
         return MD->getNameAsString();
     }
 
-    // Extract namespace hierarchy
-    std::vector<std::string> namespaces = extractNamespaceHierarchy(Parent);
+    // Phase 3: Extract namespace and nested struct hierarchy
+    std::vector<std::string> hierarchy = extractNamespaceHierarchy(Parent);
 
-    // Build mangled name: ns1_ns2_ClassName_methodName
+    // Build mangled name with proper separators:
+    // - Namespace: single underscore (_)
+    // - Nested struct: double underscore (__)
+    // - Method: single underscore (_)
+    // Example: ns::Outer::Inner::method → ns_Outer__Inner_method
     // CRITICAL: Use getNameAsString() instead of getName().str() to handle operator names
     std::string mangledName;
-    for (const auto &ns : namespaces) {
-        mangledName += ns + "_";
+    for (const auto &item : hierarchy) {
+        if (item.substr(0, 3) == "ns:") {
+            // Namespace: use single underscore
+            mangledName += item.substr(3) + "_";
+        } else if (item.substr(0, 4) == "rec:") {
+            // Nested struct: use double underscore
+            mangledName += item.substr(4) + "__";
+        }
     }
     mangledName += Parent->getName().str() + "_" + MD->getNameAsString();
 
@@ -252,13 +279,18 @@ std::string NameMangler::mangleFunctionName(FunctionDecl *FD) {
         return FD->getName().str();  // Return unmangled name for C linkage
     }
 
-    // Extract namespace hierarchy
-    std::vector<std::string> namespaces = extractNamespaceHierarchy(FD);
+    // Phase 3: Extract namespace hierarchy (no nested structs for standalone functions)
+    std::vector<std::string> hierarchy = extractNamespaceHierarchy(FD);
 
     // Build mangled name: ns1_ns2_funcName
+    // Note: Standalone functions can't be nested in structs, only namespaces
     std::string mangledName;
-    for (const auto &ns : namespaces) {
-        mangledName += ns + "_";
+    for (const auto &item : hierarchy) {
+        if (item.substr(0, 3) == "ns:") {
+            // Namespace: use single underscore
+            mangledName += item.substr(3) + "_";
+        }
+        // rec: prefix should not appear for standalone functions
     }
     mangledName += FD->getName().str();
 

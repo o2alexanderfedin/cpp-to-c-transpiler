@@ -2,9 +2,14 @@
  * @file RecordHandler.cpp
  * @brief Implementation of RecordHandler dispatcher pattern
  *
+ * Phase 3: NameMangler Integration
+ * - Uses NameMangler::mangleClassName for all class/struct name mangling
+ * - Removed custom getMangledName() implementation
+ * - Consistent with InstanceMethodHandler and StaticMethodHandler
+ *
  * Integrates with CppToCVisitorDispatcher to handle struct/class translation.
  * Translates C++ structs and classes to C structs with field translation.
- * Handles nested structs with name mangling (Outer_Inner pattern).
+ * Handles nested structs with name mangling (Outer__Inner pattern via NameMangler).
  */
 
 #include "dispatch/RecordHandler.h"
@@ -12,6 +17,8 @@
 #include "CNodeBuilder.h"
 #include "mapping/DeclMapper.h"
 #include "mapping/TypeMapper.h"
+#include "NameMangler.h"
+#include "OverloadRegistry.h"
 #include "clang/AST/DeclCXX.h"
 #include "llvm/Support/Casting.h"
 #include "llvm/Support/raw_ostream.h"
@@ -58,27 +65,25 @@ void RecordHandler::handleRecord(
     // Extract struct/class properties
     std::string name = cppRecord->getNameAsString();
 
-    // Check if this is a nested struct and compute mangled name
-    std::string mangledName = name;
+    // Phase 3: Use NameMangler for all name mangling (replaces custom logic)
+    // NameMangler handles both namespace prefixes and nested struct mangling
+    cpptoc::OverloadRegistry& registry = cpptoc::OverloadRegistry::getInstance();
+    NameMangler mangler(const_cast<clang::ASTContext&>(cppASTContext), registry);
 
-    // Check for namespace parent (apply namespace prefix)
-    if (const auto* nsDecl = llvm::dyn_cast<clang::NamespaceDecl>(cppRecord->getDeclContext())) {
-        std::string nsPrefix = cpptoc::NamespaceHandler::getNamespacePath(nsDecl);
-        if (!nsPrefix.empty()) {
-            mangledName = nsPrefix + "__" + name;
-            llvm::outs() << "[RecordHandler] Applied namespace prefix: "
-                         << name << " → " << mangledName << "\n";
-        }
+    // Convert RecordDecl to CXXRecordDecl for NameMangler
+    // Note: Plain structs (RecordDecl) need to be handled carefully
+    std::string mangledName;
+    if (const auto* cxxRecord = llvm::dyn_cast<clang::CXXRecordDecl>(cppRecord)) {
+        mangledName = mangler.mangleClassName(const_cast<clang::CXXRecordDecl*>(cxxRecord));
+    } else {
+        // Plain C struct (RecordDecl) - use simple name
+        // TODO: May need to enhance NameMangler to handle RecordDecl too
+        mangledName = name;
     }
-    // Check for nested struct parent (apply struct name prefix)
-    else if (const auto* parentDC = llvm::dyn_cast<clang::RecordDecl>(cppRecord->getDeclContext())) {
-        std::string parentName = parentDC->getNameAsString();
-        // Skip if parent has the same name (self-reference / Clang artifact)
-        if (parentName != name) {
-            mangledName = getMangledName(parentName, name);
-            llvm::outs() << "[RecordHandler] Detected nested struct: "
-                         << parentName << "::" << name << " → " << mangledName << "\n";
-        }
+
+    if (name != mangledName) {
+        llvm::outs() << "[RecordHandler] Mangled struct/class name: "
+                     << name << " → " << mangledName << "\n";
     }
 
     // Handle forward declaration first (before checking polymorphism)
@@ -272,8 +277,8 @@ void RecordHandler::translateNestedStructs(
     }
 }
 
-std::string RecordHandler::getMangledName(const std::string& outerName, const std::string& innerName) {
-    return outerName + "__" + innerName;
-}
+// Phase 3: Removed custom getMangledName() - now uses NameMangler::mangleClassName()
+// NameMangler provides unified name mangling for all declarations (classes, methods, functions)
+// and handles both namespaces (single _) and nested structs (double __) correctly
 
 } // namespace cpptoc

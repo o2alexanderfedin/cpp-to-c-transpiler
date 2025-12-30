@@ -5,11 +5,17 @@
  * Integrates with CppToCVisitorDispatcher to handle virtual method translation.
  * Translates C++ virtual methods to C free functions with explicit "this" parameter,
  * class/namespace name prefixing, and COM-style vtable generation.
+ *
+ * Phase 3: OverloadRegistry Integration
+ * - Uses NameMangler for all name mangling (replaces custom getMangledName)
+ * - Ensures deterministic cross-file naming via OverloadRegistry
  */
 
 #include "dispatch/VirtualMethodHandler.h"
 #include "dispatch/NamespaceHandler.h"
 #include "CNodeBuilder.h"
+#include "NameMangler.h"
+#include "OverloadRegistry.h"
 #include "mapping/DeclMapper.h"
 #include "mapping/StmtMapper.h"
 #include "mapping/TypeMapper.h"
@@ -82,12 +88,16 @@ void VirtualMethodHandler::handleVirtualMethod(
     const clang::CXXRecordDecl* classDecl = cppMethod->getParent();
     assert(classDecl && "Virtual method must have parent class");
 
-    // Compute mangled name (apply class and namespace prefix)
-    std::string mangledName = getMangledName(cppMethod, classDecl);
+    // Phase 3: Use NameMangler with OverloadRegistry for deterministic naming
+    // NameMangler handles: namespace prefix, class prefix, overload resolution
+    cpptoc::OverloadRegistry& registry = cpptoc::OverloadRegistry::getInstance();
+    NameMangler mangler(const_cast<clang::ASTContext&>(cppASTContext), registry);
+    std::string mangledName = mangler.mangleName(const_cast<clang::CXXMethodDecl*>(cppMethod));
 
     // Generate COM-style static declaration (for compile-time type safety)
     // This is output before vtable struct definitions
-    std::string staticDecl = generateStaticDeclaration(cppMethod, classDecl, cASTContext);
+    // Phase 3: Pass mangledName directly (already computed via NameMangler above)
+    std::string staticDecl = generateStaticDeclaration(cppMethod, classDecl, cASTContext, mangledName);
     // TODO: Store static declaration for later output
     // For now, we just log it
     llvm::outs() << "[VirtualMethodHandler] Static declaration: " << staticDecl << "\n";
@@ -213,28 +223,8 @@ void VirtualMethodHandler::handleVirtualMethod(
     llvm::outs() << "\n";
 }
 
-std::string VirtualMethodHandler::getMangledName(
-    const clang::CXXMethodDecl* method,
-    const clang::CXXRecordDecl* classDecl
-) {
-    std::string methodName = method->getNameAsString();
-    std::string className = classDecl->getNameAsString();
-
-    // Check if class is in namespace and apply namespace prefix
-    if (const auto* ns = llvm::dyn_cast<clang::NamespaceDecl>(
-            classDecl->getDeclContext())) {
-        std::string nsPath = NamespaceHandler::getNamespacePath(ns);
-        if (!nsPath.empty()) {
-            // Apply namespace prefix to class name
-            className = nsPath + "__" + className;
-        }
-    }
-
-    // Combine class name and method name with __ separator
-    // C++ Shape::getArea() → C Shape__getArea()
-    // C++ game::Entity::update() → C game__Entity__update()
-    return className + "__" + methodName;
-}
+// Phase 3: Removed custom getMangledName() - now uses NameMangler::mangleName()
+// This ensures deterministic naming via OverloadRegistry across all translation units
 
 clang::ParmVarDecl* VirtualMethodHandler::createThisParameter(
     const clang::CXXRecordDecl* classDecl,
@@ -288,10 +278,10 @@ clang::ParmVarDecl* VirtualMethodHandler::createThisParameter(
 std::string VirtualMethodHandler::generateStaticDeclaration(
     const clang::CXXMethodDecl* method,
     const clang::CXXRecordDecl* classDecl,
-    clang::ASTContext& cASTContext
+    clang::ASTContext& cASTContext,
+    const std::string& mangledName
 ) {
-    // Get mangled name
-    std::string mangledName = getMangledName(method, classDecl);
+    // Phase 3: mangledName now passed as parameter (computed via NameMangler by caller)
 
     // Get return type as string
     std::string returnType = method->getReturnType().getAsString();
@@ -512,8 +502,12 @@ std::string VirtualMethodHandler::generateVtableInstance(
     ss << "    .type_info = &" << className << "__type_info,\n";
 
     // Virtual method pointers
+    // Phase 3: Use NameMangler with OverloadRegistry for each method
     for (const auto* method : virtualMethods) {
-        std::string methodName = getMangledName(method, classDecl);
+        // Get method's source ASTContext and use NameMangler
+        cpptoc::OverloadRegistry& registry = cpptoc::OverloadRegistry::getInstance();
+        NameMangler mangler(const_cast<clang::ASTContext&>(method->getASTContext()), registry);
+        std::string methodName = mangler.mangleName(const_cast<clang::CXXMethodDecl*>(method));
         std::string fieldName = method->getNameAsString();
 
         if (llvm::isa<clang::CXXDestructorDecl>(method)) {

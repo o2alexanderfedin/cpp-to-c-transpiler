@@ -5,11 +5,17 @@
  * Integrates with CppToCVisitorDispatcher to handle instance method translation.
  * Translates C++ instance methods to C free functions with explicit "this" parameter
  * and class/namespace name prefixing.
+ *
+ * Phase 3: OverloadRegistry Integration
+ * - Uses NameMangler for all name mangling (replaces custom getMangledName)
+ * - Ensures deterministic cross-file naming via OverloadRegistry
  */
 
 #include "dispatch/InstanceMethodHandler.h"
 #include "dispatch/NamespaceHandler.h"
 #include "CNodeBuilder.h"
+#include "NameMangler.h"
+#include "OverloadRegistry.h"
 #include "mapping/DeclMapper.h"
 #include "mapping/StmtMapper.h"
 #include "mapping/TypeMapper.h"
@@ -84,8 +90,11 @@ void InstanceMethodHandler::handleInstanceMethod(
     const clang::CXXRecordDecl* classDecl = cppMethod->getParent();
     assert(classDecl && "Instance method must have parent class");
 
-    // Compute mangled name (apply class and namespace prefix)
-    std::string mangledName = getMangledName(cppMethod, classDecl);
+    // Phase 3: Use NameMangler with OverloadRegistry for deterministic naming
+    // NameMangler handles: namespace prefix, class prefix, overload resolution
+    cpptoc::OverloadRegistry& registry = cpptoc::OverloadRegistry::getInstance();
+    NameMangler mangler(const_cast<clang::ASTContext&>(cppASTContext), registry);
+    std::string mangledName = mangler.mangleName(const_cast<clang::CXXMethodDecl*>(cppMethod));
 
     // Extract method properties
     clang::QualType cppReturnType = cppMethod->getReturnType();
@@ -193,28 +202,8 @@ void InstanceMethodHandler::handleInstanceMethod(
                  << " → " << targetPath << "\n";
 }
 
-std::string InstanceMethodHandler::getMangledName(
-    const clang::CXXMethodDecl* method,
-    const clang::CXXRecordDecl* classDecl
-) {
-    std::string methodName = method->getNameAsString();
-    std::string className = classDecl->getNameAsString();
-
-    // Check if class is in namespace and apply namespace prefix
-    if (const auto* ns = llvm::dyn_cast<clang::NamespaceDecl>(
-            classDecl->getDeclContext())) {
-        std::string nsPath = NamespaceHandler::getNamespacePath(ns);
-        if (!nsPath.empty()) {
-            // Apply namespace prefix to class name
-            className = nsPath + "__" + className;
-        }
-    }
-
-    // Combine class name and method name with __ separator
-    // C++ Counter::increment() → C Counter__increment()
-    // C++ game::Entity::update() → C game__Entity__update()
-    return className + "__" + methodName;
-}
+// Phase 3: Removed custom getMangledName() - now uses NameMangler::mangleName()
+// This ensures deterministic naming via OverloadRegistry across all translation units
 
 clang::ParmVarDecl* InstanceMethodHandler::createThisParameter(
     const clang::CXXRecordDecl* classDecl,

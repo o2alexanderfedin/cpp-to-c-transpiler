@@ -6,15 +6,15 @@
  * Translates static methods to C free functions with class name prefixing.
  *
  * Phase 1 Scope: Static method signature translation
- * - Static method name with class/namespace prefix (Class__method)
+ * - Static method name with class/namespace prefix
  * - Return type and parameter translation
  * - NO "this" parameter (static methods are class-scoped free functions)
  * - Function bodies translated via CompoundStmtHandler
  *
- * Future Phases:
- * - Static method overloading resolution
- * - Template static methods
- * - Static method inline optimization
+ * Phase 3: OverloadRegistry Integration
+ * - Uses NameMangler::mangleStandaloneFunction() for all name mangling
+ * - Ensures deterministic cross-file naming via OverloadRegistry
+ * - Handles overload resolution automatically
  *
  * Design Pattern: Chain of Responsibility handler for dispatcher
  */
@@ -79,37 +79,8 @@ public:
      */
     static void registerWith(CppToCVisitorDispatcher& dispatcher);
 
-    /**
-     * @brief Compute mangled name for static method
-     * @param method Static method declaration
-     * @param classDecl Parent class declaration
-     * @return Mangled name with class prefix (e.g., "Counter__getValue")
-     *
-     * Algorithm:
-     * 1. Get class name from parent CXXRecordDecl
-     * 2. Get method name from CXXMethodDecl
-     * 3. Check if class is in namespace:
-     *    - Walk parent DeclContexts to find NamespaceDecl
-     *    - Compute namespace path (A::B → A__B)
-     *    - Prefix class name with namespace path
-     * 4. Combine class name and method name with __ separator
-     * 5. Return mangled name
-     *
-     * Examples:
-     * - Simple: Counter::getValue() → "Counter__getValue"
-     * - Namespace: game::Entity::getMax() → "game__Entity__getMax"
-     * - Nested namespace: ns1::ns2::Math::add() → "ns1__ns2__Math__add"
-     *
-     * Critical: Uses __ separator (NOT _) for all C++ scope resolution
-     * - C++ :: becomes C __
-     * - Ensures consistency with other handlers
-     *
-     * Made public for testing
-     */
-    static std::string getMangledName(
-        const clang::CXXMethodDecl* method,
-        const clang::CXXRecordDecl* classDecl
-    );
+    // Phase 3: Removed getMangledName() - now uses NameMangler::mangleStandaloneFunction()
+    // This ensures deterministic naming via OverloadRegistry across all translation units
 
 private:
     /**
@@ -145,10 +116,10 @@ private:
      * 1. Assert D is not null and is static CXXMethodDecl
      * 2. Cast D to CXXMethodDecl
      * 3. Get parent class (CXXRecordDecl)
-     * 4. Compute mangled name using getMangledName():
-     *    - Apply class name prefix
-     *    - Apply namespace prefix if applicable
-     *    - Use __ separator for all scope resolution
+     * 4. Phase 3: Compute mangled name using NameMangler::mangleStandaloneFunction():
+     *    - Uses OverloadRegistry for deterministic cross-file naming
+     *    - Handles namespace prefix, class prefix, and overload resolution
+     *    - Ensures same function gets same name across translation units
      * 5. Translate return type via TypeHandler:
      *    - Dispatch return type to TypeHandler
      *    - Retrieve translated type from TypeMapper
@@ -174,12 +145,13 @@ private:
      * - TypeHandler: Handles all type translation (references → pointers)
      * - ParameterHandler: Handles each parameter translation
      * - CompoundStmtHandler: Handles function body translation
-     * - This handler: Orchestrates and applies name mangling
+     * - NameMangler: Handles name mangling with OverloadRegistry integration
+     * - This handler: Orchestrates the translation
      *
-     * Name Mangling:
-     * - C++ Counter::getValue() → C Counter__getValue()
-     * - C++ game::Entity::getMax() → C game__Entity__getMax()
-     * - C++ ns1::ns2::Math::add() → C ns1__ns2__Math__add()
+     * Phase 3 Name Mangling (via NameMangler::mangleStandaloneFunction):
+     * - Uses OverloadRegistry for deterministic cross-file naming
+     * - Handles namespace, class, and overload resolution
+     * - Pattern: namespace_Class_method or namespace_Class_method_paramTypes (if overloaded)
      *
      * @pre D != nullptr && D->getKind() == Decl::CXXMethod && isStatic() (asserted)
      */
