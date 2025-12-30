@@ -23,12 +23,24 @@ using namespace cpptoc;
 
 std::string NameMangler::mangleName(CXXMethodDecl *MD) {
     // Phase 2: Registry-backed mangling for cross-file consistency
+    // Phase 53: Handle operator methods with proper sanitization
+
+    std::string methodName;
+    if (MD->isOverloadedOperator()) {
+        // Use sanitized operator name instead of raw symbols
+        methodName = sanitizeOperatorName(MD->getOverloadedOperator());
+    } else {
+        // Regular method - use getName().str()
+        methodName = MD->getName().str();
+    }
+
     // Build base name: ClassName_methodName
-    std::string baseName = MD->getParent()->getName().str() + "_" + MD->getName().str();
+    std::string baseName = MD->getParent()->getName().str() + "_" + methodName;
 
     // Always append parameter types for cross-file consistency
     // This ensures method names are the same whether generated from definition or call site
     // Example: Vector3D::dot(const Vector3D&) -> Vector3D_dot_const_Vector3D_ref
+    // Example: Array::operator[](int) -> Array_operator_indexer_int
     std::string mangledName = baseName;
     for (ParmVarDecl *Param : MD->parameters()) {
         std::string paramType = getSimpleTypeName(Param->getType());
@@ -38,6 +50,19 @@ std::string NameMangler::mangleName(CXXMethodDecl *MD) {
     // If no parameters, use base name (for methods like getX(), clear(), etc.)
     if (MD->param_size() == 0) {
         mangledName = baseName;
+    }
+
+    // Phase 53: Add prefix/postfix distinguisher for increment/decrement
+    if (MD->isOverloadedOperator() &&
+        (MD->getOverloadedOperator() == OO_PlusPlus ||
+         MD->getOverloadedOperator() == OO_MinusMinus)) {
+        // Postfix has dummy int parameter (already encoded above)
+        // Prefix has no parameters - add explicit suffix for clarity
+        if (MD->getNumParams() == 0) {
+            mangledName += "_prefix";
+        } else {
+            mangledName += "_postfix";
+        }
     }
 
     // Register with global registry for cross-file tracking
@@ -82,6 +107,65 @@ std::string NameMangler::mangleDestructor(CXXDestructorDecl *DD) {
 
     // Register with global registry (destructors not overloaded, but still track)
     registry_.registerOverload(baseName, DD, mangledName);
+
+    return mangledName;
+}
+
+// ============================================================================
+// Phase 53: Conversion Operator Mangling
+// ============================================================================
+
+std::string NameMangler::mangleConversionOperator(CXXConversionDecl *CD) {
+    if (!CD) {
+        return "";
+    }
+
+    // Get parent class
+    const CXXRecordDecl* ClassDecl = CD->getParent();
+    if (!ClassDecl) {
+        return "operator_to_unknown";
+    }
+
+    // Extract namespace hierarchy for class name
+    std::vector<std::string> hierarchy = extractNamespaceHierarchy(const_cast<CXXRecordDecl*>(ClassDecl));
+
+    // Build class name with namespace prefix
+    std::string className;
+    for (const auto &item : hierarchy) {
+        if (item.substr(0, 3) == "ns:") {
+            className += item.substr(3) + "_";
+        } else if (item.substr(0, 4) == "rec:") {
+            className += item.substr(4) + "__";
+        }
+    }
+    className += ClassDecl->getNameAsString();
+
+    // Get conversion target type
+    clang::QualType ConvType = CD->getConversionType();
+    std::string TargetType = ConvType.getAsString();
+
+    // Sanitize target type name for C identifier
+    // Pattern: operator_to_[targetType]
+    std::string opName = "operator_to_";
+    for (char c : TargetType) {
+        if (isalnum(c)) {
+            opName += c;
+        } else if (c == ' ' || c == '*' || c == '&' || c == ':') {
+            opName += '_';
+        }
+        // Skip other special characters
+    }
+
+    // Add const qualifier if present
+    if (CD->isConst()) {
+        opName += "_const";
+    }
+
+    // Build final mangled name: ClassName_operator_to_targetType[_const]
+    std::string mangledName = className + "_" + opName;
+
+    // Register with global registry
+    registry_.registerOverload(className + "_conversion", CD, mangledName);
 
     return mangledName;
 }
@@ -255,7 +339,14 @@ std::string NameMangler::mangleMethodName(CXXMethodDecl *MD) {
     // - Nested struct: double underscore (__)
     // - Method: single underscore (_)
     // Example: ns::Outer::Inner::method → ns_Outer__Inner_method
-    // CRITICAL: Use getNameAsString() instead of getName().str() to handle operator names
+    // Phase 53: Use sanitizeOperatorName() for operators, getNameAsString() for regular methods
+    std::string methodName;
+    if (MD->isOverloadedOperator()) {
+        methodName = sanitizeOperatorName(MD->getOverloadedOperator());
+    } else {
+        methodName = MD->getNameAsString();
+    }
+
     std::string mangledName;
     for (const auto &item : hierarchy) {
         if (item.substr(0, 3) == "ns:") {
@@ -266,7 +357,7 @@ std::string NameMangler::mangleMethodName(CXXMethodDecl *MD) {
             mangledName += item.substr(4) + "__";
         }
     }
-    mangledName += Parent->getName().str() + "_" + MD->getNameAsString();
+    mangledName += Parent->getName().str() + "_" + methodName;
 
     return mangledName;
 }
@@ -282,6 +373,14 @@ std::string NameMangler::mangleFunctionName(FunctionDecl *FD) {
     // Phase 3: Extract namespace hierarchy (no nested structs for standalone functions)
     std::vector<std::string> hierarchy = extractNamespaceHierarchy(FD);
 
+    // Phase 53: Handle operator overloading for standalone functions
+    std::string functionName;
+    if (FD->isOverloadedOperator()) {
+        functionName = sanitizeOperatorName(FD->getOverloadedOperator());
+    } else {
+        functionName = FD->getName().str();
+    }
+
     // Build mangled name: ns1_ns2_funcName
     // Note: Standalone functions can't be nested in structs, only namespaces
     std::string mangledName;
@@ -292,7 +391,7 @@ std::string NameMangler::mangleFunctionName(FunctionDecl *FD) {
         }
         // rec: prefix should not appear for standalone functions
     }
-    mangledName += FD->getName().str();
+    mangledName += functionName;
 
     return mangledName;
 }
@@ -316,12 +415,25 @@ std::string NameMangler::mangleStandaloneFunction(FunctionDecl *FD) {
     // Extract namespace hierarchy for base name
     std::vector<std::string> namespaces = extractNamespaceHierarchy(FD);
 
-    // Build base name with namespaces
-    std::string baseName;
-    for (const auto &ns : namespaces) {
-        baseName += ns + "_";
+    // Phase 53: Handle operator overloading for standalone functions
+    std::string functionName;
+    if (FD->isOverloadedOperator()) {
+        functionName = sanitizeOperatorName(FD->getOverloadedOperator());
+    } else {
+        functionName = FD->getName().str();
     }
-    baseName += FD->getName().str();
+
+    // Build base name with namespaces
+    // NOTE: extractNamespaceHierarchy() returns items with "ns:" or "rec:" prefixes
+    std::string baseName;
+    for (const auto &item : namespaces) {
+        if (item.substr(0, 3) == "ns:") {
+            // Namespace: use single underscore, strip "ns:" prefix
+            baseName += item.substr(3) + "_";
+        }
+        // rec: prefix should not appear for standalone functions
+    }
+    baseName += functionName;
 
     // Check if already registered (may be called multiple times for same function)
     std::string existing = registry_.getMangledName(baseName, FD);
@@ -396,4 +508,80 @@ std::string NameMangler::mangleStaticMember(CXXRecordDecl *RD, VarDecl *VD) {
     std::string mangledName = qualifiedClassName + "__" + VD->getNameAsString();
 
     return mangledName;
+}
+
+// ============================================================================
+// Phase 53: Operator Name Sanitization
+// ============================================================================
+
+std::string NameMangler::sanitizeOperatorName(OverloadedOperatorKind Op) {
+    // Convert operator kind to valid C identifier suffix
+    // Pattern: operator+ → operator_plus, operator[] → operator_indexer
+    switch (Op) {
+        // Arithmetic operators
+        case OO_Plus:           return "operator_plus";
+        case OO_Minus:          return "operator_minus";
+        case OO_Star:           return "operator_star";           // Dereference or multiplication
+        case OO_Slash:          return "operator_divide";
+        case OO_Percent:        return "operator_modulo";
+
+        // Bitwise operators
+        case OO_Caret:          return "operator_xor";
+        case OO_Amp:            return "operator_amp";            // Address-of or bitwise AND
+        case OO_Pipe:           return "operator_pipe";
+        case OO_Tilde:          return "operator_tilde";
+        case OO_LessLess:       return "operator_left_shift";    // Stream << or bitwise
+        case OO_GreaterGreater: return "operator_right_shift";   // Stream >> or bitwise
+
+        // Logical operators
+        case OO_Exclaim:        return "operator_not";
+        case OO_AmpAmp:         return "operator_and";
+        case OO_PipePipe:       return "operator_or";
+
+        // Assignment operators
+        case OO_Equal:          return "operator_assign";
+        case OO_PlusEqual:      return "operator_plus_assign";
+        case OO_MinusEqual:     return "operator_minus_assign";
+        case OO_StarEqual:      return "operator_multiply_assign";
+        case OO_SlashEqual:     return "operator_divide_assign";
+        case OO_PercentEqual:   return "operator_modulo_assign";
+        case OO_CaretEqual:     return "operator_xor_assign";
+        case OO_AmpEqual:       return "operator_and_assign";
+        case OO_PipeEqual:      return "operator_or_assign";
+        case OO_LessLessEqual:  return "operator_left_shift_assign";
+        case OO_GreaterGreaterEqual: return "operator_right_shift_assign";
+
+        // Comparison operators
+        case OO_EqualEqual:     return "operator_equal";
+        case OO_ExclaimEqual:   return "operator_not_equal";
+        case OO_Less:           return "operator_less";
+        case OO_Greater:        return "operator_greater";
+        case OO_LessEqual:      return "operator_less_equal";
+        case OO_GreaterEqual:   return "operator_greater_equal";
+        case OO_Spaceship:      return "operator_spaceship";     // C++20 <=>
+
+        // Increment/Decrement (prefix/postfix handled separately)
+        case OO_PlusPlus:       return "operator_increment";
+        case OO_MinusMinus:     return "operator_decrement";
+
+        // Special member access operators
+        case OO_Arrow:          return "operator_arrow";
+        case OO_ArrowStar:      return "operator_arrow_star";    // Rare: ->*
+        case OO_Subscript:      return "operator_indexer";       // operator[] - USER PREFERENCE
+        case OO_Call:           return "operator_call";
+
+        // Other operators
+        case OO_Comma:          return "operator_comma";
+        case OO_Conditional:    return "operator_conditional";   // C++23: operator?:
+        case OO_Coawait:        return "operator_coawait";       // C++20 coroutines
+
+        // New/Delete (rarely overloaded for custom types)
+        case OO_New:            return "operator_new";
+        case OO_Delete:         return "operator_delete";
+        case OO_Array_New:      return "operator_array_new";
+        case OO_Array_Delete:   return "operator_array_delete";
+
+        default:
+            return "operator_unknown";
+    }
 }

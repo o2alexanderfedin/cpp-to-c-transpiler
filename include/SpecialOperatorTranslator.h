@@ -495,12 +495,7 @@ private:
      */
     std::string generateOperatorName(const clang::CXXMethodDecl* MD);
 
-    /**
-     * @brief Generate C function name for conversion operator
-     * @param CD The conversion operator declaration
-     * @return C function name (e.g., "Celsius_operator_to_double")
-     */
-    std::string generateConversionName(const clang::CXXConversionDecl* CD);
+    // Phase 53: Removed generateConversionName() - now using NameMangler::mangleConversionOperator()
 
     /**
      * @brief Check if operator<< or operator>> is a stream operator

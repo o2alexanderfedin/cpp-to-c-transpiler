@@ -27,6 +27,8 @@
 #include "mapping/ExprMapper.h"
 #include "mapping/StmtMapper.h"
 #include "TargetContext.h"
+#include "NameMangler.h"
+#include "OverloadRegistry.h"
 #include "clang/AST/ASTContext.h"
 #include "clang/AST/Decl.h"
 #include "clang/AST/DeclCXX.h"
@@ -897,8 +899,10 @@ TEST(InstanceMethodHandlerDispatcherTest, NameManglingHelper) {
     }
     ASSERT_NE(initialize, nullptr);
 
-    // Test getMangledName directly
-    std::string mangledName = cpptoc::InstanceMethodHandler::getMangledName(initialize, serviceClass);
+    // Phase 3: Use NameMangler instead of removed InstanceMethodHandler::getMangledName()
+    cpptoc::OverloadRegistry& registry = cpptoc::OverloadRegistry::getInstance();
+    NameMangler mangler(cppCtx, registry);
+    std::string mangledName = mangler.mangleMethodName(initialize);
 
     // Verify mangled name includes namespace and class with __ separator
     EXPECT_EQ(mangledName, "app__Service__initialize")

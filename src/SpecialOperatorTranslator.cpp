@@ -437,7 +437,8 @@ FunctionDecl* SpecialOperatorTranslator::translateBoolConversion(CXXConversionDe
     llvm::outs() << "Translating bool conversion operator: "
                  << CD->getQualifiedNameAsString() << "\n";
 
-    std::string FnName = generateConversionName(CD);
+    // Phase 53: Use NameMangler for conversion operator names
+    std::string FnName = m_mangler.mangleConversionOperator(const_cast<CXXConversionDecl*>(CD));
 
     const CXXRecordDecl* ClassDecl = CD->getParent();
     QualType ClassType = Ctx.getRecordType(ClassDecl);
@@ -464,7 +465,8 @@ FunctionDecl* SpecialOperatorTranslator::translateConversionOperator(CXXConversi
     llvm::outs() << "Translating conversion operator: "
                  << CD->getQualifiedNameAsString() << "\n";
 
-    std::string FnName = generateConversionName(CD);
+    // Phase 53: Use NameMangler for conversion operator names
+    std::string FnName = m_mangler.mangleConversionOperator(const_cast<CXXConversionDecl*>(CD));
 
     const CXXRecordDecl* ClassDecl = CD->getParent();
     QualType ClassType = Ctx.getRecordType(ClassDecl);
@@ -789,33 +791,7 @@ std::string SpecialOperatorTranslator::generateOperatorName(const CXXMethodDecl*
     return m_mangler.mangleMethodName(const_cast<CXXMethodDecl*>(MD));
 }
 
-std::string SpecialOperatorTranslator::generateConversionName(const CXXConversionDecl* CD) {
-    if (!CD) {
-        return "";
-    }
-
-    const CXXRecordDecl* ClassDecl = CD->getParent();
-    std::string ClassName = ClassDecl->getNameAsString();
-
-    QualType ConvType = CD->getConversionType();
-    std::string TargetType = ConvType.getAsString();
-
-    // Sanitize target type name for C identifier
-    std::string OpName = "operator_to_";
-    for (char c : TargetType) {
-        if (isalnum(c)) {
-            OpName += c;
-        } else if (c == ' ' || c == '*' || c == '&') {
-            OpName += '_';
-        }
-    }
-
-    if (CD->isConst()) {
-        OpName += "_const";
-    }
-
-    return ClassName + "_" + OpName;
-}
+// Phase 53: Removed generateConversionName() - now using NameMangler::mangleConversionOperator()
 
 bool SpecialOperatorTranslator::isStreamOperator(CXXOperatorCallExpr* E) const {
     if (!E || E->getNumArgs() < 2) {

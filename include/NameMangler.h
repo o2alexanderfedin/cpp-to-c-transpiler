@@ -98,6 +98,29 @@ public:
     std::string mangleDestructor(clang::CXXDestructorDecl *DD);
 
     /**
+     * @brief Mangle a C++ conversion operator to a C function name
+     * @param CD Conversion operator declaration
+     * @return Mangled name (e.g., "MyClass_operator_to_int")
+     *
+     * Phase 53: Conversion operator support
+     * Converts operator T() to ClassName_operator_to_T
+     * Pattern: ClassName_operator_to_[targetType][_const]
+     *
+     * Algorithm:
+     * 1. Get class name with namespace prefix
+     * 2. Extract conversion target type
+     * 3. Sanitize target type for C identifier (spaces, *, & become _)
+     * 4. Build name: ClassName_operator_to_targetType
+     * 5. Append _const if operator is const-qualified
+     *
+     * Examples:
+     * - operator int() -> MyClass_operator_to_int
+     * - operator bool() const -> MyClass_operator_to_bool_const
+     * - operator std::string() -> MyClass_operator_to_std__string
+     */
+    std::string mangleConversionOperator(clang::CXXConversionDecl *CD);
+
+    /**
      * @brief Mangle a C++ class name to C struct name (with namespace support)
      * @param RD Class/record declaration
      * @return Mangled name (e.g., "MyClass" or "ns_MyClass")
@@ -203,4 +226,15 @@ private:
      * - T* -> "ptr"
      */
     std::string getSimpleTypeName(clang::QualType T);
+
+    /**
+     * @brief Sanitize operator kind to valid C identifier
+     * @param Op Operator kind from Clang AST
+     * @return Sanitized operator name (e.g., "operator_plus", "operator_indexer")
+     *
+     * Phase 53: Operator Overloading Support
+     * Converts operator symbols to valid C identifiers.
+     * Special case: operator[] → "operator_indexer" (user preference)
+     */
+    std::string sanitizeOperatorName(clang::OverloadedOperatorKind Op);
 };

@@ -30,6 +30,8 @@
 #include "mapping/ExprMapper.h"
 #include "mapping/StmtMapper.h"
 #include "TargetContext.h"
+#include "NameMangler.h"
+#include "OverloadRegistry.h"
 #include "clang/AST/ASTContext.h"
 #include "clang/AST/Decl.h"
 #include "clang/AST/DeclCXX.h"
@@ -227,8 +229,10 @@ TEST(VirtualMethodHandlerDispatcherTest, SimpleVirtualMethod) {
     CXXRecordDecl* shapeClass = getArea->getParent();
     ASSERT_NE(shapeClass, nullptr);
 
-    // Test name mangling
-    std::string mangledName = cpptoc::VirtualMethodHandler::getMangledName(getArea, shapeClass);
+    // Phase 3: Use NameMangler instead of removed VirtualMethodHandler::getMangledName()
+    cpptoc::OverloadRegistry& registry = cpptoc::OverloadRegistry::getInstance();
+    NameMangler mangler(cppCtx, registry);
+    std::string mangledName = mangler.mangleMethodName(getArea);
     EXPECT_EQ(mangledName, "Shape__getArea") << "Should mangle to Shape__getArea with __ separator";
 
     // Dispatch the virtual method
@@ -360,8 +364,10 @@ TEST(VirtualMethodHandlerDispatcherTest, VirtualMethodInNamespace) {
     }
     ASSERT_NE(update, nullptr) << "Should find 'update' virtual method";
 
-    // Test name mangling with namespace prefix
-    std::string mangledName = cpptoc::VirtualMethodHandler::getMangledName(update, entityClass);
+    // Phase 3: Use NameMangler instead of removed VirtualMethodHandler::getMangledName()
+    cpptoc::OverloadRegistry& registry = cpptoc::OverloadRegistry::getInstance();
+    NameMangler mangler(cppCtx, registry);
+    std::string mangledName = mangler.mangleMethodName(update);
     EXPECT_EQ(mangledName, "game__Entity__update") << "Should include namespace prefix with __ separator";
 }
 
