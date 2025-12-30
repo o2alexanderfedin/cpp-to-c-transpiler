@@ -233,7 +233,7 @@ TEST(VirtualMethodHandlerDispatcherTest, SimpleVirtualMethod) {
     cpptoc::OverloadRegistry& registry = cpptoc::OverloadRegistry::getInstance();
     NameMangler mangler(cppCtx, registry);
     std::string mangledName = mangler.mangleMethodName(getArea);
-    EXPECT_EQ(mangledName, "Shape__getArea") << "Should mangle to Shape__getArea with __ separator";
+    EXPECT_EQ(mangledName, "Shape_getArea") << "Should mangle to Shape_getArea with _ separator";
 
     // Dispatch the virtual method
     dispatcher.dispatch(cppCtx, cCtx, getArea);
@@ -241,7 +241,7 @@ TEST(VirtualMethodHandlerDispatcherTest, SimpleVirtualMethod) {
     // Verify C function was created with correct name
     FunctionDecl* cFunc = llvm::dyn_cast_or_null<FunctionDecl>(declMapper.getCreated(getArea));
     ASSERT_NE(cFunc, nullptr) << "C function should be created";
-    EXPECT_EQ(cFunc->getNameAsString(), "Shape__getArea") << "C function name should match mangled name";
+    EXPECT_EQ(cFunc->getNameAsString(), "Shape_getArea") << "C function name should match mangled name";
 
     // Verify return type is int
     EXPECT_TRUE(cFunc->getReturnType()->isIntegerType()) << "Return type should be int";
@@ -293,7 +293,7 @@ TEST(VirtualMethodHandlerDispatcherTest, VirtualMethodWithParameters) {
     // Verify C function has correct parameters: this, a, b
     FunctionDecl* cFunc = llvm::dyn_cast_or_null<FunctionDecl>(declMapper.getCreated(add));
     ASSERT_NE(cFunc, nullptr);
-    EXPECT_EQ(cFunc->getNameAsString(), "Calculator__add");
+    EXPECT_EQ(cFunc->getNameAsString(), "Calculator_add");
 
     // Should have 3 parameters: this, a, b
     ASSERT_EQ(cFunc->getNumParams(), 3u) << "Should have 3 parameters (this, a, b)";
@@ -368,7 +368,7 @@ TEST(VirtualMethodHandlerDispatcherTest, VirtualMethodInNamespace) {
     cpptoc::OverloadRegistry& registry = cpptoc::OverloadRegistry::getInstance();
     NameMangler mangler(cppCtx, registry);
     std::string mangledName = mangler.mangleMethodName(update);
-    EXPECT_EQ(mangledName, "game__Entity__update") << "Should include namespace prefix with __ separator";
+    EXPECT_EQ(mangledName, "game_Entity_update") << "Should include namespace prefix with _ separator";
 }
 
 // ============================================================================
@@ -430,8 +430,8 @@ TEST(VirtualMethodHandlerDispatcherTest, InheritanceWithOverride) {
     ASSERT_NE(shapeCFunc, nullptr);
     ASSERT_NE(circleCFunc, nullptr);
 
-    EXPECT_EQ(shapeCFunc->getNameAsString(), "Shape__getArea");
-    EXPECT_EQ(circleCFunc->getNameAsString(), "Circle__getArea");
+    EXPECT_EQ(shapeCFunc->getNameAsString(), "Shape_getArea");
+    EXPECT_EQ(circleCFunc->getNameAsString(), "Circle_getArea");
 }
 
 // ============================================================================
@@ -520,7 +520,7 @@ TEST(VirtualMethodHandlerDispatcherTest, PureVirtualMethod) {
     // Pure virtual methods should still create function declaration (no body)
     FunctionDecl* cFunc = llvm::dyn_cast_or_null<FunctionDecl>(declMapper.getCreated(getArea));
     ASSERT_NE(cFunc, nullptr) << "Pure virtual should create C function declaration";
-    EXPECT_EQ(cFunc->getNameAsString(), "Shape__getArea");
+    EXPECT_EQ(cFunc->getNameAsString(), "Shape_getArea");
 
     // Should NOT have body
     EXPECT_FALSE(cFunc->hasBody()) << "Pure virtual should NOT have function body";
@@ -698,9 +698,9 @@ TEST(VirtualMethodHandlerDispatcherTest, MultipleVirtualMethods) {
     ASSERT_NE(cGetPerimeter, nullptr);
     ASSERT_NE(cDraw, nullptr);
 
-    EXPECT_EQ(cGetArea->getNameAsString(), "Shape__getArea");
-    EXPECT_EQ(cGetPerimeter->getNameAsString(), "Shape__getPerimeter");
-    EXPECT_EQ(cDraw->getNameAsString(), "Shape__draw");
+    EXPECT_EQ(cGetArea->getNameAsString(), "Shape_getArea");
+    EXPECT_EQ(cGetPerimeter->getNameAsString(), "Shape_getPerimeter");
+    EXPECT_EQ(cDraw->getNameAsString(), "Shape_draw");
 }
 
 // ============================================================================
@@ -792,13 +792,13 @@ TEST(VirtualMethodHandlerDispatcherTest, VtableInstanceGeneration) {
     // Verify vtable instance contains:
     // - static struct Shape__vtable Shape__vtable_instance = {
     // - .type_info = &Shape__type_info,
-    // - .getArea = Shape__getArea
+    // - .getArea = Shape_getArea
     // - };
     EXPECT_NE(vtableInstance.find("static struct Shape__vtable Shape__vtable_instance = {"), std::string::npos)
         << "Should contain vtable instance definition";
     EXPECT_NE(vtableInstance.find(".type_info = &Shape__type_info,"), std::string::npos)
         << "Should initialize RTTI type_info pointer";
-    EXPECT_NE(vtableInstance.find(".getArea = Shape__getArea,"), std::string::npos)
+    EXPECT_NE(vtableInstance.find(".getArea = Shape_getArea,"), std::string::npos)
         << "Should initialize getArea function pointer";
 }
 
@@ -848,9 +848,9 @@ TEST(VirtualMethodHandlerDispatcherTest, MultipleVirtualMethodsVtable) {
         shapeClass, virtualMethods, cCtx
     );
 
-    EXPECT_NE(vtableInstance.find(".getArea = Shape__getArea,"), std::string::npos)
+    EXPECT_NE(vtableInstance.find(".getArea = Shape_getArea,"), std::string::npos)
         << "Should initialize getArea";
-    EXPECT_NE(vtableInstance.find(".draw = Shape__draw,"), std::string::npos)
+    EXPECT_NE(vtableInstance.find(".draw = Shape_draw,"), std::string::npos)
         << "Should initialize draw";
 }
 
@@ -912,12 +912,12 @@ TEST(VirtualMethodHandlerDispatcherTest, NamespacedClassVtable) {
 
     // Test vtable struct name with namespace prefix
     std::string vtableStructName = cpptoc::VirtualMethodHandler::getVtableStructName(entityClass);
-    EXPECT_EQ(vtableStructName, "game__Entity__vtable")
+    EXPECT_EQ(vtableStructName, "game_Entity__vtable")
         << "Vtable struct name should include namespace prefix";
 
     // Test vtable instance name with namespace prefix
     std::string vtableInstanceName = cpptoc::VirtualMethodHandler::getVtableInstanceName(entityClass);
-    EXPECT_EQ(vtableInstanceName, "game__Entity__vtable_instance")
+    EXPECT_EQ(vtableInstanceName, "game_Entity__vtable_instance")
         << "Vtable instance name should include namespace prefix";
 
     // Generate vtable struct
@@ -927,9 +927,9 @@ TEST(VirtualMethodHandlerDispatcherTest, NamespacedClassVtable) {
     );
 
     // Verify namespace prefix in struct definition
-    EXPECT_NE(vtableStruct.find("struct game__Entity__vtable {"), std::string::npos)
+    EXPECT_NE(vtableStruct.find("struct game_Entity__vtable {"), std::string::npos)
         << "Should use namespace prefix in vtable struct name";
-    EXPECT_NE(vtableStruct.find("void (*update)(struct game__Entity *this);"), std::string::npos)
+    EXPECT_NE(vtableStruct.find("void (*update)(struct game_Entity *this);"), std::string::npos)
         << "Should use namespace prefix in function pointer type";
 
     // Generate vtable instance
@@ -938,10 +938,10 @@ TEST(VirtualMethodHandlerDispatcherTest, NamespacedClassVtable) {
     );
 
     // Verify namespace prefix in instance
-    EXPECT_NE(vtableInstance.find("static struct game__Entity__vtable game__Entity__vtable_instance = {"), std::string::npos)
+    EXPECT_NE(vtableInstance.find("static struct game_Entity__vtable game_Entity__vtable_instance = {"), std::string::npos)
         << "Should use namespace prefix in vtable instance";
-    EXPECT_NE(vtableInstance.find(".type_info = &game__Entity__type_info,"), std::string::npos)
+    EXPECT_NE(vtableInstance.find(".type_info = &game_Entity__type_info,"), std::string::npos)
         << "Should use namespace prefix in type_info reference";
-    EXPECT_NE(vtableInstance.find(".update = game__Entity__update,"), std::string::npos)
+    EXPECT_NE(vtableInstance.find(".update = game_Entity_update,"), std::string::npos)
         << "Should use namespace prefix in method reference";
 }
