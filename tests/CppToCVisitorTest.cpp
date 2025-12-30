@@ -6,6 +6,7 @@
 #include "CNodeBuilder.h"
 #include "FileOriginTracker.h"
 #include "TargetContext.h"
+#include "mapping/PathMapper.h"
 #include "clang/Tooling/Tooling.h"
 
 using namespace clang;
@@ -28,8 +29,11 @@ protected:
         // Get TargetContext
         TargetContext& targetCtx = TargetContext::getInstance();
 
+        // Create PathMapper (required for Phase 2)
+        cpptoc::PathMapper& pathMapper = cpptoc::PathMapper::getInstance("/src", "/output");
+
         return std::make_unique<CppToCVisitor>(AST.getASTContext(), builder,
-                                                targetCtx, tracker, nullptr);
+                                                targetCtx, tracker, &pathMapper);
     }
 };
 
