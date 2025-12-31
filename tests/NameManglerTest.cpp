@@ -767,3 +767,108 @@ TEST_F(NameManglerTest, Cpp17NestedNamespaceSyntax) {
         std::string mangled = cpptoc::mangle_function(func);
         ASSERT_TRUE(mangled == "a__b__c__func__void") << "Expected 'a__b__c__func__void', got: " + mangled;
 }
+
+// ============================================================================
+// Phase 48: Main Entry Point Handling Tests
+// ============================================================================
+
+TEST_F(NameManglerTest, GlobalMainFunction) {
+    const char *code = R"(
+            int main() {
+                return 0;
+            }
+        )";
+
+        std::unique_ptr<ASTUnit> AST = buildAST(code);
+        ASSERT_TRUE(AST) << "Failed to parse C++ code";
+
+        // Find global main function
+        auto *TU = AST->getASTContext().getTranslationUnitDecl();
+        FunctionDecl *mainFunc = nullptr;
+
+        for (auto *D : TU->decls()) {
+            if (auto *FD = dyn_cast<FunctionDecl>(D)) {
+                if (FD->getNameAsString() == "main") {
+                    mainFunc = FD;
+                    break;
+                }
+            }
+        }
+
+        ASSERT_TRUE(mainFunc != nullptr) << "Global main() not found";
+
+        std::string mangled = cpptoc::mangle_function(mainFunc);
+        // Global main() is the program entry point - should NOT be mangled
+        ASSERT_TRUE(mangled == "main") << "Expected 'main' (unmangled), got: " + mangled;
+}
+
+TEST_F(NameManglerTest, NamespaceMainFunction) {
+    const char *code = R"(
+            namespace ns {
+                void main() { }
+            }
+        )";
+
+        std::unique_ptr<ASTUnit> AST = buildAST(code);
+        ASSERT_TRUE(AST) << "Failed to parse C++ code";
+
+        // Find main function in namespace
+        auto *TU = AST->getASTContext().getTranslationUnitDecl();
+        FunctionDecl *mainFunc = nullptr;
+
+        for (auto *D : TU->decls()) {
+            if (auto *ND = dyn_cast<NamespaceDecl>(D)) {
+                if (ND->getNameAsString() == "ns") {
+                    for (auto *Inner : ND->decls()) {
+                        if (auto *FD = dyn_cast<FunctionDecl>(Inner)) {
+                            if (FD->getNameAsString() == "main") {
+                                mainFunc = FD;
+                                break;
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
+        ASSERT_TRUE(mainFunc != nullptr) << "Namespace main() not found";
+
+        std::string mangled = cpptoc::mangle_function(mainFunc);
+        // Namespace main() is NOT the entry point - MUST be mangled
+        ASSERT_TRUE(mangled == "ns__main__void") << "Expected 'ns__main__void' (mangled), got: " + mangled;
+}
+
+TEST_F(NameManglerTest, ClassMainMethod) {
+    const char *code = R"(
+            class MyClass {
+            public:
+                void main();
+            };
+        )";
+
+        std::unique_ptr<ASTUnit> AST = buildAST(code);
+        ASSERT_TRUE(AST) << "Failed to parse C++ code";
+
+        // Find main method in class
+        auto *TU = AST->getASTContext().getTranslationUnitDecl();
+        CXXMethodDecl *mainMethod = nullptr;
+
+        for (auto *D : TU->decls()) {
+            if (auto *RD = dyn_cast<CXXRecordDecl>(D)) {
+                if (RD->getNameAsString() == "MyClass") {
+                    for (auto *M : RD->methods()) {
+                        if (M->getNameAsString() == "main") {
+                            mainMethod = M;
+                            break;
+                        }
+                    }
+                }
+            }
+        }
+
+        ASSERT_TRUE(mainMethod != nullptr) << "Class main() method not found";
+
+        std::string mangled = cpptoc::mangle_method(mainMethod);
+        // Class method named main() is NOT the entry point - MUST be mangled
+        ASSERT_TRUE(mangled == "MyClass__main__void") << "Expected 'MyClass__main__void' (mangled), got: " + mangled;
+}

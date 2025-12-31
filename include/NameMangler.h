@@ -209,13 +209,25 @@ inline std::string mangle_destructor(const clang::CXXDestructorDecl *DD) {
 }
 
 inline std::string mangle_function(const clang::FunctionDecl *FD) {
-    // Special case: main() and extern "C" are not mangled
-    if (FD && FD->getName() == "main") {
-        return "main";
+    if (!FD) return "";
+
+    // Special case: main() at global scope (entry point) is not mangled
+    // main() inside namespace or class MUST be mangled
+    if (FD->getName() == "main") {
+        // Check if this is the global entry point main()
+        const clang::DeclContext *DC = FD->getDeclContext();
+        if (DC && llvm::isa<clang::TranslationUnitDecl>(DC)) {
+            // Global scope main() - this is the entry point
+            return "main";
+        }
+        // else: main() in namespace/class - fall through to mangle it
     }
-    if (FD && FD->isExternC()) {
+
+    // extern "C" functions are not mangled
+    if (FD->isExternC()) {
         return FD->getNameAsString();
     }
+
     return mangle_decl(FD);
 }
 
