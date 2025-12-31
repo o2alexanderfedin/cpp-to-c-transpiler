@@ -369,32 +369,14 @@ std::string VirtualMethodHandler::getNamespacePrefix(const clang::CXXRecordDecl*
 }
 
 std::string VirtualMethodHandler::getVtableStructName(const clang::CXXRecordDecl* classDecl) {
-    std::string className = classDecl->getNameAsString();
-
-    // Apply namespace prefix if in namespace
-    if (const auto* ns = llvm::dyn_cast<clang::NamespaceDecl>(
-            classDecl->getDeclContext())) {
-        std::string nsPath = NamespaceHandler::getNamespacePath(ns);
-        if (!nsPath.empty()) {
-            className = nsPath + "__" + className;
-        }
-    }
-
+    // Phase 3: Use NameMangler::mangle_class() for deterministic class name mangling
+    std::string className = cpptoc::mangle_class(classDecl);
     return className + "__vtable";
 }
 
 std::string VirtualMethodHandler::getVtableInstanceName(const clang::CXXRecordDecl* classDecl) {
-    std::string className = classDecl->getNameAsString();
-
-    // Apply namespace prefix if in namespace
-    if (const auto* ns = llvm::dyn_cast<clang::NamespaceDecl>(
-            classDecl->getDeclContext())) {
-        std::string nsPath = NamespaceHandler::getNamespacePath(ns);
-        if (!nsPath.empty()) {
-            className = nsPath + "__" + className;
-        }
-    }
-
+    // Phase 3: Use NameMangler::mangle_class() for deterministic class name mangling
+    std::string className = cpptoc::mangle_class(classDecl);
     return className + "__vtable_instance";
 }
 
@@ -428,17 +410,8 @@ std::string VirtualMethodHandler::generateVtableStruct(
     const std::vector<const clang::CXXMethodDecl*>& virtualMethods,
     clang::ASTContext& cASTContext)
 {
-    std::string className = classDecl->getNameAsString();
-
-    // Apply namespace prefix if needed
-    if (const auto* ns = llvm::dyn_cast<clang::NamespaceDecl>(
-            classDecl->getDeclContext())) {
-        std::string nsPath = NamespaceHandler::getNamespacePath(ns);
-        if (!nsPath.empty()) {
-            className = nsPath + "__" + className;
-        }
-    }
-
+    // Phase 3: Use NameMangler::mangle_class() for deterministic class name mangling
+    std::string className = cpptoc::mangle_class(classDecl);
     std::string vtableStructName = className + "__vtable";
 
     std::stringstream ss;
@@ -479,17 +452,8 @@ std::string VirtualMethodHandler::generateVtableInstance(
     const std::vector<const clang::CXXMethodDecl*>& virtualMethods,
     clang::ASTContext& cASTContext)
 {
-    std::string className = classDecl->getNameAsString();
-
-    // Apply namespace prefix
-    if (const auto* ns = llvm::dyn_cast<clang::NamespaceDecl>(
-            classDecl->getDeclContext())) {
-        std::string nsPath = NamespaceHandler::getNamespacePath(ns);
-        if (!nsPath.empty()) {
-            className = nsPath + "__" + className;
-        }
-    }
-
+    // Phase 3: Use NameMangler::mangle_class() for deterministic class name mangling
+    std::string className = cpptoc::mangle_class(classDecl);
     std::string vtableStructName = className + "__vtable";
     std::string vtableInstanceName = className + "__vtable_instance";
 

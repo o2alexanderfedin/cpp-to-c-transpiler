@@ -207,20 +207,10 @@ clang::ParmVarDecl* InstanceMethodHandler::createThisParameter(
     const clang::CXXRecordDecl* classDecl,
     clang::ASTContext& cASTContext
 ) {
-    // Get class name with namespace prefix
-    std::string className = classDecl->getNameAsString();
+    // Use NameMangler API to get properly mangled class name (includes namespace prefix)
+    std::string className = cpptoc::mangle_class(classDecl);
 
-    // Check if class is in namespace and apply namespace prefix
-    if (const auto* ns = llvm::dyn_cast<clang::NamespaceDecl>(
-            classDecl->getDeclContext())) {
-        std::string nsPath = NamespaceHandler::getNamespacePath(ns);
-        if (!nsPath.empty()) {
-            // Apply namespace prefix to class name
-            className = nsPath + "__" + className;
-        }
-    }
-
-    // Create struct type with prefixed class name
+    // Create struct type with properly mangled class name
     clang::IdentifierInfo& structII = cASTContext.Idents.get(className);
     clang::RecordDecl* structDecl = clang::RecordDecl::Create(
         cASTContext,

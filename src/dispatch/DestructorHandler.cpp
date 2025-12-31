@@ -7,6 +7,7 @@
 
 #include "handlers/DestructorHandler.h"
 #include "handlers/HandlerContext.h"
+#include "NameMangler.h"
 #include "clang/AST/DeclCXX.h"
 #include "llvm/Support/Casting.h"
 
@@ -22,10 +23,9 @@ clang::Decl* DestructorHandler::handleDecl(const clang::Decl* D, HandlerContext&
 
     // Get parent class
     const auto* cxxRecord = cppDestructor->getParent();
-    std::string className = cxxRecord->getNameAsString();
 
-    // Create function name: ClassName_destroy
-    std::string functionName = className + "_destroy";
+    // Create function name using NameMangler
+    std::string functionName = cpptoc::mangle_destructor(cppDestructor);
 
     // Return type is always void
     clang::ASTContext& cContext = ctx.getCContext();

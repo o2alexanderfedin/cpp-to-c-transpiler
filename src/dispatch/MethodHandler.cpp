@@ -10,6 +10,7 @@
 
 #include "handlers/MethodHandler.h"
 #include "handlers/HandlerContext.h"
+#include "NameMangler.h"
 #include "clang/AST/Decl.h"
 #include "clang/AST/DeclCXX.h"
 #include "clang/AST/Type.h"
@@ -40,12 +41,11 @@ bool MethodHandler::canHandle(const clang::Decl* D) const {
 clang::Decl* MethodHandler::handleDecl(const clang::Decl* D, HandlerContext& ctx) {
     const auto* cppMethod = llvm::cast<clang::CXXMethodDecl>(D);
 
-    // Step 1: Extract class name and method name
-    std::string className = getClassName(cppMethod);
-    std::string methodName = cppMethod->getNameAsString();
+    // Step 1: Mangle method name using NameMangler API
+    std::string mangledName = mangle_method(cppMethod);
 
-    // Step 2: Mangle method name
-    std::string mangledName = mangleMethodName(className, methodName);
+    // Step 2: Get class name for "this" parameter
+    std::string className = cppMethod->getParent()->getNameAsString();
 
     // Step 3: Translate return type
     clang::QualType cppReturnType = cppMethod->getReturnType();
@@ -125,16 +125,6 @@ clang::Decl* MethodHandler::handleDecl(const clang::Decl* D, HandlerContext& ctx
     ctx.registerDecl(cppMethod, cFunc);
 
     return cFunc;
-}
-
-std::string MethodHandler::mangleMethodName(
-    const std::string& className,
-    const std::string& methodName
-) const {
-    // Simple mangling: ClassName_methodName
-    // For basic overloading, we use same name (C doesn't support overloading)
-    // Full mangling with parameter types is deferred to Phase 46
-    return className + "_" + methodName;
 }
 
 clang::ParmVarDecl* MethodHandler::createThisParameter(
@@ -243,12 +233,6 @@ std::vector<clang::ParmVarDecl*> MethodHandler::translateParameters(
     }
 
     return cParams;
-}
-
-std::string MethodHandler::getClassName(const clang::CXXMethodDecl* cppMethod) const {
-    // Get the parent class of this method
-    const clang::CXXRecordDecl* classDecl = cppMethod->getParent();
-    return classDecl->getNameAsString();
 }
 
 } // namespace cpptoc

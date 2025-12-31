@@ -18,6 +18,7 @@
 #include "handlers/ConstructorHandler.h"
 #include "handlers/HandlerContext.h"
 #include "MultipleInheritanceAnalyzer.h"
+#include "NameMangler.h"
 #include "clang/AST/DeclCXX.h"
 #include "clang/AST/RecordLayout.h"
 #include "llvm/Support/Casting.h"
@@ -40,8 +41,8 @@ clang::Decl* ConstructorHandler::handleDecl(const clang::Decl* D, HandlerContext
 
     std::string className = parentClass->getNameAsString();
 
-    // Generate mangled function name
-    std::string funcName = generateConstructorName(className, ctor);
+    // Generate mangled function name using NameMangler API
+    std::string funcName = cpptoc::mangle_constructor(ctor);
 
     // Create 'this' parameter
     // IMPORTANT: Must use C RecordDecl, not C++ RecordDecl
@@ -127,31 +128,6 @@ clang::Decl* ConstructorHandler::handleDecl(const clang::Decl* D, HandlerContext
     cFunc->setBody(body);
 
     return cFunc;
-}
-
-std::string ConstructorHandler::generateConstructorName(
-    const std::string& className,
-    const clang::CXXConstructorDecl* ctor
-) {
-    // Base name: ClassName_init
-    std::string baseName = className + "_init";
-
-    // If no parameters, just return base name
-    if (ctor->getNumParams() == 0) {
-        return baseName;
-    }
-
-    // Add parameter types to name for overload resolution
-    // Format: ClassName_init_type1_type2_...
-    std::string mangledName = baseName;
-
-    for (const auto* param : ctor->parameters()) {
-        clang::QualType paramType = param->getType();
-        std::string typeName = getSimpleTypeName(paramType);
-        mangledName += "_" + typeName;
-    }
-
-    return mangledName;
 }
 
 std::vector<clang::ParmVarDecl*> ConstructorHandler::translateParameters(
@@ -242,79 +218,6 @@ clang::QualType ConstructorHandler::translateType(
 
     // For non-reference types, pass through unchanged
     return cppType;
-}
-
-std::string ConstructorHandler::getSimpleTypeName(clang::QualType type) const {
-    // Remove qualifiers (const, volatile)
-    type = type.getUnqualifiedType();
-
-    // Check for pointer types
-    if (type->isPointerType()) {
-        clang::QualType pointeeType = type->getPointeeType();
-        std::string pointeeName = getSimpleTypeName(pointeeType);
-        return pointeeName + "ptr";
-    }
-
-    // Check for reference types (should be converted to pointers by translateType)
-    if (type->isReferenceType()) {
-        clang::QualType pointeeType = type.getNonReferenceType();
-        std::string pointeeName = getSimpleTypeName(pointeeType);
-        return pointeeName + "ptr";
-    }
-
-    // Check for built-in types
-    if (type->isBuiltinType()) {
-        const auto* builtinType = llvm::cast<clang::BuiltinType>(type.getTypePtr());
-        switch (builtinType->getKind()) {
-            case clang::BuiltinType::Void:
-                return "void";
-            case clang::BuiltinType::Bool:
-                return "bool";
-            case clang::BuiltinType::Char_S:
-            case clang::BuiltinType::Char_U:
-            case clang::BuiltinType::Char8:
-            case clang::BuiltinType::Char16:
-            case clang::BuiltinType::Char32:
-                return "char";
-            case clang::BuiltinType::Short:
-            case clang::BuiltinType::UShort:
-                return "short";
-            case clang::BuiltinType::Int:
-            case clang::BuiltinType::UInt:
-                return "int";
-            case clang::BuiltinType::Long:
-            case clang::BuiltinType::ULong:
-                return "long";
-            case clang::BuiltinType::LongLong:
-            case clang::BuiltinType::ULongLong:
-                return "longlong";
-            case clang::BuiltinType::Float:
-                return "float";
-            case clang::BuiltinType::Double:
-                return "double";
-            case clang::BuiltinType::LongDouble:
-                return "longdouble";
-            default:
-                return "unknown";
-        }
-    }
-
-    // Check for record types (struct/class)
-    if (type->isRecordType()) {
-        const auto* recordType = llvm::cast<clang::RecordType>(type.getTypePtr());
-        const auto* recordDecl = recordType->getDecl();
-        return recordDecl->getNameAsString();
-    }
-
-    // Check for enum types
-    if (type->isEnumeralType()) {
-        const auto* enumType = llvm::cast<clang::EnumType>(type.getTypePtr());
-        const auto* enumDecl = enumType->getDecl();
-        return enumDecl->getNameAsString();
-    }
-
-    // Default: use type as string
-    return type.getAsString();
 }
 
 std::vector<clang::Stmt*> ConstructorHandler::injectLpVtblInit(
@@ -408,13 +311,14 @@ std::vector<clang::Stmt*> ConstructorHandler::injectLpVtblInit(
 
         // Create RHS: &ClassName_BaseName_vtable_instance (multiple inheritance)
         //         or: &ClassName_vtable_instance (single inheritance with primary base)
+        std::string mangledClassName = cpptoc::mangle_class(parentClass);
         std::string vtableInstanceName;
         if (bases.size() == 1 && baseInfo.IsPrimary) {
             // Single inheritance: use simpler naming
-            vtableInstanceName = className + "_vtable_instance";
+            vtableInstanceName = mangledClassName + "_vtable_instance";
         } else {
             // Multiple inheritance or non-primary base: use detailed naming
-            vtableInstanceName = className + "_" + baseName + "_vtable_instance";
+            vtableInstanceName = mangledClassName + "_" + baseName + "_vtable_instance";
         }
 
         // Find or create vtable instance variable
@@ -433,10 +337,10 @@ std::vector<clang::Stmt*> ConstructorHandler::injectLpVtblInit(
             std::string vtableStructName;
             if (bases.size() == 1 && baseInfo.IsPrimary) {
                 // Single inheritance: use simpler naming
-                vtableStructName = className + "_vtable";
+                vtableStructName = mangledClassName + "_vtable";
             } else {
                 // Multiple inheritance or non-primary base: use detailed naming
-                vtableStructName = className + "_" + baseName + "_vtable";
+                vtableStructName = mangledClassName + "_" + baseName + "_vtable";
             }
             clang::RecordDecl* vtableStruct = nullptr;
 
@@ -564,7 +468,8 @@ std::vector<clang::Stmt*> ConstructorHandler::injectLpVtblInit(
             );
 
             // For base class: ClassName_vtable_instance (not ClassName_ClassName_vtable_instance)
-            std::string vtableInstanceName = className + "_vtable_instance";
+            std::string mangledClassName = cpptoc::mangle_class(parentClass);
+            std::string vtableInstanceName = mangledClassName + "_vtable_instance";
 
             // Find or create vtable instance
             clang::VarDecl* vtableInstanceVar = nullptr;
@@ -578,7 +483,7 @@ std::vector<clang::Stmt*> ConstructorHandler::injectLpVtblInit(
             }
 
             if (!vtableInstanceVar) {
-                std::string vtableStructName = className + "_vtable";
+                std::string vtableStructName = mangledClassName + "_vtable";
                 clang::RecordDecl* vtableStruct = nullptr;
 
                 for (auto* D : TU->decls()) {
@@ -719,7 +624,24 @@ clang::CallExpr* ConstructorHandler::createBaseConstructorCall(
 ) {
     clang::ASTContext& cCtx = ctx.getCContext();
     std::string baseName = baseClass->getNameAsString();
-    std::string baseCtorName = baseName + "_init";
+
+    // Find the default constructor of the base class
+    clang::CXXConstructorDecl* baseDefaultCtor = nullptr;
+    for (auto* ctor : baseClass->ctors()) {
+        if (ctor->isDefaultConstructor()) {
+            baseDefaultCtor = ctor;
+            break;
+        }
+    }
+
+    // Generate base constructor name using NameMangler
+    std::string baseCtorName;
+    if (baseDefaultCtor) {
+        baseCtorName = cpptoc::mangle_constructor(baseDefaultCtor);
+    } else {
+        // Fallback: if no explicit default constructor, use simple mangling
+        baseCtorName = baseName + "_init";
+    }
 
     // Step 1: Find or create base constructor function declaration
     clang::FunctionDecl* baseCtorFunc = nullptr;
