@@ -18,6 +18,7 @@
 #include "handlers/LoopVariableAnalyzer.h"
 #include "handlers/ContainerLoopGenerator.h"
 #include "handlers/IteratorTypeAnalyzer.h"
+#include "NameMangler.h"
 #include "clang/AST/Stmt.h"
 #include "clang/AST/Expr.h"
 #include "clang/AST/ExprCXX.h"
@@ -862,9 +863,23 @@ clang::Expr* StatementHandler::createConstructorCall(
     // For now, create a simple default constructor call: ClassName_init(&obj)
     // TODO: Handle parameterized constructors by examining cppVarDecl->getInit()
 
-    // Generate constructor name
-    // For default constructor (no params): ClassName_init
-    std::string ctorName = className + "_init";
+    // Find the default constructor in the record declaration
+    clang::CXXConstructorDecl* defaultCtor = nullptr;
+    for (auto* ctor : recordDecl->ctors()) {
+        if (ctor->isDefaultConstructor()) {
+            defaultCtor = ctor;
+            break;
+        }
+    }
+
+    // Generate mangled constructor name using NameMangler
+    std::string ctorName;
+    if (defaultCtor) {
+        ctorName = cpptoc::mangle_constructor(defaultCtor);
+    } else {
+        // Fallback if no explicit default constructor found
+        ctorName = className + "_init";
+    }
 
     // Create DeclRefExpr for the variable
     clang::DeclRefExpr* varRef = clang::DeclRefExpr::Create(
