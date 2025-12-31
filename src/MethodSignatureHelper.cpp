@@ -189,12 +189,12 @@ std::string MethodSignatureHelper::getMangledName(
     // Regular method: ClassName_methodName[_suffix]
     std::string name = ClassName + "_" + Method->getNameAsString();
 
-    // TODO: For now, we don't add overload suffix for regular methods
-    // Future enhancement: Add type-based mangling for overloaded methods
-    // std::string overloadSuffix = generateOverloadSuffix(Method);
-    // if (!overloadSuffix.empty()) {
-    //     name += overloadSuffix;
-    // }
+    // Phase 40 (Bug Fix): Always add parameter type suffix for cross-file consistency
+    // This ensures method names match whether generated from definition or call site
+    std::string overloadSuffix = generateOverloadSuffix(Method);
+    if (!overloadSuffix.empty()) {
+        name += overloadSuffix;
+    }
 
     return name;
 }
@@ -210,8 +210,82 @@ bool MethodSignatureHelper::isConstMethod(const CXXMethodDecl* Method) {
 }
 
 std::string MethodSignatureHelper::generateOverloadSuffix(const CXXMethodDecl* Method) {
-    // Simple implementation: return empty for now
-    // Future enhancement: Generate suffix based on parameter types
-    // Example: "_int_float" for method(int, float)
-    return "";
+    // Phase 40 (Bug Fix): Generate suffix based on parameter types
+    // Example: dot(const Vector3D&) -> "_const_Vector3D_ref"
+    // Example: add(int, float) -> "_int_float"
+
+    if (Method->param_size() == 0) {
+        return "";  // No parameters, no suffix
+    }
+
+    std::string suffix;
+    for (unsigned i = 0; i < Method->getNumParams(); ++i) {
+        const ParmVarDecl* param = Method->getParamDecl(i);
+        QualType paramType = param->getType();
+
+        suffix += "_" + getSimpleTypeName(paramType);
+    }
+
+    return suffix;
+}
+
+// Helper function to generate simple type names for mangling
+std::string MethodSignatureHelper::getSimpleTypeName(QualType T) {
+    std::string result;
+
+    // CRITICAL: Handle reference types FIRST (before checking const)
+    // For const T&, the const is on the pointee, not the reference itself
+    bool isReference = false;
+    bool isRValueRef = false;
+    if (T->isLValueReferenceType()) {
+        isReference = true;
+        T = T.getNonReferenceType();  // Now T is the pointee type
+    } else if (T->isRValueReferenceType()) {
+        isRValueRef = true;
+        T = T.getNonReferenceType();
+    }
+
+    // NOW check for const qualification (after stripping reference)
+    bool isConst = T.isConstQualified();
+    if (isConst) {
+        result += "const_";
+    }
+
+    // Remove const/volatile qualifiers for type matching
+    T = T.getUnqualifiedType();
+
+    // Handle integer types
+    if (T->isIntegerType()) {
+        result += "int";
+    }
+    // Handle floating point types
+    else if (T->isFloatingType()) {
+        result += "float";
+    }
+    // Handle pointer types
+    else if (T->isPointerType()) {
+        QualType pointee = T->getPointeeType();
+        result += getSimpleTypeName(pointee) + "_ptr";
+    }
+    // Handle record types (struct/class)
+    else if (T->isRecordType()) {
+        if (auto *RD = T->getAsRecordDecl()) {
+            result += RD->getName().str();
+        } else {
+            result += "record";
+        }
+    }
+    // Fallback
+    else {
+        result += T.getAsString();
+    }
+
+    // Append reference suffix
+    if (isReference) {
+        result += "_ref";
+    } else if (isRValueRef) {
+        result += "_rref";
+    }
+
+    return result;
 }

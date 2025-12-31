@@ -198,12 +198,10 @@
 class SpecialOperatorTranslator {
 public:
     /**
-     * @brief Construct translator with C AST builder and name mangler
+     * @brief Construct translator with C AST builder
      * @param Builder CNodeBuilder for creating C AST nodes
-     * @param Mangler NameMangler for generating operator function names
      */
-    explicit SpecialOperatorTranslator(clang::CNodeBuilder& Builder,
-                                       NameMangler& Mangler);
+    explicit SpecialOperatorTranslator(clang::CNodeBuilder& Builder);
 
     /**
      * @brief Transform special operator method to C function declaration
@@ -250,7 +248,6 @@ public:
 
 private:
     clang::CNodeBuilder& m_builder;
-    NameMangler& m_mangler;
 
     /// Map from C++ method to generated C function
     std::map<const clang::CXXMethodDecl*, clang::FunctionDecl*> m_methodMap;
@@ -495,12 +492,7 @@ private:
      */
     std::string generateOperatorName(const clang::CXXMethodDecl* MD);
 
-    /**
-     * @brief Generate C function name for conversion operator
-     * @param CD The conversion operator declaration
-     * @return C function name (e.g., "Celsius_operator_to_double")
-     */
-    std::string generateConversionName(const clang::CXXConversionDecl* CD);
+    // Phase 53: Removed generateConversionName() - now using NameMangler::mangleConversionOperator()
 
     /**
      * @brief Check if operator<< or operator>> is a stream operator

@@ -159,12 +159,12 @@
 class ArithmeticOperatorTranslator {
 public:
     /**
-     * @brief Construct translator with C AST builder and name mangler
+     * @brief Construct translator with C AST builder
      * @param Builder CNodeBuilder for creating C AST nodes
-     * @param Mangler NameMangler for generating operator function names
+     *
+     * Note: Name mangling is handled by cpptoc::mangle_method() free function
      */
-    explicit ArithmeticOperatorTranslator(clang::CNodeBuilder& Builder,
-                                          NameMangler& Mangler);
+    explicit ArithmeticOperatorTranslator(clang::CNodeBuilder& Builder);
 
     /**
      * @brief Transform arithmetic operator method to C function declaration
@@ -232,7 +232,6 @@ public:
 
 private:
     clang::CNodeBuilder& m_builder;
-    NameMangler& m_mangler;
 
     /// Map from C++ method to generated C function
     std::map<const clang::CXXMethodDecl*, clang::FunctionDecl*> m_methodMap;

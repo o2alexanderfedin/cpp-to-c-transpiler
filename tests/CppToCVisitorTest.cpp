@@ -2,9 +2,10 @@
 // Story #15: Class-to-struct conversion
 
 #include <gtest/gtest.h>
-#include "CppToCVisitor.h"
 #include "CNodeBuilder.h"
 #include "FileOriginTracker.h"
+#include "TargetContext.h"
+#include "mapping/PathMapper.h"
 #include "clang/Tooling/Tooling.h"
 
 using namespace clang;
@@ -24,12 +25,14 @@ protected:
     // Helper to create a CppToCVisitor with a C TranslationUnitDecl
     std::unique_ptr<CppToCVisitor> createVisitor(ASTUnit &AST, CNodeBuilder &builder,
                                                    cpptoc::FileOriginTracker &tracker) {
-        // Create a C TranslationUnitDecl for the visitor
-        clang::TranslationUnitDecl *C_TU =
-            clang::TranslationUnitDecl::Create(AST.getASTContext());
+        // Get TargetContext
+        TargetContext& targetCtx = TargetContext::getInstance();
+
+        // Create PathMapper (required for Phase 2)
+        cpptoc::PathMapper& pathMapper = cpptoc::PathMapper::getInstance("/src", "/output");
 
         return std::make_unique<CppToCVisitor>(AST.getASTContext(), builder,
-                                                tracker, C_TU);
+                                                targetCtx, tracker, &pathMapper);
     }
 };
 

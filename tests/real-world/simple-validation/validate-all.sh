@@ -115,7 +115,7 @@ test_project() {
         return 1
     fi
 
-    if gcc -I . $c_files -o test_c -lm >> "../../$RESULTS_FILE" 2>&1; then
+    if gcc -I. -Isrc -Iinclude $c_files -o test_c -lm >> "../../$RESULTS_FILE" 2>&1; then
         echo "    ✓ C build successful" | tee -a "../../$RESULTS_FILE"
     else
         echo -e "    ${RED}✗ C build failed${NC}" | tee -a "../../$RESULTS_FILE"

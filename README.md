@@ -1,11 +1,11 @@
 # C++ to C Converter
 
-[![Research Status](https://img.shields.io/badge/Research-v2.6.0%20Complete-brightgreen)](https://github.com)
+[![Research Status](https://img.shields.io/badge/Version-v3.0.0--rc-blue)](https://github.com)
+[![Tests](https://img.shields.io/badge/Tests-444%2F595%20(74.6%25)-yellow)](https://github.com)
+[![Foundation](https://img.shields.io/badge/Foundation-92%2F93%20(98.9%25)-brightgreen)](https://github.com)
 [![ACSL Support](https://img.shields.io/badge/ACSL-100%25%20Complete-brightgreen)](https://github.com)
-[![Template Support](https://img.shields.io/badge/Templates-Monomorphization-brightgreen)](https://github.com)
 [![RTTI Support](https://img.shields.io/badge/RTTI-100%25%20Complete-brightgreen)](https://github.com)
-[![Confidence](https://img.shields.io/badge/Confidence-98%25-brightgreen)](https://github.com)
-[![Architecture](https://img.shields.io/badge/Architecture-Two--Phase%20Translation-blue)](https://github.com)
+[![Architecture](https://img.shields.io/badge/Architecture-3--Stage%20Pipeline-blue)](https://github.com)
 [![License](https://img.shields.io/badge/License-CC%20BY--NC--ND%204.0-lightgrey.svg)](LICENSE)
 [![Commercial License](https://img.shields.io/badge/Commercial-Available-green.svg)](LICENSE-COMMERCIAL.md)
 
@@ -30,7 +30,54 @@ This README provides a quick overview - the documentation site contains the comp
 
 ## Overview
 
-This project implements a C++ to C transpiler that produces high-quality, human-readable C code suitable for formal verification with tools like Frama-C. The converter handles modern C++ features including:
+This project implements a C++ to C transpiler that produces high-quality, human-readable C code suitable for formal verification with tools like Frama-C.
+
+---
+
+## Version 3.0.0 - Foundation Release
+
+**Status**: RELEASE CANDIDATE (Pending Phase 40 validation)
+**Release Date**: TBD
+**Test Coverage**: 444/595 unit tests (74.6%), 92/93 foundation tests (98.9%)
+
+### What's New in v3.0.0
+
+**Major Features**:
+- ✅ **Multi-File Transpilation** (Phase 34) - Complete C++ projects with multiple .cpp/.h files
+- ✅ **3-Stage Pipeline Architecture** (Phase 39-01) - Clean separation: C++ AST → Handler Chain → C AST → C Code
+- ✅ **Comprehensive Documentation** (Phase 39-02) - Honest capability assessment with evidence-based claims
+- ✅ **Full RTTI Support** (v2.6.0) - typeid, dynamic_cast with Itanium ABI compatibility
+- ✅ **Complete ACSL Support** (v2.0.0) - Full Frama-C integration (WP ≥80%, EVA ≥50%)
+
+**New Documentation**:
+- [FEATURE-MATRIX.md](FEATURE-MATRIX.md) - Test coverage with evidence
+- [docs/CPP23_LIMITATIONS.md](docs/CPP23_LIMITATIONS.md) - Known limitations and workarounds
+- [docs/WARNING_REFERENCE.md](docs/WARNING_REFERENCE.md) - All warning messages explained
+- [RELEASE_NOTES_v3.0.0.md](RELEASE_NOTES_v3.0.0.md) - Complete release notes
+
+**Key Limitations** (be honest!):
+- ❌ **No STL Support** (v3.0) - std::string, std::vector, std::map not supported → Deferred to v4.0.0
+- ⚠️ **Clang 18 Required** for deducing this (10 tests disabled on Clang 17)
+- ⚠️ **STL-Free Projects Only** for real-world transpilation (~20-30% of codebases)
+
+**Production Ready For**:
+- ✅ Embedded systems (STL-free C++)
+- ✅ Game engine cores (custom allocators)
+- ✅ Math libraries (pure computation)
+- ✅ Formal verification (ACSL + Frama-C)
+- ✅ Research and prototyping
+
+**Not Recommended For**:
+- ❌ Modern C++ codebases with heavy STL usage → Wait for v4.0.0 (Q2-Q3 2026)
+- ❌ Projects requiring virtual inheritance, move semantics, variadic templates → Wait for v3.1.0+
+
+**See**: [RELEASE_NOTES_v3.0.0.md](RELEASE_NOTES_v3.0.0.md) for complete details
+
+---
+
+## Supported C++ Features
+
+The converter handles modern C++ features including:
 
 - ✅ Classes (single/multiple/virtual inheritance)
 - ✅ **Virtual Methods** (v2.2.0) - Full polymorphism and dynamic dispatch support
@@ -52,7 +99,7 @@ This project implements a C++ to C transpiler that produces high-quality, human-
   - ✅ **Nested templates** - Templates within templates (e.g., Vector<Pair<int,double>>)
   - ✅ **Template specializations** - Full and partial specialization support
   - ✅ **Deduplication** - Single definition for identical instantiations
-- ✅ STL containers (vector, map, set, etc.)
+- ❌ **STL containers** (vector, map, set, etc.) - NOT SUPPORTED in v3.0 (deferred to v4.0.0)
 - ✅ RAII (Resource Acquisition Is Initialization)
 - ✅ **Exception Handling** (v2.5.0) - Complete try-catch-throw translation with RAII unwinding
   - ✅ **Try-catch blocks** - setjmp/longjmp control flow with frame management
@@ -69,9 +116,9 @@ This project implements a C++ to C transpiler that produces high-quality, human-
   - ✅ **dynamic_cast<>()** - Safe downcasting with runtime type checking and NULL on failure
   - ✅ **Multiple inheritance** - Full support for complex hierarchy traversal
   - ✅ **Type introspection** - Type comparison and name() method support
-- ✅ Lambdas and closures
-- ✅ C++20 coroutines
-- ✅ Smart pointers
+- ❌ **Lambdas and closures** - NOT SUPPORTED in v3.0 (deferred to v5.0.0)
+- ❌ **C++20 coroutines** - NOT SUPPORTED in v3.0 (deferred to v6.0.0+)
+- ❌ **Smart pointers** (unique_ptr, shared_ptr) - NOT SUPPORTED in v3.0 (deferred to v4.0/v5.0)
 - ✅ **Complete ACSL Support** (v2.0.0) - Full Frama-C ACSL 1.17+ compatibility with automatic formal specification generation
   - ✅ **Function contracts** (requires, ensures, assigns)
   - ✅ **Loop annotations** (invariants, variants, assigns)
@@ -97,46 +144,72 @@ This project implements a C++ to C transpiler that produces high-quality, human-
     - ✅ **Friend operators** - Non-member symmetric operations
   - ⏳ **Phase 52: Special Operators** (v2.12.0, planned) - `[]`, `()`, `->`, `*`, `<<`, `>>`, conversion operators
 
-## Architecture (v1.5.1)
+## Architecture (v3.0.0 - 3-Stage Pipeline)
 
-The converter uses a **Two-Phase Translation** approach optimized for generated code quality and formal verification:
+The converter uses a **3-Stage Pipeline** architecture (Phase 39-01) optimized for generated code quality, testability, and formal verification:
 
 ```
-C++ Source Code
-    ↓
-Clang Parser + Sema
-    ↓
-AST #1 (Full C++ AST - READ ONLY)
-├─ CXXThrowExpr, CXXTryStmt, LambdaExpr
-├─ CXXRecordDecl, CXXMethodDecl
-└─ Template instantiations, RAII semantics
-    ↓
-┌─────────────────────────────────────┐
-│ Translation Layer                    │
-│ (RecursiveASTVisitor)               │
-│                                     │
-│ VisitCXXThrowExpr → CallExpr        │
-│ VisitCXXTryStmt → IfStmt + setjmp   │
-│ VisitLambdaExpr → Struct + FuncPtr  │
-└─────────────────────────────────────┘
-    ↓
-AST #2 (Pure C AST - GENERATED)
-├─ CallExpr (cxx_throw, cxx_frame_push)
-├─ VarDecl (int, struct, function pointers)
-├─ IfStmt, CompoundStmt, ReturnStmt
-└─ Only C-compatible nodes
-    ↓
-┌─────────────────────────────────────┐
-│ Clang DeclPrinter/StmtPrinter       │
-│ + PrintingPolicy (C99)              │
-│ + #line directive injection         │
-└─────────────────────────────────────┘
-    ↓
-Clean, Readable C Code
-+ Runtime Library (exception_runtime.c, rtti_runtime.c)
-    ↓
-Frama-C Verification
+┌─────────────────────────────────────────────────────────┐
+│ Stage 1: Clang Frontend (C++ → C++ AST)                │
+│                                                         │
+│ C++ Source Code                                         │
+│     ↓                                                   │
+│ Clang Parser + Sema                                     │
+│     ↓                                                   │
+│ C++ AST (Read-Only)                                     │
+│ ├─ CXXRecordDecl, CXXMethodDecl                        │
+│ ├─ CXXThrowExpr, CXXTryStmt                            │
+│ ├─ Template instantiations                             │
+│ └─ Virtual functions, RTTI                             │
+└─────────────────────────────────────────────────────────┘
+                          ↓
+┌─────────────────────────────────────────────────────────┐
+│ Stage 2: Handler Chain (C++ AST → C AST)               │
+│                                                         │
+│ 4 Core Handlers:                                        │
+│ ├─ FunctionHandler: Function signatures                │
+│ ├─ VariableHandler: Variable declarations              │
+│ ├─ ExpressionHandler: Arithmetic & literals            │
+│ └─ StatementHandler: Return & compound statements      │
+│                                                         │
+│ Translation:                                            │
+│ ├─ C++ classes → C structs                             │
+│ ├─ C++ methods → C functions (with 'this')             │
+│ ├─ C++ virtual → vtable dispatch                       │
+│ ├─ C++ throw/try → setjmp/longjmp + runtime calls      │
+│ └─ C++ templates → monomorphized C types               │
+│                                                         │
+│ Output: C AST (Pure C nodes)                            │
+│ ├─ RecordDecl (structs)                                │
+│ ├─ FunctionDecl (functions)                            │
+│ ├─ VarDecl (variables)                                 │
+│ ├─ CallExpr (runtime library calls)                    │
+│ └─ IfStmt, CompoundStmt, ReturnStmt                    │
+└─────────────────────────────────────────────────────────┘
+                          ↓
+┌─────────────────────────────────────────────────────────┐
+│ Stage 3: Code Generator (C AST → C Source)             │
+│                                                         │
+│ Clang DeclPrinter/StmtPrinter                          │
+│ + PrintingPolicy (C99)                                  │
+│ + #line directive injection                            │
+│     ↓                                                   │
+│ Clean, Readable C Code                                  │
+│ + Runtime Library:                                      │
+│   ├─ exception_runtime.c (try/catch/throw)            │
+│   ├─ rtti_runtime.c (typeid/dynamic_cast)             │
+│   └─ Total: 1.7-2.8 KB                                 │
+└─────────────────────────────────────────────────────────┘
+                          ↓
+                   Frama-C Verification
 ```
+
+**Key Benefits of 3-Stage Pipeline**:
+- **Separation of Concerns**: Each stage has ONE responsibility (SOLID principles)
+- **Testability**: Each stage tested independently (98.9% test pass rate for handlers)
+- **Extensibility**: New handlers added without modifying existing ones (OCP)
+- **Maintainability**: Clear boundaries, easier debugging
+- **Code Quality**: Cleaner generated C code (reuses battle-tested Clang printer)
 
 ### Key Design Decisions
 

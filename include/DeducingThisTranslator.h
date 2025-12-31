@@ -202,7 +202,7 @@ public:
 
     /**
      * @brief Transform call to method with explicit object parameter
-     * @param Call CXXMemberCallExpr calling explicit object member function
+     * @param Call CallExpr calling explicit object member function
      * @param Ctx Clang AST context
      * @return CallExpr to appropriate C overload, or nullptr if not applicable
      *
@@ -212,18 +212,19 @@ public:
      *
      * Example:
      * ```cpp
-     * // Input C++ AST
+     * // Input C++ AST (calls to explicit object member functions are CallExpr)
      * Buffer b;
-     * b.get();  // CXXMemberCallExpr, object = b (lvalue, non-const)
+     * b.get();  // CallExpr calling get(Buffer&), first arg is b
      *
      * // Output C AST
      * Buffer__get_lvalue(&b);  // CallExpr to lvalue overload
      * ```
      *
      * @note Returns nullptr if call is not to explicit object member function
+     * @note For explicit object member functions, Clang represents calls as CallExpr (not CXXMemberCallExpr)
      */
     clang::CallExpr* transformCall(
-        clang::CXXMemberCallExpr* Call,
+        clang::CallExpr* Call,
         clang::ASTContext& Ctx);
 
 private:

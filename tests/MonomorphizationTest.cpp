@@ -9,6 +9,7 @@
 #include "TemplateMonomorphizer.h"
 #include "TemplateExtractor.h"
 #include "NameMangler.h"
+#include "OverloadRegistry.h"
 #include "CNodeBuilder.h"
 #include "clang/Tooling/Tooling.h"
 #include "clang/Frontend/ASTUnit.h"
@@ -64,7 +65,9 @@ void test_BasicClassTemplateMonomorphization() {
     assert(classInsts.size() >= 2 && "Expected at least 2 class instantiations");
 
     // Monomorphize
-    NameMangler mangler(Context);
+    cpptoc::OverloadRegistry& registry = cpptoc::OverloadRegistry::getInstance();
+    registry.reset();
+    NameMangler mangler(Context, registry);
     CNodeBuilder builder(Context);
     TemplateMonomorphizer monomorphizer(Context, mangler, builder);
 
@@ -124,7 +127,9 @@ void test_FunctionTemplateMonomorphization() {
     assert(funcInsts.size() >= 2 && "Expected at least 2 function instantiations");
 
     // Monomorphize
-    NameMangler mangler(Context);
+    cpptoc::OverloadRegistry& registry = cpptoc::OverloadRegistry::getInstance();
+    registry.reset();
+    NameMangler mangler(Context, registry);
     CNodeBuilder builder(Context);
     TemplateMonomorphizer monomorphizer(Context, mangler, builder);
 
@@ -192,7 +197,9 @@ void test_TypeSubstitution() {
     assert(classInsts.size() >= 1 && "Expected at least 1 class instantiation");
 
     // Monomorphize
-    NameMangler mangler(Context);
+    cpptoc::OverloadRegistry& registry = cpptoc::OverloadRegistry::getInstance();
+    registry.reset();
+    NameMangler mangler(Context, registry);
     CNodeBuilder builder(Context);
     TemplateMonomorphizer monomorphizer(Context, mangler, builder);
 
@@ -275,7 +282,9 @@ void test_Deduplication() {
     auto classInsts = extractor.getClassInstantiations();
 
     // Monomorphize all
-    NameMangler mangler(Context);
+    cpptoc::OverloadRegistry& registry = cpptoc::OverloadRegistry::getInstance();
+    registry.reset();
+    NameMangler mangler(Context, registry);
     CNodeBuilder builder(Context);
     TemplateMonomorphizer monomorphizer(Context, mangler, builder);
 
@@ -333,7 +342,9 @@ void test_MethodGeneration() {
     assert(classInsts.size() >= 1 && "Expected at least 1 class instantiation");
 
     // Monomorphize
-    NameMangler mangler(Context);
+    cpptoc::OverloadRegistry& registry = cpptoc::OverloadRegistry::getInstance();
+    registry.reset();
+    NameMangler mangler(Context, registry);
     CNodeBuilder builder(Context);
     TemplateMonomorphizer monomorphizer(Context, mangler, builder);
 
@@ -403,7 +414,9 @@ void test_NonTypeTemplateParameters() {
     assert(classInsts.size() >= 2 && "Expected at least 2 class instantiations");
 
     // Monomorphize
-    NameMangler mangler(Context);
+    cpptoc::OverloadRegistry& registry = cpptoc::OverloadRegistry::getInstance();
+    registry.reset();
+    NameMangler mangler(Context, registry);
     CNodeBuilder builder(Context);
     TemplateMonomorphizer monomorphizer(Context, mangler, builder);
 

@@ -2,6 +2,7 @@
 #include "clang/Frontend/ASTUnit.h"
 #include <gtest/gtest.h>
 #include "../include/NameMangler.h"
+#include "../include/OverloadRegistry.h"
 #include <cassert>
 
 using namespace clang;
@@ -27,7 +28,9 @@ TEST_F(OverloadResolutionTest, PrimitiveTypeOverloads) {
     std::unique_ptr<ASTUnit> AST = buildAST(code);
     ASSERT_TRUE(AST) << "Failed to parse C++ code";
 
-    NameMangler mangler(AST->getASTContext());
+    cpptoc::OverloadRegistry& registry = cpptoc::OverloadRegistry::getInstance();
+        registry.reset();
+        NameMangler mangler(AST->getASTContext(), registry);
 
     // Find both add methods
     auto *TU = AST->getASTContext().getTranslationUnitDecl();
@@ -77,7 +80,9 @@ TEST_F(OverloadResolutionTest, ConstQualification) {
     std::unique_ptr<ASTUnit> AST = buildAST(code);
     ASSERT_TRUE(AST) << "Failed to parse C++ code";
 
-    NameMangler mangler(AST->getASTContext());
+    cpptoc::OverloadRegistry& registry = cpptoc::OverloadRegistry::getInstance();
+        registry.reset();
+        NameMangler mangler(AST->getASTContext(), registry);
 
     // Find both process methods
     auto *TU = AST->getASTContext().getTranslationUnitDecl();
@@ -124,7 +129,9 @@ TEST_F(OverloadResolutionTest, ReferenceTypes) {
     std::unique_ptr<ASTUnit> AST = buildAST(code);
     ASSERT_TRUE(AST) << "Failed to parse C++ code";
 
-    NameMangler mangler(AST->getASTContext());
+    cpptoc::OverloadRegistry& registry = cpptoc::OverloadRegistry::getInstance();
+        registry.reset();
+        NameMangler mangler(AST->getASTContext(), registry);
 
     // Find both handle methods
     auto *TU = AST->getASTContext().getTranslationUnitDecl();
@@ -177,7 +184,9 @@ TEST_F(OverloadResolutionTest, ClassTypeParameters) {
     std::unique_ptr<ASTUnit> AST = buildAST(code);
     ASSERT_TRUE(AST) << "Failed to parse C++ code";
 
-    NameMangler mangler(AST->getASTContext());
+    cpptoc::OverloadRegistry& registry = cpptoc::OverloadRegistry::getInstance();
+        registry.reset();
+        NameMangler mangler(AST->getASTContext(), registry);
 
     // Find both compute methods
     auto *TU = AST->getASTContext().getTranslationUnitDecl();
@@ -225,7 +234,9 @@ TEST_F(OverloadResolutionTest, MultipleParameters) {
     std::unique_ptr<ASTUnit> AST = buildAST(code);
     ASSERT_TRUE(AST) << "Failed to parse C++ code";
 
-    NameMangler mangler(AST->getASTContext());
+    cpptoc::OverloadRegistry& registry = cpptoc::OverloadRegistry::getInstance();
+        registry.reset();
+        NameMangler mangler(AST->getASTContext(), registry);
 
     // Find all three combine methods
     auto *TU = AST->getASTContext().getTranslationUnitDecl();

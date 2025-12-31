@@ -85,4 +85,92 @@ public:
     clang::TranslationUnitDecl* createTranslationUnit() {
         return clang::TranslationUnitDecl::Create(*Context);
     }
+
+    /**
+     * @brief Get the shared constructor map (mangled name -> C function)
+     * @return Reference to the shared ctorMap
+     *
+     * This map is shared across all source files to enable multi-file constructor calls.
+     * Uses mangled names as keys (not pointers) to work across different C++ ASTContexts.
+     */
+    std::map<std::string, clang::FunctionDecl *>& getCtorMap() { return ctorMap; }
+
+    /**
+     * @brief Get the shared method map (mangled name -> C function)
+     * @return Reference to the shared methodMap
+     *
+     * This map is shared across all source files to enable multi-file method calls.
+     * Uses mangled names as keys (not pointers) to work across different C++ ASTContexts.
+     */
+    std::map<std::string, clang::FunctionDecl *>& getMethodMap() { return methodMap; }
+
+    /**
+     * @brief Get the shared destructor map (mangled name -> C function)
+     * @return Reference to the shared dtorMap
+     *
+     * This map is shared across all source files to enable multi-file destructor calls.
+     * Uses mangled names as keys (not pointers) to work across different C++ ASTContexts.
+     */
+    std::map<std::string, clang::FunctionDecl *>& getDtorMap() { return dtorMap; }
+
+    /**
+     * @brief Find existing global enum by name
+     * @param name Enum name (e.g., "GameState")
+     * @return Pointer to existing EnumDecl or nullptr if not found
+     *
+     * Used for deduplication: check if enum already exists before creating new one
+     */
+    clang::EnumDecl* findEnum(const std::string& name);
+
+    /**
+     * @brief Find existing global struct by name
+     * @param name Struct name (e.g., "Point")
+     * @return Pointer to existing RecordDecl or nullptr if not found
+     *
+     * Used for deduplication: check if struct already exists before creating new one
+     */
+    clang::RecordDecl* findStruct(const std::string& name);
+
+    /**
+     * @brief Find existing global typedef by name
+     * @param name Typedef name (e.g., "String")
+     * @return Pointer to existing TypedefDecl or nullptr if not found
+     *
+     * Used for deduplication: check if typedef already exists before creating new one
+     */
+    clang::TypedefDecl* findTypedef(const std::string& name);
+
+    /**
+     * @brief Record C AST node and its output file location
+     * @param node C AST node (e.g., EnumDecl, RecordDecl, FunctionDecl)
+     * @param location Output file path where this node will be emitted
+     *
+     * Each C AST node has exactly ONE output file location
+     */
+    void recordNode(const clang::Decl* node, const std::string& location);
+
+    /**
+     * @brief Get output file location for a C AST node
+     * @param node C AST node
+     * @return Output file path, or empty string if not recorded
+     */
+    std::string getLocation(const clang::Decl* node) const;
+
+private:
+    // Shared maps for multi-file support (Bug Fix: use string keys to work across ASTContexts)
+    // Each file has its own C++ ASTContext, so we can't use C++ AST pointers as keys.
+    // Instead, we use mangled names which are stable across contexts.
+    std::map<std::string, clang::FunctionDecl *> ctorMap;
+    std::map<std::string, clang::FunctionDecl *> methodMap;
+    std::map<std::string, clang::FunctionDecl *> dtorMap;
+
+    // Node location tracking (Phase 1.1)
+    // Maps C AST nodes to their output file paths
+    std::map<const clang::Decl*, std::string> nodeToLocation;
+
+    // Global deduplication maps (Phase 1.1)
+    // Maps enum/struct/typedef names to their C AST nodes to prevent duplicates
+    std::map<std::string, clang::EnumDecl*> globalEnums;
+    std::map<std::string, clang::RecordDecl*> globalStructs;
+    std::map<std::string, clang::TypedefDecl*> globalTypedefs;
 };

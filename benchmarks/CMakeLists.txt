@@ -269,10 +269,9 @@ target_link_libraries(benchmark_code_generation PRIVATE
 )
 
 # Benchmark: End-to-End Transpilation
+# TODO: Update to use dispatcher architecture
 add_executable(benchmark_e2e_transpilation
     benchmark_e2e_transpilation.cpp
-    ${CMAKE_SOURCE_DIR}/src/CppToCVisitor.cpp
-    ${CMAKE_SOURCE_DIR}/src/CppToCConsumer.cpp
     ${CMAKE_SOURCE_DIR}/src/CFGAnalyzer.cpp
     ${CMAKE_SOURCE_DIR}/src/NameMangler.cpp
     ${CMAKE_SOURCE_DIR}/src/CodeGenerator.cpp

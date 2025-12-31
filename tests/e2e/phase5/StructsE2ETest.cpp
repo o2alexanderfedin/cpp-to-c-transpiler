@@ -9,11 +9,11 @@
  * Validation: Compile C code with gcc and execute
  */
 
-#include "handlers/FunctionHandler.h"
+#include "dispatch/FunctionHandler.h"
 #include "handlers/VariableHandler.h"
 #include "handlers/ExpressionHandler.h"
 #include "handlers/StatementHandler.h"
-#include "handlers/RecordHandler.h"
+#include "dispatch/RecordHandler.h"
 #include "handlers/HandlerContext.h"
 #include "CNodeBuilder.h"
 #include "CodeGenerator.h"
@@ -80,8 +80,18 @@ protected:
                 recordHandler->handleDecl(record, context);
             } else if (auto* func = llvm::dyn_cast<clang::FunctionDecl>(decl)) {
                 if (!llvm::isa<clang::CXXMethodDecl>(func)) {
-                    funcHandler->handleDecl(func, context);
+                    // Translate function signature
+                    clang::Decl* cFuncDecl = funcHandler->handleDecl(func, context);
+                    clang::FunctionDecl* cFunc = llvm::cast<clang::FunctionDecl>(cFuncDecl);
+
+                    // Translate function body if present
+                    if (func->hasBody()) {
+                        clang::Stmt* cBody = stmtHandler->handleStmt(func->getBody(), context);
+                        cFunc->setBody(cBody);
+                    }
                 }
+            } else if (auto* var = llvm::dyn_cast<clang::VarDecl>(decl)) {
+                varHandler->handleDecl(var, context);
             }
         }
 

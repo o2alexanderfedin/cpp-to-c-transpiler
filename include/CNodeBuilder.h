@@ -32,6 +32,7 @@
 #include "clang/AST/Stmt.h"
 #include "clang/AST/Type.h"
 #include "llvm/Config/llvm-config.h" // For LLVM_VERSION_MAJOR
+#include <cassert>
 
 namespace clang {
 
@@ -361,6 +362,12 @@ public:
    * @endcode
    */
   DeclRefExpr *ref(VarDecl *var) {
+    // Ensure the VarDecl has a valid parent to avoid crashes in constant expression evaluation
+    if (!var->getDeclContext()) {
+      llvm::errs() << "WARNING: VarDecl has null DeclContext: "
+                   << var->getNameAsString() << "\n";
+    }
+
     return DeclRefExpr::Create(Ctx, NestedNameSpecifierLoc(), SourceLocation(),
                                var, false, SourceLocation(), var->getType(),
                                VK_LValue);
@@ -439,7 +446,17 @@ public:
    * @endcode
    */
   CallExpr *call(FunctionDecl *func, llvm::ArrayRef<Expr *> args) {
+    // CRITICAL: Function must be valid
+    assert(func != nullptr && "call: FunctionDecl is null!");
+    assert(!func->getReturnType().isNull() && "call: Function has null return type!");
+
+    // CRITICAL: All arguments must be valid
+    for (size_t i = 0; i < args.size(); ++i) {
+      assert(args[i] != nullptr && "call: Argument is null!");
+    }
+
     DeclRefExpr *funcRef = ref(func);
+    assert(funcRef != nullptr && "call: ref() returned null for function!");
 
     return CallExpr::Create(Ctx, funcRef, args, func->getReturnType(),
                             VK_PRValue, SourceLocation(), FPOptionsOverride());
@@ -873,14 +890,20 @@ public:
   FunctionDecl *funcDecl(llvm::StringRef name, QualType retType,
                          llvm::ArrayRef<ParmVarDecl *> params,
                          Stmt *body = nullptr, CallingConv callConv = CC_C,
-                         bool isVariadic = false) {
+                         bool isVariadic = false, DeclContext *DC = nullptr) {
+    // CRITICAL: Return type must be valid
+    assert(!retType.isNull() && "funcDecl: Return type is null!");
+
     IdentifierInfo &II = Ctx.Idents.get(name);
     DeclarationName DN(&II);
 
     // Create function type with calling convention
     llvm::SmallVector<QualType, 4> paramTypes;
     for (ParmVarDecl *P : params) {
-      paramTypes.push_back(P->getType());
+      assert(P != nullptr && "funcDecl: Parameter is null!");
+      QualType paramType = P->getType();
+      assert(!paramType.isNull() && "funcDecl: Parameter has null type!");
+      paramTypes.push_back(paramType);
     }
 
     // Prompt #031: Set calling convention via ExtProtoInfo
@@ -890,21 +913,33 @@ public:
     EPI.Variadic = isVariadic;
 
     QualType funcType = Ctx.getFunctionType(retType, paramTypes, EPI);
+    assert(!funcType.isNull() && "funcDecl: Function type is null!");
+
+    // Use provided DeclContext if given, otherwise fall back to global TU
+    // IMPORTANT: Callers should provide file-specific TU for proper organization
+    DeclContext *declCtx = DC ? DC : Ctx.getTranslationUnitDecl();
 
     FunctionDecl *FD = FunctionDecl::Create(
-        Ctx, Ctx.getTranslationUnitDecl(), SourceLocation(), SourceLocation(),
+        Ctx, declCtx, SourceLocation(), SourceLocation(),
         DN, funcType, Ctx.getTrivialTypeSourceInfo(funcType), SC_None);
 
-    // Set parameters
+    assert(FD != nullptr && "funcDecl: FunctionDecl::Create returned null!");
+    assert(!FD->getReturnType().isNull() && "funcDecl: Created function has null return type!");
+
+    // Set parameters and ensure their DeclContext is set to this function
     FD->setParams(params);
+    for (ParmVarDecl *P : params) {
+      P->setDeclContext(FD);
+    }
 
     // Set body if provided
     if (body) {
       FD->setBody(body);
     }
 
-    // CRITICAL FIX: Add the function to the TranslationUnitDecl so it gets printed
-    Ctx.getTranslationUnitDecl()->addDecl(FD);
+    // REMOVED: Auto-add to shared TU conflicts with per-file TU organization (Bug #30 fix)
+    // Callers now explicitly add to their target C_TranslationUnit via addDecl()
+    // Ctx.getTranslationUnitDecl()->addDecl(FD);
 
     return FD;
   }

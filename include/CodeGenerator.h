@@ -16,11 +16,13 @@ class CodeGenerator {
     llvm::raw_ostream &OS;
     clang::PrintingPolicy Policy;
     clang::ASTContext &Context;
+    std::string CurrentInputFile;  // Phase 40: Track current file for duplicate filtering
 
 public:
     // Constructor: Initialize with output stream and ASTContext
     // PrintingPolicy will be configured in Story #22
-    explicit CodeGenerator(llvm::raw_ostream &OS, clang::ASTContext &Ctx);
+    // Phase 40: Added currentFile parameter for duplicate struct filtering
+    explicit CodeGenerator(llvm::raw_ostream &OS, clang::ASTContext &Ctx, const std::string &currentFile = "");
 
     // Print a single declaration (struct, function, variable)
     // Uses Decl::print() internally

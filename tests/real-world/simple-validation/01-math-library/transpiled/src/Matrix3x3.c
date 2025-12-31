@@ -1,61 +1,9 @@
-// Generated from: /Users/alexanderfedin/Projects/hapyy/hupyy-cpp-to-c/tests/real-world/simple-validation/01-math-library/src/Matrix3x3.cpp
+// Generated from: /Users/alexanderfedin/Projects/hapyy/hupyy-cpp-to-c/tests/real-world/simple-validation/01-math-library/./src/Matrix3x3.cpp
 // Implementation file
 
 #include "Matrix3x3.h"
 
-static void Vector3D__ctor_copy(struct Vector3D * this, const struct Vector3D * other) {
-	this->x = other->x;
-	this->y = other->y;
-	this->z = other->z;
-}
-
-static void Matrix3x3__ctor_copy(struct Matrix3x3 * this, const struct Matrix3x3 * other) {
-	memcpy(&this->data, &other->data, sizeof this->data);
-}
-
-struct Matrix3x3 Matrix3x3_add(struct Matrix3x3 * this, const struct Matrix3x3 * other) {
-	struct Matrix3x3 result;
-
-	for (int i = 0; i < 9; i++) {
-        result.data[i] = this->data[i] + other->data[i];
-}
-
-	return result;
-;
-}
-
-struct Matrix3x3 Matrix3x3_multiply(struct Matrix3x3 * this, const struct Matrix3x3 * other) {
-	struct Matrix3x3 result;
-
-	for (int row = 0; row < 3; row++) {
-        for (int col = 0; col < 3; col++) {
-                float sum = 0.F;
-                for (int k = 0; k < 3; k++) {
-                        sum += this->data[row * 3 + k] * other->data[k * 3 + col];
-                }
-                result.data[row * 3 + col] = sum;
-        }
-}
-
-	return result;
-;
-}
-
-struct Vector3D Matrix3x3_multiply_Vector3D_ref(struct Matrix3x3 * this, const struct Vector3D * vec) {
-	return (struct Vector3D){this->data[0] * vec->x + this->data[1] * vec->y + this->data[2] * vec->z, this->data[3] * vec->x + this->data[4] * vec->y + this->data[5] * vec->z, this->data[6] * vec->x + this->data[7] * vec->y + this->data[8] * vec->z};
-;
-}
-
-float Matrix3x3_get(struct Matrix3x3 * this, int row, int col) {
-	return this->data[row * 3 + col];
-;
-}
-
-void Matrix3x3_set(struct Matrix3x3 * this, int row, int col, float value) {
-	this->data[row * 3 + col] = value;
-}
-
-void Matrix3x3__ctor(struct Matrix3x3 * this) {
+void Matrix3x3__ctor_0(struct Matrix3x3 * this) {
 	for (int i = 0; i < 9; i++) {
         this->data[i] = 0.F;
 }
@@ -72,5 +20,47 @@ void Matrix3x3__ctor_9(struct Matrix3x3 * this, float m00, float m01, float m02,
 	this->data[6] = m20;
 	this->data[7] = m21;
 	this->data[8] = m22;
+}
+
+extern struct Matrix3x3 Matrix3x3_add_const_Matrix3x3_ref(struct Matrix3x3 * this, const struct Matrix3x3 * other) {
+	struct Matrix3x3 result;
+	Matrix3x3__ctor_0(&result);
+	for (int i = 0; i < 9; i++) {
+        result.data[i] = this->data[i] + other->data[i];
+}
+
+	return result;
+;
+}
+
+extern struct Matrix3x3 Matrix3x3_multiply_const_Matrix3x3_ref(struct Matrix3x3 * this, const struct Matrix3x3 * other) {
+	struct Matrix3x3 result;
+	Matrix3x3__ctor_0(&result);
+	for (int row = 0; row < 3; row++) {
+        for (int col = 0; col < 3; col++) {
+                float sum = 0.F;
+                for (int k = 0; k < 3; k++) {
+                        sum += this->data[row * 3 + k] * other->data[k * 3 + col];
+                }
+                result.data[row * 3 + col] = sum;
+        }
+}
+
+	return result;
+;
+}
+
+extern struct Vector3D Matrix3x3_multiply_const_Vector3D_ref(struct Matrix3x3 * this, const struct Vector3D * vec) {
+	return (struct Vector3D){this->data[0] * vec->x + this->data[1] * vec->y + this->data[2] * vec->z, this->data[3] * vec->x + this->data[4] * vec->y + this->data[5] * vec->z, this->data[6] * vec->x + this->data[7] * vec->y + this->data[8] * vec->z};
+;
+}
+
+extern float Matrix3x3_get_int_int(struct Matrix3x3 * this, int row, int col) {
+	return this->data[row * 3 + col];
+;
+}
+
+extern void Matrix3x3_set_int_int_float(struct Matrix3x3 * this, int row, int col, float value) {
+	this->data[row * 3 + col] = value;
 }
 

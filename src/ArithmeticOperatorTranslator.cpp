@@ -21,9 +21,8 @@ using namespace clang;
 // Constructor
 // ============================================================================
 
-ArithmeticOperatorTranslator::ArithmeticOperatorTranslator(CNodeBuilder& Builder,
-                                                           NameMangler& Mangler)
-    : m_builder(Builder), m_mangler(Mangler) {
+ArithmeticOperatorTranslator::ArithmeticOperatorTranslator(CNodeBuilder& Builder)
+    : m_builder(Builder) {
     llvm::outs() << "ArithmeticOperatorTranslator initialized (Phase 50)\n";
 }
 
@@ -396,8 +395,8 @@ CallExpr* ArithmeticOperatorTranslator::transformCompoundAssignmentCall(CXXOpera
 // ============================================================================
 
 std::string ArithmeticOperatorTranslator::generateOperatorName(const CXXMethodDecl* MD) {
-    // Delegate to NameMangler for consistent naming
-    return m_mangler.mangleMethodName(const_cast<CXXMethodDecl*>(MD));
+    // Delegate to cpptoc::mangle_method for consistent naming
+    return cpptoc::mangle_method(MD);
 }
 
 FunctionDecl* ArithmeticOperatorTranslator::findOrCreateFunction(const CXXMethodDecl* MD,

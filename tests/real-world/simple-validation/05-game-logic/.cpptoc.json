@@ -1,6 +1,8 @@
 {
   "transpiler_args": [
     "--extra-arg=-I/Users/alexanderfedin/Projects/hapyy/hupyy-cpp-to-c/tests/real-world/simple-validation/05-game-logic/include",
-    "--extra-arg=-isystem/opt/homebrew/Cellar/llvm/21.1.7/include/c++/v1"
+    "--extra-arg=-isystem/Library/Developer/CommandLineTools/SDKs/MacOSX.sdk/usr/include/c++/v1",
+    "--extra-arg=-isystem/Library/Developer/CommandLineTools/usr/lib/clang/17/include",
+    "--extra-arg=-isystem/Library/Developer/CommandLineTools/SDKs/MacOSX.sdk/usr/include"
   ]
 }

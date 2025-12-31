@@ -17,8 +17,8 @@ using namespace llvm;
 
 // Constructor: Initialize with output stream and context
 // Story #22: Configure PrintingPolicy for C99 output
-CodeGenerator::CodeGenerator(raw_ostream &OS, ASTContext &Ctx)
-    : OS(OS), Policy(createC99Policy(Ctx)), Context(Ctx) {
+CodeGenerator::CodeGenerator(raw_ostream &OS, ASTContext &Ctx, const std::string &currentFile)
+    : OS(OS), Policy(createC99Policy(Ctx)), Context(Ctx), CurrentInputFile(currentFile) {
     // Policy created via createC99Policy() helper
 }
 
@@ -101,25 +101,83 @@ void CodeGenerator::printDecl(Decl *D, bool declarationOnly) {
         }
     } else if (auto *ED = dyn_cast<EnumDecl>(D)) {
         // Bug #23: Print enum as typedef enum for C compatibility
-        // Phase 47 fix: Always print enum definitions (they're type defs, not declarations)
-        // Enums need to be emitted in the output regardless of declarationOnly flag
-        printEnumDecl(ED);
+        // BUG #2 FIX: Enums should only be in header files (like structs)
+        // Enum definitions are type definitions, not function implementations
+        // Phase 47 (Bug Fix): Enum deduplication is now handled in CppToCVisitor::VisitEnumDecl
+        // by filtering which enums are added to C_TranslationUnit based on file basenames
+        if (declarationOnly) {
+            printEnumDecl(ED);
+        }
+        // When declarationOnly=false, skip enum definitions (already in header)
     } else if (auto *RD = dyn_cast<RecordDecl>(D)) {
         // Bug #24: Use custom printer for struct to add 'struct' prefixes
         // Struct definitions should only be in header files
         if (declarationOnly) {
+            // Phase 40 (Bug Fix): Skip struct definitions from other files
+            // This prevents duplicate definitions when headers include other headers
+            if (!CurrentInputFile.empty()) {
+                auto &SM = Context.getSourceManager();
+                SourceLocation Loc = RD->getLocation();
+                llvm::outs() << "[DEBUG struct filter] Checking struct " << RD->getNameAsString() << "\n";
+                llvm::outs() << "[DEBUG struct filter]   CurrentInputFile: " << CurrentInputFile << "\n";
+                if (Loc.isValid()) {
+                    FileID FID = SM.getFileID(SM.getSpellingLoc(Loc));
+                    if (auto FileEntry = SM.getFileEntryRefForID(FID)) {
+                        std::string DeclFile = std::string(FileEntry->getName());
+                        llvm::outs() << "[DEBUG struct filter]   DeclFile: " << DeclFile << "\n";
+                        // Skip if this struct is defined in a different file
+                        if (DeclFile != CurrentInputFile) {
+                            llvm::outs() << "[DEBUG] Skipping struct " << RD->getNameAsString()
+                                       << " (defined in " << DeclFile << ", current file: " << CurrentInputFile << ")\n";
+                            return;  // Skip this struct definition
+                        } else {
+                            llvm::outs() << "[DEBUG struct filter]   Keeping struct (same file)\n";
+                        }
+                    } else {
+                        llvm::outs() << "[DEBUG struct filter]   No FileEntry\n";
+                    }
+                } else {
+                    llvm::outs() << "[DEBUG struct filter]   Invalid location\n";
+                }
+            } else {
+                llvm::outs() << "[DEBUG struct filter] CurrentInputFile is empty!\n";
+            }
             printStructDecl(RD);
             OS << ";\n";
         }
         // When declarationOnly=false, skip struct definitions (already in header)
     } else if (auto *VD = dyn_cast<VarDecl>(D)) {
-        // Bug #35 FIX: Variable declarations should NOT appear as top-level declarations
-        // Local variables belong inside function bodies (handled by printStmt)
-        // Top-level VarDecl nodes are orphaned and should be skipped entirely
-        // This prevents malloc statements from appearing in both headers and implementation files
-        llvm::outs() << "[Bug #35] Skipping orphaned top-level VarDecl: "
-                     << VD->getNameAsString() << "\n";
-        return;
+        // Bug #35 FIX: Skip ONLY local variables (they belong in function bodies)
+        // Global variables MUST be emitted
+        if (VD->isLocalVarDecl()) {
+            llvm::outs() << "[Bug #35] Skipping local VarDecl at top level: "
+                         << VD->getNameAsString() << "\n";
+            return;
+        }
+
+        // Emit global variable
+        if (declarationOnly) {
+            // Header file: emit extern declaration (only if not static)
+            if (VD->getStorageClass() != SC_Static) {
+                OS << "extern ";
+                printCType(VD->getType());
+                OS << " " << VD->getNameAsString() << ";\n";
+            }
+        } else {
+            // Implementation file: emit full definition with initializer
+            if (VD->getStorageClass() == SC_Static) {
+                OS << "static ";
+            }
+            printCType(VD->getType());
+            OS << " " << VD->getNameAsString();
+
+            // Print initializer if present
+            if (VD->hasInit()) {
+                OS << " = ";
+                printExpr(VD->getInit());
+            }
+            OS << ";\n";
+        }
     } else {
         // Other declarations
         D->print(OS, Policy);

@@ -4,7 +4,38 @@
 #include "TranspilerAPI.h"
 #include "ACSLGenerator.h"
 #include "CNodeBuilder.h"
-#include "CppToCVisitor.h"
+#include "dispatch/CppToCVisitorDispatcher.h"
+#include "dispatch/TranslationUnitHandler.h"
+#include "dispatch/NamespaceHandler.h"
+#include "dispatch/RecordHandler.h"
+#include "dispatch/FunctionHandler.h"
+#include "dispatch/InstanceMethodHandler.h"
+#include "dispatch/StaticMethodHandler.h"
+#include "dispatch/VirtualMethodHandler.h"
+// TODO: ConstructorHandler needs to be updated to dispatcher pattern
+// #include "dispatch/ConstructorHandler.h"
+#include "dispatch/TypeHandler.h"
+#include "dispatch/ParameterHandler.h"
+#include "dispatch/CompoundStmtHandler.h"
+#include "dispatch/ReturnStmtHandler.h"
+#include "dispatch/DeclRefExprHandler.h"
+#include "dispatch/MemberExprHandler.h"
+#include "dispatch/ArraySubscriptExprHandler.h"
+#include "dispatch/LiteralHandler.h"
+#include "dispatch/UnaryOperatorHandler.h"
+#include "dispatch/BinaryOperatorHandler.h"
+#include "dispatch/ParenExprHandler.h"
+#include "dispatch/ImplicitCastExprHandler.h"
+#include "dispatch/CXXOperatorCallExprHandler.h"
+#include "dispatch/CXXTypeidExprHandler.h"
+#include "dispatch/CXXDynamicCastExprHandler.h"
+#include "dispatch/CommaOperatorHandler.h"
+#include "mapping/PathMapper.h"
+#include "mapping/DeclLocationMapper.h"
+#include "mapping/DeclMapper.h"
+#include "mapping/TypeMapper.h"
+#include "mapping/ExprMapper.h"
+#include "mapping/StmtMapper.h"
 #include "CodeGenerator.h"
 #include "HeaderSeparator.h"
 #include "IncludeGuardGenerator.h"
@@ -111,26 +142,58 @@ public:
         : Context(Context), CStream(CStream), HStream(HStream), Filename(Filename) {}
 
     void HandleTranslationUnit(clang::ASTContext &Context) override {
-        // Create CNodeBuilder for C AST construction
-        clang::CNodeBuilder Builder(Context);
-
-        // Phase 34 (v2.5.0): Create FileOriginTracker for multi-file support
-        cpptoc::FileOriginTracker tracker(Context.getSourceManager());
-        tracker.addUserHeaderPath(".");
-        tracker.addUserHeaderPath("include/");
-        tracker.addUserHeaderPath("src/");
-
-        // Phase 35-02 (Bug #30 FIX): Get target context and create C_TU
+        // Setup target context for C AST
         TargetContext& targetCtx = TargetContext::getInstance();
-        clang::TranslationUnitDecl* C_TU = targetCtx.createTranslationUnit();
+        clang::ASTContext& cCtx = targetCtx.getContext();
 
-        // Create and run visitor to traverse AST
-        CppToCVisitor Visitor(Context, Builder, tracker, C_TU);
+        // Create mapping utilities
+        cpptoc::PathMapper& mapper = cpptoc::PathMapper::getInstance(".", ".");
+        cpptoc::DeclLocationMapper locMapper(mapper);
+        cpptoc::DeclMapper declMapper;
+        cpptoc::TypeMapper typeMapper;
+        cpptoc::ExprMapper exprMapper;
+        cpptoc::StmtMapper stmtMapper;
+
+        // Create dispatcher with all mappers
+        CppToCVisitorDispatcher dispatcher(mapper, locMapper, declMapper, typeMapper, exprMapper, stmtMapper);
+
+        // Register all handlers in dependency order
+        // Base handlers first (these are used by others)
+        cpptoc::TypeHandler::registerWith(dispatcher);
+        cpptoc::ParameterHandler::registerWith(dispatcher);
+
+        // Expression handlers
+        cpptoc::LiteralHandler::registerWith(dispatcher);
+        cpptoc::DeclRefExprHandler::registerWith(dispatcher);
+        cpptoc::MemberExprHandler::registerWith(dispatcher);
+        cpptoc::ArraySubscriptExprHandler::registerWith(dispatcher);
+        cpptoc::ParenExprHandler::registerWith(dispatcher);
+        cpptoc::ImplicitCastExprHandler::registerWith(dispatcher);
+        cpptoc::UnaryOperatorHandler::registerWith(dispatcher);
+        cpptoc::BinaryOperatorHandler::registerWith(dispatcher);
+        cpptoc::CXXOperatorCallExprHandler::registerWith(dispatcher);
+        cpptoc::CXXTypeidExprHandler::registerWith(dispatcher);
+        cpptoc::CXXDynamicCastExprHandler::registerWith(dispatcher);
+        cpptoc::CommaOperatorHandler::registerWith(dispatcher);
+
+        // Statement handlers
+        cpptoc::CompoundStmtHandler::registerWith(dispatcher);
+        cpptoc::ReturnStmtHandler::registerWith(dispatcher);
+
+        // Declaration handlers
+        cpptoc::RecordHandler::registerWith(dispatcher);
+        cpptoc::FunctionHandler::registerWith(dispatcher);
+        // TODO: Re-enable when ConstructorHandler is updated to dispatcher pattern
+        // cpptoc::ConstructorHandler::registerWith(dispatcher);
+        cpptoc::InstanceMethodHandler::registerWith(dispatcher);
+        cpptoc::StaticMethodHandler::registerWith(dispatcher);
+        cpptoc::VirtualMethodHandler::registerWith(dispatcher);
+        cpptoc::NamespaceHandler::registerWith(dispatcher);
+        cpptoc::TranslationUnitHandler::registerWith(dispatcher);
+
+        // Traverse and dispatch AST nodes
         auto *TU = Context.getTranslationUnitDecl();
-        Visitor.TraverseDecl(TU);
-
-        // Process template instantiations (Phase 11)
-        Visitor.processTemplateInstantiations(TU);
+        dispatcher.dispatch(Context, cCtx, TU);
 
         // Separate declarations into header and implementation (Phase 28)
         HeaderSeparator separator;

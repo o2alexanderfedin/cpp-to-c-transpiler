@@ -6,9 +6,9 @@
 //
 // TDD Approach: Comprehensive tests drive implementation
 
-#include "CppToCVisitor.h"
 #include "CNodeBuilder.h"
 #include "FileOriginTracker.h"
+#include "TargetContext.h"
 #include "clang/Tooling/Tooling.h"
 #include "clang/Frontend/ASTUnit.h"
 #include "clang/AST/RecursiveASTVisitor.h"
@@ -413,8 +413,9 @@ void test_InjectBeforeEarlyReturn() {
     CNodeBuilder builder(Ctx);
     cpptoc::FileOriginTracker tracker(Ctx.getSourceManager());
     tracker.addUserHeaderPath("<stdin>");
-    clang::TranslationUnitDecl *C_TU = clang::TranslationUnitDecl::Create(Ctx);
-    CppToCVisitor visitor(Ctx, builder, tracker, C_TU);
+    TargetContext& targetCtx = TargetContext::getInstance();
+    clang::TranslationUnitDecl *C_TU = targetCtx.createTranslationUnit();
+    CppToCVisitor visitor(Ctx, builder, targetCtx, tracker, nullptr);
     visitor.TraverseDecl(Ctx.getTranslationUnitDecl());
 
     // Verify destructor was generated
@@ -458,8 +459,9 @@ void test_MaintainLIFOOrder() {
     CNodeBuilder builder(Ctx);
     cpptoc::FileOriginTracker tracker(Ctx.getSourceManager());
     tracker.addUserHeaderPath("<stdin>");
-    clang::TranslationUnitDecl *C_TU = clang::TranslationUnitDecl::Create(Ctx);
-    CppToCVisitor visitor(Ctx, builder, tracker, C_TU);
+    TargetContext& targetCtx = TargetContext::getInstance();
+    clang::TranslationUnitDecl *C_TU = targetCtx.createTranslationUnit();
+    CppToCVisitor visitor(Ctx, builder, targetCtx, tracker, nullptr);
     visitor.TraverseDecl(Ctx.getTranslationUnitDecl());
 
     // Verify destructors were generated
@@ -509,8 +511,9 @@ void test_MultipleReturnsWithDifferentSets() {
     CNodeBuilder builder(Ctx);
     cpptoc::FileOriginTracker tracker(Ctx.getSourceManager());
     tracker.addUserHeaderPath("<stdin>");
-    clang::TranslationUnitDecl *C_TU = clang::TranslationUnitDecl::Create(Ctx);
-    CppToCVisitor visitor(Ctx, builder, tracker, C_TU);
+    TargetContext& targetCtx = TargetContext::getInstance();
+    clang::TranslationUnitDecl *C_TU = targetCtx.createTranslationUnit();
+    CppToCVisitor visitor(Ctx, builder, targetCtx, tracker, nullptr);
     visitor.TraverseDecl(Ctx.getTranslationUnitDecl());
 
     FunctionDecl *Dtor = visitor.getDtor("Obj__dtor");
@@ -546,8 +549,9 @@ void test_NoDuplicateDestructorCalls() {
     CNodeBuilder builder(Ctx);
     cpptoc::FileOriginTracker tracker(Ctx.getSourceManager());
     tracker.addUserHeaderPath("<stdin>");
-    clang::TranslationUnitDecl *C_TU = clang::TranslationUnitDecl::Create(Ctx);
-    CppToCVisitor visitor(Ctx, builder, tracker, C_TU);
+    TargetContext& targetCtx = TargetContext::getInstance();
+    clang::TranslationUnitDecl *C_TU = targetCtx.createTranslationUnit();
+    CppToCVisitor visitor(Ctx, builder, targetCtx, tracker, nullptr);
     visitor.TraverseDecl(Ctx.getTranslationUnitDecl());
 
     FunctionDecl *Dtor = visitor.getDtor("Unique__dtor");
@@ -631,8 +635,9 @@ void test_EarlyReturnPlusNormalExit() {
     CNodeBuilder builder(Ctx);
     cpptoc::FileOriginTracker tracker(Ctx.getSourceManager());
     tracker.addUserHeaderPath("<stdin>");
-    clang::TranslationUnitDecl *C_TU = clang::TranslationUnitDecl::Create(Ctx);
-    CppToCVisitor visitor(Ctx, builder, tracker, C_TU);
+    TargetContext& targetCtx = TargetContext::getInstance();
+    clang::TranslationUnitDecl *C_TU = targetCtx.createTranslationUnit();
+    CppToCVisitor visitor(Ctx, builder, targetCtx, tracker, nullptr);
     visitor.TraverseDecl(Ctx.getTranslationUnitDecl());
 
     FunctionDecl *Dtor = visitor.getDtor("Guard__dtor");
@@ -708,8 +713,9 @@ void test_ReturnWithValueAndObjects() {
     CNodeBuilder builder(Ctx);
     cpptoc::FileOriginTracker tracker(Ctx.getSourceManager());
     tracker.addUserHeaderPath("<stdin>");
-    clang::TranslationUnitDecl *C_TU = clang::TranslationUnitDecl::Create(Ctx);
-    CppToCVisitor visitor(Ctx, builder, tracker, C_TU);
+    TargetContext& targetCtx = TargetContext::getInstance();
+    clang::TranslationUnitDecl *C_TU = targetCtx.createTranslationUnit();
+    CppToCVisitor visitor(Ctx, builder, targetCtx, tracker, nullptr);
     visitor.TraverseDecl(Ctx.getTranslationUnitDecl());
 
     FunctionDecl *Dtor = visitor.getDtor("Processor__dtor");

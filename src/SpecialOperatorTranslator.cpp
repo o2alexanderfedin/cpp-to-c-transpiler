@@ -7,6 +7,7 @@
  */
 
 #include "SpecialOperatorTranslator.h"
+#include "NameMangler.h"
 #include "clang/AST/Decl.h"
 #include "clang/AST/DeclCXX.h"
 #include "clang/AST/Expr.h"
@@ -21,9 +22,8 @@ using namespace clang;
 // Constructor
 // ============================================================================
 
-SpecialOperatorTranslator::SpecialOperatorTranslator(CNodeBuilder& Builder,
-                                                     NameMangler& Mangler)
-    : m_builder(Builder), m_mangler(Mangler) {
+SpecialOperatorTranslator::SpecialOperatorTranslator(CNodeBuilder& Builder)
+    : m_builder(Builder) {
     llvm::outs() << "SpecialOperatorTranslator initialized (Phase 52)\n";
 }
 
@@ -437,7 +437,8 @@ FunctionDecl* SpecialOperatorTranslator::translateBoolConversion(CXXConversionDe
     llvm::outs() << "Translating bool conversion operator: "
                  << CD->getQualifiedNameAsString() << "\n";
 
-    std::string FnName = generateConversionName(CD);
+    // Phase 53: Use NameMangler for conversion operator names
+    std::string FnName = cpptoc::mangle_method(CD);
 
     const CXXRecordDecl* ClassDecl = CD->getParent();
     QualType ClassType = Ctx.getRecordType(ClassDecl);
@@ -464,7 +465,8 @@ FunctionDecl* SpecialOperatorTranslator::translateConversionOperator(CXXConversi
     llvm::outs() << "Translating conversion operator: "
                  << CD->getQualifiedNameAsString() << "\n";
 
-    std::string FnName = generateConversionName(CD);
+    // Phase 53: Use NameMangler for conversion operator names
+    std::string FnName = cpptoc::mangle_method(CD);
 
     const CXXRecordDecl* ClassDecl = CD->getParent();
     QualType ClassType = Ctx.getRecordType(ClassDecl);
@@ -778,37 +780,18 @@ std::string SpecialOperatorTranslator::generateOperatorName(const CXXMethodDecl*
         return "";
     }
 
+    // Check if getParent() is valid (can be null in some edge cases)
+    if (!MD->getParent()) {
+        llvm::errs() << "WARNING: CXXMethodDecl has null parent, using method name only: "
+                     << MD->getNameAsString() << "\n";
+        return MD->getNameAsString();
+    }
+
     // Use NameMangler's standard mangling
-    return m_mangler.mangleMethodName(const_cast<CXXMethodDecl*>(MD));
+    return cpptoc::mangle_method(MD);
 }
 
-std::string SpecialOperatorTranslator::generateConversionName(const CXXConversionDecl* CD) {
-    if (!CD) {
-        return "";
-    }
-
-    const CXXRecordDecl* ClassDecl = CD->getParent();
-    std::string ClassName = ClassDecl->getNameAsString();
-
-    QualType ConvType = CD->getConversionType();
-    std::string TargetType = ConvType.getAsString();
-
-    // Sanitize target type name for C identifier
-    std::string OpName = "operator_to_";
-    for (char c : TargetType) {
-        if (isalnum(c)) {
-            OpName += c;
-        } else if (c == ' ' || c == '*' || c == '&') {
-            OpName += '_';
-        }
-    }
-
-    if (CD->isConst()) {
-        OpName += "_const";
-    }
-
-    return ClassName + "_" + OpName;
-}
+// Phase 53: Removed generateConversionName() - now using NameMangler::mangleConversionOperator()
 
 bool SpecialOperatorTranslator::isStreamOperator(CXXOperatorCallExpr* E) const {
     if (!E || E->getNumArgs() < 2) {

@@ -8,11 +8,6 @@ static void Point__ctor_copy(struct Point * this, const struct Point * other) {
 	this->y = other->y;
 }
 
-void Point__ctor(struct Point * this, int x_val, int y_val) {
-	this->x = x_val;
-	this->y = y_val;
-}
-
 int Point_getX(struct Point * this) {
 	return this->x;
 ;
@@ -23,11 +18,11 @@ int Point_getY(struct Point * this) {
 ;
 }
 
-void Point_setX(struct Point * this, int new_x) {
+void Point_setX_int(struct Point * this, int new_x) {
 	this->x = new_x;
 }
 
-void Point_setY(struct Point * this, int new_y) {
+void Point_setY_int(struct Point * this, int new_y) {
 	this->y = new_y;
 }
 

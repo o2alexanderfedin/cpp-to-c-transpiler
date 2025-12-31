@@ -27,6 +27,7 @@
 #include <gtest/gtest.h>
 #include "clang/Tooling/Tooling.h"
 #include "clang/Frontend/ASTUnit.h"
+#include "clang/AST/DeclTemplate.h"
 #include "../include/DeducingThisTranslator.h"
 #include "../include/CNodeBuilder.h"
 #include <cassert>
@@ -52,19 +53,61 @@ CXXRecordDecl* findClass_deducing(TranslationUnitDecl* TU, const std::string& na
 
 // Helper to find explicit object member function
 CXXMethodDecl* findExplicitObjectMethod(CXXRecordDecl* Class, const std::string& name) {
+    // Check regular methods first
     for (auto* Method : Class->methods()) {
         if (Method->getNameAsString() == name &&
             Method->isExplicitObjectMemberFunction()) {
             return Method;
         }
     }
+
+    // Check function templates (e.g., methods with auto parameters)
+    for (auto* D : Class->decls()) {
+        if (auto* FTD = dyn_cast<FunctionTemplateDecl>(D)) {
+            if (FTD->getNameAsString() == name) {
+                if (auto* MD = dyn_cast<CXXMethodDecl>(FTD->getTemplatedDecl())) {
+                    if (MD->isExplicitObjectMemberFunction()) {
+                        return MD;
+                    }
+                }
+            }
+        }
+    }
+
     return nullptr;
 }
 
-// Helper to find CXXMemberCallExpr in AST
+// Helper to find calls to explicit object member functions
+// Note: Explicit object member function calls are represented as CallExpr, not CXXMemberCallExpr
+CallExpr* findExplicitObjectMemberCall(Stmt* S, const std::string& methodName) {
+    if (!S) return nullptr;
+
+    // Check for calls to explicit object member functions (represented as CallExpr)
+    if (auto* Call = dyn_cast<CallExpr>(S)) {
+        if (auto* DRE = dyn_cast_or_null<DeclRefExpr>(Call->getCallee()->IgnoreImplicit())) {
+            if (auto* Method = dyn_cast_or_null<CXXMethodDecl>(DRE->getDecl())) {
+                if (Method->getNameAsString() == methodName &&
+                    Method->isExplicitObjectMemberFunction()) {
+                    return Call;
+                }
+            }
+        }
+    }
+
+    for (auto* Child : S->children()) {
+        if (auto* Result = findExplicitObjectMemberCall(Child, methodName)) {
+            return Result;
+        }
+    }
+
+    return nullptr;
+}
+
+// Helper to find CXXMemberCallExpr in AST (for regular member calls)
 CXXMemberCallExpr* findMemberCall(Stmt* S, const std::string& methodName) {
     if (!S) return nullptr;
 
+    // Check for regular member calls
     if (auto* Call = dyn_cast<CXXMemberCallExpr>(S)) {
         if (auto* Method = Call->getMethodDecl()) {
             if (Method->getNameAsString() == methodName) {
@@ -260,12 +303,12 @@ TEST_F(DeducingThisTranslatorTest, CallOnLvalueObject) {
 
     auto* TU = Ctx.getTranslationUnitDecl();
 
-    // Find the call in test function
-    CXXMemberCallExpr* Call = nullptr;
+    // Find the call in test function (explicit object member calls are CallExpr)
+    CallExpr* Call = nullptr;
     for (auto* D : TU->decls()) {
         if (auto* FD = dyn_cast<FunctionDecl>(D)) {
             if (FD->getNameAsString() == "test" && FD->getBody()) {
-                Call = findMemberCall(FD->getBody(), "get");
+                Call = findExplicitObjectMemberCall(FD->getBody(), "get");
                 break;
             }
         }
@@ -309,11 +352,11 @@ TEST_F(DeducingThisTranslatorTest, CallOnConstLvalueObject) {
 
     auto* TU = Ctx.getTranslationUnitDecl();
 
-    CXXMemberCallExpr* Call = nullptr;
+    CallExpr* Call = nullptr;
     for (auto* D : TU->decls()) {
         if (auto* FD = dyn_cast<FunctionDecl>(D)) {
             if (FD->getNameAsString() == "test" && FD->getBody()) {
-                Call = findMemberCall(FD->getBody(), "get");
+                Call = findExplicitObjectMemberCall(FD->getBody(), "get");
                 break;
             }
         }
@@ -355,11 +398,11 @@ TEST_F(DeducingThisTranslatorTest, CallOnRvalueObject) {
 
     auto* TU = Ctx.getTranslationUnitDecl();
 
-    CXXMemberCallExpr* Call = nullptr;
+    CallExpr* Call = nullptr;
     for (auto* D : TU->decls()) {
         if (auto* FD = dyn_cast<FunctionDecl>(D)) {
             if (FD->getNameAsString() == "test" && FD->getBody()) {
-                Call = findMemberCall(FD->getBody(), "get");
+                Call = findExplicitObjectMemberCall(FD->getBody(), "get");
                 break;
             }
         }

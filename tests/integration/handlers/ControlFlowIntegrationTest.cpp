@@ -6,7 +6,7 @@
  * (functions, variables, expressions) to validate handler cooperation.
  */
 
-#include "handlers/FunctionHandler.h"
+#include "dispatch/FunctionHandler.h"
 #include "handlers/VariableHandler.h"
 #include "handlers/ExpressionHandler.h"
 #include "handlers/StatementHandler.h"

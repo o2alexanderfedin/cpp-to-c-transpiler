@@ -1,6 +1,8 @@
 // Generated from: /Users/alexanderfedin/Projects/hapyy/hupyy-cpp-to-c/./tests/unit/operators/OperatorOverloadingTest.cpp
 // Header file
 
+#pragma once
+
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -12,7 +14,7 @@ struct OperatorOverloadingTestBase {
 };
 static void OperatorOverloadingTestBase__ctor_default(struct OperatorOverloadingTestBase * this);
 static void OperatorOverloadingTestBase__ctor_copy(struct OperatorOverloadingTestBase * this, const struct OperatorOverloadingTestBase * other);
-int OperatorOverloadingTestBase_buildAST(struct OperatorOverloadingTestBase * this, const char * code);
+int OperatorOverloadingTestBase_buildAST_const_int_ptr(struct OperatorOverloadingTestBase * this, const char * code);
 struct ArithmeticOperatorTest {
 };
 static void ArithmeticOperatorTest__ctor_default(struct ArithmeticOperatorTest * this);

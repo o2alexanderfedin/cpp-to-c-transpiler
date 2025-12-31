@@ -16,6 +16,9 @@
 #include "handlers/HandlerContext.h"
 #include "handlers/RangeTypeAnalyzer.h"
 #include "handlers/LoopVariableAnalyzer.h"
+#include "handlers/ContainerLoopGenerator.h"
+#include "handlers/IteratorTypeAnalyzer.h"
+#include "NameMangler.h"
 #include "clang/AST/Stmt.h"
 #include "clang/AST/Expr.h"
 #include "clang/AST/ExprCXX.h"
@@ -386,12 +389,21 @@ clang::ForStmt* StatementHandler::translateCXXForRangeStmt(
     LoopVariableAnalyzer loopVarAnalyzer;
     LoopVariableInfo loopVarInfo = loopVarAnalyzer.analyze(RFS);
 
-    // Currently only support C arrays
-    if (rangeInfo.rangeType != RangeType::CArray) {
-        // TODO: Implement container support in future phases
-        // For now, return nullptr to indicate unsupported
+    // Dispatch based on range type
+    if (rangeInfo.rangeType == RangeType::CustomType) {
+        // Phase 54 Extension: Handle custom containers with iterators
+        ContainerLoopGenerator containerGen(ctx);
+        return containerGen.generate(RFS, rangeInfo, loopVarInfo);
+    } else if (rangeInfo.rangeType == RangeType::STLContainer) {
+        // STL containers deferred to Phase 35 decision
+        // For now, return nullptr (unsupported)
+        return nullptr;
+    } else if (rangeInfo.rangeType != RangeType::CArray) {
+        // Unknown range type
         return nullptr;
     }
+
+    // Handle C arrays with index-based loop (existing implementation below)
 
     if (!rangeInfo.arraySize.has_value()) {
         // Cannot determine array size at compile time
@@ -851,9 +863,23 @@ clang::Expr* StatementHandler::createConstructorCall(
     // For now, create a simple default constructor call: ClassName_init(&obj)
     // TODO: Handle parameterized constructors by examining cppVarDecl->getInit()
 
-    // Generate constructor name
-    // For default constructor (no params): ClassName_init
-    std::string ctorName = className + "_init";
+    // Find the default constructor in the record declaration
+    clang::CXXConstructorDecl* defaultCtor = nullptr;
+    for (auto* ctor : recordDecl->ctors()) {
+        if (ctor->isDefaultConstructor()) {
+            defaultCtor = ctor;
+            break;
+        }
+    }
+
+    // Generate mangled constructor name using NameMangler
+    std::string ctorName;
+    if (defaultCtor) {
+        ctorName = cpptoc::mangle_constructor(defaultCtor);
+    } else {
+        // Fallback if no explicit default constructor found
+        ctorName = className + "_init";
+    }
 
     // Create DeclRefExpr for the variable
     clang::DeclRefExpr* varRef = clang::DeclRefExpr::Create(

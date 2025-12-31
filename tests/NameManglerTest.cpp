@@ -27,8 +27,6 @@ TEST_F(NameManglerTest, SimpleClassName) {
         std::unique_ptr<ASTUnit> AST = buildAST(code);
         ASSERT_TRUE(AST) << "Failed to parse C++ code";
 
-        NameMangler mangler(AST->getASTContext());
-
         // Find MyClass
         auto *TU = AST->getASTContext().getTranslationUnitDecl();
         CXXRecordDecl *MyClass = nullptr;
@@ -43,7 +41,7 @@ TEST_F(NameManglerTest, SimpleClassName) {
 
         ASSERT_TRUE(MyClass != nullptr) << "MyClass not found";
 
-        std::string mangled = mangler.mangleClassName(MyClass);
+        std::string mangled = cpptoc::mangle_class(MyClass);
         ASSERT_TRUE(mangled == "MyClass") << "Expected 'MyClass', got: " + mangled;
 }
 
@@ -57,8 +55,6 @@ TEST_F(NameManglerTest, ClassMethod) {
 
         std::unique_ptr<ASTUnit> AST = buildAST(code);
         ASSERT_TRUE(AST) << "Failed to parse C++ code";
-
-        NameMangler mangler(AST->getASTContext());
 
         // Find MyClass::method
         auto *TU = AST->getASTContext().getTranslationUnitDecl();
@@ -78,8 +74,8 @@ TEST_F(NameManglerTest, ClassMethod) {
 
         ASSERT_TRUE(method != nullptr) << "MyClass::method not found";
 
-        std::string mangled = mangler.mangleMethodName(method);
-        ASSERT_TRUE(mangled == "MyClass_method") << "Expected 'MyClass_method', got: " + mangled;
+        std::string mangled = cpptoc::mangle_method(method);
+        ASSERT_TRUE(mangled == "MyClass__method__void") << "Expected 'MyClass__method__void', got: " + mangled;
 }
 
 TEST_F(NameManglerTest, NamespaceFunction) {
@@ -91,8 +87,6 @@ TEST_F(NameManglerTest, NamespaceFunction) {
 
         std::unique_ptr<ASTUnit> AST = buildAST(code);
         ASSERT_TRUE(AST) << "Failed to parse C++ code";
-
-        NameMangler mangler(AST->getASTContext());
 
         // Find ns::func
         auto *TU = AST->getASTContext().getTranslationUnitDecl();
@@ -114,8 +108,8 @@ TEST_F(NameManglerTest, NamespaceFunction) {
 
         ASSERT_TRUE(func != nullptr) << "ns::func not found";
 
-        std::string mangled = mangler.mangleFunctionName(func);
-        ASSERT_TRUE(mangled == "ns_func") << "Expected 'ns_func', got: " + mangled;
+        std::string mangled = cpptoc::mangle_function(func);
+        ASSERT_TRUE(mangled == "ns__func__void") << "Expected 'ns__func__void', got: " + mangled;
 }
 
 TEST_F(NameManglerTest, NestedNamespaces) {
@@ -129,8 +123,6 @@ TEST_F(NameManglerTest, NestedNamespaces) {
 
         std::unique_ptr<ASTUnit> AST = buildAST(code);
         ASSERT_TRUE(AST) << "Failed to parse C++ code";
-
-        NameMangler mangler(AST->getASTContext());
 
         // Find ns1::ns2::func
         auto *TU = AST->getASTContext().getTranslationUnitDecl();
@@ -158,8 +150,8 @@ TEST_F(NameManglerTest, NestedNamespaces) {
 
         ASSERT_TRUE(func != nullptr) << "ns1::ns2::func not found";
 
-        std::string mangled = mangler.mangleFunctionName(func);
-        ASSERT_TRUE(mangled == "ns1_ns2_func") << "Expected 'ns1_ns2_func', got: " + mangled;
+        std::string mangled = cpptoc::mangle_function(func);
+        ASSERT_TRUE(mangled == "ns1__ns2__func__void") << "Expected 'ns1__ns2__func__void', got: " + mangled;
 }
 
 TEST_F(NameManglerTest, NamespaceClassMethod) {
@@ -174,8 +166,6 @@ TEST_F(NameManglerTest, NamespaceClassMethod) {
 
         std::unique_ptr<ASTUnit> AST = buildAST(code);
         ASSERT_TRUE(AST) << "Failed to parse C++ code";
-
-        NameMangler mangler(AST->getASTContext());
 
         // Find ns::MyClass::method
         auto *TU = AST->getASTContext().getTranslationUnitDecl();
@@ -201,8 +191,8 @@ TEST_F(NameManglerTest, NamespaceClassMethod) {
 
         ASSERT_TRUE(method != nullptr) << "ns::MyClass::method not found";
 
-        std::string mangled = mangler.mangleMethodName(method);
-        ASSERT_TRUE(mangled == "ns_MyClass_method") << "Expected 'ns_MyClass_method', got: " + mangled;
+        std::string mangled = cpptoc::mangle_method(method);
+        ASSERT_TRUE(mangled == "ns__MyClass__method__void") << "Expected 'ns__MyClass__method__void', got: " + mangled;
 }
 
 // ============================================================================
@@ -218,8 +208,6 @@ TEST_F(NameManglerTest, AnonymousNamespaceFunction) {
 
         std::unique_ptr<ASTUnit> AST = buildAST(code);
         ASSERT_TRUE(AST) << "Failed to parse C++ code";
-
-        NameMangler mangler(AST->getASTContext());
 
         // Find anonymous namespace function
         auto *TU = AST->getASTContext().getTranslationUnitDecl();
@@ -241,10 +229,10 @@ TEST_F(NameManglerTest, AnonymousNamespaceFunction) {
 
         ASSERT_TRUE(func != nullptr) << "Anonymous namespace function not found";
 
-        std::string mangled = mangler.mangleFunctionName(func);
-        // Should have pattern: _anon_<identifier>_helper
-        ASSERT_TRUE(mangled.find("_anon_") == 0) << "Expected anonymous namespace prefix '_anon_', got: " + mangled;
-        ASSERT_TRUE(mangled.find("_helper") != std::string::npos) << "Expected '_helper' suffix, got: " + mangled;
+        std::string mangled = cpptoc::mangle_function(func);
+        // Should have pattern: anon__helper__void (using __ separators)
+        ASSERT_TRUE(mangled.find("anon__") == 0) << "Expected anonymous namespace prefix 'anon__', got: " + mangled;
+        ASSERT_TRUE(mangled.find("__helper__void") != std::string::npos) << "Expected '__helper__void' suffix, got: " + mangled;
 }
 
 TEST_F(NameManglerTest, AnonymousNamespaceClass) {
@@ -259,8 +247,6 @@ TEST_F(NameManglerTest, AnonymousNamespaceClass) {
 
         std::unique_ptr<ASTUnit> AST = buildAST(code);
         ASSERT_TRUE(AST) << "Failed to parse C++ code";
-
-        NameMangler mangler(AST->getASTContext());
 
         // Find anonymous namespace class
         auto *TU = AST->getASTContext().getTranslationUnitDecl();
@@ -282,10 +268,10 @@ TEST_F(NameManglerTest, AnonymousNamespaceClass) {
 
         ASSERT_TRUE(cls != nullptr) << "Anonymous namespace class not found";
 
-        std::string mangled = mangler.mangleClassName(cls);
-        // Should have pattern: _anon_<identifier>_InternalClass
-        ASSERT_TRUE(mangled.find("_anon_") == 0) << "Expected anonymous namespace prefix, got: " + mangled;
-        ASSERT_TRUE(mangled.find("_InternalClass") != std::string::npos) << "Expected class name suffix, got: " + mangled;
+        std::string mangled = cpptoc::mangle_class(cls);
+        // Should have pattern: anon__InternalClass (using __ separators)
+        ASSERT_TRUE(mangled.find("anon__") == 0) << "Expected anonymous namespace prefix, got: " + mangled;
+        ASSERT_TRUE(mangled.find("__InternalClass") != std::string::npos) << "Expected class name suffix, got: " + mangled;
 }
 
 TEST_F(NameManglerTest, NestedAnonymousNamespace) {
@@ -299,8 +285,6 @@ TEST_F(NameManglerTest, NestedAnonymousNamespace) {
 
         std::unique_ptr<ASTUnit> AST = buildAST(code);
         ASSERT_TRUE(AST) << "Failed to parse C++ code";
-
-        NameMangler mangler(AST->getASTContext());
 
         // Find nested anonymous namespace function
         auto *TU = AST->getASTContext().getTranslationUnitDecl();
@@ -328,11 +312,11 @@ TEST_F(NameManglerTest, NestedAnonymousNamespace) {
 
         ASSERT_TRUE(func != nullptr) << "Nested anonymous namespace function not found";
 
-        std::string mangled = mangler.mangleFunctionName(func);
-        // Should have pattern: outer__anon_<identifier>_helper
-        ASSERT_TRUE(mangled.find("outer_") == 0) << "Expected 'outer_' prefix, got: " + mangled;
-        ASSERT_TRUE(mangled.find("_anon_") != std::string::npos) << "Expected '_anon_' in name, got: " + mangled;
-        ASSERT_TRUE(mangled.find("_helper") != std::string::npos) << "Expected '_helper' suffix, got: " + mangled;
+        std::string mangled = cpptoc::mangle_function(func);
+        // Should have pattern: outer__anon__helper__void (using __ separators)
+        ASSERT_TRUE(mangled.find("outer__") == 0) << "Expected 'outer__' prefix, got: " + mangled;
+        ASSERT_TRUE(mangled.find("__anon__") != std::string::npos) << "Expected '__anon__' in name, got: " + mangled;
+        ASSERT_TRUE(mangled.find("__helper__void") != std::string::npos) << "Expected '__helper__void' suffix, got: " + mangled;
 }
 
 TEST_F(NameManglerTest, AnonymousNamespaceMethodInClass) {
@@ -347,8 +331,6 @@ TEST_F(NameManglerTest, AnonymousNamespaceMethodInClass) {
 
         std::unique_ptr<ASTUnit> AST = buildAST(code);
         ASSERT_TRUE(AST) << "Failed to parse C++ code";
-
-        NameMangler mangler(AST->getASTContext());
 
         // Find method in anonymous namespace class
         auto *TU = AST->getASTContext().getTranslationUnitDecl();
@@ -374,10 +356,10 @@ TEST_F(NameManglerTest, AnonymousNamespaceMethodInClass) {
 
         ASSERT_TRUE(method != nullptr) << "Method in anonymous namespace class not found";
 
-        std::string mangled = mangler.mangleMethodName(method);
-        // Should have pattern: _anon_<identifier>_Helper_process
-        ASSERT_TRUE(mangled.find("_anon_") == 0) << "Expected anonymous namespace prefix, got: " + mangled;
-        ASSERT_TRUE(mangled.find("_Helper_process") != std::string::npos) << "Expected '_Helper_process' suffix, got: " + mangled;
+        std::string mangled = cpptoc::mangle_method(method);
+        // Should have pattern: anon__Helper__process__void (using __ separators)
+        ASSERT_TRUE(mangled.find("anon__") == 0) << "Expected anonymous namespace prefix, got: " + mangled;
+        ASSERT_TRUE(mangled.find("__Helper__process__void") != std::string::npos) << "Expected '__Helper__process__void' suffix, got: " + mangled;
 }
 
 // ============================================================================
@@ -395,8 +377,6 @@ TEST_F(NameManglerTest, ExternCInNamespace) {
 
         std::unique_ptr<ASTUnit> AST = buildAST(code);
         ASSERT_TRUE(AST) << "Failed to parse C++ code";
-
-        NameMangler mangler(AST->getASTContext());
 
         // Find extern "C" function - it might be at TU level or in namespace
         auto *TU = AST->getASTContext().getTranslationUnitDecl();
@@ -431,7 +411,7 @@ TEST_F(NameManglerTest, ExternCInNamespace) {
 
         ASSERT_TRUE(func != nullptr) << "extern C function not found";
 
-        std::string mangled = mangler.mangleFunctionName(func);
+        std::string mangled = cpptoc::mangle_function(func);
         // extern "C" prevents mangling even in namespace
         ASSERT_TRUE(mangled == "c_function") << "Expected 'c_function' (not mangled), got: " + mangled;
 }
@@ -451,8 +431,6 @@ TEST_F(NameManglerTest, DeepNesting) {
 
         std::unique_ptr<ASTUnit> AST = buildAST(code);
         ASSERT_TRUE(AST) << "Failed to parse C++ code";
-
-        NameMangler mangler(AST->getASTContext());
 
         // Find deeply nested function
         auto *TU = AST->getASTContext().getTranslationUnitDecl();
@@ -494,8 +472,8 @@ TEST_F(NameManglerTest, DeepNesting) {
 
         ASSERT_TRUE(func != nullptr) << "Deeply nested function not found";
 
-        std::string mangled = mangler.mangleFunctionName(func);
-        ASSERT_TRUE(mangled == "a_b_c_d_func") << "Expected 'a_b_c_d_func', got: " + mangled;
+        std::string mangled = cpptoc::mangle_function(func);
+        ASSERT_TRUE(mangled == "a__b__c__d__func__void") << "Expected 'a__b__c__d__func__void', got: " + mangled;
 }
 
 TEST_F(NameManglerTest, StaticMethodInNamespace) {
@@ -510,8 +488,6 @@ TEST_F(NameManglerTest, StaticMethodInNamespace) {
 
         std::unique_ptr<ASTUnit> AST = buildAST(code);
         ASSERT_TRUE(AST) << "Failed to parse C++ code";
-
-        NameMangler mangler(AST->getASTContext());
 
         // Find static method
         auto *TU = AST->getASTContext().getTranslationUnitDecl();
@@ -538,8 +514,8 @@ TEST_F(NameManglerTest, StaticMethodInNamespace) {
         ASSERT_TRUE(method != nullptr) << "Static method not found";
         ASSERT_TRUE(method->isStatic()) << "Method should be static";
 
-        std::string mangled = mangler.mangleMethodName(method);
-        ASSERT_TRUE(mangled == "utils_Helper_staticMethod") << "Expected 'utils_Helper_staticMethod', got: " + mangled;
+        std::string mangled = cpptoc::mangle_method(method);
+        ASSERT_TRUE(mangled == "utils__Helper__staticMethod__void") << "Expected 'utils__Helper__staticMethod__void', got: " + mangled;
 }
 
 TEST_F(NameManglerTest, NestedClassInNamespace) {
@@ -557,8 +533,6 @@ TEST_F(NameManglerTest, NestedClassInNamespace) {
 
         std::unique_ptr<ASTUnit> AST = buildAST(code);
         ASSERT_TRUE(AST) << "Failed to parse C++ code";
-
-        NameMangler mangler(AST->getASTContext());
 
         // Find nested class
         auto *TU = AST->getASTContext().getTranslationUnitDecl();
@@ -586,10 +560,8 @@ TEST_F(NameManglerTest, NestedClassInNamespace) {
 
         ASSERT_TRUE(innerClass != nullptr) << "Nested class not found";
 
-        std::string mangled = mangler.mangleClassName(innerClass);
-        // Note: Nested classes get Outer_Inner naming (not namespace prefixed for inner class)
-        // The outer class gets the namespace prefix: ns_Outer
-        // The pattern depends on how nested classes are handled in the mangler
+        std::string mangled = cpptoc::mangle_class(innerClass);
+        // Note: Nested classes get ns__Outer__Inner naming (all contexts with __ separators)
         ASSERT_TRUE(mangled.find("Inner") != std::string::npos) << "Expected 'Inner' in name, got: " + mangled;
 }
 
@@ -606,8 +578,6 @@ TEST_F(NameManglerTest, ConstructorInNamespacedClass) {
 
         std::unique_ptr<ASTUnit> AST = buildAST(code);
         ASSERT_TRUE(AST) << "Failed to parse C++ code";
-
-        NameMangler mangler(AST->getASTContext());
 
         // Find constructors
         auto *TU = AST->getASTContext().getTranslationUnitDecl();
@@ -639,11 +609,10 @@ TEST_F(NameManglerTest, ConstructorInNamespacedClass) {
         ASSERT_TRUE(defaultCtor != nullptr) << "Default constructor not found";
         ASSERT_TRUE(paramCtor != nullptr) << "Parameterized constructor not found";
 
-        std::string mangled1 = mangler.mangleConstructor(defaultCtor);
-        std::string mangled2 = mangler.mangleConstructor(paramCtor);
+        std::string mangled1 = cpptoc::mangle_constructor(defaultCtor);
+        std::string mangled2 = cpptoc::mangle_constructor(paramCtor);
 
-        // Constructors don't get namespace prefix in current implementation
-        // They use class name which should already include namespace
+        // Constructors use pattern: data__Buffer__ctor__void and data__Buffer__ctor__int
         ASSERT_TRUE(mangled1.find("__ctor") != std::string::npos) << "Expected '__ctor' in name, got: " + mangled1;
         ASSERT_TRUE(mangled2.find("__ctor") != std::string::npos) << "Expected '__ctor' in name, got: " + mangled2;
         ASSERT_TRUE(mangled1 != mangled2) << "Constructors should have different mangled names";
@@ -659,8 +628,6 @@ TEST_F(NameManglerTest, OverloadedFunctionsInNamespace) {
 
         std::unique_ptr<ASTUnit> AST = buildAST(code);
         ASSERT_TRUE(AST) << "Failed to parse C++ code";
-
-        NameMangler mangler(AST->getASTContext());
 
         // Find both overloaded functions
         auto *TU = AST->getASTContext().getTranslationUnitDecl();
@@ -691,12 +658,12 @@ TEST_F(NameManglerTest, OverloadedFunctionsInNamespace) {
         ASSERT_TRUE(intFunc != nullptr) << "Int overload not found";
         ASSERT_TRUE(doubleFunc != nullptr) << "Double overload not found";
 
-        std::string mangled1 = mangler.mangleStandaloneFunction(intFunc);
-        std::string mangled2 = mangler.mangleStandaloneFunction(doubleFunc);
+        std::string mangled1 = cpptoc::mangle_function(intFunc);
+        std::string mangled2 = cpptoc::mangle_function(doubleFunc);
 
-        // Both should start with namespace prefix
-        ASSERT_TRUE(mangled1.find("math_") == 0) << "Expected 'math_' prefix, got: " + mangled1;
-        ASSERT_TRUE(mangled2.find("math_") == 0) << "Expected 'math_' prefix, got: " + mangled2;
+        // Both should start with namespace prefix: math__process__int and math__process__double
+        ASSERT_TRUE(mangled1.find("math__") == 0) << "Expected 'math__' prefix, got: " + mangled1;
+        ASSERT_TRUE(mangled2.find("math__") == 0) << "Expected 'math__' prefix, got: " + mangled2;
         // And they should be different
         ASSERT_TRUE(mangled1 != mangled2) << "Overloads should have different mangled names";
 }
@@ -713,8 +680,6 @@ TEST_F(NameManglerTest, MultipleNamespacesInSameFile) {
 
         std::unique_ptr<ASTUnit> AST = buildAST(code);
         ASSERT_TRUE(AST) << "Failed to parse C++ code";
-
-        NameMangler mangler(AST->getASTContext());
 
         // Find both functions
         auto *TU = AST->getASTContext().getTranslationUnitDecl();
@@ -748,11 +713,11 @@ TEST_F(NameManglerTest, MultipleNamespacesInSameFile) {
         ASSERT_TRUE(func1 != nullptr) << "ns1::func not found";
         ASSERT_TRUE(func2 != nullptr) << "ns2::func not found";
 
-        std::string mangled1 = mangler.mangleFunctionName(func1);
-        std::string mangled2 = mangler.mangleFunctionName(func2);
+        std::string mangled1 = cpptoc::mangle_function(func1);
+        std::string mangled2 = cpptoc::mangle_function(func2);
 
-        ASSERT_TRUE(mangled1 == "ns1_func") << "Expected 'ns1_func', got: " + mangled1;
-        ASSERT_TRUE(mangled2 == "ns2_func") << "Expected 'ns2_func', got: " + mangled2;
+        ASSERT_TRUE(mangled1 == "ns1__func__void") << "Expected 'ns1__func__void', got: " + mangled1;
+        ASSERT_TRUE(mangled2 == "ns2__func__void") << "Expected 'ns2__func__void', got: " + mangled2;
 }
 
 TEST_F(NameManglerTest, Cpp17NestedNamespaceSyntax) {
@@ -764,8 +729,6 @@ TEST_F(NameManglerTest, Cpp17NestedNamespaceSyntax) {
 
         std::unique_ptr<ASTUnit> AST = buildAST(code);
         ASSERT_TRUE(AST) << "Failed to parse C++ code";
-
-        NameMangler mangler(AST->getASTContext());
 
         // Find function in C++17 nested namespace
         auto *TU = AST->getASTContext().getTranslationUnitDecl();
@@ -801,6 +764,6 @@ TEST_F(NameManglerTest, Cpp17NestedNamespaceSyntax) {
 
         ASSERT_TRUE(func != nullptr) << "C++17 nested namespace function not found";
 
-        std::string mangled = mangler.mangleFunctionName(func);
-        ASSERT_TRUE(mangled == "a_b_c_func") << "Expected 'a_b_c_func', got: " + mangled;
+        std::string mangled = cpptoc::mangle_function(func);
+        ASSERT_TRUE(mangled == "a__b__c__func__void") << "Expected 'a__b__c__func__void', got: " + mangled;
 }

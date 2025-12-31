@@ -16,6 +16,7 @@
 #include "../include/TemplateMonomorphizer.h"
 #include "../include/TemplateInstantiationTracker.h"
 #include "../include/NameMangler.h"
+#include "../include/OverloadRegistry.h"
 #include "../include/CNodeBuilder.h"
 #include <cassert>
 #include <memory>
@@ -72,7 +73,9 @@ TEST_F(TemplateIntegrationTest, SimpleClassTemplateInstantiation) {
         bool foundStackInt = false;
         bool foundStackDouble = false;
 
-        NameMangler mangler(AST->getASTContext());
+        cpptoc::OverloadRegistry& registry = cpptoc::OverloadRegistry::getInstance();
+        registry.reset();
+        NameMangler mangler(AST->getASTContext(), registry);
         CNodeBuilder builder(AST->getASTContext());
         TemplateMonomorphizer mono(AST->getASTContext(), mangler, builder);
 
@@ -412,7 +415,9 @@ TEST_F(TemplateIntegrationTest, DependentTypeResolution) {
         auto classInsts = extractor.getClassInstantiations();
         ASSERT_TRUE(classInsts.size() >= 3) << "Should find 3 Container instantiations";
 
-        NameMangler mangler(AST->getASTContext());
+        cpptoc::OverloadRegistry& registry = cpptoc::OverloadRegistry::getInstance();
+        registry.reset();
+        NameMangler mangler(AST->getASTContext(), registry);
         CNodeBuilder builder(AST->getASTContext());
         TemplateMonomorphizer mono(AST->getASTContext(), mangler, builder);
 

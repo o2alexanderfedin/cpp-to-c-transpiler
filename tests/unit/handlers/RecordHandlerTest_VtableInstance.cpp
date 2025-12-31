@@ -17,7 +17,7 @@
  * 10. OverrideVtableInstance - Override uses derived class function pointer
  */
 
-#include "handlers/RecordHandler.h"
+#include "dispatch/RecordHandler.h"
 #include "handlers/HandlerContext.h"
 #include "handlers/MethodHandler.h"
 #include "CNodeBuilder.h"

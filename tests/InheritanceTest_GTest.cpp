@@ -5,7 +5,6 @@
 //                Member Access, Upcasting, Method Overriding, and more
 
 #include <gtest/gtest.h>
-#include "CppToCVisitor.h"
 #include "CNodeBuilder.h"
 #include "FileOriginTracker.h"
 #include <clang/AST/ASTContext.h>
@@ -77,7 +76,8 @@ TEST_F(InheritanceTestFixture, EmptyBaseClass) {
     cpptoc::FileOriginTracker tracker(AST->getASTContext().getSourceManager());
     tracker.addUserHeaderPath("<stdin>");
     clang::TranslationUnitDecl *C_TU = clang::TranslationUnitDecl::Create(AST->getASTContext());
-    CppToCVisitor visitor(AST->getASTContext(), builder, tracker, C_TU);
+    TargetContext& targetCtx = TargetContext::getInstance();
+    CppToCVisitor visitor(AST->getASTContext(), builder, targetCtx, tracker, C_TU, nullptr);
     visitor.TraverseDecl(AST->getASTContext().getTranslationUnitDecl());
 
     // Verify Base struct generated
@@ -126,7 +126,8 @@ TEST_F(InheritanceTestFixture, SingleBaseWithFields) {
     cpptoc::FileOriginTracker tracker(AST->getASTContext().getSourceManager());
     tracker.addUserHeaderPath("<stdin>");
     clang::TranslationUnitDecl *C_TU = clang::TranslationUnitDecl::Create(AST->getASTContext());
-    CppToCVisitor visitor(AST->getASTContext(), builder, tracker, C_TU);
+    TargetContext& targetCtx = TargetContext::getInstance();
+    CppToCVisitor visitor(AST->getASTContext(), builder, targetCtx, tracker, C_TU, nullptr);
     visitor.TraverseDecl(AST->getASTContext().getTranslationUnitDecl());
 
     // Verify Base struct
@@ -205,7 +206,8 @@ TEST_F(InheritanceTestFixture, MultiLevelInheritance) {
     cpptoc::FileOriginTracker tracker(AST->getASTContext().getSourceManager());
     tracker.addUserHeaderPath("<stdin>");
     clang::TranslationUnitDecl *C_TU = clang::TranslationUnitDecl::Create(AST->getASTContext());
-    CppToCVisitor visitor(AST->getASTContext(), builder, tracker, C_TU);
+    TargetContext& targetCtx = TargetContext::getInstance();
+    CppToCVisitor visitor(AST->getASTContext(), builder, targetCtx, tracker, C_TU, nullptr);
     visitor.TraverseDecl(AST->getASTContext().getTranslationUnitDecl());
 
     // Verify struct C has 3 fields in correct order
@@ -319,7 +321,8 @@ TEST_F(InheritanceTestFixture, SimpleConstructorChaining) {
     cpptoc::FileOriginTracker tracker(AST->getASTContext().getSourceManager());
     tracker.addUserHeaderPath("<stdin>");
     clang::TranslationUnitDecl *C_TU = clang::TranslationUnitDecl::Create(AST->getASTContext());
-    CppToCVisitor visitor(AST->getASTContext(), builder, tracker, C_TU);
+    TargetContext& targetCtx = TargetContext::getInstance();
+    CppToCVisitor visitor(AST->getASTContext(), builder, targetCtx, tracker, C_TU, nullptr);
     visitor.TraverseDecl(AST->getASTContext().getTranslationUnitDecl());
 
     // Get generated C constructor for Derived
@@ -392,7 +395,8 @@ TEST_F(InheritanceTestFixture, ConstructorChainingWithArgs) {
     cpptoc::FileOriginTracker tracker(AST->getASTContext().getSourceManager());
     tracker.addUserHeaderPath("<stdin>");
     clang::TranslationUnitDecl *C_TU = clang::TranslationUnitDecl::Create(AST->getASTContext());
-    CppToCVisitor visitor(AST->getASTContext(), builder, tracker, C_TU);
+    TargetContext& targetCtx = TargetContext::getInstance();
+    CppToCVisitor visitor(AST->getASTContext(), builder, targetCtx, tracker, C_TU, nullptr);
     visitor.TraverseDecl(AST->getASTContext().getTranslationUnitDecl());
 
     FunctionDecl *DerivedCtor = visitor.getCtor("Derived__ctor");
@@ -454,7 +458,8 @@ TEST_F(InheritanceTestFixture, MultiLevelConstructorChaining) {
     cpptoc::FileOriginTracker tracker(AST->getASTContext().getSourceManager());
     tracker.addUserHeaderPath("<stdin>");
     clang::TranslationUnitDecl *C_TU = clang::TranslationUnitDecl::Create(AST->getASTContext());
-    CppToCVisitor visitor(AST->getASTContext(), builder, tracker, C_TU);
+    TargetContext& targetCtx = TargetContext::getInstance();
+    CppToCVisitor visitor(AST->getASTContext(), builder, targetCtx, tracker, C_TU, nullptr);
     visitor.TraverseDecl(AST->getASTContext().getTranslationUnitDecl());
 
     // Check Derived2 constructor calls Derived1 constructor (not Base)
@@ -524,7 +529,8 @@ TEST_F(InheritanceTestFixture, SimpleDestructorChaining) {
     cpptoc::FileOriginTracker tracker(AST->getASTContext().getSourceManager());
     tracker.addUserHeaderPath("<stdin>");
     clang::TranslationUnitDecl *C_TU = clang::TranslationUnitDecl::Create(AST->getASTContext());
-    CppToCVisitor visitor(AST->getASTContext(), builder, tracker, C_TU);
+    TargetContext& targetCtx = TargetContext::getInstance();
+    CppToCVisitor visitor(AST->getASTContext(), builder, targetCtx, tracker, C_TU, nullptr);
     visitor.TraverseDecl(AST->getASTContext().getTranslationUnitDecl());
 
     // Get generated C destructor for Derived
@@ -597,7 +603,8 @@ TEST_F(InheritanceTestFixture, DestructorChainingWithBody) {
     cpptoc::FileOriginTracker tracker(AST->getASTContext().getSourceManager());
     tracker.addUserHeaderPath("<stdin>");
     clang::TranslationUnitDecl *C_TU = clang::TranslationUnitDecl::Create(AST->getASTContext());
-    CppToCVisitor visitor(AST->getASTContext(), builder, tracker, C_TU);
+    TargetContext& targetCtx = TargetContext::getInstance();
+    CppToCVisitor visitor(AST->getASTContext(), builder, targetCtx, tracker, C_TU, nullptr);
     visitor.TraverseDecl(AST->getASTContext().getTranslationUnitDecl());
 
     FunctionDecl *DerivedDtor = visitor.getDtor("Derived__dtor");
@@ -664,7 +671,8 @@ TEST_F(InheritanceTestFixture, MultiLevelDestructorChaining) {
     cpptoc::FileOriginTracker tracker(AST->getASTContext().getSourceManager());
     tracker.addUserHeaderPath("<stdin>");
     clang::TranslationUnitDecl *C_TU = clang::TranslationUnitDecl::Create(AST->getASTContext());
-    CppToCVisitor visitor(AST->getASTContext(), builder, tracker, C_TU);
+    TargetContext& targetCtx = TargetContext::getInstance();
+    CppToCVisitor visitor(AST->getASTContext(), builder, targetCtx, tracker, C_TU, nullptr);
     visitor.TraverseDecl(AST->getASTContext().getTranslationUnitDecl());
 
     // Check Derived2 destructor calls Derived1 destructor (not Base)
@@ -720,7 +728,8 @@ TEST_F(InheritanceTestFixture, MemberAccessInDerivedMethods) {
     cpptoc::FileOriginTracker tracker(AST->getASTContext().getSourceManager());
     tracker.addUserHeaderPath("<stdin>");
     clang::TranslationUnitDecl *C_TU = clang::TranslationUnitDecl::Create(AST->getASTContext());
-    CppToCVisitor visitor(AST->getASTContext(), builder, tracker, C_TU);
+    TargetContext& targetCtx = TargetContext::getInstance();
+    CppToCVisitor visitor(AST->getASTContext(), builder, targetCtx, tracker, C_TU, nullptr);
     visitor.TraverseDecl(AST->getASTContext().getTranslationUnitDecl());
 
     // Verify Derived struct has both x and y fields
@@ -768,7 +777,8 @@ TEST_F(InheritanceTestFixture, BasicUpcasting) {
     cpptoc::FileOriginTracker tracker(AST->getASTContext().getSourceManager());
     tracker.addUserHeaderPath("<stdin>");
     clang::TranslationUnitDecl *C_TU = clang::TranslationUnitDecl::Create(AST->getASTContext());
-    CppToCVisitor visitor(AST->getASTContext(), builder, tracker, C_TU);
+    TargetContext& targetCtx = TargetContext::getInstance();
+    CppToCVisitor visitor(AST->getASTContext(), builder, targetCtx, tracker, C_TU, nullptr);
     visitor.TraverseDecl(AST->getASTContext().getTranslationUnitDecl());
 
     // Verify Base struct exists
@@ -834,7 +844,8 @@ TEST_F(InheritanceTestFixture, MultiLevelUpcasting) {
     cpptoc::FileOriginTracker tracker(AST->getASTContext().getSourceManager());
     tracker.addUserHeaderPath("<stdin>");
     clang::TranslationUnitDecl *C_TU = clang::TranslationUnitDecl::Create(AST->getASTContext());
-    CppToCVisitor visitor(AST->getASTContext(), builder, tracker, C_TU);
+    TargetContext& targetCtx = TargetContext::getInstance();
+    CppToCVisitor visitor(AST->getASTContext(), builder, targetCtx, tracker, C_TU, nullptr);
     visitor.TraverseDecl(AST->getASTContext().getTranslationUnitDecl());
 
     // Verify all structs exist
@@ -901,7 +912,8 @@ TEST_F(InheritanceTestFixture, SimpleMethodOverriding) {
     cpptoc::FileOriginTracker tracker(AST->getASTContext().getSourceManager());
     tracker.addUserHeaderPath("<stdin>");
     clang::TranslationUnitDecl *C_TU = clang::TranslationUnitDecl::Create(AST->getASTContext());
-    CppToCVisitor visitor(AST->getASTContext(), builder, tracker, C_TU);
+    TargetContext& targetCtx = TargetContext::getInstance();
+    CppToCVisitor visitor(AST->getASTContext(), builder, targetCtx, tracker, C_TU, nullptr);
     visitor.TraverseDecl(AST->getASTContext().getTranslationUnitDecl());
 
     // Verify Base::print exists as Base_print
@@ -953,7 +965,8 @@ TEST_F(InheritanceTestFixture, MethodOverridingWithReturn) {
     cpptoc::FileOriginTracker tracker(AST->getASTContext().getSourceManager());
     tracker.addUserHeaderPath("<stdin>");
     clang::TranslationUnitDecl *C_TU = clang::TranslationUnitDecl::Create(AST->getASTContext());
-    CppToCVisitor visitor(AST->getASTContext(), builder, tracker, C_TU);
+    TargetContext& targetCtx = TargetContext::getInstance();
+    CppToCVisitor visitor(AST->getASTContext(), builder, targetCtx, tracker, C_TU, nullptr);
     visitor.TraverseDecl(AST->getASTContext().getTranslationUnitDecl());
 
     // Verify Animal::getLegs exists
@@ -1001,7 +1014,8 @@ TEST_F(InheritanceTestFixture, MethodOverridingWithParameters) {
     cpptoc::FileOriginTracker tracker(AST->getASTContext().getSourceManager());
     tracker.addUserHeaderPath("<stdin>");
     clang::TranslationUnitDecl *C_TU = clang::TranslationUnitDecl::Create(AST->getASTContext());
-    CppToCVisitor visitor(AST->getASTContext(), builder, tracker, C_TU);
+    TargetContext& targetCtx = TargetContext::getInstance();
+    CppToCVisitor visitor(AST->getASTContext(), builder, targetCtx, tracker, C_TU, nullptr);
     visitor.TraverseDecl(AST->getASTContext().getTranslationUnitDecl());
 
     // Verify Shape::setSize exists
@@ -1069,7 +1083,8 @@ TEST_F(InheritanceTestFixture, ComprehensiveMultiLevelInheritance) {
     cpptoc::FileOriginTracker tracker(AST->getASTContext().getSourceManager());
     tracker.addUserHeaderPath("<stdin>");
     clang::TranslationUnitDecl *C_TU = clang::TranslationUnitDecl::Create(AST->getASTContext());
-    CppToCVisitor visitor(AST->getASTContext(), builder, tracker, C_TU);
+    TargetContext& targetCtx = TargetContext::getInstance();
+    CppToCVisitor visitor(AST->getASTContext(), builder, targetCtx, tracker, C_TU, nullptr);
     visitor.TraverseDecl(AST->getASTContext().getTranslationUnitDecl());
 
     // ========================================================================
@@ -1193,7 +1208,8 @@ TEST_F(InheritanceTestFixture, MemberInitListDeclarationOrder) {
     cpptoc::FileOriginTracker tracker(AST->getASTContext().getSourceManager());
     tracker.addUserHeaderPath("<stdin>");
     clang::TranslationUnitDecl *C_TU = clang::TranslationUnitDecl::Create(AST->getASTContext());
-    CppToCVisitor visitor(AST->getASTContext(), builder, tracker, C_TU);
+    TargetContext& targetCtx = TargetContext::getInstance();
+    CppToCVisitor visitor(AST->getASTContext(), builder, targetCtx, tracker, C_TU, nullptr);
 
     visitor.TraverseDecl(AST->getASTContext().getTranslationUnitDecl());
 
@@ -1269,7 +1285,8 @@ TEST_F(InheritanceTestFixture, EmptyMemberInitList) {
     cpptoc::FileOriginTracker tracker(AST->getASTContext().getSourceManager());
     tracker.addUserHeaderPath("<stdin>");
     clang::TranslationUnitDecl *C_TU = clang::TranslationUnitDecl::Create(AST->getASTContext());
-    CppToCVisitor visitor(AST->getASTContext(), builder, tracker, C_TU);
+    TargetContext& targetCtx = TargetContext::getInstance();
+    CppToCVisitor visitor(AST->getASTContext(), builder, targetCtx, tracker, C_TU, nullptr);
 
     visitor.TraverseDecl(AST->getASTContext().getTranslationUnitDecl());
 
@@ -1304,7 +1321,8 @@ TEST_F(InheritanceTestFixture, ImplicitDefaultConstructorPrimitives) {
     cpptoc::FileOriginTracker tracker(AST->getASTContext().getSourceManager());
     tracker.addUserHeaderPath("<stdin>");
     clang::TranslationUnitDecl *C_TU = clang::TranslationUnitDecl::Create(AST->getASTContext());
-    CppToCVisitor visitor(AST->getASTContext(), builder, tracker, C_TU);
+    TargetContext& targetCtx = TargetContext::getInstance();
+    CppToCVisitor visitor(AST->getASTContext(), builder, targetCtx, tracker, C_TU, nullptr);
 
     visitor.TraverseDecl(AST->getASTContext().getTranslationUnitDecl());
 
@@ -1361,7 +1379,8 @@ TEST_F(InheritanceTestFixture, ImplicitDefaultConstructorWithClassMembers) {
     cpptoc::FileOriginTracker tracker(AST->getASTContext().getSourceManager());
     tracker.addUserHeaderPath("<stdin>");
     clang::TranslationUnitDecl *C_TU = clang::TranslationUnitDecl::Create(AST->getASTContext());
-    CppToCVisitor visitor(AST->getASTContext(), builder, tracker, C_TU);
+    TargetContext& targetCtx = TargetContext::getInstance();
+    CppToCVisitor visitor(AST->getASTContext(), builder, targetCtx, tracker, C_TU, nullptr);
 
     visitor.TraverseDecl(AST->getASTContext().getTranslationUnitDecl());
 
@@ -1430,7 +1449,8 @@ TEST_F(InheritanceTestFixture, NoImplicitDefaultWithExplicitCtor) {
     cpptoc::FileOriginTracker tracker(AST->getASTContext().getSourceManager());
     tracker.addUserHeaderPath("<stdin>");
     clang::TranslationUnitDecl *C_TU = clang::TranslationUnitDecl::Create(AST->getASTContext());
-    CppToCVisitor visitor(AST->getASTContext(), builder, tracker, C_TU);
+    TargetContext& targetCtx = TargetContext::getInstance();
+    CppToCVisitor visitor(AST->getASTContext(), builder, targetCtx, tracker, C_TU, nullptr);
 
     visitor.TraverseDecl(AST->getASTContext().getTranslationUnitDecl());
 
@@ -1466,7 +1486,8 @@ TEST_F(InheritanceTestFixture, ImplicitCopyConstructorPrimitives) {
     cpptoc::FileOriginTracker tracker(AST->getASTContext().getSourceManager());
     tracker.addUserHeaderPath("<stdin>");
     clang::TranslationUnitDecl *C_TU = clang::TranslationUnitDecl::Create(AST->getASTContext());
-    CppToCVisitor visitor(AST->getASTContext(), builder, tracker, C_TU);
+    TargetContext& targetCtx = TargetContext::getInstance();
+    CppToCVisitor visitor(AST->getASTContext(), builder, targetCtx, tracker, C_TU, nullptr);
 
     visitor.TraverseDecl(AST->getASTContext().getTranslationUnitDecl());
 
@@ -1523,7 +1544,8 @@ TEST_F(InheritanceTestFixture, ImplicitCopyConstructorWithClassMembers) {
     cpptoc::FileOriginTracker tracker(AST->getASTContext().getSourceManager());
     tracker.addUserHeaderPath("<stdin>");
     clang::TranslationUnitDecl *C_TU = clang::TranslationUnitDecl::Create(AST->getASTContext());
-    CppToCVisitor visitor(AST->getASTContext(), builder, tracker, C_TU);
+    TargetContext& targetCtx = TargetContext::getInstance();
+    CppToCVisitor visitor(AST->getASTContext(), builder, targetCtx, tracker, C_TU, nullptr);
 
     visitor.TraverseDecl(AST->getASTContext().getTranslationUnitDecl());
 
@@ -1595,7 +1617,8 @@ TEST_F(InheritanceTestFixture, ImplicitCopyConstructorWithPointers) {
     cpptoc::FileOriginTracker tracker(AST->getASTContext().getSourceManager());
     tracker.addUserHeaderPath("<stdin>");
     clang::TranslationUnitDecl *C_TU = clang::TranslationUnitDecl::Create(AST->getASTContext());
-    CppToCVisitor visitor(AST->getASTContext(), builder, tracker, C_TU);
+    TargetContext& targetCtx = TargetContext::getInstance();
+    CppToCVisitor visitor(AST->getASTContext(), builder, targetCtx, tracker, C_TU, nullptr);
 
     visitor.TraverseDecl(AST->getASTContext().getTranslationUnitDecl());
 
@@ -1668,7 +1691,8 @@ TEST_F(InheritanceTestFixture, SimpleMemberConstructorCalls) {
     cpptoc::FileOriginTracker tracker(AST->getASTContext().getSourceManager());
     tracker.addUserHeaderPath("<stdin>");
     clang::TranslationUnitDecl *C_TU = clang::TranslationUnitDecl::Create(AST->getASTContext());
-    CppToCVisitor visitor(AST->getASTContext(), builder, tracker, C_TU);
+    TargetContext& targetCtx = TargetContext::getInstance();
+    CppToCVisitor visitor(AST->getASTContext(), builder, targetCtx, tracker, C_TU, nullptr);
 
     std::cout << "DEBUG: About to TraverseDecl\n";
     std::cout.flush();
@@ -1745,7 +1769,8 @@ TEST_F(InheritanceTestFixture, MemberDestructorCalls) {
     cpptoc::FileOriginTracker tracker(AST->getASTContext().getSourceManager());
     tracker.addUserHeaderPath("<stdin>");
     clang::TranslationUnitDecl *C_TU = clang::TranslationUnitDecl::Create(AST->getASTContext());
-    CppToCVisitor visitor(AST->getASTContext(), builder, tracker, C_TU);
+    TargetContext& targetCtx = TargetContext::getInstance();
+    CppToCVisitor visitor(AST->getASTContext(), builder, targetCtx, tracker, C_TU, nullptr);
 
     visitor.TraverseDecl(AST->getASTContext().getTranslationUnitDecl());
 
@@ -1825,7 +1850,8 @@ TEST_F(InheritanceTestFixture, CompleteChaining_BaseAndMembers) {
     cpptoc::FileOriginTracker tracker(AST->getASTContext().getSourceManager());
     tracker.addUserHeaderPath("<stdin>");
     clang::TranslationUnitDecl *C_TU = clang::TranslationUnitDecl::Create(AST->getASTContext());
-    CppToCVisitor visitor(AST->getASTContext(), builder, tracker, C_TU);
+    TargetContext& targetCtx = TargetContext::getInstance();
+    CppToCVisitor visitor(AST->getASTContext(), builder, targetCtx, tracker, C_TU, nullptr);
 
     visitor.TraverseDecl(AST->getASTContext().getTranslationUnitDecl());
 
@@ -1947,7 +1973,8 @@ TEST_F(InheritanceTestFixture, MultipleMembersOrderVerification) {
     cpptoc::FileOriginTracker tracker(AST->getASTContext().getSourceManager());
     tracker.addUserHeaderPath("<stdin>");
     clang::TranslationUnitDecl *C_TU = clang::TranslationUnitDecl::Create(AST->getASTContext());
-    CppToCVisitor visitor(AST->getASTContext(), builder, tracker, C_TU);
+    TargetContext& targetCtx = TargetContext::getInstance();
+    CppToCVisitor visitor(AST->getASTContext(), builder, targetCtx, tracker, C_TU, nullptr);
 
     visitor.TraverseDecl(AST->getASTContext().getTranslationUnitDecl());
 
@@ -2054,7 +2081,8 @@ TEST_F(InheritanceTestFixture, ConstMemberInitialization) {
     cpptoc::FileOriginTracker tracker(AST->getASTContext().getSourceManager());
     tracker.addUserHeaderPath("<stdin>");
     clang::TranslationUnitDecl *C_TU = clang::TranslationUnitDecl::Create(AST->getASTContext());
-    CppToCVisitor visitor(AST->getASTContext(), builder, tracker, C_TU);
+    TargetContext& targetCtx = TargetContext::getInstance();
+    CppToCVisitor visitor(AST->getASTContext(), builder, targetCtx, tracker, C_TU, nullptr);
 
     visitor.TraverseDecl(AST->getASTContext().getTranslationUnitDecl());
 
@@ -2111,7 +2139,8 @@ TEST_F(InheritanceTestFixture, ReferenceMemberInitialization) {
     cpptoc::FileOriginTracker tracker(AST->getASTContext().getSourceManager());
     tracker.addUserHeaderPath("<stdin>");
     clang::TranslationUnitDecl *C_TU = clang::TranslationUnitDecl::Create(AST->getASTContext());
-    CppToCVisitor visitor(AST->getASTContext(), builder, tracker, C_TU);
+    TargetContext& targetCtx = TargetContext::getInstance();
+    CppToCVisitor visitor(AST->getASTContext(), builder, targetCtx, tracker, C_TU, nullptr);
 
     visitor.TraverseDecl(AST->getASTContext().getTranslationUnitDecl());
 
@@ -2171,7 +2200,8 @@ TEST_F(InheritanceTestFixture, SimpleDelegatingConstructor) {
     cpptoc::FileOriginTracker tracker(AST->getASTContext().getSourceManager());
     tracker.addUserHeaderPath("<stdin>");
     clang::TranslationUnitDecl *C_TU = clang::TranslationUnitDecl::Create(AST->getASTContext());
-    CppToCVisitor visitor(AST->getASTContext(), builder, tracker, C_TU);
+    TargetContext& targetCtx = TargetContext::getInstance();
+    CppToCVisitor visitor(AST->getASTContext(), builder, targetCtx, tracker, C_TU, nullptr);
     visitor.TraverseDecl(AST->getASTContext().getTranslationUnitDecl());
 
     // Get delegating constructor: Point(int) → Point__ctor_1
@@ -2214,7 +2244,8 @@ TEST_F(InheritanceTestFixture, DelegationChain) {
     cpptoc::FileOriginTracker tracker(AST->getASTContext().getSourceManager());
     tracker.addUserHeaderPath("<stdin>");
     clang::TranslationUnitDecl *C_TU = clang::TranslationUnitDecl::Create(AST->getASTContext());
-    CppToCVisitor visitor(AST->getASTContext(), builder, tracker, C_TU);
+    TargetContext& targetCtx = TargetContext::getInstance();
+    CppToCVisitor visitor(AST->getASTContext(), builder, targetCtx, tracker, C_TU, nullptr);
     visitor.TraverseDecl(AST->getASTContext().getTranslationUnitDecl());
 
     // Verify Data() delegates to Data(int) → Data__ctor_0 delegates to Data__ctor_1
@@ -2294,7 +2325,8 @@ TEST_F(InheritanceTestFixture, EntitySystemScenario) {
     cpptoc::FileOriginTracker tracker(AST->getASTContext().getSourceManager());
     tracker.addUserHeaderPath("<stdin>");
     clang::TranslationUnitDecl *C_TU = clang::TranslationUnitDecl::Create(AST->getASTContext());
-    CppToCVisitor visitor(AST->getASTContext(), builder, tracker, C_TU);
+    TargetContext& targetCtx = TargetContext::getInstance();
+    CppToCVisitor visitor(AST->getASTContext(), builder, targetCtx, tracker, C_TU, nullptr);
 
     visitor.TraverseDecl(AST->getASTContext().getTranslationUnitDecl());
 
@@ -2363,7 +2395,8 @@ TEST_F(InheritanceTestFixture, ContainerClassScenario) {
     cpptoc::FileOriginTracker tracker(AST->getASTContext().getSourceManager());
     tracker.addUserHeaderPath("<stdin>");
     clang::TranslationUnitDecl *C_TU = clang::TranslationUnitDecl::Create(AST->getASTContext());
-    CppToCVisitor visitor(AST->getASTContext(), builder, tracker, C_TU);
+    TargetContext& targetCtx = TargetContext::getInstance();
+    CppToCVisitor visitor(AST->getASTContext(), builder, targetCtx, tracker, C_TU, nullptr);
 
     visitor.TraverseDecl(AST->getASTContext().getTranslationUnitDecl());
 
@@ -2438,7 +2471,8 @@ TEST_F(InheritanceTestFixture, ResourceManagerScenario) {
     cpptoc::FileOriginTracker tracker(AST->getASTContext().getSourceManager());
     tracker.addUserHeaderPath("<stdin>");
     clang::TranslationUnitDecl *C_TU = clang::TranslationUnitDecl::Create(AST->getASTContext());
-    CppToCVisitor visitor(AST->getASTContext(), builder, tracker, C_TU);
+    TargetContext& targetCtx = TargetContext::getInstance();
+    CppToCVisitor visitor(AST->getASTContext(), builder, targetCtx, tracker, C_TU, nullptr);
 
     visitor.TraverseDecl(AST->getASTContext().getTranslationUnitDecl());
 

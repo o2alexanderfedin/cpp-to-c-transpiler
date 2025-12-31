@@ -11,6 +11,7 @@
 #include "clang/Frontend/ASTUnit.h"
 #include "clang/AST/DeclCXX.h"
 #include "../../../include/NameMangler.h"
+#include "../../../include/OverloadRegistry.h"
 #include <cassert>
 
 using namespace clang;
@@ -36,7 +37,9 @@ TEST_F(NameManglerStaticMemberTest, SimpleStaticMember) {
     std::unique_ptr<ASTUnit> AST = buildASTForStaticMember(code);
     ASSERT_TRUE(AST) << "Failed to parse C++ code";
 
-    NameMangler mangler(AST->getASTContext());
+    cpptoc::OverloadRegistry& registry = cpptoc::OverloadRegistry::getInstance();
+    registry.reset();
+    NameMangler mangler(AST->getASTContext(), registry);
 
     // Find Counter and static member 'count'
     auto *TU = AST->getASTContext().getTranslationUnitDecl();
@@ -83,7 +86,9 @@ TEST_F(NameManglerStaticMemberTest, NestedClassStaticMember) {
     std::unique_ptr<ASTUnit> AST = buildASTForStaticMember(code);
     ASSERT_TRUE(AST) << "Failed to parse C++ code";
 
-    NameMangler mangler(AST->getASTContext());
+    cpptoc::OverloadRegistry& registry = cpptoc::OverloadRegistry::getInstance();
+    registry.reset();
+    NameMangler mangler(AST->getASTContext(), registry);
 
     // Find Outer::Inner and static member 'value'
     auto *TU = AST->getASTContext().getTranslationUnitDecl();
@@ -135,7 +140,9 @@ TEST_F(NameManglerStaticMemberTest, NamespacedClassStaticMember) {
     std::unique_ptr<ASTUnit> AST = buildASTForStaticMember(code);
     ASSERT_TRUE(AST) << "Failed to parse C++ code";
 
-    NameMangler mangler(AST->getASTContext());
+    cpptoc::OverloadRegistry& registry = cpptoc::OverloadRegistry::getInstance();
+    registry.reset();
+    NameMangler mangler(AST->getASTContext(), registry);
 
     // Find ns::Config and static member 'maxSize'
     auto *TU = AST->getASTContext().getTranslationUnitDecl();
@@ -189,7 +196,9 @@ TEST_F(NameManglerStaticMemberTest, NamespaceNestedClassStaticMember) {
     std::unique_ptr<ASTUnit> AST = buildASTForStaticMember(code);
     ASSERT_TRUE(AST) << "Failed to parse C++ code";
 
-    NameMangler mangler(AST->getASTContext());
+    cpptoc::OverloadRegistry& registry = cpptoc::OverloadRegistry::getInstance();
+    registry.reset();
+    NameMangler mangler(AST->getASTContext(), registry);
 
     // Find app::Outer::Inner and static member 'data'
     auto *TU = AST->getASTContext().getTranslationUnitDecl();
@@ -247,7 +256,9 @@ TEST_F(NameManglerStaticMemberTest, NoCollisionWithMethodNames) {
     std::unique_ptr<ASTUnit> AST = buildASTForStaticMember(code);
     ASSERT_TRUE(AST) << "Failed to parse C++ code";
 
-    NameMangler mangler(AST->getASTContext());
+    cpptoc::OverloadRegistry& registry = cpptoc::OverloadRegistry::getInstance();
+    registry.reset();
+    NameMangler mangler(AST->getASTContext(), registry);
 
     // Find Test class, static member 'getValue', and method 'getValue()'
     auto *TU = AST->getASTContext().getTranslationUnitDecl();
@@ -301,7 +312,9 @@ TEST_F(NameManglerStaticMemberTest, MultipleStaticMembers) {
     std::unique_ptr<ASTUnit> AST = buildASTForStaticMember(code);
     ASSERT_TRUE(AST) << "Failed to parse C++ code";
 
-    NameMangler mangler(AST->getASTContext());
+    cpptoc::OverloadRegistry& registry = cpptoc::OverloadRegistry::getInstance();
+    registry.reset();
+    NameMangler mangler(AST->getASTContext(), registry);
 
     // Find Stats class and all static members
     auto *TU = AST->getASTContext().getTranslationUnitDecl();
@@ -351,7 +364,9 @@ TEST_F(NameManglerStaticMemberTest, ConsistencyWithMethodMangling) {
     std::unique_ptr<ASTUnit> AST = buildASTForStaticMember(code);
     ASSERT_TRUE(AST) << "Failed to parse C++ code";
 
-    NameMangler mangler(AST->getASTContext());
+    cpptoc::OverloadRegistry& registry = cpptoc::OverloadRegistry::getInstance();
+    registry.reset();
+    NameMangler mangler(AST->getASTContext(), registry);
 
     // Find utils::Helper, static member, and method
     auto *TU = AST->getASTContext().getTranslationUnitDecl();

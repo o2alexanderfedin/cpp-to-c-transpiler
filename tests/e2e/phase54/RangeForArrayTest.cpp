@@ -6,7 +6,6 @@
  */
 
 #include <gtest/gtest.h>
-#include "CppToCVisitor.h"
 #include "CodeGenerator.h"
 #include "clang/Tooling/Tooling.h"
 #include "clang/Frontend/ASTUnit.h"

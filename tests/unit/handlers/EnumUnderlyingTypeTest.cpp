@@ -19,7 +19,6 @@
  * 10. Scoped enum with type vs unscoped enum
  */
 
-#include "CppToCVisitor.h"
 #include "CNodeBuilder.h"
 #include "FileOriginTracker.h"
 #include "clang/Tooling/Tooling.h"

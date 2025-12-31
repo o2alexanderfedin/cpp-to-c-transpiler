@@ -13,6 +13,7 @@
 
 #include <gtest/gtest.h>
 #include "../include/NameMangler.h"
+#include "../include/OverloadRegistry.h"
 #include <clang/AST/ASTContext.h>
 #include <clang/AST/Decl.h>
 #include <clang/Frontend/ASTUnit.h>
@@ -103,7 +104,9 @@ TEST_F(ExternCManglingTest, ExternCFunctionUnmangled) {
         ASSERT_TRUE(FD->isExternC()) << "Function should have C linkage";
 
         // Create NameMangler and check mangling
-        NameMangler mangler(AST->getASTContext());
+        cpptoc::OverloadRegistry& registry = cpptoc::OverloadRegistry::getInstance();
+        registry.reset();
+        NameMangler mangler(AST->getASTContext(), registry);
         std::string mangledName = mangler.mangleFunctionName(FD);
 
         // CRITICAL: extern "C" function should return UNMANGLED name
@@ -127,7 +130,9 @@ TEST_F(ExternCManglingTest, CppFunctionMangled) {
         ASSERT_TRUE(!FD->isExternC()) << "Function should NOT have C linkage";
 
         // Create NameMangler and check mangling
-        NameMangler mangler(AST->getASTContext());
+        cpptoc::OverloadRegistry& registry = cpptoc::OverloadRegistry::getInstance();
+        registry.reset();
+        NameMangler mangler(AST->getASTContext(), registry);
         std::string mangledName = mangler.mangleFunctionName(FD);
 
         // C++ function at global scope has no namespace, so name should be unchanged
@@ -155,7 +160,9 @@ TEST_F(ExternCManglingTest, ExternCInNamespace) {
         ASSERT_TRUE(FD->isExternC()) << "Function should have C linkage";
 
         // Create NameMangler and check mangling
-        NameMangler mangler(AST->getASTContext());
+        cpptoc::OverloadRegistry& registry = cpptoc::OverloadRegistry::getInstance();
+        registry.reset();
+        NameMangler mangler(AST->getASTContext(), registry);
         std::string mangledName = mangler.mangleFunctionName(FD);
 
         // CRITICAL: extern "C" suppresses namespace mangling
@@ -179,7 +186,9 @@ TEST_F(ExternCManglingTest, MixedNamespace) {
         ASSERT_TRUE(cppFunc != nullptr) << "Function 'cppFunc' not found";
         ASSERT_TRUE(!cppFunc->isExternC()) << "cppFunc should NOT have C linkage";
 
-        NameMangler mangler(AST->getASTContext());
+        cpptoc::OverloadRegistry& registry = cpptoc::OverloadRegistry::getInstance();
+        registry.reset();
+        NameMangler mangler(AST->getASTContext(), registry);
         std::string cppMangledName = mangler.mangleFunctionName(cppFunc);
 
         // C++ function in namespace SHOULD be mangled with namespace prefix
@@ -211,7 +220,9 @@ TEST_F(ExternCManglingTest, ExternCNoParameterEncoding) {
 
         ASSERT_TRUE(FD->isExternC()) << "Function should have C linkage";
 
-        NameMangler mangler(AST->getASTContext());
+        cpptoc::OverloadRegistry& registry = cpptoc::OverloadRegistry::getInstance();
+        registry.reset();
+        NameMangler mangler(AST->getASTContext(), registry);
         std::string mangledName = mangler.mangleFunctionName(FD);
 
         // extern "C" function should be EXACTLY "process" - no param encoding

@@ -23,9 +23,8 @@ using namespace clang;
 // ============================================================================
 
 TemplateMonomorphizer::TemplateMonomorphizer(ASTContext& Context,
-                                            NameMangler& Mangler,
                                             CNodeBuilder& Builder)
-    : Context(Context), Mangler(Mangler), Builder(Builder) {
+    : Context(Context), Builder(Builder) {
 }
 
 // ============================================================================

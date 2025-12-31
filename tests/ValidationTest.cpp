@@ -4,7 +4,6 @@
 #include <gtest/gtest.h>
 #include "CodeGenerator.h"
 #include "CNodeBuilder.h"
-#include "CppToCVisitor.h"
 #include "clang/AST/ASTContext.h"
 #include "clang/Frontend/ASTUnit.h"
 #include "clang/Tooling/Tooling.h"

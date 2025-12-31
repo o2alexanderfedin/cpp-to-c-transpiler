@@ -16,6 +16,7 @@
 #include "TemplateMonomorphizer.h"
 #include "TemplateExtractor.h"
 #include "NameMangler.h"
+#include "OverloadRegistry.h"
 #include "CNodeBuilder.h"
 #include "clang/Tooling/Tooling.h"
 #include "clang/Frontend/ASTUnit.h"
@@ -144,7 +145,9 @@ TEST(STLIntegrationTest, VectorIntMonomorphization) {
     ASSERT_FALSE(classInstantiations.empty()) << "Expected std::vector<int> instantiation";
 
     // Monomorphize std::vector<int>
-    NameMangler mangler(Context);
+    cpptoc::OverloadRegistry& registry = cpptoc::OverloadRegistry::getInstance();
+    registry.reset();
+    NameMangler mangler(Context, registry);
     CNodeBuilder builder(Context);
     TemplateMonomorphizer monomorphizer(Context, mangler, builder);
 
@@ -224,7 +227,9 @@ TEST(STLIntegrationTest, VectorIntMethodGeneration) {
     auto classInstantiations = extractor.getClassInstantiations();
     ASSERT_FALSE(classInstantiations.empty()) << "Expected std::vector<int> instantiation";
 
-    NameMangler mangler(Context);
+    cpptoc::OverloadRegistry& registry = cpptoc::OverloadRegistry::getInstance();
+    registry.reset();
+    NameMangler mangler(Context, registry);
     CNodeBuilder builder(Context);
     TemplateMonomorphizer monomorphizer(Context, mangler, builder);
 
@@ -296,7 +301,9 @@ TEST(STLIntegrationTest, EndToEndIntegration) {
     ASSERT_FALSE(classInstantiations.empty()) << "Template extraction failed";
 
     // Step 2: Monomorphize
-    NameMangler mangler(Context);
+    cpptoc::OverloadRegistry& registry = cpptoc::OverloadRegistry::getInstance();
+    registry.reset();
+    NameMangler mangler(Context, registry);
     CNodeBuilder builder(Context);
     TemplateMonomorphizer monomorphizer(Context, mangler, builder);
 
