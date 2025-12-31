@@ -228,6 +228,8 @@ add_library(cpptoc_core STATIC
     src/dispatch/StaticMethodHandler.cpp
     src/dispatch/InstanceMethodHandler.cpp
     src/dispatch/VirtualMethodHandler.cpp
+    src/dispatch/ConstructorHandler.cpp
+    src/dispatch/DestructorHandler.cpp
     src/mapping/PathMapper.cpp
     src/mapping/DeclLocationMapper.cpp
     # NodeMapper is header-only template - no .cpp files needed
@@ -296,6 +298,8 @@ add_library(cpptoc_core STATIC
     src/handlers/StatementHandler.cpp
     src/handlers/ExpressionHandler.cpp
     src/handlers/VariableHandler.cpp
+    src/handlers/MethodHandler.cpp
+    src/handlers/DestructorHandler.cpp
     src/handlers/EnumTranslator.cpp
     src/handlers/TypeAliasAnalyzer.cpp
     src/handlers/TypedefGenerator.cpp

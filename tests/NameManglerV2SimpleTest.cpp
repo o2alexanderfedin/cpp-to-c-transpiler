@@ -7,7 +7,7 @@
 #include "clang/Tooling/Tooling.h"
 #include "clang/Frontend/ASTUnit.h"
 #include "clang/AST/DeclCXX.h"
-#include "../include/NameMangler_v2.h"
+#include "../include/NameMangler.h"
 #include <iostream>
 
 using namespace clang;

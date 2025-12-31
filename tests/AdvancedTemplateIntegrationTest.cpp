@@ -27,7 +27,6 @@
 #include "../include/TemplateExtractor.h"
 #include "../include/TemplateMonomorphizer.h"
 #include "../include/NameMangler.h"
-#include "../include/OverloadRegistry.h"
 #include "../include/CNodeBuilder.h"
 #include "../include/CodeGenerator.h"
 #include <cassert>
@@ -155,12 +154,9 @@ TEST_F(AdvancedTemplateIntegrationTest, TemplateClassWithArrayMembers) {
     auto classInsts = extractor.getClassInstantiations();
     ASSERT_TRUE(classInsts.size() >= 2) << "Should find at least 2 Container instantiations";
 
-    // Verify Container instantiations
-    cpptoc::OverloadRegistry& registry = cpptoc::OverloadRegistry::getInstance();
-    registry.reset();
-    NameMangler mangler(AST->getASTContext(), registry);
+    // Verify Container instantiations using functional API
     CNodeBuilder builder(AST->getASTContext());
-    TemplateMonomorphizer mono(AST->getASTContext(), mangler, builder);
+    TemplateMonomorphizer mono(AST->getASTContext(), builder);
 
     bool foundContainer = false;
     for (auto* inst : classInsts) {
@@ -240,12 +236,9 @@ TEST_F(AdvancedTemplateIntegrationTest, TemplateFunctionOverloading) {
     auto funcInsts = extractor.getFunctionInstantiations();
     ASSERT_TRUE(funcInsts.size() >= 3) << "Should find at least 3 template function instantiations";
 
-    // Verify template function instantiations
-    cpptoc::OverloadRegistry& registry = cpptoc::OverloadRegistry::getInstance();
-    registry.reset();
-    NameMangler mangler(AST->getASTContext(), registry);
+    // Verify template function instantiations using functional API
     CNodeBuilder builder(AST->getASTContext());
-    TemplateMonomorphizer mono(AST->getASTContext(), mangler, builder);
+    TemplateMonomorphizer mono(AST->getASTContext(), builder);
 
     bool foundProcess = false;
     bool foundProcessPointer = false;
@@ -326,12 +319,9 @@ TEST_F(AdvancedTemplateIntegrationTest, AutoTypeDeduction) {
     auto funcInsts = extractor.getFunctionInstantiations();
     ASSERT_TRUE(funcInsts.size() >= 4) << "Should find multiple auto function instantiations";
 
-    // Verify auto types are correctly deduced and translated
-    cpptoc::OverloadRegistry& registry = cpptoc::OverloadRegistry::getInstance();
-    registry.reset();
-    NameMangler mangler(AST->getASTContext(), registry);
+    // Verify auto types are correctly deduced and translated using functional API
     CNodeBuilder builder(AST->getASTContext());
-    TemplateMonomorphizer mono(AST->getASTContext(), mangler, builder);
+    TemplateMonomorphizer mono(AST->getASTContext(), builder);
 
     bool foundMultiply = false;
     bool foundGetMax = false;
@@ -455,12 +445,9 @@ TEST_F(AdvancedTemplateIntegrationTest, MultiFileTemplateProject) {
     // Should find square<int>, square<double>, cube<int>, cube<double>
     ASSERT_TRUE(funcInsts.size() >= 2) << "Should find template function instantiations";
 
-    // Verify correct instantiations
-    cpptoc::OverloadRegistry& registry = cpptoc::OverloadRegistry::getInstance();
-    registry.reset();
-    NameMangler mangler(AST->getASTContext(), registry);
+    // Verify correct instantiations using functional API
     CNodeBuilder builder(AST->getASTContext());
-    TemplateMonomorphizer mono(AST->getASTContext(), mangler, builder);
+    TemplateMonomorphizer mono(AST->getASTContext(), builder);
 
     bool foundIntContainer = false;
     bool foundDoubleContainer = false;
@@ -556,12 +543,9 @@ TEST_F(AdvancedTemplateIntegrationTest, MultipleTypeParameters) {
     // Should find add instantiations
     ASSERT_TRUE(funcInsts.size() >= 2) << "Should find add instantiations";
 
-    // Verify multi-parameter templates are correctly handled
-    cpptoc::OverloadRegistry& registry = cpptoc::OverloadRegistry::getInstance();
-    registry.reset();
-    NameMangler mangler(AST->getASTContext(), registry);
+    // Verify multi-parameter templates are correctly handled using functional API
     CNodeBuilder builder(AST->getASTContext());
-    TemplateMonomorphizer mono(AST->getASTContext(), mangler, builder);
+    TemplateMonomorphizer mono(AST->getASTContext(), builder);
 
     for (auto* inst : classInsts) {
         RecordDecl* CStruct = mono.monomorphizeClass(inst);
@@ -644,12 +628,9 @@ TEST_F(AdvancedTemplateIntegrationTest, NestedTemplatesWithAuto) {
     // Should find makeWrapper instantiations
     ASSERT_TRUE(funcInsts.size() >= 2) << "Should find multiple makeWrapper instantiations";
 
-    // Verify nested templates are correctly handled
-    cpptoc::OverloadRegistry& registry = cpptoc::OverloadRegistry::getInstance();
-    registry.reset();
-    NameMangler mangler(AST->getASTContext(), registry);
+    // Verify nested templates are correctly handled using functional API
     CNodeBuilder builder(AST->getASTContext());
-    TemplateMonomorphizer mono(AST->getASTContext(), mangler, builder);
+    TemplateMonomorphizer mono(AST->getASTContext(), builder);
 
     for (auto* inst : classInsts) {
         RecordDecl* CStruct = mono.monomorphizeClass(inst);

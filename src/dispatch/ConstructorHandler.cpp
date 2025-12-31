@@ -15,7 +15,7 @@
  * 8. Return C FunctionDecl with void return type
  */
 
-#include "handlers/ConstructorHandler.h"
+#include "dispatch/ConstructorHandler.h"
 #include "handlers/HandlerContext.h"
 #include "MultipleInheritanceAnalyzer.h"
 #include "NameMangler.h"
