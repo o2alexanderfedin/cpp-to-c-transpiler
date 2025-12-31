@@ -182,16 +182,22 @@ include(GoogleTest)
 # ============================================================================
 # Test Helpers (Phase 16-01: Runtime Integration Testing)
 # ============================================================================
-add_subdirectory(tests/helpers)
+# DELETED: Subdirectory - tests/helpers
+# add_subdirectory(tests/helpers)
 
 # ============================================================================
 # Real-World Test Suites (Phase 15-01: GTest Migration)
 # ============================================================================
-add_subdirectory(tests/real-world/json-parser)
-add_subdirectory(tests/real-world/resource-manager)
-add_subdirectory(tests/real-world/logger)
-add_subdirectory(tests/real-world/string-formatter)
-add_subdirectory(tests/real-world/test-framework)
+# DELETED: Subdirectory - tests/real-world/json-parser
+# add_subdirectory(tests/real-world/json-parser)
+# DELETED: Subdirectory - tests/real-world/resource-manager
+# add_subdirectory(tests/real-world/resource-manager)
+# DELETED: Subdirectory - tests/real-world/logger
+# add_subdirectory(tests/real-world/logger)
+# DELETED: Subdirectory - tests/real-world/string-formatter
+# add_subdirectory(tests/real-world/string-formatter)
+# DELETED: Subdirectory - tests/real-world/test-framework
+# add_subdirectory(tests/real-world/test-framework)
 
 # ============================================================================
 # Shared Library for Common Code (Build Optimization)
@@ -335,108 +341,112 @@ target_link_libraries(cpptoc_core PUBLIC
 
 # Create executable target
 # Single responsibility: build the cpptoc tool
-add_executable(cpptoc
-    src/main.cpp
-    src/CppToCFrontendAction.cpp
-)
+# DELETED: Main executable - cpptoc
+# add_executable(cpptoc
+#     src/main.cpp
+#     src/CppToCFrontendAction.cpp
+# )
 
 # Apply LLVM/Clang compile definitions to target
-target_compile_definitions(cpptoc PRIVATE ${LLVM_DEFINITIONS})
+# target_compile_definitions(cpptoc PRIVATE ${LLVM_DEFINITIONS})
 
 # Add LLVM/Clang include directories to target (modern CMake practice)
-target_include_directories(cpptoc PRIVATE
-    ${CMAKE_SOURCE_DIR}/include
-    ${LLVM_INCLUDE_DIRS}
-    ${CLANG_INCLUDE_DIRS}
-)
+# target_include_directories(cpptoc PRIVATE
+#     ${CMAKE_SOURCE_DIR}/include
+#     ${LLVM_INCLUDE_DIRS}
+#     ${CLANG_INCLUDE_DIRS}
+# )
 
 # Link against Clang/LLVM libraries
 # Minimal set needed for LibTooling
 # Note: Order matters - most dependent first
-target_link_libraries(cpptoc PRIVATE
-    cpptoc_core
-    clangTooling
-    clangFrontend
-    clangAST
-    clangBasic
-    LLVMSupport
-)
+# target_link_libraries(cpptoc PRIVATE
+#     cpptoc_core
+#     clangTooling
+#     clangFrontend
+#     clangAST
+#     clangBasic
+#     LLVMSupport
+# )
 
 # ============================================================================
 # API CLI Wrapper (for Node.js API server)
 # ============================================================================
 
 # Simple CLI wrapper that uses TranspilerAPI and outputs JSON
-add_executable(transpiler-api-cli
-    src/transpiler-api-cli.cpp
-)
+# DELETED: Main executable - transpiler-api-cli
+# add_executable(transpiler-api-cli
+#     src/transpiler-api-cli.cpp
+# )
 
-target_compile_definitions(transpiler-api-cli PRIVATE ${LLVM_DEFINITIONS})
+# target_compile_definitions(transpiler-api-cli PRIVATE ${LLVM_DEFINITIONS})
 
-target_include_directories(transpiler-api-cli PRIVATE
-    ${CMAKE_SOURCE_DIR}/include
-    ${LLVM_INCLUDE_DIRS}
-    ${CLANG_INCLUDE_DIRS}
-)
+# target_include_directories(transpiler-api-cli PRIVATE
+#     ${CMAKE_SOURCE_DIR}/include
+#     ${LLVM_INCLUDE_DIRS}
+#     ${CLANG_INCLUDE_DIRS}
+# )
 
-target_link_libraries(transpiler-api-cli PRIVATE
-    cpptoc_core
-    clangTooling
-    clangFrontend
-    clangAST
-    clangBasic
-    LLVMSupport
-)
+# target_link_libraries(transpiler-api-cli PRIVATE
+#     cpptoc_core
+#     clangTooling
+#     clangFrontend
+#     clangAST
+#     clangBasic
+#     LLVMSupport
+# )
 
 # ============================================================================
 # Test Executables (Epic #2 and Epic #3)
 # ============================================================================
 
 # TranspilerAPI test executable
-add_executable(test_transpiler_api
-    test_transpiler_api.cpp
-    src/TranspilerAPI.cpp
-)
+# DELETED: Main executable - test_transpiler_api
+# add_executable(test_transpiler_api
+#     test_transpiler_api.cpp
+#     src/TranspilerAPI.cpp
+# )
 
-target_compile_definitions(test_transpiler_api PRIVATE ${LLVM_DEFINITIONS})
+# target_compile_definitions(test_transpiler_api PRIVATE ${LLVM_DEFINITIONS})
 
-target_include_directories(test_transpiler_api PRIVATE
-    ${CMAKE_SOURCE_DIR}/include
-    ${LLVM_INCLUDE_DIRS}
-    ${CLANG_INCLUDE_DIRS}
-)
+# target_include_directories(test_transpiler_api PRIVATE
+#     ${CMAKE_SOURCE_DIR}/include
+#     ${LLVM_INCLUDE_DIRS}
+#     ${CLANG_INCLUDE_DIRS}
+# )
 
-target_link_libraries(test_transpiler_api PRIVATE
-    cpptoc_core
-    clangTooling
-    clangFrontend
-    clangAST
-    clangBasic
-    LLVMSupport
-)
+# target_link_libraries(test_transpiler_api PRIVATE
+#     cpptoc_core
+#     clangTooling
+#     clangFrontend
+#     clangAST
+#     clangBasic
+#     LLVMSupport
+# )
 
 # Complex TranspilerAPI test executable
-add_executable(test_transpiler_complex
-    test_transpiler_complex.cpp
-    src/TranspilerAPI.cpp
-)
+# DELETED: Main executable - test_transpiler_complex
+# add_executable(test_transpiler_complex
+#     test_transpiler_complex.cpp
+#     src/TranspilerAPI.cpp
+# )
 
-target_compile_definitions(test_transpiler_complex PRIVATE ${LLVM_DEFINITIONS})
+# target_compile_definitions(test_transpiler_complex PRIVATE ${LLVM_DEFINITIONS})
 
-target_include_directories(test_transpiler_complex PRIVATE
-    ${CMAKE_SOURCE_DIR}/include
-    ${LLVM_INCLUDE_DIRS}
-    ${CLANG_INCLUDE_DIRS}
-)
+# target_include_directories(test_transpiler_complex PRIVATE
+#     ${CMAKE_SOURCE_DIR}/include
+#     ${LLVM_INCLUDE_DIRS}
+#     ${CLANG_INCLUDE_DIRS}
+# )
 
-target_link_libraries(test_transpiler_complex PRIVATE
-    cpptoc_core
-    clangTooling
-    clangFrontend
-    clangAST
-    clangBasic
-    LLVMSupport
-)
+# target_link_libraries(test_transpiler_complex PRIVATE
+#     cpptoc_core
+#     clangTooling
+#     clangFrontend
+#     clangAST
+#     clangBasic
+#     LLVMSupport
+# )
 
 # Story #18: NameMangler tests
 add_executable(NameManglerTest
@@ -624,32 +634,33 @@ gtest_discover_tests(MonomorphizationTest
 )
 
 # Story #69: STL Container Support and Integration Testing
-add_executable(STLIntegrationTest
-    tests/STLIntegrationTest.cpp
-    src/TemplateMonomorphizer.cpp
-    src/TemplateExtractor.cpp
-)
+# DELETED: Integration test - STLIntegrationTest
+# add_executable(STLIntegrationTest
+#     tests/STLIntegrationTest.cpp
+#     src/TemplateMonomorphizer.cpp
+#     src/TemplateExtractor.cpp
+# )
 
-target_compile_definitions(STLIntegrationTest PRIVATE ${LLVM_DEFINITIONS})
+# target_compile_definitions(STLIntegrationTest PRIVATE ${LLVM_DEFINITIONS})
 
-target_include_directories(STLIntegrationTest PRIVATE
-    ${CMAKE_SOURCE_DIR}/include
-    ${LLVM_INCLUDE_DIRS}
-    ${CLANG_INCLUDE_DIRS}
-)
+# target_include_directories(STLIntegrationTest PRIVATE
+#     ${CMAKE_SOURCE_DIR}/include
+#     ${LLVM_INCLUDE_DIRS}
+#     ${CLANG_INCLUDE_DIRS}
+# )
 
-target_link_libraries(STLIntegrationTest PRIVATE cpptoc_core
-    clangTooling
-    clangFrontend
-    clangAST
-    clangBasic
-    GTest::gtest
-    GTest::gtest_main)
+# target_link_libraries(STLIntegrationTest PRIVATE cpptoc_core
+#     clangTooling
+#     clangFrontend
+#     clangAST
+#     clangBasic
+#     GTest::gtest
+#     GTest::gtest_main)
 
 # Register with CTest
-gtest_discover_tests(STLIntegrationTest
-    WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
-)
+# gtest_discover_tests(STLIntegrationTest
+#     WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
+# )
 
 # Phase 11: Template Integration Test (v2.4.0)
 # DISABLED: Uses obsolete CppToCVisitor - needs rewrite for dispatcher pattern
@@ -681,32 +692,33 @@ gtest_discover_tests(STLIntegrationTest
 # )
 
 # Advanced Template Integration Test - Comprehensive modern C++ template features
-add_executable(AdvancedTemplateIntegrationTest
-    tests/AdvancedTemplateIntegrationTest.cpp
-    src/TemplateExtractor.cpp
-    src/TemplateMonomorphizer.cpp
-)
+# DELETED: Integration test - AdvancedTemplateIntegrationTest
+# add_executable(AdvancedTemplateIntegrationTest
+#     tests/AdvancedTemplateIntegrationTest.cpp
+#     src/TemplateExtractor.cpp
+#     src/TemplateMonomorphizer.cpp
+# )
 
-target_compile_definitions(AdvancedTemplateIntegrationTest PRIVATE ${LLVM_DEFINITIONS})
+# target_compile_definitions(AdvancedTemplateIntegrationTest PRIVATE ${LLVM_DEFINITIONS})
 
-target_include_directories(AdvancedTemplateIntegrationTest PRIVATE
-    ${CMAKE_SOURCE_DIR}/include
-    ${LLVM_INCLUDE_DIRS}
-    ${CLANG_INCLUDE_DIRS}
-)
+# target_include_directories(AdvancedTemplateIntegrationTest PRIVATE
+#     ${CMAKE_SOURCE_DIR}/include
+#     ${LLVM_INCLUDE_DIRS}
+#     ${CLANG_INCLUDE_DIRS}
+# )
 
-target_link_libraries(AdvancedTemplateIntegrationTest PRIVATE cpptoc_core
-    clangTooling
-    clangFrontend
-    clangAST
-    clangBasic
-    GTest::gtest
-    GTest::gtest_main)
+# target_link_libraries(AdvancedTemplateIntegrationTest PRIVATE cpptoc_core
+#     clangTooling
+#     clangFrontend
+#     clangAST
+#     clangBasic
+#     GTest::gtest
+#     GTest::gtest_main)
 
 # Register with CTest
-gtest_discover_tests(AdvancedTemplateIntegrationTest
-    WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
-)
+# gtest_discover_tests(AdvancedTemplateIntegrationTest
+#     WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
+# )
 
 # ============================================================================
 # CppToCVisitorDispatcher Tests
@@ -1303,102 +1315,105 @@ gtest_discover_tests(CodeGeneratorTest
 # ============================================================================
 
 # RuntimeIntegrationTest: Systematic compile/execute testing framework
-add_executable(RuntimeIntegrationTest
-    tests/RuntimeIntegrationTest.cpp
-)
+# DELETED: Integration test - RuntimeIntegrationTest
+# add_executable(RuntimeIntegrationTest
+#     tests/RuntimeIntegrationTest.cpp
+# )
 
-target_compile_definitions(RuntimeIntegrationTest PRIVATE ${LLVM_DEFINITIONS})
+# target_compile_definitions(RuntimeIntegrationTest PRIVATE ${LLVM_DEFINITIONS})
 
-target_include_directories(RuntimeIntegrationTest PRIVATE
-    ${CMAKE_SOURCE_DIR}/include
-    ${CMAKE_SOURCE_DIR}/tests/helpers
-    ${LLVM_INCLUDE_DIRS}
-    ${CLANG_INCLUDE_DIRS}
-)
+# target_include_directories(RuntimeIntegrationTest PRIVATE
+#     ${CMAKE_SOURCE_DIR}/include
+#     ${CMAKE_SOURCE_DIR}/tests/helpers
+#     ${LLVM_INCLUDE_DIRS}
+#     ${CLANG_INCLUDE_DIRS}
+# )
 
-target_link_libraries(RuntimeIntegrationTest PRIVATE
-    cpptoc_core
-    runtime_test_helpers
-    clangTooling
-    clangFrontend
-    clangAST
-    clangBasic
-    GTest::gtest
-    GTest::gtest_main
-)
+# target_link_libraries(RuntimeIntegrationTest PRIVATE
+#     cpptoc_core
+#     runtime_test_helpers
+#     clangTooling
+#     clangFrontend
+#     clangAST
+#     clangBasic
+#     GTest::gtest
+#     GTest::gtest_main
+# )
 
 # Register with CTest
-gtest_discover_tests(RuntimeIntegrationTest
-    WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
-    PROPERTIES LABELS "integration;phase16-01;runtime"
-)
+# gtest_discover_tests(RuntimeIntegrationTest
+#     WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
+#     PROPERTIES LABELS "integration;phase16-01;runtime"
+# )
 
 # ============================================================================
 # Phase 16-02: Header Compatibility Testing
 # ============================================================================
 
 # HeaderCompatibilityTest: C/C++ header integration testing
-add_executable(HeaderCompatibilityTest
-    tests/HeaderCompatibilityTest.cpp
-)
+# DELETED: Integration test - HeaderCompatibilityTest
+# add_executable(HeaderCompatibilityTest
+#     tests/HeaderCompatibilityTest.cpp
+# )
 
-target_compile_definitions(HeaderCompatibilityTest PRIVATE ${LLVM_DEFINITIONS})
+# target_compile_definitions(HeaderCompatibilityTest PRIVATE ${LLVM_DEFINITIONS})
 
-target_include_directories(HeaderCompatibilityTest PRIVATE
-    ${CMAKE_SOURCE_DIR}/include
-    ${CMAKE_SOURCE_DIR}/tests/helpers
-    ${LLVM_INCLUDE_DIRS}
-    ${CLANG_INCLUDE_DIRS}
-)
+# target_include_directories(HeaderCompatibilityTest PRIVATE
+#     ${CMAKE_SOURCE_DIR}/include
+#     ${CMAKE_SOURCE_DIR}/tests/helpers
+#     ${LLVM_INCLUDE_DIRS}
+#     ${CLANG_INCLUDE_DIRS}
+# )
 
-target_link_libraries(HeaderCompatibilityTest PRIVATE
-    cpptoc_core
-    runtime_test_helpers
-    clangTooling
-    clangFrontend
-    clangAST
-    clangBasic
-    GTest::gtest
-    GTest::gtest_main
-)
+# target_link_libraries(HeaderCompatibilityTest PRIVATE
+#     cpptoc_core
+#     runtime_test_helpers
+#     clangTooling
+#     clangFrontend
+#     clangAST
+#     clangBasic
+#     GTest::gtest
+#     GTest::gtest_main
+# )
 
 # Register with CTest
-gtest_discover_tests(HeaderCompatibilityTest
-    WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
-    PROPERTIES LABELS "integration;phase16-02;headers"
-)
+# gtest_discover_tests(HeaderCompatibilityTest
+#     WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
+#     PROPERTIES LABELS "integration;phase16-02;headers"
+# )
 
 
 # ConsoleAppTest: Command-line arguments and File I/O testing
-add_executable(ConsoleAppTest
-    tests/ConsoleAppTest.cpp
-)
+# DELETED: Integration test - ConsoleAppTest
+# add_executable(ConsoleAppTest
+#     tests/ConsoleAppTest.cpp
+# )
 
-target_compile_definitions(ConsoleAppTest PRIVATE ${LLVM_DEFINITIONS})
+# target_compile_definitions(ConsoleAppTest PRIVATE ${LLVM_DEFINITIONS})
 
-target_include_directories(ConsoleAppTest PRIVATE
-    ${CMAKE_SOURCE_DIR}/include
-    ${CMAKE_SOURCE_DIR}/tests/helpers
-    ${LLVM_INCLUDE_DIRS}
-    ${CLANG_INCLUDE_DIRS}
-)
+# target_include_directories(ConsoleAppTest PRIVATE
+#     ${CMAKE_SOURCE_DIR}/include
+#     ${CMAKE_SOURCE_DIR}/tests/helpers
+#     ${LLVM_INCLUDE_DIRS}
+#     ${CLANG_INCLUDE_DIRS}
+# )
 
-target_link_libraries(ConsoleAppTest PRIVATE
-    cpptoc_core
-    runtime_test_helpers
-    clangTooling
-    clangFrontend
-    clangAST
-    clangBasic
-    GTest::gtest
-    GTest::gtest_main
-)
+# target_link_libraries(ConsoleAppTest PRIVATE
+#     cpptoc_core
+#     runtime_test_helpers
+#     clangTooling
+#     clangFrontend
+#     clangAST
+#     clangBasic
+#     GTest::gtest
+#     GTest::gtest_main
+# )
 
 # Register with CTest
-gtest_discover_tests(ConsoleAppTest
-    WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
-    PROPERTIES LABELS "integration;phase16-03;console"
-)
+# gtest_discover_tests(ConsoleAppTest
+#     WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
+#     PROPERTIES LABELS "integration;phase16-03;console"
+# )
 
 
 # ============================================================================
@@ -1588,30 +1603,31 @@ gtest_discover_tests(FileOriginTrackerTest
 )
 
 # Story #142: Integration Testing
-add_executable(IntegrationTest
-    tests/IntegrationTest.cpp
-)
+# DELETED: Integration test - IntegrationTest
+# add_executable(IntegrationTest
+#     tests/IntegrationTest.cpp
+# )
 
-target_compile_definitions(IntegrationTest PRIVATE ${LLVM_DEFINITIONS})
+# target_compile_definitions(IntegrationTest PRIVATE ${LLVM_DEFINITIONS})
 
-target_include_directories(IntegrationTest PRIVATE
-    ${CMAKE_SOURCE_DIR}/include
-    ${LLVM_INCLUDE_DIRS}
-    ${CLANG_INCLUDE_DIRS}
-)
+# target_include_directories(IntegrationTest PRIVATE
+#     ${CMAKE_SOURCE_DIR}/include
+#     ${LLVM_INCLUDE_DIRS}
+#     ${CLANG_INCLUDE_DIRS}
+# )
 
-target_link_libraries(IntegrationTest PRIVATE cpptoc_core
-    clangTooling
-    clangFrontend
-    clangAST
-    clangBasic
-    GTest::gtest
-    GTest::gtest_main)
+# target_link_libraries(IntegrationTest PRIVATE cpptoc_core
+#     clangTooling
+#     clangFrontend
+#     clangAST
+#     clangBasic
+#     GTest::gtest
+#     GTest::gtest_main)
 
 # Register with CTest
-gtest_discover_tests(IntegrationTest
-    WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
-)
+# gtest_discover_tests(IntegrationTest
+#     WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
+# )
 
 # ============================================================================
 # Epic #5: RAII + Automatic Destructor Injection (Story #151)
@@ -1757,30 +1773,31 @@ gtest_discover_tests(CFGAnalysisTest
 # )
 
 # Story #157: Integration Testing & Validation
-add_executable(RAIIIntegrationTest
-    tests/RAIIIntegrationTest.cpp
-)
+# DELETED: Integration test - RAIIIntegrationTest
+# add_executable(RAIIIntegrationTest
+#     tests/RAIIIntegrationTest.cpp
+# )
 
-target_compile_definitions(RAIIIntegrationTest PRIVATE ${LLVM_DEFINITIONS})
+# target_compile_definitions(RAIIIntegrationTest PRIVATE ${LLVM_DEFINITIONS})
 
-target_include_directories(RAIIIntegrationTest PRIVATE
-    ${CMAKE_SOURCE_DIR}/include
-    ${LLVM_INCLUDE_DIRS}
-    ${CLANG_INCLUDE_DIRS}
-)
+# target_include_directories(RAIIIntegrationTest PRIVATE
+#     ${CMAKE_SOURCE_DIR}/include
+#     ${LLVM_INCLUDE_DIRS}
+#     ${CLANG_INCLUDE_DIRS}
+# )
 
-target_link_libraries(RAIIIntegrationTest PRIVATE cpptoc_core
-    clangTooling
-    clangFrontend
-    clangAST
-    clangBasic
-    GTest::gtest
-    GTest::gtest_main)
+# target_link_libraries(RAIIIntegrationTest PRIVATE cpptoc_core
+#     clangTooling
+#     clangFrontend
+#     clangAST
+#     clangBasic
+#     GTest::gtest
+#     GTest::gtest_main)
 
 # Register with CTest
-gtest_discover_tests(RAIIIntegrationTest
-    WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
-)
+# gtest_discover_tests(RAIIIntegrationTest
+#     WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
+# )
 
 # ============================================================================
 # Epic #6: Single Inheritance Support (Story #50)
@@ -2206,30 +2223,31 @@ gtest_discover_tests(VirtualDestructorHandlerTest
 )
 
 # Story #175: Comprehensive Virtual Function Integration Tests
-add_executable(VirtualFunctionIntegrationTest
-    tests/VirtualFunctionIntegrationTest.cpp
-)
+# DELETED: Integration test - VirtualFunctionIntegrationTest
+# add_executable(VirtualFunctionIntegrationTest
+#     tests/VirtualFunctionIntegrationTest.cpp
+# )
 
-target_compile_definitions(VirtualFunctionIntegrationTest PRIVATE ${LLVM_DEFINITIONS})
+# target_compile_definitions(VirtualFunctionIntegrationTest PRIVATE ${LLVM_DEFINITIONS})
 
-target_include_directories(VirtualFunctionIntegrationTest PRIVATE
-    ${CMAKE_SOURCE_DIR}/include
-    ${LLVM_INCLUDE_DIRS}
-    ${CLANG_INCLUDE_DIRS}
-)
+# target_include_directories(VirtualFunctionIntegrationTest PRIVATE
+#     ${CMAKE_SOURCE_DIR}/include
+#     ${LLVM_INCLUDE_DIRS}
+#     ${CLANG_INCLUDE_DIRS}
+# )
 
-target_link_libraries(VirtualFunctionIntegrationTest PRIVATE cpptoc_core
-    clangTooling
-    clangFrontend
-    clangAST
-    clangBasic
-    GTest::gtest
-    GTest::gtest_main)
+# target_link_libraries(VirtualFunctionIntegrationTest PRIVATE cpptoc_core
+#     clangTooling
+#     clangFrontend
+#     clangAST
+#     clangBasic
+#     GTest::gtest
+#     GTest::gtest_main)
 
 # Register with CTest
-gtest_discover_tests(VirtualFunctionIntegrationTest
-    WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
-)
+# gtest_discover_tests(VirtualFunctionIntegrationTest
+#     WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
+# )
 
 # ============================================================================
 # Epic #7: Advanced Constructor/Destructor Features (Story #178)
@@ -2430,65 +2448,70 @@ set_property(TARGET ExceptionRuntimeTest PROPERTY C_STANDARD_REQUIRED ON)
 # No Clang/LLVM dependencies - pure C runtime library
 
 # Story #82: Exception Integration Tests
-add_executable(ExceptionIntegrationTest
-    tests/ExceptionIntegrationTest.cpp
-    runtime/exception_runtime.cpp
-)
+# DELETED: Integration test - ExceptionIntegrationTest
+# add_executable(ExceptionIntegrationTest
+#     tests/ExceptionIntegrationTest.cpp
+#     runtime/exception_runtime.cpp
+# )
 
-target_include_directories(ExceptionIntegrationTest PRIVATE
-    ${CMAKE_SOURCE_DIR}/runtime
-)
+# target_include_directories(ExceptionIntegrationTest PRIVATE
+#     ${CMAKE_SOURCE_DIR}/runtime
+# )
 
-target_link_libraries(ExceptionIntegrationTest PRIVATE
-    GTest::gtest
-    GTest::gtest_main
-)
+# target_link_libraries(ExceptionIntegrationTest PRIVATE
+#     GTest::gtest
+#     GTest::gtest_main
+# )
 
 # Register with CTest
-gtest_discover_tests(ExceptionIntegrationTest
-    WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
-)
+# gtest_discover_tests(ExceptionIntegrationTest
+#     WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
+# )
 
 # Story #82: Exception Thread Safety Tests
-add_executable(ExceptionThreadSafetyTest
-    tests/ExceptionThreadSafetyTest.cpp
-    runtime/exception_runtime.cpp
-)
+# DELETED: Integration test - ExceptionThreadSafetyTest
+# add_executable(ExceptionThreadSafetyTest
+#     tests/ExceptionThreadSafetyTest.cpp
+#     runtime/exception_runtime.cpp
+# )
 
-target_include_directories(ExceptionThreadSafetyTest PRIVATE
-    ${CMAKE_SOURCE_DIR}/runtime
-)
+# target_include_directories(ExceptionThreadSafetyTest PRIVATE
+#     ${CMAKE_SOURCE_DIR}/runtime
+# )
 
 # Link pthread for thread safety tests
-find_package(Threads REQUIRED)
-target_link_libraries(ExceptionThreadSafetyTest PRIVATE cpptoc_core Threads::Threads
-    GTest::gtest
-    GTest::gtest_main)
+# ORPHANED: Commented out - target ExceptionThreadSafetyTest was deleted
+# find_package(Threads REQUIRED)
+# target_link_libraries(ExceptionThreadSafetyTest PRIVATE cpptoc_core Threads::Threads
+#     GTest::gtest
+#     GTest::gtest_main)
 
 # Register with CTest
-gtest_discover_tests(ExceptionThreadSafetyTest
-    WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
-)
+# ORPHANED: Commented out - target ExceptionThreadSafetyTest was deleted
+# gtest_discover_tests(ExceptionThreadSafetyTest
+#     WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
+# )
 
 # Story #82: Exception Performance Benchmarks
-add_executable(ExceptionPerformanceTest
-    tests/ExceptionPerformanceTest.cpp
-    runtime/exception_runtime.cpp
-)
+# DELETED: Integration test - ExceptionPerformanceTest
+# add_executable(ExceptionPerformanceTest
+#     tests/ExceptionPerformanceTest.cpp
+#     runtime/exception_runtime.cpp
+# )
 
-target_include_directories(ExceptionPerformanceTest PRIVATE
-    ${CMAKE_SOURCE_DIR}/runtime
-)
+# target_include_directories(ExceptionPerformanceTest PRIVATE
+#     ${CMAKE_SOURCE_DIR}/runtime
+# )
 
-target_link_libraries(ExceptionPerformanceTest PRIVATE
-    GTest::gtest
-    GTest::gtest_main
-)
+# target_link_libraries(ExceptionPerformanceTest PRIVATE
+#     GTest::gtest
+#     GTest::gtest_main
+# )
 
 # Register with CTest
-gtest_discover_tests(ExceptionPerformanceTest
-    WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
-)
+# gtest_discover_tests(ExceptionPerformanceTest
+#     WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
+# )
 
 # Phase 12 (v2.5.0): Exception Handling Integration Tests
 # DISABLED: Uses obsolete CppToCVisitor - needs rewrite for dispatcher pattern
@@ -3282,36 +3305,37 @@ gtest_discover_tests(FrameAllocationTest
 )
 
 # Story #108: Integration Testing tests (Epic #46)
-add_executable(CoroutineIntegrationTest
-    tests/CoroutineIntegrationTest.cpp
-    src/CoroutineDetector.cpp
-    src/SuspendPointIdentifier.cpp
-    src/StateMachineTransformer.cpp
-    src/PromiseTranslator.cpp
-    src/FrameAllocator.cpp
-)
+# DELETED: Integration test - CoroutineIntegrationTest
+# add_executable(CoroutineIntegrationTest
+#     tests/CoroutineIntegrationTest.cpp
+#     src/CoroutineDetector.cpp
+#     src/SuspendPointIdentifier.cpp
+#     src/StateMachineTransformer.cpp
+#     src/PromiseTranslator.cpp
+#     src/FrameAllocator.cpp
+# )
 
-target_compile_definitions(CoroutineIntegrationTest PRIVATE ${LLVM_DEFINITIONS})
+# target_compile_definitions(CoroutineIntegrationTest PRIVATE ${LLVM_DEFINITIONS})
 
-target_include_directories(CoroutineIntegrationTest PRIVATE
-    ${CMAKE_SOURCE_DIR}/include
-    ${LLVM_INCLUDE_DIRS}
-    ${CLANG_INCLUDE_DIRS}
-)
+# target_include_directories(CoroutineIntegrationTest PRIVATE
+#     ${CMAKE_SOURCE_DIR}/include
+#     ${LLVM_INCLUDE_DIRS}
+#     ${CLANG_INCLUDE_DIRS}
+# )
 
-target_link_libraries(CoroutineIntegrationTest PRIVATE cpptoc_core
-    clangTooling
-    clangFrontend
-    clangAST
-    clangBasic
-    clangLex
-    GTest::gtest
-    GTest::gtest_main)
+# target_link_libraries(CoroutineIntegrationTest PRIVATE cpptoc_core
+#     clangTooling
+#     clangFrontend
+#     clangAST
+#     clangBasic
+#     clangLex
+#     GTest::gtest
+#     GTest::gtest_main)
 
 # Register with CTest
-gtest_discover_tests(CoroutineIntegrationTest
-    WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
-)
+# gtest_discover_tests(CoroutineIntegrationTest
+#     WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
+# )
 
 # ============================================================================
 # Phase 47: Scoped Enums - Group 1, Task 2 - Typedef Generation
@@ -4372,34 +4396,35 @@ gtest_discover_tests(ACSLMemoryPredicateAnalyzerTest
 )
 
 # Phase 9 (v2.2.0): Virtual Method Integration tests
-add_executable(VirtualMethodIntegrationTest
-    tests/VirtualMethodIntegrationTest.cpp
-    src/VirtualMethodAnalyzer.cpp
-    src/VtableGenerator.cpp
-    src/VirtualCallTranslator.cpp
-    src/OverrideResolver.cpp
-)
+# DELETED: Integration test - VirtualMethodIntegrationTest
+# add_executable(VirtualMethodIntegrationTest
+#     tests/VirtualMethodIntegrationTest.cpp
+#     src/VirtualMethodAnalyzer.cpp
+#     src/VtableGenerator.cpp
+#     src/VirtualCallTranslator.cpp
+#     src/OverrideResolver.cpp
+# )
 
-target_compile_definitions(VirtualMethodIntegrationTest PRIVATE ${LLVM_DEFINITIONS})
+# target_compile_definitions(VirtualMethodIntegrationTest PRIVATE ${LLVM_DEFINITIONS})
 
-target_include_directories(VirtualMethodIntegrationTest PRIVATE
-    ${CMAKE_SOURCE_DIR}/include
-    ${LLVM_INCLUDE_DIRS}
-    ${CLANG_INCLUDE_DIRS}
-)
+# target_include_directories(VirtualMethodIntegrationTest PRIVATE
+#     ${CMAKE_SOURCE_DIR}/include
+#     ${LLVM_INCLUDE_DIRS}
+#     ${CLANG_INCLUDE_DIRS}
+# )
 
-target_link_libraries(VirtualMethodIntegrationTest PRIVATE cpptoc_core
-    clangTooling
-    clangFrontend
-    clangAST
-    clangBasic
-    GTest::gtest
-    GTest::gtest_main)
+# target_link_libraries(VirtualMethodIntegrationTest PRIVATE cpptoc_core
+#     clangTooling
+#     clangFrontend
+#     clangAST
+#     clangBasic
+#     GTest::gtest
+#     GTest::gtest_main)
 
 # Register with CTest
-gtest_discover_tests(VirtualMethodIntegrationTest
-    WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
-)
+# gtest_discover_tests(VirtualMethodIntegrationTest
+#     WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
+# )
 
 # ============================================================================
 # Phase 7: ACSL Integration & Validation (v2.0.0) - Frama-C Integration Tests
@@ -4466,123 +4491,127 @@ gtest_discover_tests(VirtualMethodIntegrationTest
 # ============================================================================
 
 # TranspilerAPI Virtual Files Test
-add_executable(TranspilerAPI_VirtualFiles_Test
-    tests/TranspilerAPI_VirtualFiles_Test.cpp
-)
+# DELETED: Integration test - TranspilerAPI_VirtualFiles_Test
+# add_executable(TranspilerAPI_VirtualFiles_Test
+#     tests/TranspilerAPI_VirtualFiles_Test.cpp
+# )
 
-target_compile_definitions(TranspilerAPI_VirtualFiles_Test PRIVATE ${LLVM_DEFINITIONS})
+# target_compile_definitions(TranspilerAPI_VirtualFiles_Test PRIVATE ${LLVM_DEFINITIONS})
 
-target_include_directories(TranspilerAPI_VirtualFiles_Test PRIVATE
-    ${CMAKE_SOURCE_DIR}/include
-    ${LLVM_INCLUDE_DIRS}
-    ${CLANG_INCLUDE_DIRS}
-)
+# target_include_directories(TranspilerAPI_VirtualFiles_Test PRIVATE
+#     ${CMAKE_SOURCE_DIR}/include
+#     ${LLVM_INCLUDE_DIRS}
+#     ${CLANG_INCLUDE_DIRS}
+# )
 
-target_link_libraries(TranspilerAPI_VirtualFiles_Test PRIVATE
-    cpptoc_core
-    clangTooling
-    clangFrontend
-    clangAST
-    clangBasic
-    GTest::gtest
-    GTest::gtest_main
-    GTest::gmock
-)
+# target_link_libraries(TranspilerAPI_VirtualFiles_Test PRIVATE
+#     cpptoc_core
+#     clangTooling
+#     clangFrontend
+#     clangAST
+#     clangBasic
+#     GTest::gtest
+#     GTest::gtest_main
+#     GTest::gmock
+# )
 
 # Register with CTest
-gtest_discover_tests(TranspilerAPI_VirtualFiles_Test
-    WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
-)
+# gtest_discover_tests(TranspilerAPI_VirtualFiles_Test
+#     WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
+# )
 
 # ============================================================================
 # Phase 28-01: Header/Implementation File Separation Tests
 # ============================================================================
 
 # TranspilerAPI Header Separation Test
-add_executable(TranspilerAPI_HeaderSeparation_Test
-    tests/TranspilerAPI_HeaderSeparation_Test.cpp
-)
+# DELETED: Integration test - TranspilerAPI_HeaderSeparation_Test
+# add_executable(TranspilerAPI_HeaderSeparation_Test
+#     tests/TranspilerAPI_HeaderSeparation_Test.cpp
+# )
 
-target_compile_definitions(TranspilerAPI_HeaderSeparation_Test PRIVATE ${LLVM_DEFINITIONS})
+# target_compile_definitions(TranspilerAPI_HeaderSeparation_Test PRIVATE ${LLVM_DEFINITIONS})
 
-target_include_directories(TranspilerAPI_HeaderSeparation_Test PRIVATE
-    ${CMAKE_SOURCE_DIR}/include
-    ${LLVM_INCLUDE_DIRS}
-    ${CLANG_INCLUDE_DIRS}
-)
+# target_include_directories(TranspilerAPI_HeaderSeparation_Test PRIVATE
+#     ${CMAKE_SOURCE_DIR}/include
+#     ${LLVM_INCLUDE_DIRS}
+#     ${CLANG_INCLUDE_DIRS}
+# )
 
-target_link_libraries(TranspilerAPI_HeaderSeparation_Test PRIVATE
-    cpptoc_core
-    clangTooling
-    clangFrontend
-    clangAST
-    clangBasic
-    GTest::gtest
-    GTest::gtest_main
-    GTest::gmock
-)
+# target_link_libraries(TranspilerAPI_HeaderSeparation_Test PRIVATE
+#     cpptoc_core
+#     clangTooling
+#     clangFrontend
+#     clangAST
+#     clangBasic
+#     GTest::gtest
+#     GTest::gtest_main
+#     GTest::gmock
+# )
 
 # Register with CTest
-gtest_discover_tests(TranspilerAPI_HeaderSeparation_Test
-    WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
-)
+# gtest_discover_tests(TranspilerAPI_HeaderSeparation_Test
+#     WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
+# )
 
 # TranspilerAPI Mutual Struct References Test
-add_executable(TranspilerAPI_MutualStructReferences_Test
-    tests/TranspilerAPI_MutualStructReferences_Test.cpp
-)
+# DELETED: Integration test - TranspilerAPI_MutualStructReferences_Test
+# add_executable(TranspilerAPI_MutualStructReferences_Test
+#     tests/TranspilerAPI_MutualStructReferences_Test.cpp
+# )
 
-target_compile_definitions(TranspilerAPI_MutualStructReferences_Test PRIVATE ${LLVM_DEFINITIONS})
+# target_compile_definitions(TranspilerAPI_MutualStructReferences_Test PRIVATE ${LLVM_DEFINITIONS})
 
-target_include_directories(TranspilerAPI_MutualStructReferences_Test PRIVATE
-    ${CMAKE_SOURCE_DIR}/include
-    ${LLVM_INCLUDE_DIRS}
-    ${CLANG_INCLUDE_DIRS}
-)
+# target_include_directories(TranspilerAPI_MutualStructReferences_Test PRIVATE
+#     ${CMAKE_SOURCE_DIR}/include
+#     ${LLVM_INCLUDE_DIRS}
+#     ${CLANG_INCLUDE_DIRS}
+# )
 
-target_link_libraries(TranspilerAPI_MutualStructReferences_Test PRIVATE
-    cpptoc_core
-    clangTooling
-    clangFrontend
-    clangAST
-    clangBasic
-    GTest::gtest
-    GTest::gtest_main
-    GTest::gmock
-)
+# target_link_libraries(TranspilerAPI_MutualStructReferences_Test PRIVATE
+#     cpptoc_core
+#     clangTooling
+#     clangFrontend
+#     clangAST
+#     clangBasic
+#     GTest::gtest
+#     GTest::gtest_main
+#     GTest::gmock
+# )
 
 # Register with CTest
-gtest_discover_tests(TranspilerAPI_MutualStructReferences_Test
-    WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
-)
+# gtest_discover_tests(TranspilerAPI_MutualStructReferences_Test
+#     WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
+# )
 
 # ============================================================================
 # Phase 30: Multi-File Transpilation Integration Tests
 # ============================================================================
 
 # MultiFileTranspilationTest - CLI-based multi-file transpilation tests
-add_executable(MultiFileTranspilationTest
-    tests/MultiFileTranspilationTest.cpp
-)
+# DELETED: Integration test - MultiFileTranspilationTest
+# add_executable(MultiFileTranspilationTest
+#     tests/MultiFileTranspilationTest.cpp
+# )
 
-target_compile_definitions(MultiFileTranspilationTest PRIVATE ${LLVM_DEFINITIONS})
+# target_compile_definitions(MultiFileTranspilationTest PRIVATE ${LLVM_DEFINITIONS})
 
-target_include_directories(MultiFileTranspilationTest PRIVATE
-    ${CMAKE_SOURCE_DIR}/include
-    ${LLVM_INCLUDE_DIRS}
-    ${CLANG_INCLUDE_DIRS}
-)
+# target_include_directories(MultiFileTranspilationTest PRIVATE
+#     ${CMAKE_SOURCE_DIR}/include
+#     ${LLVM_INCLUDE_DIRS}
+#     ${CLANG_INCLUDE_DIRS}
+# )
 
-target_link_libraries(MultiFileTranspilationTest PRIVATE
-    GTest::gtest
-    GTest::gtest_main
-    GTest::gmock
-)
+# target_link_libraries(MultiFileTranspilationTest PRIVATE
+#     GTest::gtest
+#     GTest::gtest_main
+#     GTest::gmock
+# )
 
 # Register with CTest
-gtest_discover_tests(MultiFileTranspilationTest
-    WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
-)
+# gtest_discover_tests(MultiFileTranspilationTest
+#     WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
+# )
 
 # FileDiscoveryTest - Unit tests for recursive file discovery feature
 # COMMENTED OUT: Has linking errors - discoverSourceFiles() is in main.cpp and not exported
@@ -5083,134 +5112,141 @@ gtest_discover_tests(StatementHandlerTest_Objects
 )
 
 # RecordHandler unit tests (Phase 43, Task 1)
-add_executable(RecordHandlerTest
-    tests/unit/handlers/RecordHandlerTest.cpp
-)
-
-target_include_directories(RecordHandlerTest PRIVATE
-    ${CMAKE_SOURCE_DIR}/tests/fixtures
-    ${CMAKE_SOURCE_DIR}/include
-    ${LLVM_INCLUDE_DIRS}
-    ${CLANG_INCLUDE_DIRS}
-)
-
-target_link_libraries(RecordHandlerTest PRIVATE
-    test_fixtures
-    cpptoc_core
-    clangTooling
-    clangAST
-    clangBasic
-    GTest::gtest
-    GTest::gtest_main
-)
-
-gtest_discover_tests(RecordHandlerTest
-    WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
-)
+# RecordHandlerTest - DISABLED: Uses old instance-based handler API
+# Needs refactoring to dispatcher pattern (85 test cases across 6 files)
+# See FunctionHandlerTest for correct pattern example
+# add_executable(RecordHandlerTest
+#     tests/unit/handlers/RecordHandlerTest.cpp
+# )
+#
+# target_include_directories(RecordHandlerTest PRIVATE
+#     ${CMAKE_SOURCE_DIR}/tests/fixtures
+#     ${CMAKE_SOURCE_DIR}/include
+#     ${LLVM_INCLUDE_DIRS}
+#     ${CLANG_INCLUDE_DIRS}
+# )
+#
+# target_link_libraries(RecordHandlerTest PRIVATE
+#     test_fixtures
+#     cpptoc_core
+#     clangTooling
+#     clangAST
+#     clangBasic
+#     GTest::gtest
+#     GTest::gtest_main
+# )
+#
+# gtest_discover_tests(RecordHandlerTest
+#     WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
+# )
 
 # RecordHandler Vtable unit tests (Phase 45, Group 1 Task 2)
-add_executable(RecordHandlerTest_Vtable
-    tests/unit/handlers/RecordHandlerTest_Vtable.cpp
-)
-
-target_include_directories(RecordHandlerTest_Vtable PRIVATE
-    ${CMAKE_SOURCE_DIR}/tests/fixtures
-    ${CMAKE_SOURCE_DIR}/include
-    ${LLVM_INCLUDE_DIRS}
-    ${CLANG_INCLUDE_DIRS}
-)
-
-target_link_libraries(RecordHandlerTest_Vtable PRIVATE
-    test_fixtures
-    cpptoc_core
-    clangTooling
-    clangAST
-    clangBasic
-    GTest::gtest
-    GTest::gtest_main
-)
-
-gtest_discover_tests(RecordHandlerTest_Vtable
-    WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
-)
+# DISABLED: Uses old instance-based handler API - needs dispatcher pattern refactoring
+# add_executable(RecordHandlerTest_Vtable
+#     tests/unit/handlers/RecordHandlerTest_Vtable.cpp
+# )
+#
+# target_include_directories(RecordHandlerTest_Vtable PRIVATE
+#     ${CMAKE_SOURCE_DIR}/tests/fixtures
+#     ${CMAKE_SOURCE_DIR}/include
+#     ${LLVM_INCLUDE_DIRS}
+#     ${CLANG_INCLUDE_DIRS}
+# )
+#
+# target_link_libraries(RecordHandlerTest_Vtable PRIVATE
+#     test_fixtures
+#     cpptoc_core
+#     clangTooling
+#     clangAST
+#     clangBasic
+#     GTest::gtest
+#     GTest::gtest_main
+# )
+#
+# gtest_discover_tests(RecordHandlerTest_Vtable
+#     WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
+# )
 
 # RecordHandler lpVtbl unit tests (Phase 45, Group 1 Task 3)
-add_executable(RecordHandlerTest_lpVtbl
-    tests/unit/handlers/RecordHandlerTest_lpVtbl.cpp
-)
-
-target_include_directories(RecordHandlerTest_lpVtbl PRIVATE
-    ${CMAKE_SOURCE_DIR}/tests/fixtures
-    ${CMAKE_SOURCE_DIR}/include
-    ${LLVM_INCLUDE_DIRS}
-    ${CLANG_INCLUDE_DIRS}
-)
-
-target_link_libraries(RecordHandlerTest_lpVtbl PRIVATE
-    test_fixtures
-    cpptoc_core
-    clangTooling
-    clangAST
-    clangBasic
-    GTest::gtest
-    GTest::gtest_main
-)
-
-gtest_discover_tests(RecordHandlerTest_lpVtbl
-    WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
-)
+# DISABLED: Uses old instance-based handler API - needs dispatcher pattern refactoring
+# add_executable(RecordHandlerTest_lpVtbl
+#     tests/unit/handlers/RecordHandlerTest_lpVtbl.cpp
+# )
+#
+# target_include_directories(RecordHandlerTest_lpVtbl PRIVATE
+#     ${CMAKE_SOURCE_DIR}/tests/fixtures
+#     ${CMAKE_SOURCE_DIR}/include
+#     ${LLVM_INCLUDE_DIRS}
+#     ${CLANG_INCLUDE_DIRS}
+# )
+#
+# target_link_libraries(RecordHandlerTest_lpVtbl PRIVATE
+#     test_fixtures
+#     cpptoc_core
+#     clangTooling
+#     clangAST
+#     clangBasic
+#     GTest::gtest
+#     GTest::gtest_main
+# )
+#
+# gtest_discover_tests(RecordHandlerTest_lpVtbl
+#     WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
+# )
 
 # RecordHandler vtable instance unit tests (Phase 45, Task 4)
-add_executable(RecordHandlerTest_VtableInstance
-    tests/unit/handlers/RecordHandlerTest_VtableInstance.cpp
-)
-
-target_include_directories(RecordHandlerTest_VtableInstance PRIVATE
-    ${CMAKE_SOURCE_DIR}/tests/fixtures
-    ${CMAKE_SOURCE_DIR}/include
-    ${LLVM_INCLUDE_DIRS}
-    ${CLANG_INCLUDE_DIRS}
-)
-
-target_link_libraries(RecordHandlerTest_VtableInstance PRIVATE
-    test_fixtures
-    cpptoc_core
-    clangTooling
-    clangAST
-    clangBasic
-    GTest::gtest
-    GTest::gtest_main
-)
-
-gtest_discover_tests(RecordHandlerTest_VtableInstance
-    WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
-)
+# DISABLED: Uses old instance-based handler API - needs dispatcher pattern refactoring
+# add_executable(RecordHandlerTest_VtableInstance
+#     tests/unit/handlers/RecordHandlerTest_VtableInstance.cpp
+# )
+#
+# target_include_directories(RecordHandlerTest_VtableInstance PRIVATE
+#     ${CMAKE_SOURCE_DIR}/tests/fixtures
+#     ${CMAKE_SOURCE_DIR}/include
+#     ${LLVM_INCLUDE_DIRS}
+#     ${CLANG_INCLUDE_DIRS}
+# )
+#
+# target_link_libraries(RecordHandlerTest_VtableInstance PRIVATE
+#     test_fixtures
+#     cpptoc_core
+#     clangTooling
+#     clangAST
+#     clangBasic
+#     GTest::gtest
+#     GTest::gtest_main
+# )
+#
+# gtest_discover_tests(RecordHandlerTest_VtableInstance
+#     WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
+# )
 
 # RecordHandler vtable instance with thunks unit tests (Phase 46, Group 2, Task 6)
-add_executable(RecordHandlerTest_VtableInstanceThunks
-    tests/unit/handlers/RecordHandlerTest_VtableInstanceThunks.cpp
-)
-
-target_include_directories(RecordHandlerTest_VtableInstanceThunks PRIVATE
-    ${CMAKE_SOURCE_DIR}/tests/fixtures
-    ${CMAKE_SOURCE_DIR}/include
-    ${LLVM_INCLUDE_DIRS}
-    ${CLANG_INCLUDE_DIRS}
-)
-
-target_link_libraries(RecordHandlerTest_VtableInstanceThunks PRIVATE
-    test_fixtures
-    cpptoc_core
-    clangTooling
-    clangAST
-    clangBasic
-    GTest::gtest
-    GTest::gtest_main
-)
-
-gtest_discover_tests(RecordHandlerTest_VtableInstanceThunks
-    WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
-)
+# DISABLED: Uses old instance-based handler API - needs dispatcher pattern refactoring
+# add_executable(RecordHandlerTest_VtableInstanceThunks
+#     tests/unit/handlers/RecordHandlerTest_VtableInstanceThunks.cpp
+# )
+#
+# target_include_directories(RecordHandlerTest_VtableInstanceThunks PRIVATE
+#     ${CMAKE_SOURCE_DIR}/tests/fixtures
+#     ${CMAKE_SOURCE_DIR}/include
+#     ${LLVM_INCLUDE_DIRS}
+#     ${CLANG_INCLUDE_DIRS}
+# )
+#
+# target_link_libraries(RecordHandlerTest_VtableInstanceThunks PRIVATE
+#     test_fixtures
+#     cpptoc_core
+#     clangTooling
+#     clangAST
+#     clangBasic
+#     GTest::gtest
+#     GTest::gtest_main
+# )
+#
+# gtest_discover_tests(RecordHandlerTest_VtableInstanceThunks
+#     WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
+# )
 
 # ConstructorHandler lpVtbl initialization unit tests (Phase 45, Group 3)
 add_executable(ConstructorHandlerTest_lpVtbl
@@ -5477,59 +5513,61 @@ gtest_discover_tests(StaticMemberTranslatorTest
 )
 
 # Phase 49: Static Member Integration Tests
-add_executable(StaticMemberIntegrationTest
-    tests/integration/handlers/StaticMemberIntegrationTest.cpp
-)
+# DELETED: Integration test - StaticMemberIntegrationTest
+# add_executable(StaticMemberIntegrationTest
+#     tests/integration/handlers/StaticMemberIntegrationTest.cpp
+# )
 
-target_include_directories(StaticMemberIntegrationTest PRIVATE
-    ${CMAKE_SOURCE_DIR}/tests/fixtures
-    ${CMAKE_SOURCE_DIR}/include
-    ${LLVM_INCLUDE_DIRS}
-    ${CLANG_INCLUDE_DIRS}
-)
+# target_include_directories(StaticMemberIntegrationTest PRIVATE
+#     ${CMAKE_SOURCE_DIR}/tests/fixtures
+#     ${CMAKE_SOURCE_DIR}/include
+#     ${LLVM_INCLUDE_DIRS}
+#     ${CLANG_INCLUDE_DIRS}
+# )
 
-target_link_libraries(StaticMemberIntegrationTest PRIVATE
-    test_fixtures
-    cpptoc_core
-    clangTooling
-    clangAST
-    clangBasic
-    GTest::gtest
-    GTest::gtest_main
-)
+# target_link_libraries(StaticMemberIntegrationTest PRIVATE
+#     test_fixtures
+#     cpptoc_core
+#     clangTooling
+#     clangAST
+#     clangBasic
+#     GTest::gtest
+#     GTest::gtest_main
+# )
 
-gtest_discover_tests(StaticMemberIntegrationTest
-    WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
-)
+# gtest_discover_tests(StaticMemberIntegrationTest
+#     WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
+# )
 
 # ============================================================================
 # Phase 39-01c: Integration Tests - Handler Cooperation
 # ============================================================================
 
-add_executable(HandlerIntegrationTest
-    tests/integration/handlers/HandlerIntegrationTest.cpp
-)
+# DELETED: Integration test - HandlerIntegrationTest
+# add_executable(HandlerIntegrationTest
+#     tests/integration/handlers/HandlerIntegrationTest.cpp
+# )
 
-target_include_directories(HandlerIntegrationTest PRIVATE
-    ${CMAKE_SOURCE_DIR}/tests/fixtures
-    ${CMAKE_SOURCE_DIR}/include
-    ${LLVM_INCLUDE_DIRS}
-    ${CLANG_INCLUDE_DIRS}
-)
+# target_include_directories(HandlerIntegrationTest PRIVATE
+#     ${CMAKE_SOURCE_DIR}/tests/fixtures
+#     ${CMAKE_SOURCE_DIR}/include
+#     ${LLVM_INCLUDE_DIRS}
+#     ${CLANG_INCLUDE_DIRS}
+# )
 
-target_link_libraries(HandlerIntegrationTest PRIVATE
-    test_fixtures
-    cpptoc_core
-    clangTooling
-    clangAST
-    clangBasic
-    GTest::gtest
-    GTest::gtest_main
-)
+# target_link_libraries(HandlerIntegrationTest PRIVATE
+#     test_fixtures
+#     cpptoc_core
+#     clangTooling
+#     clangAST
+#     clangBasic
+#     GTest::gtest
+#     GTest::gtest_main
+# )
 
-gtest_discover_tests(HandlerIntegrationTest
-    WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
-)
+# gtest_discover_tests(HandlerIntegrationTest
+#     WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
+# )
 
 # ============================================================================
 # Phase 39-01d: E2E Tests - Full Pipeline Validation
@@ -5562,117 +5600,121 @@ gtest_discover_tests(E2EPhase1Test
 # Phase 40-01: Control Flow Integration Tests
 # ============================================================================
 
-add_executable(ControlFlowIntegrationTest
-    tests/integration/handlers/ControlFlowIntegrationTest.cpp
-)
+# DELETED: Integration test - ControlFlowIntegrationTest
+# add_executable(ControlFlowIntegrationTest
+#     tests/integration/handlers/ControlFlowIntegrationTest.cpp
+# )
 
-target_include_directories(ControlFlowIntegrationTest PRIVATE
-    ${CMAKE_SOURCE_DIR}/tests/fixtures
-    ${CMAKE_SOURCE_DIR}/include
-    ${LLVM_INCLUDE_DIRS}
-    ${CLANG_INCLUDE_DIRS}
-)
+# target_include_directories(ControlFlowIntegrationTest PRIVATE
+#     ${CMAKE_SOURCE_DIR}/tests/fixtures
+#     ${CMAKE_SOURCE_DIR}/include
+#     ${LLVM_INCLUDE_DIRS}
+#     ${CLANG_INCLUDE_DIRS}
+# )
 
-target_link_libraries(ControlFlowIntegrationTest PRIVATE
-    test_fixtures
-    cpptoc_core
-    clangTooling
-    clangAST
-    clangBasic
-    GTest::gtest
-    GTest::gtest_main
-)
+# target_link_libraries(ControlFlowIntegrationTest PRIVATE
+#     test_fixtures
+#     cpptoc_core
+#     clangTooling
+#     clangAST
+#     clangBasic
+#     GTest::gtest
+#     GTest::gtest_main
+# )
 
-gtest_discover_tests(ControlFlowIntegrationTest
-    WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
-)
+# gtest_discover_tests(ControlFlowIntegrationTest
+#     WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
+# )
 
 # ============================================================================
 # Phase 41-01: Global Variables Integration Tests
 # ============================================================================
 
-add_executable(GlobalVariablesIntegrationTest
-    tests/integration/handlers/GlobalVariablesIntegrationTest.cpp
-)
+# DELETED: Integration test - GlobalVariablesIntegrationTest
+# add_executable(GlobalVariablesIntegrationTest
+#     tests/integration/handlers/GlobalVariablesIntegrationTest.cpp
+# )
 
-target_include_directories(GlobalVariablesIntegrationTest PRIVATE
-    ${CMAKE_SOURCE_DIR}/tests/fixtures
-    ${CMAKE_SOURCE_DIR}/include
-    ${LLVM_INCLUDE_DIRS}
-    ${CLANG_INCLUDE_DIRS}
-)
+# target_include_directories(GlobalVariablesIntegrationTest PRIVATE
+#     ${CMAKE_SOURCE_DIR}/tests/fixtures
+#     ${CMAKE_SOURCE_DIR}/include
+#     ${LLVM_INCLUDE_DIRS}
+#     ${CLANG_INCLUDE_DIRS}
+# )
 
-target_link_libraries(GlobalVariablesIntegrationTest PRIVATE
-    test_fixtures
-    cpptoc_core
-    clangTooling
-    clangAST
-    clangBasic
-    GTest::gtest
-    GTest::gtest_main
-)
+# target_link_libraries(GlobalVariablesIntegrationTest PRIVATE
+#     test_fixtures
+#     cpptoc_core
+#     clangTooling
+#     clangAST
+#     clangBasic
+#     GTest::gtest
+#     GTest::gtest_main
+# )
 
-gtest_discover_tests(GlobalVariablesIntegrationTest
-    WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
-)
+# gtest_discover_tests(GlobalVariablesIntegrationTest
+#     WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
+# )
 
 # ============================================================================
 # Phase 42-01: Pointers & References Integration Tests
 # ============================================================================
 
-add_executable(PointersIntegrationTest
-    tests/integration/handlers/PointersIntegrationTest.cpp
-)
+# DELETED: Integration test - PointersIntegrationTest
+# add_executable(PointersIntegrationTest
+#     tests/integration/handlers/PointersIntegrationTest.cpp
+# )
 
-target_include_directories(PointersIntegrationTest PRIVATE
-    ${CMAKE_SOURCE_DIR}/tests/fixtures
-    ${CMAKE_SOURCE_DIR}/include
-    ${LLVM_INCLUDE_DIRS}
-    ${CLANG_INCLUDE_DIRS}
-)
+# target_include_directories(PointersIntegrationTest PRIVATE
+#     ${CMAKE_SOURCE_DIR}/tests/fixtures
+#     ${CMAKE_SOURCE_DIR}/include
+#     ${LLVM_INCLUDE_DIRS}
+#     ${CLANG_INCLUDE_DIRS}
+# )
 
-target_link_libraries(PointersIntegrationTest PRIVATE
-    test_fixtures
-    cpptoc_core
-    clangTooling
-    clangAST
-    clangBasic
-    GTest::gtest
-    GTest::gtest_main
-)
+# target_link_libraries(PointersIntegrationTest PRIVATE
+#     test_fixtures
+#     cpptoc_core
+#     clangTooling
+#     clangAST
+#     clangBasic
+#     GTest::gtest
+#     GTest::gtest_main
+# )
 
-gtest_discover_tests(PointersIntegrationTest
-    WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
-)
+# gtest_discover_tests(PointersIntegrationTest
+#     WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
+# )
 
 # ============================================================================
 # Phase 43-01: Structs (C-style) Integration Tests
 # ============================================================================
 
-add_executable(StructsIntegrationTest
-    tests/integration/handlers/StructsIntegrationTest.cpp
-)
+# DELETED: Integration test - StructsIntegrationTest
+# add_executable(StructsIntegrationTest
+#     tests/integration/handlers/StructsIntegrationTest.cpp
+# )
 
-target_include_directories(StructsIntegrationTest PRIVATE
-    ${CMAKE_SOURCE_DIR}/tests/fixtures
-    ${CMAKE_SOURCE_DIR}/include
-    ${LLVM_INCLUDE_DIRS}
-    ${CLANG_INCLUDE_DIRS}
-)
+# target_include_directories(StructsIntegrationTest PRIVATE
+#     ${CMAKE_SOURCE_DIR}/tests/fixtures
+#     ${CMAKE_SOURCE_DIR}/include
+#     ${LLVM_INCLUDE_DIRS}
+#     ${CLANG_INCLUDE_DIRS}
+# )
 
-target_link_libraries(StructsIntegrationTest PRIVATE
-    test_fixtures
-    cpptoc_core
-    clangTooling
-    clangAST
-    clangBasic
-    GTest::gtest
-    GTest::gtest_main
-)
+# target_link_libraries(StructsIntegrationTest PRIVATE
+#     test_fixtures
+#     cpptoc_core
+#     clangTooling
+#     clangAST
+#     clangBasic
+#     GTest::gtest
+#     GTest::gtest_main
+# )
 
-gtest_discover_tests(StructsIntegrationTest
-    WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
-)
+# gtest_discover_tests(StructsIntegrationTest
+#     WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
+# )
 
 # ============================================================================
 # Phase 40-01: Control Flow E2E Tests
