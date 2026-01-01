@@ -19,7 +19,7 @@
  * 10. MultipleThisUsages - Multiple uses of 'this' in same method
  */
 
-#include "handlers/HandlerContext.h"
+#include "helpers/UnitTestHelper.h"
 #include "CNodeBuilder.h"
 #include "clang/Tooling/Tooling.h"
 #include "clang/AST/RecursiveASTVisitor.h"
@@ -37,36 +37,12 @@ using namespace cpptoc;
  */
 class ExpressionHandlerThisTest : public ::testing::Test {
 protected:
-    std::unique_ptr<clang::ASTUnit> cppAST;
-    std::unique_ptr<clang::ASTUnit> cAST;
-    std::unique_ptr<clang::CNodeBuilder> builder;
-    std::unique_ptr<HandlerContext> context;
+    UnitTestContext ctx;
 
     void SetUp() override {
-        // Create real AST contexts using minimal code
-        cppAST = clang::tooling::buildASTFromCode("int dummy;");
-        cAST = clang::tooling::buildASTFromCode("int dummy2;");
-
-        ASSERT_NE(cppAST, nullptr) << "Failed to create C++ AST";
-        ASSERT_NE(cAST, nullptr) << "Failed to create C AST";
-
-        // Create builder and context
-        builder = std::make_unique<clang::CNodeBuilder>(cAST->getASTContext());
-        context = std::make_unique<HandlerContext>(
-            cppAST->getASTContext(),
-            cAST->getASTContext(),
-            *builder
-        );
+        ctx = createUnitTestContext();
     }
-
-    void TearDown() override {
-        context.reset();
-        builder.reset();
-        cAST.reset();
-        cppAST.reset();
-    }
-
-    /**
+/**
      * @brief Extract CXXThisExpr from C++ code
      * @param code C++ code containing 'this'
      * @return Extracted CXXThisExpr
@@ -199,7 +175,7 @@ TEST_F(ExpressionHandlerThisTest, ThisInMethodBody) {
 
     // Translate using ExpressionHandler
     ExpressionHandler handler;
-    clang::Expr* cExpr = handler.handleExpr(cppThis, *context);
+    clang::Expr* cExpr = handler.handleExpr(cppThis, ctx);
 
     // Verify translation
     ASSERT_NE(cExpr, nullptr) << "Translation should succeed";
@@ -244,7 +220,7 @@ TEST_F(ExpressionHandlerThisTest, ThisFieldAccess) {
 
     // Translate
     ExpressionHandler handler;
-    clang::Expr* cExpr = handler.handleExpr(cppThis, *context);
+    clang::Expr* cExpr = handler.handleExpr(cppThis, ctx);
 
     // Verify
     ASSERT_NE(cExpr, nullptr);
@@ -280,7 +256,7 @@ TEST_F(ExpressionHandlerThisTest, ThisMethodCall) {
 
     // Translate
     ExpressionHandler handler;
-    clang::Expr* cExpr = handler.handleExpr(cppThis, *context);
+    clang::Expr* cExpr = handler.handleExpr(cppThis, ctx);
 
     // Verify
     ASSERT_NE(cExpr, nullptr);
@@ -315,7 +291,7 @@ TEST_F(ExpressionHandlerThisTest, ReturnThis) {
 
     // Translate
     ExpressionHandler handler;
-    clang::Expr* cExpr = handler.handleExpr(cppThis, *context);
+    clang::Expr* cExpr = handler.handleExpr(cppThis, ctx);
 
     // Verify
     ASSERT_NE(cExpr, nullptr);
@@ -352,7 +328,7 @@ TEST_F(ExpressionHandlerThisTest, ThisInConstructor) {
 
     // Translate
     ExpressionHandler handler;
-    clang::Expr* cExpr = handler.handleExpr(cppThis, *context);
+    clang::Expr* cExpr = handler.handleExpr(cppThis, ctx);
 
     // Verify
     ASSERT_NE(cExpr, nullptr);
@@ -387,7 +363,7 @@ TEST_F(ExpressionHandlerThisTest, ThisInDestructor) {
 
     // Translate
     ExpressionHandler handler;
-    clang::Expr* cExpr = handler.handleExpr(cppThis, *context);
+    clang::Expr* cExpr = handler.handleExpr(cppThis, ctx);
 
     // Verify
     ASSERT_NE(cExpr, nullptr);
@@ -422,7 +398,7 @@ TEST_F(ExpressionHandlerThisTest, ThisInConstMethod) {
 
     // Translate
     ExpressionHandler handler;
-    clang::Expr* cExpr = handler.handleExpr(cppThis, *context);
+    clang::Expr* cExpr = handler.handleExpr(cppThis, ctx);
 
     // Verify
     ASSERT_NE(cExpr, nullptr);
@@ -458,7 +434,7 @@ TEST_F(ExpressionHandlerThisTest, ThisPointerArithmetic) {
 
     // Translate
     ExpressionHandler handler;
-    clang::Expr* cExpr = handler.handleExpr(cppThis, *context);
+    clang::Expr* cExpr = handler.handleExpr(cppThis, ctx);
 
     // Verify
     ASSERT_NE(cExpr, nullptr);
@@ -493,7 +469,7 @@ TEST_F(ExpressionHandlerThisTest, ThisComparison) {
 
     // Translate
     ExpressionHandler handler;
-    clang::Expr* cExpr = handler.handleExpr(cppThis, *context);
+    clang::Expr* cExpr = handler.handleExpr(cppThis, ctx);
 
     // Verify
     ASSERT_NE(cExpr, nullptr);
@@ -530,7 +506,7 @@ TEST_F(ExpressionHandlerThisTest, MultipleThisUsages) {
 
     // Translate
     ExpressionHandler handler;
-    clang::Expr* cExpr = handler.handleExpr(cppThis, *context);
+    clang::Expr* cExpr = handler.handleExpr(cppThis, ctx);
 
     // Verify
     ASSERT_NE(cExpr, nullptr);
@@ -565,7 +541,7 @@ TEST_F(ExpressionHandlerThisTest, ThisTypeVerification) {
 
     // Translate
     ExpressionHandler handler;
-    clang::Expr* cExpr = handler.handleExpr(cppThis, *context);
+    clang::Expr* cExpr = handler.handleExpr(cppThis, ctx);
 
     // Verify
     ASSERT_NE(cExpr, nullptr);

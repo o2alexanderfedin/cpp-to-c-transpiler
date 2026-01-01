@@ -1,0 +1,1027 @@
+/**
+ * @file ConstructorHandlerTest_BaseChaining.cpp
+ * @brief TDD tests for ConstructorHandler base constructor chaining (Phase 46 Group 3 Task 8)
+ *
+ * Following strict TDD: Red → Green → Refactor
+ *
+ * Test Plan (10 tests):
+ * 1. SingleBaseConstructorCall - Base constructor called in derived constructor
+ * 2. BaseConstructorInitializesOwnVtable - Base constructor sets base vtable
+ * 3. DerivedConstructorOverridesVtable - Derived constructor overrides base vtable
+ * 4. MultipleBasesAllInitialized - All base constructors called
+ * 5. ConstructorCallOrderCorrect - Bases called before derived code
+ * 6. NonPrimaryBasePointerAdjustment - Non-primary base gets adjusted pointer
+ * 7. DeepHierarchyConstructorChain - Base → Intermediate → Derived chain
+ * 8. ConstructorWithInitListAndBases - Init list handled with base calls
+ * 9. NoBaseConstructorsDefaultOnly - Default base constructors handled
+ * 10. VtableOverrideAfterAllBases - All base vtables overridden at end
+ *
+ * Expected Pattern (Multiple Inheritance):
+ * C++:
+ *   class Base1 {
+ *   public:
+ *       Base1() {}
+ *       virtual void foo();
+ *   };
+ *   class Base2 {
+ *   public:
+ *       Base2() {}
+ *       virtual void bar();
+ *   };
+ *   class Derived : public Base1, public Base2 {
+ *       int field;
+ *   public:
+ *       Derived() : field(0) {}
+ *   };
+ *
+ * C:
+ *   void Base1_init(struct Base1* this) {
+ *       this->lpVtbl = &Base1_vtable_instance;
+ *   }
+ *
+ *   void Base2_init(struct Base2* this) {
+ *       this->lpVtbl = &Base2_vtable_instance;
+ *   }
+ *
+ *   void Derived_init(struct Derived* this) {
+ *       // Step 1: Call base constructors (they initialize their own vtables)
+ *       Base1_init((struct Base1*)this);  // Primary base (no offset)
+ *       Base2_init((struct Base2*)((char*)this + offsetof(struct Derived, lpVtbl2)));  // Non-primary (with offset)
+ *
+ *       // Step 2: Override vtables with derived versions (polymorphism!)
+ *       this->lpVtbl = &Derived_Base1_vtable_instance;   // Override Base1's vtable
+ *       this->lpVtbl2 = &Derived_Base2_vtable_instance;  // Override Base2's vtable
+ *
+ *       // Step 3: Initialize derived fields
+ *       this->field = 0;
+ *   }
+ *
+ * Key Insight:
+ * - Base constructors set vtables to BASE vtable instances
+ * - Derived constructor OVERRIDES with DERIVED vtable instances
+ * - This ensures polymorphic behavior (calls resolve to most-derived implementation)
+ */
+
+#include "dispatch/ConstructorHandler.h"
+#include "helpers/UnitTestHelper.h"
+#include "CNodeBuilder.h"
+#include "MultipleInheritanceAnalyzer.h"
+#include "clang/Tooling/Tooling.h"
+#include "clang/AST/DeclCXX.h"
+#include "clang/AST/Stmt.h"
+#include "clang/AST/Expr.h"
+#include <gtest/gtest.h>
+#include <memory>
+
+using namespace cpptoc;
+
+/**
+ * @class ConstructorHandlerBaseChainingTest
+ * @brief Test fixture for base constructor chaining in multiple inheritance
+ */
+class ConstructorHandlerBaseChainingTest : public ::testing::Test {
+protected:
+    UnitTestContext ctx;
+
+    void SetUp() override {
+        ctx = createUnitTestContext();
+        ctx.dispatcher->registerHandler<ConstructorHandler>();
+    }
+/**
+     * @brief Build AST and return constructor from specific class
+     */
+    const clang::CXXConstructorDecl* getConstructorFromClass(
+        const std::string& code,
+        const std::string& className,
+        int constructorIndex = 0
+    ) {
+        cppAST = clang::tooling::buildASTFromCode(code);
+        EXPECT_NE(cppAST, nullptr);
+        if (!cppAST) return nullptr;
+
+        builder = std::make_unique<clang::CNodeBuilder>(cAST->getASTContext());
+        context = std::make_unique<HandlerContext>(
+            cppAST->getASTContext(),
+            cAST->getASTContext(),
+            *builder
+        );
+
+        auto& ctx = cppAST->getASTContext();
+        auto* TU = ctx.getTranslationUnitDecl();
+
+        for (auto* decl : TU->decls()) {
+            if (auto* cxxRecordDecl = llvm::dyn_cast<clang::CXXRecordDecl>(decl)) {
+                if (cxxRecordDecl->isImplicit()) continue;
+                if (cxxRecordDecl->getNameAsString() != className) continue;
+
+                int ctorIdx = 0;
+                for (auto* method : cxxRecordDecl->methods()) {
+                    if (auto* ctor = llvm::dyn_cast<clang::CXXConstructorDecl>(method)) {
+                        if (!ctor->isImplicit() && ctorIdx == constructorIndex) {
+                            return ctor;
+                        }
+                        if (!ctor->isImplicit()) ctorIdx++;
+                    }
+                }
+            }
+        }
+
+        return nullptr;
+    }
+
+    /**
+     * @brief Create C struct for testing (mimics RecordHandler)
+     */
+    clang::RecordDecl* createCStruct(
+        const std::string& className,
+        const std::vector<std::string>& vtblFields = {"lpVtbl"}
+    ) {
+        auto& cCtx = cAST->getASTContext();
+
+        clang::IdentifierInfo& II = cCtx.Idents.get(className);
+        auto* recordDecl = clang::RecordDecl::Create(
+            cCtx,
+            clang::TagTypeKind::Struct,
+            cCtx.getTranslationUnitDecl(),
+            clang::SourceLocation(),
+            clang::SourceLocation(),
+            &II
+        );
+
+        recordDecl->startDefinition();
+
+        // Add vtable fields
+        for (const auto& vtblFieldName : vtblFields) {
+            std::string vtableName = className + "_vtable";
+            clang::IdentifierInfo& vtableII = cCtx.Idents.get(vtableName);
+            auto* vtableStruct = clang::RecordDecl::Create(
+                cCtx,
+                clang::TagTypeKind::Struct,
+                cCtx.getTranslationUnitDecl(),
+                clang::SourceLocation(),
+                clang::SourceLocation(),
+                &vtableII
+            );
+            vtableStruct->startDefinition();
+            vtableStruct->completeDefinition();
+
+            clang::QualType vtableType = cCtx.getRecordType(vtableStruct);
+            vtableType = cCtx.getConstType(vtableType);
+            vtableType = cCtx.getPointerType(vtableType);
+
+            clang::IdentifierInfo& lpVtblII = cCtx.Idents.get(vtblFieldName);
+            auto* lpVtblField = clang::FieldDecl::Create(
+                cCtx,
+                recordDecl,
+                clang::SourceLocation(),
+                clang::SourceLocation(),
+                &lpVtblII,
+                vtableType,
+                cCtx.getTrivialTypeSourceInfo(vtableType),
+                nullptr,
+                false,
+                clang::ICIS_NoInit
+            );
+
+            recordDecl->addDecl(lpVtblField);
+        }
+
+        recordDecl->completeDefinition();
+        cCtx.getTranslationUnitDecl()->addDecl(recordDecl);
+
+        return recordDecl;
+    }
+
+    /**
+     * @brief Create base constructor function for testing
+     */
+    clang::FunctionDecl* createBaseConstructorFunction(
+        const std::string& baseName
+    ) {
+        auto& cCtx = cAST->getASTContext();
+        std::string funcName = baseName + "_init";
+
+        // Create 'this' parameter
+        auto* baseStruct = createCStruct(baseName, {"lpVtbl"});
+        clang::QualType baseType = cCtx.getRecordType(baseStruct);
+        clang::QualType ptrType = cCtx.getPointerType(baseType);
+
+        clang::IdentifierInfo& thisII = cCtx.Idents.get("this");
+        auto* thisParam = clang::ParmVarDecl::Create(
+            cCtx,
+            cCtx.getTranslationUnitDecl(),
+            clang::SourceLocation(),
+            clang::SourceLocation(),
+            &thisII,
+            ptrType,
+            cCtx.getTrivialTypeSourceInfo(ptrType),
+            clang::SC_None,
+            nullptr
+        );
+
+        // Create function
+        std::vector<clang::ParmVarDecl*> params = {thisParam};
+        clang::IdentifierInfo& funcII = cCtx.Idents.get(funcName);
+        auto* func = clang::FunctionDecl::Create(
+            cCtx,
+            cCtx.getTranslationUnitDecl(),
+            clang::SourceLocation(),
+            clang::SourceLocation(),
+            clang::DeclarationName(&funcII),
+            cCtx.VoidTy,
+            cCtx.getTrivialTypeSourceInfo(cCtx.VoidTy),
+            clang::SC_None
+        );
+
+        func->setParams(params);
+        cCtx.getTranslationUnitDecl()->addDecl(func);
+
+        return func;
+    }
+
+    /**
+     * @brief Count CallExprs in statement list
+     */
+    int countCallExprs(const std::vector<clang::Stmt*>& stmts) {
+        int count = 0;
+        for (auto* stmt : stmts) {
+            if (llvm::isa<clang::CallExpr>(stmt)) {
+                count++;
+            }
+        }
+        return count;
+    }
+
+    /**
+     * @brief Extract CallExprs from CompoundStmt
+     */
+    std::vector<clang::CallExpr*> extractCallExprs(clang::CompoundStmt* compound) {
+        std::vector<clang::CallExpr*> calls;
+        for (auto* stmt : compound->body()) {
+            if (auto* call = llvm::dyn_cast<clang::CallExpr>(stmt)) {
+                calls.push_back(call);
+            }
+        }
+        return calls;
+    }
+
+    /**
+     * @brief Extract assignment expressions (BinaryOperator) from CompoundStmt
+     */
+    std::vector<clang::BinaryOperator*> extractAssignments(clang::CompoundStmt* compound) {
+        std::vector<clang::BinaryOperator*> assignments;
+        for (auto* stmt : compound->body()) {
+            if (auto* binOp = llvm::dyn_cast<clang::BinaryOperator>(stmt)) {
+                if (binOp->getOpcode() == clang::BO_Assign) {
+                    assignments.push_back(binOp);
+                }
+            }
+        }
+        return assignments;
+    }
+};
+
+// =============================================================================
+// Test 1: Single base constructor call
+// =============================================================================
+
+/**
+ * Test 1: Derived constructor should call base constructor
+ * C++:
+ *   class Base {
+ *   public:
+ *       Base() {}
+ *       virtual void foo();
+ *   };
+ *   class Derived : public Base {
+ *   public:
+ *       Derived() {}
+ *   };
+ *
+ * C:
+ *   void Derived_init(struct Derived* this) {
+ *       Base_init((struct Base*)this);  // Call base constructor
+ *       this->lpVtbl = &Derived_vtable_instance;  // Override vtable
+ *   }
+ */
+TEST_F(ConstructorHandlerBaseChainingTest, SingleBaseConstructorCall) {
+    const char* code = R"(
+        class Base {
+        public:
+            Base() {}
+            virtual void foo();
+        };
+        class Derived : public Base {
+        public:
+            Derived() {}
+        };
+    )";
+
+    const auto* ctor = getConstructorFromClass(code, "Derived");
+    ASSERT_NE(ctor, nullptr);
+
+    const auto* parentClass = ctor->getParent();
+    ASSERT_NE(parentClass, nullptr);
+    EXPECT_EQ(parentClass->getNameAsString(), "Derived");
+    EXPECT_TRUE(parentClass->isDerivedFrom(ctor->getParent()->bases_begin()->getType()->getAsCXXRecordDecl()));
+
+    // Create C structs for Base and Derived
+    createBaseConstructorFunction("Base");
+    createCStruct("Derived", {"lpVtbl"});
+
+    // Translate constructor
+    auto* cFunc = llvm::dyn_cast_or_null<clang::FunctionDecl>(
+        ctx.dispatcher->dispatch(ctor);
+    auto __result = ctx.declMapper->get(ctor); __result
+    );
+
+    ASSERT_NE(cFunc, nullptr);
+    EXPECT_EQ(cFunc->getNameAsString(), "Derived_init");
+
+    // Verify function has body
+    auto* body = cFunc->getBody();
+    ASSERT_NE(body, nullptr);
+
+    auto* compoundStmt = llvm::dyn_cast<clang::CompoundStmt>(body);
+    ASSERT_NE(compoundStmt, nullptr);
+
+    // Should have at least 2 statements:
+    // 1. Base_init((struct Base*)this);
+    // 2. this->lpVtbl = &Derived_vtable_instance;
+    ASSERT_GE(compoundStmt->size(), 2)
+        << "Derived constructor should call base constructor and override vtable";
+
+    // First statement should be call to Base_init
+    auto* firstStmt = compoundStmt->body_front();
+    auto* callExpr = llvm::dyn_cast<clang::CallExpr>(firstStmt);
+    EXPECT_NE(callExpr, nullptr)
+        << "First statement should be base constructor call: Base_init(this)";
+
+    if (callExpr) {
+        auto* callee = callExpr->getDirectCallee();
+        ASSERT_NE(callee, nullptr);
+        EXPECT_EQ(callee->getNameAsString(), "Base_init")
+            << "Should call Base_init";
+    }
+}
+
+// =============================================================================
+// Test 2: Base constructor initializes own vtable
+// =============================================================================
+
+/**
+ * Test 2: Base constructor should initialize its own lpVtbl
+ * This is tested by creating a base constructor and verifying it has lpVtbl init
+ */
+TEST_F(ConstructorHandlerBaseChainingTest, BaseConstructorInitializesOwnVtable) {
+    const char* code = R"(
+        class Base {
+        public:
+            Base() {}
+            virtual void foo();
+        };
+    )";
+
+    const auto* ctor = getConstructorFromClass(code, "Base");
+    ASSERT_NE(ctor, nullptr);
+
+    const auto* parentClass = ctor->getParent();
+    ASSERT_NE(parentClass, nullptr);
+    EXPECT_TRUE(parentClass->isPolymorphic());
+
+    // Create C struct for Base
+    createCStruct("Base", {"lpVtbl"});
+
+    // Translate base constructor
+    auto* cFunc = llvm::dyn_cast_or_null<clang::FunctionDecl>(
+        ctx.dispatcher->dispatch(ctor);
+    auto __result = ctx.declMapper->get(ctor); __result
+    );
+
+    ASSERT_NE(cFunc, nullptr);
+    EXPECT_EQ(cFunc->getNameAsString(), "Base_init");
+
+    auto* body = cFunc->getBody();
+    ASSERT_NE(body, nullptr);
+
+    auto* compoundStmt = llvm::dyn_cast<clang::CompoundStmt>(body);
+    ASSERT_NE(compoundStmt, nullptr);
+
+    // Should have lpVtbl initialization
+    ASSERT_GE(compoundStmt->size(), 1);
+
+    auto* firstStmt = compoundStmt->body_front();
+    auto* binOp = llvm::dyn_cast<clang::BinaryOperator>(firstStmt);
+    ASSERT_NE(binOp, nullptr) << "Base constructor should initialize lpVtbl";
+
+    auto* memberExpr = llvm::dyn_cast<clang::MemberExpr>(binOp->getLHS());
+    ASSERT_NE(memberExpr, nullptr);
+    EXPECT_EQ(memberExpr->getMemberDecl()->getNameAsString(), "lpVtbl")
+        << "Base constructor should initialize lpVtbl";
+
+    // RHS should reference Base_vtable_instance
+    auto* rhs = binOp->getRHS();
+    auto* unaryOp = llvm::dyn_cast<clang::UnaryOperator>(rhs);
+    ASSERT_NE(unaryOp, nullptr);
+
+    auto* declRef = llvm::dyn_cast<clang::DeclRefExpr>(unaryOp->getSubExpr());
+    ASSERT_NE(declRef, nullptr);
+    EXPECT_EQ(declRef->getNameInfo().getAsString(), "Base_vtable_instance")
+        << "Base constructor should use Base_vtable_instance";
+}
+
+// =============================================================================
+// Test 3: Derived constructor overrides vtable
+// =============================================================================
+
+/**
+ * Test 3: Derived constructor should override base's lpVtbl after calling base constructor
+ */
+TEST_F(ConstructorHandlerBaseChainingTest, DerivedConstructorOverridesVtable) {
+    const char* code = R"(
+        class Base {
+        public:
+            Base() {}
+            virtual void foo();
+        };
+        class Derived : public Base {
+        public:
+            Derived() {}
+            void foo() override;
+        };
+    )";
+
+    const auto* ctor = getConstructorFromClass(code, "Derived");
+    ASSERT_NE(ctor, nullptr);
+
+    createBaseConstructorFunction("Base");
+    createCStruct("Derived", {"lpVtbl"});
+
+    auto* cFunc = llvm::dyn_cast_or_null<clang::FunctionDecl>(
+        ctx.dispatcher->dispatch(ctor);
+    auto __result = ctx.declMapper->get(ctor); __result
+    );
+
+    ASSERT_NE(cFunc, nullptr);
+
+    auto* body = cFunc->getBody();
+    ASSERT_NE(body, nullptr);
+
+    auto* compoundStmt = llvm::dyn_cast<clang::CompoundStmt>(body);
+    ASSERT_NE(compoundStmt, nullptr);
+
+    // Should have:
+    // 1. Base_init(this) - base constructor call
+    // 2. this->lpVtbl = &Derived_vtable_instance - vtable override
+    ASSERT_GE(compoundStmt->size(), 2);
+
+    auto assignments = extractAssignments(compoundStmt);
+    ASSERT_GE(assignments.size(), 1)
+        << "Derived constructor should override lpVtbl after base constructor";
+
+    // Find the lpVtbl assignment (should reference Derived_vtable_instance)
+    bool foundDerivedVtableAssignment = false;
+    for (auto* binOp : assignments) {
+        auto* memberExpr = llvm::dyn_cast<clang::MemberExpr>(binOp->getLHS());
+        if (!memberExpr) continue;
+        if (memberExpr->getMemberDecl()->getNameAsString() != "lpVtbl") continue;
+
+        // Check RHS references Derived_vtable_instance
+        auto* rhs = binOp->getRHS();
+        auto* unaryOp = llvm::dyn_cast<clang::UnaryOperator>(rhs);
+        if (!unaryOp) continue;
+
+        auto* declRef = llvm::dyn_cast<clang::DeclRefExpr>(unaryOp->getSubExpr());
+        if (!declRef) continue;
+
+        std::string vtableName = declRef->getNameInfo().getAsString();
+        if (vtableName == "Derived_vtable_instance" ||
+            vtableName == "Derived_Base_vtable_instance") {
+            foundDerivedVtableAssignment = true;
+            break;
+        }
+    }
+
+    EXPECT_TRUE(foundDerivedVtableAssignment)
+        << "Derived constructor should override lpVtbl with Derived's vtable instance";
+}
+
+// =============================================================================
+// Test 4: Multiple bases all initialized
+// =============================================================================
+
+/**
+ * Test 4: Derived constructor should call all base constructors
+ * C++:
+ *   class Base1 { public: Base1() {} virtual void foo(); };
+ *   class Base2 { public: Base2() {} virtual void bar(); };
+ *   class Derived : public Base1, public Base2 { public: Derived() {} };
+ *
+ * C:
+ *   void Derived_init(struct Derived* this) {
+ *       Base1_init((struct Base1*)this);
+ *       Base2_init((struct Base2*)((char*)this + offset));
+ *       this->lpVtbl = &Derived_Base1_vtable_instance;
+ *       this->lpVtbl2 = &Derived_Base2_vtable_instance;
+ *   }
+ */
+TEST_F(ConstructorHandlerBaseChainingTest, MultipleBasesAllInitialized) {
+    const char* code = R"(
+        class Base1 {
+        public:
+            Base1() {}
+            virtual void foo();
+        };
+        class Base2 {
+        public:
+            Base2() {}
+            virtual void bar();
+        };
+        class Derived : public Base1, public Base2 {
+        public:
+            Derived() {}
+        };
+    )";
+
+    const auto* ctor = getConstructorFromClass(code, "Derived");
+    ASSERT_NE(ctor, nullptr);
+
+    const auto* parentClass = ctor->getParent();
+    ASSERT_NE(parentClass, nullptr);
+
+    // Verify Derived has 2 base classes
+    unsigned baseCount = 0;
+    for (const auto& base : parentClass->bases()) {
+        baseCount++;
+    }
+    EXPECT_EQ(baseCount, 2) << "Derived should have 2 base classes";
+
+    // Create base constructor functions
+    createBaseConstructorFunction("Base1");
+    createBaseConstructorFunction("Base2");
+    createCStruct("Derived", {"lpVtbl", "lpVtbl2"});
+
+    auto* cFunc = llvm::dyn_cast_or_null<clang::FunctionDecl>(
+        ctx.dispatcher->dispatch(ctor);
+    auto __result = ctx.declMapper->get(ctor); __result
+    );
+
+    ASSERT_NE(cFunc, nullptr);
+
+    auto* body = cFunc->getBody();
+    ASSERT_NE(body, nullptr);
+
+    auto* compoundStmt = llvm::dyn_cast<clang::CompoundStmt>(body);
+    ASSERT_NE(compoundStmt, nullptr);
+
+    // Should have at least 4 statements:
+    // 1. Base1_init(this)
+    // 2. Base2_init((struct Base2*)((char*)this + offset))
+    // 3. this->lpVtbl = &Derived_Base1_vtable_instance
+    // 4. this->lpVtbl2 = &Derived_Base2_vtable_instance
+    ASSERT_GE(compoundStmt->size(), 4)
+        << "Derived constructor should call both base constructors and override both vtables";
+
+    auto calls = extractCallExprs(compoundStmt);
+    EXPECT_GE(calls.size(), 2)
+        << "Should call both Base1_init and Base2_init";
+
+    // Verify calls are to base constructors
+    int base1Calls = 0, base2Calls = 0;
+    for (auto* call : calls) {
+        auto* callee = call->getDirectCallee();
+        if (!callee) continue;
+
+        std::string name = callee->getNameAsString();
+        if (name == "Base1_init") base1Calls++;
+        if (name == "Base2_init") base2Calls++;
+    }
+
+    EXPECT_EQ(base1Calls, 1) << "Should call Base1_init exactly once";
+    EXPECT_EQ(base2Calls, 1) << "Should call Base2_init exactly once";
+}
+
+// =============================================================================
+// Test 5: Constructor call order correct
+// =============================================================================
+
+/**
+ * Test 5: Base constructors should be called BEFORE derived vtable override
+ */
+TEST_F(ConstructorHandlerBaseChainingTest, ConstructorCallOrderCorrect) {
+    const char* code = R"(
+        class Base {
+        public:
+            Base() {}
+            virtual void foo();
+        };
+        class Derived : public Base {
+            int field;
+        public:
+            Derived() : field(0) {}
+        };
+    )";
+
+    const auto* ctor = getConstructorFromClass(code, "Derived");
+    ASSERT_NE(ctor, nullptr);
+
+    createBaseConstructorFunction("Base");
+    createCStruct("Derived", {"lpVtbl"});
+
+    auto* cFunc = llvm::dyn_cast_or_null<clang::FunctionDecl>(
+        ctx.dispatcher->dispatch(ctor);
+    auto __result = ctx.declMapper->get(ctor); __result
+    );
+
+    ASSERT_NE(cFunc, nullptr);
+
+    auto* body = cFunc->getBody();
+    ASSERT_NE(body, nullptr);
+
+    auto* compoundStmt = llvm::dyn_cast<clang::CompoundStmt>(body);
+    ASSERT_NE(compoundStmt, nullptr);
+
+    // Expected order:
+    // 1. Base_init(this) - base constructor
+    // 2. this->lpVtbl = &Derived_vtable_instance - vtable override
+    // 3. this->field = 0 - field initialization
+
+    ASSERT_GE(compoundStmt->size(), 2);
+
+    // First statement should be base constructor call
+    auto it = compoundStmt->body_begin();
+    auto* firstStmt = *it;
+    EXPECT_NE(llvm::dyn_cast<clang::CallExpr>(firstStmt), nullptr)
+        << "First statement should be base constructor call";
+
+    // Second statement should be vtable override
+    ++it;
+    if (it != compoundStmt->body_end()) {
+        auto* secondStmt = *it;
+        auto* binOp = llvm::dyn_cast<clang::BinaryOperator>(secondStmt);
+        if (binOp) {
+            auto* memberExpr = llvm::dyn_cast<clang::MemberExpr>(binOp->getLHS());
+            if (memberExpr) {
+                EXPECT_EQ(memberExpr->getMemberDecl()->getNameAsString(), "lpVtbl")
+                    << "Second statement should be vtable override";
+            }
+        }
+    }
+}
+
+// =============================================================================
+// Test 6: Non-primary base pointer adjustment
+// =============================================================================
+
+/**
+ * Test 6: Non-primary base constructor call should include pointer adjustment
+ * Pattern: Base2_init((struct Base2*)((char*)this + offset))
+ */
+TEST_F(ConstructorHandlerBaseChainingTest, NonPrimaryBasePointerAdjustment) {
+    const char* code = R"(
+        class Base1 {
+        public:
+            Base1() {}
+            virtual void foo();
+        };
+        class Base2 {
+        public:
+            Base2() {}
+            virtual void bar();
+        };
+        class Derived : public Base1, public Base2 {
+        public:
+            Derived() {}
+        };
+    )";
+
+    const auto* ctor = getConstructorFromClass(code, "Derived");
+    ASSERT_NE(ctor, nullptr);
+
+    createBaseConstructorFunction("Base1");
+    createBaseConstructorFunction("Base2");
+    createCStruct("Derived", {"lpVtbl", "lpVtbl2"});
+
+    auto* cFunc = llvm::dyn_cast_or_null<clang::FunctionDecl>(
+        ctx.dispatcher->dispatch(ctor);
+    auto __result = ctx.declMapper->get(ctor); __result
+    );
+
+    ASSERT_NE(cFunc, nullptr);
+
+    auto* body = cFunc->getBody();
+    ASSERT_NE(body, nullptr);
+
+    auto* compoundStmt = llvm::dyn_cast<clang::CompoundStmt>(body);
+    ASSERT_NE(compoundStmt, nullptr);
+
+    auto calls = extractCallExprs(compoundStmt);
+    ASSERT_GE(calls.size(), 2);
+
+    // Find Base2_init call
+    clang::CallExpr* base2Call = nullptr;
+    for (auto* call : calls) {
+        auto* callee = call->getDirectCallee();
+        if (callee && callee->getNameAsString() == "Base2_init") {
+            base2Call = call;
+            break;
+        }
+    }
+
+    ASSERT_NE(base2Call, nullptr) << "Should find Base2_init call";
+
+    // Verify Base2_init has pointer adjustment in argument
+    // Expected: Base2_init((struct Base2*)((char*)this + offset))
+    ASSERT_GE(base2Call->getNumArgs(), 1);
+    auto* arg = base2Call->getArg(0);
+
+    // Argument should be a cast expression (potentially with pointer arithmetic)
+    // For now, just verify we have an argument (pointer adjustment implementation will be detailed later)
+    EXPECT_NE(arg, nullptr)
+        << "Base2_init should have pointer argument (with adjustment for non-primary base)";
+}
+
+// =============================================================================
+// Test 7: Deep hierarchy constructor chain
+// =============================================================================
+
+/**
+ * Test 7: Deep hierarchy (Base → Intermediate → Derived) constructor chain
+ */
+TEST_F(ConstructorHandlerBaseChainingTest, DeepHierarchyConstructorChain) {
+    const char* code = R"(
+        class Base {
+        public:
+            Base() {}
+            virtual void foo();
+        };
+        class Intermediate : public Base {
+        public:
+            Intermediate() {}
+            virtual void bar();
+        };
+        class Derived : public Intermediate {
+        public:
+            Derived() {}
+            virtual void baz();
+        };
+    )";
+
+    // Test Intermediate constructor
+    const auto* intermediateCtor = getConstructorFromClass(code, "Intermediate");
+    ASSERT_NE(intermediateCtor, nullptr);
+
+    createBaseConstructorFunction("Base");
+    createCStruct("Intermediate", {"lpVtbl"});
+
+    auto* intermediateFunc = llvm::dyn_cast_or_null<clang::FunctionDecl>(
+        ctx.dispatcher->dispatch(intermediateCtor);
+    auto __result = ctx.declMapper->get(intermediateCtor); __result
+    );
+
+    ASSERT_NE(intermediateFunc, nullptr);
+    EXPECT_EQ(intermediateFunc->getNameAsString(), "Intermediate_init");
+
+    auto* intermediateBody = intermediateFunc->getBody();
+    ASSERT_NE(intermediateBody, nullptr);
+
+    // Intermediate should call Base_init
+    auto* intermediateCompound = llvm::dyn_cast<clang::CompoundStmt>(intermediateBody);
+    ASSERT_NE(intermediateCompound, nullptr);
+
+    auto intermediateCalls = extractCallExprs(intermediateCompound);
+    bool foundBaseCall = false;
+    for (auto* call : intermediateCalls) {
+        auto* callee = call->getDirectCallee();
+        if (callee && callee->getNameAsString() == "Base_init") {
+            foundBaseCall = true;
+            break;
+        }
+    }
+    EXPECT_TRUE(foundBaseCall)
+        << "Intermediate_init should call Base_init";
+
+    // Now test Derived constructor
+    const auto* derivedCtor = getConstructorFromClass(code, "Derived");
+    ASSERT_NE(derivedCtor, nullptr);
+
+    createBaseConstructorFunction("Intermediate");
+    createCStruct("Derived", {"lpVtbl"});
+
+    auto* derivedFunc = llvm::dyn_cast_or_null<clang::FunctionDecl>(
+        ctx.dispatcher->dispatch(derivedCtor);
+    auto __result = ctx.declMapper->get(derivedCtor); __result
+    );
+
+    ASSERT_NE(derivedFunc, nullptr);
+    EXPECT_EQ(derivedFunc->getNameAsString(), "Derived_init");
+
+    auto* derivedBody = derivedFunc->getBody();
+    ASSERT_NE(derivedBody, nullptr);
+
+    // Derived should call Intermediate_init (not Base_init directly)
+    auto* derivedCompound = llvm::dyn_cast<clang::CompoundStmt>(derivedBody);
+    ASSERT_NE(derivedCompound, nullptr);
+
+    auto derivedCalls = extractCallExprs(derivedCompound);
+    bool foundIntermediateCall = false;
+    for (auto* call : derivedCalls) {
+        auto* callee = call->getDirectCallee();
+        if (callee && callee->getNameAsString() == "Intermediate_init") {
+            foundIntermediateCall = true;
+            break;
+        }
+    }
+    EXPECT_TRUE(foundIntermediateCall)
+        << "Derived_init should call Intermediate_init (which then calls Base_init)";
+}
+
+// =============================================================================
+// Test 8: Constructor with initialization list and bases
+// =============================================================================
+
+/**
+ * Test 8: Constructor with member initialization list and base constructor calls
+ */
+TEST_F(ConstructorHandlerBaseChainingTest, ConstructorWithInitListAndBases) {
+    const char* code = R"(
+        class Base {
+        public:
+            Base() {}
+            virtual void foo();
+        };
+        class Derived : public Base {
+            int x;
+            int y;
+        public:
+            Derived(int a, int b) : x(a), y(b) {}
+        };
+    )";
+
+    const auto* ctor = getConstructorFromClass(code, "Derived");
+    ASSERT_NE(ctor, nullptr);
+
+    // Verify constructor has member initializers
+    EXPECT_GT(ctor->getNumCtorInitializers(), 0)
+        << "Constructor should have member initializer list";
+
+    createBaseConstructorFunction("Base");
+    createCStruct("Derived", {"lpVtbl"});
+
+    auto* cFunc = llvm::dyn_cast_or_null<clang::FunctionDecl>(
+        ctx.dispatcher->dispatch(ctor);
+    auto __result = ctx.declMapper->get(ctor); __result
+    );
+
+    ASSERT_NE(cFunc, nullptr);
+
+    auto* body = cFunc->getBody();
+    ASSERT_NE(body, nullptr);
+
+    auto* compoundStmt = llvm::dyn_cast<clang::CompoundStmt>(body);
+    ASSERT_NE(compoundStmt, nullptr);
+
+    // Expected order:
+    // 1. Base_init(this) - base constructor
+    // 2. this->lpVtbl = &Derived_vtable_instance - vtable override
+    // 3. this->x = a - member init
+    // 4. this->y = b - member init
+
+    auto calls = extractCallExprs(compoundStmt);
+    EXPECT_GE(calls.size(), 1)
+        << "Should call base constructor even with member initializer list";
+
+    // First statement should be base constructor call
+    auto* firstStmt = compoundStmt->body_front();
+    EXPECT_NE(llvm::dyn_cast<clang::CallExpr>(firstStmt), nullptr)
+        << "Base constructor call should come first, before member initialization";
+}
+
+// =============================================================================
+// Test 9: No base constructors (default only)
+// =============================================================================
+
+/**
+ * Test 9: Handle case where base class has only implicit default constructor
+ */
+TEST_F(ConstructorHandlerBaseChainingTest, NoBaseConstructorsDefaultOnly) {
+    const char* code = R"(
+        class Base {
+        public:
+            virtual void foo();
+        };
+        class Derived : public Base {
+        public:
+            Derived() {}
+        };
+    )";
+
+    const auto* ctor = getConstructorFromClass(code, "Derived");
+    ASSERT_NE(ctor, nullptr);
+
+    // In this case, Base has implicit default constructor
+    // We should still call it (or handle gracefully)
+
+    createBaseConstructorFunction("Base");  // Create explicit Base_init
+    createCStruct("Derived", {"lpVtbl"});
+
+    auto* cFunc = llvm::dyn_cast_or_null<clang::FunctionDecl>(
+        ctx.dispatcher->dispatch(ctor);
+    auto __result = ctx.declMapper->get(ctor); __result
+    );
+
+    ASSERT_NE(cFunc, nullptr);
+
+    auto* body = cFunc->getBody();
+    ASSERT_NE(body, nullptr);
+
+    auto* compoundStmt = llvm::dyn_cast<clang::CompoundStmt>(body);
+    ASSERT_NE(compoundStmt, nullptr);
+
+    // Should still call base constructor (even if implicit)
+    auto calls = extractCallExprs(compoundStmt);
+    EXPECT_GE(calls.size(), 1)
+        << "Should call base constructor (Base_init) even if base only has implicit constructor";
+}
+
+// =============================================================================
+// Test 10: Vtable override after all bases
+// =============================================================================
+
+/**
+ * Test 10: All base vtables should be overridden AFTER all base constructor calls
+ */
+TEST_F(ConstructorHandlerBaseChainingTest, VtableOverrideAfterAllBases) {
+    const char* code = R"(
+        class Base1 {
+        public:
+            Base1() {}
+            virtual void foo();
+        };
+        class Base2 {
+        public:
+            Base2() {}
+            virtual void bar();
+        };
+        class Derived : public Base1, public Base2 {
+        public:
+            Derived() {}
+        };
+    )";
+
+    const auto* ctor = getConstructorFromClass(code, "Derived");
+    ASSERT_NE(ctor, nullptr);
+
+    createBaseConstructorFunction("Base1");
+    createBaseConstructorFunction("Base2");
+    createCStruct("Derived", {"lpVtbl", "lpVtbl2"});
+
+    auto* cFunc = llvm::dyn_cast_or_null<clang::FunctionDecl>(
+        ctx.dispatcher->dispatch(ctor);
+    auto __result = ctx.declMapper->get(ctor); __result
+    );
+
+    ASSERT_NE(cFunc, nullptr);
+
+    auto* body = cFunc->getBody();
+    ASSERT_NE(body, nullptr);
+
+    auto* compoundStmt = llvm::dyn_cast<clang::CompoundStmt>(body);
+    ASSERT_NE(compoundStmt, nullptr);
+
+    // Find last CallExpr index
+    int lastCallIndex = -1;
+    int index = 0;
+    for (auto* stmt : compoundStmt->body()) {
+        if (llvm::isa<clang::CallExpr>(stmt)) {
+            lastCallIndex = index;
+        }
+        index++;
+    }
+
+    ASSERT_GE(lastCallIndex, 0) << "Should have at least one base constructor call";
+
+    // Find first vtable assignment index
+    int firstVtableAssignIndex = -1;
+    index = 0;
+    for (auto* stmt : compoundStmt->body()) {
+        if (auto* binOp = llvm::dyn_cast<clang::BinaryOperator>(stmt)) {
+            if (binOp->getOpcode() == clang::BO_Assign) {
+                if (auto* memberExpr = llvm::dyn_cast<clang::MemberExpr>(binOp->getLHS())) {
+                    std::string memberName = memberExpr->getMemberDecl()->getNameAsString();
+                    if (memberName == "lpVtbl" || memberName == "lpVtbl2") {
+                        firstVtableAssignIndex = index;
+                        break;
+                    }
+                }
+            }
+        }
+        index++;
+    }
+
+    ASSERT_GE(firstVtableAssignIndex, 0) << "Should have vtable assignment";
+
+    // Vtable assignments should come AFTER base constructor calls
+    EXPECT_GT(firstVtableAssignIndex, lastCallIndex)
+        << "Vtable override should come AFTER all base constructor calls";
+}

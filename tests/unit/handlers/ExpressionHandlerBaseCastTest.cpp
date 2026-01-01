@@ -32,7 +32,7 @@
  * - Generate pointer arithmetic for non-primary bases: (Base*)((char*)derived + offset)
  */
 
-#include "handlers/HandlerContext.h"
+#include "helpers/UnitTestHelper.h"
 #include "CNodeBuilder.h"
 #include "MultipleInheritanceAnalyzer.h"
 #include "BaseOffsetCalculator.h"
@@ -49,36 +49,12 @@ using namespace cpptoc;
  */
 class ExpressionHandlerBaseCastTest : public ::testing::Test {
 protected:
-    std::unique_ptr<clang::ASTUnit> cppAST;
-    std::unique_ptr<clang::ASTUnit> cAST;
-    std::unique_ptr<clang::CNodeBuilder> builder;
-    std::unique_ptr<HandlerContext> context;
+    UnitTestContext ctx;
 
     void SetUp() override {
-        // Create real AST contexts
-        cppAST = clang::tooling::buildASTFromCode("int dummy;");
-        cAST = clang::tooling::buildASTFromCode("int dummy2;");
-
-        ASSERT_NE(cppAST, nullptr) << "Failed to create C++ AST";
-        ASSERT_NE(cAST, nullptr) << "Failed to create C AST";
-
-        // Create builder and context
-        builder = std::make_unique<clang::CNodeBuilder>(cAST->getASTContext());
-        context = std::make_unique<HandlerContext>(
-            cppAST->getASTContext(),
-            cAST->getASTContext(),
-            *builder
-        );
+        ctx = createUnitTestContext();
     }
-
-    void TearDown() override {
-        context.reset();
-        builder.reset();
-        cAST.reset();
-        cppAST.reset();
-    }
-
-    /**
+/**
      * @brief Helper to extract cast expressions from AST
      */
     class CastExtractor : public clang::RecursiveASTVisitor<CastExtractor> {

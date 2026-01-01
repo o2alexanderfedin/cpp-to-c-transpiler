@@ -18,7 +18,7 @@
  */
 
 #include "dispatch/RecordHandler.h"
-#include "handlers/HandlerContext.h"
+#include "helpers/UnitTestHelper.h"
 #include "dispatch/MethodHandler.h"
 #include "CNodeBuilder.h"
 #include "clang/Tooling/Tooling.h"
@@ -37,7 +37,6 @@ protected:
     std::unique_ptr<clang::ASTUnit> cppAST;
     std::unique_ptr<clang::ASTUnit> cAST;
     std::unique_ptr<clang::CNodeBuilder> builder;
-    std::unique_ptr<HandlerContext> ctx;
     std::unique_ptr<RecordHandler> recordHandler;
     std::unique_ptr<MethodHandler> methodHandler;
 
@@ -50,28 +49,12 @@ protected:
         ASSERT_NE(cAST, nullptr) << "Failed to create C AST";
 
         // Create builder and context
-        builder = std::make_unique<clang::CNodeBuilder>(cAST->getASTContext());
-        ctx = std::make_unique<HandlerContext>(
-            cppAST->getASTContext(),
-            cAST->getASTContext(),
-            *builder
-        );
 
         // Create handlers
         recordHandler = std::make_unique<RecordHandler>();
         methodHandler = std::make_unique<MethodHandler>();
     }
-
-    void TearDown() override {
-        methodHandler.reset();
-        recordHandler.reset();
-        ctx.reset();
-        builder.reset();
-        cAST.reset();
-        cppAST.reset();
-    }
-
-    /**
+/**
      * @brief Parse C++ code and extract first polymorphic class
      * @param code C++ code containing a polymorphic class
      * @return First CXXRecordDecl that is polymorphic, or nullptr

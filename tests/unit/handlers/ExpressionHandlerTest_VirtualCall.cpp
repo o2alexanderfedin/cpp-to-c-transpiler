@@ -25,7 +25,7 @@
  * 15. MixedVirtualNonVirtual - Test class with both virtual and non-virtual methods
  */
 
-#include "handlers/HandlerContext.h"
+#include "helpers/UnitTestHelper.h"
 #include "CNodeBuilder.h"
 #include "VirtualCallTranslator.h"
 #include "VirtualMethodAnalyzer.h"
@@ -45,52 +45,15 @@ using namespace cpptoc;
  */
 class ExpressionHandlerVirtualCallTest : public ::testing::Test {
 protected:
-    std::unique_ptr<clang::ASTUnit> cppAST;
-    std::unique_ptr<clang::ASTUnit> cAST;
-    std::unique_ptr<clang::CNodeBuilder> builder;
-    std::unique_ptr<HandlerContext> context;
-    std::unique_ptr<ExpressionHandler> handler;
+    UnitTestContext ctx;
     std::unique_ptr<VirtualMethodAnalyzer> virtualAnalyzer;
     std::unique_ptr<VirtualCallTranslator> virtualTranslator;
 
     void SetUp() override {
-        // Create real AST contexts using minimal code
-        cppAST = clang::tooling::buildASTFromCode("int dummy;");
-        cAST = clang::tooling::buildASTFromCode("int dummy2;");
-
-        ASSERT_NE(cppAST, nullptr) << "Failed to create C++ AST";
-        ASSERT_NE(cAST, nullptr) << "Failed to create C AST";
-
-        // Create builder and context
-        builder = std::make_unique<clang::CNodeBuilder>(cAST->getASTContext());
-        context = std::make_unique<HandlerContext>(
-            cppAST->getASTContext(),
-            cAST->getASTContext(),
-            *builder
-        );
-
-        // Create virtual call detection infrastructure
-        virtualAnalyzer = std::make_unique<VirtualMethodAnalyzer>(cppAST->getASTContext());
-        virtualTranslator = std::make_unique<VirtualCallTranslator>(
-            cppAST->getASTContext(),
-            *virtualAnalyzer
-        );
-
-        // Create handler
-        handler = std::make_unique<ExpressionHandler>();
+        ctx = createUnitTestContext();
+        ctx.dispatcher->registerHandler<ExpressionHandler>();
     }
-
-    void TearDown() override {
-        handler.reset();
-        virtualTranslator.reset();
-        virtualAnalyzer.reset();
-        context.reset();
-        builder.reset();
-        cAST.reset();
-        cppAST.reset();
-    }
-
-    /**
+/**
      * @brief Extract CXXMemberCallExpr from C++ code
      * @param code C++ code containing method call
      * @return Extracted CXXMemberCallExpr (first one found)
@@ -246,7 +209,8 @@ TEST_F(ExpressionHandlerVirtualCallTest, VirtualCallOnPointer) {
     context->registerMethod(method, cFunc);
 
     // Translate the method call
-    clang::Expr* result = handler->handleExpr(methodCall, *context);
+    clang::Expr* result = ctx.dispatcher->dispatch(methodCall);
+    auto __result = ctx.exprMapper->get(methodCall); __result;
 
     // For virtual calls, we expect vtable dispatch structure:
     // ptr->lpVtbl->draw(ptr)
@@ -299,7 +263,8 @@ TEST_F(ExpressionHandlerVirtualCallTest, VirtualCallOnValue) {
     context->registerMethod(method, cFunc);
 
     // Translate
-    clang::Expr* result = handler->handleExpr(methodCall, *context);
+    clang::Expr* result = ctx.dispatcher->dispatch(methodCall);
+    auto __result = ctx.exprMapper->get(methodCall); __result;
     ASSERT_NE(result, nullptr);
 
     // For value objects, we need to take address before vtable access
@@ -341,7 +306,8 @@ TEST_F(ExpressionHandlerVirtualCallTest, VirtualCallWithArgs) {
     );
     context->registerMethod(method, cFunc);
 
-    clang::Expr* result = handler->handleExpr(methodCall, *context);
+    clang::Expr* result = ctx.dispatcher->dispatch(methodCall);
+    auto __result = ctx.exprMapper->get(methodCall); __result;
     ASSERT_NE(result, nullptr);
 
     auto* callExpr = llvm::dyn_cast<clang::CallExpr>(result);
@@ -381,7 +347,8 @@ TEST_F(ExpressionHandlerVirtualCallTest, VirtualCallWithReturn) {
     clang::FunctionDecl* cFunc = createVirtualMethodCFunction("Counter", "getValue", cCtx.IntTy);
     context->registerMethod(method, cFunc);
 
-    clang::Expr* result = handler->handleExpr(methodCall, *context);
+    clang::Expr* result = ctx.dispatcher->dispatch(methodCall);
+    auto __result = ctx.exprMapper->get(methodCall); __result;
     ASSERT_NE(result, nullptr);
 
     auto* callExpr = llvm::dyn_cast<clang::CallExpr>(result);
@@ -427,7 +394,8 @@ TEST_F(ExpressionHandlerVirtualCallTest, VirtualCallThroughBasePointer) {
     clang::FunctionDecl* cFunc = createVirtualMethodCFunction("Base", "method", cCtx.VoidTy);
     context->registerMethod(method, cFunc);
 
-    clang::Expr* result = handler->handleExpr(methodCall, *context);
+    clang::Expr* result = ctx.dispatcher->dispatch(methodCall);
+    auto __result = ctx.exprMapper->get(methodCall); __result;
     ASSERT_NE(result, nullptr);
 
     auto* callExpr = llvm::dyn_cast<clang::CallExpr>(result);
@@ -472,7 +440,8 @@ TEST_F(ExpressionHandlerVirtualCallTest, ChainedVirtualCalls) {
     clang::FunctionDecl* cFunc = createVirtualMethodCFunction("Node", "draw", cCtx.VoidTy);
     context->registerMethod(method, cFunc);
 
-    clang::Expr* result = handler->handleExpr(methodCall, *context);
+    clang::Expr* result = ctx.dispatcher->dispatch(methodCall);
+    auto __result = ctx.exprMapper->get(methodCall); __result;
     ASSERT_NE(result, nullptr);
 
     auto* callExpr = llvm::dyn_cast<clang::CallExpr>(result);
@@ -507,7 +476,8 @@ TEST_F(ExpressionHandlerVirtualCallTest, VirtualCallInCondition) {
     clang::FunctionDecl* cFunc = createVirtualMethodCFunction("Validator", "isValid", cCtx.BoolTy);
     context->registerMethod(method, cFunc);
 
-    clang::Expr* result = handler->handleExpr(methodCall, *context);
+    clang::Expr* result = ctx.dispatcher->dispatch(methodCall);
+    auto __result = ctx.exprMapper->get(methodCall); __result;
     ASSERT_NE(result, nullptr);
 
     auto* callExpr = llvm::dyn_cast<clang::CallExpr>(result);
@@ -545,7 +515,8 @@ TEST_F(ExpressionHandlerVirtualCallTest, VirtualCallInExpression) {
     clang::FunctionDecl* cFunc = createVirtualMethodCFunction("Counter", "getValue", cCtx.IntTy);
     context->registerMethod(method, cFunc);
 
-    clang::Expr* result = handler->handleExpr(methodCall, *context);
+    clang::Expr* result = ctx.dispatcher->dispatch(methodCall);
+    auto __result = ctx.exprMapper->get(methodCall); __result;
     ASSERT_NE(result, nullptr);
 
     auto* callExpr = llvm::dyn_cast<clang::CallExpr>(result);
@@ -586,7 +557,8 @@ TEST_F(ExpressionHandlerVirtualCallTest, VirtualDestructorCall) {
     clang::FunctionDecl* cFunc = createVirtualMethodCFunction("Shape", "destructor", cCtx.VoidTy);
     context->registerMethod(method, cFunc);
 
-    clang::Expr* result = handler->handleExpr(methodCall, *context);
+    clang::Expr* result = ctx.dispatcher->dispatch(methodCall);
+    auto __result = ctx.exprMapper->get(methodCall); __result;
     ASSERT_NE(result, nullptr);
 
     auto* callExpr = llvm::dyn_cast<clang::CallExpr>(result);
@@ -625,7 +597,8 @@ TEST_F(ExpressionHandlerVirtualCallTest, CastThenVirtualCall) {
     clang::FunctionDecl* cFunc = createVirtualMethodCFunction("Derived", "method", cCtx.VoidTy);
     context->registerMethod(method, cFunc);
 
-    clang::Expr* result = handler->handleExpr(methodCall, *context);
+    clang::Expr* result = ctx.dispatcher->dispatch(methodCall);
+    auto __result = ctx.exprMapper->get(methodCall); __result;
     ASSERT_NE(result, nullptr);
 
     auto* callExpr = llvm::dyn_cast<clang::CallExpr>(result);
@@ -660,7 +633,8 @@ TEST_F(ExpressionHandlerVirtualCallTest, VirtualCallThroughReference) {
     clang::FunctionDecl* cFunc = createVirtualMethodCFunction("Shape", "draw", cCtx.VoidTy);
     context->registerMethod(method, cFunc);
 
-    clang::Expr* result = handler->handleExpr(methodCall, *context);
+    clang::Expr* result = ctx.dispatcher->dispatch(methodCall);
+    auto __result = ctx.exprMapper->get(methodCall); __result;
     ASSERT_NE(result, nullptr);
 
     auto* callExpr = llvm::dyn_cast<clang::CallExpr>(result);
@@ -698,7 +672,8 @@ TEST_F(ExpressionHandlerVirtualCallTest, MultipleVirtualCalls) {
     clang::FunctionDecl* cFunc = createVirtualMethodCFunction("Shape", "draw", cCtx.VoidTy);
     context->registerMethod(method, cFunc);
 
-    clang::Expr* result = handler->handleExpr(methodCall, *context);
+    clang::Expr* result = ctx.dispatcher->dispatch(methodCall);
+    auto __result = ctx.exprMapper->get(methodCall); __result;
     ASSERT_NE(result, nullptr);
 
     auto* callExpr = llvm::dyn_cast<clang::CallExpr>(result);
@@ -741,7 +716,8 @@ TEST_F(ExpressionHandlerVirtualCallTest, VirtualCallWithComplexArgs) {
     );
     context->registerMethod(method, cFunc);
 
-    clang::Expr* result = handler->handleExpr(methodCall, *context);
+    clang::Expr* result = ctx.dispatcher->dispatch(methodCall);
+    auto __result = ctx.exprMapper->get(methodCall); __result;
     ASSERT_NE(result, nullptr);
 
     auto* callExpr = llvm::dyn_cast<clang::CallExpr>(result);
@@ -783,7 +759,8 @@ TEST_F(ExpressionHandlerVirtualCallTest, NonVirtualCallUnchanged) {
     clang::FunctionDecl* cFunc = createVirtualMethodCFunction("Shape", "nonVirtualMethod", cCtx.VoidTy);
     context->registerMethod(method, cFunc);
 
-    clang::Expr* result = handler->handleExpr(methodCall, *context);
+    clang::Expr* result = ctx.dispatcher->dispatch(methodCall);
+    auto __result = ctx.exprMapper->get(methodCall); __result;
     ASSERT_NE(result, nullptr);
 
     auto* callExpr = llvm::dyn_cast<clang::CallExpr>(result);
@@ -827,7 +804,8 @@ TEST_F(ExpressionHandlerVirtualCallTest, MixedVirtualNonVirtual) {
     clang::FunctionDecl* cFunc = createVirtualMethodCFunction("Widget", "render", cCtx.VoidTy);
     context->registerMethod(method, cFunc);
 
-    clang::Expr* result = handler->handleExpr(methodCall, *context);
+    clang::Expr* result = ctx.dispatcher->dispatch(methodCall);
+    auto __result = ctx.exprMapper->get(methodCall); __result;
     ASSERT_NE(result, nullptr);
 
     auto* callExpr = llvm::dyn_cast<clang::CallExpr>(result);

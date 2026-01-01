@@ -114,11 +114,24 @@ void VariableHandler::handleVariable(
     // Translate initialization expression (if present)
     clang::Expr* cInitExpr = nullptr;
     if (cppVar->hasInit()) {
-        cInitExpr = translateInitializer(cppVar->getInit(), cASTContext);
-        if (cInitExpr) {
-            llvm::outs() << "[VariableHandler] Translated initializer\n";
+        const clang::Expr* cppInit = cppVar->getInit();
+
+        // Dispatch the initializer expression through the dispatcher
+        // This allows complex expressions (like a+b) to be properly translated
+        bool initHandled = disp.dispatch(cppASTContext, cASTContext, cppInit);
+
+        if (initHandled) {
+            // Retrieve translated expression from ExprMapper
+            cpptoc::ExprMapper& exprMapper = disp.getExprMapper();
+            cInitExpr = exprMapper.getCreated(cppInit);
+
+            if (cInitExpr) {
+                llvm::outs() << "[VariableHandler] Initializer translated via dispatcher\n";
+            } else {
+                llvm::errs() << "[VariableHandler] Warning: Initializer dispatched but not in ExprMapper\n";
+            }
         } else {
-            llvm::outs() << "[VariableHandler] No initializer translation (complex expression)\n";
+            llvm::outs() << "[VariableHandler] Initializer not handled by dispatcher\n";
         }
     }
 
@@ -238,43 +251,65 @@ clang::Expr* VariableHandler::translateInitializer(
 
     if (const auto* intLit = llvm::dyn_cast<clang::IntegerLiteral>(init)) {
         // Create new IntegerLiteral in C context
+        // IMPORTANT: Use C ASTContext's int type, not C++ type
         return clang::IntegerLiteral::Create(
             cASTContext,
             intLit->getValue(),
-            intLit->getType(),
+            cASTContext.IntTy,  // Get int type from C context
             clang::SourceLocation()
         );
     }
 
     if (const auto* floatLit = llvm::dyn_cast<clang::FloatingLiteral>(init)) {
         // Create new FloatingLiteral in C context
+        // IMPORTANT: Use C ASTContext's float/double type
+        // Determine if it's float or double based on the semantics
+        clang::QualType cFloatType = cASTContext.DoubleTy;  // Default to double
+        if (floatLit->getType()->getAs<clang::BuiltinType>()) {
+            const auto* builtinType = floatLit->getType()->getAs<clang::BuiltinType>();
+            if (builtinType->getKind() == clang::BuiltinType::Float) {
+                cFloatType = cASTContext.FloatTy;
+            }
+        }
         return clang::FloatingLiteral::Create(
             cASTContext,
             floatLit->getValue(),
             floatLit->isExact(),
-            floatLit->getType(),
+            cFloatType,
             clang::SourceLocation()
         );
     }
 
     if (const auto* charLit = llvm::dyn_cast<clang::CharacterLiteral>(init)) {
         // Create new CharacterLiteral in C context
+        // IMPORTANT: Use C ASTContext's char type
         return new (cASTContext) clang::CharacterLiteral(
             charLit->getValue(),
             charLit->getKind(),
-            charLit->getType(),
+            cASTContext.CharTy,  // Get char type from C context
             clang::SourceLocation()
         );
     }
 
     if (const auto* strLit = llvm::dyn_cast<clang::StringLiteral>(init)) {
         // Create new StringLiteral in C context
+        // IMPORTANT: Use C ASTContext's string type
+        // For string literals, we need to create array type based on string length
+        unsigned length = strLit->getLength();
+        clang::QualType charType = cASTContext.CharTy;
+        clang::QualType arrayType = cASTContext.getConstantArrayType(
+            charType,
+            llvm::APInt(32, length + 1),  // +1 for null terminator
+            nullptr,
+            clang::ArraySizeModifier::Normal,
+            0
+        );
         return clang::StringLiteral::Create(
             cASTContext,
             strLit->getString(),
             strLit->getKind(),
             strLit->isPascal(),
-            strLit->getType(),
+            arrayType,
             clang::SourceLocation()
         );
     }

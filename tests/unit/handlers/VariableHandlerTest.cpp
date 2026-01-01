@@ -24,7 +24,7 @@
  */
 
 #include "dispatch/VariableHandler.h"
-#include "handlers/HandlerContext.h"
+#include "helpers/UnitTestHelper.h"
 #include "CNodeBuilder.h"
 #include "clang/Tooling/Tooling.h"
 #include <gtest/gtest.h>
@@ -40,36 +40,12 @@ using namespace cpptoc;
  */
 class VariableHandlerTest : public ::testing::Test {
 protected:
-    std::unique_ptr<clang::ASTUnit> cppAST;
-    std::unique_ptr<clang::ASTUnit> cAST;
-    std::unique_ptr<clang::CNodeBuilder> builder;
-    std::unique_ptr<HandlerContext> context;
+    UnitTestContext ctx;
 
     void SetUp() override {
-        // Create real AST contexts using minimal code
-        cppAST = clang::tooling::buildASTFromCode("int dummy;");
-        cAST = clang::tooling::buildASTFromCode("int dummy2;");
-
-        ASSERT_NE(cppAST, nullptr) << "Failed to create C++ AST";
-        ASSERT_NE(cAST, nullptr) << "Failed to create C AST";
-
-        // Create builder and context
-        builder = std::make_unique<clang::CNodeBuilder>(cAST->getASTContext());
-        context = std::make_unique<HandlerContext>(
-            cppAST->getASTContext(),
-            cAST->getASTContext(),
-            *builder
-        );
+        ctx = createUnitTestContext();
     }
-
-    void TearDown() override {
-        context.reset();
-        builder.reset();
-        cAST.reset();
-        cppAST.reset();
-    }
-
-    /**
+/**
      * @brief Create a C++ variable declaration programmatically
      */
     clang::VarDecl* createCppVariable(
@@ -178,7 +154,7 @@ TEST_F(VariableHandlerTest, LocalVariableNoInit) {
 
     // Act: Translate using VariableHandler
     VariableHandler handler;
-    clang::Decl* result = handler.handleDecl(cppVar, *context);
+    clang::Decl* result = handler.handleDecl(cppVar, ctx);
 
     // Assert: Verify C variable created
     ASSERT_NE(result, nullptr) << "Translation returned null";
@@ -205,7 +181,7 @@ TEST_F(VariableHandlerTest, LocalVariableWithIntInit) {
 
     // Act
     VariableHandler handler;
-    clang::Decl* result = handler.handleDecl(cppVar, *context);
+    clang::Decl* result = handler.handleDecl(cppVar, ctx);
 
     // Assert
     ASSERT_NE(result, nullptr);
@@ -236,7 +212,7 @@ TEST_F(VariableHandlerTest, LocalVariableWithFloatInit) {
 
     // Act
     VariableHandler handler;
-    clang::Decl* result = handler.handleDecl(cppVar, *context);
+    clang::Decl* result = handler.handleDecl(cppVar, ctx);
 
     // Assert
     ASSERT_NE(result, nullptr);
@@ -266,7 +242,7 @@ TEST_F(VariableHandlerTest, CharVariableWithInit) {
 
     // Act
     VariableHandler handler;
-    clang::Decl* result = handler.handleDecl(cppVar, *context);
+    clang::Decl* result = handler.handleDecl(cppVar, ctx);
 
     // Assert
     ASSERT_NE(result, nullptr);
@@ -291,7 +267,7 @@ TEST_F(VariableHandlerTest, PointerVariableNoInit) {
 
     // Act
     VariableHandler handler;
-    clang::Decl* result = handler.handleDecl(cppVar, *context);
+    clang::Decl* result = handler.handleDecl(cppVar, ctx);
 
     // Assert
     ASSERT_NE(result, nullptr);
@@ -317,7 +293,7 @@ TEST_F(VariableHandlerTest, ConstVariable) {
 
     // Act
     VariableHandler handler;
-    clang::Decl* result = handler.handleDecl(cppVar, *context);
+    clang::Decl* result = handler.handleDecl(cppVar, ctx);
 
     // Assert
     ASSERT_NE(result, nullptr);
@@ -343,7 +319,7 @@ TEST_F(VariableHandlerTest, StaticVariable) {
 
     // Act
     VariableHandler handler;
-    clang::Decl* result = handler.handleDecl(cppVar, *context);
+    clang::Decl* result = handler.handleDecl(cppVar, ctx);
 
     // Assert
     ASSERT_NE(result, nullptr);
@@ -368,7 +344,7 @@ TEST_F(VariableHandlerTest, ExternVariable) {
 
     // Act
     VariableHandler handler;
-    clang::Decl* result = handler.handleDecl(cppVar, *context);
+    clang::Decl* result = handler.handleDecl(cppVar, ctx);
 
     // Assert
     ASSERT_NE(result, nullptr);
@@ -394,7 +370,7 @@ TEST_F(VariableHandlerTest, VariableNameWithUnderscores) {
 
     // Act
     VariableHandler handler;
-    clang::Decl* result = handler.handleDecl(cppVar, *context);
+    clang::Decl* result = handler.handleDecl(cppVar, ctx);
 
     // Assert
     ASSERT_NE(result, nullptr);
@@ -418,7 +394,7 @@ TEST_F(VariableHandlerTest, VariableWithZeroInit) {
 
     // Act
     VariableHandler handler;
-    clang::Decl* result = handler.handleDecl(cppVar, *context);
+    clang::Decl* result = handler.handleDecl(cppVar, ctx);
 
     // Assert
     ASSERT_NE(result, nullptr);
@@ -445,7 +421,7 @@ TEST_F(VariableHandlerTest, VariableWithNegativeInit) {
 
     // Act
     VariableHandler handler;
-    clang::Decl* result = handler.handleDecl(cppVar, *context);
+    clang::Decl* result = handler.handleDecl(cppVar, ctx);
 
     // Assert
     ASSERT_NE(result, nullptr);
@@ -514,9 +490,9 @@ TEST_F(VariableHandlerTest, MultipleVariablesSameType) {
     VariableHandler handler;
 
     // Act
-    clang::Decl* result1 = handler.handleDecl(var1, *context);
-    clang::Decl* result2 = handler.handleDecl(var2, *context);
-    clang::Decl* result3 = handler.handleDecl(var3, *context);
+    clang::Decl* result1 = handler.handleDecl(var1, ctx);
+    clang::Decl* result2 = handler.handleDecl(var2, ctx);
+    clang::Decl* result3 = handler.handleDecl(var3, ctx);
 
     // Assert
     ASSERT_NE(result1, nullptr);
@@ -543,7 +519,7 @@ TEST_F(VariableHandlerTest, VariableRegisteredInContext) {
     VariableHandler handler;
 
     // Act
-    clang::Decl* result = handler.handleDecl(cppVar, *context);
+    clang::Decl* result = handler.handleDecl(cppVar, ctx);
 
     // Assert
     ASSERT_NE(result, nullptr);
@@ -568,7 +544,7 @@ TEST_F(VariableHandlerTest, LongVariableName) {
 
     // Act
     VariableHandler handler;
-    clang::Decl* result = handler.handleDecl(cppVar, *context);
+    clang::Decl* result = handler.handleDecl(cppVar, ctx);
 
     // Assert
     ASSERT_NE(result, nullptr);
@@ -592,7 +568,7 @@ TEST_F(VariableHandlerTest, FloatVariableNegative) {
 
     // Act
     VariableHandler handler;
-    clang::Decl* result = handler.handleDecl(cppVar, *context);
+    clang::Decl* result = handler.handleDecl(cppVar, ctx);
 
     // Assert
     ASSERT_NE(result, nullptr);
@@ -642,7 +618,7 @@ TEST_F(VariableHandlerTest, SimpleArrayDeclaration) {
 
     // Act
     VariableHandler handler;
-    clang::Decl* result = handler.handleDecl(cppVar, *context);
+    clang::Decl* result = handler.handleDecl(cppVar, ctx);
 
     // Assert
     ASSERT_NE(result, nullptr) << "Translation returned null";
@@ -696,7 +672,7 @@ TEST_F(VariableHandlerTest, ArrayWithSizeExpression) {
 
     // Act
     VariableHandler handler;
-    clang::Decl* result = handler.handleDecl(cppVar, *context);
+    clang::Decl* result = handler.handleDecl(cppVar, ctx);
 
     // Assert
     ASSERT_NE(result, nullptr);
@@ -752,7 +728,7 @@ TEST_F(VariableHandlerTest, MultiDimensionalArray2D) {
 
     // Act
     VariableHandler handler;
-    clang::Decl* result = handler.handleDecl(cppVar, *context);
+    clang::Decl* result = handler.handleDecl(cppVar, ctx);
 
     // Assert
     ASSERT_NE(result, nullptr);
@@ -828,7 +804,7 @@ TEST_F(VariableHandlerTest, MultiDimensionalArray3D) {
 
     // Act
     VariableHandler handler;
-    clang::Decl* result = handler.handleDecl(cppVar, *context);
+    clang::Decl* result = handler.handleDecl(cppVar, ctx);
 
     // Assert
     ASSERT_NE(result, nullptr);
@@ -886,7 +862,7 @@ TEST_F(VariableHandlerTest, ConstArray) {
 
     // Act
     VariableHandler handler;
-    clang::Decl* result = handler.handleDecl(cppVar, *context);
+    clang::Decl* result = handler.handleDecl(cppVar, ctx);
 
     // Assert
     ASSERT_NE(result, nullptr);
@@ -932,7 +908,7 @@ TEST_F(VariableHandlerTest, StaticArray) {
 
     // Act
     VariableHandler handler;
-    clang::Decl* result = handler.handleDecl(cppVar, *context);
+    clang::Decl* result = handler.handleDecl(cppVar, ctx);
 
     // Assert
     ASSERT_NE(result, nullptr);
@@ -979,7 +955,7 @@ TEST_F(VariableHandlerTest, ArrayOfPointers) {
 
     // Act
     VariableHandler handler;
-    clang::Decl* result = handler.handleDecl(cppVar, *context);
+    clang::Decl* result = handler.handleDecl(cppVar, ctx);
 
     // Assert
     ASSERT_NE(result, nullptr);
@@ -1025,7 +1001,7 @@ TEST_F(VariableHandlerTest, FloatArray) {
 
     // Act
     VariableHandler handler;
-    clang::Decl* result = handler.handleDecl(cppVar, *context);
+    clang::Decl* result = handler.handleDecl(cppVar, ctx);
 
     // Assert
     ASSERT_NE(result, nullptr);
@@ -1072,7 +1048,7 @@ TEST_F(VariableHandlerTest, CharArray) {
 
     // Act
     VariableHandler handler;
-    clang::Decl* result = handler.handleDecl(cppVar, *context);
+    clang::Decl* result = handler.handleDecl(cppVar, ctx);
 
     // Assert
     ASSERT_NE(result, nullptr);
@@ -1119,7 +1095,7 @@ TEST_F(VariableHandlerTest, ArraySizeOne) {
 
     // Act
     VariableHandler handler;
-    clang::Decl* result = handler.handleDecl(cppVar, *context);
+    clang::Decl* result = handler.handleDecl(cppVar, ctx);
 
     // Assert
     ASSERT_NE(result, nullptr);
@@ -1169,7 +1145,7 @@ TEST_F(VariableHandlerTest, ArrayOfConstPointers) {
 
     // Act
     VariableHandler handler;
-    clang::Decl* result = handler.handleDecl(cppVar, *context);
+    clang::Decl* result = handler.handleDecl(cppVar, ctx);
 
     // Assert
     ASSERT_NE(result, nullptr);
@@ -1220,7 +1196,7 @@ TEST_F(VariableHandlerTest, LargeArray) {
 
     // Act
     VariableHandler handler;
-    clang::Decl* result = handler.handleDecl(cppVar, *context);
+    clang::Decl* result = handler.handleDecl(cppVar, ctx);
 
     // Assert
     ASSERT_NE(result, nullptr);
@@ -1250,7 +1226,7 @@ TEST_F(VariableHandlerTest, StaticLocalVariableNoInit) {
 
     // Act
     VariableHandler handler;
-    clang::Decl* result = handler.handleDecl(cppVar, *context);
+    clang::Decl* result = handler.handleDecl(cppVar, ctx);
 
     // Assert
     ASSERT_NE(result, nullptr) << "Translation returned null";
@@ -1277,7 +1253,7 @@ TEST_F(VariableHandlerTest, StaticLocalVariableWithZeroInit) {
 
     // Act
     VariableHandler handler;
-    clang::Decl* result = handler.handleDecl(cppVar, *context);
+    clang::Decl* result = handler.handleDecl(cppVar, ctx);
 
     // Assert
     ASSERT_NE(result, nullptr);
@@ -1309,7 +1285,7 @@ TEST_F(VariableHandlerTest, StaticLocalVariableWithNonZeroInit) {
 
     // Act
     VariableHandler handler;
-    clang::Decl* result = handler.handleDecl(cppVar, *context);
+    clang::Decl* result = handler.handleDecl(cppVar, ctx);
 
     // Assert
     ASSERT_NE(result, nullptr);
@@ -1339,7 +1315,7 @@ TEST_F(VariableHandlerTest, StaticFloatVariable) {
 
     // Act
     VariableHandler handler;
-    clang::Decl* result = handler.handleDecl(cppVar, *context);
+    clang::Decl* result = handler.handleDecl(cppVar, ctx);
 
     // Assert
     ASSERT_NE(result, nullptr);
@@ -1389,7 +1365,7 @@ TEST_F(VariableHandlerTest, StaticArrayVariable) {
 
     // Act
     VariableHandler handler;
-    clang::Decl* result = handler.handleDecl(cppVar, *context);
+    clang::Decl* result = handler.handleDecl(cppVar, ctx);
 
     // Assert
     ASSERT_NE(result, nullptr);
@@ -1419,7 +1395,7 @@ TEST_F(VariableHandlerTest, StaticConstVariable) {
 
     // Act
     VariableHandler handler;
-    clang::Decl* result = handler.handleDecl(cppVar, *context);
+    clang::Decl* result = handler.handleDecl(cppVar, ctx);
 
     // Assert
     ASSERT_NE(result, nullptr);
@@ -1450,7 +1426,7 @@ TEST_F(VariableHandlerTest, StaticCharVariable) {
 
     // Act
     VariableHandler handler;
-    clang::Decl* result = handler.handleDecl(cppVar, *context);
+    clang::Decl* result = handler.handleDecl(cppVar, ctx);
 
     // Assert
     ASSERT_NE(result, nullptr);
@@ -1480,7 +1456,7 @@ TEST_F(VariableHandlerTest, StaticPointerVariable) {
 
     // Act
     VariableHandler handler;
-    clang::Decl* result = handler.handleDecl(cppVar, *context);
+    clang::Decl* result = handler.handleDecl(cppVar, ctx);
 
     // Assert
     ASSERT_NE(result, nullptr);
@@ -1524,7 +1500,7 @@ TEST_F(VariableHandlerTest, ConstLocalVariable) {
 
     // Act
     VariableHandler handler;
-    clang::Decl* result = handler.handleDecl(cppVar, *context);
+    clang::Decl* result = handler.handleDecl(cppVar, ctx);
 
     // Assert
     ASSERT_NE(result, nullptr);
@@ -1567,7 +1543,7 @@ TEST_F(VariableHandlerTest, ConstGlobalVariable) {
 
     // Act
     VariableHandler handler;
-    clang::Decl* result = handler.handleDecl(cppVar, *context);
+    clang::Decl* result = handler.handleDecl(cppVar, ctx);
 
     // Assert
     ASSERT_NE(result, nullptr);
@@ -1613,7 +1589,7 @@ TEST_F(VariableHandlerTest, ConstPointer) {
 
     // Act
     VariableHandler handler;
-    clang::Decl* result = handler.handleDecl(cppVar, *context);
+    clang::Decl* result = handler.handleDecl(cppVar, ctx);
 
     // Assert
     ASSERT_NE(result, nullptr);
@@ -1660,7 +1636,7 @@ TEST_F(VariableHandlerTest, PointerToConst) {
 
     // Act
     VariableHandler handler;
-    clang::Decl* result = handler.handleDecl(cppVar, *context);
+    clang::Decl* result = handler.handleDecl(cppVar, ctx);
 
     // Assert
     ASSERT_NE(result, nullptr);
@@ -1708,7 +1684,7 @@ TEST_F(VariableHandlerTest, ConstPointerToConst) {
 
     // Act
     VariableHandler handler;
-    clang::Decl* result = handler.handleDecl(cppVar, *context);
+    clang::Decl* result = handler.handleDecl(cppVar, ctx);
 
     // Assert
     ASSERT_NE(result, nullptr);
@@ -1762,7 +1738,7 @@ TEST_F(VariableHandlerTest, ConstArrayElements) {
 
     // Act
     VariableHandler handler;
-    clang::Decl* result = handler.handleDecl(cppVar, *context);
+    clang::Decl* result = handler.handleDecl(cppVar, ctx);
 
     // Assert
     ASSERT_NE(result, nullptr);
@@ -1811,7 +1787,7 @@ TEST_F(VariableHandlerTest, SimplePointerDeclaration) {
 
     // Act
     VariableHandler handler;
-    clang::Decl* result = handler.handleDecl(cppVar, *context);
+    clang::Decl* result = handler.handleDecl(cppVar, ctx);
 
     // Assert
     ASSERT_NE(result, nullptr) << "Translation returned null";
@@ -1859,7 +1835,7 @@ TEST_F(VariableHandlerTest, PointerWithInitialization) {
 
     // Act
     VariableHandler handler;
-    clang::Decl* result = handler.handleDecl(cppVar, *context);
+    clang::Decl* result = handler.handleDecl(cppVar, ctx);
 
     // Assert
     ASSERT_NE(result, nullptr);
@@ -1897,7 +1873,7 @@ TEST_F(VariableHandlerTest, PointerToPointer) {
 
     // Act
     VariableHandler handler;
-    clang::Decl* result = handler.handleDecl(cppVar, *context);
+    clang::Decl* result = handler.handleDecl(cppVar, ctx);
 
     // Assert
     ASSERT_NE(result, nullptr);
@@ -1944,7 +1920,7 @@ TEST_F(VariableHandlerTest, ConstPointerDeclaration) {
 
     // Act
     VariableHandler handler;
-    clang::Decl* result = handler.handleDecl(cppVar, *context);
+    clang::Decl* result = handler.handleDecl(cppVar, ctx);
 
     // Assert
     ASSERT_NE(result, nullptr);
@@ -1989,7 +1965,7 @@ TEST_F(VariableHandlerTest, PointerToConstDeclaration) {
 
     // Act
     VariableHandler handler;
-    clang::Decl* result = handler.handleDecl(cppVar, *context);
+    clang::Decl* result = handler.handleDecl(cppVar, ctx);
 
     // Assert
     ASSERT_NE(result, nullptr);
@@ -2035,7 +2011,7 @@ TEST_F(VariableHandlerTest, ConstPointerToConstDeclaration) {
 
     // Act
     VariableHandler handler;
-    clang::Decl* result = handler.handleDecl(cppVar, *context);
+    clang::Decl* result = handler.handleDecl(cppVar, ctx);
 
     // Assert
     ASSERT_NE(result, nullptr);
@@ -2077,7 +2053,7 @@ TEST_F(VariableHandlerTest, VoidPointer) {
 
     // Act
     VariableHandler handler;
-    clang::Decl* result = handler.handleDecl(cppVar, *context);
+    clang::Decl* result = handler.handleDecl(cppVar, ctx);
 
     // Assert
     ASSERT_NE(result, nullptr);
@@ -2117,7 +2093,7 @@ TEST_F(VariableHandlerTest, CharPointer) {
 
     // Act
     VariableHandler handler;
-    clang::Decl* result = handler.handleDecl(cppVar, *context);
+    clang::Decl* result = handler.handleDecl(cppVar, ctx);
 
     // Assert
     ASSERT_NE(result, nullptr);
@@ -2157,7 +2133,7 @@ TEST_F(VariableHandlerTest, FloatPointer) {
 
     // Act
     VariableHandler handler;
-    clang::Decl* result = handler.handleDecl(cppVar, *context);
+    clang::Decl* result = handler.handleDecl(cppVar, ctx);
 
     // Assert
     ASSERT_NE(result, nullptr);
@@ -2197,7 +2173,7 @@ TEST_F(VariableHandlerTest, GlobalStaticPointer) {
 
     // Act
     VariableHandler handler;
-    clang::Decl* result = handler.handleDecl(cppVar, *context);
+    clang::Decl* result = handler.handleDecl(cppVar, ctx);
 
     // Assert
     ASSERT_NE(result, nullptr);
@@ -2238,7 +2214,7 @@ TEST_F(VariableHandlerTest, TriplePointer) {
 
     // Act
     VariableHandler handler;
-    clang::Decl* result = handler.handleDecl(cppVar, *context);
+    clang::Decl* result = handler.handleDecl(cppVar, ctx);
 
     // Assert
     ASSERT_NE(result, nullptr);
@@ -2300,7 +2276,7 @@ TEST_F(VariableHandlerTest, PointerToArray) {
 
     // Act
     VariableHandler handler;
-    clang::Decl* result = handler.handleDecl(cppVar, *context);
+    clang::Decl* result = handler.handleDecl(cppVar, ctx);
 
     // Assert
     ASSERT_NE(result, nullptr);
@@ -2356,7 +2332,7 @@ TEST_F(VariableHandlerTest, LValueReferenceLocal) {
 
     // Act
     VariableHandler handler;
-    clang::Decl* result = handler.handleDecl(cppVar, *context);
+    clang::Decl* result = handler.handleDecl(cppVar, ctx);
 
     // Assert
     ASSERT_NE(result, nullptr) << "Translation returned null";
@@ -2401,7 +2377,7 @@ TEST_F(VariableHandlerTest, ConstLValueReference) {
 
     // Act
     VariableHandler handler;
-    clang::Decl* result = handler.handleDecl(cppVar, *context);
+    clang::Decl* result = handler.handleDecl(cppVar, ctx);
 
     // Assert
     ASSERT_NE(result, nullptr);
@@ -2447,7 +2423,7 @@ TEST_F(VariableHandlerTest, ReferenceToPointer) {
 
     // Act
     VariableHandler handler;
-    clang::Decl* result = handler.handleDecl(cppVar, *context);
+    clang::Decl* result = handler.handleDecl(cppVar, ctx);
 
     // Assert
     ASSERT_NE(result, nullptr);
@@ -2494,7 +2470,7 @@ TEST_F(VariableHandlerTest, FloatReference) {
 
     // Act
     VariableHandler handler;
-    clang::Decl* result = handler.handleDecl(cppVar, *context);
+    clang::Decl* result = handler.handleDecl(cppVar, ctx);
 
     // Assert
     ASSERT_NE(result, nullptr);
@@ -2538,7 +2514,7 @@ TEST_F(VariableHandlerTest, RValueReference) {
 
     // Act
     VariableHandler handler;
-    clang::Decl* result = handler.handleDecl(cppVar, *context);
+    clang::Decl* result = handler.handleDecl(cppVar, ctx);
 
     // Assert
     ASSERT_NE(result, nullptr);
@@ -2580,7 +2556,7 @@ TEST_F(VariableHandlerTest, StaticReference) {
 
     // Act
     VariableHandler handler;
-    clang::Decl* result = handler.handleDecl(cppVar, *context);
+    clang::Decl* result = handler.handleDecl(cppVar, ctx);
 
     // Assert
     ASSERT_NE(result, nullptr);
@@ -2620,7 +2596,7 @@ TEST_F(VariableHandlerTest, CharReference) {
 
     // Act
     VariableHandler handler;
-    clang::Decl* result = handler.handleDecl(cppVar, *context);
+    clang::Decl* result = handler.handleDecl(cppVar, ctx);
 
     // Assert
     ASSERT_NE(result, nullptr);
@@ -2668,7 +2644,7 @@ TEST_F(VariableHandlerTest, ConstReferenceToConst) {
 
     // Act
     VariableHandler handler;
-    clang::Decl* result = handler.handleDecl(cppVar, *context);
+    clang::Decl* result = handler.handleDecl(cppVar, ctx);
 
     // Assert
     ASSERT_NE(result, nullptr);
@@ -2741,7 +2717,7 @@ TEST_F(VariableHandlerTest, LocalStructVariable) {
 
     // Act
     VariableHandler handler;
-    clang::Decl* result = handler.handleDecl(cppVar, *context);
+    clang::Decl* result = handler.handleDecl(cppVar, ctx);
 
     // Assert
     ASSERT_NE(result, nullptr);
@@ -2804,7 +2780,7 @@ TEST_F(VariableHandlerTest, GlobalStructVariable) {
 
     // Act
     VariableHandler handler;
-    clang::Decl* result = handler.handleDecl(cppVar, *context);
+    clang::Decl* result = handler.handleDecl(cppVar, ctx);
 
     // Assert
     ASSERT_NE(result, nullptr);
@@ -2876,7 +2852,7 @@ TEST_F(VariableHandlerTest, StructArrayVariable) {
 
     // Act
     VariableHandler handler;
-    clang::Decl* result = handler.handleDecl(cppVar, *context);
+    clang::Decl* result = handler.handleDecl(cppVar, ctx);
 
     // Assert
     ASSERT_NE(result, nullptr);
@@ -2946,7 +2922,7 @@ TEST_F(VariableHandlerTest, StructPointerVariable) {
 
     // Act
     VariableHandler handler;
-    clang::Decl* result = handler.handleDecl(cppVar, *context);
+    clang::Decl* result = handler.handleDecl(cppVar, ctx);
 
     // Assert
     ASSERT_NE(result, nullptr);
@@ -2978,22 +2954,14 @@ TEST_F(VariableHandlerTest, TypedefStructVariable) {
         typedef struct Point Point_t;
     )";
 
-    cppAST = clang::tooling::buildASTFromCode(code);
-    ASSERT_NE(cppAST, nullptr);
+    auto tempAST = clang::tooling::buildASTFromCode(code);
+    ASSERT_NE(tempAST, nullptr);
 
-    // Recreate builder and context
-    builder = std::make_unique<clang::CNodeBuilder>(cAST->getASTContext());
-    context = std::make_unique<HandlerContext>(
-        cppAST->getASTContext(),
-        cAST->getASTContext(),
-        *builder
-    );
-
-    clang::ASTContext& ctx = cppAST->getASTContext();
+    clang::ASTContext& cppCtx = tempAST->getASTContext();
 
     // Find the typedef
     const clang::TypedefDecl* typedefDecl = nullptr;
-    for (auto* decl : ctx.getTranslationUnitDecl()->decls()) {
+    for (auto* decl : cppCtx.getTranslationUnitDecl()->decls()) {
         if (auto* td = llvm::dyn_cast<clang::TypedefDecl>(decl)) {
             if (td->getNameAsString() == "Point_t") {
                 typedefDecl = td;
@@ -3004,8 +2972,8 @@ TEST_F(VariableHandlerTest, TypedefStructVariable) {
     ASSERT_NE(typedefDecl, nullptr);
 
     // Create variable using typedef type
-    clang::QualType typedefType = ctx.getTypedefType(typedefDecl);
-    clang::IdentifierInfo& II = ctx.Idents.get("p");
+    clang::QualType typedefType = cppCtx.getTypedefType(typedefDecl);
+    clang::IdentifierInfo& II = cppCtx.Idents.get("p");
     clang::VarDecl* cppVar = clang::VarDecl::Create(
         ctx,
         ctx.getTranslationUnitDecl(),
@@ -3019,7 +2987,7 @@ TEST_F(VariableHandlerTest, TypedefStructVariable) {
 
     // Act
     VariableHandler handler;
-    clang::Decl* result = handler.handleDecl(cppVar, *context);
+    clang::Decl* result = handler.handleDecl(cppVar, ctx);
 
     // Assert
     ASSERT_NE(result, nullptr);
@@ -3087,7 +3055,7 @@ TEST_F(VariableHandlerTest, ConstStructVariable) {
 
     // Act
     VariableHandler handler;
-    clang::Decl* result = handler.handleDecl(cppVar, *context);
+    clang::Decl* result = handler.handleDecl(cppVar, ctx);
 
     // Assert
     ASSERT_NE(result, nullptr);
@@ -3150,7 +3118,7 @@ TEST_F(VariableHandlerTest, StaticStructVariable) {
 
     // Act
     VariableHandler handler;
-    clang::Decl* result = handler.handleDecl(cppVar, *context);
+    clang::Decl* result = handler.handleDecl(cppVar, ctx);
 
     // Assert
     ASSERT_NE(result, nullptr);

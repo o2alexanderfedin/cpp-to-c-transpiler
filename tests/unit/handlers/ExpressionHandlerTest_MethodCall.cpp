@@ -24,7 +24,7 @@
  * 15. MethodCallOnTemporary - Counter().getValue() call (if supported)
  */
 
-#include "handlers/HandlerContext.h"
+#include "helpers/UnitTestHelper.h"
 #include "CNodeBuilder.h"
 #include "clang/Tooling/Tooling.h"
 #include "clang/AST/RecursiveASTVisitor.h"
@@ -43,41 +43,13 @@ using namespace cpptoc;
  */
 class ExpressionHandlerMethodCallTest : public ::testing::Test {
 protected:
-    std::unique_ptr<clang::ASTUnit> cppAST;
-    std::unique_ptr<clang::ASTUnit> cAST;
-    std::unique_ptr<clang::CNodeBuilder> builder;
-    std::unique_ptr<HandlerContext> context;
-    std::unique_ptr<ExpressionHandler> handler;
+    UnitTestContext ctx;
 
     void SetUp() override {
-        // Create real AST contexts using minimal code
-        cppAST = clang::tooling::buildASTFromCode("int dummy;");
-        cAST = clang::tooling::buildASTFromCode("int dummy2;");
-
-        ASSERT_NE(cppAST, nullptr) << "Failed to create C++ AST";
-        ASSERT_NE(cAST, nullptr) << "Failed to create C AST";
-
-        // Create builder and context
-        builder = std::make_unique<clang::CNodeBuilder>(cAST->getASTContext());
-        context = std::make_unique<HandlerContext>(
-            cppAST->getASTContext(),
-            cAST->getASTContext(),
-            *builder
-        );
-
-        // Create handler
-        handler = std::make_unique<ExpressionHandler>();
+        ctx = createUnitTestContext();
+        ctx.dispatcher->registerHandler<ExpressionHandler>();
     }
-
-    void TearDown() override {
-        handler.reset();
-        context.reset();
-        builder.reset();
-        cAST.reset();
-        cppAST.reset();
-    }
-
-    /**
+/**
      * @brief Extract CXXMemberCallExpr and all methods from C++ code
      * @param code C++ code containing method call and class definitions
      * @param outMethods Output map of method name → method declaration
@@ -252,7 +224,8 @@ TEST_F(ExpressionHandlerMethodCallTest, SimpleMethodCall) {
     context->registerMethod(method, cFunc);
 
     // Translate the method call
-    clang::Expr* result = handler->handleExpr(methodCall, *context);
+    clang::Expr* result = ctx.dispatcher->dispatch(methodCall);
+    auto __result = ctx.exprMapper->get(methodCall); __result;
 
     // Verify result is a CallExpr
     ASSERT_NE(result, nullptr);
@@ -305,7 +278,8 @@ TEST_F(ExpressionHandlerMethodCallTest, MethodCallWithOneArg) {
     context->registerMethod(method, cFunc);
 
     // Translate
-    clang::Expr* result = handler->handleExpr(methodCall, *context);
+    clang::Expr* result = ctx.dispatcher->dispatch(methodCall);
+    auto __result = ctx.exprMapper->get(methodCall); __result;
 
     ASSERT_NE(result, nullptr);
     auto* callExpr = llvm::dyn_cast<clang::CallExpr>(result);
@@ -348,7 +322,8 @@ TEST_F(ExpressionHandlerMethodCallTest, MethodCallWithTwoArgs) {
     );
     context->registerMethod(method, cFunc);
 
-    clang::Expr* result = handler->handleExpr(methodCall, *context);
+    clang::Expr* result = ctx.dispatcher->dispatch(methodCall);
+    auto __result = ctx.exprMapper->get(methodCall); __result;
     ASSERT_NE(result, nullptr);
     auto* callExpr = llvm::dyn_cast<clang::CallExpr>(result);
     ASSERT_NE(callExpr, nullptr);
@@ -394,7 +369,8 @@ TEST_F(ExpressionHandlerMethodCallTest, MethodCallWithMultipleArgs) {
     );
     context->registerMethod(method, cFunc);
 
-    clang::Expr* result = handler->handleExpr(methodCall, *context);
+    clang::Expr* result = ctx.dispatcher->dispatch(methodCall);
+    auto __result = ctx.exprMapper->get(methodCall); __result;
     ASSERT_NE(result, nullptr);
     auto* callExpr = llvm::dyn_cast<clang::CallExpr>(result);
     ASSERT_NE(callExpr, nullptr);
@@ -433,7 +409,8 @@ TEST_F(ExpressionHandlerMethodCallTest, MethodCallOnPointer) {
     clang::FunctionDecl* cFunc = createCFunction("Counter", "getValue", cCtx.IntTy);
     context->registerMethod(method, cFunc);
 
-    clang::Expr* result = handler->handleExpr(methodCall, *context);
+    clang::Expr* result = ctx.dispatcher->dispatch(methodCall);
+    auto __result = ctx.exprMapper->get(methodCall); __result;
     ASSERT_NE(result, nullptr);
     auto* callExpr = llvm::dyn_cast<clang::CallExpr>(result);
     ASSERT_NE(callExpr, nullptr);
@@ -482,7 +459,8 @@ TEST_F(ExpressionHandlerMethodCallTest, MethodCallOnThis) {
     clang::FunctionDecl* processFunc = createCFunction("Counter", "process", cCtx.VoidTy);
     context->pushFunction(processFunc);
 
-    clang::Expr* result = handler->handleExpr(methodCall, *context);
+    clang::Expr* result = ctx.dispatcher->dispatch(methodCall);
+    auto __result = ctx.exprMapper->get(methodCall); __result;
 
     context->popFunction();
 
@@ -542,7 +520,8 @@ TEST_F(ExpressionHandlerMethodCallTest, ChainedMethodCalls) {
     context->registerMethod(methods["getNext"], getNextFunc);
     context->registerMethod(methods["getValue"], getValueFunc);
 
-    clang::Expr* result = handler->handleExpr(methodCall, *context);
+    clang::Expr* result = ctx.dispatcher->dispatch(methodCall);
+    auto __result = ctx.exprMapper->get(methodCall); __result;
     ASSERT_NE(result, nullptr);
 
     // Result should be a CallExpr
@@ -583,7 +562,8 @@ TEST_F(ExpressionHandlerMethodCallTest, MethodCallReturningValue) {
     clang::FunctionDecl* cFunc = createCFunction("Counter", "getValue", cCtx.IntTy);
     context->registerMethod(method, cFunc);
 
-    clang::Expr* result = handler->handleExpr(methodCall, *context);
+    clang::Expr* result = ctx.dispatcher->dispatch(methodCall);
+    auto __result = ctx.exprMapper->get(methodCall); __result;
     ASSERT_NE(result, nullptr);
 
     auto* callExpr = llvm::dyn_cast<clang::CallExpr>(result);
@@ -623,7 +603,8 @@ TEST_F(ExpressionHandlerMethodCallTest, MethodCallInCondition) {
     clang::FunctionDecl* cFunc = createCFunction("Validator", "isValid", cCtx.BoolTy);
     context->registerMethod(method, cFunc);
 
-    clang::Expr* result = handler->handleExpr(methodCall, *context);
+    clang::Expr* result = ctx.dispatcher->dispatch(methodCall);
+    auto __result = ctx.exprMapper->get(methodCall); __result;
     ASSERT_NE(result, nullptr);
 
     auto* callExpr = llvm::dyn_cast<clang::CallExpr>(result);
@@ -663,7 +644,8 @@ TEST_F(ExpressionHandlerMethodCallTest, MethodCallInLoop) {
     clang::FunctionDecl* cFunc = createCFunction("Iterator", "hasNext", cCtx.BoolTy);
     context->registerMethod(method, cFunc);
 
-    clang::Expr* result = handler->handleExpr(methodCall, *context);
+    clang::Expr* result = ctx.dispatcher->dispatch(methodCall);
+    auto __result = ctx.exprMapper->get(methodCall); __result;
     ASSERT_NE(result, nullptr);
 
     auto* callExpr = llvm::dyn_cast<clang::CallExpr>(result);
@@ -701,7 +683,8 @@ TEST_F(ExpressionHandlerMethodCallTest, MethodCallAsFunctionArg) {
     clang::FunctionDecl* cFunc = createCFunction("Counter", "getValue", cCtx.IntTy);
     context->registerMethod(method, cFunc);
 
-    clang::Expr* result = handler->handleExpr(methodCall, *context);
+    clang::Expr* result = ctx.dispatcher->dispatch(methodCall);
+    auto __result = ctx.exprMapper->get(methodCall); __result;
     ASSERT_NE(result, nullptr);
 
     auto* callExpr = llvm::dyn_cast<clang::CallExpr>(result);
@@ -739,7 +722,8 @@ TEST_F(ExpressionHandlerMethodCallTest, ConstMethodCall) {
     clang::FunctionDecl* cFunc = createCFunction("Counter", "getValue", cCtx.IntTy);
     context->registerMethod(method, cFunc);
 
-    clang::Expr* result = handler->handleExpr(methodCall, *context);
+    clang::Expr* result = ctx.dispatcher->dispatch(methodCall);
+    auto __result = ctx.exprMapper->get(methodCall); __result;
     ASSERT_NE(result, nullptr);
 
     auto* callExpr = llvm::dyn_cast<clang::CallExpr>(result);
@@ -778,7 +762,8 @@ TEST_F(ExpressionHandlerMethodCallTest, MethodCallWithComplexArg) {
     clang::FunctionDecl* cFunc = createCFunction("Counter", "setValue", cCtx.VoidTy, {cCtx.IntTy});
     context->registerMethod(method, cFunc);
 
-    clang::Expr* result = handler->handleExpr(methodCall, *context);
+    clang::Expr* result = ctx.dispatcher->dispatch(methodCall);
+    auto __result = ctx.exprMapper->get(methodCall); __result;
     ASSERT_NE(result, nullptr);
 
     auto* callExpr = llvm::dyn_cast<clang::CallExpr>(result);
@@ -831,7 +816,8 @@ TEST_F(ExpressionHandlerMethodCallTest, NestedMethodCall) {
     context->registerMethod(methods["setValue"], setValueFunc);
     context->registerMethod(methods["getValue"], getValueFunc);
 
-    clang::Expr* result = handler->handleExpr(methodCall, *context);
+    clang::Expr* result = ctx.dispatcher->dispatch(methodCall);
+    auto __result = ctx.exprMapper->get(methodCall); __result;
     ASSERT_NE(result, nullptr);
 
     auto* callExpr = llvm::dyn_cast<clang::CallExpr>(result);

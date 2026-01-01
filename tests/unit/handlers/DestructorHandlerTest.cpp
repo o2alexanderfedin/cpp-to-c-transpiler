@@ -18,7 +18,7 @@
  */
 
 #include "dispatch/DestructorHandler.h"
-#include "handlers/HandlerContext.h"
+#include "helpers/UnitTestHelper.h"
 #include "CNodeBuilder.h"
 #include "clang/Tooling/Tooling.h"
 #include "clang/AST/DeclCXX.h"
@@ -35,37 +35,13 @@ using namespace cpptoc;
  */
 class DestructorHandlerTest : public ::testing::Test {
 protected:
-    std::unique_ptr<clang::ASTUnit> cppAST;
-    std::unique_ptr<clang::ASTUnit> cAST;
-    std::unique_ptr<clang::CNodeBuilder> builder;
-    std::unique_ptr<HandlerContext> context;
+    UnitTestContext ctx;
     DestructorHandler handler;
 
     void SetUp() override {
-        // Create real AST contexts using minimal code
-        cppAST = clang::tooling::buildASTFromCode("int dummy;");
-        cAST = clang::tooling::buildASTFromCode("int dummy2;");
-
-        ASSERT_NE(cppAST, nullptr) << "Failed to create C++ AST";
-        ASSERT_NE(cAST, nullptr) << "Failed to create C AST";
-
-        // Create builder and context
-        builder = std::make_unique<clang::CNodeBuilder>(cAST->getASTContext());
-        context = std::make_unique<HandlerContext>(
-            cppAST->getASTContext(),
-            cAST->getASTContext(),
-            *builder
-        );
+        ctx = createUnitTestContext();
     }
-
-    void TearDown() override {
-        context.reset();
-        builder.reset();
-        cAST.reset();
-        cppAST.reset();
-    }
-
-    /**
+/**
      * @brief Helper to parse C++ code and extract CXXDestructorDecl
      */
     clang::CXXDestructorDecl* getDestructorFromCode(const std::string& code) {
@@ -146,7 +122,7 @@ TEST_F(DestructorHandlerTest, EmptyDestructor) {
     ASSERT_NE(cppDestructor, nullptr);
 
     // Translate destructor
-    clang::Decl* cDecl = handler.handleDecl(cppDestructor, *context);
+    clang::Decl* cDecl = handler.handleDecl(cppDestructor, ctx);
     ASSERT_NE(cDecl, nullptr);
 
     // Verify it's a FunctionDecl
@@ -186,7 +162,7 @@ TEST_F(DestructorHandlerTest, DestructorWithCleanupCode) {
     ASSERT_NE(cppDestructor, nullptr);
 
     // Translate destructor
-    clang::Decl* cDecl = handler.handleDecl(cppDestructor, *context);
+    clang::Decl* cDecl = handler.handleDecl(cppDestructor, ctx);
     ASSERT_NE(cDecl, nullptr);
 
     auto* cFunc = llvm::dyn_cast<clang::FunctionDecl>(cDecl);
@@ -216,7 +192,7 @@ TEST_F(DestructorHandlerTest, DestructorCallingMethods) {
     auto* cppDestructor = getDestructorFromCode(code);
     ASSERT_NE(cppDestructor, nullptr);
 
-    clang::Decl* cDecl = handler.handleDecl(cppDestructor, *context);
+    clang::Decl* cDecl = handler.handleDecl(cppDestructor, ctx);
     ASSERT_NE(cDecl, nullptr);
 
     auto* cFunc = llvm::dyn_cast<clang::FunctionDecl>(cDecl);
@@ -243,7 +219,7 @@ TEST_F(DestructorHandlerTest, DestructorAccessingMemberVariablesWithThis) {
     auto* cppDestructor = getDestructorFromCode(code);
     ASSERT_NE(cppDestructor, nullptr);
 
-    clang::Decl* cDecl = handler.handleDecl(cppDestructor, *context);
+    clang::Decl* cDecl = handler.handleDecl(cppDestructor, ctx);
     ASSERT_NE(cDecl, nullptr);
 
     auto* cFunc = llvm::dyn_cast<clang::FunctionDecl>(cDecl);
@@ -269,7 +245,7 @@ TEST_F(DestructorHandlerTest, VirtualDestructor) {
     // Verify it's virtual in C++
     EXPECT_TRUE(cppDestructor->isVirtual());
 
-    clang::Decl* cDecl = handler.handleDecl(cppDestructor, *context);
+    clang::Decl* cDecl = handler.handleDecl(cppDestructor, ctx);
     ASSERT_NE(cDecl, nullptr);
 
     auto* cFunc = llvm::dyn_cast<clang::FunctionDecl>(cDecl);
@@ -303,7 +279,7 @@ TEST_F(DestructorHandlerTest, DestructorWithMultipleOperations) {
     auto* cppDestructor = getDestructorFromCode(code);
     ASSERT_NE(cppDestructor, nullptr);
 
-    clang::Decl* cDecl = handler.handleDecl(cppDestructor, *context);
+    clang::Decl* cDecl = handler.handleDecl(cppDestructor, ctx);
     ASSERT_NE(cDecl, nullptr);
 
     auto* cFunc = llvm::dyn_cast<clang::FunctionDecl>(cDecl);
@@ -349,8 +325,8 @@ TEST_F(DestructorHandlerTest, MultipleClassDestructors) {
     ASSERT_NE(destructor1, nullptr);
     ASSERT_NE(destructor2, nullptr);
 
-    clang::Decl* cDecl1 = handler.handleDecl(destructor1, *context);
-    clang::Decl* cDecl2 = handler.handleDecl(destructor2, *context);
+    clang::Decl* cDecl1 = handler.handleDecl(destructor1, ctx);
+    clang::Decl* cDecl2 = handler.handleDecl(destructor2, ctx);
 
     auto* cFunc1 = llvm::dyn_cast<clang::FunctionDecl>(cDecl1);
     auto* cFunc2 = llvm::dyn_cast<clang::FunctionDecl>(cDecl2);
@@ -377,7 +353,7 @@ TEST_F(DestructorHandlerTest, ThisParameterType) {
     auto* cppDestructor = getDestructorFromCode(code);
     ASSERT_NE(cppDestructor, nullptr);
 
-    clang::Decl* cDecl = handler.handleDecl(cppDestructor, *context);
+    clang::Decl* cDecl = handler.handleDecl(cppDestructor, ctx);
     ASSERT_NE(cDecl, nullptr);
 
     auto* cFunc = llvm::dyn_cast<clang::FunctionDecl>(cDecl);

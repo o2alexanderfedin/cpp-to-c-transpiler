@@ -13,10 +13,14 @@
 #include "clang/Tooling/Tooling.h"
 #include "clang/Frontend/ASTUnit.h"
 #include "clang/AST/DeclCXX.h"
-#include "helpers/StaticMemberTranslator.h"
-#include "handlers/HandlerContext.h"
-#include "CNodeBuilder.h"
-#include "NameMangler.h"
+#include "dispatch/StaticDataMemberHandler.h"
+#include "dispatch/CppToCVisitorDispatcher.h"
+#include "mapping/PathMapper.h"
+#include "mapping/DeclLocationMapper.h"
+#include "mapping/DeclMapper.h"
+#include "mapping/TypeMapper.h"
+#include "mapping/ExprMapper.h"
+#include "mapping/StmtMapper.h"
 #include <memory>
 #include <vector>
 
@@ -28,17 +32,55 @@ std::unique_ptr<ASTUnit> buildAST(const char *code) {
     return tooling::buildASTFromCode(code);
 }
 
-// Test fixture
-class StaticMemberIntegrationTest : public ::testing::Test {
-protected:
-    std::unique_ptr<ASTUnit> C_AST;
-    std::unique_ptr<CNodeBuilder> builder;
+// Helper to create test context
+struct TestContext {
+    std::unique_ptr<ASTUnit> cAST;
+    PathMapper* pathMapper;
+    std::unique_ptr<DeclLocationMapper> declLocationMapper;
+    std::unique_ptr<DeclMapper> declMapper;
+    std::unique_ptr<TypeMapper> typeMapper;
+    std::unique_ptr<ExprMapper> exprMapper;
+    std::unique_ptr<StmtMapper> stmtMapper;
+    std::unique_ptr<CppToCVisitorDispatcher> dispatcher;
+};
 
-    HandlerContext createContext(ASTUnit* ast) {
-        C_AST = tooling::buildASTFromCode("", "output.c", std::make_shared<clang::PCHContainerOperations>());
-        builder = std::make_unique<CNodeBuilder>(C_AST->getASTContext());
-        return HandlerContext(ast->getASTContext(), C_AST->getASTContext(), *builder);
+TestContext createTestContext() {
+    TestContext ctx;
+
+    // Reset PathMapper for test isolation
+    PathMapper::reset();
+
+    // Create C context
+    ctx.cAST = tooling::buildASTFromCode("int dummy;");
+    if (!ctx.cAST) {
+        throw std::runtime_error("Failed to create C context");
     }
+
+    // Create mappers
+    ctx.pathMapper = &PathMapper::getInstance("/tmp/test_source", "/tmp/test_output");
+    ctx.declLocationMapper = std::make_unique<DeclLocationMapper>(*ctx.pathMapper);
+    ctx.declMapper = std::make_unique<DeclMapper>();
+    ctx.typeMapper = std::make_unique<TypeMapper>();
+    ctx.exprMapper = std::make_unique<ExprMapper>();
+    ctx.stmtMapper = std::make_unique<StmtMapper>();
+
+    // Create dispatcher (no handlers registered yet)
+    ctx.dispatcher = std::make_unique<CppToCVisitorDispatcher>(
+        *ctx.pathMapper,
+        *ctx.declLocationMapper,
+        *ctx.declMapper,
+        *ctx.typeMapper,
+        *ctx.exprMapper,
+        *ctx.stmtMapper
+    );
+
+    return ctx;
+}
+
+// Test fixture
+class StaticDataMemberIntegrationTest : public ::testing::Test {
+protected:
+    // No member variables needed
 };
 
 // ============================================================================
@@ -46,7 +88,7 @@ protected:
 // ============================================================================
 
 // Test 1: Static int with out-of-class definition
-TEST_F(StaticMemberIntegrationTest, StaticIntWithOutOfClassDefinition) {
+TEST_F(StaticDataMemberIntegrationTest, StaticIntWithOutOfClassDefinition) {
     const char *code = R"(
         class Counter {
         public:
@@ -57,7 +99,10 @@ TEST_F(StaticMemberIntegrationTest, StaticIntWithOutOfClassDefinition) {
 
     auto AST = buildAST(code);
     ASSERT_TRUE(AST) << "Failed to parse C++ code";
-    auto ctx = createContext(AST.get());
+
+    // Create context
+    auto ctx = createTestContext();
+    StaticDataMemberHandler::registerWith(*ctx.dispatcher);
 
     // Find Counter class
     auto *TU = AST->getASTContext().getTranslationUnitDecl();
@@ -93,29 +138,48 @@ TEST_F(StaticMemberIntegrationTest, StaticIntWithOutOfClassDefinition) {
     ASSERT_TRUE(countDef != nullptr) << "Static member definition not found";
 
     // Test detection
-    auto staticMembers = StaticMemberTranslator::detectStaticMembers(Counter);
+    auto staticMembers = StaticDataMemberHandler::detectStaticMembers(Counter);
     EXPECT_EQ(1u, staticMembers.size());
 
     // Test declaration generation (for header)
-    VarDecl* cDecl = StaticMemberTranslator::generateStaticDeclaration(countDecl, ctx);
+    ctx.dispatcher->dispatch(
+        AST->getASTContext(),
+        ctx.cAST->getASTContext(),
+        countDecl
+    );
+    auto* cDecl = ctx.declMapper->getCreated(countDecl);
     ASSERT_TRUE(cDecl != nullptr);
-    EXPECT_EQ("Counter__count", cDecl->getNameAsString());
-    EXPECT_EQ(SC_Extern, cDecl->getStorageClass());
+    if (auto* varDecl = dyn_cast<VarDecl>(cDecl)) {
+        EXPECT_EQ("Counter__count", varDecl->getNameAsString());
+        EXPECT_EQ(SC_Extern, varDecl->getStorageClass());
+    } else {
+        FAIL() << "Expected VarDecl for declaration";
+    }
 
     // Test definition generation (for implementation)
-    VarDecl* cDef = StaticMemberTranslator::generateStaticDefinition(countDef, ctx);
+    ctx.dispatcher->dispatch(
+        AST->getASTContext(),
+        ctx.cAST->getASTContext(),
+        countDef
+    );
+    auto* cDef = ctx.declMapper->getCreated(countDef);
     ASSERT_TRUE(cDef != nullptr);
-    EXPECT_EQ("Counter__count", cDef->getNameAsString());
-    EXPECT_EQ(SC_None, cDef->getStorageClass());
-    EXPECT_TRUE(cDef->hasInit());
+    if (auto* varDef = dyn_cast<VarDecl>(cDef)) {
+        EXPECT_EQ("Counter__count", varDef->getNameAsString());
+        EXPECT_EQ(SC_None, varDef->getStorageClass());
+        EXPECT_TRUE(varDef->hasInit());
 
-    // Verify names match
-    EXPECT_EQ(cDecl->getNameAsString(), cDef->getNameAsString())
-        << "Declaration and definition must have matching names";
+        // Verify names match
+        auto* declVar = dyn_cast<VarDecl>(cDecl);
+        EXPECT_EQ(declVar->getNameAsString(), varDef->getNameAsString())
+            << "Declaration and definition must have matching names";
+    } else {
+        FAIL() << "Expected VarDecl for definition";
+    }
 }
 
 // Test 2: Const static with in-class initializer
-TEST_F(StaticMemberIntegrationTest, ConstStaticWithInClassInitializer) {
+TEST_F(StaticDataMemberIntegrationTest, ConstStaticWithInClassInitializer) {
     const char *code = R"(
         class Config {
         public:
@@ -125,7 +189,10 @@ TEST_F(StaticMemberIntegrationTest, ConstStaticWithInClassInitializer) {
 
     auto AST = buildAST(code);
     ASSERT_TRUE(AST);
-    auto ctx = createContext(AST.get());
+
+    // Create context
+    auto ctx = createTestContext();
+    StaticDataMemberHandler::registerWith(*ctx.dispatcher);
 
     auto *TU = AST->getASTContext().getTranslationUnitDecl();
     CXXRecordDecl *Config = nullptr;
@@ -152,24 +219,28 @@ TEST_F(StaticMemberIntegrationTest, ConstStaticWithInClassInitializer) {
     ASSERT_TRUE(maxSizeMember != nullptr);
 
     // Detect static members
-    auto staticMembers = StaticMemberTranslator::detectStaticMembers(Config);
+    auto staticMembers = StaticDataMemberHandler::detectStaticMembers(Config);
     ASSERT_EQ(1u, staticMembers.size());
 
     // Generate declaration
-    VarDecl* cDecl = StaticMemberTranslator::generateStaticDeclaration(maxSizeMember, ctx);
+    ctx.dispatcher->dispatch(
+        AST->getASTContext(),
+        ctx.cAST->getASTContext(),
+        maxSizeMember
+    );
+    auto* cDecl = ctx.declMapper->getCreated(maxSizeMember);
     ASSERT_TRUE(cDecl != nullptr);
-    EXPECT_EQ("Config__MAX_SIZE", cDecl->getNameAsString());
-    EXPECT_TRUE(cDecl->getType().isConstQualified()) << "Should preserve const";
-
-    // In-class initializers can be used to generate definition too
-    VarDecl* cDef = StaticMemberTranslator::generateStaticDefinition(maxSizeMember, ctx);
-    ASSERT_TRUE(cDef != nullptr);
-    EXPECT_EQ("Config__MAX_SIZE", cDef->getNameAsString());
-    EXPECT_TRUE(cDef->hasInit()) << "Should have in-class initializer";
+    if (auto* varDecl = dyn_cast<VarDecl>(cDecl)) {
+        EXPECT_EQ("Config__MAX_SIZE", varDecl->getNameAsString());
+        EXPECT_TRUE(varDecl->getType().isConstQualified()) << "Should preserve const";
+        EXPECT_TRUE(varDecl->hasInit()) << "Should have in-class initializer";
+    } else {
+        FAIL() << "Expected VarDecl";
+    }
 }
 
 // Test 3: Static array with definition
-TEST_F(StaticMemberIntegrationTest, StaticArrayWithDefinition) {
+TEST_F(StaticDataMemberIntegrationTest, StaticArrayWithDefinition) {
     const char *code = R"(
         class Table {
         public:
@@ -180,7 +251,10 @@ TEST_F(StaticMemberIntegrationTest, StaticArrayWithDefinition) {
 
     auto AST = buildAST(code);
     ASSERT_TRUE(AST);
-    auto ctx = createContext(AST.get());
+
+    // Create context
+    auto ctx = createTestContext();
+    StaticDataMemberHandler::registerWith(*ctx.dispatcher);
 
     auto *TU = AST->getASTContext().getTranslationUnitDecl();
     CXXRecordDecl *Table = nullptr;
@@ -203,14 +277,23 @@ TEST_F(StaticMemberIntegrationTest, StaticArrayWithDefinition) {
     ASSERT_TRUE(lookupDef != nullptr);
 
     // Test definition generation
-    VarDecl* cDef = StaticMemberTranslator::generateStaticDefinition(lookupDef, ctx);
+    ctx.dispatcher->dispatch(
+        AST->getASTContext(),
+        ctx.cAST->getASTContext(),
+        lookupDef
+    );
+    auto* cDef = ctx.declMapper->getCreated(lookupDef);
     ASSERT_TRUE(cDef != nullptr);
-    EXPECT_EQ("Table__lookup", cDef->getNameAsString());
-    EXPECT_TRUE(cDef->getType()->isArrayType()) << "Should preserve array type";
+    if (auto* varDef = dyn_cast<VarDecl>(cDef)) {
+        EXPECT_EQ("Table__lookup", varDef->getNameAsString());
+        EXPECT_TRUE(varDef->getType()->isArrayType()) << "Should preserve array type";
+    } else {
+        FAIL() << "Expected VarDecl";
+    }
 }
 
 // Test 4: Multiple static members in one class
-TEST_F(StaticMemberIntegrationTest, MultipleStaticMembersInClass) {
+TEST_F(StaticDataMemberIntegrationTest, MultipleStaticMembersInClass) {
     const char *code = R"(
         class Stats {
         public:
@@ -225,7 +308,10 @@ TEST_F(StaticMemberIntegrationTest, MultipleStaticMembersInClass) {
 
     auto AST = buildAST(code);
     ASSERT_TRUE(AST);
-    auto ctx = createContext(AST.get());
+
+    // Create context
+    auto ctx = createTestContext();
+    StaticDataMemberHandler::registerWith(*ctx.dispatcher);
 
     auto *TU = AST->getASTContext().getTranslationUnitDecl();
     CXXRecordDecl *Stats = nullptr;
@@ -242,15 +328,24 @@ TEST_F(StaticMemberIntegrationTest, MultipleStaticMembersInClass) {
     ASSERT_TRUE(Stats != nullptr);
 
     // Detect all static members
-    auto staticMembers = StaticMemberTranslator::detectStaticMembers(Stats);
+    auto staticMembers = StaticDataMemberHandler::detectStaticMembers(Stats);
     EXPECT_EQ(3u, staticMembers.size()) << "Should detect all 3 static members";
 
-    // Generate declarations for all
+    // Generate declarations for all via dispatcher
     std::vector<VarDecl*> declarations;
     for (auto* member : staticMembers) {
-        VarDecl* cDecl = StaticMemberTranslator::generateStaticDeclaration(member, ctx);
+        ctx.dispatcher->dispatch(
+            AST->getASTContext(),
+            ctx.cAST->getASTContext(),
+            member
+        );
+        auto* cDecl = ctx.declMapper->getCreated(member);
         ASSERT_TRUE(cDecl != nullptr);
-        declarations.push_back(cDecl);
+        if (auto* varDecl = dyn_cast<VarDecl>(cDecl)) {
+            declarations.push_back(varDecl);
+        } else {
+            FAIL() << "Expected VarDecl";
+        }
     }
 
     EXPECT_EQ(3u, declarations.size());
@@ -263,7 +358,7 @@ TEST_F(StaticMemberIntegrationTest, MultipleStaticMembersInClass) {
 }
 
 // Test 5: Static member in namespaced class
-TEST_F(StaticMemberIntegrationTest, StaticMemberInNamespacedClass) {
+TEST_F(StaticDataMemberIntegrationTest, StaticMemberInNamespacedClass) {
     const char *code = R"(
         namespace app {
             class Config {
@@ -276,7 +371,10 @@ TEST_F(StaticMemberIntegrationTest, StaticMemberInNamespacedClass) {
 
     auto AST = buildAST(code);
     ASSERT_TRUE(AST);
-    auto ctx = createContext(AST.get());
+
+    // Create context
+    auto ctx = createTestContext();
+    StaticDataMemberHandler::registerWith(*ctx.dispatcher);
 
     auto *TU = AST->getASTContext().getTranslationUnitDecl();
     CXXRecordDecl *Config = nullptr;
@@ -306,10 +404,19 @@ TEST_F(StaticMemberIntegrationTest, StaticMemberInNamespacedClass) {
     ASSERT_TRUE(valueDef != nullptr);
 
     // Generate definition with namespace mangling
-    VarDecl* cDef = StaticMemberTranslator::generateStaticDefinition(valueDef, ctx);
+    ctx.dispatcher->dispatch(
+        AST->getASTContext(),
+        ctx.cAST->getASTContext(),
+        valueDef
+    );
+    auto* cDef = ctx.declMapper->getCreated(valueDef);
     ASSERT_TRUE(cDef != nullptr);
-    EXPECT_EQ("app__Config__value", cDef->getNameAsString())
-        << "Should include namespace in mangled name";
+    if (auto* varDef = dyn_cast<VarDecl>(cDef)) {
+        EXPECT_EQ("app__Config__value", varDef->getNameAsString())
+            << "Should include namespace in mangled name";
+    } else {
+        FAIL() << "Expected VarDecl";
+    }
 }
 
 // ============================================================================

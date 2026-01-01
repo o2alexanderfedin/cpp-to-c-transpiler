@@ -1,18 +1,20 @@
 /**
  * @file StaticMemberTranslatorTest.cpp
- * @brief Tests for StaticMemberTranslator (Phase 49 Stage 1: Tasks 1A & 1B)
+ * @brief Tests for StaticDataMemberHandler (Phase 49 Stage 1: Tasks 1A & 1B)
  *
  * Tests static data member detection, declaration generation, and definition generation.
  * Comprehensive coverage of all translation patterns.
+ *
+ * Migrated from StaticMemberTranslator (legacy HandlerContext pattern)
+ * to StaticDataMemberHandler (dispatcher pattern).
  */
 
 #include <gtest/gtest.h>
 #include "clang/Tooling/Tooling.h"
 #include "clang/Frontend/ASTUnit.h"
 #include "clang/AST/DeclCXX.h"
-#include "helpers/StaticMemberTranslator.h"
-#include "handlers/HandlerContext.h"
-#include "CNodeBuilder.h"
+#include "DispatcherTestHelper.h"
+#include "dispatch/StaticDataMemberHandler.h"
 #include "../../../include/NameMangler.h"
 #include <vector>
 #include <string>
@@ -27,34 +29,10 @@ std::unique_ptr<ASTUnit> buildAST(const char *code) {
 }
 
 // Test fixture
-class StaticMemberTranslatorTest : public ::testing::Test {
+class StaticDataMemberHandlerTest : public ::testing::Test {
 protected:
     void SetUp() override {
         // Setup runs before each test
-    }
-
-    void TearDown() override {
-        // Cleanup runs after each test
-    }
-
-    // Store C AST as member to keep it alive
-    std::unique_ptr<ASTUnit> C_AST;
-    std::unique_ptr<CNodeBuilder> builder;
-
-    // Helper to create HandlerContext
-    HandlerContext createContext(ASTUnit* ast) {
-        // Create C context for translation
-        std::vector<std::string> args = {"-std=c11"};
-        C_AST = tooling::buildASTFromCode("", "output.c", std::make_shared<clang::PCHContainerOperations>());
-
-        // Create builder
-        builder = std::make_unique<CNodeBuilder>(C_AST->getASTContext());
-
-        return HandlerContext(
-            ast->getASTContext(),
-            C_AST->getASTContext(),
-            *builder
-        );
     }
 };
 
@@ -63,7 +41,7 @@ protected:
 // ============================================================================
 
 // Test 1: Detect single static int member
-TEST_F(StaticMemberTranslatorTest, DetectSingleStaticInt) {
+TEST_F(StaticDataMemberHandlerTest, DetectSingleStaticInt) {
     const char *code = R"(
         class Counter {
         public:
@@ -90,7 +68,7 @@ TEST_F(StaticMemberTranslatorTest, DetectSingleStaticInt) {
     ASSERT_TRUE(Counter != nullptr) << "Counter class not found";
 
     // Detect static members
-    auto staticMembers = StaticMemberTranslator::detectStaticMembers(Counter);
+    auto staticMembers = StaticDataMemberHandler::detectStaticMembers(Counter);
 
     ASSERT_EQ(1u, staticMembers.size()) << "Should detect exactly 1 static member";
     EXPECT_EQ("count", staticMembers[0]->getNameAsString());
@@ -98,7 +76,7 @@ TEST_F(StaticMemberTranslatorTest, DetectSingleStaticInt) {
 }
 
 // Test 2: Detect multiple static members
-TEST_F(StaticMemberTranslatorTest, DetectMultipleStaticMembers) {
+TEST_F(StaticDataMemberHandlerTest, DetectMultipleStaticMembers) {
     const char *code = R"(
         class Stats {
         public:
@@ -125,7 +103,7 @@ TEST_F(StaticMemberTranslatorTest, DetectMultipleStaticMembers) {
 
     ASSERT_TRUE(Stats != nullptr);
 
-    auto staticMembers = StaticMemberTranslator::detectStaticMembers(Stats);
+    auto staticMembers = StaticDataMemberHandler::detectStaticMembers(Stats);
 
     ASSERT_EQ(3u, staticMembers.size()) << "Should detect 3 static members";
 
@@ -141,7 +119,7 @@ TEST_F(StaticMemberTranslatorTest, DetectMultipleStaticMembers) {
 }
 
 // Test 3: Detect const static member
-TEST_F(StaticMemberTranslatorTest, DetectConstStaticMember) {
+TEST_F(StaticDataMemberHandlerTest, DetectConstStaticMember) {
     const char *code = R"(
         class Config {
         public:
@@ -166,7 +144,7 @@ TEST_F(StaticMemberTranslatorTest, DetectConstStaticMember) {
 
     ASSERT_TRUE(Config != nullptr);
 
-    auto staticMembers = StaticMemberTranslator::detectStaticMembers(Config);
+    auto staticMembers = StaticDataMemberHandler::detectStaticMembers(Config);
 
     ASSERT_EQ(1u, staticMembers.size());
     EXPECT_EQ("MAX_SIZE", staticMembers[0]->getNameAsString());
@@ -174,7 +152,7 @@ TEST_F(StaticMemberTranslatorTest, DetectConstStaticMember) {
 }
 
 // Test 4: Detect static member with in-class initializer
-TEST_F(StaticMemberTranslatorTest, DetectStaticMemberWithInitializer) {
+TEST_F(StaticDataMemberHandlerTest, DetectStaticMemberWithInitializer) {
     const char *code = R"(
         class Data {
         public:
@@ -199,7 +177,7 @@ TEST_F(StaticMemberTranslatorTest, DetectStaticMemberWithInitializer) {
 
     ASSERT_TRUE(Data != nullptr);
 
-    auto staticMembers = StaticMemberTranslator::detectStaticMembers(Data);
+    auto staticMembers = StaticDataMemberHandler::detectStaticMembers(Data);
 
     ASSERT_EQ(1u, staticMembers.size());
     EXPECT_EQ("value", staticMembers[0]->getNameAsString());
@@ -207,7 +185,7 @@ TEST_F(StaticMemberTranslatorTest, DetectStaticMemberWithInitializer) {
 }
 
 // Test 5: Detect static array member
-TEST_F(StaticMemberTranslatorTest, DetectStaticArrayMember) {
+TEST_F(StaticDataMemberHandlerTest, DetectStaticArrayMember) {
     const char *code = R"(
         class Table {
         public:
@@ -232,7 +210,7 @@ TEST_F(StaticMemberTranslatorTest, DetectStaticArrayMember) {
 
     ASSERT_TRUE(Table != nullptr);
 
-    auto staticMembers = StaticMemberTranslator::detectStaticMembers(Table);
+    auto staticMembers = StaticDataMemberHandler::detectStaticMembers(Table);
 
     ASSERT_EQ(1u, staticMembers.size());
     EXPECT_EQ("lookup", staticMembers[0]->getNameAsString());
@@ -240,7 +218,7 @@ TEST_F(StaticMemberTranslatorTest, DetectStaticArrayMember) {
 }
 
 // Test 6: Distinguish static from instance fields
-TEST_F(StaticMemberTranslatorTest, DistinguishStaticFromInstanceFields) {
+TEST_F(StaticDataMemberHandlerTest, DistinguishStaticFromInstanceFields) {
     const char *code = R"(
         class Mixed {
         public:
@@ -267,7 +245,7 @@ TEST_F(StaticMemberTranslatorTest, DistinguishStaticFromInstanceFields) {
 
     ASSERT_TRUE(Mixed != nullptr);
 
-    auto staticMembers = StaticMemberTranslator::detectStaticMembers(Mixed);
+    auto staticMembers = StaticDataMemberHandler::detectStaticMembers(Mixed);
 
     // Should only detect static member, not instance fields
     ASSERT_EQ(1u, staticMembers.size()) << "Should only detect static members";
@@ -275,7 +253,7 @@ TEST_F(StaticMemberTranslatorTest, DistinguishStaticFromInstanceFields) {
 }
 
 // Test 7: Handle empty class (no statics)
-TEST_F(StaticMemberTranslatorTest, HandleEmptyClass) {
+TEST_F(StaticDataMemberHandlerTest, HandleEmptyClass) {
     const char *code = R"(
         class Empty {
         };
@@ -298,13 +276,13 @@ TEST_F(StaticMemberTranslatorTest, HandleEmptyClass) {
 
     ASSERT_TRUE(Empty != nullptr);
 
-    auto staticMembers = StaticMemberTranslator::detectStaticMembers(Empty);
+    auto staticMembers = StaticDataMemberHandler::detectStaticMembers(Empty);
 
     EXPECT_EQ(0u, staticMembers.size()) << "Empty class should have no static members";
 }
 
 // Test 8: Handle class with only static members
-TEST_F(StaticMemberTranslatorTest, HandleClassWithOnlyStaticMembers) {
+TEST_F(StaticDataMemberHandlerTest, HandleClassWithOnlyStaticMembers) {
     const char *code = R"(
         class AllStatic {
         public:
@@ -331,13 +309,13 @@ TEST_F(StaticMemberTranslatorTest, HandleClassWithOnlyStaticMembers) {
 
     ASSERT_TRUE(AllStatic != nullptr);
 
-    auto staticMembers = StaticMemberTranslator::detectStaticMembers(AllStatic);
+    auto staticMembers = StaticDataMemberHandler::detectStaticMembers(AllStatic);
 
     EXPECT_EQ(3u, staticMembers.size()) << "Should detect all 3 static members";
 }
 
 // Test 9: Handle mix of public/private static members
-TEST_F(StaticMemberTranslatorTest, HandleMixedAccessStaticMembers) {
+TEST_F(StaticDataMemberHandlerTest, HandleMixedAccessStaticMembers) {
     const char *code = R"(
         class AccessTest {
         public:
@@ -366,14 +344,14 @@ TEST_F(StaticMemberTranslatorTest, HandleMixedAccessStaticMembers) {
 
     ASSERT_TRUE(AccessTest != nullptr);
 
-    auto staticMembers = StaticMemberTranslator::detectStaticMembers(AccessTest);
+    auto staticMembers = StaticDataMemberHandler::detectStaticMembers(AccessTest);
 
     // All static members should be detected regardless of access specifier
     EXPECT_EQ(3u, staticMembers.size()) << "Should detect all static members (public/private/protected)";
 }
 
 // Test 10: Detect static members in nested classes
-TEST_F(StaticMemberTranslatorTest, DetectStaticMembersInNestedClass) {
+TEST_F(StaticDataMemberHandlerTest, DetectStaticMembersInNestedClass) {
     const char *code = R"(
         class Outer {
             class Inner {
@@ -407,14 +385,14 @@ TEST_F(StaticMemberTranslatorTest, DetectStaticMembersInNestedClass) {
 
     ASSERT_TRUE(Inner != nullptr);
 
-    auto staticMembers = StaticMemberTranslator::detectStaticMembers(Inner);
+    auto staticMembers = StaticDataMemberHandler::detectStaticMembers(Inner);
 
     ASSERT_EQ(1u, staticMembers.size());
     EXPECT_EQ("nestedStatic", staticMembers[0]->getNameAsString());
 }
 
 // Test 11: Verify static members not in struct fields
-TEST_F(StaticMemberTranslatorTest, VerifyStaticMembersNotInFields) {
+TEST_F(StaticDataMemberHandlerTest, VerifyStaticMembersNotInFields) {
     const char *code = R"(
         class Test {
         public:
@@ -440,7 +418,7 @@ TEST_F(StaticMemberTranslatorTest, VerifyStaticMembersNotInFields) {
 
     ASSERT_TRUE(Test != nullptr);
 
-    auto staticMembers = StaticMemberTranslator::detectStaticMembers(Test);
+    auto staticMembers = StaticDataMemberHandler::detectStaticMembers(Test);
 
     // Verify static member is detected
     ASSERT_EQ(1u, staticMembers.size());
@@ -459,7 +437,7 @@ TEST_F(StaticMemberTranslatorTest, VerifyStaticMembersNotInFields) {
 }
 
 // Test 12: Detect static pointer member
-TEST_F(StaticMemberTranslatorTest, DetectStaticPointerMember) {
+TEST_F(StaticDataMemberHandlerTest, DetectStaticPointerMember) {
     const char *code = R"(
         class Manager {
         public:
@@ -484,7 +462,7 @@ TEST_F(StaticMemberTranslatorTest, DetectStaticPointerMember) {
 
     ASSERT_TRUE(Manager != nullptr);
 
-    auto staticMembers = StaticMemberTranslator::detectStaticMembers(Manager);
+    auto staticMembers = StaticDataMemberHandler::detectStaticMembers(Manager);
 
     ASSERT_EQ(1u, staticMembers.size());
     EXPECT_EQ("ptr", staticMembers[0]->getNameAsString());
@@ -496,7 +474,7 @@ TEST_F(StaticMemberTranslatorTest, DetectStaticPointerMember) {
 // ============================================================================
 
 // Test 13: Generate declaration for static int
-TEST_F(StaticMemberTranslatorTest, GenerateDeclarationForStaticInt) {
+TEST_F(StaticDataMemberHandlerTest, GenerateDeclarationForStaticInt) {
     const char *code = R"(
         class Counter {
         public:
@@ -506,7 +484,10 @@ TEST_F(StaticMemberTranslatorTest, GenerateDeclarationForStaticInt) {
 
     auto AST = buildAST(code);
     ASSERT_TRUE(AST);
-    auto ctx = createContext(AST.get());
+    auto ctx = cpptoc::test::createDispatcherPipeline();
+
+    // Register handler
+    StaticDataMemberHandler::registerWith(*ctx.dispatcher);
 
     auto *TU = AST->getASTContext().getTranslationUnitDecl();
     CXXRecordDecl *Counter = nullptr;
@@ -532,16 +513,25 @@ TEST_F(StaticMemberTranslatorTest, GenerateDeclarationForStaticInt) {
     ASSERT_TRUE(Counter != nullptr);
     ASSERT_TRUE(countMember != nullptr);
 
-    // Generate declaration
-    VarDecl* cDecl = StaticMemberTranslator::generateStaticDeclaration(countMember, ctx);
+    // Dispatch the static member declaration
+    ctx.dispatcher->dispatch(
+        AST->getASTContext(),
+        ctx.cAST->getASTContext(),
+        countMember
+    );
+
+    // Retrieve translated declaration
+    auto* cDecl = ctx.declMapper->getCreated(countMember);
 
     ASSERT_TRUE(cDecl != nullptr) << "Should generate C declaration";
-    EXPECT_EQ("Counter__count", cDecl->getNameAsString()) << "Should use mangled name";
-    EXPECT_EQ(SC_Extern, cDecl->getStorageClass()) << "Should have extern storage class";
+    auto* cVarDecl = dyn_cast<VarDecl>(cDecl);
+    ASSERT_TRUE(cVarDecl != nullptr);
+    EXPECT_EQ("Counter__count", cVarDecl->getNameAsString()) << "Should use mangled name";
+    EXPECT_EQ(SC_Extern, cVarDecl->getStorageClass()) << "Should have extern storage class";
 }
 
 // Test 14: Generate declaration for static const int
-TEST_F(StaticMemberTranslatorTest, GenerateDeclarationForConstStaticInt) {
+TEST_F(StaticDataMemberHandlerTest, GenerateDeclarationForConstStaticInt) {
     const char *code = R"(
         class Config {
         public:
@@ -551,7 +541,10 @@ TEST_F(StaticMemberTranslatorTest, GenerateDeclarationForConstStaticInt) {
 
     auto AST = buildAST(code);
     ASSERT_TRUE(AST);
-    auto ctx = createContext(AST.get());
+    auto ctx = cpptoc::test::createDispatcherPipeline();
+
+    // Register handler
+    StaticDataMemberHandler::registerWith(*ctx.dispatcher);
 
     auto *TU = AST->getASTContext().getTranslationUnitDecl();
     CXXRecordDecl *Config = nullptr;
@@ -577,16 +570,26 @@ TEST_F(StaticMemberTranslatorTest, GenerateDeclarationForConstStaticInt) {
     ASSERT_TRUE(Config != nullptr);
     ASSERT_TRUE(maxMember != nullptr);
 
-    VarDecl* cDecl = StaticMemberTranslator::generateStaticDeclaration(maxMember, ctx);
+    // Dispatch the static member declaration
+    ctx.dispatcher->dispatch(
+        AST->getASTContext(),
+        ctx.cAST->getASTContext(),
+        maxMember
+    );
+
+    // Retrieve translated declaration
+    auto* cDecl = ctx.declMapper->getCreated(maxMember);
 
     ASSERT_TRUE(cDecl != nullptr);
-    EXPECT_EQ("Config__MAX", cDecl->getNameAsString());
-    EXPECT_TRUE(cDecl->getType().isConstQualified()) << "Should preserve const qualifier";
-    EXPECT_EQ(SC_Extern, cDecl->getStorageClass());
+    auto* cVarDecl = dyn_cast<VarDecl>(cDecl);
+    ASSERT_TRUE(cVarDecl != nullptr);
+    EXPECT_EQ("Config__MAX", cVarDecl->getNameAsString());
+    EXPECT_TRUE(cVarDecl->getType().isConstQualified()) << "Should preserve const qualifier";
+    EXPECT_EQ(SC_Extern, cVarDecl->getStorageClass());
 }
 
 // Test 15: Generate declaration for static pointer
-TEST_F(StaticMemberTranslatorTest, GenerateDeclarationForStaticPointer) {
+TEST_F(StaticDataMemberHandlerTest, GenerateDeclarationForStaticPointer) {
     const char *code = R"(
         class Manager {
         public:
@@ -596,7 +599,10 @@ TEST_F(StaticMemberTranslatorTest, GenerateDeclarationForStaticPointer) {
 
     auto AST = buildAST(code);
     ASSERT_TRUE(AST);
-    auto ctx = createContext(AST.get());
+    auto ctx = cpptoc::test::createDispatcherPipeline();
+
+    // Register handler
+    StaticDataMemberHandler::registerWith(*ctx.dispatcher);
 
     auto *TU = AST->getASTContext().getTranslationUnitDecl();
     CXXRecordDecl *Manager = nullptr;
@@ -622,16 +628,26 @@ TEST_F(StaticMemberTranslatorTest, GenerateDeclarationForStaticPointer) {
     ASSERT_TRUE(Manager != nullptr);
     ASSERT_TRUE(ptrMember != nullptr);
 
-    VarDecl* cDecl = StaticMemberTranslator::generateStaticDeclaration(ptrMember, ctx);
+    // Dispatch the static member declaration
+    ctx.dispatcher->dispatch(
+        AST->getASTContext(),
+        ctx.cAST->getASTContext(),
+        ptrMember
+    );
+
+    // Retrieve translated declaration
+    auto* cDecl = ctx.declMapper->getCreated(ptrMember);
 
     ASSERT_TRUE(cDecl != nullptr);
-    EXPECT_EQ("Manager__ptr", cDecl->getNameAsString());
-    EXPECT_TRUE(cDecl->getType()->isPointerType()) << "Should preserve pointer type";
-    EXPECT_EQ(SC_Extern, cDecl->getStorageClass());
+    auto* cVarDecl = dyn_cast<VarDecl>(cDecl);
+    ASSERT_TRUE(cVarDecl != nullptr);
+    EXPECT_EQ("Manager__ptr", cVarDecl->getNameAsString());
+    EXPECT_TRUE(cVarDecl->getType()->isPointerType()) << "Should preserve pointer type";
+    EXPECT_EQ(SC_Extern, cVarDecl->getStorageClass());
 }
 
 // Test 16: Verify mangled name format
-TEST_F(StaticMemberTranslatorTest, VerifyMangledNameFormat) {
+TEST_F(StaticDataMemberHandlerTest, VerifyMangledNameFormat) {
     const char *code = R"(
         namespace ns {
             class MyClass {
@@ -643,7 +659,10 @@ TEST_F(StaticMemberTranslatorTest, VerifyMangledNameFormat) {
 
     auto AST = buildAST(code);
     ASSERT_TRUE(AST);
-    auto ctx = createContext(AST.get());
+    auto ctx = cpptoc::test::createDispatcherPipeline();
+
+    // Register handler
+    StaticDataMemberHandler::registerWith(*ctx.dispatcher);
 
     auto *TU = AST->getASTContext().getTranslationUnitDecl();
     CXXRecordDecl *MyClass = nullptr;
@@ -676,10 +695,20 @@ TEST_F(StaticMemberTranslatorTest, VerifyMangledNameFormat) {
     ASSERT_TRUE(MyClass != nullptr);
     ASSERT_TRUE(valueMember != nullptr);
 
-    VarDecl* cDecl = StaticMemberTranslator::generateStaticDeclaration(valueMember, ctx);
+    // Dispatch the static member declaration
+    ctx.dispatcher->dispatch(
+        AST->getASTContext(),
+        ctx.cAST->getASTContext(),
+        valueMember
+    );
+
+    // Retrieve translated declaration
+    auto* cDecl = ctx.declMapper->getCreated(valueMember);
 
     ASSERT_TRUE(cDecl != nullptr);
-    EXPECT_EQ("ns__MyClass__value", cDecl->getNameAsString()) << "Should use namespace__class__member format";
+    auto* cVarDecl = dyn_cast<VarDecl>(cDecl);
+    ASSERT_TRUE(cVarDecl != nullptr);
+    EXPECT_EQ("ns__MyClass__value", cVarDecl->getNameAsString()) << "Should use namespace__class__member format";
 }
 
 // ============================================================================
@@ -689,21 +718,56 @@ TEST_F(StaticMemberTranslatorTest, VerifyMangledNameFormat) {
 // ============================================================================
 
 // Test: Null input handling
-TEST_F(StaticMemberTranslatorTest, HandleNullInput) {
-    auto AST = buildAST("class Test {};");
-    auto ctx = createContext(AST.get());
-
+TEST_F(StaticDataMemberHandlerTest, HandleNullInput) {
     // Test detectStaticMembers with null
-    auto result1 = StaticMemberTranslator::detectStaticMembers(nullptr);
+    auto result1 = StaticDataMemberHandler::detectStaticMembers(nullptr);
     EXPECT_EQ(0u, result1.size()) << "Should handle null input gracefully";
 
-    // Test generateStaticDeclaration with null
-    VarDecl* result2 = StaticMemberTranslator::generateStaticDeclaration(nullptr, ctx);
-    EXPECT_EQ(nullptr, result2) << "Should return nullptr for null input";
+    // Note: For null dispatch, the handler's canHandle will return false
+    // Testing null dispatch is not meaningful since dispatcher checks canHandle first
+    // Instead, we verify that non-static members are not handled by the handler
 
-    // Test generateStaticDefinition with null
-    VarDecl* result3 = StaticMemberTranslator::generateStaticDefinition(nullptr, ctx);
-    EXPECT_EQ(nullptr, result3) << "Should return nullptr for null input";
+    const char *code = R"(
+        class Test {
+        public:
+            int instanceField;  // Not static, should not be handled
+        };
+    )";
+
+    auto AST = buildAST(code);
+    auto ctx = cpptoc::test::createDispatcherPipeline();
+    StaticDataMemberHandler::registerWith(*ctx.dispatcher);
+
+    auto *TU = AST->getASTContext().getTranslationUnitDecl();
+    CXXRecordDecl *Test = nullptr;
+    FieldDecl *instanceField = nullptr;
+
+    for (auto *D : TU->decls()) {
+        if (auto *RD = dyn_cast<CXXRecordDecl>(D)) {
+            if (RD->getNameAsString() == "Test" && RD->isCompleteDefinition()) {
+                Test = RD;
+                for (auto *field : RD->fields()) {
+                    if (field->getNameAsString() == "instanceField") {
+                        instanceField = field;
+                        break;
+                    }
+                }
+                break;
+            }
+        }
+    }
+
+    ASSERT_TRUE(Test != nullptr);
+    ASSERT_TRUE(instanceField != nullptr);
+
+    // Try to dispatch instance field (should not be handled by StaticDataMemberHandler)
+    bool handled = ctx.dispatcher->dispatch(
+        AST->getASTContext(),
+        ctx.cAST->getASTContext(),
+        instanceField
+    );
+
+    EXPECT_FALSE(handled) << "Handler should not process instance fields";
 }
 
 // ============================================================================
@@ -711,7 +775,7 @@ TEST_F(StaticMemberTranslatorTest, HandleNullInput) {
 // ============================================================================
 
 // Test 17: Generate definition with initializer
-TEST_F(StaticMemberTranslatorTest, GenerateDefinitionWithInitializer) {
+TEST_F(StaticDataMemberHandlerTest, GenerateDefinitionWithInitializer) {
     const char *code = R"(
         class Counter {
         public:
@@ -722,7 +786,10 @@ TEST_F(StaticMemberTranslatorTest, GenerateDefinitionWithInitializer) {
 
     auto AST = buildAST(code);
     ASSERT_TRUE(AST);
-    auto ctx = createContext(AST.get());
+    auto ctx = cpptoc::test::createDispatcherPipeline();
+
+    // Register handler
+    StaticDataMemberHandler::registerWith(*ctx.dispatcher);
 
     // Find the out-of-class definition
     auto *TU = AST->getASTContext().getTranslationUnitDecl();
@@ -739,17 +806,26 @@ TEST_F(StaticMemberTranslatorTest, GenerateDefinitionWithInitializer) {
 
     ASSERT_TRUE(countDef != nullptr) << "Static member definition not found";
 
-    // Generate definition
-    VarDecl* cDef = StaticMemberTranslator::generateStaticDefinition(countDef, ctx);
+    // Dispatch the static member definition
+    ctx.dispatcher->dispatch(
+        AST->getASTContext(),
+        ctx.cAST->getASTContext(),
+        countDef
+    );
+
+    // Retrieve translated definition
+    auto* cDef = ctx.declMapper->getCreated(countDef);
 
     ASSERT_TRUE(cDef != nullptr);
-    EXPECT_EQ("Counter__count", cDef->getNameAsString());
-    EXPECT_EQ(SC_None, cDef->getStorageClass()) << "Should have SC_None (global scope)";
-    EXPECT_TRUE(cDef->hasInit()) << "Should have initializer";
+    auto* cVarDecl = dyn_cast<VarDecl>(cDef);
+    ASSERT_TRUE(cVarDecl != nullptr);
+    EXPECT_EQ("Counter__count", cVarDecl->getNameAsString());
+    EXPECT_EQ(SC_None, cVarDecl->getStorageClass()) << "Should have SC_None (global scope)";
+    EXPECT_TRUE(cVarDecl->hasInit()) << "Should have initializer";
 }
 
 // Test 18: isStaticMemberDefinition detection
-TEST_F(StaticMemberTranslatorTest, IsStaticMemberDefinition) {
+TEST_F(StaticDataMemberHandlerTest, IsStaticMemberDefinition) {
     const char *code = R"(
         class Test {
         public:
@@ -776,12 +852,12 @@ TEST_F(StaticMemberTranslatorTest, IsStaticMemberDefinition) {
     ASSERT_TRUE(valueDef != nullptr);
 
     // Test isStaticMemberDefinition
-    bool result = StaticMemberTranslator::isStaticMemberDefinition(valueDef);
+    bool result = StaticDataMemberHandler::isStaticMemberDefinition(valueDef);
     EXPECT_TRUE(result) << "Should detect static member definition";
 }
 
 // Test 19: getOwningClass returns correct class
-TEST_F(StaticMemberTranslatorTest, GetOwningClass) {
+TEST_F(StaticDataMemberHandlerTest, GetOwningClass) {
     const char *code = R"(
         class Manager {
         public:
@@ -808,7 +884,7 @@ TEST_F(StaticMemberTranslatorTest, GetOwningClass) {
     ASSERT_TRUE(ptrDef != nullptr);
 
     // Get owning class
-    CXXRecordDecl* owningClass = StaticMemberTranslator::getOwningClass(ptrDef);
+    CXXRecordDecl* owningClass = StaticDataMemberHandler::getOwningClass(ptrDef);
 
     ASSERT_TRUE(owningClass != nullptr);
     EXPECT_EQ("Manager", owningClass->getNameAsString());

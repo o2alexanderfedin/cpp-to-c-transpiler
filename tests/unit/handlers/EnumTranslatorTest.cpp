@@ -38,7 +38,7 @@
  */
 
 #include "dispatch/EnumTranslator.h"
-#include "handlers/HandlerContext.h"
+#include "helpers/UnitTestHelper.h"
 #include "CNodeBuilder.h"
 #include "clang/Tooling/Tooling.h"
 #include <gtest/gtest.h>
@@ -52,10 +52,7 @@ using namespace cpptoc;
  */
 class EnumTranslatorTest : public ::testing::Test {
 protected:
-    std::unique_ptr<clang::ASTUnit> cppAST;
-    std::unique_ptr<clang::ASTUnit> cAST;
-    std::unique_ptr<clang::CNodeBuilder> builder;
-    std::unique_ptr<HandlerContext> context;
+    UnitTestContext ctx;
     std::unique_ptr<EnumTranslator> translator;
 
     void SetUp() override {
@@ -67,26 +64,11 @@ protected:
         ASSERT_NE(cAST, nullptr) << "Failed to create C AST";
 
         // Create builder and context
-        builder = std::make_unique<clang::CNodeBuilder>(cAST->getASTContext());
-        context = std::make_unique<HandlerContext>(
-            cppAST->getASTContext(),
-            cAST->getASTContext(),
-            *builder
-        );
 
         // Create translator
         translator = std::make_unique<EnumTranslator>();
     }
-
-    void TearDown() override {
-        translator.reset();
-        context.reset();
-        builder.reset();
-        cAST.reset();
-        cppAST.reset();
-    }
-
-    /**
+/**
      * @brief Build AST from code and return the first EnumDecl
      */
     const clang::EnumDecl* getEnumDeclFromCode(const std::string& code) {
@@ -96,12 +78,6 @@ protected:
         if (!cppAST) return nullptr;
 
         // Recreate builder and context with new AST
-        builder = std::make_unique<clang::CNodeBuilder>(cAST->getASTContext());
-        context = std::make_unique<HandlerContext>(
-            cppAST->getASTContext(),
-            cAST->getASTContext(),
-            *builder
-        );
 
         // Find the first EnumDecl
         auto& ctx = cppAST->getASTContext();
@@ -613,12 +589,6 @@ TEST_F(EnumTranslatorTest, EnumWithDuplicateNamesInDifferentEnums) {
     ASSERT_NE(cppAST, nullptr);
 
     // Recreate context
-    builder = std::make_unique<clang::CNodeBuilder>(cAST->getASTContext());
-    context = std::make_unique<HandlerContext>(
-        cppAST->getASTContext(),
-        cAST->getASTContext(),
-        *builder
-    );
 
     auto enums = getAllEnumDecls();
     ASSERT_EQ(enums.size(), 2);

@@ -5253,59 +5253,55 @@ gtest_discover_tests(ACSLMemoryPredicateAnalyzerTest
 #     WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
 # )
 
-# Phase 49: StaticMemberTranslator Tests
-# TODO: Test needs migration to CppToCVisitorDispatcher (StaticMemberTranslator uses HandlerContext)
-# add_executable(StaticMemberTranslatorTest
-#     tests/unit/helpers/StaticMemberTranslatorTest.cpp
-# )
-#
-# target_include_directories(StaticMemberTranslatorTest PRIVATE
-#     ${CMAKE_SOURCE_DIR}/tests/fixtures
-#     ${CMAKE_SOURCE_DIR}/include
-#     ${LLVM_INCLUDE_DIRS}
-#     ${CLANG_INCLUDE_DIRS}
-# )
-#
-# target_link_libraries(StaticMemberTranslatorTest PRIVATE
-#     test_fixtures
-#     cpptoc_core
-#     clangTooling
-#     clangAST
-#     clangBasic
-#     GTest::gtest
-#     GTest::gtest_main
-# )
-#
-# gtest_discover_tests(StaticMemberTranslatorTest
-#     WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
-# )
+# Phase 49: StaticDataMemberHandler Tests (migrated from StaticMemberTranslator)
+add_executable(StaticDataMemberHandlerTest
+    tests/unit/helpers/StaticMemberTranslatorTest.cpp
+)
+
+target_include_directories(StaticDataMemberHandlerTest PRIVATE
+    ${CMAKE_SOURCE_DIR}/tests/fixtures
+    ${CMAKE_SOURCE_DIR}/include
+    ${LLVM_INCLUDE_DIRS}
+    ${CLANG_INCLUDE_DIRS}
+)
+
+target_link_libraries(StaticDataMemberHandlerTest PRIVATE
+    cpptoc_core
+    clangTooling
+    clangAST
+    clangBasic
+    GTest::gtest
+    GTest::gtest_main
+)
+
+gtest_discover_tests(StaticDataMemberHandlerTest
+    WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
+)
 
 # Phase 49: Static Member Integration Tests
-# DELETED: Integration test - StaticMemberIntegrationTest
-# add_executable(StaticMemberIntegrationTest
-#     tests/integration/handlers/StaticMemberIntegrationTest.cpp
-# )
+add_executable(StaticDataMemberIntegrationTest
+    tests/integration/handlers/StaticMemberIntegrationTest.cpp
+)
 
-# target_include_directories(StaticMemberIntegrationTest PRIVATE
-#     ${CMAKE_SOURCE_DIR}/tests/fixtures
-#     ${CMAKE_SOURCE_DIR}/include
-#     ${LLVM_INCLUDE_DIRS}
-#     ${CLANG_INCLUDE_DIRS}
-# )
+target_include_directories(StaticDataMemberIntegrationTest PRIVATE
+    ${CMAKE_SOURCE_DIR}/tests/fixtures
+    ${CMAKE_SOURCE_DIR}/include
+    ${LLVM_INCLUDE_DIRS}
+    ${CLANG_INCLUDE_DIRS}
+)
 
-# target_link_libraries(StaticMemberIntegrationTest PRIVATE
-#     test_fixtures
-#     cpptoc_core
-#     clangTooling
-#     clangAST
-#     clangBasic
-#     GTest::gtest
-#     GTest::gtest_main
-# )
+target_link_libraries(StaticDataMemberIntegrationTest PRIVATE
+    cpptoc_core
+    clangTooling
+    clangAST
+    clangBasic
+    GTest::gtest
+    GTest::gtest_main
+)
 
-# gtest_discover_tests(StaticMemberIntegrationTest
-#     WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
-# )
+gtest_discover_tests(StaticDataMemberIntegrationTest
+    WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
+)
 
 # ============================================================================
 # Phase 39-01c: Integration Tests - Handler Cooperation

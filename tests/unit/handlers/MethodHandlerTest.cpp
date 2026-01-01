@@ -26,7 +26,7 @@
  */
 
 #include "dispatch/MethodHandler.h"
-#include "handlers/HandlerContext.h"
+#include "helpers/UnitTestHelper.h"
 #include "CNodeBuilder.h"
 #include "clang/Tooling/Tooling.h"
 #include "clang/AST/DeclCXX.h"
@@ -41,41 +41,13 @@ using namespace cpptoc;
  */
 class MethodHandlerTest : public ::testing::Test {
 protected:
-    std::unique_ptr<clang::ASTUnit> cppAST;
-    std::unique_ptr<clang::ASTUnit> cAST;
-    std::unique_ptr<clang::CNodeBuilder> builder;
-    std::unique_ptr<HandlerContext> context;
-    std::unique_ptr<MethodHandler> handler;
+    UnitTestContext ctx;
 
     void SetUp() override {
-        // Create real AST contexts
-        cppAST = clang::tooling::buildASTFromCode("int dummy;");
-        cAST = clang::tooling::buildASTFromCode("int dummy2;");
-
-        ASSERT_NE(cppAST, nullptr) << "Failed to create C++ AST";
-        ASSERT_NE(cAST, nullptr) << "Failed to create C AST";
-
-        // Create builder and context
-        builder = std::make_unique<clang::CNodeBuilder>(cAST->getASTContext());
-        context = std::make_unique<HandlerContext>(
-            cppAST->getASTContext(),
-            cAST->getASTContext(),
-            *builder
-        );
-
-        // Create handler
-        handler = std::make_unique<MethodHandler>();
+        ctx = createUnitTestContext();
+        ctx.dispatcher->registerHandler<MethodHandler>();
     }
-
-    void TearDown() override {
-        handler.reset();
-        context.reset();
-        builder.reset();
-        cAST.reset();
-        cppAST.reset();
-    }
-
-    /**
+/**
      * @brief Parse C++ code and extract the first method declaration
      * @param code C++ code containing a class with method
      * @return First CXXMethodDecl found, or nullptr
@@ -167,7 +139,8 @@ TEST_F(MethodHandlerTest, SimpleMethodWithNoParameters) {
 
     // Translate method
     auto* cFunc = llvm::dyn_cast_or_null<clang::FunctionDecl>(
-        handler->handleDecl(method, *context)
+        ctx.dispatcher->dispatch(method);
+    auto __result = ctx.declMapper->get(method); __result
     );
     ASSERT_NE(cFunc, nullptr) << "Translation should return FunctionDecl";
 
@@ -205,7 +178,8 @@ TEST_F(MethodHandlerTest, MethodWithOneParameter) {
     ASSERT_NE(method, nullptr);
 
     auto* cFunc = llvm::dyn_cast_or_null<clang::FunctionDecl>(
-        handler->handleDecl(method, *context)
+        ctx.dispatcher->dispatch(method);
+    auto __result = ctx.declMapper->get(method); __result
     );
     ASSERT_NE(cFunc, nullptr);
 
@@ -236,7 +210,8 @@ TEST_F(MethodHandlerTest, MethodWithTwoParameters) {
     ASSERT_NE(method, nullptr);
 
     auto* cFunc = llvm::dyn_cast_or_null<clang::FunctionDecl>(
-        handler->handleDecl(method, *context)
+        ctx.dispatcher->dispatch(method);
+    auto __result = ctx.declMapper->get(method); __result
     );
     ASSERT_NE(cFunc, nullptr);
 
@@ -264,7 +239,8 @@ TEST_F(MethodHandlerTest, MethodReturningInt) {
     ASSERT_NE(method, nullptr);
 
     auto* cFunc = llvm::dyn_cast_or_null<clang::FunctionDecl>(
-        handler->handleDecl(method, *context)
+        ctx.dispatcher->dispatch(method);
+    auto __result = ctx.declMapper->get(method); __result
     );
     ASSERT_NE(cFunc, nullptr);
 
@@ -288,7 +264,8 @@ TEST_F(MethodHandlerTest, MethodReturningVoid) {
     ASSERT_NE(method, nullptr);
 
     auto* cFunc = llvm::dyn_cast_or_null<clang::FunctionDecl>(
-        handler->handleDecl(method, *context)
+        ctx.dispatcher->dispatch(method);
+    auto __result = ctx.declMapper->get(method); __result
     );
     ASSERT_NE(cFunc, nullptr);
 
@@ -310,7 +287,8 @@ TEST_F(MethodHandlerTest, MethodReturningFloat) {
     ASSERT_NE(method, nullptr);
 
     auto* cFunc = llvm::dyn_cast_or_null<clang::FunctionDecl>(
-        handler->handleDecl(method, *context)
+        ctx.dispatcher->dispatch(method);
+    auto __result = ctx.declMapper->get(method); __result
     );
     ASSERT_NE(cFunc, nullptr);
 
@@ -334,7 +312,8 @@ TEST_F(MethodHandlerTest, ConstMethod) {
     EXPECT_TRUE(method->isConst()) << "Method should be const in C++";
 
     auto* cFunc = llvm::dyn_cast_or_null<clang::FunctionDecl>(
-        handler->handleDecl(method, *context)
+        ctx.dispatcher->dispatch(method);
+    auto __result = ctx.declMapper->get(method); __result
     );
     ASSERT_NE(cFunc, nullptr);
 
@@ -363,7 +342,8 @@ TEST_F(MethodHandlerTest, StaticMethod) {
     EXPECT_TRUE(method->isStatic()) << "Method should be static";
 
     auto* cFunc = llvm::dyn_cast_or_null<clang::FunctionDecl>(
-        handler->handleDecl(method, *context)
+        ctx.dispatcher->dispatch(method);
+    auto __result = ctx.declMapper->get(method); __result
     );
     ASSERT_NE(cFunc, nullptr);
 
@@ -391,7 +371,8 @@ TEST_F(MethodHandlerTest, MethodAccessingMemberVariable) {
     ASSERT_NE(method, nullptr);
 
     auto* cFunc = llvm::dyn_cast_or_null<clang::FunctionDecl>(
-        handler->handleDecl(method, *context)
+        ctx.dispatcher->dispatch(method);
+    auto __result = ctx.declMapper->get(method); __result
     );
     ASSERT_NE(cFunc, nullptr);
 
@@ -420,7 +401,8 @@ TEST_F(MethodHandlerTest, MethodCallingOtherMethod) {
     // Translate both methods
     for (const auto* method : methods) {
         auto* cFunc = llvm::dyn_cast_or_null<clang::FunctionDecl>(
-            handler->handleDecl(method, *context)
+            ctx.dispatcher->dispatch(method);
+    auto __result = ctx.declMapper->get(method); __result
         );
         ASSERT_NE(cFunc, nullptr);
 
@@ -447,7 +429,8 @@ TEST_F(MethodHandlerTest, MethodInDifferentClass) {
     ASSERT_NE(method1, nullptr);
 
     auto* cFunc1 = llvm::dyn_cast_or_null<clang::FunctionDecl>(
-        handler->handleDecl(method1, *context)
+        ctx.dispatcher->dispatch(method1);
+    auto __result = ctx.declMapper->get(method1); __result
     );
     ASSERT_NE(cFunc1, nullptr);
     EXPECT_EQ(cFunc1->getNameAsString(), "Counter_reset");
@@ -465,7 +448,8 @@ TEST_F(MethodHandlerTest, MethodInDifferentClass) {
     ASSERT_NE(method2, nullptr);
 
     auto* cFunc2 = llvm::dyn_cast_or_null<clang::FunctionDecl>(
-        handler->handleDecl(method2, *context)
+        ctx.dispatcher->dispatch(method2);
+    auto __result = ctx.declMapper->get(method2); __result
     );
     ASSERT_NE(cFunc2, nullptr);
     EXPECT_EQ(cFunc2->getNameAsString(), "Timer_reset")
@@ -493,10 +477,12 @@ TEST_F(MethodHandlerTest, OverloadedMethod) {
 
     // Translate both
     auto* cFunc1 = llvm::dyn_cast_or_null<clang::FunctionDecl>(
-        handler->handleDecl(methods[0], *context)
+        ctx.dispatcher->dispatch(methods[0]);
+    auto __result = ctx.declMapper->get(methods[0]); __result
     );
     auto* cFunc2 = llvm::dyn_cast_or_null<clang::FunctionDecl>(
-        handler->handleDecl(methods[1], *context)
+        ctx.dispatcher->dispatch(methods[1]);
+    auto __result = ctx.declMapper->get(methods[1]); __result
     );
 
     ASSERT_NE(cFunc1, nullptr);
@@ -528,7 +514,8 @@ TEST_F(MethodHandlerTest, MethodWithPointerParameter) {
     ASSERT_NE(method, nullptr);
 
     auto* cFunc = llvm::dyn_cast_or_null<clang::FunctionDecl>(
-        handler->handleDecl(method, *context)
+        ctx.dispatcher->dispatch(method);
+    auto __result = ctx.declMapper->get(method); __result
     );
     ASSERT_NE(cFunc, nullptr);
 
@@ -555,7 +542,8 @@ TEST_F(MethodHandlerTest, MethodWithStructParameter) {
     ASSERT_NE(method, nullptr);
 
     auto* cFunc = llvm::dyn_cast_or_null<clang::FunctionDecl>(
-        handler->handleDecl(method, *context)
+        ctx.dispatcher->dispatch(method);
+    auto __result = ctx.declMapper->get(method); __result
     );
     ASSERT_NE(cFunc, nullptr);
 
@@ -582,7 +570,8 @@ TEST_F(MethodHandlerTest, MethodWithAllPrimitiveTypes) {
     ASSERT_NE(method, nullptr);
 
     auto* cFunc = llvm::dyn_cast_or_null<clang::FunctionDecl>(
-        handler->handleDecl(method, *context)
+        ctx.dispatcher->dispatch(method);
+    auto __result = ctx.declMapper->get(method); __result
     );
     ASSERT_NE(cFunc, nullptr);
 
@@ -610,7 +599,8 @@ TEST_F(MethodHandlerTest, MethodReturningPointer) {
     ASSERT_NE(method, nullptr);
 
     auto* cFunc = llvm::dyn_cast_or_null<clang::FunctionDecl>(
-        handler->handleDecl(method, *context)
+        ctx.dispatcher->dispatch(method);
+    auto __result = ctx.declMapper->get(method); __result
     );
     ASSERT_NE(cFunc, nullptr);
 
@@ -633,7 +623,8 @@ TEST_F(MethodHandlerTest, MethodWithConstParameter) {
     ASSERT_NE(method, nullptr);
 
     auto* cFunc = llvm::dyn_cast_or_null<clang::FunctionDecl>(
-        handler->handleDecl(method, *context)
+        ctx.dispatcher->dispatch(method);
+    auto __result = ctx.declMapper->get(method); __result
     );
     ASSERT_NE(cFunc, nullptr);
 
@@ -666,7 +657,8 @@ TEST_F(MethodHandlerTest, MultipleMethodsInSameClass) {
     std::vector<clang::FunctionDecl*> cFuncs;
     for (const auto* method : methods) {
         auto* cFunc = llvm::dyn_cast_or_null<clang::FunctionDecl>(
-            handler->handleDecl(method, *context)
+            ctx.dispatcher->dispatch(method);
+    auto __result = ctx.declMapper->get(method); __result
         );
         ASSERT_NE(cFunc, nullptr);
         cFuncs.push_back(cFunc);

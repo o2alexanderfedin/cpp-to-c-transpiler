@@ -83,6 +83,10 @@ struct DispatcherPipeline {
 inline DispatcherPipeline createDispatcherPipeline(const std::string& cppCode = "int dummy;") {
     DispatcherPipeline pipeline;
 
+    // CRITICAL: Reset PathMapper singleton state for test isolation
+    // PathMapper is a singleton and retains state across tests
+    PathMapper::reset();
+
     // Parse C++ code
     pipeline.cppAST = clang::tooling::buildASTFromCode(cppCode);
     if (!pipeline.cppAST) {

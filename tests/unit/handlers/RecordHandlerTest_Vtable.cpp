@@ -27,7 +27,7 @@
  */
 
 #include "dispatch/RecordHandler.h"
-#include "handlers/HandlerContext.h"
+#include "helpers/UnitTestHelper.h"
 #include "CNodeBuilder.h"
 #include "clang/Tooling/Tooling.h"
 #include "clang/AST/DeclCXX.h"
@@ -42,41 +42,13 @@ using namespace cpptoc;
  */
 class RecordHandlerVtableTest : public ::testing::Test {
 protected:
-    std::unique_ptr<clang::ASTUnit> cppAST;
-    std::unique_ptr<clang::ASTUnit> cAST;
-    std::unique_ptr<clang::CNodeBuilder> builder;
-    std::unique_ptr<HandlerContext> context;
-    std::unique_ptr<RecordHandler> handler;
+    UnitTestContext ctx;
 
     void SetUp() override {
-        // Create real AST contexts using minimal code
-        cppAST = clang::tooling::buildASTFromCode("int dummy;");
-        cAST = clang::tooling::buildASTFromCode("int dummy2;");
-
-        ASSERT_NE(cppAST, nullptr) << "Failed to create C++ AST";
-        ASSERT_NE(cAST, nullptr) << "Failed to create C AST";
-
-        // Create builder and context
-        builder = std::make_unique<clang::CNodeBuilder>(cAST->getASTContext());
-        context = std::make_unique<HandlerContext>(
-            cppAST->getASTContext(),
-            cAST->getASTContext(),
-            *builder
-        );
-
-        // Create handler
-        handler = std::make_unique<RecordHandler>();
+        ctx = createUnitTestContext();
+        ctx.dispatcher->registerHandler<RecordHandler>();
     }
-
-    void TearDown() override {
-        handler.reset();
-        context.reset();
-        builder.reset();
-        cAST.reset();
-        cppAST.reset();
-    }
-
-    /**
+/**
      * @brief Build AST from code and return the first CXXRecordDecl
      */
     const clang::CXXRecordDecl* getCXXRecordDeclFromCode(const std::string& code) {
@@ -86,12 +58,6 @@ protected:
         if (!cppAST) return nullptr;
 
         // Recreate builder and context with new AST
-        builder = std::make_unique<clang::CNodeBuilder>(cAST->getASTContext());
-        context = std::make_unique<HandlerContext>(
-            cppAST->getASTContext(),
-            cAST->getASTContext(),
-            *builder
-        );
 
         // Find the first CXXRecordDecl
         auto& ctx = cppAST->getASTContext();
@@ -217,7 +183,8 @@ TEST_F(RecordHandlerVtableTest, SingleVirtualMethod) {
 
     // Translate the class (should also generate vtable struct)
     auto* cRecord = llvm::cast<clang::RecordDecl>(
-        handler->handleDecl(cppRecord, *context)
+        ctx.dispatcher->dispatch(cppRecord);
+    auto __result = ctx.declMapper->get(cppRecord); __result
     );
     ASSERT_NE(cRecord, nullptr);
 
@@ -256,7 +223,8 @@ TEST_F(RecordHandlerVtableTest, MultipleVirtualMethods) {
     EXPECT_TRUE(cppRecord->isPolymorphic());
 
     auto* cRecord = llvm::cast<clang::RecordDecl>(
-        handler->handleDecl(cppRecord, *context)
+        ctx.dispatcher->dispatch(cppRecord);
+    auto __result = ctx.declMapper->get(cppRecord); __result
     );
     ASSERT_NE(cRecord, nullptr);
 
@@ -297,7 +265,8 @@ TEST_F(RecordHandlerVtableTest, VirtualDestructor) {
     EXPECT_TRUE(cppRecord->isPolymorphic());
 
     auto* cRecord = llvm::cast<clang::RecordDecl>(
-        handler->handleDecl(cppRecord, *context)
+        ctx.dispatcher->dispatch(cppRecord);
+    auto __result = ctx.declMapper->get(cppRecord); __result
     );
     ASSERT_NE(cRecord, nullptr);
 
@@ -354,12 +323,6 @@ TEST_F(RecordHandlerVtableTest, InheritedVtable) {
     ASSERT_NE(cppAST, nullptr);
 
     // Recreate builder and context
-    builder = std::make_unique<clang::CNodeBuilder>(cAST->getASTContext());
-    context = std::make_unique<HandlerContext>(
-        cppAST->getASTContext(),
-        cAST->getASTContext(),
-        *builder
-    );
 
     auto& ctx = cppAST->getASTContext();
     auto* TU = ctx.getTranslationUnitDecl();
@@ -385,11 +348,13 @@ TEST_F(RecordHandlerVtableTest, InheritedVtable) {
     EXPECT_TRUE(cppDerived->isPolymorphic());
 
     // Translate base class first
-    auto* cBase = handler->handleDecl(cppBase, *context);
+    auto* cBase = ctx.dispatcher->dispatch(cppBase);
+    auto __result = ctx.declMapper->get(cppBase); __result;
     ASSERT_NE(cBase, nullptr);
 
     // Translate derived class
-    auto* cDerived = handler->handleDecl(cppDerived, *context);
+    auto* cDerived = ctx.dispatcher->dispatch(cppDerived);
+    auto __result = ctx.declMapper->get(cppDerived); __result;
     ASSERT_NE(cDerived, nullptr);
 
     // Verify base vtable
@@ -441,7 +406,8 @@ TEST_F(RecordHandlerVtableTest, PureVirtualMethod) {
     EXPECT_TRUE(cppRecord->isAbstract()) << "Shape should be abstract";
 
     auto* cRecord = llvm::cast<clang::RecordDecl>(
-        handler->handleDecl(cppRecord, *context)
+        ctx.dispatcher->dispatch(cppRecord);
+    auto __result = ctx.declMapper->get(cppRecord); __result
     );
     ASSERT_NE(cRecord, nullptr);
 
@@ -480,7 +446,8 @@ TEST_F(RecordHandlerVtableTest, MixedVirtualNonVirtual) {
     EXPECT_TRUE(cppRecord->isPolymorphic());
 
     auto* cRecord = llvm::cast<clang::RecordDecl>(
-        handler->handleDecl(cppRecord, *context)
+        ctx.dispatcher->dispatch(cppRecord);
+    auto __result = ctx.declMapper->get(cppRecord); __result
     );
     ASSERT_NE(cRecord, nullptr);
 
@@ -529,7 +496,8 @@ TEST_F(RecordHandlerVtableTest, ConstVirtualMethod) {
     EXPECT_TRUE(cppRecord->isPolymorphic());
 
     auto* cRecord = llvm::cast<clang::RecordDecl>(
-        handler->handleDecl(cppRecord, *context)
+        ctx.dispatcher->dispatch(cppRecord);
+    auto __result = ctx.declMapper->get(cppRecord); __result
     );
     ASSERT_NE(cRecord, nullptr);
 
@@ -588,12 +556,6 @@ TEST_F(RecordHandlerVtableTest, OverridePreservesSlotOrder) {
     cppAST = clang::tooling::buildASTFromCode(code);
     ASSERT_NE(cppAST, nullptr);
 
-    builder = std::make_unique<clang::CNodeBuilder>(cAST->getASTContext());
-    context = std::make_unique<HandlerContext>(
-        cppAST->getASTContext(),
-        cAST->getASTContext(),
-        *builder
-    );
 
     auto& ctx = cppAST->getASTContext();
     auto* TU = ctx.getTranslationUnitDecl();
@@ -613,8 +575,10 @@ TEST_F(RecordHandlerVtableTest, OverridePreservesSlotOrder) {
     ASSERT_NE(cppBase, nullptr);
     ASSERT_NE(cppDerived, nullptr);
 
-    handler->handleDecl(cppBase, *context);
-    handler->handleDecl(cppDerived, *context);
+    ctx.dispatcher->dispatch(cppBase);
+    auto __result = ctx.declMapper->get(cppBase); __result;
+    ctx.dispatcher->dispatch(cppDerived);
+    auto __result = ctx.declMapper->get(cppDerived); __result;
 
     // Both should have 2 function pointers
     verifyVtableStruct("Base", 2);
@@ -666,7 +630,8 @@ TEST_F(RecordHandlerVtableTest, VtableComplexParameterTypes) {
     EXPECT_TRUE(cppRecord->isPolymorphic());
 
     auto* cRecord = llvm::cast<clang::RecordDecl>(
-        handler->handleDecl(cppRecord, *context)
+        ctx.dispatcher->dispatch(cppRecord);
+    auto __result = ctx.declMapper->get(cppRecord); __result
     );
     ASSERT_NE(cRecord, nullptr);
 
@@ -711,7 +676,8 @@ TEST_F(RecordHandlerVtableTest, VtableReturnTypes) {
     EXPECT_TRUE(cppRecord->isPolymorphic());
 
     auto* cRecord = llvm::cast<clang::RecordDecl>(
-        handler->handleDecl(cppRecord, *context)
+        ctx.dispatcher->dispatch(cppRecord);
+    auto __result = ctx.declMapper->get(cppRecord); __result
     );
     ASSERT_NE(cRecord, nullptr);
 
@@ -771,7 +737,8 @@ TEST_F(RecordHandlerVtableTest, EmptyVtable) {
     EXPECT_FALSE(cppRecord->isPolymorphic()) << "Plain should not be polymorphic";
 
     auto* cRecord = llvm::cast<clang::RecordDecl>(
-        handler->handleDecl(cppRecord, *context)
+        ctx.dispatcher->dispatch(cppRecord);
+    auto __result = ctx.declMapper->get(cppRecord); __result
     );
     ASSERT_NE(cRecord, nullptr);
 
@@ -818,12 +785,6 @@ TEST_F(RecordHandlerVtableTest, MultipleOverridesInChain) {
     cppAST = clang::tooling::buildASTFromCode(code);
     ASSERT_NE(cppAST, nullptr);
 
-    builder = std::make_unique<clang::CNodeBuilder>(cAST->getASTContext());
-    context = std::make_unique<HandlerContext>(
-        cppAST->getASTContext(),
-        cAST->getASTContext(),
-        *builder
-    );
 
     auto& ctx = cppAST->getASTContext();
     auto* TU = ctx.getTranslationUnitDecl();
@@ -847,9 +808,12 @@ TEST_F(RecordHandlerVtableTest, MultipleOverridesInChain) {
     ASSERT_NE(cppC, nullptr);
 
     // Translate in order
-    handler->handleDecl(cppA, *context);
-    handler->handleDecl(cppB, *context);
-    handler->handleDecl(cppC, *context);
+    ctx.dispatcher->dispatch(cppA);
+    auto __result = ctx.declMapper->get(cppA); __result;
+    ctx.dispatcher->dispatch(cppB);
+    auto __result = ctx.declMapper->get(cppB); __result;
+    ctx.dispatcher->dispatch(cppC);
+    auto __result = ctx.declMapper->get(cppC); __result;
 
     // Verify vtable structures
     verifyVtableStruct("A", 1); // foo

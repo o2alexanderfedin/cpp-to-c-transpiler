@@ -20,7 +20,7 @@
  */
 
 #include "dispatch/VariableHandler.h"
-#include "handlers/HandlerContext.h"
+#include "helpers/UnitTestHelper.h"
 #include "CNodeBuilder.h"
 #include "clang/Tooling/Tooling.h"
 #include <gtest/gtest.h>
@@ -34,36 +34,12 @@ using namespace cpptoc;
  */
 class VariableHandlerGlobalTest : public ::testing::Test {
 protected:
-    std::unique_ptr<clang::ASTUnit> cppAST;
-    std::unique_ptr<clang::ASTUnit> cAST;
-    std::unique_ptr<clang::CNodeBuilder> builder;
-    std::unique_ptr<HandlerContext> context;
+    UnitTestContext ctx;
 
     void SetUp() override {
-        // Create real AST contexts using minimal code
-        cppAST = clang::tooling::buildASTFromCode("int dummy;");
-        cAST = clang::tooling::buildASTFromCode("int dummy2;");
-
-        ASSERT_NE(cppAST, nullptr) << "Failed to create C++ AST";
-        ASSERT_NE(cAST, nullptr) << "Failed to create C AST";
-
-        // Create builder and context
-        builder = std::make_unique<clang::CNodeBuilder>(cAST->getASTContext());
-        context = std::make_unique<HandlerContext>(
-            cppAST->getASTContext(),
-            cAST->getASTContext(),
-            *builder
-        );
+        ctx = createUnitTestContext();
     }
-
-    void TearDown() override {
-        context.reset();
-        builder.reset();
-        cAST.reset();
-        cppAST.reset();
-    }
-
-    /**
+/**
      * @brief Create integer literal
      */
     clang::IntegerLiteral* createIntLiteral(int value) {
@@ -120,7 +96,7 @@ TEST_F(VariableHandlerGlobalTest, GlobalVariableNoInit) {
 
     // Act
     VariableHandler handler;
-    clang::Decl* result = handler.handleDecl(cppVar, *context);
+    clang::Decl* result = handler.handleDecl(cppVar, ctx);
 
     // Assert
     ASSERT_NE(result, nullptr) << "Translation returned null";
@@ -161,7 +137,7 @@ TEST_F(VariableHandlerGlobalTest, GlobalVariableWithInit) {
 
     // Act
     VariableHandler handler;
-    clang::Decl* result = handler.handleDecl(cppVar, *context);
+    clang::Decl* result = handler.handleDecl(cppVar, ctx);
 
     // Assert
     ASSERT_NE(result, nullptr);
@@ -210,9 +186,9 @@ TEST_F(VariableHandlerGlobalTest, MultipleGlobalVariables) {
     VariableHandler handler;
 
     // Act
-    clang::Decl* result1 = handler.handleDecl(g1, *context);
-    clang::Decl* result2 = handler.handleDecl(g2, *context);
-    clang::Decl* result3 = handler.handleDecl(g3, *context);
+    clang::Decl* result1 = handler.handleDecl(g1, ctx);
+    clang::Decl* result2 = handler.handleDecl(g2, ctx);
+    clang::Decl* result3 = handler.handleDecl(g3, ctx);
 
     // Assert
     ASSERT_NE(result1, nullptr);
@@ -265,7 +241,7 @@ TEST_F(VariableHandlerGlobalTest, GlobalArray) {
 
     // Act
     VariableHandler handler;
-    clang::Decl* result = handler.handleDecl(cppVar, *context);
+    clang::Decl* result = handler.handleDecl(cppVar, ctx);
 
     // Assert
     ASSERT_NE(result, nullptr);
@@ -304,7 +280,7 @@ TEST_F(VariableHandlerGlobalTest, GlobalStringPointer) {
 
     // Act
     VariableHandler handler;
-    clang::Decl* result = handler.handleDecl(cppVar, *context);
+    clang::Decl* result = handler.handleDecl(cppVar, ctx);
 
     // Assert
     ASSERT_NE(result, nullptr);
@@ -345,7 +321,7 @@ TEST_F(VariableHandlerGlobalTest, GlobalExternVariable) {
 
     // Act
     VariableHandler handler;
-    clang::Decl* result = handler.handleDecl(cppVar, *context);
+    clang::Decl* result = handler.handleDecl(cppVar, ctx);
 
     // Assert
     ASSERT_NE(result, nullptr);
@@ -384,7 +360,7 @@ TEST_F(VariableHandlerGlobalTest, GlobalStaticVariable) {
 
     // Act
     VariableHandler handler;
-    clang::Decl* result = handler.handleDecl(cppVar, *context);
+    clang::Decl* result = handler.handleDecl(cppVar, ctx);
 
     // Assert
     ASSERT_NE(result, nullptr);
@@ -425,7 +401,7 @@ TEST_F(VariableHandlerGlobalTest, GlobalConstVariable) {
 
     // Act
     VariableHandler handler;
-    clang::Decl* result = handler.handleDecl(cppVar, *context);
+    clang::Decl* result = handler.handleDecl(cppVar, ctx);
 
     // Assert
     ASSERT_NE(result, nullptr);
@@ -464,7 +440,7 @@ TEST_F(VariableHandlerGlobalTest, GlobalFloatVariable) {
 
     // Act
     VariableHandler handler;
-    clang::Decl* result = handler.handleDecl(cppVar, *context);
+    clang::Decl* result = handler.handleDecl(cppVar, ctx);
 
     // Assert
     ASSERT_NE(result, nullptr);
@@ -502,7 +478,7 @@ TEST_F(VariableHandlerGlobalTest, GlobalPointerVariable) {
 
     // Act
     VariableHandler handler;
-    clang::Decl* result = handler.handleDecl(cppVar, *context);
+    clang::Decl* result = handler.handleDecl(cppVar, ctx);
 
     // Assert
     ASSERT_NE(result, nullptr);
@@ -591,9 +567,9 @@ TEST_F(VariableHandlerGlobalTest, GlobalAndLocalVariablesMixed) {
     VariableHandler handler;
 
     // Act
-    clang::Decl* global1Result = handler.handleDecl(globalVar1, *context);
-    clang::Decl* global2Result = handler.handleDecl(globalVar2, *context);
-    clang::Decl* localResult = handler.handleDecl(localVar, *context);
+    clang::Decl* global1Result = handler.handleDecl(globalVar1, ctx);
+    clang::Decl* global2Result = handler.handleDecl(globalVar2, ctx);
+    clang::Decl* localResult = handler.handleDecl(localVar, ctx);
 
     // Assert - verify global variables are at file scope
     ASSERT_NE(global1Result, nullptr);
@@ -642,7 +618,7 @@ TEST_F(VariableHandlerGlobalTest, GlobalVariableLongName) {
 
     // Act
     VariableHandler handler;
-    clang::Decl* result = handler.handleDecl(cppVar, *context);
+    clang::Decl* result = handler.handleDecl(cppVar, ctx);
 
     // Assert
     ASSERT_NE(result, nullptr);

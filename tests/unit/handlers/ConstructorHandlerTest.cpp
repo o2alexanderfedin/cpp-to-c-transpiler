@@ -23,7 +23,7 @@
  */
 
 #include "dispatch/ConstructorHandler.h"
-#include "handlers/HandlerContext.h"
+#include "helpers/UnitTestHelper.h"
 #include "CNodeBuilder.h"
 #include "clang/Tooling/Tooling.h"
 #include "clang/AST/DeclCXX.h"
@@ -41,36 +41,12 @@ using namespace cpptoc;
  */
 class ConstructorHandlerTest : public ::testing::Test {
 protected:
-    std::unique_ptr<clang::ASTUnit> cppAST;
-    std::unique_ptr<clang::ASTUnit> cAST;
-    std::unique_ptr<clang::CNodeBuilder> builder;
-    std::unique_ptr<HandlerContext> context;
+    UnitTestContext ctx;
 
     void SetUp() override {
-        // Create real AST contexts using minimal code
-        cppAST = clang::tooling::buildASTFromCode("int dummy;");
-        cAST = clang::tooling::buildASTFromCode("int dummy2;");
-
-        ASSERT_NE(cppAST, nullptr) << "Failed to create C++ AST";
-        ASSERT_NE(cAST, nullptr) << "Failed to create C AST";
-
-        // Create builder and context
-        builder = std::make_unique<clang::CNodeBuilder>(cAST->getASTContext());
-        context = std::make_unique<HandlerContext>(
-            cppAST->getASTContext(),
-            cAST->getASTContext(),
-            *builder
-        );
+        ctx = createUnitTestContext();
     }
-
-    void TearDown() override {
-        context.reset();
-        builder.reset();
-        cAST.reset();
-        cppAST.reset();
-    }
-
-    /**
+/**
      * @brief Helper to find constructor in a class
      */
     clang::CXXConstructorDecl* findConstructor(
@@ -137,7 +113,7 @@ TEST_F(ConstructorHandlerTest, EmptyDefaultConstructor) {
 
     // Act: Translate using ConstructorHandler
     ConstructorHandler handler;
-    clang::Decl* result = handler.handleDecl(ctor, *context);
+    clang::Decl* result = handler.handleDecl(ctor, ctx);
 
     // Assert: Verify C init function created
     ASSERT_NE(result, nullptr) << "Translation returned null";
@@ -196,7 +172,7 @@ TEST_F(ConstructorHandlerTest, ConstructorWithMemberInitList) {
 
     // Act
     ConstructorHandler handler;
-    clang::Decl* result = handler.handleDecl(ctor, *context);
+    clang::Decl* result = handler.handleDecl(ctor, ctx);
 
     // Assert
     ASSERT_NE(result, nullptr);
@@ -242,7 +218,7 @@ TEST_F(ConstructorHandlerTest, ConstructorWithOneParam) {
 
     // Act
     ConstructorHandler handler;
-    clang::Decl* result = handler.handleDecl(ctor, *context);
+    clang::Decl* result = handler.handleDecl(ctor, ctx);
 
     // Assert
     ASSERT_NE(result, nullptr);
@@ -293,7 +269,7 @@ TEST_F(ConstructorHandlerTest, ConstructorWithTwoParams) {
 
     // Act
     ConstructorHandler handler;
-    clang::Decl* result = handler.handleDecl(ctor, *context);
+    clang::Decl* result = handler.handleDecl(ctor, ctx);
 
     // Assert
     ASSERT_NE(result, nullptr);
@@ -344,7 +320,7 @@ TEST_F(ConstructorHandlerTest, ConstructorWithMemberInitBody) {
 
     // Act
     ConstructorHandler handler;
-    clang::Decl* result = handler.handleDecl(ctor, *context);
+    clang::Decl* result = handler.handleDecl(ctor, ctx);
 
     // Assert
     ASSERT_NE(result, nullptr);
@@ -394,8 +370,8 @@ TEST_F(ConstructorHandlerTest, MultipleConstructors) {
 
     // Act
     ConstructorHandler handler;
-    clang::Decl* result0 = handler.handleDecl(ctor0, *context);
-    clang::Decl* result1 = handler.handleDecl(ctor1, *context);
+    clang::Decl* result0 = handler.handleDecl(ctor0, ctx);
+    clang::Decl* result1 = handler.handleDecl(ctor1, ctx);
 
     // Assert
     ASSERT_NE(result0, nullptr);
@@ -444,7 +420,7 @@ TEST_F(ConstructorHandlerTest, ConstructorWithMultipleInitList) {
 
     // Act
     ConstructorHandler handler;
-    clang::Decl* result = handler.handleDecl(ctor, *context);
+    clang::Decl* result = handler.handleDecl(ctor, ctx);
 
     // Assert
     ASSERT_NE(result, nullptr);
@@ -484,7 +460,7 @@ TEST_F(ConstructorHandlerTest, ConstructorWithPointerParam) {
 
     // Act
     ConstructorHandler handler;
-    clang::Decl* result = handler.handleDecl(ctor, *context);
+    clang::Decl* result = handler.handleDecl(ctor, ctx);
 
     // Assert
     ASSERT_NE(result, nullptr);
@@ -533,7 +509,7 @@ TEST_F(ConstructorHandlerTest, ConstructorWithReferenceParam) {
 
     // Act
     ConstructorHandler handler;
-    clang::Decl* result = handler.handleDecl(ctor, *context);
+    clang::Decl* result = handler.handleDecl(ctor, ctx);
 
     // Assert
     ASSERT_NE(result, nullptr);
@@ -576,7 +552,7 @@ TEST_F(ConstructorHandlerTest, ConstructorWithFloatParam) {
 
     // Act
     ConstructorHandler handler;
-    clang::Decl* result = handler.handleDecl(ctor, *context);
+    clang::Decl* result = handler.handleDecl(ctor, ctx);
 
     // Assert
     ASSERT_NE(result, nullptr);
@@ -616,7 +592,7 @@ TEST_F(ConstructorHandlerTest, ConstructorWithMixedParams) {
 
     // Act
     ConstructorHandler handler;
-    clang::Decl* result = handler.handleDecl(ctor, *context);
+    clang::Decl* result = handler.handleDecl(ctor, ctx);
 
     // Assert
     ASSERT_NE(result, nullptr);
@@ -727,7 +703,7 @@ TEST_F(ConstructorHandlerTest, ConstructorInitListWithParameter) {
 
     // Act
     ConstructorHandler handler;
-    clang::Decl* result = handler.handleDecl(ctor, *context);
+    clang::Decl* result = handler.handleDecl(ctor, ctx);
 
     // Assert
     ASSERT_NE(result, nullptr);
@@ -764,7 +740,7 @@ TEST_F(ConstructorHandlerTest, ConstructorThisParameterType) {
 
     // Act
     ConstructorHandler handler;
-    clang::Decl* result = handler.handleDecl(ctor, *context);
+    clang::Decl* result = handler.handleDecl(ctor, ctx);
 
     // Assert
     ASSERT_NE(result, nullptr);
