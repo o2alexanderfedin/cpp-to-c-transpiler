@@ -37,7 +37,7 @@
  * 20. EnumWithAllFeatures - comprehensive test combining all features
  */
 
-#include "handlers/EnumTranslator.h"
+#include "dispatch/EnumTranslator.h"
 #include "handlers/HandlerContext.h"
 #include "CNodeBuilder.h"
 #include "clang/Tooling/Tooling.h"

@@ -13,9 +13,8 @@
  */
 
 #include "dispatch/FunctionHandler.h"
-#include "handlers/VariableHandler.h"
-#include "handlers/ExpressionHandler.h"
-#include "handlers/StatementHandler.h"
+#include "dispatch/VariableHandler.h"
+#include "dispatch/StatementHandler.h"
 #include "dispatch/RecordHandler.h"
 #include "handlers/HandlerContext.h"
 #include "CNodeBuilder.h"

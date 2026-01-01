@@ -17,7 +17,6 @@
  * 8. FinalMethodIsVirtual - Final method can still be virtual
  */
 
-#include "handlers/ExpressionHandler.h"
 #include "handlers/HandlerContext.h"
 #include "CNodeBuilder.h"
 #include "clang/Tooling/Tooling.h"

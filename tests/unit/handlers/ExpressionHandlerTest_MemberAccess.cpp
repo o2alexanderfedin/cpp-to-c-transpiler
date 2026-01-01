@@ -22,7 +22,6 @@
  * 12. Nested implicit access in expression ((field + 1) * 2)
  */
 
-#include "handlers/ExpressionHandler.h"
 #include "handlers/HandlerContext.h"
 #include "CNodeBuilder.h"
 #include "clang/Tooling/Tooling.h"

@@ -13,7 +13,6 @@
  * in place for future integration once handler dispatcher is available.
  */
 
-#include "handlers/HandlerContext.h"
 #include "CNodeBuilder.h"
 #include "CodeGenerator.h"
 #include "clang/Tooling/Tooling.h"

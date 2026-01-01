@@ -17,7 +17,7 @@
  * 10. DestructorThisParameter - Verify this parameter added
  */
 
-#include "handlers/DestructorHandler.h"
+#include "dispatch/DestructorHandler.h"
 #include "handlers/HandlerContext.h"
 #include "CNodeBuilder.h"
 #include "clang/Tooling/Tooling.h"

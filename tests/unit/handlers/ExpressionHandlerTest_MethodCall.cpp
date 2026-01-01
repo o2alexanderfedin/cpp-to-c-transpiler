@@ -24,7 +24,6 @@
  * 15. MethodCallOnTemporary - Counter().getValue() call (if supported)
  */
 
-#include "handlers/ExpressionHandler.h"
 #include "handlers/HandlerContext.h"
 #include "CNodeBuilder.h"
 #include "clang/Tooling/Tooling.h"

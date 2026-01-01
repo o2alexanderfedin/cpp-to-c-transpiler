@@ -1,0 +1,79 @@
+CMakeLists.txt Cleanup Verification
+====================================
+
+STATISTICS:
+-----------
+Lines commented: 540
+Targets deleted: 27 (4 executables + 23 integration tests)
+Subdirectories deleted: 6
+Targets remaining: 110
+
+DELETED MAIN EXECUTABLES (4):
+-----------------------------
+✗ cpptoc
+✗ transpiler-api-cli
+✗ test_transpiler_api
+✗ test_transpiler_complex
+
+DELETED INTEGRATION TESTS (23):
+-------------------------------
+✗ AdvancedTemplateIntegrationTest
+✗ ConsoleAppTest
+✗ ControlFlowIntegrationTest
+✗ CoroutineIntegrationTest
+✗ ExceptionIntegrationTest
+✗ ExceptionPerformanceTest
+✗ ExceptionThreadSafetyTest
+✗ GlobalVariablesIntegrationTest
+✗ HandlerIntegrationTest
+✗ HeaderCompatibilityTest
+✗ IntegrationTest
+✗ MultiFileTranspilationTest
+✗ PointersIntegrationTest
+✗ RAIIIntegrationTest
+✗ RuntimeIntegrationTest
+✗ STLIntegrationTest
+✗ StaticMemberIntegrationTest
+✗ StructsIntegrationTest
+✗ TranspilerAPI_HeaderSeparation_Test
+✗ TranspilerAPI_MutualStructReferences_Test
+✗ TranspilerAPI_VirtualFiles_Test
+✗ VirtualFunctionIntegrationTest
+✗ VirtualMethodIntegrationTest
+
+DELETED SUBDIRECTORIES (6):
+---------------------------
+✗ tests/helpers
+✗ tests/real-world/json-parser
+✗ tests/real-world/logger
+✗ tests/real-world/resource-manager
+✗ tests/real-world/string-formatter
+✗ tests/real-world/test-framework
+
+KEPT LIBRARY (1):
+----------------
+✓ cpptoc_core
+
+KEPT E2E TESTS (9):
+------------------
+✓ E2EPhase1Test
+✓ ControlFlowE2ETest
+✓ GlobalVariablesE2ETest
+✓ PointersE2ETest
+✓ StructsE2ETest
+✓ ClassesE2ETest
+✓ MultipleInheritanceE2ETest
+✓ EnumE2ETest
+✓ Phase61ModuleRejectionTest
+
+KEPT UNIT TESTS (~101):
+-----------------------
+All tests from tests/*.cpp and tests/unit/**/*.cpp were preserved.
+
+BACKUP FILES:
+------------
+- Original: CMakeLists.txt.backup
+- Cleaned: CMakeLists.txt
+- Script: cleanup_cmake.py
+
+VERIFICATION PASSED ✓

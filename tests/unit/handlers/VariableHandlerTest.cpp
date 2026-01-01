@@ -23,7 +23,7 @@
  * ... (additional edge cases)
  */
 
-#include "handlers/VariableHandler.h"
+#include "dispatch/VariableHandler.h"
 #include "handlers/HandlerContext.h"
 #include "CNodeBuilder.h"
 #include "clang/Tooling/Tooling.h"

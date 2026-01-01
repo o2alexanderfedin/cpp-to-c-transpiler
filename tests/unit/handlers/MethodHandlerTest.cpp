@@ -25,7 +25,7 @@
  * 18. MultipleMethodsInSameClass - Multiple methods in one class
  */
 
-#include "handlers/MethodHandler.h"
+#include "dispatch/MethodHandler.h"
 #include "handlers/HandlerContext.h"
 #include "CNodeBuilder.h"
 #include "clang/Tooling/Tooling.h"

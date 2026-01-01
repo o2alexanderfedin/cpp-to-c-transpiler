@@ -84,11 +84,10 @@ add_executable(ClassesIntegrationTest
     ${CMAKE_SOURCE_DIR}/../../src/handlers/FunctionHandler.cpp
     ${CMAKE_SOURCE_DIR}/../../src/handlers/VariableHandler.cpp
     ${CMAKE_SOURCE_DIR}/../../src/handlers/ExpressionHandler.cpp
-    ${CMAKE_SOURCE_DIR}/../../src/handlers/StatementHandler.cpp
+    ${CMAKE_SOURCE_DIR}/../../src/dispatch/StatementHandler.cpp
     ${CMAKE_SOURCE_DIR}/../../src/handlers/RecordHandler.cpp
-    ${CMAKE_SOURCE_DIR}/../../src/handlers/MethodHandler.cpp
     ${CMAKE_SOURCE_DIR}/../../src/handlers/ConstructorHandler.cpp
-    ${CMAKE_SOURCE_DIR}/../../src/handlers/DestructorHandler.cpp
+    ${CMAKE_SOURCE_DIR}/../../src/dispatch/DestructorHandler.cpp
 )
 target_link_libraries(ClassesIntegrationTest GTest::gtest GTest::gtest_main ${CLANG_LIBS})
 target_include_directories(ClassesIntegrationTest PRIVATE
@@ -104,11 +103,10 @@ add_executable(VirtualMethodsIntegrationTest
     ${CMAKE_SOURCE_DIR}/../../src/handlers/FunctionHandler.cpp
     ${CMAKE_SOURCE_DIR}/../../src/handlers/VariableHandler.cpp
     ${CMAKE_SOURCE_DIR}/../../src/handlers/ExpressionHandler.cpp
-    ${CMAKE_SOURCE_DIR}/../../src/handlers/StatementHandler.cpp
+    ${CMAKE_SOURCE_DIR}/../../src/dispatch/StatementHandler.cpp
     ${CMAKE_SOURCE_DIR}/../../src/handlers/RecordHandler.cpp
-    ${CMAKE_SOURCE_DIR}/../../src/handlers/MethodHandler.cpp
     ${CMAKE_SOURCE_DIR}/../../src/handlers/ConstructorHandler.cpp
-    ${CMAKE_SOURCE_DIR}/../../src/handlers/DestructorHandler.cpp
+    ${CMAKE_SOURCE_DIR}/../../src/dispatch/DestructorHandler.cpp
     ${CMAKE_SOURCE_DIR}/../../src/VirtualMethodAnalyzer.cpp
     ${CMAKE_SOURCE_DIR}/../../src/VtableGenerator.cpp
     ${CMAKE_SOURCE_DIR}/../../src/VptrInjector.cpp
@@ -133,11 +131,10 @@ add_executable(MultipleInheritanceIntegrationTest
     ${CMAKE_SOURCE_DIR}/../../src/handlers/FunctionHandler.cpp
     ${CMAKE_SOURCE_DIR}/../../src/handlers/VariableHandler.cpp
     ${CMAKE_SOURCE_DIR}/../../src/handlers/ExpressionHandler.cpp
-    ${CMAKE_SOURCE_DIR}/../../src/handlers/StatementHandler.cpp
+    ${CMAKE_SOURCE_DIR}/../../src/dispatch/StatementHandler.cpp
     ${CMAKE_SOURCE_DIR}/../../src/handlers/RecordHandler.cpp
-    ${CMAKE_SOURCE_DIR}/../../src/handlers/MethodHandler.cpp
     ${CMAKE_SOURCE_DIR}/../../src/handlers/ConstructorHandler.cpp
-    ${CMAKE_SOURCE_DIR}/../../src/handlers/DestructorHandler.cpp
+    ${CMAKE_SOURCE_DIR}/../../src/dispatch/DestructorHandler.cpp
     ${CMAKE_SOURCE_DIR}/../../src/VirtualMethodAnalyzer.cpp
     ${CMAKE_SOURCE_DIR}/../../src/VtableGenerator.cpp
     ${CMAKE_SOURCE_DIR}/../../src/VptrInjector.cpp
@@ -165,7 +162,7 @@ add_executable(EnumIntegrationTest
     ${CMAKE_SOURCE_DIR}/../../src/handlers/FunctionHandler.cpp
     ${CMAKE_SOURCE_DIR}/../../src/handlers/VariableHandler.cpp
     ${CMAKE_SOURCE_DIR}/../../src/handlers/ExpressionHandler.cpp
-    ${CMAKE_SOURCE_DIR}/../../src/handlers/StatementHandler.cpp
+    ${CMAKE_SOURCE_DIR}/../../src/dispatch/StatementHandler.cpp
     ${CMAKE_SOURCE_DIR}/../../src/BaseOffsetCalculator.cpp
 )
 target_link_libraries(EnumIntegrationTest GTest::gtest GTest::gtest_main ${CLANG_LIBS})

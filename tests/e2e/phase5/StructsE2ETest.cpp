@@ -9,10 +9,8 @@
  * Validation: Compile C code with gcc and execute
  */
 
-#include "handlers/VariableHandler.h"
-#include "handlers/ExpressionHandler.h"
-#include "handlers/StatementHandler.h"
-#include "handlers/HandlerContext.h"
+#include "dispatch/VariableHandler.h"
+#include "dispatch/StatementHandler.h"
 #include "CNodeBuilder.h"
 #include "CodeGenerator.h"
 #include "clang/Tooling/Tooling.h"
@@ -30,14 +28,8 @@ using namespace cpptoc;
  */
 class StructsE2ETest : public ::testing::Test {
 protected:
-    std::unique_ptr<VariableHandler> varHandler;
-    std::unique_ptr<ExpressionHandler> exprHandler;
-    std::unique_ptr<StatementHandler> stmtHandler;
 
     void SetUp() override {
-        varHandler = std::make_unique<VariableHandler>();
-        exprHandler = std::make_unique<ExpressionHandler>();
-        stmtHandler = std::make_unique<StatementHandler>();
     }
 
     /**

@@ -55,7 +55,6 @@
  * 38. ComplexLogical - (a > 0 && b < 100) || c == 42
  */
 
-#include "handlers/ExpressionHandler.h"
 #include "handlers/HandlerContext.h"
 #include "CNodeBuilder.h"
 #include "clang/Tooling/Tooling.h"

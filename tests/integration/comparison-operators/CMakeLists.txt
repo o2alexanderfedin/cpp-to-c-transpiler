@@ -50,9 +50,8 @@ add_executable(ComparisonOperatorsIntegrationTest
     ${CMAKE_SOURCE_DIR}/../../src/handlers/FunctionHandler.cpp
     ${CMAKE_SOURCE_DIR}/../../src/handlers/VariableHandler.cpp
     ${CMAKE_SOURCE_DIR}/../../src/handlers/ExpressionHandler.cpp
-    ${CMAKE_SOURCE_DIR}/../../src/handlers/StatementHandler.cpp
+    ${CMAKE_SOURCE_DIR}/../../src/dispatch/StatementHandler.cpp
     ${CMAKE_SOURCE_DIR}/../../src/handlers/RecordHandler.cpp
-    ${CMAKE_SOURCE_DIR}/../../src/handlers/MethodHandler.cpp
     ${CMAKE_SOURCE_DIR}/../../src/handlers/ConstructorHandler.cpp
     ${CMAKE_SOURCE_DIR}/../../src/handlers/DestructorHandler.cpp
     ${CMAKE_SOURCE_DIR}/../../src/ComparisonOperatorTranslator.cpp

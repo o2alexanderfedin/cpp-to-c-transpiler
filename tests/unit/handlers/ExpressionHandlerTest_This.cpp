@@ -19,7 +19,6 @@
  * 10. MultipleThisUsages - Multiple uses of 'this' in same method
  */
 
-#include "handlers/ExpressionHandler.h"
 #include "handlers/HandlerContext.h"
 #include "CNodeBuilder.h"
 #include "clang/Tooling/Tooling.h"

@@ -2,6 +2,7 @@
  * @file ConstructorHandler.h
  * @brief Handler for translating C++ constructors to C init functions
  *
+ * Registers with CppToCVisitorDispatcher to handle C++ constructor declarations.
  * Translates C++ constructors to C initialization functions with explicit
  * `this` parameter. Handles constructor bodies, parameters, and member
  * initializer lists.
@@ -12,23 +13,26 @@
  * - Member initialization in constructor body
  * - Simple member initializer lists (: field(value))
  * - Constructor overloading (using name mangling)
+ * - Virtual table (lpVtbl) initialization for polymorphic classes
+ * - Base class constructor calls for derived classes
  *
  * Out of Scope (Future):
  * - Delegating constructors (calling other constructors)
- * - Base class constructor calls (inheritance - Phase 45)
  * - Complex member initializer lists with function calls
+ *
+ * Design Pattern: Chain of Responsibility handler for dispatcher
  */
 
 #pragma once
 
-#include "handlers/ASTHandler.h"
+#include "dispatch/CppToCVisitorDispatcher.h"
 #include "clang/AST/DeclCXX.h"
 
 namespace cpptoc {
 
 /**
  * @class ConstructorHandler
- * @brief Translates C++ constructors to C init functions
+ * @brief Processes CXXConstructorDecl and creates C init functions
  *
  * Example Translation:
  * C++: Counter() : count(0) {}
@@ -38,95 +42,106 @@ namespace cpptoc {
  * C:   void Counter_init_int(struct Counter* this, int initial) {
  *          this->count = initial;
  *      }
+ *
+ * Virtual Method Support:
+ * C++: class Base {
+ *          virtual void foo();
+ *          Base() {}  // Constructor
+ *      };
+ * C:   void Base_init(struct Base* this) {
+ *          this->lpVtbl = &Base_vtable_instance;  // Injected vtable init
+ *      }
  */
-class ConstructorHandler : public ASTHandler {
+class ConstructorHandler {
 public:
     /**
-     * @brief Check if this handler processes constructor declarations
+     * @brief Register this handler with the dispatcher
+     * @param dispatcher Dispatcher to register with
      */
-    bool canHandle(const clang::Decl* D) const override;
-
-    /**
-     * @brief Translate C++ constructor to C init function
-     * @param D C++ CXXConstructorDecl
-     * @param ctx Handler context
-     * @return C FunctionDecl (init function)
-     *
-     * Translation process:
-     * 1. Extract class name (e.g., "Counter")
-     * 2. Generate function name: ClassName_init or ClassName_init_types
-     * 3. Add first parameter: struct ClassName* this
-     * 4. Add constructor parameters after this parameter
-     * 5. Translate member initializer list to assignments
-     * 6. Translate constructor body
-     * 7. Create C FunctionDecl with void return type
-     */
-    clang::Decl* handleDecl(const clang::Decl* D, HandlerContext& ctx) override;
+    static void registerWith(CppToCVisitorDispatcher& dispatcher);
 
 private:
     /**
-     * @brief Generate mangled function name for constructor
-     * @param className Name of the class
-     * @param ctor Constructor declaration
-     * @return Mangled function name (e.g., "Counter_init" or "Counter_init_int_int")
+     * @brief Predicate: Check if declaration is EXACTLY CXXConstructorDecl
+     * @param D Declaration to check (must not be null)
+     * @return true if D is CXXConstructorDecl
      *
-     * Naming convention:
-     * - No parameters: ClassName_init
-     * - With parameters: ClassName_init_type1_type2_...
-     *   Example: Counter_init_int for Counter(int)
+     * @pre D != nullptr (asserted)
      */
-    std::string generateConstructorName(
-        const std::string& className,
-        const clang::CXXConstructorDecl* ctor
+    static bool canHandle(const clang::Decl* D);
+
+    /**
+     * @brief Visitor: Translate C++ constructor to C init function
+     * @param disp Dispatcher for accessing mappers and child handlers
+     * @param cppASTContext Source C++ ASTContext (read-only)
+     * @param cASTContext Target C ASTContext (write)
+     * @param D CXXConstructorDecl to process (must not be null)
+     *
+     * Translation process:
+     * 1. Extract class name and generate mangled function name
+     * 2. Find C RecordDecl (created by RecordHandler)
+     * 3. Create 'this' parameter: struct ClassName* this
+     * 4. Translate constructor parameters
+     * 5. Create C FunctionDecl with void return type
+     * 6. Build constructor body:
+     *    a. Base constructor calls (FIRST - initialize base vtables)
+     *    b. lpVtbl initialization (override base vtables with derived)
+     *    c. Member initializers (TODO)
+     * 7. Register in DeclMapper
+     * 8. Add to target C TranslationUnit
+     *
+     * @pre D != nullptr && isa<CXXConstructorDecl>(D) (asserted)
+     */
+    static void handleConstructor(
+        const CppToCVisitorDispatcher& disp,
+        const clang::ASTContext& cppASTContext,
+        clang::ASTContext& cASTContext,
+        const clang::Decl* D
     );
 
     /**
      * @brief Translate constructor parameters
      * @param ctor C++ constructor declaration
-     * @param ctx Handler context
+     * @param disp Dispatcher for type translation
+     * @param cppASTContext Source C++ ASTContext
+     * @param cASTContext Target C ASTContext
      * @return Vector of C parameters (not including 'this' parameter)
      */
-    std::vector<clang::ParmVarDecl*> translateParameters(
+    static std::vector<clang::ParmVarDecl*> translateParameters(
         const clang::CXXConstructorDecl* ctor,
-        HandlerContext& ctx
+        const CppToCVisitorDispatcher& disp,
+        const clang::ASTContext& cppASTContext,
+        clang::ASTContext& cASTContext
     );
 
     /**
      * @brief Create 'this' parameter for init function
-     * @param recordType Type of the class/struct
-     * @param ctx Handler context
+     * @param recordType Type of the C struct (NOT C++ class)
+     * @param cASTContext Target C ASTContext
      * @return ParmVarDecl for 'this' parameter (struct ClassName* this)
      */
-    clang::ParmVarDecl* createThisParameter(
+    static clang::ParmVarDecl* createThisParameter(
         clang::QualType recordType,
-        HandlerContext& ctx
+        clang::ASTContext& cASTContext
     );
 
     /**
      * @brief Translate type to C type (handle references, etc.)
      * @param cppType C++ type
-     * @param ctx Handler context
+     * @param cASTContext Target C ASTContext
      * @return C type (with reference types converted to pointers)
      */
-    clang::QualType translateType(
+    static clang::QualType translateType(
         clang::QualType cppType,
-        HandlerContext& ctx
+        clang::ASTContext& cASTContext
     );
-
-    /**
-     * @brief Get simple type name for mangling
-     * @param type QualType to get name from
-     * @return Simple type name (e.g., "int", "float", "Counter")
-     *
-     * Used for constructor name mangling.
-     */
-    std::string getSimpleTypeName(clang::QualType type) const;
 
     /**
      * @brief Inject lpVtbl initialization as first statements in constructor body
      * @param parentClass C++ class (CXXRecordDecl)
      * @param thisParam C this parameter (struct ClassName* this)
-     * @param ctx Handler context
+     * @param cppASTContext Source C++ ASTContext
+     * @param cASTContext Target C ASTContext
      * @return Vector of statements for all lpVtbl initializations
      *
      * Only injects if class is polymorphic (has virtual methods).
@@ -136,21 +151,23 @@ private:
      *   Multiple inheritance:
      *     this->lpVtbl = &ClassName_Base1_vtable_instance;
      *     this->lpVtbl2 = &ClassName_Base2_vtable_instance;
-     *     this->lpVtbl3 = &ClassName_Base3_vtable_instance;
      *
-     * These MUST be the first statements in the constructor body.
+     * These MUST be placed AFTER base constructor calls.
      */
-    std::vector<clang::Stmt*> injectLpVtblInit(
+    static std::vector<clang::Stmt*> injectLpVtblInit(
         const clang::CXXRecordDecl* parentClass,
         clang::ParmVarDecl* thisParam,
-        HandlerContext& ctx
+        const clang::ASTContext& cppASTContext,
+        clang::ASTContext& cASTContext
     );
 
     /**
      * @brief Generate base constructor calls for derived class constructor
      * @param ctor C++ constructor declaration
      * @param thisParam C this parameter
-     * @param ctx Handler context
+     * @param disp Dispatcher for accessing mappers
+     * @param cppASTContext Source C++ ASTContext
+     * @param cASTContext Target C ASTContext
      * @return Vector of base constructor call statements
      *
      * Pattern (Phase 46 Group 3 Task 8):
@@ -160,10 +177,12 @@ private:
      * For single inheritance or primary base: direct pointer cast
      * For non-primary bases: pointer adjustment using offset
      */
-    std::vector<clang::Stmt*> generateBaseConstructorCalls(
+    static std::vector<clang::Stmt*> generateBaseConstructorCalls(
         const clang::CXXConstructorDecl* ctor,
         clang::ParmVarDecl* thisParam,
-        HandlerContext& ctx
+        const CppToCVisitorDispatcher& disp,
+        const clang::ASTContext& cppASTContext,
+        clang::ASTContext& cASTContext
     );
 
     /**
@@ -171,14 +190,14 @@ private:
      * @param baseClass Base class to initialize
      * @param thisParam C this parameter
      * @param offset Offset of base in derived class (0 for primary base)
-     * @param ctx Handler context
+     * @param cASTContext Target C ASTContext
      * @return CallExpr for base constructor
      */
-    clang::CallExpr* createBaseConstructorCall(
+    static clang::CallExpr* createBaseConstructorCall(
         const clang::CXXRecordDecl* baseClass,
         clang::ParmVarDecl* thisParam,
         unsigned offset,
-        HandlerContext& ctx
+        clang::ASTContext& cASTContext
     );
 };
 

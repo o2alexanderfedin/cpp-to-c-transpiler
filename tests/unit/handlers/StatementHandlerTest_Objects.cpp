@@ -28,7 +28,7 @@
  * - Handle early returns by injecting destructors before return
  */
 
-#include "handlers/StatementHandler.h"
+#include "dispatch/StatementHandler.h"
 #include "handlers/HandlerContext.h"
 #include "clang/Tooling/Tooling.h"
 #include "clang/AST/DeclCXX.h"

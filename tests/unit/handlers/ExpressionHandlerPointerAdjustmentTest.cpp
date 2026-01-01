@@ -32,7 +32,6 @@
  * - Downcast from non-primary: (Derived*)((char*)ptr - offset)
  */
 
-#include "handlers/ExpressionHandler.h"
 #include "handlers/HandlerContext.h"
 #include "CNodeBuilder.h"
 #include "clang/Tooling/Tooling.h"

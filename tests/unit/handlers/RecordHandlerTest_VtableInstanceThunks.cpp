@@ -34,7 +34,7 @@
 
 #include "dispatch/RecordHandler.h"
 #include "handlers/HandlerContext.h"
-#include "handlers/MethodHandler.h"
+#include "dispatch/MethodHandler.h"
 #include "CNodeBuilder.h"
 #include "MultipleInheritanceAnalyzer.h"
 #include "clang/Tooling/Tooling.h"

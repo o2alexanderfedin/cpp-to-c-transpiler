@@ -35,7 +35,6 @@
  * 18. EdgeCaseSingleInheritanceStillWorks - Ensure backward compatibility
  */
 
-#include "handlers/ExpressionHandler.h"
 #include "handlers/HandlerContext.h"
 #include "CNodeBuilder.h"
 #include "MultipleInheritanceAnalyzer.h"

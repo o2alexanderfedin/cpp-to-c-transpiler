@@ -3,7 +3,7 @@
  * @brief TDD tests for While Loop Translation (Task 5)
  */
 
-#include "handlers/StatementHandler.h"
+#include "dispatch/StatementHandler.h"
 #include "handlers/HandlerContext.h"
 #include "clang/Tooling/Tooling.h"
 #include <gtest/gtest.h>

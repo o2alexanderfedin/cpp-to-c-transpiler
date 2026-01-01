@@ -25,7 +25,6 @@
  * 15. MixedVirtualNonVirtual - Test class with both virtual and non-virtual methods
  */
 
-#include "handlers/ExpressionHandler.h"
 #include "handlers/HandlerContext.h"
 #include "CNodeBuilder.h"
 #include "VirtualCallTranslator.h"

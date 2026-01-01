@@ -15,14 +15,12 @@
  */
 
 #include "dispatch/FunctionHandler.h"
-#include "handlers/VariableHandler.h"
-#include "handlers/ExpressionHandler.h"
-#include "handlers/StatementHandler.h"
+#include "dispatch/VariableHandler.h"
+#include "dispatch/StatementHandler.h"
 #include "dispatch/RecordHandler.h"
-#include "handlers/MethodHandler.h"
+#include "dispatch/MethodHandler.h"
 #include "dispatch/ConstructorHandler.h"
-#include "handlers/DestructorHandler.h"
-#include "handlers/HandlerContext.h"
+#include "dispatch/DestructorHandler.h"
 #include "CNodeBuilder.h"
 #include "CodeGenerator.h"
 #include "VirtualMethodAnalyzer.h"
@@ -45,20 +43,8 @@ using namespace cpptoc;
  */
 class VirtualMethodsE2ETest : public ::testing::Test {
 protected:
-    std::unique_ptr<FunctionHandler> funcHandler;
-    std::unique_ptr<VariableHandler> varHandler;
-    std::unique_ptr<ExpressionHandler> exprHandler;
-    std::unique_ptr<StatementHandler> stmtHandler;
-    std::unique_ptr<RecordHandler> recordHandler;
-    std::unique_ptr<MethodHandler> methodHandler;
-    std::unique_ptr<ConstructorHandler> ctorHandler;
-    std::unique_ptr<DestructorHandler> dtorHandler;
 
     void SetUp() override {
-        funcHandler = std::make_unique<FunctionHandler>();
-        varHandler = std::make_unique<VariableHandler>();
-        exprHandler = std::make_unique<ExpressionHandler>();
-        stmtHandler = std::make_unique<StatementHandler>();
         recordHandler = std::make_unique<RecordHandler>();
         methodHandler = std::make_unique<MethodHandler>();
         ctorHandler = std::make_unique<ConstructorHandler>();

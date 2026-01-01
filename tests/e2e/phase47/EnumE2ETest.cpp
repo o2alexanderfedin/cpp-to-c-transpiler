@@ -19,8 +19,7 @@
  *             enum State s = State__Idle;
  */
 
-#include "handlers/EnumTranslator.h"
-#include "handlers/HandlerContext.h"
+#include "dispatch/EnumTranslator.h"
 #include "CNodeBuilder.h"
 #include "CodeGenerator.h"
 #include "clang/Tooling/Tooling.h"
