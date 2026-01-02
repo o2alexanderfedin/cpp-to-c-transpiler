@@ -66,23 +66,52 @@ void CompoundStmtHandler::handleCompoundStmt(
             const_cast<clang::Stmt*>(cppStmt)
         );
 
-        if (!handled) {
-            llvm::errs() << "[CompoundStmtHandler] WARNING: Statement not handled: "
-                         << cppStmt->getStmtClassName() << "\n";
-            llvm::errs() << "  Skipping unhandled statement in compound statement\n";
-            // Continue with next statement instead of failing
-            // This allows partial translation during development
-            continue;
-        }
+        clang::Stmt* cStmt = nullptr;
 
-        // Retrieve translated statement from StmtMapper
-        clang::Stmt* cStmt = stmtMapper.getCreated(cppStmt);
-        if (!cStmt) {
-            llvm::errs() << "[CompoundStmtHandler] WARNING: Statement dispatched but not in StmtMapper: "
-                         << cppStmt->getStmtClassName() << "\n";
-            llvm::errs() << "  Skipping statement not found in mapper\n";
-            // Continue with next statement - allows graceful degradation
-            continue;
+        if (!handled) {
+            // Check if it's an expression that can be used as a statement
+            // In C/C++, expressions can be used as statements (expression statements)
+            // Examples: "a = b;", "foo();", "x++;", etc.
+            if (llvm::isa<clang::Expr>(cppStmt)) {
+                llvm::outs() << "[CompoundStmtHandler] Expression used as statement, attempting to translate\n";
+
+                // Try to dispatch as expression
+                bool exprHandled = disp.dispatch(
+                    cppASTContext,
+                    cASTContext,
+                    const_cast<clang::Expr*>(llvm::cast<clang::Expr>(cppStmt))
+                );
+
+                if (exprHandled) {
+                    // Get the translated expression
+                    clang::Expr* cExpr = disp.getExprMapper().getCreated(llvm::cast<clang::Expr>(cppStmt));
+                    if (cExpr) {
+                        // Wrap it as a statement by adding it directly
+                        // (in C AST, expressions can be statements)
+                        cStmt = cExpr;
+                        llvm::outs() << "[CompoundStmtHandler] Expression successfully translated and will be used as statement\n";
+                    }
+                }
+            }
+
+            if (!cStmt) {
+                llvm::errs() << "[CompoundStmtHandler] WARNING: Statement not handled: "
+                             << cppStmt->getStmtClassName() << "\n";
+                llvm::errs() << "  Skipping unhandled statement in compound statement\n";
+                // Continue with next statement instead of failing
+                // This allows partial translation during development
+                continue;
+            }
+        } else {
+            // Retrieve translated statement from StmtMapper
+            cStmt = stmtMapper.getCreated(cppStmt);
+            if (!cStmt) {
+                llvm::errs() << "[CompoundStmtHandler] WARNING: Statement dispatched but not in StmtMapper: "
+                             << cppStmt->getStmtClassName() << "\n";
+                llvm::errs() << "  Skipping statement not found in mapper\n";
+                // Continue with next statement - allows graceful degradation
+                continue;
+            }
         }
 
         // Add translated statement to collection

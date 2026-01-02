@@ -5484,169 +5484,175 @@ gtest_discover_tests(GlobalVariablesIntegrationTest
 # Phase 40-01: Control Flow E2E Tests
 # ============================================================================
 
-# TODO: E2E test needs migration to CppToCVisitorDispatcher pattern (HandlerContext retired)
-# add_executable(ControlFlowE2ETest
-#     tests/e2e/phase2/ControlFlowE2ETest.cpp
-# )
-#
-# target_include_directories(ControlFlowE2ETest PRIVATE
-#     ${CMAKE_SOURCE_DIR}/include
-#     ${LLVM_INCLUDE_DIRS}
-#     ${CLANG_INCLUDE_DIRS}
-# )
-#
-# target_link_libraries(ControlFlowE2ETest PRIVATE
-#     cpptoc_core
-#     clangTooling
-#     clangAST
-#     clangBasic
-#     GTest::gtest
-#     GTest::gtest_main
-# )
-#
-# gtest_discover_tests(ControlFlowE2ETest
-#     WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
-# )
+# E2E Control Flow Test - Migrated to CppToCVisitorDispatcher pattern
+add_executable(ControlFlowE2ETest
+    tests/e2e/phase2/ControlFlowE2ETest.cpp
+)
+
+target_include_directories(ControlFlowE2ETest PRIVATE
+    ${CMAKE_SOURCE_DIR}/include
+    ${CMAKE_SOURCE_DIR}
+    ${LLVM_INCLUDE_DIRS}
+    ${CLANG_INCLUDE_DIRS}
+)
+
+target_link_libraries(ControlFlowE2ETest PRIVATE
+    cpptoc_core
+    clangTooling
+    clangAST
+    clangBasic
+    GTest::gtest
+    GTest::gtest_main
+)
+
+gtest_discover_tests(ControlFlowE2ETest
+    WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
+)
 
 # ============================================================================
 # Phase 41-01: Global Variables E2E Tests
 # ============================================================================
 
-# TODO: E2E test needs migration to CppToCVisitorDispatcher pattern (HandlerContext retired)
-# add_executable(GlobalVariablesE2ETest
-#     tests/e2e/phase3/GlobalVariablesE2ETest.cpp
-# )
-#
-# target_include_directories(GlobalVariablesE2ETest PRIVATE
-#     ${CMAKE_SOURCE_DIR}/include
-#     ${LLVM_INCLUDE_DIRS}
-#     ${CLANG_INCLUDE_DIRS}
-# )
-#
-# target_link_libraries(GlobalVariablesE2ETest PRIVATE
-#     cpptoc_core
-#     clangTooling
-#     clangAST
-#     clangBasic
-#     GTest::gtest
-#     GTest::gtest_main
-# )
-#
-# gtest_discover_tests(GlobalVariablesE2ETest
-#     WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
-# )
+# E2E Global Variables Test - Migrated to CppToCVisitorDispatcher pattern
+add_executable(GlobalVariablesE2ETest
+    tests/e2e/phase3/GlobalVariablesE2ETest.cpp
+)
+
+target_include_directories(GlobalVariablesE2ETest PRIVATE
+    ${CMAKE_SOURCE_DIR}/include
+    ${CMAKE_SOURCE_DIR}
+    ${LLVM_INCLUDE_DIRS}
+    ${CLANG_INCLUDE_DIRS}
+)
+
+target_link_libraries(GlobalVariablesE2ETest PRIVATE
+    cpptoc_core
+    clangTooling
+    clangAST
+    clangBasic
+    GTest::gtest
+    GTest::gtest_main
+)
+
+gtest_discover_tests(GlobalVariablesE2ETest
+    WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
+)
 
 # ============================================================================
 # Phase 42-01: Pointers & References E2E Tests
 # ============================================================================
 
-# TODO: E2E test needs migration to CppToCVisitorDispatcher pattern (HandlerContext retired)
-# add_executable(PointersE2ETest
-#     tests/e2e/phase4/PointersE2ETest.cpp
-# )
-#
-# target_include_directories(PointersE2ETest PRIVATE
-#     ${CMAKE_SOURCE_DIR}/include
-#     ${LLVM_INCLUDE_DIRS}
-#     ${CLANG_INCLUDE_DIRS}
-# )
-#
-# target_link_libraries(PointersE2ETest PRIVATE
-#     cpptoc_core
-#     clangTooling
-#     clangAST
-#     clangBasic
-#     GTest::gtest
-#     GTest::gtest_main
-# )
-#
-# gtest_discover_tests(PointersE2ETest
-#     WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
-# )
+# E2E Pointers Test - Migrated to CppToCVisitorDispatcher pattern
+add_executable(PointersE2ETest
+    tests/e2e/phase4/PointersE2ETest.cpp
+)
+
+target_include_directories(PointersE2ETest PRIVATE
+    ${CMAKE_SOURCE_DIR}/include
+    ${CMAKE_SOURCE_DIR}
+    ${LLVM_INCLUDE_DIRS}
+    ${CLANG_INCLUDE_DIRS}
+)
+
+target_link_libraries(PointersE2ETest PRIVATE
+    cpptoc_core
+    clangTooling
+    clangAST
+    clangBasic
+    GTest::gtest
+    GTest::gtest_main
+)
+
+gtest_discover_tests(PointersE2ETest
+    WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
+)
 
 # ============================================================================
 # Phase 43-01: Structs (C-style) E2E Tests
 # ============================================================================
 
-# TODO: E2E test needs migration to CppToCVisitorDispatcher pattern (HandlerContext retired)
-# add_executable(StructsE2ETest
-#     tests/e2e/phase5/StructsE2ETest.cpp
-# )
-#
-# target_include_directories(StructsE2ETest PRIVATE
-#     ${CMAKE_SOURCE_DIR}/include
-#     ${LLVM_INCLUDE_DIRS}
-#     ${CLANG_INCLUDE_DIRS}
-# )
-#
-# target_link_libraries(StructsE2ETest PRIVATE
-#     cpptoc_core
-#     clangTooling
-#     clangAST
-#     clangBasic
-#     GTest::gtest
-#     GTest::gtest_main
-# )
-#
-# gtest_discover_tests(StructsE2ETest
-#     WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
-# )
+# E2E Structs Test - Migrated to CppToCVisitorDispatcher pattern
+add_executable(StructsE2ETest
+    tests/e2e/phase5/StructsE2ETest.cpp
+)
+
+target_include_directories(StructsE2ETest PRIVATE
+    ${CMAKE_SOURCE_DIR}/include
+    ${CMAKE_SOURCE_DIR}
+    ${LLVM_INCLUDE_DIRS}
+    ${CLANG_INCLUDE_DIRS}
+)
+
+target_link_libraries(StructsE2ETest PRIVATE
+    cpptoc_core
+    clangTooling
+    clangAST
+    clangBasic
+    GTest::gtest
+    GTest::gtest_main
+)
+
+gtest_discover_tests(StructsE2ETest
+    WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
+)
 
 # ============================================================================
 # Phase 6: Classes E2E Tests
 # ============================================================================
 
-# TODO: E2E test needs migration to CppToCVisitorDispatcher pattern (HandlerContext retired)
-# add_executable(ClassesE2ETest
-#     tests/e2e/phase6/ClassesE2ETest.cpp
-# )
-#
-# target_include_directories(ClassesE2ETest PRIVATE
-#     ${CMAKE_SOURCE_DIR}/include
-#     ${LLVM_INCLUDE_DIRS}
-#     ${CLANG_INCLUDE_DIRS}
-# )
-#
-# target_link_libraries(ClassesE2ETest PRIVATE
-#     cpptoc_core
-#     clangTooling
-#     clangAST
-#     clangBasic
-#     GTest::gtest
-#     GTest::gtest_main
-# )
-#
-# gtest_discover_tests(ClassesE2ETest
-#     WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
-# )
+# E2E Classes Test - Migrated to CppToCVisitorDispatcher pattern
+add_executable(ClassesE2ETest
+    tests/e2e/phase6/ClassesE2ETest.cpp
+)
+
+target_include_directories(ClassesE2ETest PRIVATE
+    ${CMAKE_SOURCE_DIR}/include
+    ${CMAKE_SOURCE_DIR}
+    ${LLVM_INCLUDE_DIRS}
+    ${CLANG_INCLUDE_DIRS}
+)
+
+target_link_libraries(ClassesE2ETest PRIVATE
+    cpptoc_core
+    clangTooling
+    clangAST
+    clangBasic
+    GTest::gtest
+    GTest::gtest_main
+)
+
+gtest_discover_tests(ClassesE2ETest
+    WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
+)
 
 # ============================================================================
 # Phase 46: Multiple Inheritance E2E Tests
 # ============================================================================
 
-# TODO: E2E test needs migration to CppToCVisitorDispatcher pattern (HandlerContext retired)
-# add_executable(MultipleInheritanceE2ETest
-#     tests/e2e/phase46/MultipleInheritanceE2ETest.cpp
-# )
-#
-# target_include_directories(MultipleInheritanceE2ETest PRIVATE
-#     ${CMAKE_SOURCE_DIR}/include
-#     ${LLVM_INCLUDE_DIRS}
-#     ${CLANG_INCLUDE_DIRS}
-# )
-#
-# target_link_libraries(MultipleInheritanceE2ETest PRIVATE
-#     cpptoc_core
-#     clangTooling
-#     clangAST
-#     clangBasic
-#     GTest::gtest
-#     GTest::gtest_main
-# )
-#
-# gtest_discover_tests(MultipleInheritanceE2ETest
-#     WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
-# )
+# E2E Multiple Inheritance Test - Migrated to CppToCVisitorDispatcher pattern
+add_executable(MultipleInheritanceE2ETest
+    tests/e2e/phase46/MultipleInheritanceE2ETest.cpp
+)
+
+target_include_directories(MultipleInheritanceE2ETest PRIVATE
+    ${CMAKE_SOURCE_DIR}/include
+    ${CMAKE_SOURCE_DIR}
+    ${LLVM_INCLUDE_DIRS}
+    ${CLANG_INCLUDE_DIRS}
+)
+
+target_link_libraries(MultipleInheritanceE2ETest PRIVATE
+    cpptoc_core
+    clangTooling
+    clangAST
+    clangBasic
+    GTest::gtest
+    GTest::gtest_main
+)
+
+gtest_discover_tests(MultipleInheritanceE2ETest
+    WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
+)
 
 # ============================================================================
 # Phase 47: Scoped Enum E2E Tests
