@@ -230,6 +230,7 @@ add_library(cpptoc_core STATIC
     src/dispatch/ImplicitCastExprHandler.cpp
     src/dispatch/ArraySubscriptExprHandler.cpp
     src/dispatch/ParenExprHandler.cpp
+    src/dispatch/InitListExprHandler.cpp
     src/dispatch/CallExprHandler.cpp
     src/dispatch/CXXOperatorCallExprHandler.cpp
     src/dispatch/CXXTypeidExprHandler.cpp

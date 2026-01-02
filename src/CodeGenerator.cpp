@@ -303,9 +303,27 @@ void CodeGenerator::printStmt(Stmt *S, unsigned Indent) {
             first = false;
 
             if (VarDecl *VD = dyn_cast<VarDecl>(D)) {
-                // Print type and name
-                VD->getType().print(OS, Policy);
-                OS << " " << VD->getNameAsString();
+                // BUG FIX: Handle array types correctly (int arr[5] not int[5] arr)
+                QualType VarType = VD->getType();
+
+                if (const ArrayType *AT = VarType->getAsArrayTypeUnsafe()) {
+                    // For array types, print: element_type name[size]
+                    QualType ElementType = AT->getElementType();
+                    printCType(ElementType);
+                    OS << " " << VD->getNameAsString();
+
+                    // Print array dimensions
+                    if (const ConstantArrayType *CAT = dyn_cast<ConstantArrayType>(AT)) {
+                        OS << "[" << CAT->getSize().getZExtValue() << "]";
+                    } else {
+                        // Incomplete array type: int arr[]
+                        OS << "[]";
+                    }
+                } else {
+                    // Non-array type: print normally
+                    printCType(VarType);
+                    OS << " " << VD->getNameAsString();
+                }
 
                 // Print initializer if present
                 if (VD->hasInit()) {
