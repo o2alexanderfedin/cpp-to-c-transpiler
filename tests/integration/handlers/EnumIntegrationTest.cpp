@@ -16,8 +16,7 @@
 #include "dispatch/FunctionHandler.h"
 #include "dispatch/VariableHandler.h"
 #include "dispatch/StatementHandler.h"
-#include "handlers/HandlerContext.h"
-#include "CNodeBuilder.h"
+#include "DispatcherTestHelper.h"
 #include "clang/Tooling/Tooling.h"
 #include "clang/AST/RecursiveASTVisitor.h"
 #include <gtest/gtest.h>
@@ -31,48 +30,19 @@ using namespace cpptoc;
  */
 class EnumIntegrationTest : public ::testing::Test {
 protected:
-    std::unique_ptr<clang::ASTUnit> cppAST;
-    std::unique_ptr<clang::ASTUnit> cAST;
-    std::unique_ptr<clang::CNodeBuilder> builder;
-    std::unique_ptr<HandlerContext> context;
-
-    std::unique_ptr<FunctionHandler> funcHandler;
-    std::unique_ptr<VariableHandler> varHandler;
-    std::unique_ptr<ExpressionHandler> exprHandler;
-    std::unique_ptr<StatementHandler> stmtHandler;
+    cpptoc::test::DispatcherPipeline pipeline;
 
     void SetUp() override {
-        // Create real AST contexts
-        cppAST = clang::tooling::buildASTFromCode("int dummy;");
-        cAST = clang::tooling::buildASTFromCode("int dummy2;");
+        pipeline = cpptoc::test::createDispatcherPipeline("int dummy;");
 
-        ASSERT_NE(cppAST, nullptr);
-        ASSERT_NE(cAST, nullptr);
-
-        // Create builder and context
-        builder = std::make_unique<clang::CNodeBuilder>(cAST->getASTContext());
-        context = std::make_unique<HandlerContext>(
-            cppAST->getASTContext(),
-            cAST->getASTContext(),
-            *builder
-        );
-
-        // Create all handlers
-        funcHandler = std::make_unique<FunctionHandler>();
-        varHandler = std::make_unique<VariableHandler>();
-        exprHandler = std::make_unique<ExpressionHandler>();
-        stmtHandler = std::make_unique<StatementHandler>();
+        // Register handlers
+        FunctionHandler::registerWith(*pipeline.dispatcher);
+        VariableHandler::registerWith(*pipeline.dispatcher);
+        StatementHandler::registerWith(*pipeline.dispatcher);
     }
 
     void TearDown() override {
-        stmtHandler.reset();
-        exprHandler.reset();
-        varHandler.reset();
-        funcHandler.reset();
-        context.reset();
-        builder.reset();
-        cAST.reset();
-        cppAST.reset();
+        // Pipeline auto-cleans on destruction
     }
 
     /**
@@ -94,8 +64,11 @@ protected:
 
         if (!cppFunc) return nullptr;
 
-        return llvm::dyn_cast<clang::FunctionDecl>(
-            funcHandler->handleDecl(cppFunc, *context)
+        // Dispatch through pipeline
+        return pipeline.dispatcher->dispatchDecl<clang::FunctionDecl>(
+            testAST->getASTContext(),
+            pipeline.cAST->getASTContext(),
+            cppFunc
         );
     }
 };

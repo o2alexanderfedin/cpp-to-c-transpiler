@@ -46,11 +46,10 @@
 #include "clang/Tooling/Tooling.h"
 #include "clang/Frontend/ASTUnit.h"
 #include "clang/AST/DeclCXX.h"
+#include "DispatcherTestHelper.h"
 #include "dispatch/FunctionHandler.h"
 #include "dispatch/VariableHandler.h"
 #include "dispatch/StatementHandler.h"
-#include "handlers/HandlerContext.h"
-#include "CNodeBuilder.h"
 #include "CodeGenerator.h"
 #include <memory>
 #include <fstream>
@@ -66,17 +65,8 @@ using namespace clang;
  */
 class ComparisonOperatorsIntegrationTest : public ::testing::Test {
 protected:
-    std::unique_ptr<FunctionHandler> funcHandler;
-    std::unique_ptr<VariableHandler> varHandler;
-    std::unique_ptr<ExpressionHandler> exprHandler;
-    std::unique_ptr<StatementHandler> stmtHandler;
-
     void SetUp() override {
         srand(static_cast<unsigned>(time(nullptr)));
-        funcHandler = std::make_unique<FunctionHandler>();
-        varHandler = std::make_unique<VariableHandler>();
-        exprHandler = std::make_unique<ExpressionHandler>();
-        stmtHandler = std::make_unique<StatementHandler>();
     }
 
     /**
@@ -87,53 +77,31 @@ protected:
      * @return true if test passed
      */
     bool runPipeline(const std::string& cppCode, int expectedExitCode = 0, bool debugOutput = false) {
-        // Stage 1: Parse C++ code
-        auto cppAST = tooling::buildASTFromCode(cppCode);
-        if (!cppAST) {
-            std::cerr << "Failed to parse C++ code\n";
-            return false;
-        }
+        // Create dispatcher pipeline
+        auto pipeline = cpptoc::test::createDispatcherPipeline(cppCode);
 
-        // Stage 2: Translate to C AST
-        auto cAST = tooling::buildASTFromCode("int dummy;");
-        if (!cAST) {
-            std::cerr << "Failed to create C context\n";
-            return false;
-        }
+        // Register handlers
+        FunctionHandler::registerWith(*pipeline.dispatcher);
+        VariableHandler::registerWith(*pipeline.dispatcher);
+        StatementHandler::registerWith(*pipeline.dispatcher);
 
-        CNodeBuilder builder(cAST->getASTContext());
-        HandlerContext context(
-            cppAST->getASTContext(),
-            cAST->getASTContext(),
-            builder
-        );
-
-        // Translate all declarations (classes, functions, etc.)
-        for (auto* decl : cppAST->getASTContext().getTranslationUnitDecl()->decls()) {
-            if (auto* func = llvm::dyn_cast<clang::FunctionDecl>(decl)) {
-                if (!llvm::isa<clang::CXXMethodDecl>(func)) {
-                    if (debugOutput) {
-                        std::cout << "DEBUG: Translating function: " << func->getNameAsString() << "\n";
-                    }
-                    // Translate function signature
-                    clang::Decl* cFuncDecl = funcHandler->handleDecl(func, context);
-                    clang::FunctionDecl* cFunc = llvm::cast<clang::FunctionDecl>(cFuncDecl);
-
-                    // Translate function body if present
-                    if (func->hasBody()) {
-                        clang::Stmt* cBody = stmtHandler->handleStmt(func->getBody(), context);
-                        cFunc->setBody(cBody);
-                    }
+        // Dispatch all top-level declarations
+        for (auto* decl : pipeline.cppAST->getASTContext().getTranslationUnitDecl()->decls()) {
+            auto* nonConstDecl = const_cast<clang::Decl*>(decl);
+            if (debugOutput) {
+                if (auto* func = llvm::dyn_cast<clang::FunctionDecl>(nonConstDecl)) {
+                    std::cout << "DEBUG: Translating function: " << func->getNameAsString() << "\n";
                 }
             }
+            pipeline.dispatcher->dispatch(
+                pipeline.cppAST->getASTContext(),
+                pipeline.cAST->getASTContext(),
+                nonConstDecl
+            );
         }
 
-        // Stage 3: Generate C code
-        std::string cCode;
-        llvm::raw_string_ostream codeStream(cCode);
-        CodeGenerator generator(codeStream, cAST->getASTContext());
-        generator.printTranslationUnit(cAST->getASTContext().getTranslationUnitDecl());
-        codeStream.flush();
+        // Generate C code
+        std::string cCode = cpptoc::test::generateCCode(pipeline.cAST->getASTContext());
 
         if (debugOutput) {
             std::cout << "=== Generated C Code ===\n" << cCode << "\n=========================\n";

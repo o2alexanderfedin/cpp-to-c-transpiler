@@ -6,11 +6,10 @@
  * Validates that handlers cooperate correctly and symbol table works.
  */
 
+#include "fixtures/DispatcherTestHelper.h"
 #include "dispatch/FunctionHandler.h"
 #include "dispatch/VariableHandler.h"
 #include "dispatch/StatementHandler.h"
-#include "handlers/HandlerContext.h"
-#include "CNodeBuilder.h"
 #include "clang/Tooling/Tooling.h"
 #include "clang/AST/RecursiveASTVisitor.h"
 #include <gtest/gtest.h>
@@ -24,48 +23,20 @@ using namespace cpptoc;
  */
 class HandlerIntegrationTest : public ::testing::Test {
 protected:
-    std::unique_ptr<clang::ASTUnit> cppAST;
-    std::unique_ptr<clang::ASTUnit> cAST;
-    std::unique_ptr<clang::CNodeBuilder> builder;
-    std::unique_ptr<HandlerContext> context;
-
-    std::unique_ptr<FunctionHandler> funcHandler;
-    std::unique_ptr<VariableHandler> varHandler;
-    std::unique_ptr<ExpressionHandler> exprHandler;
-    std::unique_ptr<StatementHandler> stmtHandler;
+    cpptoc::test::DispatcherPipeline pipeline;
 
     void SetUp() override {
-        // Create real AST contexts
-        cppAST = clang::tooling::buildASTFromCode("int dummy;");
-        cAST = clang::tooling::buildASTFromCode("int dummy2;");
+        // Create dispatcher pipeline
+        pipeline = cpptoc::test::createDispatcherPipeline("int dummy;");
 
-        ASSERT_NE(cppAST, nullptr);
-        ASSERT_NE(cAST, nullptr);
-
-        // Create builder and context
-        builder = std::make_unique<clang::CNodeBuilder>(cAST->getASTContext());
-        context = std::make_unique<HandlerContext>(
-            cppAST->getASTContext(),
-            cAST->getASTContext(),
-            *builder
-        );
-
-        // Create all handlers
-        funcHandler = std::make_unique<FunctionHandler>();
-        varHandler = std::make_unique<VariableHandler>();
-        exprHandler = std::make_unique<ExpressionHandler>();
-        stmtHandler = std::make_unique<StatementHandler>();
+        // Register all handlers
+        FunctionHandler::registerWith(*pipeline.dispatcher);
+        VariableHandler::registerWith(*pipeline.dispatcher);
+        StatementHandler::registerWith(*pipeline.dispatcher);
     }
 
     void TearDown() override {
-        stmtHandler.reset();
-        exprHandler.reset();
-        varHandler.reset();
-        funcHandler.reset();
-        context.reset();
-        builder.reset();
-        cAST.reset();
-        cppAST.reset();
+        // Pipeline auto-cleans up
     }
 };
 
@@ -97,9 +68,13 @@ TEST_F(HandlerIntegrationTest, FunctionWithArithmetic) {
     ASSERT_NE(cppFunc, nullptr) << "Failed to find add function";
 
     // Translate function - handlers should cooperate internally
-    auto* cFunc = llvm::dyn_cast<clang::FunctionDecl>(
-        funcHandler->handleDecl(cppFunc, *context)
+    pipeline.dispatcher->dispatch(
+        testAST->getASTContext(),
+        pipeline.cAST->getASTContext(),
+        const_cast<clang::Decl*>(static_cast<const clang::Decl*>(cppFunc))
     );
+    auto* cDecl = pipeline.declMapper->getCreated(cppFunc);
+    auto* cFunc = llvm::dyn_cast_or_null<clang::FunctionDecl>(cDecl);
 
     ASSERT_NE(cFunc, nullptr);
     EXPECT_EQ(cFunc->getNameAsString(), "add");
@@ -128,9 +103,13 @@ TEST_F(HandlerIntegrationTest, FunctionWithComplexExpr) {
 
     ASSERT_NE(cppFunc, nullptr);
 
-    auto* cFunc = llvm::dyn_cast<clang::FunctionDecl>(
-        funcHandler->handleDecl(cppFunc, *context)
+    pipeline.dispatcher->dispatch(
+        testAST->getASTContext(),
+        pipeline.cAST->getASTContext(),
+        const_cast<clang::Decl*>(static_cast<const clang::Decl*>(cppFunc))
     );
+    auto* cDecl = pipeline.declMapper->getCreated(cppFunc);
+    auto* cFunc = llvm::dyn_cast_or_null<clang::FunctionDecl>(cDecl);
 
     ASSERT_NE(cFunc, nullptr);
     EXPECT_EQ(cFunc->getNameAsString(), "calc");
@@ -158,9 +137,13 @@ TEST_F(HandlerIntegrationTest, FunctionCallWithArithmetic) {
 
     ASSERT_NE(cppFunc, nullptr);
 
-    auto* cFunc = llvm::dyn_cast<clang::FunctionDecl>(
-        funcHandler->handleDecl(cppFunc, *context)
+    pipeline.dispatcher->dispatch(
+        testAST->getASTContext(),
+        pipeline.cAST->getASTContext(),
+        const_cast<clang::Decl*>(static_cast<const clang::Decl*>(cppFunc))
     );
+    auto* cDecl = pipeline.declMapper->getCreated(cppFunc);
+    auto* cFunc = llvm::dyn_cast_or_null<clang::FunctionDecl>(cDecl);
 
     ASSERT_NE(cFunc, nullptr);
     EXPECT_EQ(cFunc->getNameAsString(), "square");
@@ -179,9 +162,13 @@ TEST_F(HandlerIntegrationTest, MultipleArithmeticFunctions) {
     for (auto* decl : testAST->getASTContext().getTranslationUnitDecl()->decls()) {
         if (auto* func = llvm::dyn_cast<clang::FunctionDecl>(decl)) {
             if (func->getNameAsString() == "add" || func->getNameAsString() == "sub") {
-                auto* cFunc = llvm::dyn_cast<clang::FunctionDecl>(
-                    funcHandler->handleDecl(func, *context)
+                pipeline.dispatcher->dispatch(
+                    testAST->getASTContext(),
+                    pipeline.cAST->getASTContext(),
+                    const_cast<clang::Decl*>(static_cast<const clang::Decl*>(func))
                 );
+                auto* cDecl = pipeline.declMapper->getCreated(func);
+                auto* cFunc = llvm::dyn_cast_or_null<clang::FunctionDecl>(cDecl);
                 ASSERT_NE(cFunc, nullptr);
                 funcCount++;
             }
@@ -213,9 +200,13 @@ TEST_F(HandlerIntegrationTest, NestedArithmeticInFunction) {
 
     ASSERT_NE(cppFunc, nullptr);
 
-    auto* cFunc = llvm::dyn_cast<clang::FunctionDecl>(
-        funcHandler->handleDecl(cppFunc, *context)
+    pipeline.dispatcher->dispatch(
+        testAST->getASTContext(),
+        pipeline.cAST->getASTContext(),
+        const_cast<clang::Decl*>(static_cast<const clang::Decl*>(cppFunc))
     );
+    auto* cDecl = pipeline.declMapper->getCreated(cppFunc);
+    auto* cFunc = llvm::dyn_cast_or_null<clang::FunctionDecl>(cDecl);
 
     ASSERT_NE(cFunc, nullptr);
     EXPECT_EQ(cFunc->getNumParams(), 2);
@@ -248,9 +239,13 @@ TEST_F(HandlerIntegrationTest, FunctionWithLocalVar) {
 
     ASSERT_NE(cppFunc, nullptr);
 
-    auto* cFunc = llvm::dyn_cast<clang::FunctionDecl>(
-        funcHandler->handleDecl(cppFunc, *context)
+    pipeline.dispatcher->dispatch(
+        testAST->getASTContext(),
+        pipeline.cAST->getASTContext(),
+        const_cast<clang::Decl*>(static_cast<const clang::Decl*>(cppFunc))
     );
+    auto* cDecl = pipeline.declMapper->getCreated(cppFunc);
+    auto* cFunc = llvm::dyn_cast_or_null<clang::FunctionDecl>(cDecl);
 
     ASSERT_NE(cFunc, nullptr);
 }
@@ -279,9 +274,13 @@ TEST_F(HandlerIntegrationTest, FunctionWithMultipleVars) {
 
     ASSERT_NE(cppFunc, nullptr);
 
-    auto* cFunc = llvm::dyn_cast<clang::FunctionDecl>(
-        funcHandler->handleDecl(cppFunc, *context)
+    pipeline.dispatcher->dispatch(
+        testAST->getASTContext(),
+        pipeline.cAST->getASTContext(),
+        const_cast<clang::Decl*>(static_cast<const clang::Decl*>(cppFunc))
     );
+    auto* cDecl = pipeline.declMapper->getCreated(cppFunc);
+    auto* cFunc = llvm::dyn_cast_or_null<clang::FunctionDecl>(cDecl);
 
     ASSERT_NE(cFunc, nullptr);
 }
@@ -310,9 +309,13 @@ TEST_F(HandlerIntegrationTest, FunctionUsingVars) {
 
     ASSERT_NE(cppFunc, nullptr);
 
-    auto* cFunc = llvm::dyn_cast<clang::FunctionDecl>(
-        funcHandler->handleDecl(cppFunc, *context)
+    pipeline.dispatcher->dispatch(
+        testAST->getASTContext(),
+        pipeline.cAST->getASTContext(),
+        const_cast<clang::Decl*>(static_cast<const clang::Decl*>(cppFunc))
     );
+    auto* cDecl = pipeline.declMapper->getCreated(cppFunc);
+    auto* cFunc = llvm::dyn_cast_or_null<clang::FunctionDecl>(cDecl);
 
     ASSERT_NE(cFunc, nullptr);
 }
@@ -340,9 +343,13 @@ TEST_F(HandlerIntegrationTest, FunctionWithConstVars) {
 
     ASSERT_NE(cppFunc, nullptr);
 
-    auto* cFunc = llvm::dyn_cast<clang::FunctionDecl>(
-        funcHandler->handleDecl(cppFunc, *context)
+    pipeline.dispatcher->dispatch(
+        testAST->getASTContext(),
+        pipeline.cAST->getASTContext(),
+        const_cast<clang::Decl*>(static_cast<const clang::Decl*>(cppFunc))
     );
+    auto* cDecl = pipeline.declMapper->getCreated(cppFunc);
+    auto* cFunc = llvm::dyn_cast_or_null<clang::FunctionDecl>(cDecl);
 
     ASSERT_NE(cFunc, nullptr);
 }
@@ -370,9 +377,13 @@ TEST_F(HandlerIntegrationTest, FunctionVarInitFromParam) {
 
     ASSERT_NE(cppFunc, nullptr);
 
-    auto* cFunc = llvm::dyn_cast<clang::FunctionDecl>(
-        funcHandler->handleDecl(cppFunc, *context)
+    pipeline.dispatcher->dispatch(
+        testAST->getASTContext(),
+        pipeline.cAST->getASTContext(),
+        const_cast<clang::Decl*>(static_cast<const clang::Decl*>(cppFunc))
     );
+    auto* cDecl = pipeline.declMapper->getCreated(cppFunc);
+    auto* cFunc = llvm::dyn_cast_or_null<clang::FunctionDecl>(cDecl);
 
     ASSERT_NE(cFunc, nullptr);
 }
@@ -403,9 +414,13 @@ TEST_F(HandlerIntegrationTest, CompleteSimpleProgram) {
 
     ASSERT_NE(cppFunc, nullptr);
 
-    auto* cMain = llvm::dyn_cast<clang::FunctionDecl>(
-        funcHandler->handleDecl(cppFunc, *context)
+    pipeline.dispatcher->dispatch(
+        testAST->getASTContext(),
+        pipeline.cAST->getASTContext(),
+        const_cast<clang::Decl*>(static_cast<const clang::Decl*>(cppFunc))
     );
+    auto* cDecl = pipeline.declMapper->getCreated(cppFunc);
+    auto* cMain = llvm::dyn_cast_or_null<clang::FunctionDecl>(cDecl);
 
     ASSERT_NE(cMain, nullptr);
     EXPECT_EQ(cMain->getNameAsString(), "main");
@@ -434,9 +449,13 @@ TEST_F(HandlerIntegrationTest, FunctionWithAllFeatures) {
 
     ASSERT_NE(cppFunc, nullptr);
 
-    auto* cFunc = llvm::dyn_cast<clang::FunctionDecl>(
-        funcHandler->handleDecl(cppFunc, *context)
+    pipeline.dispatcher->dispatch(
+        testAST->getASTContext(),
+        pipeline.cAST->getASTContext(),
+        const_cast<clang::Decl*>(static_cast<const clang::Decl*>(cppFunc))
     );
+    auto* cDecl = pipeline.declMapper->getCreated(cppFunc);
+    auto* cFunc = llvm::dyn_cast_or_null<clang::FunctionDecl>(cDecl);
 
     ASSERT_NE(cFunc, nullptr);
 }
@@ -465,9 +484,13 @@ TEST_F(HandlerIntegrationTest, NestedCompounds) {
 
     ASSERT_NE(cppFunc, nullptr);
 
-    auto* cFunc = llvm::dyn_cast<clang::FunctionDecl>(
-        funcHandler->handleDecl(cppFunc, *context)
+    pipeline.dispatcher->dispatch(
+        testAST->getASTContext(),
+        pipeline.cAST->getASTContext(),
+        const_cast<clang::Decl*>(static_cast<const clang::Decl*>(cppFunc))
     );
+    auto* cDecl = pipeline.declMapper->getCreated(cppFunc);
+    auto* cFunc = llvm::dyn_cast_or_null<clang::FunctionDecl>(cDecl);
 
     ASSERT_NE(cFunc, nullptr);
 }
@@ -494,9 +517,13 @@ TEST_F(HandlerIntegrationTest, ComplexArithmetic) {
 
     ASSERT_NE(cppFunc, nullptr);
 
-    auto* cFunc = llvm::dyn_cast<clang::FunctionDecl>(
-        funcHandler->handleDecl(cppFunc, *context)
+    pipeline.dispatcher->dispatch(
+        testAST->getASTContext(),
+        pipeline.cAST->getASTContext(),
+        const_cast<clang::Decl*>(static_cast<const clang::Decl*>(cppFunc))
     );
+    auto* cDecl = pipeline.declMapper->getCreated(cppFunc);
+    auto* cFunc = llvm::dyn_cast_or_null<clang::FunctionDecl>(cDecl);
 
     ASSERT_NE(cFunc, nullptr);
 }
@@ -525,9 +552,13 @@ TEST_F(HandlerIntegrationTest, VariableReuse) {
 
     ASSERT_NE(cppFunc, nullptr);
 
-    auto* cFunc = llvm::dyn_cast<clang::FunctionDecl>(
-        funcHandler->handleDecl(cppFunc, *context)
+    pipeline.dispatcher->dispatch(
+        testAST->getASTContext(),
+        pipeline.cAST->getASTContext(),
+        const_cast<clang::Decl*>(static_cast<const clang::Decl*>(cppFunc))
     );
+    auto* cDecl = pipeline.declMapper->getCreated(cppFunc);
+    auto* cFunc = llvm::dyn_cast_or_null<clang::FunctionDecl>(cDecl);
 
     ASSERT_NE(cFunc, nullptr);
 }
@@ -554,9 +585,13 @@ TEST_F(HandlerIntegrationTest, ReturnComplexExpression) {
 
     ASSERT_NE(cppFunc, nullptr);
 
-    auto* cFunc = llvm::dyn_cast<clang::FunctionDecl>(
-        funcHandler->handleDecl(cppFunc, *context)
+    pipeline.dispatcher->dispatch(
+        testAST->getASTContext(),
+        pipeline.cAST->getASTContext(),
+        const_cast<clang::Decl*>(static_cast<const clang::Decl*>(cppFunc))
     );
+    auto* cDecl = pipeline.declMapper->getCreated(cppFunc);
+    auto* cFunc = llvm::dyn_cast_or_null<clang::FunctionDecl>(cDecl);
 
     ASSERT_NE(cFunc, nullptr);
 }
@@ -584,9 +619,13 @@ TEST_F(HandlerIntegrationTest, MixedTypes) {
 
     ASSERT_NE(cppFunc, nullptr);
 
-    auto* cFunc = llvm::dyn_cast<clang::FunctionDecl>(
-        funcHandler->handleDecl(cppFunc, *context)
+    pipeline.dispatcher->dispatch(
+        testAST->getASTContext(),
+        pipeline.cAST->getASTContext(),
+        const_cast<clang::Decl*>(static_cast<const clang::Decl*>(cppFunc))
     );
+    auto* cDecl = pipeline.declMapper->getCreated(cppFunc);
+    auto* cFunc = llvm::dyn_cast_or_null<clang::FunctionDecl>(cDecl);
 
     ASSERT_NE(cFunc, nullptr);
 }
@@ -615,9 +654,13 @@ TEST_F(HandlerIntegrationTest, ConstExpressions) {
 
     ASSERT_NE(cppFunc, nullptr);
 
-    auto* cFunc = llvm::dyn_cast<clang::FunctionDecl>(
-        funcHandler->handleDecl(cppFunc, *context)
+    pipeline.dispatcher->dispatch(
+        testAST->getASTContext(),
+        pipeline.cAST->getASTContext(),
+        const_cast<clang::Decl*>(static_cast<const clang::Decl*>(cppFunc))
     );
+    auto* cDecl = pipeline.declMapper->getCreated(cppFunc);
+    auto* cFunc = llvm::dyn_cast_or_null<clang::FunctionDecl>(cDecl);
 
     ASSERT_NE(cFunc, nullptr);
 }
@@ -644,9 +687,13 @@ TEST_F(HandlerIntegrationTest, DeepNesting) {
 
     ASSERT_NE(cppFunc, nullptr);
 
-    auto* cFunc = llvm::dyn_cast<clang::FunctionDecl>(
-        funcHandler->handleDecl(cppFunc, *context)
+    pipeline.dispatcher->dispatch(
+        testAST->getASTContext(),
+        pipeline.cAST->getASTContext(),
+        const_cast<clang::Decl*>(static_cast<const clang::Decl*>(cppFunc))
     );
+    auto* cDecl = pipeline.declMapper->getCreated(cppFunc);
+    auto* cFunc = llvm::dyn_cast_or_null<clang::FunctionDecl>(cDecl);
 
     ASSERT_NE(cFunc, nullptr);
 }
@@ -673,9 +720,13 @@ TEST_F(HandlerIntegrationTest, LargeFunction) {
 
     ASSERT_NE(cppFunc, nullptr);
 
-    auto* cFunc = llvm::dyn_cast<clang::FunctionDecl>(
-        funcHandler->handleDecl(cppFunc, *context)
+    pipeline.dispatcher->dispatch(
+        testAST->getASTContext(),
+        pipeline.cAST->getASTContext(),
+        const_cast<clang::Decl*>(static_cast<const clang::Decl*>(cppFunc))
     );
+    auto* cDecl = pipeline.declMapper->getCreated(cppFunc);
+    auto* cFunc = llvm::dyn_cast_or_null<clang::FunctionDecl>(cDecl);
 
     ASSERT_NE(cFunc, nullptr);
 }
@@ -702,9 +753,13 @@ TEST_F(HandlerIntegrationTest, EdgeCaseArithmetic) {
 
     ASSERT_NE(cppFunc, nullptr);
 
-    auto* cFunc = llvm::dyn_cast<clang::FunctionDecl>(
-        funcHandler->handleDecl(cppFunc, *context)
+    pipeline.dispatcher->dispatch(
+        testAST->getASTContext(),
+        pipeline.cAST->getASTContext(),
+        const_cast<clang::Decl*>(static_cast<const clang::Decl*>(cppFunc))
     );
+    auto* cDecl = pipeline.declMapper->getCreated(cppFunc);
+    auto* cFunc = llvm::dyn_cast_or_null<clang::FunctionDecl>(cDecl);
 
     ASSERT_NE(cFunc, nullptr);
 }
@@ -731,9 +786,13 @@ TEST_F(HandlerIntegrationTest, AllOperatorsCombined) {
 
     ASSERT_NE(cppFunc, nullptr);
 
-    auto* cFunc = llvm::dyn_cast<clang::FunctionDecl>(
-        funcHandler->handleDecl(cppFunc, *context)
+    pipeline.dispatcher->dispatch(
+        testAST->getASTContext(),
+        pipeline.cAST->getASTContext(),
+        const_cast<clang::Decl*>(static_cast<const clang::Decl*>(cppFunc))
     );
+    auto* cDecl = pipeline.declMapper->getCreated(cppFunc);
+    auto* cFunc = llvm::dyn_cast_or_null<clang::FunctionDecl>(cDecl);
 
     ASSERT_NE(cFunc, nullptr);
 }
@@ -763,9 +822,13 @@ TEST_F(HandlerIntegrationTest, StatementSequence) {
 
     ASSERT_NE(cppFunc, nullptr);
 
-    auto* cFunc = llvm::dyn_cast<clang::FunctionDecl>(
-        funcHandler->handleDecl(cppFunc, *context)
+    pipeline.dispatcher->dispatch(
+        testAST->getASTContext(),
+        pipeline.cAST->getASTContext(),
+        const_cast<clang::Decl*>(static_cast<const clang::Decl*>(cppFunc))
     );
+    auto* cDecl = pipeline.declMapper->getCreated(cppFunc);
+    auto* cFunc = llvm::dyn_cast_or_null<clang::FunctionDecl>(cDecl);
 
     ASSERT_NE(cFunc, nullptr);
 }
@@ -794,9 +857,13 @@ TEST_F(HandlerIntegrationTest, HandlerCooperation) {
 
     ASSERT_NE(cppFunc, nullptr);
 
-    auto* cFunc = llvm::dyn_cast<clang::FunctionDecl>(
-        funcHandler->handleDecl(cppFunc, *context)
+    pipeline.dispatcher->dispatch(
+        testAST->getASTContext(),
+        pipeline.cAST->getASTContext(),
+        const_cast<clang::Decl*>(static_cast<const clang::Decl*>(cppFunc))
     );
+    auto* cDecl = pipeline.declMapper->getCreated(cppFunc);
+    auto* cFunc = llvm::dyn_cast_or_null<clang::FunctionDecl>(cDecl);
 
     ASSERT_NE(cFunc, nullptr);
     EXPECT_EQ(cFunc->getNumParams(), 2);

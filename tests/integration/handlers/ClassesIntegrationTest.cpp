@@ -13,6 +13,7 @@
  * - Complete class translation pipeline
  */
 
+#include "fixtures/DispatcherTestHelper.h"
 #include "dispatch/FunctionHandler.h"
 #include "dispatch/VariableHandler.h"
 #include "dispatch/StatementHandler.h"
@@ -20,8 +21,6 @@
 #include "dispatch/MethodHandler.h"
 #include "dispatch/ConstructorHandler.h"
 #include "dispatch/DestructorHandler.h"
-#include "handlers/HandlerContext.h"
-#include "CNodeBuilder.h"
 #include "clang/Tooling/Tooling.h"
 #include "clang/AST/RecursiveASTVisitor.h"
 #include <gtest/gtest.h>
@@ -35,60 +34,24 @@ using namespace cpptoc;
  */
 class ClassesIntegrationTest : public ::testing::Test {
 protected:
-    std::unique_ptr<clang::ASTUnit> cppAST;
-    std::unique_ptr<clang::ASTUnit> cAST;
-    std::unique_ptr<clang::CNodeBuilder> builder;
-    std::unique_ptr<HandlerContext> context;
-
-    std::unique_ptr<FunctionHandler> funcHandler;
-    std::unique_ptr<VariableHandler> varHandler;
-    std::unique_ptr<ExpressionHandler> exprHandler;
-    std::unique_ptr<StatementHandler> stmtHandler;
-    std::unique_ptr<RecordHandler> recordHandler;
-    std::unique_ptr<MethodHandler> methodHandler;
-    std::unique_ptr<ConstructorHandler> ctorHandler;
-    std::unique_ptr<DestructorHandler> dtorHandler;
+    cpptoc::test::DispatcherPipeline pipeline;
 
     void SetUp() override {
-        // Create real AST contexts
-        cppAST = clang::tooling::buildASTFromCode("int dummy;");
-        cAST = clang::tooling::buildASTFromCode("int dummy2;");
+        // Create dispatcher pipeline
+        pipeline = cpptoc::test::createDispatcherPipeline("int dummy;");
 
-        ASSERT_NE(cppAST, nullptr);
-        ASSERT_NE(cAST, nullptr);
-
-        // Create builder and context
-        builder = std::make_unique<clang::CNodeBuilder>(cAST->getASTContext());
-        context = std::make_unique<HandlerContext>(
-            cppAST->getASTContext(),
-            cAST->getASTContext(),
-            *builder
-        );
-
-        // Create all handlers
-        funcHandler = std::make_unique<FunctionHandler>();
-        varHandler = std::make_unique<VariableHandler>();
-        exprHandler = std::make_unique<ExpressionHandler>();
-        stmtHandler = std::make_unique<StatementHandler>();
-        recordHandler = std::make_unique<RecordHandler>();
-        methodHandler = std::make_unique<MethodHandler>();
-        ctorHandler = std::make_unique<ConstructorHandler>();
-        dtorHandler = std::make_unique<DestructorHandler>();
+        // Register all handlers
+        RecordHandler::registerWith(*pipeline.dispatcher);
+        MethodHandler::registerWith(*pipeline.dispatcher);
+        ConstructorHandler::registerWith(*pipeline.dispatcher);
+        DestructorHandler::registerWith(*pipeline.dispatcher);
+        FunctionHandler::registerWith(*pipeline.dispatcher);
+        VariableHandler::registerWith(*pipeline.dispatcher);
+        StatementHandler::registerWith(*pipeline.dispatcher);
     }
 
     void TearDown() override {
-        dtorHandler.reset();
-        ctorHandler.reset();
-        methodHandler.reset();
-        recordHandler.reset();
-        stmtHandler.reset();
-        exprHandler.reset();
-        varHandler.reset();
-        funcHandler.reset();
-        context.reset();
-        builder.reset();
-        cAST.reset();
-        cppAST.reset();
+        // Pipeline auto-cleans up
     }
 
     /**
@@ -110,9 +73,16 @@ protected:
 
         if (!cppClass) return nullptr;
 
-        return llvm::dyn_cast<clang::RecordDecl>(
-            recordHandler->handleDecl(cppClass, *context)
+        // Use dispatcher to translate
+        pipeline.dispatcher->dispatch(
+            testAST->getASTContext(),
+            pipeline.cAST->getASTContext(),
+            const_cast<clang::Decl*>(static_cast<const clang::Decl*>(cppClass))
         );
+
+        // Get translated decl from mapper
+        auto* cDecl = pipeline.declMapper->getCreated(cppClass);
+        return llvm::dyn_cast_or_null<clang::RecordDecl>(cDecl);
     }
 
     /**
@@ -145,9 +115,16 @@ protected:
 
         if (!cppMethod) return nullptr;
 
-        return llvm::dyn_cast<clang::FunctionDecl>(
-            methodHandler->handleDecl(cppMethod, *context)
+        // Use dispatcher to translate
+        pipeline.dispatcher->dispatch(
+            testAST->getASTContext(),
+            pipeline.cAST->getASTContext(),
+            const_cast<clang::Decl*>(static_cast<const clang::Decl*>(cppMethod))
         );
+
+        // Get translated decl from mapper
+        auto* cDecl = pipeline.declMapper->getCreated(cppMethod);
+        return llvm::dyn_cast_or_null<clang::FunctionDecl>(cDecl);
     }
 };
 
@@ -326,9 +303,13 @@ TEST_F(ClassesIntegrationTest, DefaultConstructor) {
 
     for (auto* ctor : cppClass->ctors()) {
         if (ctor->isDefaultConstructor()) {
-            auto* cCtor = llvm::dyn_cast<clang::FunctionDecl>(
-                ctorHandler->handleDecl(ctor, *context)
+            pipeline.dispatcher->dispatch(
+                testAST->getASTContext(),
+                pipeline.cAST->getASTContext(),
+                const_cast<clang::Decl*>(static_cast<const clang::Decl*>(ctor))
             );
+            auto* cDecl = pipeline.declMapper->getCreated(ctor);
+            auto* cCtor = llvm::dyn_cast_or_null<clang::FunctionDecl>(cDecl);
             ASSERT_NE(cCtor, nullptr);
         }
     }
@@ -361,9 +342,13 @@ TEST_F(ClassesIntegrationTest, ParameterizedConstructor) {
 
     for (auto* ctor : cppClass->ctors()) {
         if (ctor->getNumParams() == 2) {
-            auto* cCtor = llvm::dyn_cast<clang::FunctionDecl>(
-                ctorHandler->handleDecl(ctor, *context)
+            pipeline.dispatcher->dispatch(
+                testAST->getASTContext(),
+                pipeline.cAST->getASTContext(),
+                const_cast<clang::Decl*>(static_cast<const clang::Decl*>(ctor))
             );
+            auto* cDecl = pipeline.declMapper->getCreated(ctor);
+            auto* cCtor = llvm::dyn_cast_or_null<clang::FunctionDecl>(cDecl);
             ASSERT_NE(cCtor, nullptr);
             EXPECT_EQ(cCtor->getNumParams(), 3) << "Constructor should have 3 params (this + 2)";
         }
@@ -396,9 +381,13 @@ TEST_F(ClassesIntegrationTest, Destructor) {
 
     auto* dtor = cppClass->getDestructor();
     if (dtor && dtor->isUserProvided()) {
-        auto* cDtor = llvm::dyn_cast<clang::FunctionDecl>(
-            dtorHandler->handleDecl(dtor, *context)
+        pipeline.dispatcher->dispatch(
+            testAST->getASTContext(),
+            pipeline.cAST->getASTContext(),
+            const_cast<clang::Decl*>(static_cast<const clang::Decl*>(dtor))
         );
+        auto* cDeclDtor = pipeline.declMapper->getCreated(dtor);
+        auto* cDtor = llvm::dyn_cast_or_null<clang::FunctionDecl>(cDeclDtor);
         ASSERT_NE(cDtor, nullptr);
     }
 }
@@ -430,9 +419,13 @@ TEST_F(ClassesIntegrationTest, ConstructorWithMemberInitList) {
 
     for (auto* ctor : cppClass->ctors()) {
         if (ctor->getNumParams() == 1) {
-            auto* cCtor = llvm::dyn_cast<clang::FunctionDecl>(
-                ctorHandler->handleDecl(ctor, *context)
+            pipeline.dispatcher->dispatch(
+                testAST->getASTContext(),
+                pipeline.cAST->getASTContext(),
+                const_cast<clang::Decl*>(static_cast<const clang::Decl*>(ctor))
             );
+            auto* cDecl = pipeline.declMapper->getCreated(ctor);
+            auto* cCtor = llvm::dyn_cast_or_null<clang::FunctionDecl>(cDecl);
             ASSERT_NE(cCtor, nullptr);
         }
     }
@@ -502,9 +495,13 @@ TEST_F(ClassesIntegrationTest, ConstructorAndDestructor) {
     // Test constructor
     for (auto* ctor : cppClass->ctors()) {
         if (ctor->isDefaultConstructor()) {
-            auto* cCtor = llvm::dyn_cast<clang::FunctionDecl>(
-                ctorHandler->handleDecl(ctor, *context)
+            pipeline.dispatcher->dispatch(
+                testAST->getASTContext(),
+                pipeline.cAST->getASTContext(),
+                const_cast<clang::Decl*>(static_cast<const clang::Decl*>(ctor))
             );
+            auto* cDecl = pipeline.declMapper->getCreated(ctor);
+            auto* cCtor = llvm::dyn_cast_or_null<clang::FunctionDecl>(cDecl);
             ASSERT_NE(cCtor, nullptr);
         }
     }
@@ -512,9 +509,13 @@ TEST_F(ClassesIntegrationTest, ConstructorAndDestructor) {
     // Test destructor
     auto* dtor = cppClass->getDestructor();
     if (dtor && dtor->isUserProvided()) {
-        auto* cDtor = llvm::dyn_cast<clang::FunctionDecl>(
-            dtorHandler->handleDecl(dtor, *context)
+        pipeline.dispatcher->dispatch(
+            testAST->getASTContext(),
+            pipeline.cAST->getASTContext(),
+            const_cast<clang::Decl*>(static_cast<const clang::Decl*>(dtor))
         );
+        auto* cDeclDtor = pipeline.declMapper->getCreated(dtor);
+        auto* cDtor = llvm::dyn_cast_or_null<clang::FunctionDecl>(cDeclDtor);
         ASSERT_NE(cDtor, nullptr);
     }
 }
@@ -546,9 +547,13 @@ TEST_F(ClassesIntegrationTest, ConstructorWithComplexInit) {
 
     for (auto* ctor : cppClass->ctors()) {
         if (ctor->getNumParams() == 1) {
-            auto* cCtor = llvm::dyn_cast<clang::FunctionDecl>(
-                ctorHandler->handleDecl(ctor, *context)
+            pipeline.dispatcher->dispatch(
+                testAST->getASTContext(),
+                pipeline.cAST->getASTContext(),
+                const_cast<clang::Decl*>(static_cast<const clang::Decl*>(ctor))
             );
+            auto* cDecl = pipeline.declMapper->getCreated(ctor);
+            auto* cCtor = llvm::dyn_cast_or_null<clang::FunctionDecl>(cDecl);
             ASSERT_NE(cCtor, nullptr);
         }
     }
@@ -798,9 +803,13 @@ TEST_F(ClassesIntegrationTest, ClassWithStaticMethod) {
 
     for (auto* method : cppClass->methods()) {
         if (method->isStatic() && method->getNameAsString() == "getValue") {
-            auto* cMethod = llvm::dyn_cast<clang::FunctionDecl>(
-                methodHandler->handleDecl(method, *context)
+            pipeline.dispatcher->dispatch(
+                testAST->getASTContext(),
+                pipeline.cAST->getASTContext(),
+                const_cast<clang::Decl*>(static_cast<const clang::Decl*>(method))
             );
+            auto* cDeclMethod = pipeline.declMapper->getCreated(method);
+            auto* cMethod = llvm::dyn_cast_or_null<clang::FunctionDecl>(cDeclMethod);
             ASSERT_NE(cMethod, nullptr);
             // Static methods should not have 'this' parameter
         }
@@ -835,9 +844,13 @@ TEST_F(ClassesIntegrationTest, ClassWithOverloadedMethods) {
     int methodCount = 0;
     for (auto* method : cppClass->methods()) {
         if (method->getNameAsString() == "func") {
-            auto* cMethod = llvm::dyn_cast<clang::FunctionDecl>(
-                methodHandler->handleDecl(method, *context)
+            pipeline.dispatcher->dispatch(
+                testAST->getASTContext(),
+                pipeline.cAST->getASTContext(),
+                const_cast<clang::Decl*>(static_cast<const clang::Decl*>(method))
             );
+            auto* cDeclMethod = pipeline.declMapper->getCreated(method);
+            auto* cMethod = llvm::dyn_cast_or_null<clang::FunctionDecl>(cDeclMethod);
             if (cMethod) methodCount++;
         }
     }

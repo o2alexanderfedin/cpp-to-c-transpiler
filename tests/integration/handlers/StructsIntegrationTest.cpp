@@ -12,12 +12,11 @@
  * - Integration with control flow, arrays, and pointers
  */
 
+#include "DispatcherTestHelper.h"
 #include "dispatch/FunctionHandler.h"
 #include "dispatch/VariableHandler.h"
 #include "dispatch/StatementHandler.h"
 #include "dispatch/RecordHandler.h"
-#include "handlers/HandlerContext.h"
-#include "CNodeBuilder.h"
 #include "clang/Tooling/Tooling.h"
 #include "clang/AST/RecursiveASTVisitor.h"
 #include <gtest/gtest.h>
@@ -31,75 +30,62 @@ using namespace cpptoc;
  */
 class StructsIntegrationTest : public ::testing::Test {
 protected:
-    std::unique_ptr<clang::ASTUnit> cppAST;
-    std::unique_ptr<clang::ASTUnit> cAST;
-    std::unique_ptr<clang::CNodeBuilder> builder;
-    std::unique_ptr<HandlerContext> context;
-
-    std::unique_ptr<FunctionHandler> funcHandler;
-    std::unique_ptr<VariableHandler> varHandler;
-    std::unique_ptr<ExpressionHandler> exprHandler;
-    std::unique_ptr<StatementHandler> stmtHandler;
-    std::unique_ptr<RecordHandler> recordHandler;
+    cpptoc::test::DispatcherPipeline pipeline;
 
     void SetUp() override {
-        // Create real AST contexts
-        cppAST = clang::tooling::buildASTFromCode("int dummy;");
-        cAST = clang::tooling::buildASTFromCode("int dummy2;");
+        pipeline = cpptoc::test::createDispatcherPipeline("int dummy;");
 
-        ASSERT_NE(cppAST, nullptr);
-        ASSERT_NE(cAST, nullptr);
-
-        // Create builder and context
-        builder = std::make_unique<clang::CNodeBuilder>(cAST->getASTContext());
-        context = std::make_unique<HandlerContext>(
-            cppAST->getASTContext(),
-            cAST->getASTContext(),
-            *builder
-        );
-
-        // Create all handlers
-        funcHandler = std::make_unique<FunctionHandler>();
-        varHandler = std::make_unique<VariableHandler>();
-        exprHandler = std::make_unique<ExpressionHandler>();
-        stmtHandler = std::make_unique<StatementHandler>();
-        recordHandler = std::make_unique<RecordHandler>();
+        // Register handlers
+        RecordHandler::registerWith(*pipeline.dispatcher);
+        FunctionHandler::registerWith(*pipeline.dispatcher);
+        VariableHandler::registerWith(*pipeline.dispatcher);
+        StatementHandler::registerWith(*pipeline.dispatcher);
     }
 
     void TearDown() override {
-        recordHandler.reset();
-        stmtHandler.reset();
-        exprHandler.reset();
-        varHandler.reset();
-        funcHandler.reset();
-        context.reset();
-        builder.reset();
-        cAST.reset();
-        cppAST.reset();
+        // Pipeline auto-cleans on destruction
     }
 
     /**
      * @brief Helper to translate a function by name
      */
     clang::FunctionDecl* translateFunction(const std::string& code, const std::string& funcName) {
-        auto testAST = clang::tooling::buildASTFromCode(code);
-        if (!testAST) return nullptr;
+        // Create a fresh pipeline for this translation
+        auto testPipeline = cpptoc::test::createDispatcherPipeline(code);
 
-        clang::FunctionDecl* cppFunc = nullptr;
-        for (auto* decl : testAST->getASTContext().getTranslationUnitDecl()->decls()) {
+        // Register handlers (RecordHandler first for struct types)
+        RecordHandler::registerWith(*testPipeline.dispatcher);
+        FunctionHandler::registerWith(*testPipeline.dispatcher);
+        VariableHandler::registerWith(*testPipeline.dispatcher);
+        StatementHandler::registerWith(*testPipeline.dispatcher);
+
+        // Dispatch all declarations
+        clang::FunctionDecl* resultFunc = nullptr;
+        for (auto* decl : testPipeline.cppAST->getASTContext().getTranslationUnitDecl()->decls()) {
+            auto* nonConstDecl = const_cast<clang::Decl*>(decl);
+            testPipeline.dispatcher->dispatch(
+                testPipeline.cppAST->getASTContext(),
+                testPipeline.cAST->getASTContext(),
+                nonConstDecl
+            );
+
+            // Track the function we're looking for
             if (auto* func = llvm::dyn_cast<clang::FunctionDecl>(decl)) {
                 if (func->getNameAsString() == funcName) {
-                    cppFunc = func;
-                    break;
+                    // Get the translated function from C AST
+                    for (auto* cDecl : testPipeline.cAST->getASTContext().getTranslationUnitDecl()->decls()) {
+                        if (auto* cFunc = llvm::dyn_cast<clang::FunctionDecl>(cDecl)) {
+                            if (cFunc->getNameAsString() == funcName) {
+                                resultFunc = cFunc;
+                                break;
+                            }
+                        }
+                    }
                 }
             }
         }
 
-        if (!cppFunc) return nullptr;
-
-        return llvm::dyn_cast<clang::FunctionDecl>(
-            funcHandler->handleDecl(cppFunc, *context)
-        );
+        return resultFunc;
     }
 };
 

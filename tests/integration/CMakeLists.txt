@@ -77,22 +77,19 @@ target_include_directories(StructsIntegrationTest PRIVATE
     ${CMAKE_SOURCE_DIR}/../../src
 )
 
-# Phase 44: Classes (C++ classes) Integration Tests
+# Phase 44: Classes (C++ classes) Integration Tests (Migrated to dispatcher pattern)
 add_executable(ClassesIntegrationTest
     handlers/ClassesIntegrationTest.cpp
-    ${CMAKE_SOURCE_DIR}/../../src/handlers/HandlerContext.cpp
-    ${CMAKE_SOURCE_DIR}/../../src/handlers/FunctionHandler.cpp
-    ${CMAKE_SOURCE_DIR}/../../src/handlers/VariableHandler.cpp
-    ${CMAKE_SOURCE_DIR}/../../src/handlers/ExpressionHandler.cpp
-    ${CMAKE_SOURCE_DIR}/../../src/dispatch/StatementHandler.cpp
-    ${CMAKE_SOURCE_DIR}/../../src/handlers/RecordHandler.cpp
-    ${CMAKE_SOURCE_DIR}/../../src/handlers/ConstructorHandler.cpp
-    ${CMAKE_SOURCE_DIR}/../../src/dispatch/DestructorHandler.cpp
 )
-target_link_libraries(ClassesIntegrationTest GTest::gtest GTest::gtest_main ${CLANG_LIBS})
+target_link_libraries(ClassesIntegrationTest
+    GTest::gtest
+    GTest::gtest_main
+    ${CLANG_LIBS}
+    cpptoc_core
+)
 target_include_directories(ClassesIntegrationTest PRIVATE
+    ${CMAKE_SOURCE_DIR}/../../tests/fixtures
     ${CMAKE_SOURCE_DIR}/../../include
-    ${CMAKE_SOURCE_DIR}/../../include/handlers
     ${CMAKE_SOURCE_DIR}/../../src
 )
 

@@ -5307,31 +5307,30 @@ gtest_discover_tests(StaticDataMemberIntegrationTest
 # Phase 39-01c: Integration Tests - Handler Cooperation
 # ============================================================================
 
-# DELETED: Integration test - HandlerIntegrationTest
-# add_executable(HandlerIntegrationTest
-#     tests/integration/handlers/HandlerIntegrationTest.cpp
-# )
+# Integration test - HandlerIntegrationTest (Migrated to dispatcher pattern)
+add_executable(HandlerIntegrationTest
+    tests/integration/handlers/HandlerIntegrationTest.cpp
+)
 
-# target_include_directories(HandlerIntegrationTest PRIVATE
-#     ${CMAKE_SOURCE_DIR}/tests/fixtures
-#     ${CMAKE_SOURCE_DIR}/include
-#     ${LLVM_INCLUDE_DIRS}
-#     ${CLANG_INCLUDE_DIRS}
-# )
+target_include_directories(HandlerIntegrationTest PRIVATE
+    ${CMAKE_SOURCE_DIR}/tests
+    ${CMAKE_SOURCE_DIR}/include
+    ${LLVM_INCLUDE_DIRS}
+    ${CLANG_INCLUDE_DIRS}
+)
 
-# target_link_libraries(HandlerIntegrationTest PRIVATE
-#     test_fixtures
-#     cpptoc_core
-#     clangTooling
-#     clangAST
-#     clangBasic
-#     GTest::gtest
-#     GTest::gtest_main
-# )
+target_link_libraries(HandlerIntegrationTest PRIVATE
+    cpptoc_core
+    clangTooling
+    clangAST
+    clangBasic
+    GTest::gtest
+    GTest::gtest_main
+)
 
-# gtest_discover_tests(HandlerIntegrationTest
-#     WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
-# )
+gtest_discover_tests(HandlerIntegrationTest
+    WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
+)
 
 # ============================================================================
 # Phase 39-01d: E2E Tests - Full Pipeline Validation
@@ -5396,31 +5395,30 @@ gtest_discover_tests(E2EPhase1Test
 # Phase 41-01: Global Variables Integration Tests
 # ============================================================================
 
-# DELETED: Integration test - GlobalVariablesIntegrationTest
-# add_executable(GlobalVariablesIntegrationTest
-#     tests/integration/handlers/GlobalVariablesIntegrationTest.cpp
-# )
+# Integration test - GlobalVariablesIntegrationTest (Migrated to dispatcher pattern)
+add_executable(GlobalVariablesIntegrationTest
+    tests/integration/handlers/GlobalVariablesIntegrationTest.cpp
+)
 
-# target_include_directories(GlobalVariablesIntegrationTest PRIVATE
-#     ${CMAKE_SOURCE_DIR}/tests/fixtures
-#     ${CMAKE_SOURCE_DIR}/include
-#     ${LLVM_INCLUDE_DIRS}
-#     ${CLANG_INCLUDE_DIRS}
-# )
+target_include_directories(GlobalVariablesIntegrationTest PRIVATE
+    ${CMAKE_SOURCE_DIR}/tests
+    ${CMAKE_SOURCE_DIR}/include
+    ${LLVM_INCLUDE_DIRS}
+    ${CLANG_INCLUDE_DIRS}
+)
 
-# target_link_libraries(GlobalVariablesIntegrationTest PRIVATE
-#     test_fixtures
-#     cpptoc_core
-#     clangTooling
-#     clangAST
-#     clangBasic
-#     GTest::gtest
-#     GTest::gtest_main
-# )
+target_link_libraries(GlobalVariablesIntegrationTest PRIVATE
+    cpptoc_core
+    clangTooling
+    clangAST
+    clangBasic
+    GTest::gtest
+    GTest::gtest_main
+)
 
-# gtest_discover_tests(GlobalVariablesIntegrationTest
-#     WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
-# )
+gtest_discover_tests(GlobalVariablesIntegrationTest
+    WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
+)
 
 # ============================================================================
 # Phase 42-01: Pointers & References Integration Tests
