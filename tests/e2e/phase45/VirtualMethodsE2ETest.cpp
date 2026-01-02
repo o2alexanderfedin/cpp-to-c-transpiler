@@ -14,15 +14,11 @@
  * - 10-12 disabled tests (complex patterns for future)
  */
 
-#include "dispatch/FunctionHandler.h"
-#include "dispatch/VariableHandler.h"
-#include "dispatch/StatementHandler.h"
+#include "DispatcherTestHelper.h"
 #include "dispatch/RecordHandler.h"
 #include "dispatch/MethodHandler.h"
 #include "dispatch/ConstructorHandler.h"
 #include "dispatch/DestructorHandler.h"
-#include "CNodeBuilder.h"
-#include "CodeGenerator.h"
 #include "VirtualMethodAnalyzer.h"
 #include "VtableGenerator.h"
 #include "VptrInjector.h"
@@ -45,10 +41,7 @@ class VirtualMethodsE2ETest : public ::testing::Test {
 protected:
 
     void SetUp() override {
-        recordHandler = std::make_unique<RecordHandler>();
-        methodHandler = std::make_unique<MethodHandler>();
-        ctorHandler = std::make_unique<ConstructorHandler>();
-        dtorHandler = std::make_unique<DestructorHandler>();
+        // No handler instantiation needed - using dispatcher pattern
     }
 
     /**
@@ -59,43 +52,31 @@ protected:
      * @return true if test passed
      */
     bool runPipeline(const std::string& cppCode, int expectedExitCode, bool debugOutput = false) {
-        // Stage 1: Parse C++ code
-        auto cppAST = clang::tooling::buildASTFromCode(cppCode);
-        if (!cppAST) {
-            std::cerr << "Failed to parse C++ code\n";
-            return false;
-        }
+        // Stage 1 & 2: Create dispatcher pipeline
+        auto pipeline = cpptoc::test::createDispatcherPipeline(cppCode);
 
-        // Stage 2: Translate to C AST
-        auto cAST = clang::tooling::buildASTFromCode("int dummy;");
-        if (!cAST) {
-            std::cerr << "Failed to create C context\n";
-            return false;
-        }
-
-        clang::CNodeBuilder builder(cAST->getASTContext());
-        HandlerContext context(
-            cppAST->getASTContext(),
-            cAST->getASTContext(),
-            builder
-        );
+        // Register handlers
+        RecordHandler::registerWith(*pipeline.dispatcher);
+        MethodHandler::registerWith(*pipeline.dispatcher);
+        ConstructorHandler::registerWith(*pipeline.dispatcher);
+        DestructorHandler::registerWith(*pipeline.dispatcher);
 
         // Create virtual method infrastructure
-        VirtualMethodAnalyzer virtualAnalyzer(cppAST->getASTContext());
-        VtableGenerator vtableGen(cAST->getASTContext(), builder);
-        VptrInjector vptrInjector(cAST->getASTContext());
+        VirtualMethodAnalyzer virtualAnalyzer(pipeline.cppAST->getASTContext());
+        VtableGenerator vtableGen(pipeline.cAST->getASTContext(), pipeline.dispatcher->getBuilder());
+        VptrInjector vptrInjector(pipeline.cAST->getASTContext());
         VtableInitializer vtableInit(
-            cppAST->getASTContext(),
-            cAST->getASTContext(),
-            builder
+            pipeline.cppAST->getASTContext(),
+            pipeline.cAST->getASTContext(),
+            pipeline.dispatcher->getBuilder()
         );
         VirtualCallTranslator virtualCallTrans(
-            cppAST->getASTContext(),
+            pipeline.cppAST->getASTContext(),
             virtualAnalyzer
         );
 
         // Phase 1: Analyze virtual methods in all classes
-        for (auto* decl : cppAST->getASTContext().getTranslationUnitDecl()->decls()) {
+        for (auto* decl : pipeline.cppAST->getASTContext().getTranslationUnitDecl()->decls()) {
             if (auto* cxxRecord = llvm::dyn_cast<clang::CXXRecordDecl>(decl)) {
                 if (cxxRecord->isCompleteDefinition()) {
                     // Analysis happens automatically via isPolymorphic()
@@ -103,13 +84,17 @@ protected:
             }
         }
 
-        // Phase 2: Translate all declarations
-        for (auto* decl : cppAST->getASTContext().getTranslationUnitDecl()->decls()) {
+        // Phase 2: Translate all declarations using dispatcher
+        for (auto* decl : pipeline.cppAST->getASTContext().getTranslationUnitDecl()->decls()) {
             if (auto* cxxRecord = llvm::dyn_cast<clang::CXXRecordDecl>(decl)) {
                 if (cxxRecord->isCompleteDefinition()) {
-                    // Translate class to struct
+                    // Dispatch class to struct translation
                     auto* cRecord = llvm::dyn_cast<clang::RecordDecl>(
-                        recordHandler->handleDecl(llvm::cast<clang::RecordDecl>(cxxRecord), context)
+                        pipeline.dispatcher->dispatch(
+                            pipeline.cppAST->getASTContext(),
+                            pipeline.cAST->getASTContext(),
+                            const_cast<clang::Decl*>(static_cast<const clang::Decl*>(cxxRecord))
+                        )
                     );
 
                     // If class has virtual methods, generate vtable and inject vptr
@@ -120,10 +105,14 @@ protected:
                         }
                     }
 
-                    // Handle methods, constructors, destructors
+                    // Handle methods, constructors, destructors via dispatcher
                     for (auto* member : cxxRecord->decls()) {
                         if (auto* ctor = llvm::dyn_cast<clang::CXXConstructorDecl>(member)) {
-                            auto* cCtor = ctorHandler->handleDecl(ctor, context);
+                            auto* cCtor = pipeline.dispatcher->dispatch(
+                                pipeline.cppAST->getASTContext(),
+                                pipeline.cAST->getASTContext(),
+                                const_cast<clang::Decl*>(static_cast<const clang::Decl*>(ctor))
+                            );
                             // Initialize vtable in constructor if class has virtuals
                             if (cCtor && virtualAnalyzer.isPolymorphic(cxxRecord)) {
                                 vtableInit.initializeVtableInConstructor(
@@ -133,28 +122,39 @@ protected:
                                 );
                             }
                         } else if (auto* dtor = llvm::dyn_cast<clang::CXXDestructorDecl>(member)) {
-                            dtorHandler->handleDecl(dtor, context);
+                            pipeline.dispatcher->dispatch(
+                                pipeline.cppAST->getASTContext(),
+                                pipeline.cAST->getASTContext(),
+                                const_cast<clang::Decl*>(static_cast<const clang::Decl*>(dtor))
+                            );
                         } else if (auto* method = llvm::dyn_cast<clang::CXXMethodDecl>(member)) {
                             if (!llvm::isa<clang::CXXConstructorDecl>(method) &&
                                 !llvm::isa<clang::CXXDestructorDecl>(method)) {
-                                methodHandler->handleDecl(method, context);
+                                pipeline.dispatcher->dispatch(
+                                    pipeline.cppAST->getASTContext(),
+                                    pipeline.cAST->getASTContext(),
+                                    const_cast<clang::Decl*>(static_cast<const clang::Decl*>(method))
+                                );
                             }
                         }
                     }
                 }
             } else if (auto* func = llvm::dyn_cast<clang::FunctionDecl>(decl)) {
                 if (!llvm::isa<clang::CXXMethodDecl>(func)) {
-                    funcHandler->handleDecl(func, context);
+                    pipeline.dispatcher->dispatch(
+                        pipeline.cppAST->getASTContext(),
+                        pipeline.cAST->getASTContext(),
+                        const_cast<clang::Decl*>(static_cast<const clang::Decl*>(func))
+                    );
                 }
             }
         }
 
         // Stage 3: Generate C code
-        std::string cCode;
-        llvm::raw_string_ostream codeStream(cCode);
-        CodeGenerator generator(codeStream, cAST->getASTContext());
-        generator.printTranslationUnit(cAST->getASTContext().getTranslationUnitDecl());
-        codeStream.flush();
+        std::string cCode = cpptoc::test::generateCCode(
+            pipeline.cAST->getASTContext(),
+            *pipeline.pathMapper
+        );
 
         if (debugOutput) {
             std::cout << "=== Generated C Code ===\n" << cCode << "\n========================\n";

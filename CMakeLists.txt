@@ -5652,29 +5652,29 @@ gtest_discover_tests(GlobalVariablesIntegrationTest
 # Phase 47: Scoped Enum E2E Tests
 # ============================================================================
 
-# TODO: EnumE2ETest needs migration to dispatcher pattern
-# add_executable(EnumE2ETest
-#     tests/e2e/phase47/EnumE2ETest.cpp
-# )
-#
-# target_include_directories(EnumE2ETest PRIVATE
-#     ${CMAKE_SOURCE_DIR}/include
-#     ${LLVM_INCLUDE_DIRS}
-#     ${CLANG_INCLUDE_DIRS}
-# )
-#
-# target_link_libraries(EnumE2ETest PRIVATE
-#     cpptoc_core
-#     clangTooling
-#     clangAST
-#     clangBasic
-#     GTest::gtest
-#     GTest::gtest_main
-# )
-#
-# gtest_discover_tests(EnumE2ETest
-#     WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
-# )
+add_executable(EnumE2ETest
+    tests/e2e/phase47/EnumE2ETest.cpp
+)
+
+target_include_directories(EnumE2ETest PRIVATE
+    ${CMAKE_SOURCE_DIR}/include
+    ${CMAKE_SOURCE_DIR}/tests/fixtures
+    ${LLVM_INCLUDE_DIRS}
+    ${CLANG_INCLUDE_DIRS}
+)
+
+target_link_libraries(EnumE2ETest PRIVATE
+    cpptoc_core
+    clangTooling
+    clangAST
+    clangBasic
+    GTest::gtest
+    GTest::gtest_main
+)
+
+gtest_discover_tests(EnumE2ETest
+    WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
+)
 
 # ============================================================================
 # Phase 61: C++20 Module Rejection Tests
