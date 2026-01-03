@@ -192,6 +192,84 @@ int TestClass_getValue(struct TestClass * this);
 
 For detailed fix documentation, see [.planning/phases/32-transpiler-architecture-fix/32-01-SUMMARY.md](../.planning/phases/32-transpiler-architecture-fix/32-01-SUMMARY.md).
 
+#### Handler Architecture Migration (v4.0.0) - December 2025 to January 2026
+
+**Critical Architecture Improvement**: Migration from legacy HandlerContext pattern to modern CppToCVisitorDispatcher pattern.
+
+**Background**: The original handler architecture used a HandlerContext object that each handler received as a constructor parameter, creating tight coupling and making handlers difficult to test and reason about.
+
+**Legacy Pattern (RETIRED)**:
+```cpp
+// OLD: HandlerContext pattern (RETIRED 2026-01-03)
+class ExpressionHandler {
+    HandlerContext& ctx;  // Tight coupling
+public:
+    ExpressionHandler(HandlerContext& context) : ctx(context) {}
+    void handle(Expr* expr) { /* uses ctx everywhere */ }
+};
+```
+
+**Modern Pattern (CURRENT)**:
+```cpp
+// NEW: Dispatcher pattern (Current as of 2026-01-03)
+class ExpressionHandler {
+public:
+    static void handle(
+        const clang::Expr* expr,
+        CppToCVisitorDispatcher& dispatcher,
+        clang::ASTContext& cppCtx,
+        clang::ASTContext& cCtx
+    );
+
+    static void registerHandler(CppToCVisitorDispatcher& dispatcher);
+};
+
+// Registration in CppToCVisitor constructor
+ExpressionHandler::registerHandler(dispatcher);
+```
+
+**Benefits of Dispatcher Pattern**:
+1. **Separation of Concerns**: Handlers don't manage context, only perform translation
+2. **Better Testability**: Static methods with explicit dependencies
+3. **Clearer Data Flow**: All inputs explicit in function signatures
+4. **Simplified Registration**: Static registration via dispatcher
+5. **No Shared State**: Each handler invocation is independent
+
+**Migration Status** (as of 2026-01-03):
+- ✅ Core handlers migrated: Expression, Statement, Declaration, Type handlers
+- ✅ E2E tests migrated: All Phase 1-7 E2E tests use dispatcher pattern
+- ✅ Integration tests migrated: All 10 integration test files migrated
+- ✅ Unit tests migrated: All active unit tests use dispatcher pattern
+- ✅ **HandlerContext class DELETED**: Source files removed from codebase
+- ⚠️  Legacy tests archived: ~15 test targets disabled pending migration/removal
+
+**HandlerContext Retirement Timeline**:
+- 2025-12-31: Analysis and migration plan created (Prompt 059, 063)
+- 2026-01-01: E2E Phase 1 tests migrated (Prompt 060)
+- 2026-01-01: Remaining E2E tests migrated (Prompt 061)
+- 2026-01-01: Unit tests migrated (Prompt 062)
+- 2026-01-01: Integration tests migrated (Prompt 065)
+- 2026-01-02: Array loop tests migrated (Prompt 064)
+- 2026-01-02: Final E2E tests migrated (Prompt 066)
+- 2026-01-03: **HandlerContext class deleted** (Prompt 067) ✅
+
+**Files Deleted**:
+- `include/handlers/HandlerContext.h` - Legacy context class header
+- `src/handlers/HandlerContext.cpp` - Legacy context class implementation
+
+**Documentation References**:
+- Migration analysis: `analyses/handlercontext-vs-dispatcher-analysis.md`
+- Retirement verification: `HANDLERCONTEXT_RETIREMENT_VERIFICATION.md`
+- Executive summary: `HANDLERCONTEXT_RETIREMENT_EXECUTIVE_SUMMARY.md`
+- Cleanup status: `HANDLERCONTEXT_CLEANUP_STATUS.md`
+
+**Current Architecture**: All active production code uses the CppToCVisitorDispatcher pattern. Legacy HandlerContext references exist only in:
+- Archived test fixtures (commented out in CMakeLists.txt)
+- Historical documentation
+- Code comments explaining migration
+
+For new handler development, always use the dispatcher pattern with static registration. See `docs/architecture/02-handler-chain-pattern.md` for implementation guide.
+
 ### 2.3 Architecture Decision Record
 
 This section summarizes the evidence-based architectural decisions. For complete rationale with 6,470+ lines of research, see [architecture-decision.md](architecture/architecture-decision.md).

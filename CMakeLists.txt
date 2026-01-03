@@ -4623,7 +4623,8 @@ gtest_discover_tests(ACSLMemoryPredicateAnalyzerTest
 # ============================================================================
 
 # Test fixtures library
-# TODO: HandlerTestFixture uses HandlerContext which is retired - needs migration or removal
+# ARCHIVED: HandlerTestFixture used legacy HandlerContext pattern (retired 2026-01-03)
+# These tests are disabled pending migration to dispatcher pattern or removal
 # add_library(test_fixtures STATIC
 #     tests/fixtures/HandlerTestFixture.cpp
 # )
@@ -4644,7 +4645,7 @@ gtest_discover_tests(ACSLMemoryPredicateAnalyzerTest
 # )
 
 # FunctionHandler unit tests
-# TODO: Uses test_fixtures (HandlerContext retired) - needs migration
+# ARCHIVED: Requires test_fixtures which used legacy HandlerContext pattern (retired 2026-01-03)
 # add_executable(FunctionHandlerTest
 #     tests/unit/handlers/FunctionHandlerTest.cpp
 # )
@@ -4698,7 +4699,7 @@ gtest_discover_tests(ACSLMemoryPredicateAnalyzerTest
 # )
 
 # DestructorHandler unit tests (Phase 44, Task 5)
-# TODO: Uses test_fixtures (HandlerContext retired) - needs migration
+# ARCHIVED: Requires test_fixtures which used legacy HandlerContext pattern (retired 2026-01-03)
 # add_executable(DestructorHandlerTest
 #     tests/unit/handlers/DestructorHandlerTest.cpp
 # )
@@ -4728,7 +4729,7 @@ gtest_discover_tests(ACSLMemoryPredicateAnalyzerTest
 # Phase 39-01b: VariableHandler Unit Tests
 # ============================================================================
 
-# TODO: Uses test_fixtures (HandlerContext retired) - needs migration
+# ARCHIVED: Requires test_fixtures which used legacy HandlerContext pattern (retired 2026-01-03)
 # add_executable(VariableHandlerTest
 #     tests/unit/handlers/VariableHandlerTest.cpp
 # )
@@ -4755,7 +4756,7 @@ gtest_discover_tests(ACSLMemoryPredicateAnalyzerTest
 # )
 
 # VariableHandler Global unit tests (Task 6, Phase 3)
-# TODO: Uses test_fixtures (HandlerContext retired) - needs migration
+# ARCHIVED: Requires test_fixtures which used legacy HandlerContext pattern (retired 2026-01-03)
 # add_executable(VariableHandlerGlobalTest
 #     tests/unit/handlers/VariableHandlerGlobalTest.cpp
 # )
@@ -4782,7 +4783,7 @@ gtest_discover_tests(ACSLMemoryPredicateAnalyzerTest
 # )
 
 # StatementHandler unit tests
-# TODO: Uses test_fixtures (HandlerContext retired) - needs migration
+# ARCHIVED: Requires test_fixtures which used legacy HandlerContext pattern (retired 2026-01-03)
 # add_executable(StatementHandlerTest
 #     tests/unit/handlers/StatementHandlerTest.cpp
 # )
@@ -4809,7 +4810,7 @@ gtest_discover_tests(ACSLMemoryPredicateAnalyzerTest
 # )
 
 # StatementHandler Object Lifecycle tests (Phase 44, Task 9)
-# TODO: Uses test_fixtures (HandlerContext retired) - needs migration
+# ARCHIVED: Requires test_fixtures which used legacy HandlerContext pattern (retired 2026-01-03)
 # add_executable(StatementHandlerTest_Objects
 #     tests/unit/handlers/StatementHandlerTest_Objects.cpp
 # )
@@ -4973,7 +4974,7 @@ gtest_discover_tests(ACSLMemoryPredicateAnalyzerTest
 # )
 
 # ConstructorHandler lpVtbl initialization unit tests (Phase 45, Group 3)
-# TODO: Uses test_fixtures (HandlerContext retired) - needs migration
+# ARCHIVED: Requires test_fixtures which used legacy HandlerContext pattern (retired 2026-01-03)
 # add_executable(ConstructorHandlerTest_lpVtbl
 #     tests/unit/handlers/ConstructorHandlerTest_lpVtbl.cpp
 # )
@@ -5000,7 +5001,7 @@ gtest_discover_tests(ACSLMemoryPredicateAnalyzerTest
 # )
 
 # ConstructorHandler multiple lpVtbl initialization unit tests (Phase 46, Group 3, Task 7)
-# TODO: Uses test_fixtures (HandlerContext retired) - needs migration
+# ARCHIVED: Requires test_fixtures which used legacy HandlerContext pattern (retired 2026-01-03)
 # add_executable(ConstructorHandlerTest_MultipleLpVtbl
 #     tests/unit/handlers/ConstructorHandlerTest_MultipleLpVtbl.cpp
 # )
@@ -5028,7 +5029,7 @@ gtest_discover_tests(ACSLMemoryPredicateAnalyzerTest
 # )
 
 # ConstructorHandler base chaining unit tests (Phase 46, Group 3, Task 8)
-# TODO: Uses test_fixtures (HandlerContext retired) - needs migration
+# ARCHIVED: Requires test_fixtures which used legacy HandlerContext pattern (retired 2026-01-03)
 # add_executable(ConstructorHandlerTest_BaseChaining
 #     tests/unit/handlers/ConstructorHandlerTest_BaseChaining.cpp
 # )
@@ -5055,7 +5056,7 @@ gtest_discover_tests(ACSLMemoryPredicateAnalyzerTest
 # )
 
 # Phase 44-01 Task 3: MethodHandler Tests
-# TODO: Uses test_fixtures (HandlerContext retired) - needs migration
+# ARCHIVED: Requires test_fixtures which used legacy HandlerContext pattern (retired 2026-01-03)
 # add_executable(MethodHandlerTest
 #     tests/unit/handlers/MethodHandlerTest.cpp
 # )
@@ -5110,7 +5111,7 @@ gtest_discover_tests(ACSLMemoryPredicateAnalyzerTest
 # )
 
 # Phase 47-01 Group 2 Task 3: EnumTranslator Unit Tests
-# TODO: Uses test_fixtures (HandlerContext retired) - needs migration
+# ARCHIVED: Requires test_fixtures which used legacy HandlerContext pattern (retired 2026-01-03)
 # add_executable(EnumTranslatorTest
 #     tests/unit/handlers/EnumTranslatorTest.cpp
 # )
@@ -5137,7 +5138,7 @@ gtest_discover_tests(ACSLMemoryPredicateAnalyzerTest
 # )
 
 # Phase 53-01 Group 1 Task 1: TypeAliasAnalyzer Unit Tests
-# TODO: Uses test_fixtures (HandlerContext retired) - needs migration
+# ARCHIVED: Requires test_fixtures which used legacy HandlerContext pattern (retired 2026-01-03)
 # add_executable(TypeAliasAnalyzerTest
 #     tests/unit/handlers/TypeAliasAnalyzerTest.cpp
 # )
@@ -5164,7 +5165,7 @@ gtest_discover_tests(ACSLMemoryPredicateAnalyzerTest
 # )
 
 # Phase 53-01 Group 1 Task 2: TypedefGenerator Unit Tests
-# TODO: Uses test_fixtures (HandlerContext retired) - needs migration
+# ARCHIVED: Requires test_fixtures which used legacy HandlerContext pattern (retired 2026-01-03)
 # add_executable(TypedefGeneratorTest
 #     tests/unit/handlers/TypedefGeneratorTest.cpp
 # )
@@ -5191,7 +5192,7 @@ gtest_discover_tests(ACSLMemoryPredicateAnalyzerTest
 # )
 
 # Phase 45-01 Task 1: VtableTypedefGenerator Tests
-# TODO: Uses test_fixtures (HandlerContext retired) - needs migration
+# ARCHIVED: Requires test_fixtures which used legacy HandlerContext pattern (retired 2026-01-03)
 # add_executable(VtableTypedefGeneratorTest
 #     tests/unit/helpers/VtableTypedefGeneratorTest.cpp
 # )
