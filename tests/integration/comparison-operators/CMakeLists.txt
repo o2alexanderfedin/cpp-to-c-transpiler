@@ -43,25 +43,18 @@ set(CLANG_LIBS
     clangLex
 )
 
-# Phase 51: Comparison Operators Integration Tests
+# Phase 51: Comparison Operators Integration Tests (Migrated to dispatcher pattern)
 add_executable(ComparisonOperatorsIntegrationTest
     ComparisonOperatorsIntegrationTest.cpp
-    ${CMAKE_SOURCE_DIR}/../../src/handlers/HandlerContext.cpp
-    ${CMAKE_SOURCE_DIR}/../../src/handlers/FunctionHandler.cpp
-    ${CMAKE_SOURCE_DIR}/../../src/handlers/VariableHandler.cpp
-    ${CMAKE_SOURCE_DIR}/../../src/handlers/ExpressionHandler.cpp
-    ${CMAKE_SOURCE_DIR}/../../src/dispatch/StatementHandler.cpp
-    ${CMAKE_SOURCE_DIR}/../../src/handlers/RecordHandler.cpp
-    ${CMAKE_SOURCE_DIR}/../../src/handlers/ConstructorHandler.cpp
-    ${CMAKE_SOURCE_DIR}/../../src/handlers/DestructorHandler.cpp
-    ${CMAKE_SOURCE_DIR}/../../src/ComparisonOperatorTranslator.cpp
-    ${CMAKE_SOURCE_DIR}/../../src/ArithmeticOperatorTranslator.cpp
-    ${CMAKE_SOURCE_DIR}/../../src/NameMangler.cpp
 )
-target_link_libraries(ComparisonOperatorsIntegrationTest GTest::gtest GTest::gtest_main ${CLANG_LIBS})
+target_link_libraries(ComparisonOperatorsIntegrationTest
+    GTest::gtest
+    GTest::gtest_main
+    ${CLANG_LIBS}
+)
 target_include_directories(ComparisonOperatorsIntegrationTest PRIVATE
+    ${CMAKE_SOURCE_DIR}/../../tests/fixtures
     ${CMAKE_SOURCE_DIR}/../../include
-    ${CMAKE_SOURCE_DIR}/../../include/handlers
     ${CMAKE_SOURCE_DIR}/../../src
 )
 

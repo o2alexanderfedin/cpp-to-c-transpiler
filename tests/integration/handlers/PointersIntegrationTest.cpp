@@ -63,11 +63,15 @@ protected:
         if (!cppFunc) return nullptr;
 
         // Dispatch through pipeline
-        return pipeline.dispatcher->dispatchDecl<clang::FunctionDecl>(
+        pipeline.dispatcher->dispatch(
             testAST->getASTContext(),
             pipeline.cAST->getASTContext(),
-            cppFunc
+            const_cast<clang::Decl*>(static_cast<const clang::Decl*>(cppFunc))
         );
+
+        // Get translated decl from mapper
+        auto* cDecl = pipeline.declMapper->getCreated(cppFunc);
+        return llvm::dyn_cast_or_null<clang::FunctionDecl>(cDecl);
     }
 };
 

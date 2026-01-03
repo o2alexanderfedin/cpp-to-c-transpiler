@@ -12,6 +12,9 @@ set(Clang_DIR "/opt/homebrew/opt/llvm/lib/cmake/clang")
 find_package(LLVM REQUIRED CONFIG)
 find_package(Clang REQUIRED CONFIG)
 
+# Find range-v3 (required by dispatcher pattern tests)
+find_package(range-v3 REQUIRED)
+
 message(STATUS "Found LLVM ${LLVM_PACKAGE_VERSION}")
 message(STATUS "Using LLVMConfig.cmake in: ${LLVM_DIR}")
 
@@ -77,15 +80,38 @@ target_include_directories(StructsIntegrationTest PRIVATE
     ${CMAKE_SOURCE_DIR}/../../src
 )
 
+# Shared source files for dispatcher-pattern tests
+# All tests migrated to dispatcher pattern need these implementation files
+set(DISPATCHER_TEST_SOURCES
+    # Core infrastructure
+    ${CMAKE_SOURCE_DIR}/../../src/TargetContext.cpp
+    # Dispatcher core
+    ${CMAKE_SOURCE_DIR}/../../src/dispatch/CppToCVisitorDispatcher.cpp
+    ${CMAKE_SOURCE_DIR}/../../src/dispatch/NamespaceHandler.cpp
+    ${CMAKE_SOURCE_DIR}/../../src/dispatch/FunctionHandler.cpp
+    ${CMAKE_SOURCE_DIR}/../../src/dispatch/VariableHandler.cpp
+    ${CMAKE_SOURCE_DIR}/../../src/dispatch/StatementHandler.cpp
+    ${CMAKE_SOURCE_DIR}/../../src/dispatch/RecordHandler.cpp
+    ${CMAKE_SOURCE_DIR}/../../src/dispatch/StaticMethodHandler.cpp
+    ${CMAKE_SOURCE_DIR}/../../src/dispatch/InstanceMethodHandler.cpp
+    ${CMAKE_SOURCE_DIR}/../../src/dispatch/VirtualMethodHandler.cpp
+    ${CMAKE_SOURCE_DIR}/../../src/dispatch/ConstructorHandler.cpp
+    ${CMAKE_SOURCE_DIR}/../../src/dispatch/DestructorHandler.cpp
+    # Mappers needed by DispatcherTestHelper
+    ${CMAKE_SOURCE_DIR}/../../src/mapping/PathMapper.cpp
+    ${CMAKE_SOURCE_DIR}/../../src/mapping/DeclLocationMapper.cpp
+)
+
 # Phase 44: Classes (C++ classes) Integration Tests (Migrated to dispatcher pattern)
 add_executable(ClassesIntegrationTest
     handlers/ClassesIntegrationTest.cpp
+    ${DISPATCHER_TEST_SOURCES}
 )
 target_link_libraries(ClassesIntegrationTest
     GTest::gtest
     GTest::gtest_main
     ${CLANG_LIBS}
-    cpptoc_core
+    range-v3::range-v3
 )
 target_include_directories(ClassesIntegrationTest PRIVATE
     ${CMAKE_SOURCE_DIR}/../../tests/fixtures
@@ -93,79 +119,54 @@ target_include_directories(ClassesIntegrationTest PRIVATE
     ${CMAKE_SOURCE_DIR}/../../src
 )
 
-# Phase 45: Virtual Methods Integration Tests
+# Phase 45: Virtual Methods Integration Tests (Migrated to dispatcher pattern)
 add_executable(VirtualMethodsIntegrationTest
     handlers/VirtualMethodsIntegrationTest.cpp
-    ${CMAKE_SOURCE_DIR}/../../src/handlers/HandlerContext.cpp
-    ${CMAKE_SOURCE_DIR}/../../src/handlers/FunctionHandler.cpp
-    ${CMAKE_SOURCE_DIR}/../../src/handlers/VariableHandler.cpp
-    ${CMAKE_SOURCE_DIR}/../../src/handlers/ExpressionHandler.cpp
-    ${CMAKE_SOURCE_DIR}/../../src/dispatch/StatementHandler.cpp
-    ${CMAKE_SOURCE_DIR}/../../src/handlers/RecordHandler.cpp
-    ${CMAKE_SOURCE_DIR}/../../src/handlers/ConstructorHandler.cpp
-    ${CMAKE_SOURCE_DIR}/../../src/dispatch/DestructorHandler.cpp
-    ${CMAKE_SOURCE_DIR}/../../src/VirtualMethodAnalyzer.cpp
-    ${CMAKE_SOURCE_DIR}/../../src/VtableGenerator.cpp
-    ${CMAKE_SOURCE_DIR}/../../src/VptrInjector.cpp
-    ${CMAKE_SOURCE_DIR}/../../src/VtableInitializer.cpp
-    ${CMAKE_SOURCE_DIR}/../../src/VirtualCallTranslator.cpp
-    ${CMAKE_SOURCE_DIR}/../../src/OverrideResolver.cpp
-    ${CMAKE_SOURCE_DIR}/../../src/MethodSignatureHelper.cpp
-    ${CMAKE_SOURCE_DIR}/../../src/VirtualInheritanceAnalyzer.cpp
-    ${CMAKE_SOURCE_DIR}/../../src/helpers/VtableTypedefGenerator.cpp
+    ${DISPATCHER_TEST_SOURCES}
 )
-target_link_libraries(VirtualMethodsIntegrationTest GTest::gtest GTest::gtest_main ${CLANG_LIBS})
+target_link_libraries(VirtualMethodsIntegrationTest
+    GTest::gtest
+    GTest::gtest_main
+    ${CLANG_LIBS}
+    range-v3::range-v3
+)
 target_include_directories(VirtualMethodsIntegrationTest PRIVATE
+    ${CMAKE_SOURCE_DIR}/../../tests/fixtures
     ${CMAKE_SOURCE_DIR}/../../include
-    ${CMAKE_SOURCE_DIR}/../../include/handlers
     ${CMAKE_SOURCE_DIR}/../../src
 )
 
-# Phase 46: Multiple Inheritance Integration Tests
+# Phase 46: Multiple Inheritance Integration Tests (Migrated to dispatcher pattern)
 add_executable(MultipleInheritanceIntegrationTest
     handlers/MultipleInheritanceIntegrationTest.cpp
-    ${CMAKE_SOURCE_DIR}/../../src/handlers/HandlerContext.cpp
-    ${CMAKE_SOURCE_DIR}/../../src/handlers/FunctionHandler.cpp
-    ${CMAKE_SOURCE_DIR}/../../src/handlers/VariableHandler.cpp
-    ${CMAKE_SOURCE_DIR}/../../src/handlers/ExpressionHandler.cpp
-    ${CMAKE_SOURCE_DIR}/../../src/dispatch/StatementHandler.cpp
-    ${CMAKE_SOURCE_DIR}/../../src/handlers/RecordHandler.cpp
-    ${CMAKE_SOURCE_DIR}/../../src/handlers/ConstructorHandler.cpp
-    ${CMAKE_SOURCE_DIR}/../../src/dispatch/DestructorHandler.cpp
-    ${CMAKE_SOURCE_DIR}/../../src/VirtualMethodAnalyzer.cpp
-    ${CMAKE_SOURCE_DIR}/../../src/VtableGenerator.cpp
-    ${CMAKE_SOURCE_DIR}/../../src/VptrInjector.cpp
-    ${CMAKE_SOURCE_DIR}/../../src/VtableInitializer.cpp
-    ${CMAKE_SOURCE_DIR}/../../src/VirtualCallTranslator.cpp
-    ${CMAKE_SOURCE_DIR}/../../src/OverrideResolver.cpp
-    ${CMAKE_SOURCE_DIR}/../../src/MethodSignatureHelper.cpp
-    ${CMAKE_SOURCE_DIR}/../../src/VirtualInheritanceAnalyzer.cpp
-    ${CMAKE_SOURCE_DIR}/../../src/helpers/VtableTypedefGenerator.cpp
-    ${CMAKE_SOURCE_DIR}/../../src/MultipleInheritanceAnalyzer.cpp
-    ${CMAKE_SOURCE_DIR}/../../src/ThunkGenerator.cpp
-    ${CMAKE_SOURCE_DIR}/../../src/BaseOffsetCalculator.cpp
+    ${DISPATCHER_TEST_SOURCES}
 )
-target_link_libraries(MultipleInheritanceIntegrationTest GTest::gtest GTest::gtest_main ${CLANG_LIBS})
+target_link_libraries(MultipleInheritanceIntegrationTest
+    GTest::gtest
+    GTest::gtest_main
+    ${CLANG_LIBS}
+    range-v3::range-v3
+)
 target_include_directories(MultipleInheritanceIntegrationTest PRIVATE
+    ${CMAKE_SOURCE_DIR}/../../tests/fixtures
     ${CMAKE_SOURCE_DIR}/../../include
-    ${CMAKE_SOURCE_DIR}/../../include/handlers
     ${CMAKE_SOURCE_DIR}/../../src
 )
 
-# Phase 47: Scoped Enums Integration Tests
+# Phase 47: Scoped Enums Integration Tests (Migrated to dispatcher pattern)
 add_executable(EnumIntegrationTest
     handlers/EnumIntegrationTest.cpp
-    ${CMAKE_SOURCE_DIR}/../../src/handlers/HandlerContext.cpp
-    ${CMAKE_SOURCE_DIR}/../../src/handlers/FunctionHandler.cpp
-    ${CMAKE_SOURCE_DIR}/../../src/handlers/VariableHandler.cpp
-    ${CMAKE_SOURCE_DIR}/../../src/handlers/ExpressionHandler.cpp
-    ${CMAKE_SOURCE_DIR}/../../src/dispatch/StatementHandler.cpp
-    ${CMAKE_SOURCE_DIR}/../../src/BaseOffsetCalculator.cpp
+    ${DISPATCHER_TEST_SOURCES}
 )
-target_link_libraries(EnumIntegrationTest GTest::gtest GTest::gtest_main ${CLANG_LIBS})
+target_link_libraries(EnumIntegrationTest
+    GTest::gtest
+    GTest::gtest_main
+    ${CLANG_LIBS}
+    range-v3::range-v3
+)
 target_include_directories(EnumIntegrationTest PRIVATE
+    ${CMAKE_SOURCE_DIR}/../../tests/fixtures
     ${CMAKE_SOURCE_DIR}/../../include
-    ${CMAKE_SOURCE_DIR}/../../include/handlers
     ${CMAKE_SOURCE_DIR}/../../src
 )
 

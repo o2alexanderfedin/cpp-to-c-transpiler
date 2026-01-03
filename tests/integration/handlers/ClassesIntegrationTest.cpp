@@ -13,7 +13,7 @@
  * - Complete class translation pipeline
  */
 
-#include "fixtures/DispatcherTestHelper.h"
+#include "DispatcherTestHelper.h"
 #include "dispatch/FunctionHandler.h"
 #include "dispatch/VariableHandler.h"
 #include "dispatch/StatementHandler.h"
