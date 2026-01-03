@@ -1,211 +1,212 @@
 /**
  * @file VariableHandler.cpp
- * @brief Implementation of VariableHandler
+ * @brief Implementation of VariableHandler dispatcher pattern
  *
- * TDD Implementation: Start minimal, add complexity as tests demand.
- *
- * Implementation follows the specification in:
- * @see docs/architecture/handlers/VariableHandler.md
+ * Integrates with CppToCVisitorDispatcher to handle variable translation.
+ * Translates C++ variables to C variables with type and initialization translation.
  */
 
-#include "handlers/VariableHandler.h"
-#include "handlers/HandlerContext.h"
-#include "clang/AST/Decl.h"
+#include "dispatch/VariableHandler.h"
+#include "CNodeBuilder.h"
+#include "mapping/DeclMapper.h"
+#include "mapping/PathMapper.h"
+#include "mapping/TypeMapper.h"
 #include "clang/AST/DeclCXX.h"
 #include "clang/AST/Expr.h"
 #include "llvm/Support/Casting.h"
+#include "llvm/Support/raw_ostream.h"
+#include <cassert>
 
 namespace cpptoc {
 
-bool VariableHandler::canHandle(const clang::Decl* D) const {
-    // Handle VarDecl but not member variables (FieldDecl)
-    // FieldDecl will be handled by ClassToStructTranslator
-    if (const auto* VD = llvm::dyn_cast<clang::VarDecl>(D)) {
-        // Exclude member variables (they are FieldDecl, which inherits from Decl)
-        // But for Phase 1, we only handle local and global variables
-        // Member variables will be added in Phase 2
-        return !llvm::isa<clang::FieldDecl>(VD);
+void VariableHandler::registerWith(CppToCVisitorDispatcher& dispatcher) {
+    dispatcher.addHandler(
+        &VariableHandler::canHandle,
+        &VariableHandler::handleVariable
+    );
+}
+
+bool VariableHandler::canHandle(const clang::Decl* D) {
+    assert(D && "Declaration must not be null");
+
+    // Accept VarDecl but exclude FieldDecl (member variables)
+    // FieldDecl is handled by RecordHandler
+    if (D->getKind() == clang::Decl::Var) {
+        // Double-check it's not a FieldDecl (which inherits from ValueDecl, not VarDecl)
+        // Actually, FieldDecl has its own kind (Decl::Field), so this check is sufficient
+        return true;
     }
+
     return false;
 }
 
-clang::Decl* VariableHandler::handleDecl(const clang::Decl* D, HandlerContext& ctx) {
+void VariableHandler::handleVariable(
+    const CppToCVisitorDispatcher& disp,
+    const clang::ASTContext& cppASTContext,
+    clang::ASTContext& cASTContext,
+    const clang::Decl* D
+) {
+    assert(D && "Declaration must not be null");
+    assert(D->getKind() == clang::Decl::Var && "Must be VarDecl");
+
     const auto* cppVar = llvm::cast<clang::VarDecl>(D);
 
-    // Step 1: Extract variable properties
+    // Check if already translated (avoid duplicates)
+    cpptoc::DeclMapper& declMapper = disp.getDeclMapper();
+    if (declMapper.hasCreated(cppVar)) {
+        llvm::outs() << "[VariableHandler] Already translated variable: "
+                     << cppVar->getNameAsString() << " (skipping)\n";
+        return;
+    }
+
+    // Extract variable properties
     std::string name = cppVar->getNameAsString();
     clang::QualType cppType = cppVar->getType();
     clang::StorageClass storageClass = cppVar->getStorageClass();
 
-    // Step 2: Translate type
-    // Transform reference types to pointer types
-    clang::QualType cType = translateType(cppType, ctx);
+    llvm::outs() << "[VariableHandler] Translating variable: " << name
+                 << " (type: " << cppType.getAsString() << ")\n";
 
-    // Step 3: Translate storage class
-    clang::StorageClass cStorageClass = translateStorageClass(storageClass);
+    // Dispatch type via TypeHandler (handles reference → pointer conversion)
+    // For reference types, TypeHandler will create pointer types
+    // For other types, it passes through
+    cpptoc::TypeMapper& typeMapper = disp.getTypeMapper();
 
-    // Step 4: Translate initialization expression (if present)
-    clang::Expr* cInitExpr = nullptr;
-    if (cppVar->hasInit()) {
-        cInitExpr = translateInitializer(cppVar->getInit(), ctx);
-    }
-
-    // Step 5: Determine scope (global vs local)
-    // Check if the variable is at global scope (TranslationUnitDecl)
-    // or local scope (within a function)
-    const clang::DeclContext* parentContext = cppVar->getDeclContext();
-    bool isGlobalScope = llvm::isa<clang::TranslationUnitDecl>(parentContext);
-
-    // Step 6: Create C variable
-    // For global variables, use the TranslationUnitDecl
-    // For local variables, we need to create them in the appropriate function context
-    // Since we're building the C AST, we need to use the C context's TranslationUnitDecl
-    // for global variables, but preserve the local context for local variables.
-    //
-    // For Phase 3 Task 6, we focus on global variables. Local variables
-    // should be created in their appropriate function scope, but for now
-    // we'll create all variables at the TranslationUnit scope and document
-    // that local variable scope handling needs enhancement.
-
-    clang::CNodeBuilder& builder = ctx.getBuilder();
-    clang::ASTContext& cCtx = ctx.getCContext();
-
-    // Create the variable declaration in the C AST
-    // Note: builder.var() creates variables at TranslationUnitDecl by default
-    // We'll use VarDecl::Create directly to have full control over the scope
-    clang::IdentifierInfo& II = cCtx.Idents.get(name);
-
-    // Use TranslationUnitDecl for global variables
-    // For local variables, look up the translated parent function context
-    clang::DeclContext* cDeclContext;
-    if (isGlobalScope) {
-        cDeclContext = cCtx.getTranslationUnitDecl();
+    // Check if type is already translated
+    clang::QualType cType;
+    if (typeMapper.hasCreated(cppType.getTypePtr())) {
+        cType = typeMapper.getCreated(cppType.getTypePtr());
+        llvm::outs() << "[VariableHandler] Using cached translated type: "
+                     << cType.getAsString() << "\n";
     } else {
-        // For local variables, find the C function they belong to
-        // Walk up the declaration context chain to find the parent function
-        const clang::Decl* parentDecl = llvm::dyn_cast<clang::Decl>(parentContext);
-        if (parentDecl) {
-            clang::Decl* translatedParent = ctx.lookupDecl(parentDecl);
-            if (translatedParent && llvm::isa<clang::DeclContext>(translatedParent)) {
-                cDeclContext = llvm::cast<clang::DeclContext>(translatedParent);
+        // Dispatch type to TypeHandler
+        // TypeHandler will handle reference types (T& → T*, T&& → T*)
+        const clang::Type* cppTypePtr = cppType.getTypePtr();
+
+        // For reference types, dispatch to TypeHandler
+        if (llvm::isa<clang::LValueReferenceType>(cppTypePtr) ||
+            llvm::isa<clang::RValueReferenceType>(cppTypePtr)) {
+
+            // TypeHandler should have been registered and will handle this
+            // It will store the translated type in TypeMapper
+            disp.dispatch(cppASTContext, cASTContext, const_cast<clang::Type*>(cppTypePtr));
+
+            // Retrieve translated type
+            if (typeMapper.hasCreated(cppTypePtr)) {
+                cType = typeMapper.getCreated(cppTypePtr);
+                llvm::outs() << "[VariableHandler] Type translated by TypeHandler: "
+                             << cppType.getAsString() << " → " << cType.getAsString() << "\n";
             } else {
-                // Fallback to global scope if parent not found (shouldn't happen)
-                cDeclContext = cCtx.getTranslationUnitDecl();
+                // TypeHandler didn't translate (shouldn't happen for reference types)
+                llvm::errs() << "[VariableHandler] Warning: TypeHandler didn't translate reference type\n";
+                cType = cppType;
             }
         } else {
-            // Fallback to global scope
-            cDeclContext = cCtx.getTranslationUnitDecl();
+            // For non-reference types, pass through unchanged
+            cType = cppType;
+            llvm::outs() << "[VariableHandler] Type passed through: " << cType.getAsString() << "\n";
         }
     }
 
+    // Translate storage class
+    clang::StorageClass cStorageClass = translateStorageClass(storageClass);
+
+    // Translate initialization expression (if present)
+    clang::Expr* cInitExpr = nullptr;
+    if (cppVar->hasInit()) {
+        const clang::Expr* cppInit = cppVar->getInit();
+
+        // Dispatch the initializer expression through the dispatcher
+        // This allows complex expressions (like a+b) to be properly translated
+        bool initHandled = disp.dispatch(cppASTContext, cASTContext, cppInit);
+
+        if (initHandled) {
+            // Retrieve translated expression from ExprMapper
+            cpptoc::ExprMapper& exprMapper = disp.getExprMapper();
+            cInitExpr = exprMapper.getCreated(cppInit);
+
+            if (cInitExpr) {
+                llvm::outs() << "[VariableHandler] Initializer translated via dispatcher\n";
+            } else {
+                llvm::errs() << "[VariableHandler] Warning: Initializer dispatched but not in ExprMapper\n";
+            }
+        } else {
+            llvm::outs() << "[VariableHandler] Initializer not handled by dispatcher\n";
+        }
+    }
+
+    // Determine scope (global vs local)
+    const clang::DeclContext* parentContext = cppVar->getDeclContext();
+    bool isGlobalScope = llvm::isa<clang::TranslationUnitDecl>(parentContext);
+
+    // Determine target DeclContext
+    clang::DeclContext* cDeclContext;
+    if (isGlobalScope) {
+        cDeclContext = cASTContext.getTranslationUnitDecl();
+        llvm::outs() << "[VariableHandler] Global scope variable\n";
+    } else {
+        // For local variables, find the translated parent function
+        // DeclContext might be null or might not be a Decl, so use dyn_cast_or_null
+        const clang::Decl* parentDecl = llvm::dyn_cast_or_null<clang::Decl>(parentContext);
+        if (parentDecl && declMapper.hasCreated(parentDecl)) {
+            clang::Decl* translatedParent = declMapper.getCreated(parentDecl);
+            if (translatedParent && llvm::isa<clang::DeclContext>(translatedParent)) {
+                cDeclContext = llvm::cast<clang::DeclContext>(translatedParent);
+                llvm::outs() << "[VariableHandler] Local scope variable (parent found)\n";
+            } else {
+                // Fallback to global scope
+                cDeclContext = cASTContext.getTranslationUnitDecl();
+                llvm::outs() << "[VariableHandler] Warning: Parent not a DeclContext, using global scope\n";
+            }
+        } else {
+            // Fallback to global scope
+            cDeclContext = cASTContext.getTranslationUnitDecl();
+            llvm::outs() << "[VariableHandler] Warning: Parent not translated, using global scope\n";
+        }
+    }
+
+    // Create identifier for variable name
+    clang::IdentifierInfo& II = cASTContext.Idents.get(name);
+
+    // Create C variable
     clang::VarDecl* cVar = clang::VarDecl::Create(
-        cCtx,
+        cASTContext,
         cDeclContext,
         clang::SourceLocation(),
         clang::SourceLocation(),
         &II,
         cType,
-        cCtx.getTrivialTypeSourceInfo(cType),
+        cASTContext.getTrivialTypeSourceInfo(cType),
         cStorageClass
     );
+
+    assert(cVar && "Failed to create C VarDecl");
 
     // Set initializer if present
     if (cInitExpr) {
         cVar->setInit(cInitExpr);
     }
 
-    // Add to parent DeclContext (CRITICAL: makes variable visible in AST)
-    cDeclContext->addDecl(cVar);
-
-    // Step 7: Register mapping in context
-    ctx.registerDecl(cppVar, cVar);
-
-    return cVar;
-}
-
-clang::QualType VariableHandler::translateType(
-    clang::QualType cppType,
-    HandlerContext& ctx
-) {
-    clang::ASTContext& cCtx = ctx.getCContext();
-
-    // Check for lvalue reference (T&)
-    if (const auto* lvalRefType = llvm::dyn_cast<clang::LValueReferenceType>(cppType.getTypePtr())) {
-        // Transform T& → T*
-        clang::QualType pointeeType = lvalRefType->getPointeeType();
-        return cCtx.getPointerType(pointeeType);
+    // IMPORTANT: For global variables, add to TU. For local variables, DON'T add to DeclContext
+    // Local variables are owned by the DeclStmt, not the function's decl list
+    if (isGlobalScope) {
+        cDeclContext->addDecl(cVar);
+        llvm::outs() << "[VariableHandler] Added global variable to TU\n";
+    } else {
+        // Local variable - don't add to function's decl list (it's in the DeclStmt)
+        llvm::outs() << "[VariableHandler] Local variable - not added to function decl list\n";
     }
 
-    // Check for rvalue reference (T&&)
-    if (const auto* rvalRefType = llvm::dyn_cast<clang::RValueReferenceType>(cppType.getTypePtr())) {
-        // Transform T&& → T*
-        // Note: C has no equivalent for move semantics, but we translate to pointer
-        clang::QualType pointeeType = rvalRefType->getPointeeType();
-        return cCtx.getPointerType(pointeeType);
-    }
+    // Store mapping
+    declMapper.setCreated(cppVar, cVar);
 
-    // Preserve const qualifiers on top level (e.g., const T → const T)
-    // For reference types, the const was already transferred to the pointee above
-    // For non-reference types, pass through unchanged
-    return cppType;
-}
+    // Get target path and register location
+    std::string targetPath = disp.getTargetPath(cppASTContext, D);
+    cpptoc::PathMapper& pathMapper = disp.getPathMapper();
+    pathMapper.setNodeLocation(cVar, targetPath);
 
-clang::Expr* VariableHandler::translateInitializer(
-    const clang::Expr* init,
-    HandlerContext& ctx
-) {
-    if (!init) {
-        return nullptr;
-    }
-
-    // For Phase 1, we simply pass through literal expressions
-    // The expression is already in the C++ AST and can be reused
-    //
-    // IMPORTANT: We need to create a new expression in the C AST context
-    // For now, we'll cast away const and return it directly
-    // This works because the CNodeBuilder creates nodes in the C context
-    //
-    // Phase 2 will properly translate expressions via ExpressionHandler
-
-    // For literals, we can safely reuse them by creating equivalent C nodes
-    if (const auto* intLit = llvm::dyn_cast<clang::IntegerLiteral>(init)) {
-        // Create new IntegerLiteral in C context
-        clang::ASTContext& cCtx = ctx.getCContext();
-        return clang::IntegerLiteral::Create(
-            cCtx,
-            intLit->getValue(),
-            intLit->getType(),
-            clang::SourceLocation()
-        );
-    }
-
-    if (const auto* floatLit = llvm::dyn_cast<clang::FloatingLiteral>(init)) {
-        // Create new FloatingLiteral in C context
-        clang::ASTContext& cCtx = ctx.getCContext();
-        return clang::FloatingLiteral::Create(
-            cCtx,
-            floatLit->getValue(),
-            floatLit->isExact(),
-            floatLit->getType(),
-            clang::SourceLocation()
-        );
-    }
-
-    if (const auto* charLit = llvm::dyn_cast<clang::CharacterLiteral>(init)) {
-        // Create new CharacterLiteral in C context
-        clang::ASTContext& cCtx = ctx.getCContext();
-        return new (cCtx) clang::CharacterLiteral(
-            charLit->getValue(),
-            charLit->getKind(),
-            charLit->getType(),
-            clang::SourceLocation()
-        );
-    }
-
-    // For other expression types, we'll add support as needed
-    // For now, return nullptr (no initialization)
-    // Phase 2 will delegate to ExpressionHandler for complex expressions
-    return nullptr;
+    llvm::outs() << "[VariableHandler] Created C variable: " << name
+                 << " (type: " << cType.getAsString() << ")\n";
 }
 
 clang::StorageClass VariableHandler::translateStorageClass(clang::StorageClass sc) {
@@ -227,14 +228,96 @@ clang::StorageClass VariableHandler::translateStorageClass(clang::StorageClass s
             // Register is supported in C
             return clang::SC_Register;
 
-        // PrivateExtern is Apple-specific, treat as static
         case clang::SC_PrivateExtern:
+            // PrivateExtern is Apple-specific, treat as static
             return clang::SC_Static;
 
         default:
             // Unknown storage class, use None as fallback
             return clang::SC_None;
     }
+}
+
+clang::Expr* VariableHandler::translateInitializer(
+    const clang::Expr* init,
+    clang::ASTContext& cASTContext
+) {
+    if (!init) {
+        return nullptr;
+    }
+
+    // For Phase 1, handle literal expressions only
+    // Create equivalent literals in C ASTContext
+
+    if (const auto* intLit = llvm::dyn_cast<clang::IntegerLiteral>(init)) {
+        // Create new IntegerLiteral in C context
+        // IMPORTANT: Use C ASTContext's int type, not C++ type
+        return clang::IntegerLiteral::Create(
+            cASTContext,
+            intLit->getValue(),
+            cASTContext.IntTy,  // Get int type from C context
+            clang::SourceLocation()
+        );
+    }
+
+    if (const auto* floatLit = llvm::dyn_cast<clang::FloatingLiteral>(init)) {
+        // Create new FloatingLiteral in C context
+        // IMPORTANT: Use C ASTContext's float/double type
+        // Determine if it's float or double based on the semantics
+        clang::QualType cFloatType = cASTContext.DoubleTy;  // Default to double
+        if (floatLit->getType()->getAs<clang::BuiltinType>()) {
+            const auto* builtinType = floatLit->getType()->getAs<clang::BuiltinType>();
+            if (builtinType->getKind() == clang::BuiltinType::Float) {
+                cFloatType = cASTContext.FloatTy;
+            }
+        }
+        return clang::FloatingLiteral::Create(
+            cASTContext,
+            floatLit->getValue(),
+            floatLit->isExact(),
+            cFloatType,
+            clang::SourceLocation()
+        );
+    }
+
+    if (const auto* charLit = llvm::dyn_cast<clang::CharacterLiteral>(init)) {
+        // Create new CharacterLiteral in C context
+        // IMPORTANT: Use C ASTContext's char type
+        return new (cASTContext) clang::CharacterLiteral(
+            charLit->getValue(),
+            charLit->getKind(),
+            cASTContext.CharTy,  // Get char type from C context
+            clang::SourceLocation()
+        );
+    }
+
+    if (const auto* strLit = llvm::dyn_cast<clang::StringLiteral>(init)) {
+        // Create new StringLiteral in C context
+        // IMPORTANT: Use C ASTContext's string type
+        // For string literals, we need to create array type based on string length
+        unsigned length = strLit->getLength();
+        clang::QualType charType = cASTContext.CharTy;
+        clang::QualType arrayType = cASTContext.getConstantArrayType(
+            charType,
+            llvm::APInt(32, length + 1),  // +1 for null terminator
+            nullptr,
+            clang::ArraySizeModifier::Normal,
+            0
+        );
+        return clang::StringLiteral::Create(
+            cASTContext,
+            strLit->getString(),
+            strLit->getKind(),
+            strLit->isPascal(),
+            arrayType,
+            clang::SourceLocation()
+        );
+    }
+
+    // For other expression types, we'll add support as needed
+    // For now, return nullptr (no initialization)
+    // Phase 2 will delegate to ExpressionHandler for complex expressions
+    return nullptr;
 }
 
 } // namespace cpptoc

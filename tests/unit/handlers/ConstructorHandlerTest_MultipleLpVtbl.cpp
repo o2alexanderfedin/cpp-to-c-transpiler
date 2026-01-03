@@ -33,7 +33,7 @@
  */
 
 #include "dispatch/ConstructorHandler.h"
-#include "handlers/HandlerContext.h"
+#include "helpers/UnitTestHelper.h"
 #include "CNodeBuilder.h"
 #include "MultipleInheritanceAnalyzer.h"
 #include "clang/Tooling/Tooling.h"
@@ -50,41 +50,13 @@ using namespace cpptoc;
  */
 class ConstructorHandlerMultipleLpVtblTest : public ::testing::Test {
 protected:
-    std::unique_ptr<clang::ASTUnit> cppAST;
-    std::unique_ptr<clang::ASTUnit> cAST;
-    std::unique_ptr<clang::CNodeBuilder> builder;
-    std::unique_ptr<HandlerContext> context;
-    std::unique_ptr<ConstructorHandler> handler;
+    UnitTestContext ctx;
 
     void SetUp() override {
-        // Create real AST contexts using minimal code
-        cppAST = clang::tooling::buildASTFromCode("int dummy;");
-        cAST = clang::tooling::buildASTFromCode("int dummy2;");
-
-        ASSERT_NE(cppAST, nullptr) << "Failed to create C++ AST";
-        ASSERT_NE(cAST, nullptr) << "Failed to create C AST";
-
-        // Create builder and context
-        builder = std::make_unique<clang::CNodeBuilder>(cAST->getASTContext());
-        context = std::make_unique<HandlerContext>(
-            cppAST->getASTContext(),
-            cAST->getASTContext(),
-            *builder
-        );
-
-        // Create handler
-        handler = std::make_unique<ConstructorHandler>();
+        ctx = createUnitTestContext();
+        ctx.dispatcher->registerHandler<ConstructorHandler>();
     }
-
-    void TearDown() override {
-        handler.reset();
-        context.reset();
-        builder.reset();
-        cAST.reset();
-        cppAST.reset();
-    }
-
-    /**
+/**
      * @brief Build AST from code and return the first CXXConstructorDecl
      */
     const clang::CXXConstructorDecl* getCXXConstructorDeclFromCode(
@@ -98,12 +70,6 @@ protected:
         if (!cppAST) return nullptr;
 
         // Recreate builder and context with new AST
-        builder = std::make_unique<clang::CNodeBuilder>(cAST->getASTContext());
-        context = std::make_unique<HandlerContext>(
-            cppAST->getASTContext(),
-            cAST->getASTContext(),
-            *builder
-        );
 
         // Find the CXXRecordDecl first
         auto& ctx = cppAST->getASTContext();
@@ -306,7 +272,8 @@ TEST_F(ConstructorHandlerMultipleLpVtblTest, InitializeLpVtblInConstructor) {
 
     // Translate constructor
     auto* cFunc = llvm::dyn_cast_or_null<clang::FunctionDecl>(
-        handler->handleDecl(ctor, *context)
+        ctx.dispatcher->dispatch(ctor);
+    auto __result = ctx.declMapper->get(ctor); __result
     );
 
     ASSERT_NE(cFunc, nullptr);
@@ -372,7 +339,8 @@ TEST_F(ConstructorHandlerMultipleLpVtblTest, InitializeLpVtbl2InConstructor) {
 
     // Translate constructor
     auto* cFunc = llvm::dyn_cast_or_null<clang::FunctionDecl>(
-        handler->handleDecl(ctor, *context)
+        ctx.dispatcher->dispatch(ctor);
+    auto __result = ctx.declMapper->get(ctor); __result
     );
 
     ASSERT_NE(cFunc, nullptr);
@@ -441,7 +409,8 @@ TEST_F(ConstructorHandlerMultipleLpVtblTest, InitializeLpVtbl3InConstructor) {
 
     // Translate constructor
     auto* cFunc = llvm::dyn_cast_or_null<clang::FunctionDecl>(
-        handler->handleDecl(ctor, *context)
+        ctx.dispatcher->dispatch(ctor);
+    auto __result = ctx.declMapper->get(ctor); __result
     );
 
     ASSERT_NE(cFunc, nullptr);
@@ -501,7 +470,8 @@ TEST_F(ConstructorHandlerMultipleLpVtblTest, InitializationOrderLpVtblFirst) {
     createVtableInstances("Shape", {"IDrawable", "ISerializable"});
 
     auto* cFunc = llvm::dyn_cast_or_null<clang::FunctionDecl>(
-        handler->handleDecl(ctor, *context)
+        ctx.dispatcher->dispatch(ctor);
+    auto __result = ctx.declMapper->get(ctor); __result
     );
 
     ASSERT_NE(cFunc, nullptr);
@@ -561,7 +531,8 @@ TEST_F(ConstructorHandlerMultipleLpVtblTest, AllVtablesBeforeFieldInit) {
     createVtableInstances("Shape", {"IDrawable", "ISerializable"});
 
     auto* cFunc = llvm::dyn_cast_or_null<clang::FunctionDecl>(
-        handler->handleDecl(ctor, *context)
+        ctx.dispatcher->dispatch(ctor);
+    auto __result = ctx.declMapper->get(ctor); __result
     );
 
     ASSERT_NE(cFunc, nullptr);
@@ -631,7 +602,8 @@ TEST_F(ConstructorHandlerMultipleLpVtblTest, MultipleConstructorsAllInitialize) 
     createVtableInstances("Shape", {"IDrawable", "ISerializable"});
 
     auto* cFunc1 = llvm::dyn_cast_or_null<clang::FunctionDecl>(
-        handler->handleDecl(ctor1, *context)
+        ctx.dispatcher->dispatch(ctor1);
+    auto __result = ctx.declMapper->get(ctor1); __result
     );
 
     ASSERT_NE(cFunc1, nullptr);
@@ -645,7 +617,8 @@ TEST_F(ConstructorHandlerMultipleLpVtblTest, MultipleConstructorsAllInitialize) 
     ASSERT_NE(ctor2, nullptr);
 
     auto* cFunc2 = llvm::dyn_cast_or_null<clang::FunctionDecl>(
-        handler->handleDecl(ctor2, *context)
+        ctx.dispatcher->dispatch(ctor2);
+    auto __result = ctx.declMapper->get(ctor2); __result
     );
 
     ASSERT_NE(cFunc2, nullptr);
@@ -715,7 +688,8 @@ TEST_F(ConstructorHandlerMultipleLpVtblTest, DerivedClassInitializesAllVtables) 
     createVtableInstances("Derived", {"IDrawable", "ISerializable"});
 
     auto* cFunc = llvm::dyn_cast_or_null<clang::FunctionDecl>(
-        handler->handleDecl(ctor, *context)
+        ctx.dispatcher->dispatch(ctor);
+    auto __result = ctx.declMapper->get(ctor); __result
     );
 
     ASSERT_NE(cFunc, nullptr);
@@ -780,7 +754,8 @@ TEST_F(ConstructorHandlerMultipleLpVtblTest, VtablePointersToCorrectInstances) {
     createVtableInstances("Shape", {"IDrawable", "ISerializable"});
 
     auto* cFunc = llvm::dyn_cast_or_null<clang::FunctionDecl>(
-        handler->handleDecl(ctor, *context)
+        ctx.dispatcher->dispatch(ctor);
+    auto __result = ctx.declMapper->get(ctor); __result
     );
 
     ASSERT_NE(cFunc, nullptr);
@@ -866,7 +841,8 @@ TEST_F(ConstructorHandlerMultipleLpVtblTest, DefaultConstructorMultipleLpVtbl) {
     createVtableInstances("Shape", {"IDrawable", "ISerializable"});
 
     auto* cFunc = llvm::dyn_cast_or_null<clang::FunctionDecl>(
-        handler->handleDecl(ctor, *context)
+        ctx.dispatcher->dispatch(ctor);
+    auto __result = ctx.declMapper->get(ctor); __result
     );
 
     ASSERT_NE(cFunc, nullptr);
@@ -909,7 +885,8 @@ TEST_F(ConstructorHandlerMultipleLpVtblTest, ParameterizedConstructorMultipleLpV
     createVtableInstances("Shape", {"IDrawable", "ISerializable"});
 
     auto* cFunc = llvm::dyn_cast_or_null<clang::FunctionDecl>(
-        handler->handleDecl(ctor, *context)
+        ctx.dispatcher->dispatch(ctor);
+    auto __result = ctx.declMapper->get(ctor); __result
     );
 
     ASSERT_NE(cFunc, nullptr);
@@ -972,7 +949,8 @@ TEST_F(ConstructorHandlerMultipleLpVtblTest, SingleInheritanceUsesLpVtblOnly) {
     createVtableInstances("Shape", {"IDrawable"});
 
     auto* cFunc = llvm::dyn_cast_or_null<clang::FunctionDecl>(
-        handler->handleDecl(ctor, *context)
+        ctx.dispatcher->dispatch(ctor);
+    auto __result = ctx.declMapper->get(ctor); __result
     );
 
     ASSERT_NE(cFunc, nullptr);
@@ -1038,7 +1016,8 @@ TEST_F(ConstructorHandlerMultipleLpVtblTest, ThreeBasesThreeInitializations) {
     createVtableInstances("Widget", {"IDrawable", "ISerializable", "IClickable"});
 
     auto* cFunc = llvm::dyn_cast_or_null<clang::FunctionDecl>(
-        handler->handleDecl(ctor, *context)
+        ctx.dispatcher->dispatch(ctor);
+    auto __result = ctx.declMapper->get(ctor); __result
     );
 
     ASSERT_NE(cFunc, nullptr);

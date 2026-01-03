@@ -28,8 +28,8 @@
  * - Handle early returns by injecting destructors before return
  */
 
-#include "handlers/StatementHandler.h"
-#include "handlers/HandlerContext.h"
+#include "dispatch/StatementHandler.h"
+#include "helpers/UnitTestHelper.h"
 #include "clang/Tooling/Tooling.h"
 #include "clang/AST/DeclCXX.h"
 #include <gtest/gtest.h>
@@ -39,22 +39,10 @@ using namespace cpptoc;
 
 class StatementHandlerObjectsTest : public ::testing::Test {
 protected:
-    std::unique_ptr<clang::ASTUnit> cppAST;
-    std::unique_ptr<clang::ASTUnit> cAST;
-    std::unique_ptr<clang::CNodeBuilder> builder;
-    std::unique_ptr<HandlerContext> context;
+    UnitTestContext ctx;
 
     void SetUp() override {
-        cppAST = clang::tooling::buildASTFromCode("int dummy;");
-        cAST = clang::tooling::buildASTFromCode("int dummy2;");
-        ASSERT_NE(cppAST, nullptr);
-        ASSERT_NE(cAST, nullptr);
-        builder = std::make_unique<clang::CNodeBuilder>(cAST->getASTContext());
-        context = std::make_unique<HandlerContext>(
-            cppAST->getASTContext(),
-            cAST->getASTContext(),
-            *builder
-        );
+        ctx = createUnitTestContext();
     }
 
     /**
@@ -188,7 +176,7 @@ TEST_F(StatementHandlerObjectsTest, SimpleObjectDeclaration) {
 
     // Act: Translate
     StatementHandler handler;
-    clang::Stmt* result = handler.handleStmt(declStmt, *context);
+    clang::Stmt* result = handler.handleStmt(declStmt, ctx);
 
     // Assert: Should return CompoundStmt with declaration + constructor call
     ASSERT_NE(result, nullptr);
@@ -231,7 +219,7 @@ TEST_F(StatementHandlerObjectsTest, ObjectWithConstructorArgs) {
 
     // Act: Translate
     StatementHandler handler;
-    clang::Stmt* result = handler.handleStmt(declStmt, *context);
+    clang::Stmt* result = handler.handleStmt(declStmt, ctx);
 
     // Assert: Should create MyClass_init_int_int(&obj, 1, 2);
     ASSERT_NE(result, nullptr);
@@ -273,7 +261,7 @@ TEST_F(StatementHandlerObjectsTest, ObjectInIfBlock) {
 
     // Act: Translate function body
     StatementHandler handler;
-    clang::Stmt* result = handler.handleStmt(body, *context);
+    clang::Stmt* result = handler.handleStmt(body, ctx);
 
     // Assert: If block should have destructor call at end
     ASSERT_NE(result, nullptr);
@@ -313,7 +301,7 @@ TEST_F(StatementHandlerObjectsTest, ObjectInLoop) {
 
     // Act: Translate
     StatementHandler handler;
-    clang::Stmt* result = handler.handleStmt(func->getBody(), *context);
+    clang::Stmt* result = handler.handleStmt(func->getBody(), ctx);
 
     // Assert: Loop body should have destructor at end
     ASSERT_NE(result, nullptr);
@@ -347,7 +335,7 @@ TEST_F(StatementHandlerObjectsTest, MultipleObjectsInScope) {
 
     // Act: Translate
     StatementHandler handler;
-    clang::Stmt* result = handler.handleStmt(func->getBody(), *context);
+    clang::Stmt* result = handler.handleStmt(func->getBody(), ctx);
 
     // Assert: Destructors should be called in reverse order: obj3, obj2, obj1
     ASSERT_NE(result, nullptr);
@@ -387,7 +375,7 @@ TEST_F(StatementHandlerObjectsTest, ObjectWithDefaultConstructor) {
 
     // Act: Translate
     StatementHandler handler;
-    clang::Stmt* result = handler.handleStmt(declStmt, *context);
+    clang::Stmt* result = handler.handleStmt(declStmt, ctx);
 
     // Assert: Should create Counter_init(&counter);
     ASSERT_NE(result, nullptr);
@@ -415,7 +403,7 @@ TEST_F(StatementHandlerObjectsTest, ObjectWithParameterizedConstructor) {
 
     // Act: Translate
     StatementHandler handler;
-    clang::Stmt* result = handler.handleStmt(declStmt, *context);
+    clang::Stmt* result = handler.handleStmt(declStmt, ctx);
 
     // Assert: Should create Point_init_int_int_int(&pt, x, y, z);
     ASSERT_NE(result, nullptr);
@@ -450,7 +438,7 @@ TEST_F(StatementHandlerObjectsTest, EarlyReturn) {
 
     // Act: Translate
     StatementHandler handler;
-    clang::Stmt* result = handler.handleStmt(func->getBody(), *context);
+    clang::Stmt* result = handler.handleStmt(func->getBody(), ctx);
 
     // Assert: Destructor should be called before each return
     ASSERT_NE(result, nullptr);
@@ -486,7 +474,7 @@ TEST_F(StatementHandlerObjectsTest, NestedScopes) {
 
     // Act: Translate
     StatementHandler handler;
-    clang::Stmt* result = handler.handleStmt(func->getBody(), *context);
+    clang::Stmt* result = handler.handleStmt(func->getBody(), ctx);
 
     // Assert: Destructors at correct scope ends
     ASSERT_NE(result, nullptr);
@@ -533,7 +521,7 @@ TEST_F(StatementHandlerObjectsTest, ObjectInSwitchCase) {
 
     // Act: Translate
     StatementHandler handler;
-    clang::Stmt* result = handler.handleStmt(func->getBody(), *context);
+    clang::Stmt* result = handler.handleStmt(func->getBody(), ctx);
 
     // Assert: Destructor before break in each case
     ASSERT_NE(result, nullptr);
@@ -569,7 +557,7 @@ TEST_F(StatementHandlerObjectsTest, MultipleEarlyReturns) {
 
     // Act: Translate
     StatementHandler handler;
-    clang::Stmt* result = handler.handleStmt(func->getBody(), *context);
+    clang::Stmt* result = handler.handleStmt(func->getBody(), ctx);
 
     // Assert: Destructor before each return statement
     ASSERT_NE(result, nullptr);
@@ -600,7 +588,7 @@ TEST_F(StatementHandlerObjectsTest, ObjectWithNoConstructor) {
 
     // Act: Translate
     StatementHandler handler;
-    clang::Stmt* result = handler.handleStmt(func->getBody(), *context);
+    clang::Stmt* result = handler.handleStmt(func->getBody(), ctx);
 
     // Assert: No constructor call needed (C-compatible struct)
     ASSERT_NE(result, nullptr);

@@ -100,14 +100,14 @@ protected:
     void SetUp() override {
         // Reset singletons before each test to ensure test isolation
         cpptoc::OverloadRegistry::getInstance().reset();
-        TargetContext::cleanup();
+        TargetContext::getInstance().reset();  // Reset state, don't destroy singleton
         cpptoc::PathMapper::reset();
     }
 
     void TearDown() override {
         // Clean up after each test
         cpptoc::OverloadRegistry::getInstance().reset();
-        TargetContext::cleanup();
+        TargetContext::getInstance().reset();  // Reset state, don't destroy singleton
         cpptoc::PathMapper::reset();
     }
 };
@@ -214,14 +214,14 @@ TEST_F(StaticMethodHandlerDispatcherTest, SimpleStaticMethod) {
     FunctionDecl* cGetValue = nullptr;
     for (auto* D : cTU->decls()) {
         if (auto* FD = dyn_cast<FunctionDecl>(D)) {
-            if (FD->getNameAsString() == "Counter_getValue") {
+            if (FD->getNameAsString() == "Counter__getValue__void") {
                 cGetValue = FD;
                 break;
             }
         }
     }
 
-    ASSERT_NE(cGetValue, nullptr) << "Should find translated function 'Counter_getValue' (single _ for class_method)";
+    ASSERT_NE(cGetValue, nullptr) << "Should find translated function 'Counter__getValue__void' (NameMangler format: class__method__params)";
 
     // Verify function signature
     EXPECT_EQ(cGetValue->getNumParams(), 0) << "Static method should have NO 'this' parameter";
@@ -277,14 +277,14 @@ TEST_F(StaticMethodHandlerDispatcherTest, StaticMethodWithParameters) {
     FunctionDecl* cAdd = nullptr;
     for (auto* D : cTU->decls()) {
         if (auto* FD = dyn_cast<FunctionDecl>(D)) {
-            if (FD->getNameAsString() == "Math_add") {
+            if (FD->getNameAsString() == "Math__add__int_int") {
                 cAdd = FD;
                 break;
             }
         }
     }
 
-    ASSERT_NE(cAdd, nullptr) << "Should find 'Math_add' (single _ for class_method)";
+    ASSERT_NE(cAdd, nullptr) << "Should find 'Math__add__int_int' (NameMangler format: class__method__params)";
 
     // Verify parameters (should have 2 parameters, NO "this")
     EXPECT_EQ(cAdd->getNumParams(), 2) << "Should have 2 parameters (no 'this')";
@@ -373,14 +373,14 @@ TEST_F(StaticMethodHandlerDispatcherTest, StaticMethodInNamespace) {
     FunctionDecl* cGetMax = nullptr;
     for (auto* D : cTU->decls()) {
         if (auto* FD = dyn_cast<FunctionDecl>(D)) {
-            if (FD->getNameAsString() == "game_Entity_getMax") {
+            if (FD->getNameAsString() == "game__Entity__getMax__void") {
                 cGetMax = FD;
                 break;
             }
         }
     }
 
-    ASSERT_NE(cGetMax, nullptr) << "Should find 'game_Entity_getMax' (single _ for namespace_class_method)";
+    ASSERT_NE(cGetMax, nullptr) << "Should find 'game__Entity__getMax__void' (NameMangler format: namespace__class__method__params)";
 }
 
 // ============================================================================
@@ -477,14 +477,14 @@ TEST_F(StaticMethodHandlerDispatcherTest, NestedNamespaceStaticMethod) {
     FunctionDecl* cMul = nullptr;
     for (auto* D : cTU->decls()) {
         if (auto* FD = dyn_cast<FunctionDecl>(D)) {
-            if (FD->getNameAsString() == "ns1_ns2_Math_mul") {
+            if (FD->getNameAsString() == "ns1__ns2__Math__mul__int_int") {
                 cMul = FD;
                 break;
             }
         }
     }
 
-    ASSERT_NE(cMul, nullptr) << "Should find 'ns1_ns2_Math_mul' (single _ for nested namespaces_class_method)";
+    ASSERT_NE(cMul, nullptr) << "Should find 'ns1__ns2__Math__mul__int_int' (NameMangler format: ns1__ns2__class__method__params)";
 }
 
 // ============================================================================
@@ -536,14 +536,14 @@ TEST_F(StaticMethodHandlerDispatcherTest, ReferenceParameterConversion) {
     FunctionDecl* cProcess = nullptr;
     for (auto* D : cTU->decls()) {
         if (auto* FD = dyn_cast<FunctionDecl>(D)) {
-            if (FD->getNameAsString() == "Processor_process") {
+            if (FD->getNameAsString() == "Processor__process__intref_constintref") {
                 cProcess = FD;
                 break;
             }
         }
     }
 
-    ASSERT_NE(cProcess, nullptr) << "Should find 'Processor_process' (single _ for class_method)";
+    ASSERT_NE(cProcess, nullptr) << "Should find 'Processor__process__intref_constintref' (NameMangler format with sanitized param types)";
     EXPECT_EQ(cProcess->getNumParams(), 2) << "Should have 2 parameters (no 'this')";
 
     // Note: Full type checking requires TypeHandler integration
@@ -750,13 +750,10 @@ TEST_F(StaticMethodHandlerDispatcherTest, NameManglingHelper) {
     ASSERT_NE(initialize, nullptr);
 
     // Phase 3: Use NameMangler instead of removed StaticMethodHandler::getMangledName()
-    cpptoc::OverloadRegistry& registry = cpptoc::OverloadRegistry::getInstance();
-    NameMangler mangler(cppCtx, registry);
-    std::string mangledName = mangler.mangleMethodName(initialize);
+    std::string mangledName = cpptoc::mangle_method(initialize);
 
     // Verify mangled name includes namespace and class with correct separators
-    // Namespace → class: single underscore (_)
-    // Class → method: single underscore (_)
-    EXPECT_EQ(mangledName, "app_Service_initialize")
-        << "Mangled name should be 'app_Service_initialize' (single _ for namespace→class→method)";
+    // NameMangler format: namespace__class__method__params
+    EXPECT_EQ(mangledName, "app__Service__initialize__void")
+        << "Mangled name should be 'app__Service__initialize__void' (NameMangler format: namespace__class__method__params)";
 }

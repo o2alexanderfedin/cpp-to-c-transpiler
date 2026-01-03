@@ -9,7 +9,6 @@
 #include "TemplateMonomorphizer.h"
 #include "TemplateExtractor.h"
 #include "NameMangler.h"
-#include "OverloadRegistry.h"
 #include "CNodeBuilder.h"
 #include "clang/Tooling/Tooling.h"
 #include "clang/Frontend/ASTUnit.h"
@@ -65,11 +64,8 @@ void test_BasicClassTemplateMonomorphization() {
     assert(classInsts.size() >= 2 && "Expected at least 2 class instantiations");
 
     // Monomorphize
-    cpptoc::OverloadRegistry& registry = cpptoc::OverloadRegistry::getInstance();
-    registry.reset();
-    NameMangler mangler(Context, registry);
     CNodeBuilder builder(Context);
-    TemplateMonomorphizer monomorphizer(Context, mangler, builder);
+    TemplateMonomorphizer monomorphizer(Context, builder);
 
     for (auto* inst : classInsts) {
         RecordDecl* CStruct = monomorphizer.monomorphizeClass(inst);
@@ -127,11 +123,8 @@ void test_FunctionTemplateMonomorphization() {
     assert(funcInsts.size() >= 2 && "Expected at least 2 function instantiations");
 
     // Monomorphize
-    cpptoc::OverloadRegistry& registry = cpptoc::OverloadRegistry::getInstance();
-    registry.reset();
-    NameMangler mangler(Context, registry);
     CNodeBuilder builder(Context);
-    TemplateMonomorphizer monomorphizer(Context, mangler, builder);
+    TemplateMonomorphizer monomorphizer(Context, builder);
 
     for (auto* inst : funcInsts) {
         FunctionDecl* CFunc = monomorphizer.monomorphizeFunction(inst);
@@ -197,11 +190,8 @@ void test_TypeSubstitution() {
     assert(classInsts.size() >= 1 && "Expected at least 1 class instantiation");
 
     // Monomorphize
-    cpptoc::OverloadRegistry& registry = cpptoc::OverloadRegistry::getInstance();
-    registry.reset();
-    NameMangler mangler(Context, registry);
     CNodeBuilder builder(Context);
-    TemplateMonomorphizer monomorphizer(Context, mangler, builder);
+    TemplateMonomorphizer monomorphizer(Context, builder);
 
     RecordDecl* CStruct = monomorphizer.monomorphizeClass(classInsts[0]);
     assert(CStruct && "Expected non-null struct");
@@ -282,11 +272,8 @@ void test_Deduplication() {
     auto classInsts = extractor.getClassInstantiations();
 
     // Monomorphize all
-    cpptoc::OverloadRegistry& registry = cpptoc::OverloadRegistry::getInstance();
-    registry.reset();
-    NameMangler mangler(Context, registry);
     CNodeBuilder builder(Context);
-    TemplateMonomorphizer monomorphizer(Context, mangler, builder);
+    TemplateMonomorphizer monomorphizer(Context, builder);
 
     std::set<std::string> generatedStructs;
     for (auto* inst : classInsts) {
@@ -297,7 +284,7 @@ void test_Deduplication() {
         generatedStructs.insert(CStruct->getNameAsString());
     }
 
-    // Should have only 1 unique Box_int struct
+    // Should have only 1 unique Box__int struct
     assert(generatedStructs.size() == classInsts.size() &&
            "Deduplication should happen at extractor level");
 
@@ -342,11 +329,8 @@ void test_MethodGeneration() {
     assert(classInsts.size() >= 1 && "Expected at least 1 class instantiation");
 
     // Monomorphize
-    cpptoc::OverloadRegistry& registry = cpptoc::OverloadRegistry::getInstance();
-    registry.reset();
-    NameMangler mangler(Context, registry);
     CNodeBuilder builder(Context);
-    TemplateMonomorphizer monomorphizer(Context, mangler, builder);
+    TemplateMonomorphizer monomorphizer(Context, builder);
 
     RecordDecl* CStruct = monomorphizer.monomorphizeClass(classInsts[0]);
     assert(CStruct && "Expected non-null struct");
@@ -414,11 +398,8 @@ void test_NonTypeTemplateParameters() {
     assert(classInsts.size() >= 2 && "Expected at least 2 class instantiations");
 
     // Monomorphize
-    cpptoc::OverloadRegistry& registry = cpptoc::OverloadRegistry::getInstance();
-    registry.reset();
-    NameMangler mangler(Context, registry);
     CNodeBuilder builder(Context);
-    TemplateMonomorphizer monomorphizer(Context, mangler, builder);
+    TemplateMonomorphizer monomorphizer(Context, builder);
 
     for (auto* inst : classInsts) {
         RecordDecl* CStruct = monomorphizer.monomorphizeClass(inst);

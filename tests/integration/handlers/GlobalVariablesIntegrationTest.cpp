@@ -11,12 +11,10 @@
  * - Integration with control flow
  */
 
+#include "fixtures/DispatcherTestHelper.h"
 #include "dispatch/FunctionHandler.h"
-#include "handlers/VariableHandler.h"
-#include "handlers/ExpressionHandler.h"
-#include "handlers/StatementHandler.h"
-#include "handlers/HandlerContext.h"
-#include "CNodeBuilder.h"
+#include "dispatch/VariableHandler.h"
+#include "dispatch/StatementHandler.h"
 #include "clang/Tooling/Tooling.h"
 #include "clang/AST/RecursiveASTVisitor.h"
 #include <gtest/gtest.h>
@@ -30,48 +28,20 @@ using namespace cpptoc;
  */
 class GlobalVariablesIntegrationTest : public ::testing::Test {
 protected:
-    std::unique_ptr<clang::ASTUnit> cppAST;
-    std::unique_ptr<clang::ASTUnit> cAST;
-    std::unique_ptr<clang::CNodeBuilder> builder;
-    std::unique_ptr<HandlerContext> context;
-
-    std::unique_ptr<FunctionHandler> funcHandler;
-    std::unique_ptr<VariableHandler> varHandler;
-    std::unique_ptr<ExpressionHandler> exprHandler;
-    std::unique_ptr<StatementHandler> stmtHandler;
+    cpptoc::test::DispatcherPipeline pipeline;
 
     void SetUp() override {
-        // Create real AST contexts
-        cppAST = clang::tooling::buildASTFromCode("int dummy;");
-        cAST = clang::tooling::buildASTFromCode("int dummy2;");
+        // Create dispatcher pipeline
+        pipeline = cpptoc::test::createDispatcherPipeline("int dummy;");
 
-        ASSERT_NE(cppAST, nullptr);
-        ASSERT_NE(cAST, nullptr);
-
-        // Create builder and context
-        builder = std::make_unique<clang::CNodeBuilder>(cAST->getASTContext());
-        context = std::make_unique<HandlerContext>(
-            cppAST->getASTContext(),
-            cAST->getASTContext(),
-            *builder
-        );
-
-        // Create all handlers
-        funcHandler = std::make_unique<FunctionHandler>();
-        varHandler = std::make_unique<VariableHandler>();
-        exprHandler = std::make_unique<ExpressionHandler>();
-        stmtHandler = std::make_unique<StatementHandler>();
+        // Register all handlers
+        FunctionHandler::registerWith(*pipeline.dispatcher);
+        VariableHandler::registerWith(*pipeline.dispatcher);
+        StatementHandler::registerWith(*pipeline.dispatcher);
     }
 
     void TearDown() override {
-        stmtHandler.reset();
-        exprHandler.reset();
-        varHandler.reset();
-        funcHandler.reset();
-        context.reset();
-        builder.reset();
-        cAST.reset();
-        cppAST.reset();
+        // Pipeline auto-cleans up
     }
 
     /**
@@ -93,9 +63,16 @@ protected:
 
         if (!cppFunc) return nullptr;
 
-        return llvm::dyn_cast<clang::FunctionDecl>(
-            funcHandler->handleDecl(cppFunc, *context)
+        // Use dispatcher to translate
+        pipeline.dispatcher->dispatch(
+            testAST->getASTContext(),
+            pipeline.cAST->getASTContext(),
+            const_cast<clang::Decl*>(static_cast<const clang::Decl*>(cppFunc))
         );
+
+        // Get translated decl from mapper
+        auto* cDecl = pipeline.declMapper->getCreated(cppFunc);
+        return llvm::dyn_cast_or_null<clang::FunctionDecl>(cDecl);
     }
 };
 

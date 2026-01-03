@@ -9,20 +9,27 @@
  * Validation: Compile C code with gcc and execute
  */
 
-#include "dispatch/FunctionHandler.h"
-#include "handlers/VariableHandler.h"
-#include "handlers/ExpressionHandler.h"
-#include "handlers/StatementHandler.h"
+#include "tests/fixtures/DispatcherTestHelper.h"
+#include "dispatch/TypeHandler.h"
+#include "dispatch/ParameterHandler.h"
+#include "dispatch/LiteralHandler.h"
+#include "dispatch/DeclRefExprHandler.h"
+#include "dispatch/MemberExprHandler.h"
+#include "dispatch/BinaryOperatorHandler.h"
+#include "dispatch/UnaryOperatorHandler.h"
+#include "dispatch/ImplicitCastExprHandler.h"
+#include "dispatch/ParenExprHandler.h"
+#include "dispatch/CallExprHandler.h"
+#include "dispatch/ArraySubscriptExprHandler.h"
+#include "dispatch/CompoundStmtHandler.h"
+#include "dispatch/DeclStmtHandler.h"
+#include "dispatch/ReturnStmtHandler.h"
+#include "dispatch/StatementHandler.h"
 #include "dispatch/RecordHandler.h"
-#include "handlers/HandlerContext.h"
-#include "CNodeBuilder.h"
-#include "CodeGenerator.h"
-#include "clang/Tooling/Tooling.h"
-#include "clang/AST/RecursiveASTVisitor.h"
+#include "dispatch/FunctionHandler.h"
+#include "dispatch/VariableHandler.h"
+#include "dispatch/TranslationUnitHandler.h"
 #include <gtest/gtest.h>
-#include <memory>
-#include <fstream>
-#include <cstdlib>
 
 using namespace cpptoc;
 
@@ -32,20 +39,6 @@ using namespace cpptoc;
  */
 class StructsE2ETest : public ::testing::Test {
 protected:
-    std::unique_ptr<FunctionHandler> funcHandler;
-    std::unique_ptr<VariableHandler> varHandler;
-    std::unique_ptr<ExpressionHandler> exprHandler;
-    std::unique_ptr<StatementHandler> stmtHandler;
-    std::unique_ptr<RecordHandler> recordHandler;
-
-    void SetUp() override {
-        funcHandler = std::make_unique<FunctionHandler>();
-        varHandler = std::make_unique<VariableHandler>();
-        exprHandler = std::make_unique<ExpressionHandler>();
-        stmtHandler = std::make_unique<StatementHandler>();
-        recordHandler = std::make_unique<RecordHandler>();
-    }
-
     /**
      * @brief Run complete pipeline: C++ source → C source → compile → execute
      * @param cppCode C++ source code
@@ -53,85 +46,66 @@ protected:
      * @return true if test passed
      */
     bool runPipeline(const std::string& cppCode, int expectedExitCode) {
-        // Stage 1: Parse C++ code
-        auto cppAST = clang::tooling::buildASTFromCode(cppCode);
-        if (!cppAST) {
-            std::cerr << "Failed to parse C++ code\n";
-            return false;
-        }
+        // Create dispatcher pipeline
+        auto pipeline = cpptoc::test::createDispatcherPipeline(cppCode);
 
-        // Stage 2: Translate to C AST
-        auto cAST = clang::tooling::buildASTFromCode("int dummy;");  // C context
-        if (!cAST) {
-            std::cerr << "Failed to create C context\n";
-            return false;
-        }
+        // Register handlers needed for struct tests
+        // Base handlers first
+        TypeHandler::registerWith(*pipeline.dispatcher);
+        ParameterHandler::registerWith(*pipeline.dispatcher);
 
-        clang::CNodeBuilder builder(cAST->getASTContext());
-        HandlerContext context(
-            cppAST->getASTContext(),
-            cAST->getASTContext(),
-            builder
+        // Expression handlers (including struct member access)
+        LiteralHandler::registerWith(*pipeline.dispatcher);
+        DeclRefExprHandler::registerWith(*pipeline.dispatcher);
+        MemberExprHandler::registerWith(*pipeline.dispatcher);  // For struct.field access
+        BinaryOperatorHandler::registerWith(*pipeline.dispatcher);
+        UnaryOperatorHandler::registerWith(*pipeline.dispatcher);
+        ImplicitCastExprHandler::registerWith(*pipeline.dispatcher);
+        ParenExprHandler::registerWith(*pipeline.dispatcher);
+        CallExprHandler::registerWith(*pipeline.dispatcher);
+        ArraySubscriptExprHandler::registerWith(*pipeline.dispatcher);
+
+        // Statement handlers
+        CompoundStmtHandler::registerWith(*pipeline.dispatcher);
+        DeclStmtHandler::registerWith(*pipeline.dispatcher);
+        ReturnStmtHandler::registerWith(*pipeline.dispatcher);
+        StatementHandler::registerWith(*pipeline.dispatcher);
+
+        // Declaration handlers
+        RecordHandler::registerWith(*pipeline.dispatcher);  // Handles struct definitions
+        FunctionHandler::registerWith(*pipeline.dispatcher);
+        VariableHandler::registerWith(*pipeline.dispatcher);
+        TranslationUnitHandler::registerWith(*pipeline.dispatcher);
+
+        // Dispatch the TranslationUnit (dispatches all top-level declarations recursively)
+        auto* TU = pipeline.cppAST->getASTContext().getTranslationUnitDecl();
+        pipeline.dispatcher->dispatch(
+            pipeline.cppAST->getASTContext(),
+            pipeline.cAST->getASTContext(),
+            TU
         );
 
-        // Translate all declarations
-        for (auto* decl : cppAST->getASTContext().getTranslationUnitDecl()->decls()) {
-            if (auto* record = llvm::dyn_cast<clang::RecordDecl>(decl)) {
-                recordHandler->handleDecl(record, context);
-            } else if (auto* func = llvm::dyn_cast<clang::FunctionDecl>(decl)) {
-                if (!llvm::isa<clang::CXXMethodDecl>(func)) {
-                    // Translate function signature
-                    clang::Decl* cFuncDecl = funcHandler->handleDecl(func, context);
-                    clang::FunctionDecl* cFunc = llvm::cast<clang::FunctionDecl>(cFuncDecl);
+        // Generate C code from C AST using PathMapper
+        std::string cCode = cpptoc::test::generateCCode(
+            pipeline.cAST->getASTContext(),
+            *pipeline.pathMapper
+        );
 
-                    // Translate function body if present
-                    if (func->hasBody()) {
-                        clang::Stmt* cBody = stmtHandler->handleStmt(func->getBody(), context);
-                        cFunc->setBody(cBody);
-                    }
-                }
-            } else if (auto* var = llvm::dyn_cast<clang::VarDecl>(decl)) {
-                varHandler->handleDecl(var, context);
-            }
-        }
+        // Compile and run
+        int actualExitCode = cpptoc::test::compileAndRun(cCode, "e2e_structs");
 
-        // Stage 3: Generate C code
-        std::string cCode;
-        llvm::raw_string_ostream codeStream(cCode);
-        CodeGenerator generator(codeStream, cAST->getASTContext());
-        generator.printTranslationUnit(cAST->getASTContext().getTranslationUnitDecl());
-        codeStream.flush();
-
-        // Write C code to temporary file
-        std::string tmpFile = "/tmp/e2e_struct_test_" + std::to_string(rand()) + ".c";
-        std::ofstream outFile(tmpFile);
-        outFile << cCode;
-        outFile.close();
-
-        // Compile with gcc
-        std::string compileCmd = "gcc -std=c99 " + tmpFile + " -o " + tmpFile + ".out 2>&1";
-        int compileResult = system(compileCmd.c_str());
-        if (compileResult != 0) {
-            std::cerr << "Compilation failed for:\n" << cCode << "\n";
+        if (actualExitCode == -1) {
+            std::cerr << "Compilation failed!\n";
             std::cerr << "Generated C code:\n" << cCode << "\n";
-            system(("cat " + tmpFile).c_str());
             return false;
         }
-
-        // Execute
-        std::string execCmd = tmpFile + ".out";
-        int execResult = system(execCmd.c_str());
-        int actualExitCode = WEXITSTATUS(execResult);
-
-        // Cleanup
-        system(("rm -f " + tmpFile + " " + tmpFile + ".out").c_str());
 
         return actualExitCode == expectedExitCode;
     }
 };
 
 // ============================================================================
-// E2E Test 1: Simple Struct Creation and Usage (ACTIVE SANITY TEST)
+// E2E Test 1: Simple Struct Creation and Usage
 // ============================================================================
 
 TEST_F(StructsE2ETest, SimpleStructCreationAndUsage) {
@@ -153,7 +127,7 @@ TEST_F(StructsE2ETest, SimpleStructCreationAndUsage) {
 }
 
 // ============================================================================
-// E2E Test 2: Struct Initialization and Field Access (ACTIVE)
+// E2E Test 2: Struct Initialization and Field Access
 // ============================================================================
 
 TEST_F(StructsE2ETest, StructInitializationAndFieldAccess) {
@@ -177,10 +151,10 @@ TEST_F(StructsE2ETest, StructInitializationAndFieldAccess) {
 }
 
 // ============================================================================
-// E2E Test 3: Linked List Implementation (DISABLED)
+// E2E Test 3: Linked List Implementation
 // ============================================================================
 
-TEST_F(StructsE2ETest, DISABLED_LinkedListImplementation) {
+TEST_F(StructsE2ETest, LinkedListImplementation) {
     std::string cppCode = R"(
         struct Node {
             int data;
@@ -209,10 +183,10 @@ TEST_F(StructsE2ETest, DISABLED_LinkedListImplementation) {
 }
 
 // ============================================================================
-// E2E Test 4: Binary Tree Operations (DISABLED)
+// E2E Test 4: Binary Tree Operations
 // ============================================================================
 
-TEST_F(StructsE2ETest, DISABLED_BinaryTreeOperations) {
+TEST_F(StructsE2ETest, BinaryTreeOperations) {
     std::string cppCode = R"(
         struct TreeNode {
             int value;
@@ -239,10 +213,10 @@ TEST_F(StructsE2ETest, DISABLED_BinaryTreeOperations) {
 }
 
 // ============================================================================
-// E2E Test 5: Point/Rectangle Geometry Calculations (DISABLED)
+// E2E Test 5: Point/Rectangle Geometry Calculations
 // ============================================================================
 
-TEST_F(StructsE2ETest, DISABLED_PointRectangleGeometry) {
+TEST_F(StructsE2ETest, PointRectangleGeometry) {
     std::string cppCode = R"(
         struct Point {
             int x;
@@ -272,10 +246,10 @@ TEST_F(StructsE2ETest, DISABLED_PointRectangleGeometry) {
 }
 
 // ============================================================================
-// E2E Test 6: Color Manipulation (DISABLED)
+// E2E Test 6: Color Manipulation
 // ============================================================================
 
-TEST_F(StructsE2ETest, DISABLED_ColorManipulation) {
+TEST_F(StructsE2ETest, ColorManipulation) {
     std::string cppCode = R"(
         struct Color {
             int red;
@@ -297,10 +271,10 @@ TEST_F(StructsE2ETest, DISABLED_ColorManipulation) {
 }
 
 // ============================================================================
-// E2E Test 7: Student Record Management (DISABLED)
+// E2E Test 7: Student Record Management
 // ============================================================================
 
-TEST_F(StructsE2ETest, DISABLED_StudentRecordManagement) {
+TEST_F(StructsE2ETest, StudentRecordManagement) {
     std::string cppCode = R"(
         struct Student {
             int id;
@@ -338,10 +312,10 @@ TEST_F(StructsE2ETest, DISABLED_StudentRecordManagement) {
 }
 
 // ============================================================================
-// E2E Test 8: 2D Vector Operations (DISABLED)
+// E2E Test 8: 2D Vector Operations
 // ============================================================================
 
-TEST_F(StructsE2ETest, DISABLED_Vector2DOperations) {
+TEST_F(StructsE2ETest, Vector2DOperations) {
     std::string cppCode = R"(
         struct Vector2D {
             int x;
@@ -372,10 +346,10 @@ TEST_F(StructsE2ETest, DISABLED_Vector2DOperations) {
 }
 
 // ============================================================================
-// E2E Test 9: Stack Implementation with Struct (DISABLED)
+// E2E Test 9: Stack Implementation with Struct
 // ============================================================================
 
-TEST_F(StructsE2ETest, DISABLED_StackImplementation) {
+TEST_F(StructsE2ETest, StackImplementation) {
     std::string cppCode = R"(
         struct Stack {
             int data[10];
@@ -413,10 +387,10 @@ TEST_F(StructsE2ETest, DISABLED_StackImplementation) {
 }
 
 // ============================================================================
-// E2E Test 10: Queue Implementation with Struct (DISABLED)
+// E2E Test 10: Queue Implementation with Struct
 // ============================================================================
 
-TEST_F(StructsE2ETest, DISABLED_QueueImplementation) {
+TEST_F(StructsE2ETest, QueueImplementation) {
     std::string cppCode = R"(
         struct Queue {
             int data[10];
@@ -463,10 +437,10 @@ TEST_F(StructsE2ETest, DISABLED_QueueImplementation) {
 }
 
 // ============================================================================
-// E2E Test 11: Distance Calculation Between Points (DISABLED)
+// E2E Test 11: Distance Calculation Between Points
 // ============================================================================
 
-TEST_F(StructsE2ETest, DISABLED_DistanceCalculation) {
+TEST_F(StructsE2ETest, DistanceCalculation) {
     std::string cppCode = R"(
         struct Point {
             int x;
@@ -490,10 +464,10 @@ TEST_F(StructsE2ETest, DISABLED_DistanceCalculation) {
 }
 
 // ============================================================================
-// E2E Test 12: Struct Array Manipulation (DISABLED)
+// E2E Test 12: Struct Array Manipulation
 // ============================================================================
 
-TEST_F(StructsE2ETest, DISABLED_StructArrayManipulation) {
+TEST_F(StructsE2ETest, StructArrayManipulation) {
     std::string cppCode = R"(
         struct Score {
             int value;

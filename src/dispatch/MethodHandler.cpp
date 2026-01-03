@@ -1,234 +1,266 @@
 /**
  * @file MethodHandler.cpp
- * @brief Implementation of MethodHandler
+ * @brief Implementation of MethodHandler dispatcher pattern
  *
- * TDD Implementation: Start minimal, add complexity as tests demand.
+ * Integrates with CppToCVisitorDispatcher to handle method translation.
+ * Translates C++ methods to C free functions with explicit "this" parameter
+ * for instance methods.
  *
- * Implementation follows the specification in:
- * @see include/handlers/MethodHandler.h
+ * Uses NameMangler for all name mangling following the dispatcher pattern.
  */
 
-#include "handlers/MethodHandler.h"
-#include "handlers/HandlerContext.h"
+#include "dispatch/MethodHandler.h"
+#include "CNodeBuilder.h"
 #include "NameMangler.h"
-#include "clang/AST/Decl.h"
+#include "mapping/DeclMapper.h"
+#include "mapping/StmtMapper.h"
+#include "mapping/TypeMapper.h"
 #include "clang/AST/DeclCXX.h"
-#include "clang/AST/Type.h"
 #include "llvm/Support/Casting.h"
+#include "llvm/Support/raw_ostream.h"
+#include <cassert>
 
 namespace cpptoc {
 
-bool MethodHandler::canHandle(const clang::Decl* D) const {
-    // Only handle CXXMethodDecl, but exclude constructors, destructors, and static methods
-    // Constructors and destructors are handled by separate handlers
-    // Static methods are handled by StaticMethodHandler
-    if (const auto* MD = llvm::dyn_cast<clang::CXXMethodDecl>(D)) {
-        // Exclude constructors and destructors
-        if (llvm::isa<clang::CXXConstructorDecl>(MD) ||
-            llvm::isa<clang::CXXDestructorDecl>(MD)) {
-            return false;
-        }
-        // Exclude static methods (handled by StaticMethodHandler)
-        if (MD->isStatic()) {
-            return false;
-        }
-        // Handle instance methods only
-        return true;
-    }
-    return false;
+void MethodHandler::registerWith(CppToCVisitorDispatcher& dispatcher) {
+    dispatcher.addHandler(
+        &MethodHandler::canHandle,
+        &MethodHandler::handleMethod
+    );
 }
 
-clang::Decl* MethodHandler::handleDecl(const clang::Decl* D, HandlerContext& ctx) {
+bool MethodHandler::canHandle(const clang::Decl* D) {
+    assert(D && "Declaration must not be null");
+
+    // Accept CXXMethodDecl but exclude constructors and destructors
+    if (D->getKind() != clang::Decl::CXXMethod) {
+        return false;
+    }
+
+    const auto* method = llvm::cast<clang::CXXMethodDecl>(D);
+
+    // Exclude constructors and destructors (they have dedicated handlers)
+    if (llvm::isa<clang::CXXConstructorDecl>(method) ||
+        llvm::isa<clang::CXXDestructorDecl>(method)) {
+        return false;
+    }
+
+    return true;
+}
+
+void MethodHandler::handleMethod(
+    const CppToCVisitorDispatcher& disp,
+    const clang::ASTContext& cppASTContext,
+    clang::ASTContext& cASTContext,
+    const clang::Decl* D
+) {
+    assert(D && "Declaration must not be null");
+    assert(D->getKind() == clang::Decl::CXXMethod && "Must be CXXMethodDecl");
+
     const auto* cppMethod = llvm::cast<clang::CXXMethodDecl>(D);
 
-    // Step 1: Mangle method name using NameMangler API
-    std::string mangledName = mangle_method(cppMethod);
+    // Check if already translated (avoid duplicates)
+    cpptoc::DeclMapper& declMapper = disp.getDeclMapper();
+    if (declMapper.hasCreated(cppMethod)) {
+        llvm::outs() << "[MethodHandler] Already translated method: "
+                     << cppMethod->getNameAsString() << " (skipping)\n";
+        return;
+    }
 
-    // Step 2: Get class name for "this" parameter
-    std::string className = cppMethod->getParent()->getNameAsString();
+    // Get parent class
+    const clang::CXXRecordDecl* classDecl = cppMethod->getParent();
+    assert(classDecl && "Method must have parent class");
 
-    // Step 3: Translate return type
+    // Use NameMangler free function API for name mangling
+    // mangle_method() handles namespace prefix, class prefix, and overload resolution
+    std::string mangledName = cpptoc::mangle_method(cppMethod);
+
+    // Extract method properties
     clang::QualType cppReturnType = cppMethod->getReturnType();
-    clang::QualType cReturnType = ctx.translateType(cppReturnType);
 
-    // Step 4: Prepare parameters
-    std::vector<clang::ParmVarDecl*> cParams;
+    // Translate return type via TypeHandler (convert references to pointers)
+    const clang::Type* cppReturnTypePtr = cppReturnType.getTypePtr();
+    bool typeHandled = disp.dispatch(cppASTContext, cASTContext, const_cast<clang::Type*>(cppReturnTypePtr));
+
+    // Retrieve translated type from TypeMapper
+    cpptoc::TypeMapper& typeMapper = disp.getTypeMapper();
+    clang::QualType cReturnType = typeMapper.getCreated(cppReturnTypePtr);
+
+    // If TypeHandler didn't handle this type (pass-through), use original type
+    if (cReturnType.isNull()) {
+        cReturnType = cppReturnType;
+        llvm::outs() << "[MethodHandler] TypeHandler pass-through for return type: "
+                     << cppReturnType.getAsString() << "\n";
+    }
+
+    // Prepare parameters vector
+    std::vector<clang::ParmVarDecl*> allParams;
 
     // Add "this" parameter ONLY if not a static method
     if (!cppMethod->isStatic()) {
-        clang::ParmVarDecl* thisParam = createThisParameter(className, ctx);
-        cParams.push_back(thisParam);
+        clang::ParmVarDecl* thisParam = createThisParameter(classDecl, cASTContext);
+        assert(thisParam && "Failed to create 'this' parameter");
+        allParams.push_back(thisParam);
     }
 
-    // Step 5: Translate method parameters
-    std::vector<clang::ParmVarDecl*> methodParams = translateParameters(cppMethod, ctx);
-    cParams.insert(cParams.end(), methodParams.begin(), methodParams.end());
+    // Translate method parameters
+    std::vector<clang::ParmVarDecl*> methodParams = translateParameters(cppMethod, disp, cppASTContext, cASTContext);
+    allParams.insert(allParams.end(), methodParams.begin(), methodParams.end());
 
-    // Step 6: Create C function declaration
-    clang::ASTContext& cCtx = ctx.getCContext();
-
-    // Create identifier for function name
-    clang::IdentifierInfo& funcII = cCtx.Idents.get(mangledName);
-    clang::DeclarationName funcDeclName(&funcII);
-
-    // Create function type
-    llvm::SmallVector<clang::QualType, 8> paramTypes;
-    for (const auto* param : cParams) {
-        paramTypes.push_back(param->getType());
-    }
-
-    clang::FunctionProtoType::ExtProtoInfo EPI;
-    clang::QualType funcType = cCtx.getFunctionType(
-        cReturnType,
-        paramTypes,
-        EPI
-    );
-
-    // Create function declaration
-    clang::FunctionDecl* cFunc = clang::FunctionDecl::Create(
-        cCtx,
-        cCtx.getTranslationUnitDecl(),
-        clang::SourceLocation(),
-        clang::SourceLocation(),
-        funcDeclName,
-        funcType,
-        cCtx.getTrivialTypeSourceInfo(funcType),
-        clang::SC_None
-    );
-
-    // Step 7: Set parameters
-    cFunc->setParams(cParams);
-
-    // Step 8: Translate method body (if present)
+    // Translate function body (if exists) via CompoundStmtHandler
+    clang::CompoundStmt* cBody = nullptr;
     if (cppMethod->hasBody()) {
         const clang::Stmt* cppBody = cppMethod->getBody();
-        // TODO: Translate body using StatementHandler
-        // For now, we'll create an empty body
-        // Body translation will be handled in integration with StatementHandler
-        // which will use ExpressionHandler for member access translation
+        if (cppBody) {
+            // Dispatch body to CompoundStmtHandler
+            bool bodyHandled = disp.dispatch(cppASTContext, cASTContext, const_cast<clang::Stmt*>(cppBody));
+            if (bodyHandled) {
+                // Retrieve created C body from StmtMapper
+                cpptoc::StmtMapper& stmtMapper = disp.getStmtMapper();
+                clang::Stmt* cStmt = stmtMapper.getCreated(cppBody);
 
-        // Create empty compound statement as placeholder
-        clang::CompoundStmt* emptyBody = clang::CompoundStmt::Create(
-            cCtx,
-            {},
-            clang::FPOptionsOverride(),
-            clang::SourceLocation(),
-            clang::SourceLocation()
-        );
-        cFunc->setBody(emptyBody);
-    }
-
-    // Step 9: Add function to translation unit
-    cCtx.getTranslationUnitDecl()->addDecl(cFunc);
-
-    // Step 10: Register mapping in context
-    ctx.registerDecl(cppMethod, cFunc);
-
-    return cFunc;
-}
-
-clang::ParmVarDecl* MethodHandler::createThisParameter(
-    const std::string& className,
-    HandlerContext& ctx
-) {
-    clang::ASTContext& cCtx = ctx.getCContext();
-
-    // Create struct type for the class
-    // We need to create: struct ClassName* this
-
-    // Step 1: Create identifier for the class name
-    clang::IdentifierInfo& classII = cCtx.Idents.get(className);
-
-    // Step 2: Create ElaboratedType for "struct ClassName"
-    // We need to find or create the RecordDecl for this class
-    // For now, we'll create a forward declaration if needed
-
-    // Look up if we already have this struct in the translation unit
-    clang::RecordDecl* classRecord = nullptr;
-    auto* TU = cCtx.getTranslationUnitDecl();
-
-    for (auto* D : TU->decls()) {
-        if (auto* RD = llvm::dyn_cast<clang::RecordDecl>(D)) {
-            if (RD->getName() == className) {
-                classRecord = RD;
-                break;
+                if (cStmt) {
+                    cBody = llvm::dyn_cast<clang::CompoundStmt>(cStmt);
+                    if (cBody) {
+                        llvm::outs() << "[MethodHandler] Body dispatched and retrieved successfully "
+                                     << "(" << cBody->size() << " statements)\n";
+                    } else {
+                        llvm::errs() << "[MethodHandler] Error: Retrieved statement is not CompoundStmt for method: "
+                                     << mangledName << "\n";
+                    }
+                } else {
+                    llvm::errs() << "[MethodHandler] Warning: CompoundStmtHandler did not create C body for method: "
+                                 << mangledName << "\n";
+                }
             }
         }
     }
 
-    // If not found, create a forward declaration
-    if (!classRecord) {
-        classRecord = clang::RecordDecl::Create(
-            cCtx,
-            clang::TagTypeKind::Struct,
-            TU,
-            clang::SourceLocation(),
-            clang::SourceLocation(),
-            &classII
-        );
-        // Note: Don't complete the definition, just a forward decl
+    // Create C function using CNodeBuilder
+    clang::CNodeBuilder builder(cASTContext);
+    clang::FunctionDecl* cFunc = builder.funcDecl(
+        mangledName,
+        cReturnType,
+        allParams,
+        cBody
+    );
+
+    assert(cFunc && "Failed to create C FunctionDecl");
+
+    // Verify body was properly attached
+    if (cBody) {
+        assert(cFunc->hasBody() && "Function should have body after creation");
+        assert(cFunc->getBody() == cBody && "Function body should match provided body");
+        llvm::outs() << "[MethodHandler] Function body successfully attached to: " << mangledName << "\n";
     }
 
-    // Step 3: Create struct type
-    clang::QualType structType = cCtx.getRecordType(classRecord);
+    // Get target path for this C++ source file
+    std::string targetPath = disp.getTargetPath(cppASTContext, D);
 
-    // Step 4: Create pointer to struct type
-    clang::QualType pointerType = cCtx.getPointerType(structType);
+    // Get or create C TranslationUnit for this target file
+    cpptoc::PathMapper& pathMapper = disp.getPathMapper();
+    clang::TranslationUnitDecl* cTU = pathMapper.getOrCreateTU(targetPath);
+    assert(cTU && "Failed to get/create C TranslationUnit");
 
-    // Step 5: Create parameter declaration
-    clang::IdentifierInfo& thisII = cCtx.Idents.get("this");
+    // Add C function to C TranslationUnit
+    cFunc->setDeclContext(cTU);
+    cTU->addDecl(cFunc);
 
+    // Register node location in PathMapper for tracking
+    pathMapper.setNodeLocation(cFunc, targetPath);
+
+    // Store declaration mapping in DeclMapper
+    declMapper.setCreated(cppMethod, cFunc);
+
+    // Debug output for verification
+    const char* methodType = cppMethod->isStatic() ? "static" : "instance";
+    llvm::outs() << "[MethodHandler] Translated " << methodType << " method: "
+                 << classDecl->getNameAsString() << "::" << cppMethod->getNameAsString()
+                 << " → " << mangledName;
+
+    if (!cppMethod->isStatic()) {
+        llvm::outs() << "(struct " << classDecl->getNameAsString() << "* this, ...)";
+    } else {
+        llvm::outs() << "(...)";
+    }
+
+    llvm::outs() << " → " << targetPath << "\n";
+}
+
+clang::ParmVarDecl* MethodHandler::createThisParameter(
+    const clang::CXXRecordDecl* classDecl,
+    clang::ASTContext& cASTContext
+) {
+    // Use NameMangler API to get properly mangled class name (includes namespace prefix)
+    std::string className = cpptoc::mangle_class(classDecl);
+
+    // Create struct type with properly mangled class name
+    clang::IdentifierInfo& structII = cASTContext.Idents.get(className);
+    clang::RecordDecl* structDecl = clang::RecordDecl::Create(
+        cASTContext,
+        clang::TagTypeKind::Struct,
+        cASTContext.getTranslationUnitDecl(),
+        clang::SourceLocation(),
+        clang::SourceLocation(),
+        &structII
+    );
+
+    // Create pointer type: struct ClassName*
+    clang::QualType structType = cASTContext.getRecordType(structDecl);
+    clang::QualType pointerType = cASTContext.getPointerType(structType);
+
+    // Create "this" parameter
+    clang::IdentifierInfo& thisII = cASTContext.Idents.get("this");
     clang::ParmVarDecl* thisParam = clang::ParmVarDecl::Create(
-        cCtx,
-        nullptr, // No parent DeclContext yet
+        cASTContext,
+        nullptr,  // DeclContext set later by FunctionDecl
         clang::SourceLocation(),
         clang::SourceLocation(),
         &thisII,
         pointerType,
-        cCtx.getTrivialTypeSourceInfo(pointerType),
+        cASTContext.getTrivialTypeSourceInfo(pointerType),
         clang::SC_None,
-        nullptr // No default argument
+        nullptr  // No default argument
     );
 
     return thisParam;
 }
 
 std::vector<clang::ParmVarDecl*> MethodHandler::translateParameters(
-    const clang::CXXMethodDecl* cppMethod,
-    HandlerContext& ctx
+    const clang::CXXMethodDecl* method,
+    const CppToCVisitorDispatcher& disp,
+    const clang::ASTContext& cppASTContext,
+    clang::ASTContext& cASTContext
 ) {
     std::vector<clang::ParmVarDecl*> cParams;
-    clang::ASTContext& cCtx = ctx.getCContext();
 
-    // Translate each parameter
-    for (unsigned i = 0; i < cppMethod->getNumParams(); ++i) {
-        const clang::ParmVarDecl* cppParam = cppMethod->getParamDecl(i);
+    // Dispatch each parameter to ParameterHandler
+    // Following Chain of Responsibility pattern
+    for (const auto* cppParam : method->parameters()) {
+        // Cast away const for dispatch
+        clang::ParmVarDecl* cppParamNonConst = const_cast<clang::ParmVarDecl*>(cppParam);
 
-        // Extract parameter properties
-        std::string paramName = cppParam->getNameAsString();
-        clang::QualType cppType = cppParam->getType();
+        // Dispatch parameter to ParameterHandler
+        bool handled = disp.dispatch(cppASTContext, cASTContext, cppParamNonConst);
 
-        // Translate type
-        clang::QualType cType = ctx.translateType(cppType);
-
-        // Create parameter declaration
-        clang::IdentifierInfo* paramII = nullptr;
-        if (!paramName.empty()) {
-            paramII = &cCtx.Idents.get(paramName);
+        if (!handled) {
+            llvm::errs() << "[MethodHandler] Error: No handler for parameter: "
+                         << cppParam->getNameAsString() << "\n";
+            continue;
         }
 
-        clang::ParmVarDecl* cParam = clang::ParmVarDecl::Create(
-            cCtx,
-            nullptr, // No parent DeclContext yet
-            clang::SourceLocation(),
-            clang::SourceLocation(),
-            paramII,
-            cType,
-            cCtx.getTrivialTypeSourceInfo(cType),
-            clang::SC_None,
-            nullptr // No default argument
-        );
+        // Retrieve created C parameter from DeclMapper
+        cpptoc::DeclMapper& declMapper = disp.getDeclMapper();
+        clang::Decl* cDecl = declMapper.getCreated(cppParam);
 
+        if (!cDecl) {
+            llvm::errs() << "[MethodHandler] Error: ParameterHandler did not create C parameter for: "
+                         << cppParam->getNameAsString() << "\n";
+            continue;
+        }
+
+        // Cast to ParmVarDecl
+        clang::ParmVarDecl* cParam = llvm::cast<clang::ParmVarDecl>(cDecl);
         cParams.push_back(cParam);
     }
 

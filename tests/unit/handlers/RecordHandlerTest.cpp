@@ -25,7 +25,7 @@
  */
 
 #include "dispatch/RecordHandler.h"
-#include "handlers/HandlerContext.h"
+#include "helpers/UnitTestHelper.h"
 #include "CNodeBuilder.h"
 #include "clang/Tooling/Tooling.h"
 #include "clang/AST/RecordLayout.h"
@@ -40,41 +40,13 @@ using namespace cpptoc;
  */
 class RecordHandlerTest : public ::testing::Test {
 protected:
-    std::unique_ptr<clang::ASTUnit> cppAST;
-    std::unique_ptr<clang::ASTUnit> cAST;
-    std::unique_ptr<clang::CNodeBuilder> builder;
-    std::unique_ptr<HandlerContext> context;
-    std::unique_ptr<RecordHandler> handler;
+    UnitTestContext ctx;
 
     void SetUp() override {
-        // Create real AST contexts using minimal code
-        cppAST = clang::tooling::buildASTFromCode("int dummy;");
-        cAST = clang::tooling::buildASTFromCode("int dummy2;");
-
-        ASSERT_NE(cppAST, nullptr) << "Failed to create C++ AST";
-        ASSERT_NE(cAST, nullptr) << "Failed to create C AST";
-
-        // Create builder and context
-        builder = std::make_unique<clang::CNodeBuilder>(cAST->getASTContext());
-        context = std::make_unique<HandlerContext>(
-            cppAST->getASTContext(),
-            cAST->getASTContext(),
-            *builder
-        );
-
-        // Create handler
-        handler = std::make_unique<RecordHandler>();
+        ctx = createUnitTestContext();
+        ctx.dispatcher->registerHandler<RecordHandler>();
     }
-
-    void TearDown() override {
-        handler.reset();
-        context.reset();
-        builder.reset();
-        cAST.reset();
-        cppAST.reset();
-    }
-
-    /**
+/**
      * @brief Build AST from code and return the first RecordDecl
      */
     const clang::RecordDecl* getRecordDeclFromCode(const std::string& code) {
@@ -84,12 +56,6 @@ protected:
         if (!cppAST) return nullptr;
 
         // Recreate builder and context with new AST
-        builder = std::make_unique<clang::CNodeBuilder>(cAST->getASTContext());
-        context = std::make_unique<HandlerContext>(
-            cppAST->getASTContext(),
-            cAST->getASTContext(),
-            *builder
-        );
 
         // Find the first RecordDecl
         auto& ctx = cppAST->getASTContext();
@@ -144,7 +110,8 @@ TEST_F(RecordHandlerTest, EmptyStruct) {
     EXPECT_TRUE(handler->canHandle(cppRecord));
 
     auto* cRecord = llvm::cast<clang::RecordDecl>(
-        handler->handleDecl(cppRecord, *context)
+        ctx.dispatcher->dispatch(cppRecord);
+    auto __result = ctx.declMapper->get(cppRecord); __result
     );
 
     verifyRecordStructure(cRecord, "Empty", 0);
@@ -167,7 +134,8 @@ TEST_F(RecordHandlerTest, SimpleStructWithFields) {
     ASSERT_NE(cppRecord, nullptr);
 
     auto* cRecord = llvm::cast<clang::RecordDecl>(
-        handler->handleDecl(cppRecord, *context)
+        ctx.dispatcher->dispatch(cppRecord);
+    auto __result = ctx.declMapper->get(cppRecord); __result
     );
 
     verifyRecordStructure(cRecord, "Point", 2);
@@ -199,7 +167,8 @@ TEST_F(RecordHandlerTest, StructWithMultipleFieldTypes) {
     ASSERT_NE(cppRecord, nullptr);
 
     auto* cRecord = llvm::cast<clang::RecordDecl>(
-        handler->handleDecl(cppRecord, *context)
+        ctx.dispatcher->dispatch(cppRecord);
+    auto __result = ctx.declMapper->get(cppRecord); __result
     );
 
     verifyRecordStructure(cRecord, "Mixed", 3);
@@ -232,7 +201,8 @@ TEST_F(RecordHandlerTest, StructWithConstFields) {
     ASSERT_NE(cppRecord, nullptr);
 
     auto* cRecord = llvm::cast<clang::RecordDecl>(
-        handler->handleDecl(cppRecord, *context)
+        ctx.dispatcher->dispatch(cppRecord);
+    auto __result = ctx.declMapper->get(cppRecord); __result
     );
 
     verifyRecordStructure(cRecord, "WithConst", 1);
@@ -259,7 +229,8 @@ TEST_F(RecordHandlerTest, StructWithArrayFields) {
     ASSERT_NE(cppRecord, nullptr);
 
     auto* cRecord = llvm::cast<clang::RecordDecl>(
-        handler->handleDecl(cppRecord, *context)
+        ctx.dispatcher->dispatch(cppRecord);
+    auto __result = ctx.declMapper->get(cppRecord); __result
     );
 
     verifyRecordStructure(cRecord, "WithArray", 1);
@@ -286,7 +257,8 @@ TEST_F(RecordHandlerTest, StructWithPointerFields) {
     ASSERT_NE(cppRecord, nullptr);
 
     auto* cRecord = llvm::cast<clang::RecordDecl>(
-        handler->handleDecl(cppRecord, *context)
+        ctx.dispatcher->dispatch(cppRecord);
+    auto __result = ctx.declMapper->get(cppRecord); __result
     );
 
     verifyRecordStructure(cRecord, "WithPointer", 1);
@@ -312,7 +284,8 @@ TEST_F(RecordHandlerTest, ForwardStructDeclaration) {
     EXPECT_FALSE(cppRecord->isCompleteDefinition());
 
     auto* cRecord = llvm::cast<clang::RecordDecl>(
-        handler->handleDecl(cppRecord, *context)
+        ctx.dispatcher->dispatch(cppRecord);
+    auto __result = ctx.declMapper->get(cppRecord); __result
     );
 
     ASSERT_NE(cRecord, nullptr);
@@ -338,7 +311,8 @@ TEST_F(RecordHandlerTest, ClassKeywordNormalizesToStruct) {
     ASSERT_NE(cppRecord, nullptr);
 
     auto* cRecord = llvm::cast<clang::RecordDecl>(
-        handler->handleDecl(cppRecord, *context)
+        ctx.dispatcher->dispatch(cppRecord);
+    auto __result = ctx.declMapper->get(cppRecord); __result
     );
 
     verifyRecordStructure(cRecord, "Point", 2);
@@ -372,7 +346,8 @@ TEST_F(RecordHandlerTest, StructWithNestedStructDefinition) {
     EXPECT_EQ(cppRecord->getNameAsString(), "Outer");
 
     auto* cRecord = llvm::cast<clang::RecordDecl>(
-        handler->handleDecl(cppRecord, *context)
+        ctx.dispatcher->dispatch(cppRecord);
+    auto __result = ctx.declMapper->get(cppRecord); __result
     );
 
     ASSERT_NE(cRecord, nullptr);
@@ -419,12 +394,6 @@ TEST_F(RecordHandlerTest, StructWithNestedStructField) {
     ASSERT_NE(cppAST, nullptr);
 
     // Recreate builder and context with new AST
-    builder = std::make_unique<clang::CNodeBuilder>(cAST->getASTContext());
-    context = std::make_unique<HandlerContext>(
-        cppAST->getASTContext(),
-        cAST->getASTContext(),
-        *builder
-    );
 
     auto& ctx = cppAST->getASTContext();
     auto* TU = ctx.getTranslationUnitDecl();
@@ -447,13 +416,15 @@ TEST_F(RecordHandlerTest, StructWithNestedStructField) {
 
     // Translate Point first
     auto* cPoint = llvm::cast<clang::RecordDecl>(
-        handler->handleDecl(cppPoint, *context)
+        ctx.dispatcher->dispatch(cppPoint);
+    auto __result = ctx.declMapper->get(cppPoint); __result
     );
     ASSERT_NE(cPoint, nullptr);
 
     // Translate Rect
     auto* cRect = llvm::cast<clang::RecordDecl>(
-        handler->handleDecl(cppRect, *context)
+        ctx.dispatcher->dispatch(cppRect);
+    auto __result = ctx.declMapper->get(cppRect); __result
     );
 
     verifyRecordStructure(cRect, "Rect", 1);
@@ -493,7 +464,8 @@ TEST_F(RecordHandlerTest, MultipleLevelNesting) {
     EXPECT_EQ(cppRecord->getNameAsString(), "A");
 
     auto* cRecordA = llvm::cast<clang::RecordDecl>(
-        handler->handleDecl(cppRecord, *context)
+        ctx.dispatcher->dispatch(cppRecord);
+    auto __result = ctx.declMapper->get(cppRecord); __result
     );
 
     ASSERT_NE(cRecordA, nullptr);
@@ -551,12 +523,6 @@ TEST_F(RecordHandlerTest, IndependentNestedStructs) {
     ASSERT_NE(cppAST, nullptr);
 
     // Recreate builder and context with new AST
-    builder = std::make_unique<clang::CNodeBuilder>(cAST->getASTContext());
-    context = std::make_unique<HandlerContext>(
-        cppAST->getASTContext(),
-        cAST->getASTContext(),
-        *builder
-    );
 
     auto& ctx = cppAST->getASTContext();
     auto* TU = ctx.getTranslationUnitDecl();
@@ -579,10 +545,12 @@ TEST_F(RecordHandlerTest, IndependentNestedStructs) {
 
     // Translate both parents
     auto* cParent1 = llvm::cast<clang::RecordDecl>(
-        handler->handleDecl(cppParent1, *context)
+        ctx.dispatcher->dispatch(cppParent1);
+    auto __result = ctx.declMapper->get(cppParent1); __result
     );
     auto* cParent2 = llvm::cast<clang::RecordDecl>(
-        handler->handleDecl(cppParent2, *context)
+        ctx.dispatcher->dispatch(cppParent2);
+    auto __result = ctx.declMapper->get(cppParent2); __result
     );
 
     ASSERT_NE(cParent1, nullptr);
@@ -614,12 +582,6 @@ TEST_F(RecordHandlerTest, ForwardDeclarationCircularDependency) {
     ASSERT_NE(cppAST, nullptr);
 
     // Recreate builder and context with new AST
-    builder = std::make_unique<clang::CNodeBuilder>(cAST->getASTContext());
-    context = std::make_unique<HandlerContext>(
-        cppAST->getASTContext(),
-        cAST->getASTContext(),
-        *builder
-    );
 
     auto& ctx = cppAST->getASTContext();
     auto* TU = ctx.getTranslationUnitDecl();
@@ -649,20 +611,23 @@ TEST_F(RecordHandlerTest, ForwardDeclarationCircularDependency) {
 
     // Translate forward declaration first
     auto* cAForward = llvm::cast<clang::RecordDecl>(
-        handler->handleDecl(cppAForward, *context)
+        ctx.dispatcher->dispatch(cppAForward);
+    auto __result = ctx.declMapper->get(cppAForward); __result
     );
     ASSERT_NE(cAForward, nullptr);
     EXPECT_FALSE(cAForward->isCompleteDefinition());
 
     // Translate B
     auto* cB = llvm::cast<clang::RecordDecl>(
-        handler->handleDecl(cppB, *context)
+        ctx.dispatcher->dispatch(cppB);
+    auto __result = ctx.declMapper->get(cppB); __result
     );
     verifyRecordStructure(cB, "B", 1);
 
     // Translate A definition
     auto* cADef = llvm::cast<clang::RecordDecl>(
-        handler->handleDecl(cppADef, *context)
+        ctx.dispatcher->dispatch(cppADef);
+    auto __result = ctx.declMapper->get(cppADef); __result
     );
     verifyRecordStructure(cADef, "A", 1);
 }
@@ -688,7 +653,8 @@ TEST_F(RecordHandlerTest, AnonymousNestedStruct) {
     EXPECT_EQ(cppRecord->getNameAsString(), "Outer");
 
     auto* cRecord = llvm::cast<clang::RecordDecl>(
-        handler->handleDecl(cppRecord, *context)
+        ctx.dispatcher->dispatch(cppRecord);
+    auto __result = ctx.declMapper->get(cppRecord); __result
     );
 
     ASSERT_NE(cRecord, nullptr);
@@ -739,12 +705,6 @@ TEST_F(RecordHandlerTest, ForwardDeclarationWithPointerUsage) {
     ASSERT_NE(cppAST, nullptr);
 
     // Recreate builder and context
-    builder = std::make_unique<clang::CNodeBuilder>(cAST->getASTContext());
-    context = std::make_unique<HandlerContext>(
-        cppAST->getASTContext(),
-        cAST->getASTContext(),
-        *builder
-    );
 
     auto& ctx = cppAST->getASTContext();
     auto* TU = ctx.getTranslationUnitDecl();
@@ -770,7 +730,8 @@ TEST_F(RecordHandlerTest, ForwardDeclarationWithPointerUsage) {
 
     // Translate forward declaration
     auto* cNodeForward = llvm::cast<clang::RecordDecl>(
-        handler->handleDecl(cppNodeForward, *context)
+        ctx.dispatcher->dispatch(cppNodeForward);
+    auto __result = ctx.declMapper->get(cppNodeForward); __result
     );
     ASSERT_NE(cNodeForward, nullptr);
     EXPECT_EQ(cNodeForward->getNameAsString(), "Node");
@@ -778,7 +739,8 @@ TEST_F(RecordHandlerTest, ForwardDeclarationWithPointerUsage) {
 
     // Translate List
     auto* cList = llvm::cast<clang::RecordDecl>(
-        handler->handleDecl(cppList, *context)
+        ctx.dispatcher->dispatch(cppList);
+    auto __result = ctx.declMapper->get(cppList); __result
     );
     ASSERT_NE(cList, nullptr);
     EXPECT_EQ(cList->getNameAsString(), "List");
@@ -812,12 +774,6 @@ TEST_F(RecordHandlerTest, MultipleForwardDeclarations) {
     ASSERT_NE(cppAST, nullptr);
 
     // Recreate builder and context
-    builder = std::make_unique<clang::CNodeBuilder>(cAST->getASTContext());
-    context = std::make_unique<HandlerContext>(
-        cppAST->getASTContext(),
-        cAST->getASTContext(),
-        *builder
-    );
 
     auto& ctx = cppAST->getASTContext();
     auto* TU = ctx.getTranslationUnitDecl();
@@ -841,7 +797,8 @@ TEST_F(RecordHandlerTest, MultipleForwardDeclarations) {
             << cppForward->getNameAsString() << " should be forward declaration";
 
         auto* cForward = llvm::cast<clang::RecordDecl>(
-            handler->handleDecl(cppForward, *context)
+            ctx.dispatcher->dispatch(cppForward);
+    auto __result = ctx.declMapper->get(cppForward); __result
         );
 
         ASSERT_NE(cForward, nullptr);
@@ -874,12 +831,6 @@ TEST_F(RecordHandlerTest, ForwardDeclarationFollowedByDefinition) {
     ASSERT_NE(cppAST, nullptr);
 
     // Recreate builder and context
-    builder = std::make_unique<clang::CNodeBuilder>(cAST->getASTContext());
-    context = std::make_unique<HandlerContext>(
-        cppAST->getASTContext(),
-        cAST->getASTContext(),
-        *builder
-    );
 
     auto& ctx = cppAST->getASTContext();
     auto* TU = ctx.getTranslationUnitDecl();
@@ -904,7 +855,8 @@ TEST_F(RecordHandlerTest, ForwardDeclarationFollowedByDefinition) {
 
     // Translate forward declaration
     auto* cPointForward = llvm::cast<clang::RecordDecl>(
-        handler->handleDecl(cppPointForward, *context)
+        ctx.dispatcher->dispatch(cppPointForward);
+    auto __result = ctx.declMapper->get(cppPointForward); __result
     );
     ASSERT_NE(cPointForward, nullptr);
     EXPECT_EQ(cPointForward->getNameAsString(), "Point");
@@ -912,7 +864,8 @@ TEST_F(RecordHandlerTest, ForwardDeclarationFollowedByDefinition) {
 
     // Translate definition
     auto* cPointDef = llvm::cast<clang::RecordDecl>(
-        handler->handleDecl(cppPointDef, *context)
+        ctx.dispatcher->dispatch(cppPointDef);
+    auto __result = ctx.declMapper->get(cppPointDef); __result
     );
     ASSERT_NE(cPointDef, nullptr);
     EXPECT_EQ(cPointDef->getNameAsString(), "Point");
@@ -951,7 +904,8 @@ TEST_F(RecordHandlerTest, AccessSpecifier_OnlyPublic) {
     EXPECT_TRUE(cppRecord->isClass()) << "C++ should be class";
 
     auto* cRecord = llvm::cast<clang::RecordDecl>(
-        handler->handleDecl(cppRecord, *context)
+        ctx.dispatcher->dispatch(cppRecord);
+    auto __result = ctx.declMapper->get(cppRecord); __result
     );
 
     verifyRecordStructure(cRecord, "Data", 2);
@@ -985,7 +939,8 @@ TEST_F(RecordHandlerTest, AccessSpecifier_OnlyPrivate) {
     ASSERT_NE(cppRecord, nullptr);
 
     auto* cRecord = llvm::cast<clang::RecordDecl>(
-        handler->handleDecl(cppRecord, *context)
+        ctx.dispatcher->dispatch(cppRecord);
+    auto __result = ctx.declMapper->get(cppRecord); __result
     );
 
     // All fields should be present, even though they were private in C++
@@ -1017,7 +972,8 @@ TEST_F(RecordHandlerTest, AccessSpecifier_OnlyProtected) {
     ASSERT_NE(cppRecord, nullptr);
 
     auto* cRecord = llvm::cast<clang::RecordDecl>(
-        handler->handleDecl(cppRecord, *context)
+        ctx.dispatcher->dispatch(cppRecord);
+    auto __result = ctx.declMapper->get(cppRecord); __result
     );
 
     verifyRecordStructure(cRecord, "Data", 2);
@@ -1049,7 +1005,8 @@ TEST_F(RecordHandlerTest, AccessSpecifier_MixedPublicPrivate) {
     ASSERT_NE(cppRecord, nullptr);
 
     auto* cRecord = llvm::cast<clang::RecordDecl>(
-        handler->handleDecl(cppRecord, *context)
+        ctx.dispatcher->dispatch(cppRecord);
+    auto __result = ctx.declMapper->get(cppRecord); __result
     );
 
     verifyRecordStructure(cRecord, "Mixed", 2);
@@ -1084,7 +1041,8 @@ TEST_F(RecordHandlerTest, AccessSpecifier_AllThree) {
     ASSERT_NE(cppRecord, nullptr);
 
     auto* cRecord = llvm::cast<clang::RecordDecl>(
-        handler->handleDecl(cppRecord, *context)
+        ctx.dispatcher->dispatch(cppRecord);
+    auto __result = ctx.declMapper->get(cppRecord); __result
     );
 
     verifyRecordStructure(cRecord, "All", 3);
@@ -1118,7 +1076,8 @@ TEST_F(RecordHandlerTest, AccessSpecifier_DefaultPrivate) {
     ASSERT_NE(cppRecord, nullptr);
 
     auto* cRecord = llvm::cast<clang::RecordDecl>(
-        handler->handleDecl(cppRecord, *context)
+        ctx.dispatcher->dispatch(cppRecord);
+    auto __result = ctx.declMapper->get(cppRecord); __result
     );
 
     verifyRecordStructure(cRecord, "Data", 2);
@@ -1149,7 +1108,8 @@ TEST_F(RecordHandlerTest, AccessSpecifier_DefaultPublic) {
     ASSERT_NE(cppRecord, nullptr);
 
     auto* cRecord = llvm::cast<clang::RecordDecl>(
-        handler->handleDecl(cppRecord, *context)
+        ctx.dispatcher->dispatch(cppRecord);
+    auto __result = ctx.declMapper->get(cppRecord); __result
     );
 
     verifyRecordStructure(cRecord, "Data", 2);
@@ -1185,7 +1145,8 @@ TEST_F(RecordHandlerTest, AccessSpecifier_Interleaved) {
     ASSERT_NE(cppRecord, nullptr);
 
     auto* cRecord = llvm::cast<clang::RecordDecl>(
-        handler->handleDecl(cppRecord, *context)
+        ctx.dispatcher->dispatch(cppRecord);
+    auto __result = ctx.declMapper->get(cppRecord); __result
     );
 
     verifyRecordStructure(cRecord, "Data", 4);
@@ -1221,7 +1182,8 @@ TEST_F(RecordHandlerTest, CXXRecordDecl_EmptyClass) {
     EXPECT_TRUE(handler->canHandle(cppRecord));
 
     auto* cRecord = llvm::cast<clang::RecordDecl>(
-        handler->handleDecl(cppRecord, *context)
+        ctx.dispatcher->dispatch(cppRecord);
+    auto __result = ctx.declMapper->get(cppRecord); __result
     );
 
     verifyRecordStructure(cRecord, "Empty", 0);
@@ -1250,7 +1212,8 @@ TEST_F(RecordHandlerTest, CXXRecordDecl_AllPrimitiveTypes) {
     EXPECT_TRUE(llvm::isa<clang::CXXRecordDecl>(cppRecord));
 
     auto* cRecord = llvm::cast<clang::RecordDecl>(
-        handler->handleDecl(cppRecord, *context)
+        ctx.dispatcher->dispatch(cppRecord);
+    auto __result = ctx.declMapper->get(cppRecord); __result
     );
 
     verifyRecordStructure(cRecord, "AllTypes", 5);
@@ -1293,7 +1256,8 @@ TEST_F(RecordHandlerTest, CXXRecordDecl_WithPointers) {
     EXPECT_TRUE(llvm::isa<clang::CXXRecordDecl>(cppRecord));
 
     auto* cRecord = llvm::cast<clang::RecordDecl>(
-        handler->handleDecl(cppRecord, *context)
+        ctx.dispatcher->dispatch(cppRecord);
+    auto __result = ctx.declMapper->get(cppRecord); __result
     );
 
     verifyRecordStructure(cRecord, "WithPointer", 2);
@@ -1326,7 +1290,8 @@ TEST_F(RecordHandlerTest, CXXRecordDecl_WithArrays) {
     EXPECT_TRUE(llvm::isa<clang::CXXRecordDecl>(cppRecord));
 
     auto* cRecord = llvm::cast<clang::RecordDecl>(
-        handler->handleDecl(cppRecord, *context)
+        ctx.dispatcher->dispatch(cppRecord);
+    auto __result = ctx.declMapper->get(cppRecord); __result
     );
 
     verifyRecordStructure(cRecord, "WithArray", 2);
@@ -1363,12 +1328,6 @@ TEST_F(RecordHandlerTest, CXXRecordDecl_WithStructMembers) {
     ASSERT_NE(cppAST, nullptr);
 
     // Recreate builder and context
-    builder = std::make_unique<clang::CNodeBuilder>(cAST->getASTContext());
-    context = std::make_unique<HandlerContext>(
-        cppAST->getASTContext(),
-        cAST->getASTContext(),
-        *builder
-    );
 
     auto& ctx = cppAST->getASTContext();
     auto* TU = ctx.getTranslationUnitDecl();
@@ -1392,13 +1351,15 @@ TEST_F(RecordHandlerTest, CXXRecordDecl_WithStructMembers) {
 
     // Translate Point first
     auto* cPoint = llvm::cast<clang::RecordDecl>(
-        handler->handleDecl(cppPoint, *context)
+        ctx.dispatcher->dispatch(cppPoint);
+    auto __result = ctx.declMapper->get(cppPoint); __result
     );
     ASSERT_NE(cPoint, nullptr);
 
     // Translate Rect
     auto* cRect = llvm::cast<clang::RecordDecl>(
-        handler->handleDecl(cppRect, *context)
+        ctx.dispatcher->dispatch(cppRect);
+    auto __result = ctx.declMapper->get(cppRect); __result
     );
 
     verifyRecordStructure(cRect, "Rect", 2);
@@ -1428,7 +1389,8 @@ TEST_F(RecordHandlerTest, CXXRecordDecl_ForwardDeclaration) {
     EXPECT_FALSE(cppRecord->isCompleteDefinition());
 
     auto* cRecord = llvm::cast<clang::RecordDecl>(
-        handler->handleDecl(cppRecord, *context)
+        ctx.dispatcher->dispatch(cppRecord);
+    auto __result = ctx.declMapper->get(cppRecord); __result
     );
 
     ASSERT_NE(cRecord, nullptr);
@@ -1459,12 +1421,6 @@ TEST_F(RecordHandlerTest, CXXRecordDecl_MultipleClasses) {
     ASSERT_NE(cppAST, nullptr);
 
     // Recreate builder and context
-    builder = std::make_unique<clang::CNodeBuilder>(cAST->getASTContext());
-    context = std::make_unique<HandlerContext>(
-        cppAST->getASTContext(),
-        cAST->getASTContext(),
-        *builder
-    );
 
     auto& ctx = cppAST->getASTContext();
     auto* TU = ctx.getTranslationUnitDecl();
@@ -1489,10 +1445,12 @@ TEST_F(RecordHandlerTest, CXXRecordDecl_MultipleClasses) {
 
     // Translate both classes
     auto* cA = llvm::cast<clang::RecordDecl>(
-        handler->handleDecl(cppA, *context)
+        ctx.dispatcher->dispatch(cppA);
+    auto __result = ctx.declMapper->get(cppA); __result
     );
     auto* cB = llvm::cast<clang::RecordDecl>(
-        handler->handleDecl(cppB, *context)
+        ctx.dispatcher->dispatch(cppB);
+    auto __result = ctx.declMapper->get(cppB); __result
     );
 
     verifyRecordStructure(cA, "A", 1);
@@ -1529,12 +1487,6 @@ TEST_F(RecordHandlerTest, CXXRecordDecl_ClassVsStruct) {
     ASSERT_NE(cppAST, nullptr);
 
     // Recreate builder and context
-    builder = std::make_unique<clang::CNodeBuilder>(cAST->getASTContext());
-    context = std::make_unique<HandlerContext>(
-        cppAST->getASTContext(),
-        cAST->getASTContext(),
-        *builder
-    );
 
     auto& ctx = cppAST->getASTContext();
     auto* TU = ctx.getTranslationUnitDecl();
@@ -1558,10 +1510,12 @@ TEST_F(RecordHandlerTest, CXXRecordDecl_ClassVsStruct) {
 
     // Translate both
     auto* cClass = llvm::cast<clang::RecordDecl>(
-        handler->handleDecl(cppClass, *context)
+        ctx.dispatcher->dispatch(cppClass);
+    auto __result = ctx.declMapper->get(cppClass); __result
     );
     auto* cStruct = llvm::cast<clang::RecordDecl>(
-        handler->handleDecl(cppStruct, *context)
+        ctx.dispatcher->dispatch(cppStruct);
+    auto __result = ctx.declMapper->get(cppStruct); __result
     );
 
     verifyRecordStructure(cClass, "MyClass", 1);

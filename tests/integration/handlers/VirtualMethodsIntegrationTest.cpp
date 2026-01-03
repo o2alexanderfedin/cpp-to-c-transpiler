@@ -15,15 +15,13 @@
  */
 
 #include "dispatch/FunctionHandler.h"
-#include "handlers/VariableHandler.h"
-#include "handlers/ExpressionHandler.h"
-#include "handlers/StatementHandler.h"
+#include "dispatch/VariableHandler.h"
+#include "dispatch/StatementHandler.h"
 #include "dispatch/RecordHandler.h"
-#include "handlers/MethodHandler.h"
+#include "dispatch/MethodHandler.h"
 #include "dispatch/ConstructorHandler.h"
-#include "handlers/DestructorHandler.h"
-#include "handlers/HandlerContext.h"
-#include "CNodeBuilder.h"
+#include "dispatch/DestructorHandler.h"
+#include "DispatcherTestHelper.h"
 #include "clang/Tooling/Tooling.h"
 #include "clang/AST/RecursiveASTVisitor.h"
 #include <gtest/gtest.h>
@@ -37,60 +35,23 @@ using namespace cpptoc;
  */
 class VirtualMethodsIntegrationTest : public ::testing::Test {
 protected:
-    std::unique_ptr<clang::ASTUnit> cppAST;
-    std::unique_ptr<clang::ASTUnit> cAST;
-    std::unique_ptr<clang::CNodeBuilder> builder;
-    std::unique_ptr<HandlerContext> context;
-
-    std::unique_ptr<FunctionHandler> funcHandler;
-    std::unique_ptr<VariableHandler> varHandler;
-    std::unique_ptr<ExpressionHandler> exprHandler;
-    std::unique_ptr<StatementHandler> stmtHandler;
-    std::unique_ptr<RecordHandler> recordHandler;
-    std::unique_ptr<MethodHandler> methodHandler;
-    std::unique_ptr<ConstructorHandler> ctorHandler;
-    std::unique_ptr<DestructorHandler> dtorHandler;
+    cpptoc::test::DispatcherPipeline pipeline;
 
     void SetUp() override {
-        // Create real AST contexts
-        cppAST = clang::tooling::buildASTFromCode("int dummy;");
-        cAST = clang::tooling::buildASTFromCode("int dummy2;");
+        pipeline = cpptoc::test::createDispatcherPipeline("int dummy;");
 
-        ASSERT_NE(cppAST, nullptr);
-        ASSERT_NE(cAST, nullptr);
-
-        // Create builder and context
-        builder = std::make_unique<clang::CNodeBuilder>(cAST->getASTContext());
-        context = std::make_unique<HandlerContext>(
-            cppAST->getASTContext(),
-            cAST->getASTContext(),
-            *builder
-        );
-
-        // Create all handlers
-        funcHandler = std::make_unique<FunctionHandler>();
-        varHandler = std::make_unique<VariableHandler>();
-        exprHandler = std::make_unique<ExpressionHandler>();
-        stmtHandler = std::make_unique<StatementHandler>();
-        recordHandler = std::make_unique<RecordHandler>();
-        methodHandler = std::make_unique<MethodHandler>();
-        ctorHandler = std::make_unique<ConstructorHandler>();
-        dtorHandler = std::make_unique<DestructorHandler>();
+        // Register handlers
+        RecordHandler::registerWith(*pipeline.dispatcher);
+        FunctionHandler::registerWith(*pipeline.dispatcher);
+        MethodHandler::registerWith(*pipeline.dispatcher);
+        ConstructorHandler::registerWith(*pipeline.dispatcher);
+        DestructorHandler::registerWith(*pipeline.dispatcher);
+        VariableHandler::registerWith(*pipeline.dispatcher);
+        StatementHandler::registerWith(*pipeline.dispatcher);
     }
 
     void TearDown() override {
-        dtorHandler.reset();
-        ctorHandler.reset();
-        methodHandler.reset();
-        recordHandler.reset();
-        stmtHandler.reset();
-        exprHandler.reset();
-        varHandler.reset();
-        funcHandler.reset();
-        context.reset();
-        builder.reset();
-        cAST.reset();
-        cppAST.reset();
+        // Pipeline auto-cleans on destruction
     }
 
     /**

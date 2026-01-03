@@ -22,15 +22,13 @@
  */
 
 #include "dispatch/FunctionHandler.h"
-#include "handlers/VariableHandler.h"
-#include "handlers/ExpressionHandler.h"
-#include "handlers/StatementHandler.h"
+#include "dispatch/VariableHandler.h"
+#include "dispatch/StatementHandler.h"
 #include "dispatch/RecordHandler.h"
-#include "handlers/MethodHandler.h"
+#include "dispatch/MethodHandler.h"
 #include "dispatch/ConstructorHandler.h"
-#include "handlers/DestructorHandler.h"
-#include "handlers/HandlerContext.h"
-#include "CNodeBuilder.h"
+#include "dispatch/DestructorHandler.h"
+#include "DispatcherTestHelper.h"
 #include "MultipleInheritanceAnalyzer.h"
 #include "VtableGenerator.h"
 #include "ThunkGenerator.h"
@@ -49,42 +47,32 @@ using namespace cpptoc;
  */
 class MultipleInheritanceIntegrationTest : public ::testing::Test {
 protected:
-    std::unique_ptr<clang::ASTUnit> cppAST;
-    std::unique_ptr<clang::ASTUnit> cAST;
-    std::unique_ptr<clang::CNodeBuilder> builder;
-    std::unique_ptr<HandlerContext> context;
+    cpptoc::test::DispatcherPipeline pipeline;
 
     std::unique_ptr<MultipleInheritanceAnalyzer> analyzer;
     std::unique_ptr<BaseOffsetCalculator> offsetCalc;
 
     void SetUp() override {
-        // Create real AST contexts
-        cppAST = clang::tooling::buildASTFromCode("int dummy;");
-        cAST = clang::tooling::buildASTFromCode("int dummy2;");
+        pipeline = cpptoc::test::createDispatcherPipeline("int dummy;");
 
-        ASSERT_NE(cppAST, nullptr);
-        ASSERT_NE(cAST, nullptr);
-
-        // Create builder and context
-        builder = std::make_unique<clang::CNodeBuilder>(cAST->getASTContext());
-        context = std::make_unique<HandlerContext>(
-            cppAST->getASTContext(),
-            cAST->getASTContext(),
-            *builder
-        );
+        // Register handlers
+        RecordHandler::registerWith(*pipeline.dispatcher);
+        FunctionHandler::registerWith(*pipeline.dispatcher);
+        MethodHandler::registerWith(*pipeline.dispatcher);
+        ConstructorHandler::registerWith(*pipeline.dispatcher);
+        DestructorHandler::registerWith(*pipeline.dispatcher);
+        VariableHandler::registerWith(*pipeline.dispatcher);
+        StatementHandler::registerWith(*pipeline.dispatcher);
 
         // Create multiple inheritance components
-        analyzer = std::make_unique<MultipleInheritanceAnalyzer>(cppAST->getASTContext());
-        offsetCalc = std::make_unique<BaseOffsetCalculator>(cppAST->getASTContext());
+        analyzer = std::make_unique<MultipleInheritanceAnalyzer>(pipeline.cppAST->getASTContext());
+        offsetCalc = std::make_unique<BaseOffsetCalculator>(pipeline.cppAST->getASTContext());
     }
 
     void TearDown() override {
         offsetCalc.reset();
         analyzer.reset();
-        context.reset();
-        builder.reset();
-        cAST.reset();
-        cppAST.reset();
+        // Pipeline auto-cleans on destruction
     }
 
     /**

@@ -94,7 +94,24 @@ void FunctionHandler::handleFunction(
     // Translate parameters by dispatching to ParameterHandler
     std::vector<clang::ParmVarDecl*> cParams = translateParameters(cppFunc, disp, cppASTContext, cASTContext);
 
-    // Translate function body (if exists) via CompoundStmtHandler
+    // Create C function FIRST (without body) so local variables can find it as parent
+    clang::CNodeBuilder builder(cASTContext);
+    clang::FunctionDecl* cFunc = builder.funcDecl(
+        name,
+        cReturnType,
+        cParams,
+        nullptr  // Body will be set later
+    );
+
+    assert(cFunc && "Failed to create C FunctionDecl");
+
+    // Store in DeclMapper BEFORE translating body (so local variables can find parent)
+    cpptoc::DeclMapper& declMapper = disp.getDeclMapper();
+    declMapper.setCreated(cppFunc, cFunc);
+    llvm::outs() << "[FunctionHandler] Created C function and stored in DeclMapper: " << name << "\n";
+
+    // NOW translate function body (if exists) via CompoundStmtHandler
+    // Local variables will be able to find this function as their parent
     clang::CompoundStmt* cBody = nullptr;
     if (cppFunc->hasBody()) {
         const clang::Stmt* cppBody = cppFunc->getBody();
@@ -124,21 +141,10 @@ void FunctionHandler::handleFunction(
         }
     }
 
-    // Create C function using CNodeBuilder
-    // CNodeBuilder will set the body on the function if cBody is not nullptr
-    clang::CNodeBuilder builder(cASTContext);
-    clang::FunctionDecl* cFunc = builder.funcDecl(
-        name,
-        cReturnType,
-        cParams,
-        cBody  // Body is nullptr if not translated, or CompoundStmt if successfully translated
-    );
-
-    assert(cFunc && "Failed to create C FunctionDecl");
-
-    // Verify body was properly attached
+    // Set the body on the function if it was translated
     if (cBody) {
-        assert(cFunc->hasBody() && "Function should have body after creation");
+        cFunc->setBody(cBody);
+        assert(cFunc->hasBody() && "Function should have body after setBody");
         assert(cFunc->getBody() == cBody && "Function body should match provided body");
         llvm::outs() << "[FunctionHandler] Function body successfully attached to: " << name << "\n";
     }

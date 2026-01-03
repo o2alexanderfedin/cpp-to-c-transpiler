@@ -33,8 +33,8 @@
  */
 
 #include "dispatch/RecordHandler.h"
-#include "handlers/HandlerContext.h"
-#include "handlers/MethodHandler.h"
+#include "helpers/UnitTestHelper.h"
+#include "dispatch/MethodHandler.h"
 #include "CNodeBuilder.h"
 #include "MultipleInheritanceAnalyzer.h"
 #include "clang/Tooling/Tooling.h"
@@ -53,7 +53,6 @@ protected:
     std::unique_ptr<clang::ASTUnit> cppAST;
     std::unique_ptr<clang::ASTUnit> cAST;
     std::unique_ptr<clang::CNodeBuilder> builder;
-    std::unique_ptr<HandlerContext> ctx;
     std::unique_ptr<RecordHandler> recordHandler;
     std::unique_ptr<MethodHandler> methodHandler;
 
@@ -66,28 +65,12 @@ protected:
         ASSERT_NE(cAST, nullptr) << "Failed to create C AST";
 
         // Create builder and context
-        builder = std::make_unique<clang::CNodeBuilder>(cAST->getASTContext());
-        ctx = std::make_unique<HandlerContext>(
-            cppAST->getASTContext(),
-            cAST->getASTContext(),
-            *builder
-        );
 
         // Create handlers
         recordHandler = std::make_unique<RecordHandler>();
         methodHandler = std::make_unique<MethodHandler>();
     }
-
-    void TearDown() override {
-        methodHandler.reset();
-        recordHandler.reset();
-        ctx.reset();
-        builder.reset();
-        cAST.reset();
-        cppAST.reset();
-    }
-
-    /**
+/**
      * @brief Parse C++ code once and cache the AST
      * @param code C++ code containing classes
      * @return true if parsing succeeded
@@ -101,11 +84,6 @@ protected:
 
         // CRITICAL: Recreate context with new AST context
         // The old ctx has references to the dummy AST that we just replaced
-        ctx = std::make_unique<HandlerContext>(
-            cppAST->getASTContext(),
-            cAST->getASTContext(),
-            *builder
-        );
 
         return true;
     }

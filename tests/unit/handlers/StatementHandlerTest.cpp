@@ -1,63 +1,55 @@
 /**
- * @file StatementHandlerTest_WhileOnly.cpp
+ * @file StatementHandlerTest.cpp
  * @brief TDD tests for While Loop Translation (Task 5)
+ *
+ * Migrated to dispatcher pattern.
  */
 
-#include "handlers/StatementHandler.h"
-#include "handlers/HandlerContext.h"
+#include "dispatch/StatementHandler.h"
+#include "tests/fixtures/UnitTestHelper.h"
 #include "clang/Tooling/Tooling.h"
 #include <gtest/gtest.h>
 #include <memory>
 
 using namespace cpptoc;
+using namespace cpptoc::test;
 
-class StatementHandlerTest : public ::testing::Test {
+class StatementHandlerTest_Full : public ::testing::Test {
 protected:
-    std::unique_ptr<clang::ASTUnit> cppAST;
-    std::unique_ptr<clang::ASTUnit> cAST;
-    std::unique_ptr<clang::CNodeBuilder> builder;
-    std::unique_ptr<HandlerContext> context;
+    UnitTestContext ctx;
 
     void SetUp() override {
-        cppAST = clang::tooling::buildASTFromCode("int dummy;");
-        cAST = clang::tooling::buildASTFromCode("int dummy2;");
-        ASSERT_NE(cppAST, nullptr);
-        ASSERT_NE(cAST, nullptr);
-        builder = std::make_unique<clang::CNodeBuilder>(cAST->getASTContext());
-        context = std::make_unique<HandlerContext>(
-            cppAST->getASTContext(),
-            cAST->getASTContext(),
-            *builder
-        );
+        ctx = createUnitTestContext("int dummy;");
+        StatementHandler::registerWith(*ctx.dispatcher);
     }
 
     clang::IntegerLiteral* createIntLiteral(int value) {
-        clang::ASTContext& ctx = cppAST->getASTContext();
+        clang::ASTContext& cppCtx = ctx.cppAST->getASTContext();
         llvm::APInt apValue(32, value);
         return clang::IntegerLiteral::Create(
-            ctx, apValue, ctx.IntTy, clang::SourceLocation()
+            cppCtx, apValue, cppCtx.IntTy, clang::SourceLocation()
         );
     }
 
     clang::VarDecl* createVarDecl(const std::string& name, clang::QualType type) {
-        clang::ASTContext& ctx = cppAST->getASTContext();
-        clang::IdentifierInfo& II = ctx.Idents.get(name);
+        clang::ASTContext& cppCtx = ctx.cppAST->getASTContext();
+        clang::IdentifierInfo& II = cppCtx.Idents.get(name);
         return clang::VarDecl::Create(
-            ctx,
-            ctx.getTranslationUnitDecl(),
+            cppCtx,
+            cppCtx.getTranslationUnitDecl(),
             clang::SourceLocation(),
             clang::SourceLocation(),
             &II,
             type,
-            ctx.getTrivialTypeSourceInfo(type),
+            cppCtx.getTrivialTypeSourceInfo(type),
             clang::SC_None
         );
     }
 
     clang::DeclRefExpr* createVarRef(clang::VarDecl* var) {
-        clang::ASTContext& ctx = cppAST->getASTContext();
+        clang::ASTContext& cppCtx = ctx.cppAST->getASTContext();
         return clang::DeclRefExpr::Create(
-            ctx,
+            cppCtx,
             clang::NestedNameSpecifierLoc(),
             clang::SourceLocation(),
             var,
@@ -73,54 +65,54 @@ protected:
         clang::Expr* lhs,
         clang::Expr* rhs
     ) {
-        clang::ASTContext& ctx = cppAST->getASTContext();
+        clang::ASTContext& cppCtx = ctx.cppAST->getASTContext();
         return clang::BinaryOperator::Create(
-            ctx, lhs, rhs, op, lhs->getType(), clang::VK_PRValue,
+            cppCtx, lhs, rhs, op, lhs->getType(), clang::VK_PRValue,
             clang::OK_Ordinary, clang::SourceLocation(), clang::FPOptionsOverride()
         );
     }
 
     clang::CompoundStmt* createCompoundStmt(const std::vector<clang::Stmt*>& stmts) {
-        clang::ASTContext& ctx = cppAST->getASTContext();
+        clang::ASTContext& cppCtx = ctx.cppAST->getASTContext();
         return clang::CompoundStmt::Create(
-            ctx, stmts, clang::FPOptionsOverride(),
+            cppCtx, stmts, clang::FPOptionsOverride(),
             clang::SourceLocation(), clang::SourceLocation()
         );
     }
 
     clang::WhileStmt* createWhileStmt(clang::Expr* cond, clang::Stmt* body) {
-        clang::ASTContext& ctx = cppAST->getASTContext();
+        clang::ASTContext& cppCtx = ctx.cppAST->getASTContext();
         return clang::WhileStmt::Create(
-            ctx, nullptr, cond, body, clang::SourceLocation(),
+            cppCtx, nullptr, cond, body, clang::SourceLocation(),
             clang::SourceLocation(), clang::SourceLocation()
         );
     }
 
     clang::BreakStmt* createBreakStmt() {
-        clang::ASTContext& ctx = cppAST->getASTContext();
-        return new (ctx) clang::BreakStmt(clang::SourceLocation());
+        clang::ASTContext& cppCtx = ctx.cppAST->getASTContext();
+        return clang::BreakStmt::Create(cppCtx, clang::SourceLocation());
     }
 
     clang::ContinueStmt* createContinueStmt() {
-        clang::ASTContext& ctx = cppAST->getASTContext();
-        return new (ctx) clang::ContinueStmt(clang::SourceLocation());
+        clang::ASTContext& cppCtx = ctx.cppAST->getASTContext();
+        return clang::ContinueStmt::Create(cppCtx, clang::SourceLocation());
     }
 
     clang::LabelDecl* createLabelDecl(const std::string& name) {
-        clang::ASTContext& ctx = cppAST->getASTContext();
-        clang::IdentifierInfo& II = ctx.Idents.get(name);
+        clang::ASTContext& cppCtx = ctx.cppAST->getASTContext();
+        clang::IdentifierInfo& II = cppCtx.Idents.get(name);
         return clang::LabelDecl::Create(
-            ctx,
-            ctx.getTranslationUnitDecl(),
+            cppCtx,
+            cppCtx.getTranslationUnitDecl(),
             clang::SourceLocation(),
             &II
         );
     }
 
     clang::LabelStmt* createLabelStmt(const std::string& name, clang::Stmt* subStmt) {
-        clang::ASTContext& ctx = cppAST->getASTContext();
+        clang::ASTContext& cppCtx = ctx.cppAST->getASTContext();
         clang::LabelDecl* decl = createLabelDecl(name);
-        return new (ctx) clang::LabelStmt(
+        return new (cppCtx) clang::LabelStmt(
             clang::SourceLocation(),
             decl,
             subStmt
@@ -128,9 +120,9 @@ protected:
     }
 
     clang::GotoStmt* createGotoStmt(const std::string& labelName) {
-        clang::ASTContext& ctx = cppAST->getASTContext();
+        clang::ASTContext& cppCtx = ctx.cppAST->getASTContext();
         clang::LabelDecl* decl = createLabelDecl(labelName);
-        return new (ctx) clang::GotoStmt(
+        return new (cppCtx) clang::GotoStmt(
             decl,
             clang::SourceLocation(),
             clang::SourceLocation()
@@ -141,9 +133,11 @@ protected:
 // ============================================================================
 // Test 1: Simple While Loop - while (i < 10) { }
 // ============================================================================
-TEST_F(StatementHandlerTest, SimpleWhile) {
-    clang::ASTContext& ctx = cppAST->getASTContext();
-    clang::VarDecl* var = createVarDecl("i", ctx.IntTy);
+TEST_F(StatementHandlerTest_Full, SimpleWhile) {
+    clang::ASTContext& cppCtx = ctx.cppAST->getASTContext();
+    clang::ASTContext& cCtx = ctx.cAST->getASTContext();
+
+    clang::VarDecl* var = createVarDecl("i", cppCtx.IntTy);
     clang::DeclRefExpr* ref = createVarRef(var);
     clang::IntegerLiteral* lit = createIntLiteral(10);
     clang::BinaryOperator* cond = createBinaryOp(clang::BO_LT, ref, lit);
@@ -152,9 +146,10 @@ TEST_F(StatementHandlerTest, SimpleWhile) {
     clang::WhileStmt* cppStmt = createWhileStmt(cond, body);
     ASSERT_NE(cppStmt, nullptr);
 
-    StatementHandler handler;
-    clang::Stmt* result = handler.handleStmt(cppStmt, *context);
+    bool handled = ctx.dispatcher->dispatch(cppCtx, cCtx, cppStmt);
+    EXPECT_TRUE(handled);
 
+    clang::Stmt* result = ctx.stmtMapper->getCreated(cppStmt);
     ASSERT_NE(result, nullptr);
     auto* cStmt = llvm::dyn_cast<clang::WhileStmt>(result);
     ASSERT_NE(cStmt, nullptr);
@@ -165,9 +160,11 @@ TEST_F(StatementHandlerTest, SimpleWhile) {
 // ============================================================================
 // Test 2: While with Compound Condition - while (x > 0) { }
 // ============================================================================
-TEST_F(StatementHandlerTest, WhileWithCompoundCondition) {
-    clang::ASTContext& ctx = cppAST->getASTContext();
-    clang::VarDecl* varX = createVarDecl("x", ctx.IntTy);
+TEST_F(StatementHandlerTest_Full, WhileWithCompoundCondition) {
+    clang::ASTContext& cppCtx = ctx.cppAST->getASTContext();
+    clang::ASTContext& cCtx = ctx.cAST->getASTContext();
+
+    clang::VarDecl* varX = createVarDecl("x", cppCtx.IntTy);
     clang::DeclRefExpr* refX = createVarRef(varX);
     clang::IntegerLiteral* lit0 = createIntLiteral(0);
     clang::BinaryOperator* cond = createBinaryOp(clang::BO_GT, refX, lit0);
@@ -176,9 +173,10 @@ TEST_F(StatementHandlerTest, WhileWithCompoundCondition) {
     clang::WhileStmt* cppStmt = createWhileStmt(cond, body);
     ASSERT_NE(cppStmt, nullptr);
 
-    StatementHandler handler;
-    clang::Stmt* result = handler.handleStmt(cppStmt, *context);
+    bool handled = ctx.dispatcher->dispatch(cppCtx, cCtx, cppStmt);
+    EXPECT_TRUE(handled);
 
+    clang::Stmt* result = ctx.stmtMapper->getCreated(cppStmt);
     ASSERT_NE(result, nullptr);
     auto* cStmt = llvm::dyn_cast<clang::WhileStmt>(result);
     ASSERT_NE(cStmt, nullptr);
@@ -187,7 +185,10 @@ TEST_F(StatementHandlerTest, WhileWithCompoundCondition) {
 // ============================================================================
 // Test 3: While with Break - while (1) { break; }
 // ============================================================================
-TEST_F(StatementHandlerTest, WhileWithBreak) {
+TEST_F(StatementHandlerTest_Full, WhileWithBreak) {
+    clang::ASTContext& cppCtx = ctx.cppAST->getASTContext();
+    clang::ASTContext& cCtx = ctx.cAST->getASTContext();
+
     clang::IntegerLiteral* cond = createIntLiteral(1);
     clang::BreakStmt* breakStmt = createBreakStmt();
     clang::CompoundStmt* body = createCompoundStmt({breakStmt});
@@ -195,9 +196,10 @@ TEST_F(StatementHandlerTest, WhileWithBreak) {
     clang::WhileStmt* cppStmt = createWhileStmt(cond, body);
     ASSERT_NE(cppStmt, nullptr);
 
-    StatementHandler handler;
-    clang::Stmt* result = handler.handleStmt(cppStmt, *context);
+    bool handled = ctx.dispatcher->dispatch(cppCtx, cCtx, cppStmt);
+    EXPECT_TRUE(handled);
 
+    clang::Stmt* result = ctx.stmtMapper->getCreated(cppStmt);
     ASSERT_NE(result, nullptr);
     auto* cStmt = llvm::dyn_cast<clang::WhileStmt>(result);
     ASSERT_NE(cStmt, nullptr);
@@ -211,9 +213,11 @@ TEST_F(StatementHandlerTest, WhileWithBreak) {
 // ============================================================================
 // Test 4: While with Continue - while (i < 10) { continue; }
 // ============================================================================
-TEST_F(StatementHandlerTest, WhileWithContinue) {
-    clang::ASTContext& ctx = cppAST->getASTContext();
-    clang::VarDecl* var = createVarDecl("i", ctx.IntTy);
+TEST_F(StatementHandlerTest_Full, WhileWithContinue) {
+    clang::ASTContext& cppCtx = ctx.cppAST->getASTContext();
+    clang::ASTContext& cCtx = ctx.cAST->getASTContext();
+
+    clang::VarDecl* var = createVarDecl("i", cppCtx.IntTy);
     clang::DeclRefExpr* ref = createVarRef(var);
     clang::IntegerLiteral* lit = createIntLiteral(10);
     clang::BinaryOperator* cond = createBinaryOp(clang::BO_LT, ref, lit);
@@ -223,9 +227,10 @@ TEST_F(StatementHandlerTest, WhileWithContinue) {
     clang::WhileStmt* cppStmt = createWhileStmt(cond, body);
     ASSERT_NE(cppStmt, nullptr);
 
-    StatementHandler handler;
-    clang::Stmt* result = handler.handleStmt(cppStmt, *context);
+    bool handled = ctx.dispatcher->dispatch(cppCtx, cCtx, cppStmt);
+    EXPECT_TRUE(handled);
 
+    clang::Stmt* result = ctx.stmtMapper->getCreated(cppStmt);
     ASSERT_NE(result, nullptr);
     auto* cStmt = llvm::dyn_cast<clang::WhileStmt>(result);
     ASSERT_NE(cStmt, nullptr);
@@ -234,16 +239,20 @@ TEST_F(StatementHandlerTest, WhileWithContinue) {
 // ============================================================================
 // Test 5: While Empty Body - while (1) { }
 // ============================================================================
-TEST_F(StatementHandlerTest, WhileEmptyBody) {
+TEST_F(StatementHandlerTest_Full, WhileEmptyBody) {
+    clang::ASTContext& cppCtx = ctx.cppAST->getASTContext();
+    clang::ASTContext& cCtx = ctx.cAST->getASTContext();
+
     clang::IntegerLiteral* cond = createIntLiteral(1);
     clang::CompoundStmt* body = createCompoundStmt({});
 
     clang::WhileStmt* cppStmt = createWhileStmt(cond, body);
     ASSERT_NE(cppStmt, nullptr);
 
-    StatementHandler handler;
-    clang::Stmt* result = handler.handleStmt(cppStmt, *context);
+    bool handled = ctx.dispatcher->dispatch(cppCtx, cCtx, cppStmt);
+    EXPECT_TRUE(handled);
 
+    clang::Stmt* result = ctx.stmtMapper->getCreated(cppStmt);
     ASSERT_NE(result, nullptr);
     auto* cStmt = llvm::dyn_cast<clang::WhileStmt>(result);
     ASSERT_NE(cStmt, nullptr);
@@ -256,10 +265,12 @@ TEST_F(StatementHandlerTest, WhileEmptyBody) {
 // ============================================================================
 // Test 6: Nested While Loops - while (a) { while (b) { } }
 // ============================================================================
-TEST_F(StatementHandlerTest, NestedWhile) {
-    clang::ASTContext& ctx = cppAST->getASTContext();
-    clang::VarDecl* varA = createVarDecl("a", ctx.IntTy);
-    clang::VarDecl* varB = createVarDecl("b", ctx.IntTy);
+TEST_F(StatementHandlerTest_Full, NestedWhile) {
+    clang::ASTContext& cppCtx = ctx.cppAST->getASTContext();
+    clang::ASTContext& cCtx = ctx.cAST->getASTContext();
+
+    clang::VarDecl* varA = createVarDecl("a", cppCtx.IntTy);
+    clang::VarDecl* varB = createVarDecl("b", cppCtx.IntTy);
     clang::DeclRefExpr* refA = createVarRef(varA);
     clang::DeclRefExpr* refB = createVarRef(varB);
 
@@ -270,9 +281,10 @@ TEST_F(StatementHandlerTest, NestedWhile) {
     clang::WhileStmt* cppStmt = createWhileStmt(refA, outerBody);
     ASSERT_NE(cppStmt, nullptr);
 
-    StatementHandler handler;
-    clang::Stmt* result = handler.handleStmt(cppStmt, *context);
+    bool handled = ctx.dispatcher->dispatch(cppCtx, cCtx, cppStmt);
+    EXPECT_TRUE(handled);
 
+    clang::Stmt* result = ctx.stmtMapper->getCreated(cppStmt);
     ASSERT_NE(result, nullptr);
     auto* outerStmt = llvm::dyn_cast<clang::WhileStmt>(result);
     ASSERT_NE(outerStmt, nullptr);
@@ -288,16 +300,20 @@ TEST_F(StatementHandlerTest, NestedWhile) {
 // ============================================================================
 // Test 7: While with Variable Declaration - while (1) { }
 // ============================================================================
-TEST_F(StatementHandlerTest, WhileWithVarDecl) {
+TEST_F(StatementHandlerTest_Full, WhileWithVarDecl) {
+    clang::ASTContext& cppCtx = ctx.cppAST->getASTContext();
+    clang::ASTContext& cCtx = ctx.cAST->getASTContext();
+
     clang::IntegerLiteral* cond = createIntLiteral(1);
     clang::CompoundStmt* body = createCompoundStmt({});
 
     clang::WhileStmt* cppStmt = createWhileStmt(cond, body);
     ASSERT_NE(cppStmt, nullptr);
 
-    StatementHandler handler;
-    clang::Stmt* result = handler.handleStmt(cppStmt, *context);
+    bool handled = ctx.dispatcher->dispatch(cppCtx, cCtx, cppStmt);
+    EXPECT_TRUE(handled);
 
+    clang::Stmt* result = ctx.stmtMapper->getCreated(cppStmt);
     ASSERT_NE(result, nullptr);
     auto* cStmt = llvm::dyn_cast<clang::WhileStmt>(result);
     ASSERT_NE(cStmt, nullptr);
@@ -306,16 +322,20 @@ TEST_F(StatementHandlerTest, WhileWithVarDecl) {
 // ============================================================================
 // Test 8: Infinite While Loop - while (1) { }
 // ============================================================================
-TEST_F(StatementHandlerTest, InfiniteWhile) {
+TEST_F(StatementHandlerTest_Full, InfiniteWhile) {
+    clang::ASTContext& cppCtx = ctx.cppAST->getASTContext();
+    clang::ASTContext& cCtx = ctx.cAST->getASTContext();
+
     clang::IntegerLiteral* cond = createIntLiteral(1);
     clang::CompoundStmt* body = createCompoundStmt({});
 
     clang::WhileStmt* cppStmt = createWhileStmt(cond, body);
     ASSERT_NE(cppStmt, nullptr);
 
-    StatementHandler handler;
-    clang::Stmt* result = handler.handleStmt(cppStmt, *context);
+    bool handled = ctx.dispatcher->dispatch(cppCtx, cCtx, cppStmt);
+    EXPECT_TRUE(handled);
 
+    clang::Stmt* result = ctx.stmtMapper->getCreated(cppStmt);
     ASSERT_NE(result, nullptr);
     auto* cStmt = llvm::dyn_cast<clang::WhileStmt>(result);
     ASSERT_NE(cStmt, nullptr);
@@ -331,22 +351,24 @@ TEST_F(StatementHandlerTest, InfiniteWhile) {
 // ============================================================================
 // Test 9: Simple Goto - goto label; label: return;
 // ============================================================================
-TEST_F(StatementHandlerTest, SimpleGoto) {
-    clang::ASTContext& ctx = cppAST->getASTContext();
+TEST_F(StatementHandlerTest_Full, SimpleGoto) {
+    clang::ASTContext& cppCtx = ctx.cppAST->getASTContext();
+    clang::ASTContext& cCtx = ctx.cAST->getASTContext();
 
     // Create: goto end;
     clang::GotoStmt* gotoStmt = createGotoStmt("end");
 
     // Create: end: return;
     clang::ReturnStmt* returnStmt = clang::ReturnStmt::Create(
-        ctx, clang::SourceLocation(), nullptr, nullptr
+        cppCtx, clang::SourceLocation(), nullptr, nullptr
     );
     clang::LabelStmt* labelStmt = createLabelStmt("end", returnStmt);
 
     // Test goto translation
-    StatementHandler handler;
-    clang::Stmt* gotoResult = handler.handleStmt(gotoStmt, *context);
+    bool handled1 = ctx.dispatcher->dispatch(cppCtx, cCtx, gotoStmt);
+    EXPECT_TRUE(handled1);
 
+    clang::Stmt* gotoResult = ctx.stmtMapper->getCreated(gotoStmt);
     ASSERT_NE(gotoResult, nullptr);
     auto* cGoto = llvm::dyn_cast<clang::GotoStmt>(gotoResult);
     ASSERT_NE(cGoto, nullptr);
@@ -354,8 +376,10 @@ TEST_F(StatementHandlerTest, SimpleGoto) {
     EXPECT_EQ(cGoto->getLabel()->getName(), "end");
 
     // Test label translation
-    clang::Stmt* labelResult = handler.handleStmt(labelStmt, *context);
+    bool handled2 = ctx.dispatcher->dispatch(cppCtx, cCtx, labelStmt);
+    EXPECT_TRUE(handled2);
 
+    clang::Stmt* labelResult = ctx.stmtMapper->getCreated(labelStmt);
     ASSERT_NE(labelResult, nullptr);
     auto* cLabel = llvm::dyn_cast<clang::LabelStmt>(labelResult);
     ASSERT_NE(cLabel, nullptr);
@@ -367,25 +391,24 @@ TEST_F(StatementHandlerTest, SimpleGoto) {
 // ============================================================================
 // Test 10: Goto Forward Jump - goto later in code
 // ============================================================================
-TEST_F(StatementHandlerTest, GotoForwardJump) {
-    clang::ASTContext& ctx = cppAST->getASTContext();
+TEST_F(StatementHandlerTest_Full, GotoForwardJump) {
+    clang::ASTContext& cppCtx = ctx.cppAST->getASTContext();
+    clang::ASTContext& cCtx = ctx.cAST->getASTContext();
 
     // Create: goto skip;
     clang::GotoStmt* gotoStmt = createGotoStmt("skip");
 
-    // Create some intermediate statement
-    clang::IntegerLiteral* lit = createIntLiteral(42);
-
     // Create: skip: ;
-    clang::NullStmt* nullStmt = new (ctx) clang::NullStmt(clang::SourceLocation());
+    clang::NullStmt* nullStmt = new (cppCtx) clang::NullStmt(clang::SourceLocation());
     clang::LabelStmt* labelStmt = createLabelStmt("skip", nullStmt);
 
-    // Create compound: { goto skip; x = 42; skip: ; }
+    // Create compound: { goto skip; skip: ; }
     clang::CompoundStmt* compound = createCompoundStmt({gotoStmt, labelStmt});
 
-    StatementHandler handler;
-    clang::Stmt* result = handler.handleStmt(compound, *context);
+    bool handled = ctx.dispatcher->dispatch(cppCtx, cCtx, compound);
+    EXPECT_TRUE(handled);
 
+    clang::Stmt* result = ctx.stmtMapper->getCreated(compound);
     ASSERT_NE(result, nullptr);
     auto* cCompound = llvm::dyn_cast<clang::CompoundStmt>(result);
     ASSERT_NE(cCompound, nullptr);
@@ -399,11 +422,12 @@ TEST_F(StatementHandlerTest, GotoForwardJump) {
 // ============================================================================
 // Test 11: Goto Backward Jump - goto earlier in code
 // ============================================================================
-TEST_F(StatementHandlerTest, GotoBackwardJump) {
-    clang::ASTContext& ctx = cppAST->getASTContext();
+TEST_F(StatementHandlerTest_Full, GotoBackwardJump) {
+    clang::ASTContext& cppCtx = ctx.cppAST->getASTContext();
+    clang::ASTContext& cCtx = ctx.cAST->getASTContext();
 
     // Create: start: ;
-    clang::NullStmt* nullStmt = new (ctx) clang::NullStmt(clang::SourceLocation());
+    clang::NullStmt* nullStmt = new (cppCtx) clang::NullStmt(clang::SourceLocation());
     clang::LabelStmt* labelStmt = createLabelStmt("start", nullStmt);
 
     // Create: goto start;
@@ -412,9 +436,10 @@ TEST_F(StatementHandlerTest, GotoBackwardJump) {
     // Create compound: { start: ; goto start; }
     clang::CompoundStmt* compound = createCompoundStmt({labelStmt, gotoStmt});
 
-    StatementHandler handler;
-    clang::Stmt* result = handler.handleStmt(compound, *context);
+    bool handled = ctx.dispatcher->dispatch(cppCtx, cCtx, compound);
+    EXPECT_TRUE(handled);
 
+    clang::Stmt* result = ctx.stmtMapper->getCreated(compound);
     ASSERT_NE(result, nullptr);
     auto* cCompound = llvm::dyn_cast<clang::CompoundStmt>(result);
     ASSERT_NE(cCompound, nullptr);
@@ -424,21 +449,23 @@ TEST_F(StatementHandlerTest, GotoBackwardJump) {
 // ============================================================================
 // Test 12: Label With Statement - label: return 42;
 // ============================================================================
-TEST_F(StatementHandlerTest, LabelWithStatement) {
-    clang::ASTContext& ctx = cppAST->getASTContext();
+TEST_F(StatementHandlerTest_Full, LabelWithStatement) {
+    clang::ASTContext& cppCtx = ctx.cppAST->getASTContext();
+    clang::ASTContext& cCtx = ctx.cAST->getASTContext();
 
     // Create: return 42;
     clang::IntegerLiteral* lit = createIntLiteral(42);
     clang::ReturnStmt* returnStmt = clang::ReturnStmt::Create(
-        ctx, clang::SourceLocation(), lit, nullptr
+        cppCtx, clang::SourceLocation(), lit, nullptr
     );
 
     // Create: done: return 42;
     clang::LabelStmt* labelStmt = createLabelStmt("done", returnStmt);
 
-    StatementHandler handler;
-    clang::Stmt* result = handler.handleStmt(labelStmt, *context);
+    bool handled = ctx.dispatcher->dispatch(cppCtx, cCtx, labelStmt);
+    EXPECT_TRUE(handled);
 
+    clang::Stmt* result = ctx.stmtMapper->getCreated(labelStmt);
     ASSERT_NE(result, nullptr);
     auto* cLabel = llvm::dyn_cast<clang::LabelStmt>(result);
     ASSERT_NE(cLabel, nullptr);
@@ -452,8 +479,9 @@ TEST_F(StatementHandlerTest, LabelWithStatement) {
 // ============================================================================
 // Test 13: Goto In Loop (break-like behavior) - while(1) { goto end; } end:
 // ============================================================================
-TEST_F(StatementHandlerTest, GotoInLoop) {
-    clang::ASTContext& ctx = cppAST->getASTContext();
+TEST_F(StatementHandlerTest_Full, GotoInLoop) {
+    clang::ASTContext& cppCtx = ctx.cppAST->getASTContext();
+    clang::ASTContext& cCtx = ctx.cAST->getASTContext();
 
     // Create: goto end;
     clang::GotoStmt* gotoStmt = createGotoStmt("end");
@@ -464,15 +492,16 @@ TEST_F(StatementHandlerTest, GotoInLoop) {
     clang::WhileStmt* whileStmt = createWhileStmt(cond, loopBody);
 
     // Create: end: ;
-    clang::NullStmt* nullStmt = new (ctx) clang::NullStmt(clang::SourceLocation());
+    clang::NullStmt* nullStmt = new (cppCtx) clang::NullStmt(clang::SourceLocation());
     clang::LabelStmt* labelStmt = createLabelStmt("end", nullStmt);
 
     // Create compound: { while (1) { goto end; } end: ; }
     clang::CompoundStmt* compound = createCompoundStmt({whileStmt, labelStmt});
 
-    StatementHandler handler;
-    clang::Stmt* result = handler.handleStmt(compound, *context);
+    bool handled = ctx.dispatcher->dispatch(cppCtx, cCtx, compound);
+    EXPECT_TRUE(handled);
 
+    clang::Stmt* result = ctx.stmtMapper->getCreated(compound);
     ASSERT_NE(result, nullptr);
     auto* cCompound = llvm::dyn_cast<clang::CompoundStmt>(result);
     ASSERT_NE(cCompound, nullptr);
@@ -488,15 +517,16 @@ TEST_F(StatementHandlerTest, GotoInLoop) {
 // ============================================================================
 // Test 14: Multiple Labels - multiple labels in same scope
 // ============================================================================
-TEST_F(StatementHandlerTest, MultipleLabels) {
-    clang::ASTContext& ctx = cppAST->getASTContext();
+TEST_F(StatementHandlerTest_Full, MultipleLabels) {
+    clang::ASTContext& cppCtx = ctx.cppAST->getASTContext();
+    clang::ASTContext& cCtx = ctx.cAST->getASTContext();
 
     // Create: label1: ;
-    clang::NullStmt* null1 = new (ctx) clang::NullStmt(clang::SourceLocation());
+    clang::NullStmt* null1 = new (cppCtx) clang::NullStmt(clang::SourceLocation());
     clang::LabelStmt* label1 = createLabelStmt("label1", null1);
 
     // Create: label2: ;
-    clang::NullStmt* null2 = new (ctx) clang::NullStmt(clang::SourceLocation());
+    clang::NullStmt* null2 = new (cppCtx) clang::NullStmt(clang::SourceLocation());
     clang::LabelStmt* label2 = createLabelStmt("label2", null2);
 
     // Create: goto label1;
@@ -508,9 +538,10 @@ TEST_F(StatementHandlerTest, MultipleLabels) {
     // Create compound with multiple labels
     clang::CompoundStmt* compound = createCompoundStmt({label1, goto2, label2, goto1});
 
-    StatementHandler handler;
-    clang::Stmt* result = handler.handleStmt(compound, *context);
+    bool handled = ctx.dispatcher->dispatch(cppCtx, cCtx, compound);
+    EXPECT_TRUE(handled);
 
+    clang::Stmt* result = ctx.stmtMapper->getCreated(compound);
     ASSERT_NE(result, nullptr);
     auto* cCompound = llvm::dyn_cast<clang::CompoundStmt>(result);
     ASSERT_NE(cCompound, nullptr);
@@ -520,24 +551,26 @@ TEST_F(StatementHandlerTest, MultipleLabels) {
 // ============================================================================
 // Test 15: Goto In Switch - switch case with goto
 // ============================================================================
-TEST_F(StatementHandlerTest, GotoInSwitch) {
-    clang::ASTContext& ctx = cppAST->getASTContext();
+TEST_F(StatementHandlerTest_Full, GotoInSwitch) {
+    clang::ASTContext& cppCtx = ctx.cppAST->getASTContext();
+    clang::ASTContext& cCtx = ctx.cAST->getASTContext();
 
     // Create: goto default_case;
     clang::GotoStmt* gotoStmt = createGotoStmt("default_case");
 
     // Create: default_case: return;
     clang::ReturnStmt* returnStmt = clang::ReturnStmt::Create(
-        ctx, clang::SourceLocation(), nullptr, nullptr
+        cppCtx, clang::SourceLocation(), nullptr, nullptr
     );
     clang::LabelStmt* labelStmt = createLabelStmt("default_case", returnStmt);
 
     // Create compound: { goto default_case; default_case: return; }
     clang::CompoundStmt* compound = createCompoundStmt({gotoStmt, labelStmt});
 
-    StatementHandler handler;
-    clang::Stmt* result = handler.handleStmt(compound, *context);
+    bool handled = ctx.dispatcher->dispatch(cppCtx, cCtx, compound);
+    EXPECT_TRUE(handled);
 
+    clang::Stmt* result = ctx.stmtMapper->getCreated(compound);
     ASSERT_NE(result, nullptr);
     auto* cCompound = llvm::dyn_cast<clang::CompoundStmt>(result);
     ASSERT_NE(cCompound, nullptr);
@@ -547,8 +580,9 @@ TEST_F(StatementHandlerTest, GotoInSwitch) {
 // ============================================================================
 // Test 16: Nested Goto Scopes - goto across nested blocks
 // ============================================================================
-TEST_F(StatementHandlerTest, NestedGotoScopes) {
-    clang::ASTContext& ctx = cppAST->getASTContext();
+TEST_F(StatementHandlerTest_Full, NestedGotoScopes) {
+    clang::ASTContext& cppCtx = ctx.cppAST->getASTContext();
+    clang::ASTContext& cCtx = ctx.cAST->getASTContext();
 
     // Create: goto outer;
     clang::GotoStmt* gotoOuter = createGotoStmt("outer");
@@ -557,15 +591,16 @@ TEST_F(StatementHandlerTest, NestedGotoScopes) {
     clang::CompoundStmt* innerBlock = createCompoundStmt({gotoOuter});
 
     // Create: outer: ;
-    clang::NullStmt* nullStmt = new (ctx) clang::NullStmt(clang::SourceLocation());
+    clang::NullStmt* nullStmt = new (cppCtx) clang::NullStmt(clang::SourceLocation());
     clang::LabelStmt* labelOuter = createLabelStmt("outer", nullStmt);
 
     // Create outer block: { { goto outer; } outer: ; }
     clang::CompoundStmt* outerBlock = createCompoundStmt({innerBlock, labelOuter});
 
-    StatementHandler handler;
-    clang::Stmt* result = handler.handleStmt(outerBlock, *context);
+    bool handled = ctx.dispatcher->dispatch(cppCtx, cCtx, outerBlock);
+    EXPECT_TRUE(handled);
 
+    clang::Stmt* result = ctx.stmtMapper->getCreated(outerBlock);
     ASSERT_NE(result, nullptr);
     auto* cOuter = llvm::dyn_cast<clang::CompoundStmt>(result);
     ASSERT_NE(cOuter, nullptr);

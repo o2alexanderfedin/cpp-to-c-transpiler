@@ -48,7 +48,8 @@
 
 #include "handlers/RangeTypeAnalyzer.h"
 #include "handlers/LoopVariableAnalyzer.h"
-#include "handlers/HandlerContext.h"
+#include "helpers/CNodeBuilder.h"
+#include "clang/AST/ASTContext.h"
 #include "clang/AST/Stmt.h"
 #include <string>
 
@@ -65,9 +66,15 @@ class ArrayLoopGenerator {
 public:
     /**
      * @brief Constructor
-     * @param ctx Handler context for AST node creation
+     * @param builder C AST node builder
+     * @param cppContext C++ AST context
+     * @param cContext C AST context
      */
-    explicit ArrayLoopGenerator(HandlerContext& ctx) : ctx_(ctx) {}
+    explicit ArrayLoopGenerator(
+        CNodeBuilder& builder,
+        clang::ASTContext& cppContext,
+        clang::ASTContext& cContext
+    ) : builder_(builder), cppContext_(cppContext), cContext_(cContext) {}
 
     /**
      * @brief Generate a for loop for C array iteration
@@ -151,8 +158,14 @@ private:
         clang::VarDecl* indexVar
     );
 
-    /// Handler context for AST node creation
-    HandlerContext& ctx_;
+    /// C AST node builder
+    CNodeBuilder& builder_;
+
+    /// C++ AST context
+    clang::ASTContext& cppContext_;
+
+    /// C AST context
+    clang::ASTContext& cContext_;
 
     /// Counter for generating unique index variable names
     static unsigned indexVarCounter_;

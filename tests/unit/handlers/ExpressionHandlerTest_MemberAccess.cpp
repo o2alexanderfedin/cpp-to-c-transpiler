@@ -22,9 +22,7 @@
  * 12. Nested implicit access in expression ((field + 1) * 2)
  */
 
-#include "handlers/ExpressionHandler.h"
-#include "handlers/HandlerContext.h"
-#include "CNodeBuilder.h"
+#include "helpers/UnitTestHelper.h"
 #include "clang/Tooling/Tooling.h"
 #include "clang/AST/RecursiveASTVisitor.h"
 #include <gtest/gtest.h>
@@ -40,35 +38,17 @@ using namespace cpptoc;
  */
 class ExpressionHandlerTest_MemberAccess : public ::testing::Test {
 protected:
-    std::unique_ptr<clang::ASTUnit> cppAST;
-    std::unique_ptr<clang::ASTUnit> cAST;
-    std::unique_ptr<clang::CNodeBuilder> builder;
-    std::unique_ptr<HandlerContext> context;
-    std::unique_ptr<ExpressionHandler> handler;
+    UnitTestContext ctx;
 
     void SetUp() override {
-        // Create real AST contexts using minimal code
-        cppAST = clang::tooling::buildASTFromCode("int dummy;");
-        cAST = clang::tooling::buildASTFromCode("int dummy2;");
-
-        ASSERT_NE(cppAST, nullptr) << "Failed to create C++ AST";
-        ASSERT_NE(cAST, nullptr) << "Failed to create C AST";
-
-        // Create builder, context, and handler
-        builder = std::make_unique<clang::CNodeBuilder>(cAST->getASTContext());
-        context = std::make_unique<HandlerContext>(
-            cppAST->getASTContext(),
-            cAST->getASTContext(),
-            *builder
-        );
-        handler = std::make_unique<ExpressionHandler>();
+        ctx = createUnitTestContext();
+        ctx.dispatcher->registerHandler<ExpressionHandler>();
     }
 
     /**
      * @brief Helper: Create a mock function with 'this' parameter for testing
      */
-    clang::FunctionDecl* createMockFunctionWithThis(const std::string& className) {
-        clang::ASTContext& cCtx = context->getCContext();
+    clang::FunctionDecl* createMockFunctionWithThis(clang::ASTContext& cCtx, const std::string& className) {
 
         // Create 'this' parameter type: struct ClassName*
         clang::IdentifierInfo& classId = cCtx.Idents.get(className);
@@ -123,13 +103,6 @@ protected:
         return funcDecl;
     }
 
-    void TearDown() override {
-        handler.reset();
-        context.reset();
-        builder.reset();
-        cAST.reset();
-        cppAST.reset();
-    }
 
     /**
      * @brief Helper: Extract MemberExpr from method body
@@ -212,13 +185,18 @@ TEST_F(ExpressionHandlerTest_MemberAccess, ImplicitFieldAssignment) {
     ASSERT_NE(thisExpr, nullptr) << "Expected CXXThisExpr as base";
     EXPECT_TRUE(thisExpr->isImplicit()) << "Expected implicit this";
 
+    // Get contexts
+    clang::ASTContext& cppCtx = ctx.cppAST->getASTContext();
+    clang::ASTContext& cCtx = ctx.cAST->getASTContext();
+
     // Set up mock function context for translation
-    clang::FunctionDecl* mockFunc = createMockFunctionWithThis("Counter");
-    context->setCurrentFunction(mockFunc);
+    clang::FunctionDecl* mockFunc = createMockFunctionWithThis(cCtx, "Counter");
+    ctx.dispatcher->setCurrentFunction(mockFunc);
 
     // Translate the MemberExpr
     // Expected: count → this->count (in C AST)
-    clang::Expr* translated = handler->handleExpr(ME, *context);
+    ctx.dispatcher->dispatch(ME);
+    clang::Expr* translated = ctx.exprMapper->get(ME);
     ASSERT_NE(translated, nullptr) << "Translation failed";
 
     // Verify translated expression is MemberExpr
@@ -254,12 +232,17 @@ TEST_F(ExpressionHandlerTest_MemberAccess, ImplicitFieldReturn) {
     ASSERT_NE(thisExpr, nullptr);
     EXPECT_TRUE(thisExpr->isImplicit());
 
+    // Get contexts
+    clang::ASTContext& cppCtx = ctx.cppAST->getASTContext();
+    clang::ASTContext& cCtx = ctx.cAST->getASTContext();
+
     // Set up mock function context for translation
-    clang::FunctionDecl* mockFunc = createMockFunctionWithThis("Counter");
-    context->setCurrentFunction(mockFunc);
+    clang::FunctionDecl* mockFunc = createMockFunctionWithThis(cCtx, "Counter");
+    ctx.dispatcher->setCurrentFunction(mockFunc);
 
     // Translate
-    clang::Expr* translated = handler->handleExpr(ME, *context);
+    ctx.dispatcher->dispatch(ME);
+    clang::Expr* translated = ctx.exprMapper->get(ME);
     ASSERT_NE(translated, nullptr);
 
     // Verify result is this->count
@@ -291,12 +274,17 @@ TEST_F(ExpressionHandlerTest_MemberAccess, ExplicitThisFieldAccess) {
     ASSERT_NE(thisExpr, nullptr);
     EXPECT_FALSE(thisExpr->isImplicit()) << "Expected explicit this";
 
+    // Get contexts
+    clang::ASTContext& cppCtx = ctx.cppAST->getASTContext();
+    clang::ASTContext& cCtx = ctx.cAST->getASTContext();
+
     // Set up mock function context for translation
-    clang::FunctionDecl* mockFunc = createMockFunctionWithThis("Counter");
-    context->setCurrentFunction(mockFunc);
+    clang::FunctionDecl* mockFunc = createMockFunctionWithThis(cCtx, "Counter");
+    ctx.dispatcher->setCurrentFunction(mockFunc);
 
     // Translate
-    clang::Expr* translated = handler->handleExpr(ME, *context);
+    ctx.dispatcher->dispatch(ME);
+    clang::Expr* translated = ctx.exprMapper->get(ME);
     ASSERT_NE(translated, nullptr);
 
     // Should preserve this->count structure
@@ -351,9 +339,13 @@ TEST_F(ExpressionHandlerTest_MemberAccess, ChainedMemberAccess) {
     ASSERT_NE(thisExpr, nullptr);
     EXPECT_TRUE(thisExpr->isImplicit());
 
+    // Get contexts
+    clang::ASTContext& cppCtx = ctx.cppAST->getASTContext();
+    clang::ASTContext& cCtx = ctx.cAST->getASTContext();
+
     // Set up mock function context for translation
-    clang::FunctionDecl* mockFunc = createMockFunctionWithThis("Outer");
-    context->setCurrentFunction(mockFunc);
+    clang::FunctionDecl* mockFunc = createMockFunctionWithThis(cCtx, "Outer");
+    ctx.dispatcher->setCurrentFunction(mockFunc);
 
     // Translate the entire chain
     clang::Expr* translated = handler->handleExpr(valueME, *context);
@@ -394,12 +386,17 @@ TEST_F(ExpressionHandlerTest_MemberAccess, ImplicitFieldCompoundAssignment) {
     ASSERT_NE(thisExpr, nullptr);
     EXPECT_TRUE(thisExpr->isImplicit());
 
+    // Get contexts
+    clang::ASTContext& cppCtx = ctx.cppAST->getASTContext();
+    clang::ASTContext& cCtx = ctx.cAST->getASTContext();
+
     // Set up mock function context for translation
-    clang::FunctionDecl* mockFunc = createMockFunctionWithThis("Counter");
-    context->setCurrentFunction(mockFunc);
+    clang::FunctionDecl* mockFunc = createMockFunctionWithThis(cCtx, "Counter");
+    ctx.dispatcher->setCurrentFunction(mockFunc);
 
     // Translate
-    clang::Expr* translated = handler->handleExpr(ME, *context);
+    ctx.dispatcher->dispatch(ME);
+    clang::Expr* translated = ctx.exprMapper->get(ME);
     ASSERT_NE(translated, nullptr);
 
     // Should be this->count
@@ -431,12 +428,17 @@ TEST_F(ExpressionHandlerTest_MemberAccess, ImplicitFieldUnaryOperator) {
     ASSERT_NE(thisExpr, nullptr);
     EXPECT_TRUE(thisExpr->isImplicit());
 
+    // Get contexts
+    clang::ASTContext& cppCtx = ctx.cppAST->getASTContext();
+    clang::ASTContext& cCtx = ctx.cAST->getASTContext();
+
     // Set up mock function context for translation
-    clang::FunctionDecl* mockFunc = createMockFunctionWithThis("Counter");
-    context->setCurrentFunction(mockFunc);
+    clang::FunctionDecl* mockFunc = createMockFunctionWithThis(cCtx, "Counter");
+    ctx.dispatcher->setCurrentFunction(mockFunc);
 
     // Translate
-    clang::Expr* translated = handler->handleExpr(ME, *context);
+    ctx.dispatcher->dispatch(ME);
+    clang::Expr* translated = ctx.exprMapper->get(ME);
     ASSERT_NE(translated, nullptr);
 
     // Should be this->count
@@ -470,9 +472,13 @@ TEST_F(ExpressionHandlerTest_MemberAccess, MultipleImplicitFields) {
     // Should have two MemberExprs: x and y
     ASSERT_EQ(extractor.memberExprs.size(), 2);
 
+    // Get contexts
+    clang::ASTContext& cppCtx = ctx.cppAST->getASTContext();
+    clang::ASTContext& cCtx = ctx.cAST->getASTContext();
+
     // Set up mock function context for translation
-    clang::FunctionDecl* mockFunc = createMockFunctionWithThis("Math");
-    context->setCurrentFunction(mockFunc);
+    clang::FunctionDecl* mockFunc = createMockFunctionWithThis(cCtx, "Math");
+    ctx.dispatcher->setCurrentFunction(mockFunc);
 
     // Translate both
     for (const auto* ME : extractor.memberExprs) {
@@ -482,7 +488,8 @@ TEST_F(ExpressionHandlerTest_MemberAccess, MultipleImplicitFields) {
         EXPECT_TRUE(thisExpr->isImplicit());
 
         // Translate
-        clang::Expr* translated = handler->handleExpr(ME, *context);
+        ctx.dispatcher->dispatch(ME);
+        clang::Expr* translated = ctx.exprMapper->get(ME);
         ASSERT_NE(translated, nullptr);
 
         // Should be this->field
@@ -528,9 +535,13 @@ TEST_F(ExpressionHandlerTest_MemberAccess, MixedExplicitImplicit) {
     ASSERT_NE(yThis, nullptr);
     EXPECT_TRUE(yThis->isImplicit()) << "y should be implicit";
 
+    // Get contexts
+    clang::ASTContext& cppCtx = ctx.cppAST->getASTContext();
+    clang::ASTContext& cCtx = ctx.cAST->getASTContext();
+
     // Set up mock function context for translation
-    clang::FunctionDecl* mockFunc = createMockFunctionWithThis("Math");
-    context->setCurrentFunction(mockFunc);
+    clang::FunctionDecl* mockFunc = createMockFunctionWithThis(cCtx, "Math");
+    ctx.dispatcher->setCurrentFunction(mockFunc);
 
     // Both should translate to this->field
     for (const auto* ME : extractor.memberExprs) {
@@ -565,12 +576,17 @@ TEST_F(ExpressionHandlerTest_MemberAccess, ImplicitFieldArraySubscript) {
     ASSERT_NE(thisExpr, nullptr);
     EXPECT_TRUE(thisExpr->isImplicit());
 
+    // Get contexts
+    clang::ASTContext& cppCtx = ctx.cppAST->getASTContext();
+    clang::ASTContext& cCtx = ctx.cAST->getASTContext();
+
     // Set up mock function context for translation
-    clang::FunctionDecl* mockFunc = createMockFunctionWithThis("Counter");
-    context->setCurrentFunction(mockFunc);
+    clang::FunctionDecl* mockFunc = createMockFunctionWithThis(cCtx, "Counter");
+    ctx.dispatcher->setCurrentFunction(mockFunc);
 
     // Translate
-    clang::Expr* translated = handler->handleExpr(ME, *context);
+    ctx.dispatcher->dispatch(ME);
+    clang::Expr* translated = ctx.exprMapper->get(ME);
     ASSERT_NE(translated, nullptr);
 
     // Should be this->data
@@ -631,9 +647,13 @@ TEST_F(ExpressionHandlerTest_MemberAccess, PointerMemberAccess) {
     ASSERT_NE(thisExpr, nullptr);
     EXPECT_TRUE(thisExpr->isImplicit());
 
+    // Get contexts
+    clang::ASTContext& cppCtx = ctx.cppAST->getASTContext();
+    clang::ASTContext& cCtx = ctx.cAST->getASTContext();
+
     // Set up mock function context for translation
-    clang::FunctionDecl* mockFunc = createMockFunctionWithThis("Outer");
-    context->setCurrentFunction(mockFunc);
+    clang::FunctionDecl* mockFunc = createMockFunctionWithThis(cCtx, "Outer");
+    ctx.dispatcher->setCurrentFunction(mockFunc);
 
     // Translate the entire chain
     clang::Expr* translated = handler->handleExpr(valueME, *context);
@@ -674,12 +694,17 @@ TEST_F(ExpressionHandlerTest_MemberAccess, NestedImplicitInExpression) {
     ASSERT_NE(thisExpr, nullptr);
     EXPECT_TRUE(thisExpr->isImplicit());
 
+    // Get contexts
+    clang::ASTContext& cppCtx = ctx.cppAST->getASTContext();
+    clang::ASTContext& cCtx = ctx.cAST->getASTContext();
+
     // Set up mock function context for translation
-    clang::FunctionDecl* mockFunc = createMockFunctionWithThis("Counter");
-    context->setCurrentFunction(mockFunc);
+    clang::FunctionDecl* mockFunc = createMockFunctionWithThis(cCtx, "Counter");
+    ctx.dispatcher->setCurrentFunction(mockFunc);
 
     // Translate
-    clang::Expr* translated = handler->handleExpr(ME, *context);
+    ctx.dispatcher->dispatch(ME);
+    clang::Expr* translated = ctx.exprMapper->get(ME);
     ASSERT_NE(translated, nullptr);
 
     // Should be this->value
@@ -714,7 +739,8 @@ TEST_F(ExpressionHandlerTest_MemberAccess, CXXThisExprHandling) {
 
     // Translate CXXThisExpr
     // In C, this becomes a reference to the "this" parameter
-    clang::Expr* translated = handler->handleExpr(thisExpr, *context);
+    ctx.dispatcher->dispatch(thisExpr);
+    clang::Expr* translated = ctx.exprMapper->get(thisExpr);
     // For now, this might not be implemented yet
     // We'll implement it as part of the feature
     // Just document the expected behavior

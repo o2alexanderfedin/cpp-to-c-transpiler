@@ -19,13 +19,12 @@
  *             enum State s = State__Idle;
  */
 
+#include "dispatch/EnumTranslator.h"
 #include "dispatch/FunctionHandler.h"
-#include "handlers/VariableHandler.h"
-#include "handlers/ExpressionHandler.h"
-#include "handlers/StatementHandler.h"
-#include "handlers/EnumTranslator.h"
-#include "handlers/HandlerContext.h"
-#include "CNodeBuilder.h"
+#include "dispatch/VariableHandler.h"
+#include "dispatch/StatementHandler.h"
+#include "dispatch/TypeHandler.h"
+#include "DispatcherTestHelper.h"
 #include "CodeGenerator.h"
 #include "clang/Tooling/Tooling.h"
 #include "clang/AST/RecursiveASTVisitor.h"
@@ -42,18 +41,10 @@ using namespace cpptoc;
  */
 class EnumE2ETest : public ::testing::Test {
 protected:
-    std::unique_ptr<FunctionHandler> funcHandler;
-    std::unique_ptr<VariableHandler> varHandler;
-    std::unique_ptr<ExpressionHandler> exprHandler;
-    std::unique_ptr<StatementHandler> stmtHandler;
-    std::unique_ptr<EnumTranslator> enumHandler;
+    // No per-test state needed - pipeline created in runPipeline
 
     void SetUp() override {
-        funcHandler = std::make_unique<FunctionHandler>();
-        varHandler = std::make_unique<VariableHandler>();
-        exprHandler = std::make_unique<ExpressionHandler>();
-        stmtHandler = std::make_unique<StatementHandler>();
-        enumHandler = std::make_unique<EnumTranslator>();
+        // Nothing to setup - pipeline created fresh per test
     }
 
     /**
@@ -64,87 +55,52 @@ protected:
      * @return true if test passed
      */
     bool runPipeline(const std::string& cppCode, int expectedExitCode, bool debugOutput = false) {
-        // Stage 1: Parse C++ code
-        auto cppAST = clang::tooling::buildASTFromCode(cppCode);
-        if (!cppAST) {
-            std::cerr << "Failed to parse C++ code\n";
-            return false;
-        }
+        // Stage 1 & 2: Create pipeline with dispatcher
+        auto pipeline = cpptoc::test::createDispatcherPipeline(cppCode);
 
-        // Stage 2: Translate to C AST
-        auto cAST = clang::tooling::buildASTFromCode("int dummy;");
-        if (!cAST) {
-            std::cerr << "Failed to create C context\n";
-            return false;
-        }
+        // Register handlers needed for enum translation
+        EnumTranslator::registerWith(*pipeline.dispatcher);
+        TypeHandler::registerWith(*pipeline.dispatcher);
+        FunctionHandler::registerWith(*pipeline.dispatcher);
+        VariableHandler::registerWith(*pipeline.dispatcher);
+        StatementHandler::registerWith(*pipeline.dispatcher);
 
-        clang::CNodeBuilder builder(cAST->getASTContext());
-        HandlerContext context(
-            cppAST->getASTContext(),
-            cAST->getASTContext(),
-            builder
-        );
-
-        // Translate all declarations
-        for (auto* decl : cppAST->getASTContext().getTranslationUnitDecl()->decls()) {
-            if (auto* enumDecl = llvm::dyn_cast<clang::EnumDecl>(decl)) {
-                // Translate enum using EnumTranslator
-                if (debugOutput) {
-                    std::cout << "DEBUG: Translating enum: " << enumDecl->getNameAsString() << "\n";
-                }
-                enumHandler->handleDecl(enumDecl, context);
-            } else if (auto* func = llvm::dyn_cast<clang::FunctionDecl>(decl)) {
-                if (!llvm::isa<clang::CXXMethodDecl>(func)) {
-                    if (debugOutput) {
-                        std::cout << "DEBUG: Translating function: " << func->getNameAsString() << "\n";
-                    }
-                    // Translate function signature
-                    clang::Decl* cFuncDecl = funcHandler->handleDecl(func, context);
-                    clang::FunctionDecl* cFunc = llvm::cast<clang::FunctionDecl>(cFuncDecl);
-
-                    // Translate function body if present
-                    if (func->hasBody()) {
-                        clang::Stmt* cBody = stmtHandler->handleStmt(func->getBody(), context);
-                        cFunc->setBody(cBody);
-                    }
+        // Stage 2: Translate all declarations via dispatcher
+        for (auto* decl : pipeline.cppAST->getASTContext().getTranslationUnitDecl()->decls()) {
+            if (debugOutput) {
+                if (auto* enumDecl = llvm::dyn_cast<clang::EnumDecl>(decl)) {
+                    std::cout << "DEBUG: Dispatching enum: " << enumDecl->getNameAsString() << "\n";
+                } else if (auto* func = llvm::dyn_cast<clang::FunctionDecl>(decl)) {
+                    std::cout << "DEBUG: Dispatching function: " << func->getNameAsString() << "\n";
                 }
             }
+
+            // Dispatch through pipeline (handles all decl types)
+            pipeline.dispatcher->dispatch(
+                pipeline.cppAST->getASTContext(),
+                pipeline.cAST->getASTContext(),
+                const_cast<clang::Decl*>(decl)
+            );
         }
 
-        // Stage 3: Generate C code
-        std::string cCode;
-        llvm::raw_string_ostream codeStream(cCode);
-        CodeGenerator generator(codeStream, cAST->getASTContext());
-        generator.printTranslationUnit(cAST->getASTContext().getTranslationUnitDecl());
-        codeStream.flush();
+        // Stage 3: Generate C code using PathMapper
+        std::string cCode = cpptoc::test::generateCCode(
+            pipeline.cAST->getASTContext(),
+            *pipeline.pathMapper
+        );
 
         if (debugOutput) {
             std::cout << "=== Generated C Code ===\n" << cCode << "\n=========================\n";
         }
 
-        // Write C code to temporary file
-        std::string tmpFile = "/tmp/e2e_enum_test_" + std::to_string(rand()) + ".c";
-        std::ofstream outFile(tmpFile);
-        outFile << cCode;
-        outFile.close();
+        // Compile and execute using helper
+        int actualExitCode = cpptoc::test::compileAndRun(cCode, "enum_e2e");
 
-        // Compile with gcc
-        std::string compileCmd = "gcc -std=c99 " + tmpFile + " -o " + tmpFile + ".out 2>&1";
-        int compileResult = system(compileCmd.c_str());
-        if (compileResult != 0) {
+        if (actualExitCode == -1) {
             std::cerr << "Compilation failed\n";
             std::cerr << "Generated C code:\n" << cCode << "\n";
-            system(("cat " + tmpFile).c_str());
             return false;
         }
-
-        // Execute
-        std::string execCmd = tmpFile + ".out";
-        int execResult = system(execCmd.c_str());
-        int actualExitCode = WEXITSTATUS(execResult);
-
-        // Cleanup
-        system(("rm -f " + tmpFile + " " + tmpFile + ".out").c_str());
 
         return actualExitCode == expectedExitCode;
     }

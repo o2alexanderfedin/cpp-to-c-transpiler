@@ -17,11 +17,13 @@ TargetContext::TargetContext() {
 
     // 2. Create DiagnosticsEngine with diagnostic options
     // Bug #31 FIX: Store DiagClient in unique_ptr to ensure proper cleanup
+    // CRITICAL: Pass ShouldOwnClient=false to prevent double-free
+    // TargetContext owns DiagClient, not DiagnosticsEngine
     clang::IntrusiveRefCntPtr<clang::DiagnosticIDs> DiagID(new clang::DiagnosticIDs());
     auto DiagOpts = std::make_unique<clang::DiagnosticOptions>();
     DiagClient = std::make_unique<clang::IgnoringDiagConsumer>();
     Diagnostics = std::make_unique<clang::DiagnosticsEngine>(
-        DiagID, *DiagOpts, DiagClient.get());
+        DiagID, *DiagOpts, DiagClient.get(), /* ShouldOwnClient */ false);
 
     // 3. Create SourceManager
     SourceMgr = std::make_unique<clang::SourceManager>(*Diagnostics, *FileMgr);
@@ -116,6 +118,18 @@ void TargetContext::cleanup() {
         delete instance;
         instance = nullptr;
     }
+}
+
+void TargetContext::reset() {
+    // Reset all maps for test isolation
+    // Keeps singleton alive to avoid dangling references in PathMapper
+    ctorMap.clear();
+    methodMap.clear();
+    dtorMap.clear();
+    nodeToLocation.clear();
+    globalEnums.clear();
+    globalStructs.clear();
+    globalTypedefs.clear();
 }
 
 // Phase 1.1: Node tracking and deduplication methods

@@ -9,19 +9,26 @@
  * Validation: Compile C code with gcc and execute
  */
 
+#include "tests/fixtures/DispatcherTestHelper.h"
+#include "dispatch/TypeHandler.h"
+#include "dispatch/ParameterHandler.h"
+#include "dispatch/LiteralHandler.h"
+#include "dispatch/DeclRefExprHandler.h"
+#include "dispatch/BinaryOperatorHandler.h"
+#include "dispatch/UnaryOperatorHandler.h"
+#include "dispatch/ImplicitCastExprHandler.h"
+#include "dispatch/ParenExprHandler.h"
+#include "dispatch/CallExprHandler.h"
+#include "dispatch/ArraySubscriptExprHandler.h"
+#include "dispatch/InitListExprHandler.h"
+#include "dispatch/CompoundStmtHandler.h"
+#include "dispatch/DeclStmtHandler.h"
+#include "dispatch/ReturnStmtHandler.h"
+#include "dispatch/StatementHandler.h"
 #include "dispatch/FunctionHandler.h"
-#include "handlers/VariableHandler.h"
-#include "handlers/ExpressionHandler.h"
-#include "handlers/StatementHandler.h"
-#include "handlers/HandlerContext.h"
-#include "CNodeBuilder.h"
-#include "CodeGenerator.h"
-#include "clang/Tooling/Tooling.h"
-#include "clang/AST/RecursiveASTVisitor.h"
+#include "dispatch/VariableHandler.h"
+#include "dispatch/TranslationUnitHandler.h"
 #include <gtest/gtest.h>
-#include <memory>
-#include <fstream>
-#include <cstdlib>
 
 using namespace cpptoc;
 
@@ -31,18 +38,6 @@ using namespace cpptoc;
  */
 class ControlFlowE2ETest : public ::testing::Test {
 protected:
-    std::unique_ptr<FunctionHandler> funcHandler;
-    std::unique_ptr<VariableHandler> varHandler;
-    std::unique_ptr<ExpressionHandler> exprHandler;
-    std::unique_ptr<StatementHandler> stmtHandler;
-
-    void SetUp() override {
-        funcHandler = std::make_unique<FunctionHandler>();
-        varHandler = std::make_unique<VariableHandler>();
-        exprHandler = std::make_unique<ExpressionHandler>();
-        stmtHandler = std::make_unique<StatementHandler>();
-    }
-
     /**
      * @brief Run complete pipeline: C++ source → C source → compile → execute
      * @param cppCode C++ source code
@@ -50,66 +45,58 @@ protected:
      * @return true if test passed
      */
     bool runPipeline(const std::string& cppCode, int expectedExitCode) {
-        // Stage 1: Parse C++ code
-        auto cppAST = clang::tooling::buildASTFromCode(cppCode);
-        if (!cppAST) {
-            std::cerr << "Failed to parse C++ code\n";
-            return false;
-        }
+        // Create dispatcher pipeline
+        auto pipeline = cpptoc::test::createDispatcherPipeline(cppCode);
 
-        // Stage 2: Translate to C AST
-        auto cAST = clang::tooling::buildASTFromCode("int dummy;");  // C context
-        if (!cAST) {
-            std::cerr << "Failed to create C context\n";
-            return false;
-        }
+        // Register handlers needed for control flow tests
+        // Base handlers first
+        TypeHandler::registerWith(*pipeline.dispatcher);
+        ParameterHandler::registerWith(*pipeline.dispatcher);
 
-        clang::CNodeBuilder builder(cAST->getASTContext());
-        HandlerContext context(
-            cppAST->getASTContext(),
-            cAST->getASTContext(),
-            builder
+        // Expression handlers
+        LiteralHandler::registerWith(*pipeline.dispatcher);
+        DeclRefExprHandler::registerWith(*pipeline.dispatcher);
+        BinaryOperatorHandler::registerWith(*pipeline.dispatcher);
+        UnaryOperatorHandler::registerWith(*pipeline.dispatcher);
+        ImplicitCastExprHandler::registerWith(*pipeline.dispatcher);
+        ParenExprHandler::registerWith(*pipeline.dispatcher);
+        CallExprHandler::registerWith(*pipeline.dispatcher);
+        ArraySubscriptExprHandler::registerWith(*pipeline.dispatcher);
+        InitListExprHandler::registerWith(*pipeline.dispatcher);
+
+        // Statement handlers (including control flow)
+        CompoundStmtHandler::registerWith(*pipeline.dispatcher);
+        DeclStmtHandler::registerWith(*pipeline.dispatcher);
+        ReturnStmtHandler::registerWith(*pipeline.dispatcher);
+        StatementHandler::registerWith(*pipeline.dispatcher);  // Handles if, while, for, switch
+
+        // Declaration handlers
+        FunctionHandler::registerWith(*pipeline.dispatcher);
+        VariableHandler::registerWith(*pipeline.dispatcher);
+        TranslationUnitHandler::registerWith(*pipeline.dispatcher);
+
+        // Dispatch the TranslationUnit (dispatches all top-level declarations recursively)
+        auto* TU = pipeline.cppAST->getASTContext().getTranslationUnitDecl();
+        pipeline.dispatcher->dispatch(
+            pipeline.cppAST->getASTContext(),
+            pipeline.cAST->getASTContext(),
+            TU
         );
 
-        // Translate all declarations
-        for (auto* decl : cppAST->getASTContext().getTranslationUnitDecl()->decls()) {
-            if (auto* func = llvm::dyn_cast<clang::FunctionDecl>(decl)) {
-                if (!llvm::isa<clang::CXXMethodDecl>(func)) {
-                    funcHandler->handleDecl(func, context);
-                }
-            }
-        }
+        // Generate C code from C AST using PathMapper
+        std::string cCode = cpptoc::test::generateCCode(
+            pipeline.cAST->getASTContext(),
+            *pipeline.pathMapper
+        );
 
-        // Stage 3: Generate C code
-        std::string cCode;
-        llvm::raw_string_ostream codeStream(cCode);
-        CodeGenerator generator(codeStream, cAST->getASTContext());
-        generator.printTranslationUnit(cAST->getASTContext().getTranslationUnitDecl());
-        codeStream.flush();
+        // Compile and run
+        int actualExitCode = cpptoc::test::compileAndRun(cCode, "e2e_control_flow");
 
-        // Write C code to temporary file
-        std::string tmpFile = "/tmp/e2e_cf_test_" + std::to_string(rand()) + ".c";
-        std::ofstream outFile(tmpFile);
-        outFile << cCode;
-        outFile.close();
-
-        // Compile with gcc
-        std::string compileCmd = "gcc -std=c99 " + tmpFile + " -o " + tmpFile + ".out 2>&1";
-        int compileResult = system(compileCmd.c_str());
-        if (compileResult != 0) {
-            std::cerr << "Compilation failed for:\n" << cCode << "\n";
+        if (actualExitCode == -1) {
+            std::cerr << "Compilation failed!\n";
             std::cerr << "Generated C code:\n" << cCode << "\n";
-            system(("cat " + tmpFile).c_str());
             return false;
         }
-
-        // Execute
-        std::string execCmd = tmpFile + ".out";
-        int execResult = system(execCmd.c_str());
-        int actualExitCode = WEXITSTATUS(execResult);
-
-        // Cleanup
-        system(("rm -f " + tmpFile + " " + tmpFile + ".out").c_str());
 
         return actualExitCode == expectedExitCode;
     }
@@ -119,7 +106,7 @@ protected:
 // E2E Test 1: Fibonacci (Iterative)
 // ============================================================================
 
-TEST_F(ControlFlowE2ETest, DISABLED_Fibonacci) {
+TEST_F(ControlFlowE2ETest, Fibonacci) {
     std::string cppCode = R"(
         int fibonacci(int n) {
             int a = 0;
@@ -144,7 +131,7 @@ TEST_F(ControlFlowE2ETest, DISABLED_Fibonacci) {
 // E2E Test 2: Factorial
 // ============================================================================
 
-TEST_F(ControlFlowE2ETest, DISABLED_Factorial) {
+TEST_F(ControlFlowE2ETest, Factorial) {
     std::string cppCode = R"(
         int factorial(int n) {
             int result = 1;
@@ -166,7 +153,7 @@ TEST_F(ControlFlowE2ETest, DISABLED_Factorial) {
 // E2E Test 3: GCD (Greatest Common Divisor)
 // ============================================================================
 
-TEST_F(ControlFlowE2ETest, DISABLED_GCD) {
+TEST_F(ControlFlowE2ETest, GCD) {
     std::string cppCode = R"(
         int gcd(int a, int b) {
             while (b != 0) {
@@ -189,7 +176,7 @@ TEST_F(ControlFlowE2ETest, DISABLED_GCD) {
 // E2E Test 4: IsPrime
 // ============================================================================
 
-TEST_F(ControlFlowE2ETest, DISABLED_IsPrime) {
+TEST_F(ControlFlowE2ETest, IsPrime) {
     std::string cppCode = R"(
         int isPrime(int n) {
             if (n < 2) {
@@ -215,7 +202,7 @@ TEST_F(ControlFlowE2ETest, DISABLED_IsPrime) {
 // E2E Test 5: Power
 // ============================================================================
 
-TEST_F(ControlFlowE2ETest, DISABLED_Power) {
+TEST_F(ControlFlowE2ETest, Power) {
     std::string cppCode = R"(
         int power(int base, int exp) {
             int result = 1;
@@ -237,7 +224,7 @@ TEST_F(ControlFlowE2ETest, DISABLED_Power) {
 // E2E Test 6: Sum Array
 // ============================================================================
 
-TEST_F(ControlFlowE2ETest, DISABLED_SumArray) {
+TEST_F(ControlFlowE2ETest, SumArray) {
     std::string cppCode = R"(
         int sumArray(int arr[], int size) {
             int sum = 0;
@@ -260,7 +247,7 @@ TEST_F(ControlFlowE2ETest, DISABLED_SumArray) {
 // E2E Test 7: Find Max
 // ============================================================================
 
-TEST_F(ControlFlowE2ETest, DISABLED_FindMax) {
+TEST_F(ControlFlowE2ETest, FindMax) {
     std::string cppCode = R"(
         int findMax(int arr[], int size) {
             int max = arr[0];
@@ -285,7 +272,7 @@ TEST_F(ControlFlowE2ETest, DISABLED_FindMax) {
 // E2E Test 8: Linear Search
 // ============================================================================
 
-TEST_F(ControlFlowE2ETest, DISABLED_LinearSearch) {
+TEST_F(ControlFlowE2ETest, LinearSearch) {
     std::string cppCode = R"(
         int linearSearch(int arr[], int size, int target) {
             for (int i = 0; i < size; i++) {
@@ -314,7 +301,7 @@ TEST_F(ControlFlowE2ETest, DISABLED_LinearSearch) {
 // E2E Test 9: Day of Week (State Machine)
 // ============================================================================
 
-TEST_F(ControlFlowE2ETest, DISABLED_DayOfWeek) {
+TEST_F(ControlFlowE2ETest, DayOfWeek) {
     std::string cppCode = R"(
         int dayLength(int day) {
             switch (day) {
@@ -349,7 +336,7 @@ TEST_F(ControlFlowE2ETest, DISABLED_DayOfWeek) {
 // E2E Test 10: Calculator (State Machine)
 // ============================================================================
 
-TEST_F(ControlFlowE2ETest, DISABLED_Calculator) {
+TEST_F(ControlFlowE2ETest, Calculator) {
     std::string cppCode = R"(
         int calculate(int a, int b, int op) {
             switch (op) {

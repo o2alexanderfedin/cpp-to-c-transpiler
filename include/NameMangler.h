@@ -9,6 +9,7 @@
 #include "clang/AST/Decl.h"
 #include "clang/AST/DeclCXX.h"
 #include "clang/Basic/OperatorKinds.h"
+#include <cassert>
 #include <vector>
 #include <string>
 #include <string_view>
@@ -133,7 +134,7 @@ inline std::string get_decl_name(const clang::NamedDecl *ND) {
 // Helper to get param types as vector (since ranges::experimental::generator requires coroutines)
 // We'll use a simple vector approach for now that can be composed with range-v3
 inline std::vector<std::string> param_types_vec(const clang::FunctionDecl *FD) {
-    if (!FD) return {};
+    assert(FD && "FunctionDecl must not be null");
 
     std::vector<std::string> types;
     for (const clang::ParmVarDecl *P : FD->parameters()) {
@@ -143,7 +144,7 @@ inline std::vector<std::string> param_types_vec(const clang::FunctionDecl *FD) {
 }
 
 inline std::vector<std::string> decl_name_parts_vec(const clang::Decl *D) {
-    if (!D) return {};
+    assert(D && "Decl must not be null");
 
     std::vector<std::string> result;
     std::vector<std::string> contexts;
@@ -209,13 +210,25 @@ inline std::string mangle_destructor(const clang::CXXDestructorDecl *DD) {
 }
 
 inline std::string mangle_function(const clang::FunctionDecl *FD) {
-    // Special case: main() and extern "C" are not mangled
-    if (FD && FD->getName() == "main") {
-        return "main";
+    assert(FD && "FunctionDecl must not be null");
+
+    // Special case: main() at global scope (entry point) is not mangled
+    // main() inside namespace or class MUST be mangled
+    if (FD->getName() == "main") {
+        // Check if this is the global entry point main()
+        const clang::DeclContext *DC = FD->getDeclContext();
+        if (DC && llvm::isa<clang::TranslationUnitDecl>(DC)) {
+            // Global scope main() - this is the entry point
+            return "main";
+        }
+        // else: main() in namespace/class - fall through to mangle it
     }
-    if (FD && FD->isExternC()) {
+
+    // extern "C" functions are not mangled
+    if (FD->isExternC()) {
         return FD->getNameAsString();
     }
+
     return mangle_decl(FD);
 }
 

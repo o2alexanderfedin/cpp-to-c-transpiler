@@ -9,19 +9,25 @@
  * Validation: Compile C code with gcc and execute
  */
 
+#include "tests/fixtures/DispatcherTestHelper.h"
+#include "dispatch/TypeHandler.h"
+#include "dispatch/ParameterHandler.h"
+#include "dispatch/LiteralHandler.h"
+#include "dispatch/DeclRefExprHandler.h"
+#include "dispatch/BinaryOperatorHandler.h"
+#include "dispatch/UnaryOperatorHandler.h"
+#include "dispatch/ImplicitCastExprHandler.h"
+#include "dispatch/ParenExprHandler.h"
+#include "dispatch/CallExprHandler.h"
+#include "dispatch/ArraySubscriptExprHandler.h"
+#include "dispatch/CompoundStmtHandler.h"
+#include "dispatch/DeclStmtHandler.h"
+#include "dispatch/ReturnStmtHandler.h"
+#include "dispatch/StatementHandler.h"
 #include "dispatch/FunctionHandler.h"
-#include "handlers/VariableHandler.h"
-#include "handlers/ExpressionHandler.h"
-#include "handlers/StatementHandler.h"
-#include "handlers/HandlerContext.h"
-#include "CNodeBuilder.h"
-#include "CodeGenerator.h"
-#include "clang/Tooling/Tooling.h"
-#include "clang/AST/RecursiveASTVisitor.h"
+#include "dispatch/VariableHandler.h"
+#include "dispatch/TranslationUnitHandler.h"
 #include <gtest/gtest.h>
-#include <memory>
-#include <fstream>
-#include <cstdlib>
 
 using namespace cpptoc;
 
@@ -31,18 +37,6 @@ using namespace cpptoc;
  */
 class GlobalVariablesE2ETest : public ::testing::Test {
 protected:
-    std::unique_ptr<FunctionHandler> funcHandler;
-    std::unique_ptr<VariableHandler> varHandler;
-    std::unique_ptr<ExpressionHandler> exprHandler;
-    std::unique_ptr<StatementHandler> stmtHandler;
-
-    void SetUp() override {
-        funcHandler = std::make_unique<FunctionHandler>();
-        varHandler = std::make_unique<VariableHandler>();
-        exprHandler = std::make_unique<ExpressionHandler>();
-        stmtHandler = std::make_unique<StatementHandler>();
-    }
-
     /**
      * @brief Run complete pipeline: C++ source → C source → compile → execute
      * @param cppCode C++ source code
@@ -50,83 +44,64 @@ protected:
      * @return true if test passed
      */
     bool runPipeline(const std::string& cppCode, int expectedExitCode) {
-        // Stage 1: Parse C++ code
-        auto cppAST = clang::tooling::buildASTFromCode(cppCode);
-        if (!cppAST) {
-            std::cerr << "Failed to parse C++ code\n";
-            return false;
-        }
+        // Create dispatcher pipeline
+        auto pipeline = cpptoc::test::createDispatcherPipeline(cppCode);
 
-        // Stage 2: Translate to C AST
-        auto cAST = clang::tooling::buildASTFromCode("int dummy;");  // C context
-        if (!cAST) {
-            std::cerr << "Failed to create C context\n";
-            return false;
-        }
+        // Register handlers needed for global variables tests
+        // Base handlers first
+        TypeHandler::registerWith(*pipeline.dispatcher);
+        ParameterHandler::registerWith(*pipeline.dispatcher);
 
-        clang::CNodeBuilder builder(cAST->getASTContext());
-        HandlerContext context(
-            cppAST->getASTContext(),
-            cAST->getASTContext(),
-            builder
+        // Expression handlers
+        LiteralHandler::registerWith(*pipeline.dispatcher);
+        DeclRefExprHandler::registerWith(*pipeline.dispatcher);
+        BinaryOperatorHandler::registerWith(*pipeline.dispatcher);
+        UnaryOperatorHandler::registerWith(*pipeline.dispatcher);
+        ImplicitCastExprHandler::registerWith(*pipeline.dispatcher);
+        ParenExprHandler::registerWith(*pipeline.dispatcher);
+        CallExprHandler::registerWith(*pipeline.dispatcher);
+        ArraySubscriptExprHandler::registerWith(*pipeline.dispatcher);
+
+        // Statement handlers
+        CompoundStmtHandler::registerWith(*pipeline.dispatcher);
+        DeclStmtHandler::registerWith(*pipeline.dispatcher);
+        ReturnStmtHandler::registerWith(*pipeline.dispatcher);
+        StatementHandler::registerWith(*pipeline.dispatcher);
+
+        // Declaration handlers
+        FunctionHandler::registerWith(*pipeline.dispatcher);
+        VariableHandler::registerWith(*pipeline.dispatcher);
+        TranslationUnitHandler::registerWith(*pipeline.dispatcher);
+
+        // Dispatch the TranslationUnit (dispatches all top-level declarations recursively)
+        auto* TU = pipeline.cppAST->getASTContext().getTranslationUnitDecl();
+        pipeline.dispatcher->dispatch(
+            pipeline.cppAST->getASTContext(),
+            pipeline.cAST->getASTContext(),
+            TU
         );
 
-        // Translate all declarations
-        for (auto* decl : cppAST->getASTContext().getTranslationUnitDecl()->decls()) {
-            if (auto* func = llvm::dyn_cast<clang::FunctionDecl>(decl)) {
-                if (!llvm::isa<clang::CXXMethodDecl>(func)) {
-                    // Translate function signature
-                    clang::Decl* cFuncDecl = funcHandler->handleDecl(func, context);
-                    clang::FunctionDecl* cFunc = llvm::cast<clang::FunctionDecl>(cFuncDecl);
+        // Generate C code from C AST using PathMapper
+        std::string cCode = cpptoc::test::generateCCode(
+            pipeline.cAST->getASTContext(),
+            *pipeline.pathMapper
+        );
 
-                    // Translate function body if present
-                    if (func->hasBody()) {
-                        clang::Stmt* cBody = stmtHandler->handleStmt(func->getBody(), context);
-                        cFunc->setBody(cBody);
-                    }
-                }
-            } else if (auto* var = llvm::dyn_cast<clang::VarDecl>(decl)) {
-                varHandler->handleDecl(var, context);
-            }
-        }
+        // Compile and run
+        int actualExitCode = cpptoc::test::compileAndRun(cCode, "e2e_global_vars");
 
-        // Stage 3: Generate C code
-        std::string cCode;
-        llvm::raw_string_ostream codeStream(cCode);
-        CodeGenerator generator(codeStream, cAST->getASTContext());
-        generator.printTranslationUnit(cAST->getASTContext().getTranslationUnitDecl());
-        codeStream.flush();
-
-        // Write C code to temporary file
-        std::string tmpFile = "/tmp/e2e_gv_test_" + std::to_string(rand()) + ".c";
-        std::ofstream outFile(tmpFile);
-        outFile << cCode;
-        outFile.close();
-
-        // Compile with gcc
-        std::string compileCmd = "gcc -std=c99 " + tmpFile + " -o " + tmpFile + ".out 2>&1";
-        int compileResult = system(compileCmd.c_str());
-        if (compileResult != 0) {
-            std::cerr << "Compilation failed for:\n" << cCode << "\n";
+        if (actualExitCode == -1) {
+            std::cerr << "Compilation failed!\n";
             std::cerr << "Generated C code:\n" << cCode << "\n";
-            system(("cat " + tmpFile).c_str());
             return false;
         }
-
-        // Execute
-        std::string execCmd = tmpFile + ".out";
-        int execResult = system(execCmd.c_str());
-        int actualExitCode = WEXITSTATUS(execResult);
-
-        // Cleanup
-        system(("rm -f " + tmpFile + " " + tmpFile + ".out").c_str());
 
         return actualExitCode == expectedExitCode;
     }
 };
 
 // ============================================================================
-// E2E Test 1: Global Counter (ACTIVE SANITY TEST)
+// E2E Test 1: Global Counter
 // ============================================================================
 
 TEST_F(GlobalVariablesE2ETest, GlobalCounter) {
@@ -152,7 +127,7 @@ TEST_F(GlobalVariablesE2ETest, GlobalCounter) {
 // E2E Test 2: String Length Calculation
 // ============================================================================
 
-TEST_F(GlobalVariablesE2ETest, DISABLED_StringLength) {
+TEST_F(GlobalVariablesE2ETest, StringLength) {
     std::string cppCode = R"(
         int stringLength(const char* str) {
             int len = 0;
@@ -175,7 +150,7 @@ TEST_F(GlobalVariablesE2ETest, DISABLED_StringLength) {
 // E2E Test 3: Array Sum
 // ============================================================================
 
-TEST_F(GlobalVariablesE2ETest, DISABLED_ArraySum) {
+TEST_F(GlobalVariablesE2ETest, ArraySum) {
     std::string cppCode = R"(
         int values[] = {1, 2, 3, 4, 5};
 
@@ -199,7 +174,7 @@ TEST_F(GlobalVariablesE2ETest, DISABLED_ArraySum) {
 // E2E Test 4: Array Average
 // ============================================================================
 
-TEST_F(GlobalVariablesE2ETest, DISABLED_ArrayAverage) {
+TEST_F(GlobalVariablesE2ETest, ArrayAverage) {
     std::string cppCode = R"(
         int arrayAverage(int arr[], int size) {
             int sum = 0;
@@ -222,7 +197,7 @@ TEST_F(GlobalVariablesE2ETest, DISABLED_ArrayAverage) {
 // E2E Test 5: Matrix Operations (Simple)
 // ============================================================================
 
-TEST_F(GlobalVariablesE2ETest, DISABLED_MatrixSum) {
+TEST_F(GlobalVariablesE2ETest, MatrixSum) {
     std::string cppCode = R"(
         int matrixSum(int matrix[][3], int rows) {
             int sum = 0;
@@ -247,7 +222,7 @@ TEST_F(GlobalVariablesE2ETest, DISABLED_MatrixSum) {
 // E2E Test 6: Static Variable Counter
 // ============================================================================
 
-TEST_F(GlobalVariablesE2ETest, DISABLED_StaticCounter) {
+TEST_F(GlobalVariablesE2ETest, StaticCounter) {
     std::string cppCode = R"(
         int getNextId() {
             static int id = 0;
@@ -269,7 +244,7 @@ TEST_F(GlobalVariablesE2ETest, DISABLED_StaticCounter) {
 // E2E Test 7: Global Lookup Table
 // ============================================================================
 
-TEST_F(GlobalVariablesE2ETest, DISABLED_LookupTable) {
+TEST_F(GlobalVariablesE2ETest, LookupTable) {
     std::string cppCode = R"(
         int squares[] = {0, 1, 4, 9, 16, 25, 36, 49, 64, 81};
 
@@ -292,7 +267,7 @@ TEST_F(GlobalVariablesE2ETest, DISABLED_LookupTable) {
 // E2E Test 8: String Reversal (In-Place)
 // ============================================================================
 
-TEST_F(GlobalVariablesE2ETest, DISABLED_StringReversal) {
+TEST_F(GlobalVariablesE2ETest, StringReversal) {
     std::string cppCode = R"(
         void reverseString(char str[], int len) {
             int i = 0;
@@ -322,7 +297,7 @@ TEST_F(GlobalVariablesE2ETest, DISABLED_StringReversal) {
 // E2E Test 9: Array Sorting (Bubble Sort)
 // ============================================================================
 
-TEST_F(GlobalVariablesE2ETest, DISABLED_BubbleSort) {
+TEST_F(GlobalVariablesE2ETest, BubbleSort) {
     std::string cppCode = R"(
         void bubbleSort(int arr[], int size) {
             for (int i = 0; i < size - 1; i++) {
@@ -352,7 +327,7 @@ TEST_F(GlobalVariablesE2ETest, DISABLED_BubbleSort) {
 // E2E Test 10: Character Literal Operations
 // ============================================================================
 
-TEST_F(GlobalVariablesE2ETest, DISABLED_CharacterOperations) {
+TEST_F(GlobalVariablesE2ETest, CharacterOperations) {
     std::string cppCode = R"(
         int charDifference(char a, char b) {
             return b - a;

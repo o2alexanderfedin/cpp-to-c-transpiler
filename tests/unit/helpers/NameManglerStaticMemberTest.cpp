@@ -2,7 +2,7 @@
  * @file NameManglerStaticMemberTest.cpp
  * @brief Tests for NameMangler static data member mangling (Phase 49 Task 1C)
  *
- * Tests the mangleStaticMember() method that generates mangled names for
+ * Tests the mangle_static_member() function that generates mangled names for
  * C++ static data members. Pattern: ClassName__memberName
  */
 
@@ -11,7 +11,6 @@
 #include "clang/Frontend/ASTUnit.h"
 #include "clang/AST/DeclCXX.h"
 #include "../../../include/NameMangler.h"
-#include "../../../include/OverloadRegistry.h"
 #include <cassert>
 
 using namespace clang;
@@ -36,10 +35,6 @@ TEST_F(NameManglerStaticMemberTest, SimpleStaticMember) {
 
     std::unique_ptr<ASTUnit> AST = buildASTForStaticMember(code);
     ASSERT_TRUE(AST) << "Failed to parse C++ code";
-
-    cpptoc::OverloadRegistry& registry = cpptoc::OverloadRegistry::getInstance();
-    registry.reset();
-    NameMangler mangler(AST->getASTContext(), registry);
 
     // Find Counter and static member 'count'
     auto *TU = AST->getASTContext().getTranslationUnitDecl();
@@ -68,7 +63,7 @@ TEST_F(NameManglerStaticMemberTest, SimpleStaticMember) {
     ASSERT_TRUE(countMember != nullptr) << "Static member 'count' not found";
     ASSERT_TRUE(countMember->isStaticDataMember()) << "'count' should be static";
 
-    std::string mangled = mangler.mangleStaticMember(Counter, countMember);
+    std::string mangled = cpptoc::mangle_static_member(countMember);
     EXPECT_EQ("Counter__count", mangled);
 }
 
@@ -85,10 +80,6 @@ TEST_F(NameManglerStaticMemberTest, NestedClassStaticMember) {
 
     std::unique_ptr<ASTUnit> AST = buildASTForStaticMember(code);
     ASSERT_TRUE(AST) << "Failed to parse C++ code";
-
-    cpptoc::OverloadRegistry& registry = cpptoc::OverloadRegistry::getInstance();
-    registry.reset();
-    NameMangler mangler(AST->getASTContext(), registry);
 
     // Find Outer::Inner and static member 'value'
     auto *TU = AST->getASTContext().getTranslationUnitDecl();
@@ -122,7 +113,7 @@ TEST_F(NameManglerStaticMemberTest, NestedClassStaticMember) {
     ASSERT_TRUE(Inner != nullptr) << "Inner class not found";
     ASSERT_TRUE(valueMember != nullptr) << "Static member 'value' not found";
 
-    std::string mangled = mangler.mangleStaticMember(Inner, valueMember);
+    std::string mangled = cpptoc::mangle_static_member(valueMember);
     EXPECT_EQ("Outer__Inner__value", mangled);
 }
 
@@ -139,10 +130,6 @@ TEST_F(NameManglerStaticMemberTest, NamespacedClassStaticMember) {
 
     std::unique_ptr<ASTUnit> AST = buildASTForStaticMember(code);
     ASSERT_TRUE(AST) << "Failed to parse C++ code";
-
-    cpptoc::OverloadRegistry& registry = cpptoc::OverloadRegistry::getInstance();
-    registry.reset();
-    NameMangler mangler(AST->getASTContext(), registry);
 
     // Find ns::Config and static member 'maxSize'
     auto *TU = AST->getASTContext().getTranslationUnitDecl();
@@ -176,7 +163,7 @@ TEST_F(NameManglerStaticMemberTest, NamespacedClassStaticMember) {
     ASSERT_TRUE(Config != nullptr) << "Config class not found";
     ASSERT_TRUE(maxSizeMember != nullptr) << "Static member 'maxSize' not found";
 
-    std::string mangled = mangler.mangleStaticMember(Config, maxSizeMember);
+    std::string mangled = cpptoc::mangle_static_member(maxSizeMember);
     EXPECT_EQ("ns__Config__maxSize", mangled);
 }
 
@@ -195,10 +182,6 @@ TEST_F(NameManglerStaticMemberTest, NamespaceNestedClassStaticMember) {
 
     std::unique_ptr<ASTUnit> AST = buildASTForStaticMember(code);
     ASSERT_TRUE(AST) << "Failed to parse C++ code";
-
-    cpptoc::OverloadRegistry& registry = cpptoc::OverloadRegistry::getInstance();
-    registry.reset();
-    NameMangler mangler(AST->getASTContext(), registry);
 
     // Find app::Outer::Inner and static member 'data'
     auto *TU = AST->getASTContext().getTranslationUnitDecl();
@@ -239,7 +222,7 @@ TEST_F(NameManglerStaticMemberTest, NamespaceNestedClassStaticMember) {
     ASSERT_TRUE(Inner != nullptr) << "Inner class not found";
     ASSERT_TRUE(dataMember != nullptr) << "Static member 'data' not found";
 
-    std::string mangled = mangler.mangleStaticMember(Inner, dataMember);
+    std::string mangled = cpptoc::mangle_static_member(dataMember);
     EXPECT_EQ("app__Outer__Inner__data", mangled);
 }
 
@@ -255,10 +238,6 @@ TEST_F(NameManglerStaticMemberTest, NoCollisionWithMethodNames) {
 
     std::unique_ptr<ASTUnit> AST = buildASTForStaticMember(code);
     ASSERT_TRUE(AST) << "Failed to parse C++ code";
-
-    cpptoc::OverloadRegistry& registry = cpptoc::OverloadRegistry::getInstance();
-    registry.reset();
-    NameMangler mangler(AST->getASTContext(), registry);
 
     // Find Test class, static member 'getValue', and method 'getValue()'
     auto *TU = AST->getASTContext().getTranslationUnitDecl();
@@ -290,11 +269,11 @@ TEST_F(NameManglerStaticMemberTest, NoCollisionWithMethodNames) {
     ASSERT_TRUE(getValueMember != nullptr) << "Static member 'getValue' not found";
     ASSERT_TRUE(getValueMethod != nullptr) << "Method 'getValue()' not found";
 
-    std::string memberMangled = mangler.mangleStaticMember(Test, getValueMember);
-    std::string methodMangled = mangler.mangleMethodName(getValueMethod);
+    std::string memberMangled = cpptoc::mangle_static_member(getValueMember);
+    std::string methodMangled = cpptoc::mangle_method(getValueMethod);
 
     EXPECT_EQ("Test__getValue", memberMangled);
-    EXPECT_EQ("Test_getValue", methodMangled);
+    EXPECT_EQ("Test__getValue__void", methodMangled);
     EXPECT_NE(memberMangled, methodMangled) << "Static member and method names must not collide";
 }
 
@@ -311,10 +290,6 @@ TEST_F(NameManglerStaticMemberTest, MultipleStaticMembers) {
 
     std::unique_ptr<ASTUnit> AST = buildASTForStaticMember(code);
     ASSERT_TRUE(AST) << "Failed to parse C++ code";
-
-    cpptoc::OverloadRegistry& registry = cpptoc::OverloadRegistry::getInstance();
-    registry.reset();
-    NameMangler mangler(AST->getASTContext(), registry);
 
     // Find Stats class and all static members
     auto *TU = AST->getASTContext().getTranslationUnitDecl();
@@ -344,9 +319,9 @@ TEST_F(NameManglerStaticMemberTest, MultipleStaticMembers) {
     ASSERT_TRUE(totalMember != nullptr) << "Static member 'total' not found";
     ASSERT_TRUE(averageMember != nullptr) << "Static member 'average' not found";
 
-    EXPECT_EQ("Stats__count", mangler.mangleStaticMember(Stats, countMember));
-    EXPECT_EQ("Stats__total", mangler.mangleStaticMember(Stats, totalMember));
-    EXPECT_EQ("Stats__average", mangler.mangleStaticMember(Stats, averageMember));
+    EXPECT_EQ("Stats__count", cpptoc::mangle_static_member(countMember));
+    EXPECT_EQ("Stats__total", cpptoc::mangle_static_member(totalMember));
+    EXPECT_EQ("Stats__average", cpptoc::mangle_static_member(averageMember));
 }
 
 // Test 7: Verify consistency with method mangling
@@ -363,10 +338,6 @@ TEST_F(NameManglerStaticMemberTest, ConsistencyWithMethodMangling) {
 
     std::unique_ptr<ASTUnit> AST = buildASTForStaticMember(code);
     ASSERT_TRUE(AST) << "Failed to parse C++ code";
-
-    cpptoc::OverloadRegistry& registry = cpptoc::OverloadRegistry::getInstance();
-    registry.reset();
-    NameMangler mangler(AST->getASTContext(), registry);
 
     // Find utils::Helper, static member, and method
     auto *TU = AST->getASTContext().getTranslationUnitDecl();
@@ -401,19 +372,16 @@ TEST_F(NameManglerStaticMemberTest, ConsistencyWithMethodMangling) {
     ASSERT_TRUE(dataMember != nullptr) << "Static member 'data' not found";
     ASSERT_TRUE(processMethod != nullptr) << "Method 'process' not found";
 
-    std::string memberMangled = mangler.mangleStaticMember(Helper, dataMember);
-    std::string methodMangled = mangler.mangleMethodName(processMethod);
-    std::string classMangled = mangler.mangleClassName(Helper);
+    std::string memberMangled = cpptoc::mangle_static_member(dataMember);
+    std::string methodMangled = cpptoc::mangle_method(processMethod);
+    std::string classMangled = cpptoc::mangle_class(Helper);
 
-    // Verify consistent namespace prefix
-    // Note: Static members use double underscore everywhere for clarity
-    // Methods use single underscore for namespace, double for method separator would be Class__method
-    // Classes use single underscore for namespace separator
+    // Verify consistent double underscore pattern throughout
     EXPECT_EQ("utils__Helper__data", memberMangled);
-    EXPECT_EQ("utils_Helper_process", methodMangled);  // Single _ for ns, single _ for method
-    EXPECT_EQ("utils_Helper", classMangled);  // Single _ for ns
+    EXPECT_EQ("utils__Helper__process__void", methodMangled);
+    EXPECT_EQ("utils__Helper", classMangled);
 
     // Verify all use consistent namespace and class naming
     EXPECT_TRUE(memberMangled.find("Helper__data") != std::string::npos) << "Static member should have double underscore before member name";
-    EXPECT_TRUE(methodMangled.find("Helper_process") != std::string::npos) << "Method should have single underscore before method name";
+    EXPECT_TRUE(methodMangled.find("Helper__process") != std::string::npos) << "Method should have double underscore before method name";
 }

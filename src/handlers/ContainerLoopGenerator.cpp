@@ -3,11 +3,12 @@
  * @brief Implementation of ContainerLoopGenerator
  *
  * TDD Implementation: Generate iterator-based loops for custom containers.
+ * Migrated from HandlerContext to dispatcher pattern.
  */
 
+#include "dispatch/CppToCVisitorDispatcher.h"
 #include "handlers/ContainerLoopGenerator.h"
-#include "handlers/StatementHandler.h"
-#include "handlers/ExpressionHandler.h"
+#include "mapping/StmtMapper.h"
 #include "CNodeBuilder.h"
 #include "clang/AST/Type.h"
 #include "clang/AST/Decl.h"
@@ -25,7 +26,9 @@ unsigned ContainerLoopGenerator::iteratorVarCounter_ = 0;
 clang::ForStmt* ContainerLoopGenerator::generate(
     const clang::CXXForRangeStmt* RFS,
     const RangeClassification& rangeInfo,
-    const LoopVariableInfo& loopVarInfo
+    const LoopVariableInfo& loopVarInfo,
+    const clang::ASTContext& cppASTContext,
+    clang::ASTContext& cASTContext
 ) {
     if (!RFS || rangeInfo.rangeType != RangeType::CustomType) {
         return nullptr;
@@ -63,10 +66,10 @@ clang::ForStmt* ContainerLoopGenerator::generate(
 
     // Create iterator variable declarations
     clang::VarDecl* beginVar = createBeginIterator(
-        beginVarName, iteratorType, containerExpr, containerType
+        beginVarName, iteratorType, containerExpr, containerType, cASTContext
     );
     clang::VarDecl* endVar = createEndIterator(
-        endVarName, iteratorType, containerExpr, containerType
+        endVarName, iteratorType, containerExpr, containerType, cASTContext
     );
 
     if (!beginVar || !endVar) {
@@ -74,23 +77,21 @@ clang::ForStmt* ContainerLoopGenerator::generate(
     }
 
     // Create loop condition: begin != end
-    clang::Expr* condition = createIteratorComparison(beginVar, endVar, iterClass);
+    clang::Expr* condition = createIteratorComparison(beginVar, endVar, iterClass, cASTContext);
 
     // Create loop increment: ++begin
-    clang::Expr* increment = createIteratorIncrement(beginVar, iterClass);
+    clang::Expr* increment = createIteratorIncrement(beginVar, iterClass, cASTContext);
 
     // Create loop body with element access
-    clang::CompoundStmt* body = createLoopBody(RFS, beginVar, loopVarInfo, iterClass);
+    clang::CompoundStmt* body = createLoopBody(RFS, beginVar, loopVarInfo, iterClass, cppASTContext, cASTContext);
 
     if (!condition || !increment || !body) {
         return nullptr;
     }
 
-    clang::ASTContext& cContext = ctx_.getCContext();
-
     // Create the for loop: for (; begin != end; ++begin) { ... }
-    clang::ForStmt* forLoop = new (cContext) clang::ForStmt(
-        cContext,
+    clang::ForStmt* forLoop = new (cASTContext) clang::ForStmt(
+        cASTContext,
         nullptr,        // No init (iterators declared in outer scope)
         condition,      // begin != end
         nullptr,        // No cond var
@@ -102,7 +103,7 @@ clang::ForStmt* ContainerLoopGenerator::generate(
     );
 
     // Wrap in compound statement with iterator declarations
-    clang::CompoundStmt* wrappedLoop = createIteratorScope(beginVar, endVar, forLoop);
+    clang::CompoundStmt* wrappedLoop = createIteratorScope(beginVar, endVar, forLoop, cASTContext);
 
     // Return the wrapped loop as a ForStmt (actually returns CompoundStmt cast to ForStmt)
     // Note: We need to return ForStmt, but we have CompoundStmt with ForStmt inside
@@ -121,27 +122,26 @@ clang::VarDecl* ContainerLoopGenerator::createBeginIterator(
     const std::string& beginVarName,
     clang::QualType iteratorType,
     const clang::Expr* containerExpr,
-    clang::QualType containerType
+    clang::QualType containerType,
+    clang::ASTContext& cASTContext
 ) {
-    clang::ASTContext& cContext = ctx_.getCContext();
-
     // Create identifier
-    clang::IdentifierInfo& beginII = cContext.Idents.get(beginVarName);
+    clang::IdentifierInfo& beginII = cASTContext.Idents.get(beginVarName);
 
     // Create variable declaration
     clang::VarDecl* beginVar = clang::VarDecl::Create(
-        cContext,
-        cContext.getTranslationUnitDecl(),
+        cASTContext,
+        cASTContext.getTranslationUnitDecl(),
         clang::SourceLocation(),
         clang::SourceLocation(),
         &beginII,
         iteratorType,
-        cContext.getTrivialTypeSourceInfo(iteratorType),
+        cASTContext.getTrivialTypeSourceInfo(iteratorType),
         clang::SC_None
     );
 
     // Create initializer: Container::begin(&container)
-    clang::Expr* beginCall = createBeginCall(containerExpr, containerType);
+    clang::Expr* beginCall = createBeginCall(containerExpr, containerType, cASTContext);
     if (beginCall) {
         beginVar->setInit(beginCall);
     }
@@ -153,27 +153,26 @@ clang::VarDecl* ContainerLoopGenerator::createEndIterator(
     const std::string& endVarName,
     clang::QualType iteratorType,
     const clang::Expr* containerExpr,
-    clang::QualType containerType
+    clang::QualType containerType,
+    clang::ASTContext& cASTContext
 ) {
-    clang::ASTContext& cContext = ctx_.getCContext();
-
     // Create identifier
-    clang::IdentifierInfo& endII = cContext.Idents.get(endVarName);
+    clang::IdentifierInfo& endII = cASTContext.Idents.get(endVarName);
 
     // Create variable declaration
     clang::VarDecl* endVar = clang::VarDecl::Create(
-        cContext,
-        cContext.getTranslationUnitDecl(),
+        cASTContext,
+        cASTContext.getTranslationUnitDecl(),
         clang::SourceLocation(),
         clang::SourceLocation(),
         &endII,
         iteratorType,
-        cContext.getTrivialTypeSourceInfo(iteratorType),
+        cASTContext.getTrivialTypeSourceInfo(iteratorType),
         clang::SC_None
     );
 
     // Create initializer: Container::end(&container)
-    clang::Expr* endCall = createEndCall(containerExpr, containerType);
+    clang::Expr* endCall = createEndCall(containerExpr, containerType, cASTContext);
     if (endCall) {
         endVar->setInit(endCall);
     }
@@ -184,14 +183,14 @@ clang::VarDecl* ContainerLoopGenerator::createEndIterator(
 clang::Expr* ContainerLoopGenerator::createIteratorComparison(
     clang::VarDecl* beginVar,
     clang::VarDecl* endVar,
-    const IteratorClassification& iterClass
+    const IteratorClassification& iterClass,
+    clang::ASTContext& cASTContext
 ) {
-    clang::ASTContext& cContext = ctx_.getCContext();
     clang::QualType iteratorType = beginVar->getType();
 
     // Create DeclRefExpr for begin
     clang::DeclRefExpr* beginRef = clang::DeclRefExpr::Create(
-        cContext,
+        cASTContext,
         clang::NestedNameSpecifierLoc(),
         clang::SourceLocation(),
         beginVar,
@@ -203,7 +202,7 @@ clang::Expr* ContainerLoopGenerator::createIteratorComparison(
 
     // Create DeclRefExpr for end
     clang::DeclRefExpr* endRef = clang::DeclRefExpr::Create(
-        cContext,
+        cASTContext,
         clang::NestedNameSpecifierLoc(),
         clang::SourceLocation(),
         endVar,
@@ -216,11 +215,11 @@ clang::Expr* ContainerLoopGenerator::createIteratorComparison(
     if (iterClass.isPointer) {
         // For pointer iterators: begin != end (built-in operator)
         return clang::BinaryOperator::Create(
-            cContext,
+            cASTContext,
             beginRef,
             endRef,
             clang::BO_NE,
-            cContext.BoolTy,
+            cASTContext.BoolTy,
             clang::VK_PRValue,
             clang::OK_Ordinary,
             clang::SourceLocation(),
@@ -232,10 +231,10 @@ clang::Expr* ContainerLoopGenerator::createIteratorComparison(
         // For now, create a CXXOperatorCallExpr that represents the != operation
 
         // Create UnaryOperator for address-of (&begin, &end)
-        clang::QualType ptrType = cContext.getPointerType(iteratorType);
+        clang::QualType ptrType = cASTContext.getPointerType(iteratorType);
 
         clang::UnaryOperator* beginAddr = clang::UnaryOperator::Create(
-            cContext,
+            cASTContext,
             beginRef,
             clang::UO_AddrOf,
             ptrType,
@@ -247,7 +246,7 @@ clang::Expr* ContainerLoopGenerator::createIteratorComparison(
         );
 
         clang::UnaryOperator* endAddr = clang::UnaryOperator::Create(
-            cContext,
+            cASTContext,
             endRef,
             clang::UO_AddrOf,
             ptrType,
@@ -261,11 +260,11 @@ clang::Expr* ContainerLoopGenerator::createIteratorComparison(
         // For now, create a simple != operator (will be translated later)
         // In full implementation, this would create a proper call to the translated function
         return clang::BinaryOperator::Create(
-            cContext,
+            cASTContext,
             beginRef,
             endRef,
             clang::BO_NE,
-            cContext.BoolTy,
+            cASTContext.BoolTy,
             clang::VK_PRValue,
             clang::OK_Ordinary,
             clang::SourceLocation(),
@@ -278,14 +277,14 @@ clang::Expr* ContainerLoopGenerator::createIteratorComparison(
 
 clang::Expr* ContainerLoopGenerator::createIteratorIncrement(
     clang::VarDecl* beginVar,
-    const IteratorClassification& iterClass
+    const IteratorClassification& iterClass,
+    clang::ASTContext& cASTContext
 ) {
-    clang::ASTContext& cContext = ctx_.getCContext();
     clang::QualType iteratorType = beginVar->getType();
 
     // Create DeclRefExpr for begin
     clang::DeclRefExpr* beginRef = clang::DeclRefExpr::Create(
-        cContext,
+        cASTContext,
         clang::NestedNameSpecifierLoc(),
         clang::SourceLocation(),
         beginVar,
@@ -298,7 +297,7 @@ clang::Expr* ContainerLoopGenerator::createIteratorIncrement(
     if (iterClass.isPointer) {
         // For pointer iterators: ++begin (built-in operator)
         return clang::UnaryOperator::Create(
-            cContext,
+            cASTContext,
             beginRef,
             clang::UO_PreInc,
             iteratorType,
@@ -312,7 +311,7 @@ clang::Expr* ContainerLoopGenerator::createIteratorIncrement(
         // For struct iterators: Call Iterator__increment(&begin)
         // For now, create a simple ++ operator (will be translated later)
         return clang::UnaryOperator::Create(
-            cContext,
+            cASTContext,
             beginRef,
             clang::UO_PreInc,
             iteratorType,
@@ -331,23 +330,27 @@ clang::CompoundStmt* ContainerLoopGenerator::createLoopBody(
     const clang::CXXForRangeStmt* RFS,
     clang::VarDecl* beginVar,
     const LoopVariableInfo& loopVarInfo,
-    const IteratorClassification& iterClass
+    const IteratorClassification& iterClass,
+    const clang::ASTContext& cppASTContext,
+    clang::ASTContext& cASTContext
 ) {
-    clang::ASTContext& cContext = ctx_.getCContext();
-
     // Create element variable declaration
     clang::DeclStmt* elementDeclStmt = createElementVarDecl(
-        RFS, beginVar, loopVarInfo, iterClass
+        RFS, beginVar, loopVarInfo, iterClass, cASTContext
     );
 
     if (!elementDeclStmt) {
         return nullptr;
     }
 
-    // Get original loop body and translate it
+    // Get original loop body and translate it via dispatcher
     const clang::Stmt* originalBody = RFS->getBody();
-    StatementHandler stmtHandler;
-    clang::Stmt* translatedBody = stmtHandler.handleStmt(originalBody, ctx_);
+
+    // Dispatch the body statement to be translated
+    disp_.dispatch(cppASTContext, cASTContext, originalBody);
+
+    // Get the translated body from the StmtMapper
+    clang::Stmt* translatedBody = disp_.getStmtMapper().getCreated(originalBody);
 
     // Combine element declaration and body into compound statement
     llvm::SmallVector<clang::Stmt*, 2> bodyStmts;
@@ -357,7 +360,7 @@ clang::CompoundStmt* ContainerLoopGenerator::createLoopBody(
     }
 
     return clang::CompoundStmt::Create(
-        cContext,
+        cASTContext,
         bodyStmts,
         clang::FPOptionsOverride(),
         clang::SourceLocation(),
@@ -369,10 +372,9 @@ clang::DeclStmt* ContainerLoopGenerator::createElementVarDecl(
     const clang::CXXForRangeStmt* RFS,
     clang::VarDecl* beginVar,
     const LoopVariableInfo& loopVarInfo,
-    const IteratorClassification& iterClass
+    const IteratorClassification& iterClass,
+    clang::ASTContext& cASTContext
 ) {
-    clang::ASTContext& cContext = ctx_.getCContext();
-
     // Get loop variable name and type
     std::string varName = loopVarInfo.name;
     clang::QualType varType = loopVarInfo.type;
@@ -383,28 +385,28 @@ clang::DeclStmt* ContainerLoopGenerator::createElementVarDecl(
     }
 
     // Create identifier
-    clang::IdentifierInfo& varII = cContext.Idents.get(varName);
+    clang::IdentifierInfo& varII = cASTContext.Idents.get(varName);
 
     // Create variable declaration
     clang::VarDecl* elementVar = clang::VarDecl::Create(
-        cContext,
-        cContext.getTranslationUnitDecl(),
+        cASTContext,
+        cASTContext.getTranslationUnitDecl(),
         clang::SourceLocation(),
         clang::SourceLocation(),
         &varII,
         varType,
-        cContext.getTrivialTypeSourceInfo(varType),
+        cASTContext.getTrivialTypeSourceInfo(varType),
         clang::SC_None
     );
 
     // Create initializer: *begin
-    clang::Expr* derefExpr = createIteratorDereference(beginVar, iterClass);
+    clang::Expr* derefExpr = createIteratorDereference(beginVar, iterClass, cASTContext);
     if (derefExpr) {
         elementVar->setInit(derefExpr);
     }
 
     // Create DeclStmt
-    return new (cContext) clang::DeclStmt(
+    return new (cASTContext) clang::DeclStmt(
         clang::DeclGroupRef(elementVar),
         clang::SourceLocation(),
         clang::SourceLocation()
@@ -413,14 +415,14 @@ clang::DeclStmt* ContainerLoopGenerator::createElementVarDecl(
 
 clang::Expr* ContainerLoopGenerator::createIteratorDereference(
     clang::VarDecl* beginVar,
-    const IteratorClassification& iterClass
+    const IteratorClassification& iterClass,
+    clang::ASTContext& cASTContext
 ) {
-    clang::ASTContext& cContext = ctx_.getCContext();
     clang::QualType iteratorType = beginVar->getType();
 
     // Create DeclRefExpr for begin
     clang::DeclRefExpr* beginRef = clang::DeclRefExpr::Create(
-        cContext,
+        cASTContext,
         clang::NestedNameSpecifierLoc(),
         clang::SourceLocation(),
         beginVar,
@@ -433,7 +435,7 @@ clang::Expr* ContainerLoopGenerator::createIteratorDereference(
     if (iterClass.isPointer) {
         // For pointer iterators: *begin (built-in operator)
         return clang::UnaryOperator::Create(
-            cContext,
+            cASTContext,
             beginRef,
             clang::UO_Deref,
             iterClass.elementType,
@@ -448,7 +450,7 @@ clang::Expr* ContainerLoopGenerator::createIteratorDereference(
         // For now, create a simple * operator (will be translated later)
         clang::QualType resultType = iterClass.elementType;
         return clang::UnaryOperator::Create(
-            cContext,
+            cASTContext,
             beginRef,
             clang::UO_Deref,
             resultType,
@@ -465,15 +467,14 @@ clang::Expr* ContainerLoopGenerator::createIteratorDereference(
 
 clang::Expr* ContainerLoopGenerator::createBeginCall(
     const clang::Expr* containerExpr,
-    clang::QualType containerType
+    clang::QualType containerType,
+    clang::ASTContext& cASTContext
 ) {
     // Find begin() method
     const clang::CXXMethodDecl* beginMethod = findBeginMethod(containerType);
     if (!beginMethod) {
         return nullptr;
     }
-
-    clang::ASTContext& cContext = ctx_.getCContext();
 
     // Create a member call expression: container.begin()
     // For C translation, this will become: ContainerType__begin(&container)
@@ -485,7 +486,7 @@ clang::Expr* ContainerLoopGenerator::createBeginCall(
     // Create MemberExpr for begin
     // Note: Cast away const as CreateImplicit requires non-const ValueDecl
     clang::MemberExpr* memberExpr = clang::MemberExpr::CreateImplicit(
-        cContext,
+        cASTContext,
         baseExpr,
         false, // is arrow
         const_cast<clang::CXXMethodDecl*>(beginMethod),
@@ -497,7 +498,7 @@ clang::Expr* ContainerLoopGenerator::createBeginCall(
     // Create call expression
     clang::QualType resultType = beginMethod->getReturnType();
     clang::CXXMemberCallExpr* callExpr = clang::CXXMemberCallExpr::Create(
-        cContext,
+        cASTContext,
         memberExpr,
         {},
         resultType,
@@ -511,7 +512,8 @@ clang::Expr* ContainerLoopGenerator::createBeginCall(
 
 clang::Expr* ContainerLoopGenerator::createEndCall(
     const clang::Expr* containerExpr,
-    clang::QualType containerType
+    clang::QualType containerType,
+    clang::ASTContext& cASTContext
 ) {
     // Find end() method
     const clang::CXXMethodDecl* endMethod = findEndMethod(containerType);
@@ -519,15 +521,13 @@ clang::Expr* ContainerLoopGenerator::createEndCall(
         return nullptr;
     }
 
-    clang::ASTContext& cContext = ctx_.getCContext();
-
     // Create a member call expression: container.end()
     clang::Expr* baseExpr = const_cast<clang::Expr*>(containerExpr);
 
     // Create MemberExpr for end
     // Note: Cast away const as CreateImplicit requires non-const ValueDecl
     clang::MemberExpr* memberExpr = clang::MemberExpr::CreateImplicit(
-        cContext,
+        cASTContext,
         baseExpr,
         false, // is arrow
         const_cast<clang::CXXMethodDecl*>(endMethod),
@@ -539,7 +539,7 @@ clang::Expr* ContainerLoopGenerator::createEndCall(
     // Create call expression
     clang::QualType resultType = endMethod->getReturnType();
     clang::CXXMemberCallExpr* callExpr = clang::CXXMemberCallExpr::Create(
-        cContext,
+        cASTContext,
         memberExpr,
         {},
         resultType,
@@ -554,18 +554,17 @@ clang::Expr* ContainerLoopGenerator::createEndCall(
 clang::CompoundStmt* ContainerLoopGenerator::createIteratorScope(
     clang::VarDecl* beginDecl,
     clang::VarDecl* endDecl,
-    clang::ForStmt* forLoop
+    clang::ForStmt* forLoop,
+    clang::ASTContext& cASTContext
 ) {
-    clang::ASTContext& cContext = ctx_.getCContext();
-
     // Create DeclStmt for begin and end
-    clang::DeclStmt* beginDeclStmt = new (cContext) clang::DeclStmt(
+    clang::DeclStmt* beginDeclStmt = new (cASTContext) clang::DeclStmt(
         clang::DeclGroupRef(beginDecl),
         clang::SourceLocation(),
         clang::SourceLocation()
     );
 
-    clang::DeclStmt* endDeclStmt = new (cContext) clang::DeclStmt(
+    clang::DeclStmt* endDeclStmt = new (cASTContext) clang::DeclStmt(
         clang::DeclGroupRef(endDecl),
         clang::SourceLocation(),
         clang::SourceLocation()
@@ -578,7 +577,7 @@ clang::CompoundStmt* ContainerLoopGenerator::createIteratorScope(
     stmts.push_back(forLoop);
 
     return clang::CompoundStmt::Create(
-        cContext,
+        cASTContext,
         stmts,
         clang::FPOptionsOverride(),
         clang::SourceLocation(),

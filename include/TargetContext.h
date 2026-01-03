@@ -64,6 +64,9 @@ public:
     // Singleton cleanup (call before program exit)
     static void cleanup();
 
+    // Reset state for test isolation (clears maps but keeps singleton alive)
+    void reset();
+
     // Delete copy/move constructors
     TargetContext(const TargetContext&) = delete;
     TargetContext& operator=(const TargetContext&) = delete;

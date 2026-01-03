@@ -55,8 +55,7 @@
  * 38. ComplexLogical - (a > 0 && b < 100) || c == 42
  */
 
-#include "handlers/ExpressionHandler.h"
-#include "handlers/HandlerContext.h"
+#include "helpers/UnitTestHelper.h"
 #include "CNodeBuilder.h"
 #include "clang/Tooling/Tooling.h"
 #include "clang/AST/RecursiveASTVisitor.h"
@@ -73,36 +72,12 @@ using namespace cpptoc;
  */
 class ExpressionHandlerTest : public ::testing::Test {
 protected:
-    std::unique_ptr<clang::ASTUnit> cppAST;
-    std::unique_ptr<clang::ASTUnit> cAST;
-    std::unique_ptr<clang::CNodeBuilder> builder;
-    std::unique_ptr<HandlerContext> context;
+    UnitTestContext ctx;
 
     void SetUp() override {
-        // Create real AST contexts using minimal code
-        cppAST = clang::tooling::buildASTFromCode("int dummy;");
-        cAST = clang::tooling::buildASTFromCode("int dummy2;");
-
-        ASSERT_NE(cppAST, nullptr) << "Failed to create C++ AST";
-        ASSERT_NE(cAST, nullptr) << "Failed to create C AST";
-
-        // Create builder and context
-        builder = std::make_unique<clang::CNodeBuilder>(cAST->getASTContext());
-        context = std::make_unique<HandlerContext>(
-            cppAST->getASTContext(),
-            cAST->getASTContext(),
-            *builder
-        );
+        ctx = createUnitTestContext();
     }
-
-    void TearDown() override {
-        context.reset();
-        builder.reset();
-        cAST.reset();
-        cppAST.reset();
-    }
-
-    /**
+/**
      * @brief Helper class to extract expressions from AST
      */
     class ExprExtractor : public clang::RecursiveASTVisitor<ExprExtractor> {
@@ -161,7 +136,7 @@ TEST_F(ExpressionHandlerTest, IntegerLiteral) {
 
     // Act
     ExpressionHandler handler;
-    clang::Expr* result = handler.handleExpr(cppExpr, *context);
+    clang::Expr* result = handler.handleExpr(cppExpr, ctx);
 
     // Assert
     ASSERT_NE(result, nullptr) << "Translation returned null";
@@ -182,7 +157,7 @@ TEST_F(ExpressionHandlerTest, NegativeIntegerLiteral) {
 
     // Act
     ExpressionHandler handler;
-    clang::Expr* result = handler.handleExpr(cppExpr, *context);
+    clang::Expr* result = handler.handleExpr(cppExpr, ctx);
 
     // Assert
     ASSERT_NE(result, nullptr) << "Translation returned null";
@@ -201,7 +176,7 @@ TEST_F(ExpressionHandlerTest, FloatingLiteral) {
 
     // Act
     ExpressionHandler handler;
-    clang::Expr* result = handler.handleExpr(cppExpr, *context);
+    clang::Expr* result = handler.handleExpr(cppExpr, ctx);
 
     // Assert
     ASSERT_NE(result, nullptr) << "Translation returned null";
@@ -222,7 +197,7 @@ TEST_F(ExpressionHandlerTest, StringLiteral) {
 
     // Act
     ExpressionHandler handler;
-    clang::Expr* result = handler.handleExpr(cppExpr, *context);
+    clang::Expr* result = handler.handleExpr(cppExpr, ctx);
 
     // Assert
     ASSERT_NE(result, nullptr) << "Translation returned null";
@@ -248,7 +223,7 @@ TEST_F(ExpressionHandlerTest, StringLiteralEmpty) {
 
     // Act
     ExpressionHandler handler;
-    clang::Expr* result = handler.handleExpr(cppExpr, *context);
+    clang::Expr* result = handler.handleExpr(cppExpr, ctx);
 
     // Assert
     ASSERT_NE(result, nullptr) << "Translation returned null";
@@ -271,7 +246,7 @@ TEST_F(ExpressionHandlerTest, StringLiteralWithNewline) {
 
     // Act
     ExpressionHandler handler;
-    clang::Expr* result = handler.handleExpr(cppExpr, *context);
+    clang::Expr* result = handler.handleExpr(cppExpr, ctx);
 
     // Assert
     ASSERT_NE(result, nullptr) << "Translation returned null";
@@ -293,7 +268,7 @@ TEST_F(ExpressionHandlerTest, StringLiteralWithTab) {
 
     // Act
     ExpressionHandler handler;
-    clang::Expr* result = handler.handleExpr(cppExpr, *context);
+    clang::Expr* result = handler.handleExpr(cppExpr, ctx);
 
     // Assert
     ASSERT_NE(result, nullptr) << "Translation returned null";
@@ -315,7 +290,7 @@ TEST_F(ExpressionHandlerTest, StringLiteralWithQuote) {
 
     // Act
     ExpressionHandler handler;
-    clang::Expr* result = handler.handleExpr(cppExpr, *context);
+    clang::Expr* result = handler.handleExpr(cppExpr, ctx);
 
     // Assert
     ASSERT_NE(result, nullptr) << "Translation returned null";
@@ -337,7 +312,7 @@ TEST_F(ExpressionHandlerTest, StringLiteralWithBackslash) {
 
     // Act
     ExpressionHandler handler;
-    clang::Expr* result = handler.handleExpr(cppExpr, *context);
+    clang::Expr* result = handler.handleExpr(cppExpr, ctx);
 
     // Assert
     ASSERT_NE(result, nullptr) << "Translation returned null";
@@ -359,7 +334,7 @@ TEST_F(ExpressionHandlerTest, StringLiteralMultipleEscapes) {
 
     // Act
     ExpressionHandler handler;
-    clang::Expr* result = handler.handleExpr(cppExpr, *context);
+    clang::Expr* result = handler.handleExpr(cppExpr, ctx);
 
     // Assert
     ASSERT_NE(result, nullptr) << "Translation returned null";
@@ -381,7 +356,7 @@ TEST_F(ExpressionHandlerTest, StringLiteralWithNull) {
 
     // Act
     ExpressionHandler handler;
-    clang::Expr* result = handler.handleExpr(cppExpr, *context);
+    clang::Expr* result = handler.handleExpr(cppExpr, ctx);
 
     // Assert
     ASSERT_NE(result, nullptr) << "Translation returned null";
@@ -404,7 +379,7 @@ TEST_F(ExpressionHandlerTest, StringLiteralLong) {
 
     // Act
     ExpressionHandler handler;
-    clang::Expr* result = handler.handleExpr(cppExpr, *context);
+    clang::Expr* result = handler.handleExpr(cppExpr, ctx);
 
     // Assert
     ASSERT_NE(result, nullptr) << "Translation returned null";
@@ -426,7 +401,7 @@ TEST_F(ExpressionHandlerTest, StringLiteralSpecialChars) {
 
     // Act
     ExpressionHandler handler;
-    clang::Expr* result = handler.handleExpr(cppExpr, *context);
+    clang::Expr* result = handler.handleExpr(cppExpr, ctx);
 
     // Assert
     ASSERT_NE(result, nullptr) << "Translation returned null";
@@ -448,7 +423,7 @@ TEST_F(ExpressionHandlerTest, StringLiteralNumeric) {
 
     // Act
     ExpressionHandler handler;
-    clang::Expr* result = handler.handleExpr(cppExpr, *context);
+    clang::Expr* result = handler.handleExpr(cppExpr, ctx);
 
     // Assert
     ASSERT_NE(result, nullptr) << "Translation returned null";
@@ -470,7 +445,7 @@ TEST_F(ExpressionHandlerTest, CharacterLiteral) {
 
     // Act
     ExpressionHandler handler;
-    clang::Expr* result = handler.handleExpr(cppExpr, *context);
+    clang::Expr* result = handler.handleExpr(cppExpr, ctx);
 
     // Assert
     ASSERT_NE(result, nullptr) << "Translation returned null";
@@ -496,7 +471,7 @@ TEST_F(ExpressionHandlerTest, CharLiteralUppercase) {
 
     // Act
     ExpressionHandler handler;
-    clang::Expr* result = handler.handleExpr(cppExpr, *context);
+    clang::Expr* result = handler.handleExpr(cppExpr, ctx);
 
     // Assert
     ASSERT_NE(result, nullptr) << "Translation returned null";
@@ -518,7 +493,7 @@ TEST_F(ExpressionHandlerTest, CharLiteralNewline) {
 
     // Act
     ExpressionHandler handler;
-    clang::Expr* result = handler.handleExpr(cppExpr, *context);
+    clang::Expr* result = handler.handleExpr(cppExpr, ctx);
 
     // Assert
     ASSERT_NE(result, nullptr) << "Translation returned null";
@@ -540,7 +515,7 @@ TEST_F(ExpressionHandlerTest, CharLiteralTab) {
 
     // Act
     ExpressionHandler handler;
-    clang::Expr* result = handler.handleExpr(cppExpr, *context);
+    clang::Expr* result = handler.handleExpr(cppExpr, ctx);
 
     // Assert
     ASSERT_NE(result, nullptr) << "Translation returned null";
@@ -562,7 +537,7 @@ TEST_F(ExpressionHandlerTest, CharLiteralBackslash) {
 
     // Act
     ExpressionHandler handler;
-    clang::Expr* result = handler.handleExpr(cppExpr, *context);
+    clang::Expr* result = handler.handleExpr(cppExpr, ctx);
 
     // Assert
     ASSERT_NE(result, nullptr) << "Translation returned null";
@@ -584,7 +559,7 @@ TEST_F(ExpressionHandlerTest, CharLiteralSingleQuote) {
 
     // Act
     ExpressionHandler handler;
-    clang::Expr* result = handler.handleExpr(cppExpr, *context);
+    clang::Expr* result = handler.handleExpr(cppExpr, ctx);
 
     // Assert
     ASSERT_NE(result, nullptr) << "Translation returned null";
@@ -606,7 +581,7 @@ TEST_F(ExpressionHandlerTest, CharLiteralNull) {
 
     // Act
     ExpressionHandler handler;
-    clang::Expr* result = handler.handleExpr(cppExpr, *context);
+    clang::Expr* result = handler.handleExpr(cppExpr, ctx);
 
     // Assert
     ASSERT_NE(result, nullptr) << "Translation returned null";
@@ -628,7 +603,7 @@ TEST_F(ExpressionHandlerTest, CharLiteralHexEscape) {
 
     // Act
     ExpressionHandler handler;
-    clang::Expr* result = handler.handleExpr(cppExpr, *context);
+    clang::Expr* result = handler.handleExpr(cppExpr, ctx);
 
     // Assert
     ASSERT_NE(result, nullptr) << "Translation returned null";
@@ -649,7 +624,7 @@ TEST_F(ExpressionHandlerTest, CharLiteralInExpression) {
 
     // Act
     ExpressionHandler handler;
-    clang::Expr* result = handler.handleExpr(cppExpr, *context);
+    clang::Expr* result = handler.handleExpr(cppExpr, ctx);
 
     // Assert
     ASSERT_NE(result, nullptr) << "Translation returned null";
@@ -678,7 +653,7 @@ TEST_F(ExpressionHandlerTest, BinaryAddition) {
 
     // Act
     ExpressionHandler handler;
-    clang::Expr* result = handler.handleExpr(cppExpr, *context);
+    clang::Expr* result = handler.handleExpr(cppExpr, ctx);
 
     // Assert
     ASSERT_NE(result, nullptr) << "Translation returned null";
@@ -699,7 +674,7 @@ TEST_F(ExpressionHandlerTest, BinarySubtraction) {
 
     // Act
     ExpressionHandler handler;
-    clang::Expr* result = handler.handleExpr(cppExpr, *context);
+    clang::Expr* result = handler.handleExpr(cppExpr, ctx);
 
     // Assert
     ASSERT_NE(result, nullptr);
@@ -720,7 +695,7 @@ TEST_F(ExpressionHandlerTest, BinaryMultiplication) {
 
     // Act
     ExpressionHandler handler;
-    clang::Expr* result = handler.handleExpr(cppExpr, *context);
+    clang::Expr* result = handler.handleExpr(cppExpr, ctx);
 
     // Assert
     ASSERT_NE(result, nullptr);
@@ -741,7 +716,7 @@ TEST_F(ExpressionHandlerTest, BinaryDivision) {
 
     // Act
     ExpressionHandler handler;
-    clang::Expr* result = handler.handleExpr(cppExpr, *context);
+    clang::Expr* result = handler.handleExpr(cppExpr, ctx);
 
     // Assert
     ASSERT_NE(result, nullptr);
@@ -762,7 +737,7 @@ TEST_F(ExpressionHandlerTest, BinaryModulo) {
 
     // Act
     ExpressionHandler handler;
-    clang::Expr* result = handler.handleExpr(cppExpr, *context);
+    clang::Expr* result = handler.handleExpr(cppExpr, ctx);
 
     // Assert
     ASSERT_NE(result, nullptr);
@@ -783,7 +758,7 @@ TEST_F(ExpressionHandlerTest, NestedAddition) {
 
     // Act
     ExpressionHandler handler;
-    clang::Expr* result = handler.handleExpr(cppExpr, *context);
+    clang::Expr* result = handler.handleExpr(cppExpr, ctx);
 
     // Assert
     ASSERT_NE(result, nullptr);
@@ -809,7 +784,7 @@ TEST_F(ExpressionHandlerTest, MixedArithmetic) {
 
     // Act
     ExpressionHandler handler;
-    clang::Expr* result = handler.handleExpr(cppExpr, *context);
+    clang::Expr* result = handler.handleExpr(cppExpr, ctx);
 
     // Assert
     ASSERT_NE(result, nullptr);
@@ -830,7 +805,7 @@ TEST_F(ExpressionHandlerTest, ComplexNesting) {
 
     // Act
     ExpressionHandler handler;
-    clang::Expr* result = handler.handleExpr(cppExpr, *context);
+    clang::Expr* result = handler.handleExpr(cppExpr, ctx);
 
     // Assert
     ASSERT_NE(result, nullptr);
@@ -851,7 +826,7 @@ TEST_F(ExpressionHandlerTest, ComparisonEqual) {
 
     // Act
     ExpressionHandler handler;
-    clang::Expr* result = handler.handleExpr(cppExpr, *context);
+    clang::Expr* result = handler.handleExpr(cppExpr, ctx);
 
     // Assert
     ASSERT_NE(result, nullptr);
@@ -872,7 +847,7 @@ TEST_F(ExpressionHandlerTest, ComparisonNotEqual) {
 
     // Act
     ExpressionHandler handler;
-    clang::Expr* result = handler.handleExpr(cppExpr, *context);
+    clang::Expr* result = handler.handleExpr(cppExpr, ctx);
 
     // Assert
     ASSERT_NE(result, nullptr);
@@ -893,7 +868,7 @@ TEST_F(ExpressionHandlerTest, ComparisonLess) {
 
     // Act
     ExpressionHandler handler;
-    clang::Expr* result = handler.handleExpr(cppExpr, *context);
+    clang::Expr* result = handler.handleExpr(cppExpr, ctx);
 
     // Assert
     ASSERT_NE(result, nullptr);
@@ -914,7 +889,7 @@ TEST_F(ExpressionHandlerTest, ComparisonGreater) {
 
     // Act
     ExpressionHandler handler;
-    clang::Expr* result = handler.handleExpr(cppExpr, *context);
+    clang::Expr* result = handler.handleExpr(cppExpr, ctx);
 
     // Assert
     ASSERT_NE(result, nullptr);
@@ -935,7 +910,7 @@ TEST_F(ExpressionHandlerTest, ComparisonLessEqual) {
 
     // Act
     ExpressionHandler handler;
-    clang::Expr* result = handler.handleExpr(cppExpr, *context);
+    clang::Expr* result = handler.handleExpr(cppExpr, ctx);
 
     // Assert
     ASSERT_NE(result, nullptr);
@@ -956,7 +931,7 @@ TEST_F(ExpressionHandlerTest, ComparisonGreaterEqual) {
 
     // Act
     ExpressionHandler handler;
-    clang::Expr* result = handler.handleExpr(cppExpr, *context);
+    clang::Expr* result = handler.handleExpr(cppExpr, ctx);
 
     // Assert
     ASSERT_NE(result, nullptr);
@@ -977,7 +952,7 @@ TEST_F(ExpressionHandlerTest, LogicalAnd) {
 
     // Act
     ExpressionHandler handler;
-    clang::Expr* result = handler.handleExpr(cppExpr, *context);
+    clang::Expr* result = handler.handleExpr(cppExpr, ctx);
 
     // Assert
     ASSERT_NE(result, nullptr);
@@ -1002,7 +977,7 @@ TEST_F(ExpressionHandlerTest, UnaryMinus) {
 
     // Act
     ExpressionHandler handler;
-    clang::Expr* result = handler.handleExpr(cppExpr, *context);
+    clang::Expr* result = handler.handleExpr(cppExpr, ctx);
 
     // Assert
     ASSERT_NE(result, nullptr);
@@ -1023,7 +998,7 @@ TEST_F(ExpressionHandlerTest, UnaryPlus) {
 
     // Act
     ExpressionHandler handler;
-    clang::Expr* result = handler.handleExpr(cppExpr, *context);
+    clang::Expr* result = handler.handleExpr(cppExpr, ctx);
 
     // Assert
     ASSERT_NE(result, nullptr);
@@ -1050,7 +1025,7 @@ TEST_F(ExpressionHandlerTest, UnaryIncrement) {
 
     // Act
     ExpressionHandler handler;
-    clang::Expr* result = handler.handleExpr(cppExpr, *context);
+    clang::Expr* result = handler.handleExpr(cppExpr, ctx);
 
     // Assert
     ASSERT_NE(result, nullptr);
@@ -1074,7 +1049,7 @@ TEST_F(ExpressionHandlerTest, UnaryDecrement) {
 
     // Act
     ExpressionHandler handler;
-    clang::Expr* result = handler.handleExpr(cppExpr, *context);
+    clang::Expr* result = handler.handleExpr(cppExpr, ctx);
 
     // Assert
     ASSERT_NE(result, nullptr);
@@ -1092,7 +1067,7 @@ TEST_F(ExpressionHandlerTest, UnaryNot) {
 
     // Act
     ExpressionHandler handler;
-    clang::Expr* result = handler.handleExpr(cppExpr, *context);
+    clang::Expr* result = handler.handleExpr(cppExpr, ctx);
 
     // Assert
     ASSERT_NE(result, nullptr);
@@ -1123,7 +1098,7 @@ TEST_F(ExpressionHandlerTest, SimpleVarRef) {
 
     // Act
     ExpressionHandler handler;
-    clang::Expr* result = handler.handleExpr(cppExpr, *context);
+    clang::Expr* result = handler.handleExpr(cppExpr, ctx);
 
     // Assert
     ASSERT_NE(result, nullptr);
@@ -1147,7 +1122,7 @@ TEST_F(ExpressionHandlerTest, VarRefInExpr) {
 
     // Act
     ExpressionHandler handler;
-    clang::Expr* result = handler.handleExpr(cppExpr, *context);
+    clang::Expr* result = handler.handleExpr(cppExpr, ctx);
 
     // Assert
     ASSERT_NE(result, nullptr);
@@ -1173,7 +1148,7 @@ TEST_F(ExpressionHandlerTest, MultipleVarRefs) {
 
     // Act
     ExpressionHandler handler;
-    clang::Expr* result = handler.handleExpr(cppExpr, *context);
+    clang::Expr* result = handler.handleExpr(cppExpr, ctx);
 
     // Assert
     ASSERT_NE(result, nullptr);
@@ -1197,7 +1172,7 @@ TEST_F(ExpressionHandlerTest, VarRefNested) {
 
     // Act
     ExpressionHandler handler;
-    clang::Expr* result = handler.handleExpr(cppExpr, *context);
+    clang::Expr* result = handler.handleExpr(cppExpr, ctx);
 
     // Assert
     ASSERT_NE(result, nullptr);
@@ -1221,7 +1196,7 @@ TEST_F(ExpressionHandlerTest, VarRefWithLiteral) {
 
     // Act
     ExpressionHandler handler;
-    clang::Expr* result = handler.handleExpr(cppExpr, *context);
+    clang::Expr* result = handler.handleExpr(cppExpr, ctx);
 
     // Assert
     ASSERT_NE(result, nullptr);
@@ -1243,7 +1218,7 @@ TEST_F(ExpressionHandlerTest, ArithmeticChain) {
 
     // Act
     ExpressionHandler handler;
-    clang::Expr* result = handler.handleExpr(cppExpr, *context);
+    clang::Expr* result = handler.handleExpr(cppExpr, ctx);
 
     // Assert
     ASSERT_NE(result, nullptr);
@@ -1261,7 +1236,7 @@ TEST_F(ExpressionHandlerTest, DeepNesting) {
 
     // Act
     ExpressionHandler handler;
-    clang::Expr* result = handler.handleExpr(cppExpr, *context);
+    clang::Expr* result = handler.handleExpr(cppExpr, ctx);
 
     // Assert
     ASSERT_NE(result, nullptr);
@@ -1279,7 +1254,7 @@ TEST_F(ExpressionHandlerTest, AllOperators) {
 
     // Act
     ExpressionHandler handler;
-    clang::Expr* result = handler.handleExpr(cppExpr, *context);
+    clang::Expr* result = handler.handleExpr(cppExpr, ctx);
 
     // Assert
     ASSERT_NE(result, nullptr);
@@ -1297,7 +1272,7 @@ TEST_F(ExpressionHandlerTest, LogicalChain) {
 
     // Act
     ExpressionHandler handler;
-    clang::Expr* result = handler.handleExpr(cppExpr, *context);
+    clang::Expr* result = handler.handleExpr(cppExpr, ctx);
 
     // Assert
     ASSERT_NE(result, nullptr);
@@ -1315,7 +1290,7 @@ TEST_F(ExpressionHandlerTest, MixedComparison) {
 
     // Act
     ExpressionHandler handler;
-    clang::Expr* result = handler.handleExpr(cppExpr, *context);
+    clang::Expr* result = handler.handleExpr(cppExpr, ctx);
 
     // Assert
     ASSERT_NE(result, nullptr);
@@ -1333,7 +1308,7 @@ TEST_F(ExpressionHandlerTest, ParenthesizedExpr) {
 
     // Act
     ExpressionHandler handler;
-    clang::Expr* result = handler.handleExpr(cppExpr, *context);
+    clang::Expr* result = handler.handleExpr(cppExpr, ctx);
 
     // Assert
     ASSERT_NE(result, nullptr);
@@ -1351,7 +1326,7 @@ TEST_F(ExpressionHandlerTest, MultiLevelNesting) {
 
     // Act
     ExpressionHandler handler;
-    clang::Expr* result = handler.handleExpr(cppExpr, *context);
+    clang::Expr* result = handler.handleExpr(cppExpr, ctx);
 
     // Assert
     ASSERT_NE(result, nullptr);
@@ -1369,7 +1344,7 @@ TEST_F(ExpressionHandlerTest, ComplexLogical) {
 
     // Act
     ExpressionHandler handler;
-    clang::Expr* result = handler.handleExpr(cppExpr, *context);
+    clang::Expr* result = handler.handleExpr(cppExpr, ctx);
 
     // Assert
     ASSERT_NE(result, nullptr);
@@ -1397,7 +1372,7 @@ TEST_F(ExpressionHandlerTest, PrefixIncrement) {
 
     // Act
     ExpressionHandler handler;
-    clang::Expr* result = handler.handleExpr(cppExpr, *context);
+    clang::Expr* result = handler.handleExpr(cppExpr, ctx);
 
     // Assert
     ASSERT_NE(result, nullptr) << "Translation returned null";
@@ -1424,7 +1399,7 @@ TEST_F(ExpressionHandlerTest, PrefixDecrement) {
 
     // Act
     ExpressionHandler handler;
-    clang::Expr* result = handler.handleExpr(cppExpr, *context);
+    clang::Expr* result = handler.handleExpr(cppExpr, ctx);
 
     // Assert
     ASSERT_NE(result, nullptr) << "Translation returned null";
@@ -1451,7 +1426,7 @@ TEST_F(ExpressionHandlerTest, PrefixInExpression) {
 
     // Act
     ExpressionHandler handler;
-    clang::Expr* result = handler.handleExpr(cppExpr, *context);
+    clang::Expr* result = handler.handleExpr(cppExpr, ctx);
 
     // Assert
     ASSERT_NE(result, nullptr) << "Translation returned null";
@@ -1480,7 +1455,7 @@ TEST_F(ExpressionHandlerTest, PrefixNested) {
 
     // Act
     ExpressionHandler handler;
-    clang::Expr* result = handler.handleExpr(cppExpr, *context);
+    clang::Expr* result = handler.handleExpr(cppExpr, ctx);
 
     // Assert
     ASSERT_NE(result, nullptr) << "Translation returned null";
@@ -1507,7 +1482,7 @@ TEST_F(ExpressionHandlerTest, PostfixIncrement) {
 
     // Act
     ExpressionHandler handler;
-    clang::Expr* result = handler.handleExpr(cppExpr, *context);
+    clang::Expr* result = handler.handleExpr(cppExpr, ctx);
 
     // Assert
     ASSERT_NE(result, nullptr) << "Translation returned null";
@@ -1534,7 +1509,7 @@ TEST_F(ExpressionHandlerTest, PostfixDecrement) {
 
     // Act
     ExpressionHandler handler;
-    clang::Expr* result = handler.handleExpr(cppExpr, *context);
+    clang::Expr* result = handler.handleExpr(cppExpr, ctx);
 
     // Assert
     ASSERT_NE(result, nullptr) << "Translation returned null";
@@ -1561,7 +1536,7 @@ TEST_F(ExpressionHandlerTest, PostfixInExpression) {
 
     // Act
     ExpressionHandler handler;
-    clang::Expr* result = handler.handleExpr(cppExpr, *context);
+    clang::Expr* result = handler.handleExpr(cppExpr, ctx);
 
     // Assert
     ASSERT_NE(result, nullptr) << "Translation returned null";
@@ -1590,7 +1565,7 @@ TEST_F(ExpressionHandlerTest, PostfixNested) {
 
     // Act
     ExpressionHandler handler;
-    clang::Expr* result = handler.handleExpr(cppExpr, *context);
+    clang::Expr* result = handler.handleExpr(cppExpr, ctx);
 
     // Assert
     ASSERT_NE(result, nullptr) << "Translation returned null";
@@ -1614,7 +1589,7 @@ TEST_F(ExpressionHandlerTest, UnaryMinusOperator) {
 
     // Act
     ExpressionHandler handler;
-    clang::Expr* result = handler.handleExpr(cppExpr, *context);
+    clang::Expr* result = handler.handleExpr(cppExpr, ctx);
 
     // Assert
     ASSERT_NE(result, nullptr) << "Translation returned null";
@@ -1641,7 +1616,7 @@ TEST_F(ExpressionHandlerTest, UnaryPlusOperator) {
 
     // Act
     ExpressionHandler handler;
-    clang::Expr* result = handler.handleExpr(cppExpr, *context);
+    clang::Expr* result = handler.handleExpr(cppExpr, ctx);
 
     // Assert
     ASSERT_NE(result, nullptr) << "Translation returned null";
@@ -1668,7 +1643,7 @@ TEST_F(ExpressionHandlerTest, UnaryMinusInExpression) {
 
     // Act
     ExpressionHandler handler;
-    clang::Expr* result = handler.handleExpr(cppExpr, *context);
+    clang::Expr* result = handler.handleExpr(cppExpr, ctx);
 
     // Assert
     ASSERT_NE(result, nullptr) << "Translation returned null";
@@ -1698,7 +1673,7 @@ TEST_F(ExpressionHandlerTest, DoubleNegative) {
 
     // Act
     ExpressionHandler handler;
-    clang::Expr* result = handler.handleExpr(cppExpr, *context);
+    clang::Expr* result = handler.handleExpr(cppExpr, ctx);
 
     // Assert
     ASSERT_NE(result, nullptr) << "Translation returned null";
@@ -1726,7 +1701,7 @@ TEST_F(ExpressionHandlerTest, EqualityOperator) {
 
     // Act
     ExpressionHandler handler;
-    clang::Expr* result = handler.handleExpr(cppExpr, *context);
+    clang::Expr* result = handler.handleExpr(cppExpr, ctx);
 
     // Assert
     ASSERT_NE(result, nullptr) << "Translation returned null";
@@ -1747,7 +1722,7 @@ TEST_F(ExpressionHandlerTest, InequalityOperator) {
 
     // Act
     ExpressionHandler handler;
-    clang::Expr* result = handler.handleExpr(cppExpr, *context);
+    clang::Expr* result = handler.handleExpr(cppExpr, ctx);
 
     // Assert
     ASSERT_NE(result, nullptr) << "Translation returned null";
@@ -1768,7 +1743,7 @@ TEST_F(ExpressionHandlerTest, EqualityWithLiterals) {
 
     // Act
     ExpressionHandler handler;
-    clang::Expr* result = handler.handleExpr(cppExpr, *context);
+    clang::Expr* result = handler.handleExpr(cppExpr, ctx);
 
     // Assert
     ASSERT_NE(result, nullptr) << "Translation returned null";
@@ -1789,7 +1764,7 @@ TEST_F(ExpressionHandlerTest, InequalityWithLiterals) {
 
     // Act
     ExpressionHandler handler;
-    clang::Expr* result = handler.handleExpr(cppExpr, *context);
+    clang::Expr* result = handler.handleExpr(cppExpr, ctx);
 
     // Assert
     ASSERT_NE(result, nullptr) << "Translation returned null";
@@ -1810,7 +1785,7 @@ TEST_F(ExpressionHandlerTest, LessThanOperator) {
 
     // Act
     ExpressionHandler handler;
-    clang::Expr* result = handler.handleExpr(cppExpr, *context);
+    clang::Expr* result = handler.handleExpr(cppExpr, ctx);
 
     // Assert
     ASSERT_NE(result, nullptr) << "Translation returned null";
@@ -1831,7 +1806,7 @@ TEST_F(ExpressionHandlerTest, GreaterThanOperator) {
 
     // Act
     ExpressionHandler handler;
-    clang::Expr* result = handler.handleExpr(cppExpr, *context);
+    clang::Expr* result = handler.handleExpr(cppExpr, ctx);
 
     // Assert
     ASSERT_NE(result, nullptr) << "Translation returned null";
@@ -1852,7 +1827,7 @@ TEST_F(ExpressionHandlerTest, LessOrEqualOperator) {
 
     // Act
     ExpressionHandler handler;
-    clang::Expr* result = handler.handleExpr(cppExpr, *context);
+    clang::Expr* result = handler.handleExpr(cppExpr, ctx);
 
     // Assert
     ASSERT_NE(result, nullptr) << "Translation returned null";
@@ -1873,7 +1848,7 @@ TEST_F(ExpressionHandlerTest, GreaterOrEqualOperator) {
 
     // Act
     ExpressionHandler handler;
-    clang::Expr* result = handler.handleExpr(cppExpr, *context);
+    clang::Expr* result = handler.handleExpr(cppExpr, ctx);
 
     // Assert
     ASSERT_NE(result, nullptr) << "Translation returned null";
@@ -1894,7 +1869,7 @@ TEST_F(ExpressionHandlerTest, RelationalWithLiterals) {
 
     // Act
     ExpressionHandler handler;
-    clang::Expr* result = handler.handleExpr(cppExpr, *context);
+    clang::Expr* result = handler.handleExpr(cppExpr, ctx);
 
     // Assert
     ASSERT_NE(result, nullptr) << "Translation returned null";
@@ -1915,7 +1890,7 @@ TEST_F(ExpressionHandlerTest, RelationalChaining) {
 
     // Act
     ExpressionHandler handler;
-    clang::Expr* result = handler.handleExpr(cppExpr, *context);
+    clang::Expr* result = handler.handleExpr(cppExpr, ctx);
 
     // Assert
     ASSERT_NE(result, nullptr) << "Translation returned null";
@@ -1936,7 +1911,7 @@ TEST_F(ExpressionHandlerTest, NegativeComparison) {
 
     // Act
     ExpressionHandler handler;
-    clang::Expr* result = handler.handleExpr(cppExpr, *context);
+    clang::Expr* result = handler.handleExpr(cppExpr, ctx);
 
     // Assert
     ASSERT_NE(result, nullptr) << "Translation returned null";
@@ -1957,7 +1932,7 @@ TEST_F(ExpressionHandlerTest, FloatComparison) {
 
     // Act
     ExpressionHandler handler;
-    clang::Expr* result = handler.handleExpr(cppExpr, *context);
+    clang::Expr* result = handler.handleExpr(cppExpr, ctx);
 
     // Assert
     ASSERT_NE(result, nullptr) << "Translation returned null";
@@ -1983,7 +1958,7 @@ TEST_F(ExpressionHandlerTest, LogicalAndBasic) {
 
     // Act
     ExpressionHandler handler;
-    clang::Expr* result = handler.handleExpr(cppExpr, *context);
+    clang::Expr* result = handler.handleExpr(cppExpr, ctx);
 
     // Assert
     ASSERT_NE(result, nullptr) << "Translation returned null";
@@ -2004,7 +1979,7 @@ TEST_F(ExpressionHandlerTest, LogicalAndWithComparison) {
 
     // Act
     ExpressionHandler handler;
-    clang::Expr* result = handler.handleExpr(cppExpr, *context);
+    clang::Expr* result = handler.handleExpr(cppExpr, ctx);
 
     // Assert
     ASSERT_NE(result, nullptr) << "Translation returned null";
@@ -2025,7 +2000,7 @@ TEST_F(ExpressionHandlerTest, LogicalAndChain) {
 
     // Act
     ExpressionHandler handler;
-    clang::Expr* result = handler.handleExpr(cppExpr, *context);
+    clang::Expr* result = handler.handleExpr(cppExpr, ctx);
 
     // Assert
     ASSERT_NE(result, nullptr) << "Translation returned null";
@@ -2046,7 +2021,7 @@ TEST_F(ExpressionHandlerTest, LogicalAndNested) {
 
     // Act
     ExpressionHandler handler;
-    clang::Expr* result = handler.handleExpr(cppExpr, *context);
+    clang::Expr* result = handler.handleExpr(cppExpr, ctx);
 
     // Assert
     ASSERT_NE(result, nullptr) << "Translation returned null";
@@ -2067,7 +2042,7 @@ TEST_F(ExpressionHandlerTest, LogicalAndShortCircuit) {
 
     // Act
     ExpressionHandler handler;
-    clang::Expr* result = handler.handleExpr(cppExpr, *context);
+    clang::Expr* result = handler.handleExpr(cppExpr, ctx);
 
     // Assert
     ASSERT_NE(result, nullptr) << "Translation returned null";
@@ -2090,7 +2065,7 @@ TEST_F(ExpressionHandlerTest, LogicalOrBasic) {
 
     // Act
     ExpressionHandler handler;
-    clang::Expr* result = handler.handleExpr(cppExpr, *context);
+    clang::Expr* result = handler.handleExpr(cppExpr, ctx);
 
     // Assert
     ASSERT_NE(result, nullptr) << "Translation returned null";
@@ -2111,7 +2086,7 @@ TEST_F(ExpressionHandlerTest, LogicalOrWithComparison) {
 
     // Act
     ExpressionHandler handler;
-    clang::Expr* result = handler.handleExpr(cppExpr, *context);
+    clang::Expr* result = handler.handleExpr(cppExpr, ctx);
 
     // Assert
     ASSERT_NE(result, nullptr) << "Translation returned null";
@@ -2132,7 +2107,7 @@ TEST_F(ExpressionHandlerTest, LogicalOrChain) {
 
     // Act
     ExpressionHandler handler;
-    clang::Expr* result = handler.handleExpr(cppExpr, *context);
+    clang::Expr* result = handler.handleExpr(cppExpr, ctx);
 
     // Assert
     ASSERT_NE(result, nullptr) << "Translation returned null";
@@ -2153,7 +2128,7 @@ TEST_F(ExpressionHandlerTest, LogicalOrNested) {
 
     // Act
     ExpressionHandler handler;
-    clang::Expr* result = handler.handleExpr(cppExpr, *context);
+    clang::Expr* result = handler.handleExpr(cppExpr, ctx);
 
     // Assert
     ASSERT_NE(result, nullptr) << "Translation returned null";
@@ -2174,7 +2149,7 @@ TEST_F(ExpressionHandlerTest, LogicalOrShortCircuit) {
 
     // Act
     ExpressionHandler handler;
-    clang::Expr* result = handler.handleExpr(cppExpr, *context);
+    clang::Expr* result = handler.handleExpr(cppExpr, ctx);
 
     // Assert
     ASSERT_NE(result, nullptr) << "Translation returned null";
@@ -2197,7 +2172,7 @@ TEST_F(ExpressionHandlerTest, LogicalNotBasic) {
 
     // Act
     ExpressionHandler handler;
-    clang::Expr* result = handler.handleExpr(cppExpr, *context);
+    clang::Expr* result = handler.handleExpr(cppExpr, ctx);
 
     // Assert
     ASSERT_NE(result, nullptr) << "Translation returned null";
@@ -2218,7 +2193,7 @@ TEST_F(ExpressionHandlerTest, LogicalNotWithComparison) {
 
     // Act
     ExpressionHandler handler;
-    clang::Expr* result = handler.handleExpr(cppExpr, *context);
+    clang::Expr* result = handler.handleExpr(cppExpr, ctx);
 
     // Assert
     ASSERT_NE(result, nullptr) << "Translation returned null";
@@ -2239,7 +2214,7 @@ TEST_F(ExpressionHandlerTest, LogicalNotDouble) {
 
     // Act
     ExpressionHandler handler;
-    clang::Expr* result = handler.handleExpr(cppExpr, *context);
+    clang::Expr* result = handler.handleExpr(cppExpr, ctx);
 
     // Assert
     ASSERT_NE(result, nullptr) << "Translation returned null";
@@ -2266,7 +2241,7 @@ TEST_F(ExpressionHandlerTest, LogicalNotInCondition) {
 
     // Act
     ExpressionHandler handler;
-    clang::Expr* result = handler.handleExpr(cppExpr, *context);
+    clang::Expr* result = handler.handleExpr(cppExpr, ctx);
 
     // Assert
     ASSERT_NE(result, nullptr) << "Translation returned null";
@@ -2291,7 +2266,7 @@ TEST_F(ExpressionHandlerTest, LogicalNotComplex) {
 
     // Act
     ExpressionHandler handler;
-    clang::Expr* result = handler.handleExpr(cppExpr, *context);
+    clang::Expr* result = handler.handleExpr(cppExpr, ctx);
 
     // Assert
     ASSERT_NE(result, nullptr) << "Translation returned null";
@@ -2338,7 +2313,7 @@ TEST_F(ExpressionHandlerTest, InitListExpr_FullArrayInit) {
 
     // Act
     ExpressionHandler handler;
-    clang::Expr* result = handler.handleExpr(cppInit, *context);
+    clang::Expr* result = handler.handleExpr(cppInit, ctx);
 
     // Assert
     ASSERT_NE(result, nullptr) << "Translation returned null";
@@ -2382,7 +2357,7 @@ TEST_F(ExpressionHandlerTest, InitListExpr_PartialArrayInit) {
 
     // Act
     ExpressionHandler handler;
-    clang::Expr* result = handler.handleExpr(extractor.found, *context);
+    clang::Expr* result = handler.handleExpr(extractor.found, ctx);
 
     // Assert
     ASSERT_NE(result, nullptr) << "Translation returned null";
@@ -2421,7 +2396,7 @@ TEST_F(ExpressionHandlerTest, InitListExpr_NestedArrayInit) {
 
     // Act
     ExpressionHandler handler;
-    clang::Expr* result = handler.handleExpr(extractor.found, *context);
+    clang::Expr* result = handler.handleExpr(extractor.found, ctx);
 
     // Assert
     ASSERT_NE(result, nullptr) << "Translation returned null";
@@ -2463,7 +2438,7 @@ TEST_F(ExpressionHandlerTest, InitListExpr_EmptyInit) {
 
     // Act
     ExpressionHandler handler;
-    clang::Expr* result = handler.handleExpr(extractor.found, *context);
+    clang::Expr* result = handler.handleExpr(extractor.found, ctx);
 
     // Assert
     ASSERT_NE(result, nullptr) << "Translation returned null";
@@ -2497,7 +2472,7 @@ TEST_F(ExpressionHandlerTest, InitListExpr_WithExpressions) {
 
     // Act
     ExpressionHandler handler;
-    clang::Expr* result = handler.handleExpr(extractor.found, *context);
+    clang::Expr* result = handler.handleExpr(extractor.found, ctx);
 
     // Assert
     ASSERT_NE(result, nullptr) << "Translation returned null";
@@ -2538,7 +2513,7 @@ TEST_F(ExpressionHandlerTest, InitListExpr_StringArray) {
 
     // Act
     ExpressionHandler handler;
-    clang::Expr* result = handler.handleExpr(extractor.found, *context);
+    clang::Expr* result = handler.handleExpr(extractor.found, ctx);
 
     // Assert
     ASSERT_NE(result, nullptr) << "Translation returned null";
@@ -2573,7 +2548,7 @@ TEST_F(ExpressionHandlerTest, InitListExpr_SingleElement) {
 
     // Act
     ExpressionHandler handler;
-    clang::Expr* result = handler.handleExpr(extractor.found, *context);
+    clang::Expr* result = handler.handleExpr(extractor.found, ctx);
 
     // Assert
     ASSERT_NE(result, nullptr) << "Translation returned null";
@@ -2615,7 +2590,7 @@ TEST_F(ExpressionHandlerTest, InitListExpr_DeeperNesting) {
 
     // Act
     ExpressionHandler handler;
-    clang::Expr* result = handler.handleExpr(extractor.found, *context);
+    clang::Expr* result = handler.handleExpr(extractor.found, ctx);
 
     // Assert
     ASSERT_NE(result, nullptr) << "Translation returned null";
@@ -2658,7 +2633,7 @@ TEST_F(ExpressionHandlerTest, InitListExpr_MixedNesting) {
 
     // Act
     ExpressionHandler handler;
-    clang::Expr* result = handler.handleExpr(extractor.found, *context);
+    clang::Expr* result = handler.handleExpr(extractor.found, ctx);
 
     // Assert
     ASSERT_NE(result, nullptr) << "Translation returned null";
@@ -2710,7 +2685,7 @@ TEST_F(ExpressionHandlerTest, ArraySubscriptSimple) {
 
     // Act
     ExpressionHandler handler;
-    clang::Expr* result = handler.handleExpr(finder.result, *context);
+    clang::Expr* result = handler.handleExpr(finder.result, ctx);
 
     // Assert
     ASSERT_NE(result, nullptr) << "Translation returned null";
@@ -2762,7 +2737,7 @@ TEST_F(ExpressionHandlerTest, ArraySubscriptVariableIndex) {
 
     // Act
     ExpressionHandler handler;
-    clang::Expr* result = handler.handleExpr(finder.result, *context);
+    clang::Expr* result = handler.handleExpr(finder.result, ctx);
 
     // Assert
     ASSERT_NE(result, nullptr) << "Translation returned null";
@@ -2807,7 +2782,7 @@ TEST_F(ExpressionHandlerTest, ArraySubscriptExpressionIndex) {
 
     // Act
     ExpressionHandler handler;
-    clang::Expr* result = handler.handleExpr(finder.result, *context);
+    clang::Expr* result = handler.handleExpr(finder.result, ctx);
 
     // Assert
     ASSERT_NE(result, nullptr) << "Translation returned null";
@@ -2865,7 +2840,7 @@ TEST_F(ExpressionHandlerTest, ArraySubscriptMultiDimensional) {
     ASSERT_NE(outerASE, nullptr) << "Failed to find outer ArraySubscriptExpr";
 
     ExpressionHandler handler;
-    clang::Expr* result = handler.handleExpr(outerASE, *context);
+    clang::Expr* result = handler.handleExpr(outerASE, ctx);
 
     // Assert
     ASSERT_NE(result, nullptr) << "Translation returned null";
@@ -2912,7 +2887,7 @@ TEST_F(ExpressionHandlerTest, ArraySubscriptAsLValue) {
 
     // Act
     ExpressionHandler handler;
-    clang::Expr* result = handler.handleExpr(finder.result, *context);
+    clang::Expr* result = handler.handleExpr(finder.result, ctx);
 
     // Assert
     ASSERT_NE(result, nullptr) << "Translation returned null";
@@ -2961,7 +2936,7 @@ TEST_F(ExpressionHandlerTest, ArraySubscriptInExpression) {
 
     // Act
     ExpressionHandler handler;
-    clang::Expr* result = handler.handleExpr(finder.result, *context);
+    clang::Expr* result = handler.handleExpr(finder.result, ctx);
 
     // Assert
     ASSERT_NE(result, nullptr) << "Translation returned null";
@@ -3016,7 +2991,7 @@ TEST_F(ExpressionHandlerTest, ArraySubscriptComplexExpression) {
 
     // Act
     ExpressionHandler handler;
-    clang::Expr* result = handler.handleExpr(finder.result, *context);
+    clang::Expr* result = handler.handleExpr(finder.result, ctx);
 
     // Assert
     ASSERT_NE(result, nullptr) << "Translation returned null";
@@ -3058,7 +3033,7 @@ TEST_F(ExpressionHandlerTest, ArraySubscriptComplexIndex) {
 
     // Act
     ExpressionHandler handler;
-    clang::Expr* result = handler.handleExpr(finder.result, *context);
+    clang::Expr* result = handler.handleExpr(finder.result, ctx);
 
     // Assert
     ASSERT_NE(result, nullptr) << "Translation returned null";
@@ -3091,7 +3066,7 @@ TEST_F(ExpressionHandlerTest, CStyleCast_SimpleIntCast) {
 
     // Act
     ExpressionHandler handler;
-    clang::Expr* result = handler.handleExpr(cppExpr, *context);
+    clang::Expr* result = handler.handleExpr(cppExpr, ctx);
 
     // Assert
     ASSERT_NE(result, nullptr) << "Translation returned null";
@@ -3115,7 +3090,7 @@ TEST_F(ExpressionHandlerTest, CStyleCast_PointerCast) {
 
     // Act
     ExpressionHandler handler;
-    clang::Expr* result = handler.handleExpr(cppExpr, *context);
+    clang::Expr* result = handler.handleExpr(cppExpr, ctx);
 
     // Assert
     ASSERT_NE(result, nullptr) << "Translation returned null";
@@ -3135,7 +3110,7 @@ TEST_F(ExpressionHandlerTest, CStyleCast_ConstCast) {
 
     // Act
     ExpressionHandler handler;
-    clang::Expr* result = handler.handleExpr(cppExpr, *context);
+    clang::Expr* result = handler.handleExpr(cppExpr, ctx);
 
     // Assert
     ASSERT_NE(result, nullptr) << "Translation returned null";
@@ -3155,7 +3130,7 @@ TEST_F(ExpressionHandlerTest, CStyleCast_InExpression) {
 
     // Act
     ExpressionHandler handler;
-    clang::Expr* result = handler.handleExpr(cppExpr, *context);
+    clang::Expr* result = handler.handleExpr(cppExpr, ctx);
 
     // Assert
     ASSERT_NE(result, nullptr) << "Translation returned null";
@@ -3179,7 +3154,7 @@ TEST_F(ExpressionHandlerTest, CStyleCast_Nested) {
 
     // Act
     ExpressionHandler handler;
-    clang::Expr* result = handler.handleExpr(cppExpr, *context);
+    clang::Expr* result = handler.handleExpr(cppExpr, ctx);
 
     // Assert
     ASSERT_NE(result, nullptr) << "Translation returned null";
@@ -3203,7 +3178,7 @@ TEST_F(ExpressionHandlerTest, CStyleCast_ToFloat) {
 
     // Act
     ExpressionHandler handler;
-    clang::Expr* result = handler.handleExpr(cppExpr, *context);
+    clang::Expr* result = handler.handleExpr(cppExpr, ctx);
 
     // Assert
     ASSERT_NE(result, nullptr) << "Translation returned null";
@@ -3223,7 +3198,7 @@ TEST_F(ExpressionHandlerTest, CStyleCast_ComplexExpr) {
 
     // Act
     ExpressionHandler handler;
-    clang::Expr* result = handler.handleExpr(cppExpr, *context);
+    clang::Expr* result = handler.handleExpr(cppExpr, ctx);
 
     // Assert
     ASSERT_NE(result, nullptr) << "Translation returned null";
@@ -3243,7 +3218,7 @@ TEST_F(ExpressionHandlerTest, CStyleCast_ToChar) {
 
     // Act
     ExpressionHandler handler;
-    clang::Expr* result = handler.handleExpr(cppExpr, *context);
+    clang::Expr* result = handler.handleExpr(cppExpr, ctx);
 
     // Assert
     ASSERT_NE(result, nullptr) << "Translation returned null";
@@ -3263,7 +3238,7 @@ TEST_F(ExpressionHandlerTest, CStyleCast_InAssignment) {
 
     // Act
     ExpressionHandler handler;
-    clang::Expr* result = handler.handleExpr(cppExpr, *context);
+    clang::Expr* result = handler.handleExpr(cppExpr, ctx);
 
     // Assert
     ASSERT_NE(result, nullptr) << "Translation returned null";
@@ -3283,7 +3258,7 @@ TEST_F(ExpressionHandlerTest, CStyleCast_ToLong) {
 
     // Act
     ExpressionHandler handler;
-    clang::Expr* result = handler.handleExpr(cppExpr, *context);
+    clang::Expr* result = handler.handleExpr(cppExpr, ctx);
 
     // Assert
     ASSERT_NE(result, nullptr) << "Translation returned null";
@@ -3307,7 +3282,7 @@ TEST_F(ExpressionHandlerTest, ImplicitCast_IntegerPromotion) {
 
     // Act
     ExpressionHandler handler;
-    clang::Expr* result = handler.handleExpr(cppExpr, *context);
+    clang::Expr* result = handler.handleExpr(cppExpr, ctx);
 
     // Assert
     ASSERT_NE(result, nullptr) << "Translation returned null";
@@ -3328,7 +3303,7 @@ TEST_F(ExpressionHandlerTest, ImplicitCast_FloatToInt) {
 
     // Act
     ExpressionHandler handler;
-    clang::Expr* result = handler.handleExpr(cppExpr, *context);
+    clang::Expr* result = handler.handleExpr(cppExpr, ctx);
 
     // Assert
     ASSERT_NE(result, nullptr) << "Translation returned null";
@@ -3347,7 +3322,7 @@ TEST_F(ExpressionHandlerTest, ImplicitCast_ArrayToPointerDecay) {
 
     // Act
     ExpressionHandler handler;
-    clang::Expr* result = handler.handleExpr(cppExpr, *context);
+    clang::Expr* result = handler.handleExpr(cppExpr, ctx);
 
     // Assert
     ASSERT_NE(result, nullptr) << "Translation returned null";
@@ -3367,7 +3342,7 @@ TEST_F(ExpressionHandlerTest, ImplicitCast_LValueToRValue) {
 
     // Act
     ExpressionHandler handler;
-    clang::Expr* result = handler.handleExpr(cppExpr, *context);
+    clang::Expr* result = handler.handleExpr(cppExpr, ctx);
 
     // Assert
     ASSERT_NE(result, nullptr) << "Translation returned null";
@@ -3387,7 +3362,7 @@ TEST_F(ExpressionHandlerTest, ImplicitCast_IntegralConversion) {
 
     // Act
     ExpressionHandler handler;
-    clang::Expr* result = handler.handleExpr(cppExpr, *context);
+    clang::Expr* result = handler.handleExpr(cppExpr, ctx);
 
     // Assert
     ASSERT_NE(result, nullptr) << "Translation returned null";
@@ -3407,7 +3382,7 @@ TEST_F(ExpressionHandlerTest, ImplicitCast_NoOp) {
 
     // Act
     ExpressionHandler handler;
-    clang::Expr* result = handler.handleExpr(cppExpr, *context);
+    clang::Expr* result = handler.handleExpr(cppExpr, ctx);
 
     // Assert
     ASSERT_NE(result, nullptr) << "Translation returned null";
@@ -3425,7 +3400,7 @@ TEST_F(ExpressionHandlerTest, ImplicitCast_BoolConversion) {
 
     // Act
     ExpressionHandler handler;
-    clang::Expr* result = handler.handleExpr(cppExpr, *context);
+    clang::Expr* result = handler.handleExpr(cppExpr, ctx);
 
     // Assert
     ASSERT_NE(result, nullptr) << "Translation returned null";
@@ -3445,7 +3420,7 @@ TEST_F(ExpressionHandlerTest, ImplicitCast_ComplexExpression) {
 
     // Act
     ExpressionHandler handler;
-    clang::Expr* result = handler.handleExpr(cppExpr, *context);
+    clang::Expr* result = handler.handleExpr(cppExpr, ctx);
 
     // Assert
     ASSERT_NE(result, nullptr) << "Translation returned null";
@@ -3489,7 +3464,7 @@ TEST_F(ExpressionHandlerTest, AddressOf_SimpleVariable) {
 
     // Act
     ExpressionHandler handler;
-    clang::Expr* result = handler.handleExpr(cppExpr, *context);
+    clang::Expr* result = handler.handleExpr(cppExpr, ctx);
 
     // Assert
     ASSERT_NE(result, nullptr) << "Translation returned null";
@@ -3528,7 +3503,7 @@ TEST_F(ExpressionHandlerTest, AddressOf_ArrayElement) {
 
     // Act
     ExpressionHandler handler;
-    clang::Expr* result = handler.handleExpr(cppExpr, *context);
+    clang::Expr* result = handler.handleExpr(cppExpr, ctx);
 
     // Assert
     ASSERT_NE(result, nullptr) << "Translation returned null";
@@ -3559,7 +3534,7 @@ TEST_F(ExpressionHandlerTest, AddressOf_DereferencedPointer) {
 
     // Act
     ExpressionHandler handler;
-    clang::Expr* result = handler.handleExpr(cppExpr, *context);
+    clang::Expr* result = handler.handleExpr(cppExpr, ctx);
 
     // Assert
     ASSERT_NE(result, nullptr) << "Translation returned null";
@@ -3597,7 +3572,7 @@ TEST_F(ExpressionHandlerTest, AddressOf_InAssignment) {
 
     // Act
     ExpressionHandler handler;
-    clang::Expr* result = handler.handleExpr(cppExpr, *context);
+    clang::Expr* result = handler.handleExpr(cppExpr, ctx);
 
     // Assert
     ASSERT_NE(result, nullptr) << "Translation returned null";
@@ -3642,7 +3617,7 @@ TEST_F(ExpressionHandlerTest, AddressOf_InFunctionCall) {
 
     // Act
     ExpressionHandler handler;
-    clang::Expr* result = handler.handleExpr(cppExpr, *context);
+    clang::Expr* result = handler.handleExpr(cppExpr, ctx);
 
     // Assert
     ASSERT_NE(result, nullptr) << "Translation returned null";
@@ -3681,7 +3656,7 @@ TEST_F(ExpressionHandlerTest, AddressOf_InExpression) {
 
     // Act
     ExpressionHandler handler;
-    clang::Expr* result = handler.handleExpr(cppExpr, *context);
+    clang::Expr* result = handler.handleExpr(cppExpr, ctx);
 
     // Assert
     ASSERT_NE(result, nullptr) << "Translation returned null";
@@ -3724,7 +3699,7 @@ TEST_F(ExpressionHandlerTest, AddressOf_MultipleInComparison) {
 
     // Act
     ExpressionHandler handler;
-    clang::Expr* result = handler.handleExpr(cppExpr, *context);
+    clang::Expr* result = handler.handleExpr(cppExpr, ctx);
 
     // Assert
     ASSERT_NE(result, nullptr) << "Translation returned null";
@@ -3772,7 +3747,7 @@ TEST_F(ExpressionHandlerTest, AddressOf_WithParentheses) {
 
     // Act
     ExpressionHandler handler;
-    clang::Expr* result = handler.handleExpr(cppExpr, *context);
+    clang::Expr* result = handler.handleExpr(cppExpr, ctx);
 
     // Assert
     ASSERT_NE(result, nullptr) << "Translation returned null";
@@ -3816,7 +3791,7 @@ TEST_F(ExpressionHandlerTest, Dereference_SimplePointer) {
 
     // Act
     ExpressionHandler handler;
-    clang::Expr* result = handler.handleExpr(cppExpr, *context);
+    clang::Expr* result = handler.handleExpr(cppExpr, ctx);
 
     // Assert
     ASSERT_NE(result, nullptr) << "Translation returned null";
@@ -3856,7 +3831,7 @@ TEST_F(ExpressionHandlerTest, Dereference_InAssignment) {
 
     // Act
     ExpressionHandler handler;
-    clang::Expr* result = handler.handleExpr(cppExpr, *context);
+    clang::Expr* result = handler.handleExpr(cppExpr, ctx);
 
     // Assert
     ASSERT_NE(result, nullptr) << "Translation returned null";
@@ -3900,7 +3875,7 @@ TEST_F(ExpressionHandlerTest, Dereference_InExpression) {
 
     // Act
     ExpressionHandler handler;
-    clang::Expr* result = handler.handleExpr(cppExpr, *context);
+    clang::Expr* result = handler.handleExpr(cppExpr, ctx);
 
     // Assert
     ASSERT_NE(result, nullptr) << "Translation returned null";
@@ -3939,7 +3914,7 @@ TEST_F(ExpressionHandlerTest, Dereference_Double) {
 
     // Act
     ExpressionHandler handler;
-    clang::Expr* result = handler.handleExpr(cppExpr, *context);
+    clang::Expr* result = handler.handleExpr(cppExpr, ctx);
 
     // Assert
     ASSERT_NE(result, nullptr) << "Translation returned null";
@@ -3985,7 +3960,7 @@ TEST_F(ExpressionHandlerTest, Dereference_WithPostfixIncrement) {
 
     // Act
     ExpressionHandler handler;
-    clang::Expr* result = handler.handleExpr(cppExpr, *context);
+    clang::Expr* result = handler.handleExpr(cppExpr, ctx);
 
     // Assert
     ASSERT_NE(result, nullptr) << "Translation returned null";
@@ -4026,7 +4001,7 @@ TEST_F(ExpressionHandlerTest, Dereference_PointerArithmetic) {
 
     // Act
     ExpressionHandler handler;
-    clang::Expr* result = handler.handleExpr(cppExpr, *context);
+    clang::Expr* result = handler.handleExpr(cppExpr, ctx);
 
     // Assert
     ASSERT_NE(result, nullptr) << "Translation returned null";
@@ -4072,7 +4047,7 @@ TEST_F(ExpressionHandlerTest, Dereference_ComplexExpression) {
 
     // Act
     ExpressionHandler handler;
-    clang::Expr* result = handler.handleExpr(cppExpr, *context);
+    clang::Expr* result = handler.handleExpr(cppExpr, ctx);
 
     // Assert
     ASSERT_NE(result, nullptr) << "Translation returned null";
@@ -4122,7 +4097,7 @@ TEST_F(ExpressionHandlerTest, Dereference_Parenthesized) {
 
     // Act
     ExpressionHandler handler;
-    clang::Expr* result = handler.handleExpr(cppExpr, *context);
+    clang::Expr* result = handler.handleExpr(cppExpr, ctx);
 
     // Assert
     ASSERT_NE(result, nullptr) << "Translation returned null";
@@ -4178,7 +4153,7 @@ TEST_F(ExpressionHandlerTest, PointerArithmetic_PointerPlusInt) {
 
     // Act
     ExpressionHandler handler;
-    clang::Expr* result = handler.handleExpr(finder.foundBinOp, *context);
+    clang::Expr* result = handler.handleExpr(finder.foundBinOp, ctx);
 
     // Assert
     ASSERT_NE(result, nullptr) << "Translation returned null";
@@ -4225,7 +4200,7 @@ TEST_F(ExpressionHandlerTest, PointerArithmetic_PointerMinusInt) {
 
     // Act
     ExpressionHandler handler;
-    clang::Expr* result = handler.handleExpr(finder.foundBinOp, *context);
+    clang::Expr* result = handler.handleExpr(finder.foundBinOp, ctx);
 
     // Assert
     ASSERT_NE(result, nullptr) << "Translation returned null";
@@ -4271,7 +4246,7 @@ TEST_F(ExpressionHandlerTest, PointerArithmetic_IntPlusPointer) {
 
     // Act
     ExpressionHandler handler;
-    clang::Expr* result = handler.handleExpr(finder.foundBinOp, *context);
+    clang::Expr* result = handler.handleExpr(finder.foundBinOp, ctx);
 
     // Assert
     ASSERT_NE(result, nullptr) << "Translation returned null";
@@ -4319,7 +4294,7 @@ TEST_F(ExpressionHandlerTest, PointerArithmetic_PointerMinusPointer) {
 
     // Act
     ExpressionHandler handler;
-    clang::Expr* result = handler.handleExpr(finder.foundBinOp, *context);
+    clang::Expr* result = handler.handleExpr(finder.foundBinOp, ctx);
 
     // Assert
     ASSERT_NE(result, nullptr) << "Translation returned null";
@@ -4365,7 +4340,7 @@ TEST_F(ExpressionHandlerTest, PointerArithmetic_PostfixIncrement) {
 
     // Act
     ExpressionHandler handler;
-    clang::Expr* result = handler.handleExpr(finder.foundUnaryOp, *context);
+    clang::Expr* result = handler.handleExpr(finder.foundUnaryOp, ctx);
 
     // Assert
     ASSERT_NE(result, nullptr) << "Translation returned null";
@@ -4411,7 +4386,7 @@ TEST_F(ExpressionHandlerTest, PointerArithmetic_PrefixIncrement) {
 
     // Act
     ExpressionHandler handler;
-    clang::Expr* result = handler.handleExpr(finder.foundUnaryOp, *context);
+    clang::Expr* result = handler.handleExpr(finder.foundUnaryOp, ctx);
 
     // Assert
     ASSERT_NE(result, nullptr) << "Translation returned null";
@@ -4457,7 +4432,7 @@ TEST_F(ExpressionHandlerTest, PointerArithmetic_PostfixDecrement) {
 
     // Act
     ExpressionHandler handler;
-    clang::Expr* result = handler.handleExpr(finder.foundUnaryOp, *context);
+    clang::Expr* result = handler.handleExpr(finder.foundUnaryOp, ctx);
 
     // Assert
     ASSERT_NE(result, nullptr) << "Translation returned null";
@@ -4503,7 +4478,7 @@ TEST_F(ExpressionHandlerTest, PointerArithmetic_PrefixDecrement) {
 
     // Act
     ExpressionHandler handler;
-    clang::Expr* result = handler.handleExpr(finder.foundUnaryOp, *context);
+    clang::Expr* result = handler.handleExpr(finder.foundUnaryOp, ctx);
 
     // Assert
     ASSERT_NE(result, nullptr) << "Translation returned null";
@@ -4549,7 +4524,7 @@ TEST_F(ExpressionHandlerTest, PointerArithmetic_CompoundAddAssign) {
 
     // Act
     ExpressionHandler handler;
-    clang::Expr* result = handler.handleExpr(finder.foundBinOp, *context);
+    clang::Expr* result = handler.handleExpr(finder.foundBinOp, ctx);
 
     // Assert
     ASSERT_NE(result, nullptr) << "Translation returned null";
@@ -4595,7 +4570,7 @@ TEST_F(ExpressionHandlerTest, PointerArithmetic_CompoundSubAssign) {
 
     // Act
     ExpressionHandler handler;
-    clang::Expr* result = handler.handleExpr(finder.foundBinOp, *context);
+    clang::Expr* result = handler.handleExpr(finder.foundBinOp, ctx);
 
     // Assert
     ASSERT_NE(result, nullptr) << "Translation returned null";
@@ -4646,7 +4621,7 @@ TEST_F(ExpressionHandlerTest, PointerArithmetic_ArrayAccessViaArithmetic) {
 
     // Act
     ExpressionHandler handler;
-    clang::Expr* result = handler.handleExpr(finder.foundUnaryOp, *context);
+    clang::Expr* result = handler.handleExpr(finder.foundUnaryOp, ctx);
 
     // Assert
     ASSERT_NE(result, nullptr) << "Translation returned null";
@@ -4694,7 +4669,7 @@ TEST_F(ExpressionHandlerTest, PointerArithmetic_PointerComparison) {
 
     // Act
     ExpressionHandler handler;
-    clang::Expr* result = handler.handleExpr(finder.foundBinOp, *context);
+    clang::Expr* result = handler.handleExpr(finder.foundBinOp, ctx);
 
     // Assert
     ASSERT_NE(result, nullptr) << "Translation returned null";
@@ -4735,7 +4710,7 @@ TEST_F(ExpressionHandlerTest, NullPtrLiteralInAssignment) {
 
     // Act
     ExpressionHandler handler;
-    clang::Expr* result = handler.handleExpr(finder.foundNullPtr, *context);
+    clang::Expr* result = handler.handleExpr(finder.foundNullPtr, ctx);
 
     // Assert
     ASSERT_NE(result, nullptr) << "Translation returned null";
@@ -4775,7 +4750,7 @@ TEST_F(ExpressionHandlerTest, NullPtrVariableInitialization) {
 
     // Act
     ExpressionHandler handler;
-    clang::Expr* result = handler.handleExpr(finder.foundNullPtr, *context);
+    clang::Expr* result = handler.handleExpr(finder.foundNullPtr, ctx);
 
     // Assert
     ASSERT_NE(result, nullptr) << "Translation returned null";
@@ -4823,7 +4798,7 @@ TEST_F(ExpressionHandlerTest, NullPtrComparison) {
 
     // Act
     ExpressionHandler handler;
-    clang::Expr* result = handler.handleExpr(finder.foundNullPtr, *context);
+    clang::Expr* result = handler.handleExpr(finder.foundNullPtr, ctx);
 
     // Assert
     ASSERT_NE(result, nullptr) << "Translation returned null";
@@ -4865,7 +4840,7 @@ TEST_F(ExpressionHandlerTest, NullPtrInFunctionCall) {
 
     // Act
     ExpressionHandler handler;
-    clang::Expr* result = handler.handleExpr(finder.foundNullPtr, *context);
+    clang::Expr* result = handler.handleExpr(finder.foundNullPtr, ctx);
 
     // Assert
     ASSERT_NE(result, nullptr) << "Translation returned null";
@@ -4906,7 +4881,7 @@ TEST_F(ExpressionHandlerTest, NullPtrReturnValue) {
 
     // Act
     ExpressionHandler handler;
-    clang::Expr* result = handler.handleExpr(finder.foundNullPtr, *context);
+    clang::Expr* result = handler.handleExpr(finder.foundNullPtr, ctx);
 
     // Assert
     ASSERT_NE(result, nullptr) << "Translation returned null";
@@ -4949,8 +4924,8 @@ TEST_F(ExpressionHandlerTest, MultipleNullPtrs) {
 
     // Act
     ExpressionHandler handler;
-    clang::Expr* result1 = handler.handleExpr(finder.firstNullPtr, *context);
-    clang::Expr* result2 = handler.handleExpr(finder.secondNullPtr, *context);
+    clang::Expr* result1 = handler.handleExpr(finder.firstNullPtr, ctx);
+    clang::Expr* result2 = handler.handleExpr(finder.secondNullPtr, ctx);
 
     // Assert
     ASSERT_NE(result1, nullptr) << "Translation of first nullptr returned null";
@@ -5012,7 +4987,7 @@ TEST_F(ExpressionHandlerTest, ReferenceUsage_RValueContext) {
 
     // Act
     ExpressionHandler handler;
-    clang::Expr* result = handler.handleExpr(finder.foundBinOp, *context);
+    clang::Expr* result = handler.handleExpr(finder.foundBinOp, ctx);
 
     // Assert
     ASSERT_NE(result, nullptr) << "Translation returned null";
@@ -5072,7 +5047,7 @@ TEST_F(ExpressionHandlerTest, ReferenceUsage_LValueContext) {
 
     // Act
     ExpressionHandler handler;
-    clang::Expr* result = handler.handleExpr(finder.foundAssign, *context);
+    clang::Expr* result = handler.handleExpr(finder.foundAssign, ctx);
 
     // Assert
     ASSERT_NE(result, nullptr) << "Translation returned null";
@@ -5132,7 +5107,7 @@ TEST_F(ExpressionHandlerTest, ReferenceUsage_SimpleDereference) {
 
     // Act
     ExpressionHandler handler;
-    clang::Expr* result = handler.handleExpr(finder.foundDRE, *context);
+    clang::Expr* result = handler.handleExpr(finder.foundDRE, ctx);
 
     // Assert
     ASSERT_NE(result, nullptr) << "Translation returned null";
@@ -5186,7 +5161,7 @@ TEST_F(ExpressionHandlerTest, ReferenceUsage_ConstReference) {
 
     // Act
     ExpressionHandler handler;
-    clang::Expr* result = handler.handleExpr(finder.foundDRE, *context);
+    clang::Expr* result = handler.handleExpr(finder.foundDRE, ctx);
 
     // Assert
     ASSERT_NE(result, nullptr) << "Translation returned null";
@@ -5239,7 +5214,7 @@ TEST_F(ExpressionHandlerTest, ReferenceUsage_ComplexExpression) {
 
     // Act
     ExpressionHandler handler;
-    clang::Expr* result = handler.handleExpr(finder.foundAddOp, *context);
+    clang::Expr* result = handler.handleExpr(finder.foundAddOp, ctx);
 
     // Assert
     ASSERT_NE(result, nullptr) << "Translation returned null";
@@ -5310,7 +5285,7 @@ TEST_F(ExpressionHandlerTest, ReferenceUsage_MultipleReferences) {
 
     // Act
     ExpressionHandler handler;
-    clang::Expr* result = handler.handleExpr(finder.foundAddOp, *context);
+    clang::Expr* result = handler.handleExpr(finder.foundAddOp, ctx);
 
     // Assert
     ASSERT_NE(result, nullptr) << "Translation returned null";
@@ -5374,7 +5349,7 @@ TEST_F(ExpressionHandlerTest, ReferenceUsage_PostfixIncrement) {
 
     // Act
     ExpressionHandler handler;
-    clang::Expr* result = handler.handleExpr(finder.foundIncOp, *context);
+    clang::Expr* result = handler.handleExpr(finder.foundIncOp, ctx);
 
     // Assert
     ASSERT_NE(result, nullptr) << "Translation returned null";
@@ -5432,7 +5407,7 @@ TEST_F(ExpressionHandlerTest, ReferenceUsage_CompoundAssignment) {
 
     // Act
     ExpressionHandler handler;
-    clang::Expr* result = handler.handleExpr(finder.foundOp, *context);
+    clang::Expr* result = handler.handleExpr(finder.foundOp, ctx);
 
     // Assert
     ASSERT_NE(result, nullptr) << "Translation returned null";
@@ -5487,7 +5462,7 @@ TEST_F(ExpressionHandlerTest, ReferenceUsage_Parenthesized) {
 
     // Act
     ExpressionHandler handler;
-    clang::Expr* result = handler.handleExpr(finder.foundParen, *context);
+    clang::Expr* result = handler.handleExpr(finder.foundParen, ctx);
 
     // Assert
     ASSERT_NE(result, nullptr) << "Translation returned null";
@@ -5546,7 +5521,7 @@ TEST_F(ExpressionHandlerTest, ReferenceUsage_Aliasing) {
 
     // Act
     ExpressionHandler handler;
-    clang::Expr* result = handler.handleExpr(finder.foundDRE, *context);
+    clang::Expr* result = handler.handleExpr(finder.foundDRE, ctx);
 
     // Assert
     ASSERT_NE(result, nullptr) << "Translation returned null";
@@ -5602,7 +5577,7 @@ TEST_F(ExpressionHandlerTest, MemberExpr_SimplePointerFieldAccess) {
 
     // Act
     ExpressionHandler handler;
-    clang::Expr* result = handler.handleExpr(finder.foundME, *context);
+    clang::Expr* result = handler.handleExpr(finder.foundME, ctx);
 
     // Assert
     ASSERT_NE(result, nullptr) << "Translation returned null";
@@ -5659,7 +5634,7 @@ TEST_F(ExpressionHandlerTest, MemberExpr_PointerFieldAccessInExpression) {
 
     // Act
     ExpressionHandler handler;
-    clang::Expr* result = handler.handleExpr(finder.foundBO, *context);
+    clang::Expr* result = handler.handleExpr(finder.foundBO, ctx);
 
     // Assert
     ASSERT_NE(result, nullptr) << "Translation returned null";
@@ -5719,7 +5694,7 @@ TEST_F(ExpressionHandlerTest, MemberExpr_PointerFieldAccessAsLValue) {
 
     // Act
     ExpressionHandler handler;
-    clang::Expr* result = handler.handleExpr(finder.foundBO, *context);
+    clang::Expr* result = handler.handleExpr(finder.foundBO, ctx);
 
     // Assert
     ASSERT_NE(result, nullptr) << "Translation returned null";
@@ -5781,7 +5756,7 @@ TEST_F(ExpressionHandlerTest, MemberExpr_NestedPointerFieldAccess) {
 
     // Act
     ExpressionHandler handler;
-    clang::Expr* result = handler.handleExpr(finder.foundME, *context);
+    clang::Expr* result = handler.handleExpr(finder.foundME, ctx);
 
     // Assert
     ASSERT_NE(result, nullptr) << "Translation returned null";
@@ -5847,7 +5822,7 @@ TEST_F(ExpressionHandlerTest, MemberExpr_PointerFieldAccessInFunctionCall) {
 
     // Act
     ExpressionHandler handler;
-    clang::Expr* result = handler.handleExpr(finder.foundME, *context);
+    clang::Expr* result = handler.handleExpr(finder.foundME, ctx);
 
     // Assert
     ASSERT_NE(result, nullptr) << "Translation returned null";
@@ -5907,7 +5882,7 @@ TEST_F(ExpressionHandlerTest, MemberExpr_MixDotAndArrow) {
 
     // Act
     ExpressionHandler handler;
-    clang::Expr* result = handler.handleExpr(finder.foundME, *context);
+    clang::Expr* result = handler.handleExpr(finder.foundME, ctx);
 
     // Assert
     ASSERT_NE(result, nullptr) << "Translation returned null";
@@ -5966,7 +5941,7 @@ TEST_F(ExpressionHandlerTest, MemberExpr_SimpleDotFieldAccess) {
 
     // Act
     ExpressionHandler handler;
-    clang::Expr* result = handler.handleExpr(finder.foundME, *context);
+    clang::Expr* result = handler.handleExpr(finder.foundME, ctx);
 
     // Assert
     ASSERT_NE(result, nullptr) << "Translation returned null";
@@ -6026,7 +6001,7 @@ TEST_F(ExpressionHandlerTest, MemberExpr_NestedDotFieldAccess) {
 
     // Act
     ExpressionHandler handler;
-    clang::Expr* result = handler.handleExpr(finder.foundME, *context);
+    clang::Expr* result = handler.handleExpr(finder.foundME, ctx);
 
     // Assert
     ASSERT_NE(result, nullptr) << "Translation returned null";
@@ -6082,7 +6057,7 @@ TEST_F(ExpressionHandlerTest, MemberExpr_DotInExpression) {
 
     // Act
     ExpressionHandler handler;
-    clang::Expr* result = handler.handleExpr(finder.foundBO, *context);
+    clang::Expr* result = handler.handleExpr(finder.foundBO, ctx);
 
     // Assert
     ASSERT_NE(result, nullptr) << "Translation returned null";
@@ -6130,7 +6105,7 @@ TEST_F(ExpressionHandlerTest, MemberExpr_DotAsLValue) {
 
     // Act
     ExpressionHandler handler;
-    clang::Expr* result = handler.handleExpr(finder.foundBO, *context);
+    clang::Expr* result = handler.handleExpr(finder.foundBO, ctx);
 
     // Assert
     ASSERT_NE(result, nullptr) << "Translation returned null";
@@ -6185,7 +6160,7 @@ TEST_F(ExpressionHandlerTest, MemberExpr_DotInFunctionCall) {
 
     // Act
     ExpressionHandler handler;
-    clang::Expr* result = handler.handleExpr(finder.foundME, *context);
+    clang::Expr* result = handler.handleExpr(finder.foundME, ctx);
 
     // Assert
     ASSERT_NE(result, nullptr) << "Translation returned null";
@@ -6232,7 +6207,7 @@ TEST_F(ExpressionHandlerTest, MemberExpr_DotInArraySubscript) {
 
     // Act
     ExpressionHandler handler;
-    clang::Expr* result = handler.handleExpr(finder.foundASE, *context);
+    clang::Expr* result = handler.handleExpr(finder.foundASE, ctx);
 
     // Assert
     ASSERT_NE(result, nullptr) << "Translation returned null";
@@ -6282,7 +6257,7 @@ TEST_F(ExpressionHandlerTest, MemberExpr_DotArrayField) {
 
     // Act
     ExpressionHandler handler;
-    clang::Expr* result = handler.handleExpr(finder.foundASE, *context);
+    clang::Expr* result = handler.handleExpr(finder.foundASE, ctx);
 
     // Assert
     ASSERT_NE(result, nullptr) << "Translation returned null";
@@ -6332,7 +6307,7 @@ TEST_F(ExpressionHandlerTest, MemberExpr_DotMultipleInExpression) {
 
     // Act
     ExpressionHandler handler;
-    clang::Expr* result = handler.handleExpr(finder.foundBO, *context);
+    clang::Expr* result = handler.handleExpr(finder.foundBO, ctx);
 
     // Assert
     ASSERT_NE(result, nullptr) << "Translation returned null";
@@ -6383,7 +6358,7 @@ TEST_F(ExpressionHandlerTest, MemberExpr_DotInComparison) {
 
     // Act
     ExpressionHandler handler;
-    clang::Expr* result = handler.handleExpr(finder.foundBO, *context);
+    clang::Expr* result = handler.handleExpr(finder.foundBO, ctx);
 
     // Assert
     ASSERT_NE(result, nullptr) << "Translation returned null";
@@ -6428,7 +6403,7 @@ TEST_F(ExpressionHandlerTest, MemberExpr_DotConstStruct) {
 
     // Act
     ExpressionHandler handler;
-    clang::Expr* result = handler.handleExpr(finder.foundME, *context);
+    clang::Expr* result = handler.handleExpr(finder.foundME, ctx);
 
     // Assert
     ASSERT_NE(result, nullptr) << "Translation returned null";
@@ -6474,7 +6449,7 @@ TEST_F(ExpressionHandlerTest, MemberExpr_DotComplexNested) {
 
     // Act
     ExpressionHandler handler;
-    clang::Expr* result = handler.handleExpr(finder.foundBO, *context);
+    clang::Expr* result = handler.handleExpr(finder.foundBO, ctx);
 
     // Assert
     ASSERT_NE(result, nullptr) << "Translation returned null";
@@ -6522,7 +6497,7 @@ TEST_F(ExpressionHandlerTest, InitListExpr_FullStructInit) {
 
     // Act
     ExpressionHandler handler;
-    clang::Expr* result = handler.handleExpr(initList, *context);
+    clang::Expr* result = handler.handleExpr(initList, ctx);
 
     // Assert
     ASSERT_NE(result, nullptr) << "Translation failed";
@@ -6580,7 +6555,7 @@ TEST_F(ExpressionHandlerTest, InitListExpr_PartialStructInit) {
 
     // Act
     ExpressionHandler handler;
-    clang::Expr* result = handler.handleExpr(initList, *context);
+    clang::Expr* result = handler.handleExpr(initList, ctx);
 
     // Assert
     ASSERT_NE(result, nullptr) << "Translation failed";
@@ -6633,7 +6608,7 @@ TEST_F(ExpressionHandlerTest, InitListExpr_EmptyStructInit) {
 
     // Act
     ExpressionHandler handler;
-    clang::Expr* result = handler.handleExpr(initList, *context);
+    clang::Expr* result = handler.handleExpr(initList, ctx);
 
     // Assert
     ASSERT_NE(result, nullptr) << "Translation failed";
@@ -6687,7 +6662,7 @@ TEST_F(ExpressionHandlerTest, InitListExpr_NestedStructInit) {
 
     // Act
     ExpressionHandler handler;
-    clang::Expr* result = handler.handleExpr(initList, *context);
+    clang::Expr* result = handler.handleExpr(initList, ctx);
 
     // Assert
     ASSERT_NE(result, nullptr) << "Translation failed";
@@ -6791,7 +6766,7 @@ TEST_F(ExpressionHandlerTest, InitListExpr_StructInitWithExpressions) {
 
     // Act
     ExpressionHandler handler;
-    clang::Expr* result = handler.handleExpr(initList, *context);
+    clang::Expr* result = handler.handleExpr(initList, ctx);
 
     // Assert
     ASSERT_NE(result, nullptr) << "Translation failed";
@@ -6846,7 +6821,7 @@ TEST_F(ExpressionHandlerTest, InitListExpr_StructWithArrayField) {
 
     // Act
     ExpressionHandler handler;
-    clang::Expr* result = handler.handleExpr(initList, *context);
+    clang::Expr* result = handler.handleExpr(initList, ctx);
 
     // Assert
     ASSERT_NE(result, nullptr) << "Translation failed";
@@ -6900,7 +6875,7 @@ TEST_F(ExpressionHandlerTest, InitListExpr_StructMixedTypes) {
 
     // Act
     ExpressionHandler handler;
-    clang::Expr* result = handler.handleExpr(initList, *context);
+    clang::Expr* result = handler.handleExpr(initList, ctx);
 
     // Assert
     ASSERT_NE(result, nullptr) << "Translation failed";
@@ -6952,7 +6927,7 @@ TEST_F(ExpressionHandlerTest, InitListExpr_StructWithPointers) {
 
     // Act
     ExpressionHandler handler;
-    clang::Expr* result = handler.handleExpr(initList, *context);
+    clang::Expr* result = handler.handleExpr(initList, ctx);
 
     // Assert
     ASSERT_NE(result, nullptr) << "Translation failed";
@@ -7008,7 +6983,7 @@ TEST_F(ExpressionHandlerTest, InitListExpr_DeepNestedStruct) {
 
     // Act
     ExpressionHandler handler;
-    clang::Expr* result = handler.handleExpr(initList, *context);
+    clang::Expr* result = handler.handleExpr(initList, ctx);
 
     // Assert
     ASSERT_NE(result, nullptr) << "Translation failed";
@@ -7063,7 +7038,7 @@ TEST_F(ExpressionHandlerTest, InitListExpr_StructInitInReturn) {
 
     // Act
     ExpressionHandler handler;
-    clang::Expr* result = handler.handleExpr(initList, *context);
+    clang::Expr* result = handler.handleExpr(initList, ctx);
 
     // Assert
     ASSERT_NE(result, nullptr) << "Translation failed";

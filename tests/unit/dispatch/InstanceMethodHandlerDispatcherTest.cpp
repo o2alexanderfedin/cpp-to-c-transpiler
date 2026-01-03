@@ -119,14 +119,14 @@ protected:
     void SetUp() override {
         // Reset singletons before each test to ensure test isolation
         cpptoc::OverloadRegistry::getInstance().reset();
-        TargetContext::cleanup();
+        TargetContext::getInstance().reset();  // Reset state, don't destroy singleton
         cpptoc::PathMapper::reset();
     }
 
     void TearDown() override {
         // Clean up after each test
         cpptoc::OverloadRegistry::getInstance().reset();
-        TargetContext::cleanup();
+        TargetContext::getInstance().reset();  // Reset state, don't destroy singleton
         cpptoc::PathMapper::reset();
     }
 };
@@ -187,7 +187,7 @@ TEST_F(InstanceMethodHandlerDispatcherTest, Registration) {
 }
 
 // ============================================================================
-// Test 2: SimpleInstanceMethod - Counter::increment() → Counter_increment(struct Counter* this)
+// Test 2: SimpleInstanceMethod - Counter::increment() → Counter__increment__void(struct Counter* this)
 // ============================================================================
 
 TEST_F(InstanceMethodHandlerDispatcherTest, SimpleInstanceMethod) {
@@ -239,14 +239,14 @@ TEST_F(InstanceMethodHandlerDispatcherTest, SimpleInstanceMethod) {
     FunctionDecl* cIncrement = nullptr;
     for (auto* D : cTU->decls()) {
         if (auto* FD = dyn_cast<FunctionDecl>(D)) {
-            if (FD->getNameAsString() == "Counter_increment") {
+            if (FD->getNameAsString() == "Counter__increment__void") {
                 cIncrement = FD;
                 break;
             }
         }
     }
 
-    ASSERT_NE(cIncrement, nullptr) << "Should find translated function 'Counter_increment'";
+    ASSERT_NE(cIncrement, nullptr) << "Should find translated function 'Counter__increment__void'";
 
     // Verify function signature: Must have "this" parameter
     EXPECT_EQ(cIncrement->getNumParams(), 1) << "Instance method should have 'this' parameter";
@@ -321,14 +321,14 @@ TEST_F(InstanceMethodHandlerDispatcherTest, InstanceMethodWithParameters) {
     FunctionDecl* cAdd = nullptr;
     for (auto* D : cTU->decls()) {
         if (auto* FD = dyn_cast<FunctionDecl>(D)) {
-            if (FD->getNameAsString() == "Math_add_int_int") {
+            if (FD->getNameAsString() == "Math__add__int_int") {
                 cAdd = FD;
                 break;
             }
         }
     }
 
-    ASSERT_NE(cAdd, nullptr) << "Should find 'Math_add_int_int'";
+    ASSERT_NE(cAdd, nullptr) << "Should find 'Math__add__int_int'";
 
     // Verify parameters: "this" + 2 method parameters = 3 total
     EXPECT_EQ(cAdd->getNumParams(), 3) << "Should have 3 parameters (this + a + b)";
@@ -341,7 +341,7 @@ TEST_F(InstanceMethodHandlerDispatcherTest, InstanceMethodWithParameters) {
 }
 
 // ============================================================================
-// Test 4: InstanceMethodInNamespace - game::Entity::update() → game_Entity_update(struct game_Entity* this)
+// Test 4: InstanceMethodInNamespace - game::Entity::update() → game__Entity__update__void(struct game_Entity* this)
 // ============================================================================
 
 TEST_F(InstanceMethodHandlerDispatcherTest, InstanceMethodInNamespace) {
@@ -425,14 +425,14 @@ TEST_F(InstanceMethodHandlerDispatcherTest, InstanceMethodInNamespace) {
     FunctionDecl* cUpdate = nullptr;
     for (auto* D : cTU->decls()) {
         if (auto* FD = dyn_cast<FunctionDecl>(D)) {
-            if (FD->getNameAsString() == "game_Entity_update") {
+            if (FD->getNameAsString() == "game__Entity__update__void") {
                 cUpdate = FD;
                 break;
             }
         }
     }
 
-    ASSERT_NE(cUpdate, nullptr) << "Should find 'game_Entity_update'";
+    ASSERT_NE(cUpdate, nullptr) << "Should find 'game__Entity__update__void'";
 
     // Verify "this" parameter
     EXPECT_EQ(cUpdate->getNumParams(), 1) << "Should have 'this' parameter";
@@ -532,14 +532,14 @@ TEST_F(InstanceMethodHandlerDispatcherTest, NestedNamespaceInstanceMethod) {
     FunctionDecl* cMul = nullptr;
     for (auto* D : cTU->decls()) {
         if (auto* FD = dyn_cast<FunctionDecl>(D)) {
-            if (FD->getNameAsString() == "ns1_ns2_Calc_mul_int_int") {
+            if (FD->getNameAsString() == "ns1__ns2__Calc__mul__int_int") {
                 cMul = FD;
                 break;
             }
         }
     }
 
-    ASSERT_NE(cMul, nullptr) << "Should find 'ns1_ns2_Calc_mul_int_int'";
+    ASSERT_NE(cMul, nullptr) << "Should find 'ns1__ns2__Calc__mul__int_int'";
 
     // Verify parameters: this + 2 method params = 3
     EXPECT_EQ(cMul->getNumParams(), 3) << "Should have 3 parameters";
@@ -594,14 +594,14 @@ TEST_F(InstanceMethodHandlerDispatcherTest, ReferenceParameterConversion) {
     FunctionDecl* cProcess = nullptr;
     for (auto* D : cTU->decls()) {
         if (auto* FD = dyn_cast<FunctionDecl>(D)) {
-            if (FD->getNameAsString() == "Processor_process_int_ref_const_int_ref") {
+            if (FD->getNameAsString() == "Processor__process__intref_constintref") {
                 cProcess = FD;
                 break;
             }
         }
     }
 
-    ASSERT_NE(cProcess, nullptr);
+    ASSERT_NE(cProcess, nullptr) << "Should find 'Processor__process__intref_constintref'";
 
     // Should have "this" + 2 method parameters = 3 total
     EXPECT_EQ(cProcess->getNumParams(), 3) << "Should have 3 parameters (this + value + constValue)";
@@ -661,14 +661,14 @@ TEST_F(InstanceMethodHandlerDispatcherTest, ReferenceReturnTypeConversion) {
     FunctionDecl* cGet = nullptr;
     for (auto* D : cTU->decls()) {
         if (auto* FD = dyn_cast<FunctionDecl>(D)) {
-            if (FD->getNameAsString() == "Container_get") {
+            if (FD->getNameAsString() == "Container__get__void") {
                 cGet = FD;
                 break;
             }
         }
     }
 
-    ASSERT_NE(cGet, nullptr);
+    ASSERT_NE(cGet, nullptr) << "Should find 'Container__get__void'";
 
     // Should have "this" parameter
     EXPECT_EQ(cGet->getNumParams(), 1) << "Should have 1 parameter (this)";
@@ -921,13 +921,11 @@ TEST_F(InstanceMethodHandlerDispatcherTest, NameManglingHelper) {
     ASSERT_NE(initialize, nullptr);
 
     // Phase 3: Use NameMangler instead of removed InstanceMethodHandler::getMangledName()
-    cpptoc::OverloadRegistry& registry = cpptoc::OverloadRegistry::getInstance();
-    NameMangler mangler(cppCtx, registry);
-    std::string mangledName = mangler.mangleMethodName(initialize);
+    std::string mangledName = cpptoc::mangle_method(initialize);
 
-    // Verify mangled name includes namespace and class with _ separator
-    EXPECT_EQ(mangledName, "app_Service_initialize")
-        << "Mangled name should be 'app_Service_initialize'";
+    // Verify mangled name includes namespace and class with __ separator
+    EXPECT_EQ(mangledName, "app__Service__initialize__void")
+        << "Mangled name should be 'app__Service__initialize__void' (NameMangler format: namespace__class__method__params)";
 }
 
 // ============================================================================

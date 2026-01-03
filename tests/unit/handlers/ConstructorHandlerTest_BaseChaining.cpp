@@ -63,7 +63,7 @@
  */
 
 #include "dispatch/ConstructorHandler.h"
-#include "handlers/HandlerContext.h"
+#include "helpers/UnitTestHelper.h"
 #include "CNodeBuilder.h"
 #include "MultipleInheritanceAnalyzer.h"
 #include "clang/Tooling/Tooling.h"
@@ -81,38 +81,13 @@ using namespace cpptoc;
  */
 class ConstructorHandlerBaseChainingTest : public ::testing::Test {
 protected:
-    std::unique_ptr<clang::ASTUnit> cppAST;
-    std::unique_ptr<clang::ASTUnit> cAST;
-    std::unique_ptr<clang::CNodeBuilder> builder;
-    std::unique_ptr<HandlerContext> context;
-    std::unique_ptr<ConstructorHandler> handler;
+    UnitTestContext ctx;
 
     void SetUp() override {
-        cppAST = clang::tooling::buildASTFromCode("int dummy;");
-        cAST = clang::tooling::buildASTFromCode("int dummy2;");
-
-        ASSERT_NE(cppAST, nullptr);
-        ASSERT_NE(cAST, nullptr);
-
-        builder = std::make_unique<clang::CNodeBuilder>(cAST->getASTContext());
-        context = std::make_unique<HandlerContext>(
-            cppAST->getASTContext(),
-            cAST->getASTContext(),
-            *builder
-        );
-
-        handler = std::make_unique<ConstructorHandler>();
+        ctx = createUnitTestContext();
+        ctx.dispatcher->registerHandler<ConstructorHandler>();
     }
-
-    void TearDown() override {
-        handler.reset();
-        context.reset();
-        builder.reset();
-        cAST.reset();
-        cppAST.reset();
-    }
-
-    /**
+/**
      * @brief Build AST and return constructor from specific class
      */
     const clang::CXXConstructorDecl* getConstructorFromClass(
@@ -124,12 +99,6 @@ protected:
         EXPECT_NE(cppAST, nullptr);
         if (!cppAST) return nullptr;
 
-        builder = std::make_unique<clang::CNodeBuilder>(cAST->getASTContext());
-        context = std::make_unique<HandlerContext>(
-            cppAST->getASTContext(),
-            cAST->getASTContext(),
-            *builder
-        );
 
         auto& ctx = cppAST->getASTContext();
         auto* TU = ctx.getTranslationUnitDecl();
@@ -356,7 +325,8 @@ TEST_F(ConstructorHandlerBaseChainingTest, SingleBaseConstructorCall) {
 
     // Translate constructor
     auto* cFunc = llvm::dyn_cast_or_null<clang::FunctionDecl>(
-        handler->handleDecl(ctor, *context)
+        ctx.dispatcher->dispatch(ctor);
+    auto __result = ctx.declMapper->get(ctor); __result
     );
 
     ASSERT_NE(cFunc, nullptr);
@@ -418,7 +388,8 @@ TEST_F(ConstructorHandlerBaseChainingTest, BaseConstructorInitializesOwnVtable) 
 
     // Translate base constructor
     auto* cFunc = llvm::dyn_cast_or_null<clang::FunctionDecl>(
-        handler->handleDecl(ctor, *context)
+        ctx.dispatcher->dispatch(ctor);
+    auto __result = ctx.declMapper->get(ctor); __result
     );
 
     ASSERT_NE(cFunc, nullptr);
@@ -481,7 +452,8 @@ TEST_F(ConstructorHandlerBaseChainingTest, DerivedConstructorOverridesVtable) {
     createCStruct("Derived", {"lpVtbl"});
 
     auto* cFunc = llvm::dyn_cast_or_null<clang::FunctionDecl>(
-        handler->handleDecl(ctor, *context)
+        ctx.dispatcher->dispatch(ctor);
+    auto __result = ctx.declMapper->get(ctor); __result
     );
 
     ASSERT_NE(cFunc, nullptr);
@@ -584,7 +556,8 @@ TEST_F(ConstructorHandlerBaseChainingTest, MultipleBasesAllInitialized) {
     createCStruct("Derived", {"lpVtbl", "lpVtbl2"});
 
     auto* cFunc = llvm::dyn_cast_or_null<clang::FunctionDecl>(
-        handler->handleDecl(ctor, *context)
+        ctx.dispatcher->dispatch(ctor);
+    auto __result = ctx.declMapper->get(ctor); __result
     );
 
     ASSERT_NE(cFunc, nullptr);
@@ -650,7 +623,8 @@ TEST_F(ConstructorHandlerBaseChainingTest, ConstructorCallOrderCorrect) {
     createCStruct("Derived", {"lpVtbl"});
 
     auto* cFunc = llvm::dyn_cast_or_null<clang::FunctionDecl>(
-        handler->handleDecl(ctor, *context)
+        ctx.dispatcher->dispatch(ctor);
+    auto __result = ctx.declMapper->get(ctor); __result
     );
 
     ASSERT_NE(cFunc, nullptr);
@@ -723,7 +697,8 @@ TEST_F(ConstructorHandlerBaseChainingTest, NonPrimaryBasePointerAdjustment) {
     createCStruct("Derived", {"lpVtbl", "lpVtbl2"});
 
     auto* cFunc = llvm::dyn_cast_or_null<clang::FunctionDecl>(
-        handler->handleDecl(ctor, *context)
+        ctx.dispatcher->dispatch(ctor);
+    auto __result = ctx.declMapper->get(ctor); __result
     );
 
     ASSERT_NE(cFunc, nullptr);
@@ -794,7 +769,8 @@ TEST_F(ConstructorHandlerBaseChainingTest, DeepHierarchyConstructorChain) {
     createCStruct("Intermediate", {"lpVtbl"});
 
     auto* intermediateFunc = llvm::dyn_cast_or_null<clang::FunctionDecl>(
-        handler->handleDecl(intermediateCtor, *context)
+        ctx.dispatcher->dispatch(intermediateCtor);
+    auto __result = ctx.declMapper->get(intermediateCtor); __result
     );
 
     ASSERT_NE(intermediateFunc, nullptr);
@@ -827,7 +803,8 @@ TEST_F(ConstructorHandlerBaseChainingTest, DeepHierarchyConstructorChain) {
     createCStruct("Derived", {"lpVtbl"});
 
     auto* derivedFunc = llvm::dyn_cast_or_null<clang::FunctionDecl>(
-        handler->handleDecl(derivedCtor, *context)
+        ctx.dispatcher->dispatch(derivedCtor);
+    auto __result = ctx.declMapper->get(derivedCtor); __result
     );
 
     ASSERT_NE(derivedFunc, nullptr);
@@ -886,7 +863,8 @@ TEST_F(ConstructorHandlerBaseChainingTest, ConstructorWithInitListAndBases) {
     createCStruct("Derived", {"lpVtbl"});
 
     auto* cFunc = llvm::dyn_cast_or_null<clang::FunctionDecl>(
-        handler->handleDecl(ctor, *context)
+        ctx.dispatcher->dispatch(ctor);
+    auto __result = ctx.declMapper->get(ctor); __result
     );
 
     ASSERT_NE(cFunc, nullptr);
@@ -942,7 +920,8 @@ TEST_F(ConstructorHandlerBaseChainingTest, NoBaseConstructorsDefaultOnly) {
     createCStruct("Derived", {"lpVtbl"});
 
     auto* cFunc = llvm::dyn_cast_or_null<clang::FunctionDecl>(
-        handler->handleDecl(ctor, *context)
+        ctx.dispatcher->dispatch(ctor);
+    auto __result = ctx.declMapper->get(ctor); __result
     );
 
     ASSERT_NE(cFunc, nullptr);
@@ -992,7 +971,8 @@ TEST_F(ConstructorHandlerBaseChainingTest, VtableOverrideAfterAllBases) {
     createCStruct("Derived", {"lpVtbl", "lpVtbl2"});
 
     auto* cFunc = llvm::dyn_cast_or_null<clang::FunctionDecl>(
-        handler->handleDecl(ctor, *context)
+        ctx.dispatcher->dispatch(ctor);
+    auto __result = ctx.declMapper->get(ctor); __result
     );
 
     ASSERT_NE(cFunc, nullptr);

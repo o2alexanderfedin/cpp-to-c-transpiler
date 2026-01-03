@@ -23,7 +23,7 @@
  */
 
 #include "dispatch/RecordHandler.h"
-#include "handlers/HandlerContext.h"
+#include "helpers/UnitTestHelper.h"
 #include "CNodeBuilder.h"
 #include "clang/Tooling/Tooling.h"
 #include "clang/AST/DeclCXX.h"
@@ -38,41 +38,13 @@ using namespace cpptoc;
  */
 class RecordHandlerLpVtblTest : public ::testing::Test {
 protected:
-    std::unique_ptr<clang::ASTUnit> cppAST;
-    std::unique_ptr<clang::ASTUnit> cAST;
-    std::unique_ptr<clang::CNodeBuilder> builder;
-    std::unique_ptr<HandlerContext> context;
-    std::unique_ptr<RecordHandler> handler;
+    UnitTestContext ctx;
 
     void SetUp() override {
-        // Create real AST contexts using minimal code
-        cppAST = clang::tooling::buildASTFromCode("int dummy;");
-        cAST = clang::tooling::buildASTFromCode("int dummy2;");
-
-        ASSERT_NE(cppAST, nullptr) << "Failed to create C++ AST";
-        ASSERT_NE(cAST, nullptr) << "Failed to create C AST";
-
-        // Create builder and context
-        builder = std::make_unique<clang::CNodeBuilder>(cAST->getASTContext());
-        context = std::make_unique<HandlerContext>(
-            cppAST->getASTContext(),
-            cAST->getASTContext(),
-            *builder
-        );
-
-        // Create handler
-        handler = std::make_unique<RecordHandler>();
+        ctx = createUnitTestContext();
+        ctx.dispatcher->registerHandler<RecordHandler>();
     }
-
-    void TearDown() override {
-        handler.reset();
-        context.reset();
-        builder.reset();
-        cAST.reset();
-        cppAST.reset();
-    }
-
-    /**
+/**
      * @brief Build AST from code and return the first CXXRecordDecl
      */
     const clang::CXXRecordDecl* getCXXRecordDeclFromCode(const std::string& code) {
@@ -82,12 +54,6 @@ protected:
         if (!cppAST) return nullptr;
 
         // Recreate builder and context with new AST
-        builder = std::make_unique<clang::CNodeBuilder>(cAST->getASTContext());
-        context = std::make_unique<HandlerContext>(
-            cppAST->getASTContext(),
-            cAST->getASTContext(),
-            *builder
-        );
 
         // Find the first CXXRecordDecl
         auto& ctx = cppAST->getASTContext();
@@ -151,7 +117,8 @@ TEST_F(RecordHandlerLpVtblTest, lpVtblIsFirstField) {
 
     // Translate to C
     auto* cRecord = llvm::cast<clang::RecordDecl>(
-        handler->handleDecl(cxxRecord, *context)
+        ctx.dispatcher->dispatch(cxxRecord);
+    auto __result = ctx.declMapper->get(cxxRecord); __result
     );
 
     ASSERT_NE(cRecord, nullptr);
@@ -205,7 +172,8 @@ TEST_F(RecordHandlerLpVtblTest, lpVtblCorrectType) {
 
     // Translate to C
     auto* cRecord = llvm::cast<clang::RecordDecl>(
-        handler->handleDecl(cxxRecord, *context)
+        ctx.dispatcher->dispatch(cxxRecord);
+    auto __result = ctx.declMapper->get(cxxRecord); __result
     );
 
     ASSERT_NE(cRecord, nullptr);
@@ -267,7 +235,8 @@ TEST_F(RecordHandlerLpVtblTest, lpVtblConstPointer) {
 
     // Translate to C
     auto* cRecord = llvm::cast<clang::RecordDecl>(
-        handler->handleDecl(cxxRecord, *context)
+        ctx.dispatcher->dispatch(cxxRecord);
+    auto __result = ctx.declMapper->get(cxxRecord); __result
     );
 
     ASSERT_NE(cRecord, nullptr);
@@ -324,12 +293,6 @@ TEST_F(RecordHandlerLpVtblTest, lpVtblSingleInheritance) {
     ASSERT_NE(cppAST, nullptr);
 
     // Recreate builder and context
-    builder = std::make_unique<clang::CNodeBuilder>(cAST->getASTContext());
-    context = std::make_unique<HandlerContext>(
-        cppAST->getASTContext(),
-        cAST->getASTContext(),
-        *builder
-    );
 
     auto& ctx = cppAST->getASTContext();
     auto* TU = ctx.getTranslationUnitDecl();
@@ -350,7 +313,8 @@ TEST_F(RecordHandlerLpVtblTest, lpVtblSingleInheritance) {
 
     // Translate Derived
     auto* cDerived = llvm::cast<clang::RecordDecl>(
-        handler->handleDecl(cxxDerived, *context)
+        ctx.dispatcher->dispatch(cxxDerived);
+    auto __result = ctx.declMapper->get(cxxDerived); __result
     );
 
     ASSERT_NE(cDerived, nullptr);
@@ -406,7 +370,8 @@ TEST_F(RecordHandlerLpVtblTest, lpVtblWithMultipleFields) {
 
     // Translate to C
     auto* cRecord = llvm::cast<clang::RecordDecl>(
-        handler->handleDecl(cxxRecord, *context)
+        ctx.dispatcher->dispatch(cxxRecord);
+    auto __result = ctx.declMapper->get(cxxRecord); __result
     );
 
     ASSERT_NE(cRecord, nullptr);
@@ -464,7 +429,8 @@ TEST_F(RecordHandlerLpVtblTest, lpVtblEmptyPolymorphicClass) {
 
     // Translate to C
     auto* cRecord = llvm::cast<clang::RecordDecl>(
-        handler->handleDecl(cxxRecord, *context)
+        ctx.dispatcher->dispatch(cxxRecord);
+    auto __result = ctx.declMapper->get(cxxRecord); __result
     );
 
     ASSERT_NE(cRecord, nullptr);
@@ -507,7 +473,8 @@ TEST_F(RecordHandlerLpVtblTest, lpVtblFieldAccessWorks) {
 
     // Translate to C
     auto* cRecord = llvm::cast<clang::RecordDecl>(
-        handler->handleDecl(cxxRecord, *context)
+        ctx.dispatcher->dispatch(cxxRecord);
+    auto __result = ctx.declMapper->get(cxxRecord); __result
     );
 
     ASSERT_NE(cRecord, nullptr);
@@ -564,7 +531,8 @@ TEST_F(RecordHandlerLpVtblTest, NoLpVtblForNonPolymorphic) {
 
     // Translate to C
     auto* cRecord = llvm::cast<clang::RecordDecl>(
-        handler->handleDecl(cxxRecord, *context)
+        ctx.dispatcher->dispatch(cxxRecord);
+    auto __result = ctx.declMapper->get(cxxRecord); __result
     );
 
     ASSERT_NE(cRecord, nullptr);
