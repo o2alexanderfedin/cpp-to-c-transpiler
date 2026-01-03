@@ -921,13 +921,11 @@ TEST_F(InstanceMethodHandlerDispatcherTest, NameManglingHelper) {
     ASSERT_NE(initialize, nullptr);
 
     // Phase 3: Use NameMangler instead of removed InstanceMethodHandler::getMangledName()
-    cpptoc::OverloadRegistry& registry = cpptoc::OverloadRegistry::getInstance();
-    NameMangler mangler(cppCtx, registry);
-    std::string mangledName = mangler.mangleMethodName(initialize);
+    std::string mangledName = cpptoc::mangle_method(initialize);
 
-    // Verify mangled name includes namespace and class with _ separator
-    EXPECT_EQ(mangledName, "app_Service_initialize")
-        << "Mangled name should be 'app_Service_initialize'";
+    // Verify mangled name includes namespace and class with __ separator
+    EXPECT_EQ(mangledName, "app__Service__initialize")
+        << "Mangled name should be 'app__Service__initialize'";
 }
 
 // ============================================================================

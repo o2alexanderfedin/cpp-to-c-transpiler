@@ -250,10 +250,8 @@ TEST_F(VirtualMethodHandlerDispatcherTest, SimpleVirtualMethod) {
     ASSERT_NE(shapeClass, nullptr);
 
     // Phase 3: Use NameMangler instead of removed VirtualMethodHandler::getMangledName()
-    cpptoc::OverloadRegistry& registry = cpptoc::OverloadRegistry::getInstance();
-    NameMangler mangler(cppCtx, registry);
-    std::string mangledName = mangler.mangleMethodName(getArea);
-    EXPECT_EQ(mangledName, "Shape_getArea") << "Should mangle to Shape_getArea with _ separator";
+    std::string mangledName = cpptoc::mangle_method(getArea);
+    EXPECT_EQ(mangledName, "Shape__getArea") << "Should mangle to Shape__getArea with __ separator";
 
     // Dispatch the virtual method
     dispatcher.dispatch(cppCtx, cCtx, getArea);
@@ -385,10 +383,8 @@ TEST_F(VirtualMethodHandlerDispatcherTest, VirtualMethodInNamespace) {
     ASSERT_NE(update, nullptr) << "Should find 'update' virtual method";
 
     // Phase 3: Use NameMangler instead of removed VirtualMethodHandler::getMangledName()
-    cpptoc::OverloadRegistry& registry = cpptoc::OverloadRegistry::getInstance();
-    NameMangler mangler(cppCtx, registry);
-    std::string mangledName = mangler.mangleMethodName(update);
-    EXPECT_EQ(mangledName, "game_Entity_update") << "Should include namespace prefix with _ separator";
+    std::string mangledName = cpptoc::mangle_method(update);
+    EXPECT_EQ(mangledName, "game__Entity__update") << "Should include namespace prefix with __ separator";
 }
 
 // ============================================================================

@@ -664,7 +664,6 @@ gtest_discover_tests(MonomorphizationTest
 # )
 
 # Phase 11: Template Integration Test (v2.4.0)
-# DISABLED: Uses obsolete CppToCVisitor - needs rewrite for dispatcher pattern
 # add_executable(TemplateIntegrationTest
 #     tests/TemplateIntegrationTest.cpp
 #     src/TemplateExtractor.cpp
@@ -725,553 +724,533 @@ gtest_discover_tests(MonomorphizationTest
 # CppToCVisitorDispatcher Tests
 # ============================================================================
 
-# DISABLED: Uses obsolete CppToCVisitor - needs rewrite for dispatcher pattern
-# add_executable(DispatcherTest
-#     tests/DispatcherTest.cpp
-# )
-# 
-# target_compile_definitions(DispatcherTest PRIVATE ${LLVM_DEFINITIONS})
-# 
-# target_include_directories(DispatcherTest PRIVATE
-#     ${CMAKE_SOURCE_DIR}/include
-#     ${LLVM_INCLUDE_DIRS}
-#     ${CLANG_INCLUDE_DIRS}
-# )
-# 
-# target_link_libraries(DispatcherTest PRIVATE cpptoc_core
-#     clangTooling
-#     clangFrontend
-#     clangAST
-#     clangBasic
-#     GTest::gtest
-#     GTest::gtest_main)
-# 
+add_executable(DispatcherTest
+    tests/DispatcherTest.cpp
+)
+
+target_compile_definitions(DispatcherTest PRIVATE ${LLVM_DEFINITIONS})
+
+target_include_directories(DispatcherTest PRIVATE
+    ${CMAKE_SOURCE_DIR}/include
+    ${LLVM_INCLUDE_DIRS}
+    ${CLANG_INCLUDE_DIRS}
+)
+
+target_link_libraries(DispatcherTest PRIVATE cpptoc_core
+    clangTooling
+    clangFrontend
+    clangAST
+    clangBasic
+    GTest::gtest
+    GTest::gtest_main)
+
 # Register with CTest
-# gtest_discover_tests(DispatcherTest
-#     WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
-# )
+gtest_discover_tests(DispatcherTest
+    WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
+)
 
 # ============================================================================
 # FunctionHandler Dispatcher Tests
 # ============================================================================
 
-# DISABLED: Uses obsolete CppToCVisitor - needs rewrite for dispatcher pattern
-# add_executable(FunctionHandlerDispatcherTest
-#     tests/unit/dispatch/FunctionHandlerDispatcherTest.cpp
-# )
-# 
-# target_compile_definitions(FunctionHandlerDispatcherTest PRIVATE ${LLVM_DEFINITIONS})
-# 
-# target_include_directories(FunctionHandlerDispatcherTest PRIVATE
-#     ${CMAKE_SOURCE_DIR}/include
-#     ${LLVM_INCLUDE_DIRS}
-#     ${CLANG_INCLUDE_DIRS}
-# )
-# 
-# target_link_libraries(FunctionHandlerDispatcherTest PRIVATE cpptoc_core
-#     clangTooling
-#     clangFrontend
-#     clangAST
-#     clangBasic
-#     GTest::gtest
-#     GTest::gtest_main)
-# 
+add_executable(FunctionHandlerDispatcherTest
+    tests/unit/dispatch/FunctionHandlerDispatcherTest.cpp
+)
+
+target_compile_definitions(FunctionHandlerDispatcherTest PRIVATE ${LLVM_DEFINITIONS})
+
+target_include_directories(FunctionHandlerDispatcherTest PRIVATE
+    ${CMAKE_SOURCE_DIR}/include
+    ${LLVM_INCLUDE_DIRS}
+    ${CLANG_INCLUDE_DIRS}
+)
+
+target_link_libraries(FunctionHandlerDispatcherTest PRIVATE cpptoc_core
+    clangTooling
+    clangFrontend
+    clangAST
+    clangBasic
+    GTest::gtest
+    GTest::gtest_main)
+
 # Register with CTest
-# gtest_discover_tests(FunctionHandlerDispatcherTest
-#     WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
-# )
+gtest_discover_tests(FunctionHandlerDispatcherTest
+    WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
+)
 
 # ============================================================================
 # NamespaceHandler Dispatcher Tests
 # ============================================================================
 
-# DISABLED: Uses obsolete CppToCVisitor - needs rewrite for dispatcher pattern
-# add_executable(NamespaceHandlerDispatcherTest
-#     tests/unit/dispatch/NamespaceHandlerDispatcherTest.cpp
-# )
-# 
-# target_compile_definitions(NamespaceHandlerDispatcherTest PRIVATE ${LLVM_DEFINITIONS})
-# 
-# target_include_directories(NamespaceHandlerDispatcherTest PRIVATE
-#     ${CMAKE_SOURCE_DIR}/include
-#     ${LLVM_INCLUDE_DIRS}
-#     ${CLANG_INCLUDE_DIRS}
-# )
-# 
-# target_link_libraries(NamespaceHandlerDispatcherTest PRIVATE cpptoc_core
-#     clangTooling
-#     clangFrontend
-#     clangAST
-#     clangBasic
-#     clangLex
-#     GTest::gtest_main)
-# 
+add_executable(NamespaceHandlerDispatcherTest
+    tests/unit/dispatch/NamespaceHandlerDispatcherTest.cpp
+)
+
+target_compile_definitions(NamespaceHandlerDispatcherTest PRIVATE ${LLVM_DEFINITIONS})
+
+target_include_directories(NamespaceHandlerDispatcherTest PRIVATE
+    ${CMAKE_SOURCE_DIR}/include
+    ${LLVM_INCLUDE_DIRS}
+    ${CLANG_INCLUDE_DIRS}
+)
+
+target_link_libraries(NamespaceHandlerDispatcherTest PRIVATE cpptoc_core
+    clangTooling
+    clangFrontend
+    clangAST
+    clangBasic
+    clangLex
+    GTest::gtest_main)
+
 # Register with CTest
-# gtest_discover_tests(NamespaceHandlerDispatcherTest
-#     WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
-# )
+gtest_discover_tests(NamespaceHandlerDispatcherTest
+    WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
+)
 
 # ============================================================================
 # StaticMethodHandler Dispatcher Tests
 # ============================================================================
 
-# DISABLED: Uses obsolete CppToCVisitor - needs rewrite for dispatcher pattern
-# add_executable(StaticMethodHandlerDispatcherTest
-#     tests/unit/dispatch/StaticMethodHandlerDispatcherTest.cpp
-# )
-# 
-# target_compile_definitions(StaticMethodHandlerDispatcherTest PRIVATE ${LLVM_DEFINITIONS})
-# 
-# target_include_directories(StaticMethodHandlerDispatcherTest PRIVATE
-#     ${CMAKE_SOURCE_DIR}/include
-#     ${LLVM_INCLUDE_DIRS}
-#     ${CLANG_INCLUDE_DIRS}
-# )
-# 
-# target_link_libraries(StaticMethodHandlerDispatcherTest PRIVATE cpptoc_core
-#     clangTooling
-#     clangFrontend
-#     clangAST
-#     clangBasic
-#     GTest::gtest
-#     GTest::gtest_main)
-# 
+add_executable(StaticMethodHandlerDispatcherTest
+    tests/unit/dispatch/StaticMethodHandlerDispatcherTest.cpp
+)
+
+target_compile_definitions(StaticMethodHandlerDispatcherTest PRIVATE ${LLVM_DEFINITIONS})
+
+target_include_directories(StaticMethodHandlerDispatcherTest PRIVATE
+    ${CMAKE_SOURCE_DIR}/include
+    ${LLVM_INCLUDE_DIRS}
+    ${CLANG_INCLUDE_DIRS}
+)
+
+target_link_libraries(StaticMethodHandlerDispatcherTest PRIVATE cpptoc_core
+    clangTooling
+    clangFrontend
+    clangAST
+    clangBasic
+    GTest::gtest
+    GTest::gtest_main)
+
 # Register with CTest
-# gtest_discover_tests(StaticMethodHandlerDispatcherTest
-#     WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
-# )
+gtest_discover_tests(StaticMethodHandlerDispatcherTest
+    WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
+)
 
 # ============================================================================
 # InstanceMethodHandler Dispatcher Tests
 # ============================================================================
 
-# DISABLED: Uses obsolete CppToCVisitor - needs rewrite for dispatcher pattern
-# add_executable(InstanceMethodHandlerDispatcherTest
-#     tests/unit/dispatch/InstanceMethodHandlerDispatcherTest.cpp
-# )
-# 
-# target_compile_definitions(InstanceMethodHandlerDispatcherTest PRIVATE ${LLVM_DEFINITIONS})
-# 
-# target_include_directories(InstanceMethodHandlerDispatcherTest PRIVATE
-#     ${CMAKE_SOURCE_DIR}/include
-#     ${LLVM_INCLUDE_DIRS}
-#     ${CLANG_INCLUDE_DIRS}
-# )
-# 
-# target_link_libraries(InstanceMethodHandlerDispatcherTest PRIVATE cpptoc_core
-#     clangTooling
-#     clangFrontend
-#     clangAST
-#     clangBasic
-#     GTest::gtest
-#     GTest::gtest_main)
-# 
+add_executable(InstanceMethodHandlerDispatcherTest
+    tests/unit/dispatch/InstanceMethodHandlerDispatcherTest.cpp
+)
+
+target_compile_definitions(InstanceMethodHandlerDispatcherTest PRIVATE ${LLVM_DEFINITIONS})
+
+target_include_directories(InstanceMethodHandlerDispatcherTest PRIVATE
+    ${CMAKE_SOURCE_DIR}/include
+    ${LLVM_INCLUDE_DIRS}
+    ${CLANG_INCLUDE_DIRS}
+)
+
+target_link_libraries(InstanceMethodHandlerDispatcherTest PRIVATE cpptoc_core
+    clangTooling
+    clangFrontend
+    clangAST
+    clangBasic
+    GTest::gtest
+    GTest::gtest_main)
+
 # Register with CTest
-# gtest_discover_tests(InstanceMethodHandlerDispatcherTest
-#     WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
-# )
+gtest_discover_tests(InstanceMethodHandlerDispatcherTest
+    WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
+)
 
 # ============================================================================
 # VirtualMethodHandler Dispatcher Tests
 # ============================================================================
 
-# DISABLED: Uses obsolete CppToCVisitor - needs rewrite for dispatcher pattern
-# add_executable(VirtualMethodHandlerDispatcherTest
-#     tests/unit/dispatch/VirtualMethodHandlerDispatcherTest.cpp
-# )
-# 
-# target_compile_definitions(VirtualMethodHandlerDispatcherTest PRIVATE ${LLVM_DEFINITIONS})
-# 
-# target_include_directories(VirtualMethodHandlerDispatcherTest PRIVATE
-#     ${CMAKE_SOURCE_DIR}/include
-#     ${LLVM_INCLUDE_DIRS}
-#     ${CLANG_INCLUDE_DIRS}
-# )
-# 
-# target_link_libraries(VirtualMethodHandlerDispatcherTest PRIVATE cpptoc_core
-#     clangTooling
-#     clangFrontend
-#     clangAST
-#     clangBasic
-#     GTest::gtest
-#     GTest::gtest_main)
-# 
+add_executable(VirtualMethodHandlerDispatcherTest
+    tests/unit/dispatch/VirtualMethodHandlerDispatcherTest.cpp
+)
+
+target_compile_definitions(VirtualMethodHandlerDispatcherTest PRIVATE ${LLVM_DEFINITIONS})
+
+target_include_directories(VirtualMethodHandlerDispatcherTest PRIVATE
+    ${CMAKE_SOURCE_DIR}/include
+    ${LLVM_INCLUDE_DIRS}
+    ${CLANG_INCLUDE_DIRS}
+)
+
+target_link_libraries(VirtualMethodHandlerDispatcherTest PRIVATE cpptoc_core
+    clangTooling
+    clangFrontend
+    clangAST
+    clangBasic
+    GTest::gtest
+    GTest::gtest_main)
+
 # Register with CTest
-# gtest_discover_tests(VirtualMethodHandlerDispatcherTest
-#     WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
-# )
+gtest_discover_tests(VirtualMethodHandlerDispatcherTest
+    WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
+)
 
 # ============================================================================
 # RecordHandler Dispatcher Tests
 # ============================================================================
 
-# DISABLED: Uses obsolete CppToCVisitor - needs rewrite for dispatcher pattern
-# add_executable(RecordHandlerDispatcherTest
-#     tests/unit/dispatch/RecordHandlerDispatcherTest.cpp
-# )
-# 
-# target_compile_definitions(RecordHandlerDispatcherTest PRIVATE ${LLVM_DEFINITIONS})
-# 
-# target_include_directories(RecordHandlerDispatcherTest PRIVATE
-#     ${CMAKE_SOURCE_DIR}/include
-#     ${LLVM_INCLUDE_DIRS}
-#     ${CLANG_INCLUDE_DIRS}
-# )
-# 
-# target_link_libraries(RecordHandlerDispatcherTest PRIVATE cpptoc_core
-#     clangTooling
-#     clangFrontend
-#     clangAST
-#     clangBasic
-#     GTest::gtest
-#     GTest::gtest_main)
-# 
+add_executable(RecordHandlerDispatcherTest
+    tests/unit/dispatch/RecordHandlerDispatcherTest.cpp
+)
+
+target_compile_definitions(RecordHandlerDispatcherTest PRIVATE ${LLVM_DEFINITIONS})
+
+target_include_directories(RecordHandlerDispatcherTest PRIVATE
+    ${CMAKE_SOURCE_DIR}/include
+    ${LLVM_INCLUDE_DIRS}
+    ${CLANG_INCLUDE_DIRS}
+)
+
+target_link_libraries(RecordHandlerDispatcherTest PRIVATE cpptoc_core
+    clangTooling
+    clangFrontend
+    clangAST
+    clangBasic
+    GTest::gtest
+    GTest::gtest_main)
+
 # Register with CTest
-# gtest_discover_tests(RecordHandlerDispatcherTest
-#     WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
-# )
+gtest_discover_tests(RecordHandlerDispatcherTest
+    WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
+)
 
 # ============================================================================
 # TypeHandler Dispatcher Tests
 # ============================================================================
 
-# DISABLED: Uses obsolete CppToCVisitor - needs rewrite for dispatcher pattern
-# add_executable(TypeHandlerDispatcherTest
-#     tests/unit/dispatch/TypeHandlerDispatcherTest.cpp
-# )
-# 
-# target_compile_definitions(TypeHandlerDispatcherTest PRIVATE ${LLVM_DEFINITIONS})
-# 
-# target_include_directories(TypeHandlerDispatcherTest PRIVATE
-#     ${CMAKE_SOURCE_DIR}/include
-#     ${LLVM_INCLUDE_DIRS}
-#     ${CLANG_INCLUDE_DIRS}
-# )
-# 
-# target_link_libraries(TypeHandlerDispatcherTest PRIVATE cpptoc_core
-#     clangTooling
-#     clangFrontend
-#     clangAST
-#     clangBasic
-#     GTest::gtest
-#     GTest::gtest_main)
-# 
-# Register with CTest
-# gtest_discover_tests(TypeHandlerDispatcherTest
-#     WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
-# )
+add_executable(TypeHandlerDispatcherTest
+    tests/unit/dispatch/TypeHandlerDispatcherTest.cpp
+)
 
-# DISABLED: Uses obsolete CppToCVisitor - needs rewrite for dispatcher pattern
-# add_executable(ReturnStmtHandlerDispatcherTest
-#     tests/unit/dispatch/ReturnStmtHandlerDispatcherTest.cpp
-# )
-# 
-# target_compile_definitions(ReturnStmtHandlerDispatcherTest PRIVATE ${LLVM_DEFINITIONS})
-# 
-# target_include_directories(ReturnStmtHandlerDispatcherTest PRIVATE
-#     ${CMAKE_SOURCE_DIR}/include
-#     ${LLVM_INCLUDE_DIRS}
-#     ${CLANG_INCLUDE_DIRS}
-# )
-# 
-# target_link_libraries(ReturnStmtHandlerDispatcherTest PRIVATE cpptoc_core
-#     clangTooling
-#     clangFrontend
-#     clangAST
-#     clangBasic
-#     GTest::gtest
-#     GTest::gtest_main)
-# 
+target_compile_definitions(TypeHandlerDispatcherTest PRIVATE ${LLVM_DEFINITIONS})
+
+target_include_directories(TypeHandlerDispatcherTest PRIVATE
+    ${CMAKE_SOURCE_DIR}/include
+    ${LLVM_INCLUDE_DIRS}
+    ${CLANG_INCLUDE_DIRS}
+)
+
+target_link_libraries(TypeHandlerDispatcherTest PRIVATE cpptoc_core
+    clangTooling
+    clangFrontend
+    clangAST
+    clangBasic
+    GTest::gtest
+    GTest::gtest_main)
+
 # Register with CTest
-# gtest_discover_tests(ReturnStmtHandlerDispatcherTest
-#     WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
-# )
+gtest_discover_tests(TypeHandlerDispatcherTest
+    WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
+)
+
+add_executable(ReturnStmtHandlerDispatcherTest
+    tests/unit/dispatch/ReturnStmtHandlerDispatcherTest.cpp
+)
+
+target_compile_definitions(ReturnStmtHandlerDispatcherTest PRIVATE ${LLVM_DEFINITIONS})
+
+target_include_directories(ReturnStmtHandlerDispatcherTest PRIVATE
+    ${CMAKE_SOURCE_DIR}/include
+    ${LLVM_INCLUDE_DIRS}
+    ${CLANG_INCLUDE_DIRS}
+)
+
+target_link_libraries(ReturnStmtHandlerDispatcherTest PRIVATE cpptoc_core
+    clangTooling
+    clangFrontend
+    clangAST
+    clangBasic
+    GTest::gtest
+    GTest::gtest_main)
+
+# Register with CTest
+gtest_discover_tests(ReturnStmtHandlerDispatcherTest
+    WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
+)
 
 # LiteralHandler Tests
-# DISABLED: Uses obsolete CppToCVisitor - needs rewrite for dispatcher pattern
-# add_executable(LiteralHandlerDispatcherTest
-#     tests/unit/dispatch/LiteralHandlerDispatcherTest.cpp
-# )
-# 
-# target_compile_definitions(LiteralHandlerDispatcherTest PRIVATE ${LLVM_DEFINITIONS})
-# 
-# target_include_directories(LiteralHandlerDispatcherTest PRIVATE
-#     ${CMAKE_SOURCE_DIR}/include
-#     ${LLVM_INCLUDE_DIRS}
-#     ${CLANG_INCLUDE_DIRS}
-# )
-# 
-# target_link_libraries(LiteralHandlerDispatcherTest
-#     cpptoc_core
-#     ${LLVM_LIBS}
-#     ${CLANG_LIBS}
-#     ${SYSTEM_LIBS}
-#     GTest::gtest_main
-# )
-# 
-# gtest_discover_tests(LiteralHandlerDispatcherTest
-#     WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
-# )
+add_executable(LiteralHandlerDispatcherTest
+    tests/unit/dispatch/LiteralHandlerDispatcherTest.cpp
+)
+
+target_compile_definitions(LiteralHandlerDispatcherTest PRIVATE ${LLVM_DEFINITIONS})
+
+target_include_directories(LiteralHandlerDispatcherTest PRIVATE
+    ${CMAKE_SOURCE_DIR}/include
+    ${LLVM_INCLUDE_DIRS}
+    ${CLANG_INCLUDE_DIRS}
+)
+
+target_link_libraries(LiteralHandlerDispatcherTest
+    cpptoc_core
+    ${LLVM_LIBS}
+    ${CLANG_LIBS}
+    ${SYSTEM_LIBS}
+    GTest::gtest_main
+)
+
+gtest_discover_tests(LiteralHandlerDispatcherTest
+    WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
+)
 
 # DeclRefExprHandler Tests
-# DISABLED: Uses obsolete CppToCVisitor - needs rewrite for dispatcher pattern
-# add_executable(DeclRefExprHandlerDispatcherTest
-#     tests/unit/dispatch/DeclRefExprHandlerDispatcherTest.cpp
-# )
-# 
-# target_compile_definitions(DeclRefExprHandlerDispatcherTest PRIVATE ${LLVM_DEFINITIONS})
-# 
-# target_include_directories(DeclRefExprHandlerDispatcherTest PRIVATE
-#     ${CMAKE_SOURCE_DIR}/include
-#     ${LLVM_INCLUDE_DIRS}
-#     ${CLANG_INCLUDE_DIRS}
-# )
-# 
-# target_link_libraries(DeclRefExprHandlerDispatcherTest
-#     cpptoc_core
-#     ${LLVM_LIBS}
-#     ${CLANG_LIBS}
-#     ${SYSTEM_LIBS}
-#     GTest::gtest_main
-# )
-# 
-# gtest_discover_tests(DeclRefExprHandlerDispatcherTest
-#     WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
-# )
+add_executable(DeclRefExprHandlerDispatcherTest
+    tests/unit/dispatch/DeclRefExprHandlerDispatcherTest.cpp
+)
+
+target_compile_definitions(DeclRefExprHandlerDispatcherTest PRIVATE ${LLVM_DEFINITIONS})
+
+target_include_directories(DeclRefExprHandlerDispatcherTest PRIVATE
+    ${CMAKE_SOURCE_DIR}/include
+    ${LLVM_INCLUDE_DIRS}
+    ${CLANG_INCLUDE_DIRS}
+)
+
+target_link_libraries(DeclRefExprHandlerDispatcherTest
+    cpptoc_core
+    ${LLVM_LIBS}
+    ${CLANG_LIBS}
+    ${SYSTEM_LIBS}
+    GTest::gtest_main
+)
+
+gtest_discover_tests(DeclRefExprHandlerDispatcherTest
+    WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
+)
 
 # BinaryOperatorHandler Tests
-# DISABLED: Uses obsolete CppToCVisitor - needs rewrite for dispatcher pattern
-# add_executable(BinaryOperatorHandlerDispatcherTest
-#     tests/unit/dispatch/BinaryOperatorHandlerDispatcherTest.cpp
-# )
-# 
-# target_compile_definitions(BinaryOperatorHandlerDispatcherTest PRIVATE ${LLVM_DEFINITIONS})
-# 
-# target_include_directories(BinaryOperatorHandlerDispatcherTest PRIVATE
-#     ${CMAKE_SOURCE_DIR}/include
-#     ${LLVM_INCLUDE_DIRS}
-#     ${CLANG_INCLUDE_DIRS}
-# )
-# 
-# target_link_libraries(BinaryOperatorHandlerDispatcherTest
-#     cpptoc_core
-#     ${LLVM_LIBS}
-#     ${CLANG_LIBS}
-#     ${SYSTEM_LIBS}
-#     GTest::gtest_main
-# )
-# 
-# gtest_discover_tests(BinaryOperatorHandlerDispatcherTest
-#     WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
-# )
+add_executable(BinaryOperatorHandlerDispatcherTest
+    tests/unit/dispatch/BinaryOperatorHandlerDispatcherTest.cpp
+)
+
+target_compile_definitions(BinaryOperatorHandlerDispatcherTest PRIVATE ${LLVM_DEFINITIONS})
+
+target_include_directories(BinaryOperatorHandlerDispatcherTest PRIVATE
+    ${CMAKE_SOURCE_DIR}/include
+    ${LLVM_INCLUDE_DIRS}
+    ${CLANG_INCLUDE_DIRS}
+)
+
+target_link_libraries(BinaryOperatorHandlerDispatcherTest
+    cpptoc_core
+    ${LLVM_LIBS}
+    ${CLANG_LIBS}
+    ${SYSTEM_LIBS}
+    GTest::gtest_main
+)
+
+gtest_discover_tests(BinaryOperatorHandlerDispatcherTest
+    WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
+)
 
 # UnaryOperatorHandler Tests
-# DISABLED: Uses obsolete CppToCVisitor - needs rewrite for dispatcher pattern
-# add_executable(UnaryOperatorHandlerDispatcherTest
-#     tests/unit/dispatch/UnaryOperatorHandlerDispatcherTest.cpp
-# )
-# 
-# target_compile_definitions(UnaryOperatorHandlerDispatcherTest PRIVATE ${LLVM_DEFINITIONS})
-# 
-# target_include_directories(UnaryOperatorHandlerDispatcherTest PRIVATE
-#     ${CMAKE_SOURCE_DIR}/include
-#     ${LLVM_INCLUDE_DIRS}
-#     ${CLANG_INCLUDE_DIRS}
-# )
-# 
-# target_link_libraries(UnaryOperatorHandlerDispatcherTest
-#     cpptoc_core
-#     ${LLVM_LIBS}
-#     ${CLANG_LIBS}
-#     ${SYSTEM_LIBS}
-#     GTest::gtest_main
-# )
-# 
-# gtest_discover_tests(UnaryOperatorHandlerDispatcherTest
-#     WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
-# )
+add_executable(UnaryOperatorHandlerDispatcherTest
+    tests/unit/dispatch/UnaryOperatorHandlerDispatcherTest.cpp
+)
+
+target_compile_definitions(UnaryOperatorHandlerDispatcherTest PRIVATE ${LLVM_DEFINITIONS})
+
+target_include_directories(UnaryOperatorHandlerDispatcherTest PRIVATE
+    ${CMAKE_SOURCE_DIR}/include
+    ${LLVM_INCLUDE_DIRS}
+    ${CLANG_INCLUDE_DIRS}
+)
+
+target_link_libraries(UnaryOperatorHandlerDispatcherTest
+    cpptoc_core
+    ${LLVM_LIBS}
+    ${CLANG_LIBS}
+    ${SYSTEM_LIBS}
+    GTest::gtest_main
+)
+
+gtest_discover_tests(UnaryOperatorHandlerDispatcherTest
+    WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
+)
 
 # CXXOperatorCallExprHandler Tests
-# DISABLED: Uses obsolete CppToCVisitor - needs rewrite for dispatcher pattern
-# add_executable(CXXOperatorCallExprHandlerDispatcherTest
-#     tests/unit/dispatch/CXXOperatorCallExprHandlerDispatcherTest.cpp
-# )
-# 
-# target_compile_definitions(CXXOperatorCallExprHandlerDispatcherTest PRIVATE ${LLVM_DEFINITIONS})
-# 
-# target_include_directories(CXXOperatorCallExprHandlerDispatcherTest PRIVATE
-#     ${CMAKE_SOURCE_DIR}/include
-#     ${LLVM_INCLUDE_DIRS}
-#     ${CLANG_INCLUDE_DIRS}
-# )
-# 
-# target_link_libraries(CXXOperatorCallExprHandlerDispatcherTest
-#     cpptoc_core
-#     ${LLVM_LIBS}
-#     ${CLANG_LIBS}
-#     ${SYSTEM_LIBS}
-#     GTest::gtest_main
-# )
-# 
-# gtest_discover_tests(CXXOperatorCallExprHandlerDispatcherTest
-#     WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
-# )
+add_executable(CXXOperatorCallExprHandlerDispatcherTest
+    tests/unit/dispatch/CXXOperatorCallExprHandlerDispatcherTest.cpp
+)
+
+target_compile_definitions(CXXOperatorCallExprHandlerDispatcherTest PRIVATE ${LLVM_DEFINITIONS})
+
+target_include_directories(CXXOperatorCallExprHandlerDispatcherTest PRIVATE
+    ${CMAKE_SOURCE_DIR}/include
+    ${LLVM_INCLUDE_DIRS}
+    ${CLANG_INCLUDE_DIRS}
+)
+
+target_link_libraries(CXXOperatorCallExprHandlerDispatcherTest
+    cpptoc_core
+    ${LLVM_LIBS}
+    ${CLANG_LIBS}
+    ${SYSTEM_LIBS}
+    GTest::gtest_main
+)
+
+gtest_discover_tests(CXXOperatorCallExprHandlerDispatcherTest
+    WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
+)
 
 # CXXTypeidExprHandler Tests
-# DISABLED: Uses obsolete CppToCVisitor - needs rewrite for dispatcher pattern
-# add_executable(CXXTypeidExprHandlerDispatcherTest
-#     tests/unit/dispatch/CXXTypeidExprHandlerDispatcherTest.cpp
-# )
-# 
-# target_compile_definitions(CXXTypeidExprHandlerDispatcherTest PRIVATE ${LLVM_DEFINITIONS})
-# 
-# target_include_directories(CXXTypeidExprHandlerDispatcherTest PRIVATE
-#     ${CMAKE_SOURCE_DIR}/include
-#     ${LLVM_INCLUDE_DIRS}
-#     ${CLANG_INCLUDE_DIRS}
-# )
-# 
-# target_link_libraries(CXXTypeidExprHandlerDispatcherTest
-#     cpptoc_core
-#     ${LLVM_LIBS}
-#     ${CLANG_LIBS}
-#     ${SYSTEM_LIBS}
-#     GTest::gtest_main
-# )
-# 
-# gtest_discover_tests(CXXTypeidExprHandlerDispatcherTest
-#     WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
-# )
+add_executable(CXXTypeidExprHandlerDispatcherTest
+    tests/unit/dispatch/CXXTypeidExprHandlerDispatcherTest.cpp
+)
+
+target_compile_definitions(CXXTypeidExprHandlerDispatcherTest PRIVATE ${LLVM_DEFINITIONS})
+
+target_include_directories(CXXTypeidExprHandlerDispatcherTest PRIVATE
+    ${CMAKE_SOURCE_DIR}/include
+    ${LLVM_INCLUDE_DIRS}
+    ${CLANG_INCLUDE_DIRS}
+)
+
+target_link_libraries(CXXTypeidExprHandlerDispatcherTest
+    cpptoc_core
+    ${LLVM_LIBS}
+    ${CLANG_LIBS}
+    ${SYSTEM_LIBS}
+    GTest::gtest_main
+)
+
+gtest_discover_tests(CXXTypeidExprHandlerDispatcherTest
+    WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
+)
 
 # CXXDynamicCastExprHandler Tests
-# DISABLED: Uses obsolete CppToCVisitor - needs rewrite for dispatcher pattern
-# add_executable(CXXDynamicCastExprHandlerDispatcherTest
-#     tests/unit/dispatch/CXXDynamicCastExprHandlerDispatcherTest.cpp
-# )
-# 
-# target_compile_definitions(CXXDynamicCastExprHandlerDispatcherTest PRIVATE ${LLVM_DEFINITIONS})
-# 
-# target_include_directories(CXXDynamicCastExprHandlerDispatcherTest PRIVATE
-#     ${CMAKE_SOURCE_DIR}/include
-#     ${LLVM_INCLUDE_DIRS}
-#     ${CLANG_INCLUDE_DIRS}
-# )
-# 
-# target_link_libraries(CXXDynamicCastExprHandlerDispatcherTest
-#     cpptoc_core
-#     ${LLVM_LIBS}
-#     ${CLANG_LIBS}
-#     ${SYSTEM_LIBS}
-#     GTest::gtest_main
-# )
-# 
-# gtest_discover_tests(CXXDynamicCastExprHandlerDispatcherTest
-#     WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
-# )
+add_executable(CXXDynamicCastExprHandlerDispatcherTest
+    tests/unit/dispatch/CXXDynamicCastExprHandlerDispatcherTest.cpp
+)
+
+target_compile_definitions(CXXDynamicCastExprHandlerDispatcherTest PRIVATE ${LLVM_DEFINITIONS})
+
+target_include_directories(CXXDynamicCastExprHandlerDispatcherTest PRIVATE
+    ${CMAKE_SOURCE_DIR}/include
+    ${LLVM_INCLUDE_DIRS}
+    ${CLANG_INCLUDE_DIRS}
+)
+
+target_link_libraries(CXXDynamicCastExprHandlerDispatcherTest
+    cpptoc_core
+    ${LLVM_LIBS}
+    ${CLANG_LIBS}
+    ${SYSTEM_LIBS}
+    GTest::gtest_main
+)
+
+gtest_discover_tests(CXXDynamicCastExprHandlerDispatcherTest
+    WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
+)
 
 # MemberExprHandler Tests
-# DISABLED: Uses obsolete CppToCVisitor - needs rewrite for dispatcher pattern
-# add_executable(MemberExprHandlerDispatcherTest
-#     tests/unit/dispatch/MemberExprHandlerDispatcherTest.cpp
-# )
-# 
-# target_compile_definitions(MemberExprHandlerDispatcherTest PRIVATE ${LLVM_DEFINITIONS})
-# 
-# target_include_directories(MemberExprHandlerDispatcherTest PRIVATE
-#     ${CMAKE_SOURCE_DIR}/include
-#     ${LLVM_INCLUDE_DIRS}
-#     ${CLANG_INCLUDE_DIRS}
-# )
-# 
-# target_link_libraries(MemberExprHandlerDispatcherTest
-#     cpptoc_core
-#     ${LLVM_LIBS}
-#     ${CLANG_LIBS}
-#     ${SYSTEM_LIBS}
-#     GTest::gtest_main
-# )
-# 
-# gtest_discover_tests(MemberExprHandlerDispatcherTest
-#     WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
-# )
+add_executable(MemberExprHandlerDispatcherTest
+    tests/unit/dispatch/MemberExprHandlerDispatcherTest.cpp
+)
+
+target_compile_definitions(MemberExprHandlerDispatcherTest PRIVATE ${LLVM_DEFINITIONS})
+
+target_include_directories(MemberExprHandlerDispatcherTest PRIVATE
+    ${CMAKE_SOURCE_DIR}/include
+    ${LLVM_INCLUDE_DIRS}
+    ${CLANG_INCLUDE_DIRS}
+)
+
+target_link_libraries(MemberExprHandlerDispatcherTest
+    cpptoc_core
+    ${LLVM_LIBS}
+    ${CLANG_LIBS}
+    ${SYSTEM_LIBS}
+    GTest::gtest_main
+)
+
+gtest_discover_tests(MemberExprHandlerDispatcherTest
+    WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
+)
 
 # CommaOperatorHandler Tests
-# DISABLED: Uses obsolete CppToCVisitor - needs rewrite for dispatcher pattern
-# add_executable(CommaOperatorHandlerDispatcherTest
-#     tests/unit/dispatch/CommaOperatorHandlerDispatcherTest.cpp
-# )
-# 
-# target_compile_definitions(CommaOperatorHandlerDispatcherTest PRIVATE ${LLVM_DEFINITIONS})
-# 
-# target_include_directories(CommaOperatorHandlerDispatcherTest PRIVATE
-#     ${CMAKE_SOURCE_DIR}/include
-#     ${LLVM_INCLUDE_DIRS}
-#     ${CLANG_INCLUDE_DIRS}
-# )
-# 
-# target_link_libraries(CommaOperatorHandlerDispatcherTest
-#     cpptoc_core
-#     ${LLVM_LIBS}
-#     ${CLANG_LIBS}
-#     ${SYSTEM_LIBS}
-#     GTest::gtest_main
-# )
-# 
-# gtest_discover_tests(CommaOperatorHandlerDispatcherTest
-#     WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
-# )
+add_executable(CommaOperatorHandlerDispatcherTest
+    tests/unit/dispatch/CommaOperatorHandlerDispatcherTest.cpp
+)
+
+target_compile_definitions(CommaOperatorHandlerDispatcherTest PRIVATE ${LLVM_DEFINITIONS})
+
+target_include_directories(CommaOperatorHandlerDispatcherTest PRIVATE
+    ${CMAKE_SOURCE_DIR}/include
+    ${LLVM_INCLUDE_DIRS}
+    ${CLANG_INCLUDE_DIRS}
+)
+
+target_link_libraries(CommaOperatorHandlerDispatcherTest
+    cpptoc_core
+    ${LLVM_LIBS}
+    ${CLANG_LIBS}
+    ${SYSTEM_LIBS}
+    GTest::gtest_main
+)
+
+gtest_discover_tests(CommaOperatorHandlerDispatcherTest
+    WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
+)
 
 # ImplicitCastExprHandler Tests
-# DISABLED: Uses obsolete CppToCVisitor - needs rewrite for dispatcher pattern
-# add_executable(ImplicitCastExprHandlerDispatcherTest
-#     tests/unit/dispatch/ImplicitCastExprHandlerDispatcherTest.cpp
-# )
-# 
-# target_compile_definitions(ImplicitCastExprHandlerDispatcherTest PRIVATE ${LLVM_DEFINITIONS})
-# 
-# target_include_directories(ImplicitCastExprHandlerDispatcherTest PRIVATE
-#     ${CMAKE_SOURCE_DIR}/include
-#     ${LLVM_INCLUDE_DIRS}
-#     ${CLANG_INCLUDE_DIRS}
-# )
-# 
-# target_link_libraries(ImplicitCastExprHandlerDispatcherTest
-#     cpptoc_core
-#     ${LLVM_LIBS}
-#     ${CLANG_LIBS}
-#     ${SYSTEM_LIBS}
-#     GTest::gtest_main
-# )
-# 
-# gtest_discover_tests(ImplicitCastExprHandlerDispatcherTest
-#     WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
-# )
+add_executable(ImplicitCastExprHandlerDispatcherTest
+    tests/unit/dispatch/ImplicitCastExprHandlerDispatcherTest.cpp
+)
+
+target_compile_definitions(ImplicitCastExprHandlerDispatcherTest PRIVATE ${LLVM_DEFINITIONS})
+
+target_include_directories(ImplicitCastExprHandlerDispatcherTest PRIVATE
+    ${CMAKE_SOURCE_DIR}/include
+    ${LLVM_INCLUDE_DIRS}
+    ${CLANG_INCLUDE_DIRS}
+)
+
+target_link_libraries(ImplicitCastExprHandlerDispatcherTest
+    cpptoc_core
+    ${LLVM_LIBS}
+    ${CLANG_LIBS}
+    ${SYSTEM_LIBS}
+    GTest::gtest_main
+)
+
+gtest_discover_tests(ImplicitCastExprHandlerDispatcherTest
+    WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
+)
 
 # ArraySubscriptExprHandler Tests
-# DISABLED: Uses obsolete CppToCVisitor - needs rewrite for dispatcher pattern
-# add_executable(ArraySubscriptExprHandlerDispatcherTest
-#     tests/unit/dispatch/ArraySubscriptExprHandlerDispatcherTest.cpp
-# )
-# 
-# target_compile_definitions(ArraySubscriptExprHandlerDispatcherTest PRIVATE ${LLVM_DEFINITIONS})
-# 
-# target_include_directories(ArraySubscriptExprHandlerDispatcherTest PRIVATE
-#     ${CMAKE_SOURCE_DIR}/include
-#     ${LLVM_INCLUDE_DIRS}
-#     ${CLANG_INCLUDE_DIRS}
-# )
-# 
-# target_link_libraries(ArraySubscriptExprHandlerDispatcherTest
-#     cpptoc_core
-#     ${LLVM_LIBS}
-#     ${CLANG_LIBS}
-#     ${SYSTEM_LIBS}
-#     GTest::gtest_main
-# )
-# 
-# gtest_discover_tests(ArraySubscriptExprHandlerDispatcherTest
-#     WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
-# )
+add_executable(ArraySubscriptExprHandlerDispatcherTest
+    tests/unit/dispatch/ArraySubscriptExprHandlerDispatcherTest.cpp
+)
+
+target_compile_definitions(ArraySubscriptExprHandlerDispatcherTest PRIVATE ${LLVM_DEFINITIONS})
+
+target_include_directories(ArraySubscriptExprHandlerDispatcherTest PRIVATE
+    ${CMAKE_SOURCE_DIR}/include
+    ${LLVM_INCLUDE_DIRS}
+    ${CLANG_INCLUDE_DIRS}
+)
+
+target_link_libraries(ArraySubscriptExprHandlerDispatcherTest
+    cpptoc_core
+    ${LLVM_LIBS}
+    ${CLANG_LIBS}
+    ${SYSTEM_LIBS}
+    GTest::gtest_main
+)
+
+gtest_discover_tests(ArraySubscriptExprHandlerDispatcherTest
+    WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
+)
 
 # ============================================================================
 # Epic #4: CodeGenerator Tests (Story #21)
@@ -1662,7 +1641,6 @@ gtest_discover_tests(CFGAnalysisTest
 )
 
 # Story #152: Destructor Injection at Function Exit tests
-# DISABLED: Uses obsolete CppToCVisitor - needs rewrite for dispatcher pattern
 # add_executable(FunctionExitDestructorTest
 #     tests/FunctionExitDestructorTest.cpp
 # )
@@ -1690,7 +1668,6 @@ gtest_discover_tests(CFGAnalysisTest
 # )
 
 # Story #153: Destructor Injection at Early Returns tests
-# DISABLED: Uses obsolete CppToCVisitor - needs rewrite for dispatcher pattern
 # add_executable(EarlyReturnDestructorTest
 #     tests/EarlyReturnDestructorTest.cpp
 # )
@@ -1720,7 +1697,6 @@ gtest_discover_tests(CFGAnalysisTest
 # COMMENTED OUT: Test has assertion failure during CTest discovery
 # Assertion: "Should detect at least 4 scopes" but only detecting 2 scopes
 # Test needs fixing in implementation before it can pass
-# DISABLED: Uses obsolete CppToCVisitor - needs rewrite for dispatcher pattern
 # add_executable(NestedScopeDestructorTest
 #     tests/NestedScopeDestructorTest.cpp
 # )
@@ -1747,7 +1723,6 @@ gtest_discover_tests(CFGAnalysisTest
 # )
 
 # Story #155: Goto Statement Handling tests
-# DISABLED: Uses obsolete CppToCVisitor - needs rewrite for dispatcher pattern
 # add_executable(GotoDestructorTest
 #     tests/GotoDestructorTest.cpp
 # )
@@ -1805,7 +1780,6 @@ gtest_discover_tests(CFGAnalysisTest
 # ============================================================================
 
 # Story #50: Base Class Embedding in Struct Layout tests
-# DISABLED: Uses obsolete CppToCVisitor - needs rewrite for dispatcher pattern
 # add_executable(InheritanceTest
 #     tests/InheritanceTest.cpp
 # )
@@ -1827,7 +1801,6 @@ gtest_discover_tests(CFGAnalysisTest
 #     GTest::gtest_main)
 
 # Story #50-64: Inheritance Tests (GTest Migration)
-# DISABLED: Uses obsolete CppToCVisitor - needs rewrite for dispatcher pattern
 # add_executable(InheritanceTest_GTest
 #     tests/InheritanceTest_GTest.cpp
 # )
@@ -2255,7 +2228,6 @@ gtest_discover_tests(VirtualDestructorHandlerTest
 # ============================================================================
 
 # Story #178: Member Initialization List Translation tests
-# DISABLED: Uses obsolete CppToCVisitor - needs rewrite for dispatcher pattern
 # add_executable(MemberInitListTest
 #     tests/MemberInitListTest.cpp
 # )
@@ -2515,7 +2487,6 @@ set_property(TARGET ExceptionRuntimeTest PROPERTY C_STANDARD_REQUIRED ON)
 # )
 
 # Phase 12 (v2.5.0): Exception Handling Integration Tests
-# DISABLED: Uses obsolete CppToCVisitor - needs rewrite for dispatcher pattern
 # add_executable(ExceptionHandlingIntegrationTest
 #     tests/ExceptionHandlingIntegrationTest.cpp
 #     runtime/exception_runtime.cpp
@@ -2547,7 +2518,6 @@ set_property(TARGET ExceptionRuntimeTest PROPERTY C_STANDARD_REQUIRED ON)
 # Integration Test: All Operator Handlers Working Together
 # ============================================================================
 
-# DISABLED: Uses obsolete CppToCVisitor - needs rewrite for dispatcher pattern
 # add_executable(OperatorIntegrationTest
 #     tests/integration/OperatorIntegrationTest.cpp
 #     src/dispatch/CppToCVisitorDispatcher.cpp
@@ -2922,7 +2892,6 @@ gtest_discover_tests(CrossCastTraversalTest
 # No Clang/LLVM dependencies - pure C runtime library
 
 # Phase 8: Standalone Function Translation Tests (v2.1.0)
-# DISABLED: Uses obsolete CppToCVisitor - needs rewrite for dispatcher pattern
 # add_executable(StandaloneFunctionTranslationTest
 #     tests/StandaloneFunctionTranslationTest.cpp
 #     src/TemplateExtractor.cpp
@@ -2952,7 +2921,6 @@ gtest_discover_tests(CrossCastTraversalTest
 # )
 
 # Struct Return Type Test (Critical Bug Fix)
-# DISABLED: Uses obsolete CppToCVisitor - needs rewrite for dispatcher pattern
 # add_executable(StructReturnTypeTest
 #     tests/StructReturnTypeTest.cpp
 #     src/TemplateExtractor.cpp
@@ -2982,7 +2950,6 @@ gtest_discover_tests(CrossCastTraversalTest
 # )
 
 # Phase 13: RTTI Integration Tests (v2.6.0)
-# DISABLED: Uses obsolete CppToCVisitor - needs rewrite for dispatcher pattern
 # add_executable(RTTIIntegrationTest
 #     tests/RTTIIntegrationTest.cpp
 #     src/TypeidTranslator.cpp
@@ -3343,7 +3310,6 @@ gtest_discover_tests(FrameAllocationTest
 # ============================================================================
 
 # Phase 47 Group 1 Task 2: Enum Typedef Generation Tests
-# DISABLED: Uses obsolete CppToCVisitor - needs rewrite for dispatcher pattern
 # add_executable(EnumTypedefTest
 #     tests/EnumTypedefTest.cpp
 # )
@@ -3672,7 +3638,6 @@ gtest_discover_tests(SizeOptimizationTest
 # 
 # PLACEHOLDER TEST - No corresponding test file exists for CopyMoveIntegrationTest
 # # Story #134: Integration with Copy Semantics tests
-# DISABLED: Uses obsolete CppToCVisitor - needs rewrite for dispatcher pattern
 # add_executable(CopyMoveIntegrationTest
 #     tests/unit/move_semantics/CopyMoveIntegrationTest.cpp
 # )
@@ -3873,7 +3838,6 @@ gtest_discover_tests(SizeOptimizationTest
 # MoveSemanticIntegrationTest - Story #135 - Move Semantics Integration Testing
 # PLACEHOLDER TEST - No corresponding test file exists for MoveSemanticIntegrationTest
 # # 15 comprehensive integration tests for move semantics
-# DISABLED: Uses obsolete CppToCVisitor - needs rewrite for dispatcher pattern
 # add_executable(MoveSemanticIntegrationTest
 #     tests/integration/move_semantics_integration_test.cpp
 # )
@@ -5120,7 +5084,6 @@ gtest_discover_tests(ACSLMemoryPredicateAnalyzerTest
 # Phase 47-01 Group 1 Task 1: Enum Underlying Type Extraction Tests
 # DISABLED: Test uses CppToCVisitor::extractUnderlyingType which is not implemented
 # Functionality moved to EnumTranslator::extractUnderlyingType
-# DISABLED: Uses obsolete CppToCVisitor - needs rewrite for dispatcher pattern
 # add_executable(EnumUnderlyingTypeTest
 #     tests/unit/handlers/EnumUnderlyingTypeTest.cpp
 # )

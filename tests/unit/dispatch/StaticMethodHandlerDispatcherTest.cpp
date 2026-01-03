@@ -750,13 +750,10 @@ TEST_F(StaticMethodHandlerDispatcherTest, NameManglingHelper) {
     ASSERT_NE(initialize, nullptr);
 
     // Phase 3: Use NameMangler instead of removed StaticMethodHandler::getMangledName()
-    cpptoc::OverloadRegistry& registry = cpptoc::OverloadRegistry::getInstance();
-    NameMangler mangler(cppCtx, registry);
-    std::string mangledName = mangler.mangleMethodName(initialize);
+    std::string mangledName = cpptoc::mangle_method(initialize);
 
     // Verify mangled name includes namespace and class with correct separators
-    // Namespace → class: single underscore (_)
-    // Class → method: single underscore (_)
-    EXPECT_EQ(mangledName, "app_Service_initialize")
-        << "Mangled name should be 'app_Service_initialize' (single _ for namespace→class→method)";
+    // Namespace → class → method: double underscore (__)
+    EXPECT_EQ(mangledName, "app__Service__initialize")
+        << "Mangled name should be 'app__Service__initialize' (double __ for namespace→class→method)";
 }
