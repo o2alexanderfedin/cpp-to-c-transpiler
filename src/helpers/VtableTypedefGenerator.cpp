@@ -171,7 +171,7 @@ QualType VtableTypedefGenerator::buildThisParameterType(
     if (!RD) {
         RD = RecordDecl::Create(
             C_Ctx,
-            TagTypeKind::Struct,
+            TTK_Struct,
             C_Ctx.getTranslationUnitDecl(),
             SourceLocation(),
             SourceLocation(),

@@ -1,8 +1,12 @@
 // TryCatchTransformer.cpp - Implementation of try-catch to setjmp/longjmp transformation
 // Story #78: Implement setjmp/longjmp Injection for Try-Catch Blocks
+// Phase 4: Dispatcher integration for statement translation
 
+#include "dispatch/CppToCVisitorDispatcher.h"  // MUST be before TryCatchTransformer.h for full definition
 #include "TryCatchTransformer.h"
 #include "NameMangler.h"
+#include "mapping/StmtMapper.h"
+#include "CodeGenerator.h"
 #include "clang/AST/ASTContext.h"
 #include "clang/AST/DeclCXX.h"
 #include "clang/AST/Type.h"
@@ -19,6 +23,208 @@ TryCatchTransformer::TryCatchTransformer(std::shared_ptr<ExceptionFrameGenerator
 // Default constructor creates internal frame generator
 TryCatchTransformer::TryCatchTransformer()
     : frameGenerator(std::make_shared<ExceptionFrameGenerator>()) {}
+
+// ============================================================================
+// Phase 4: Dispatcher-based methods (NEW)
+// ============================================================================
+
+// Transform complete try-catch statement to C control flow (with dispatcher)
+std::string TryCatchTransformer::transformTryCatch(
+    const CXXTryStmt *tryStmt,
+    const std::string& frameVarName,
+    const std::string& actionsTableName,
+    const ::CppToCVisitorDispatcher& disp,
+    const ASTContext& cppCtx,
+    ASTContext& cCtx
+) const {
+    std::ostringstream oss;
+
+    // Generate frame push (before setjmp)
+    oss << frameGenerator->generateFramePush(frameVarName, actionsTableName);
+    oss << "\n";
+
+    // Generate setjmp guard: if (setjmp(frame.jmpbuf) == 0)
+    oss << generateSetjmpGuard(frameVarName) << " {\n";
+
+    // Generate try body (normal execution path) using dispatcher
+    oss << generateTryBody(tryStmt, frameVarName, disp, cppCtx, cCtx);
+
+    oss << "} else {\n";
+
+    // Generate catch handlers (exception path) using dispatcher
+    oss << generateCatchHandlers(tryStmt, frameVarName, disp, cppCtx, cCtx);
+
+    oss << "}\n";
+
+    return oss.str();
+}
+
+// Generate try body code with frame push/pop (with dispatcher)
+std::string TryCatchTransformer::generateTryBody(
+    const CXXTryStmt *tryStmt,
+    const std::string& frameVarName,
+    const ::CppToCVisitorDispatcher& disp,
+    const ASTContext& cppCtx,
+    ASTContext& cCtx
+) const {
+    std::ostringstream oss;
+
+    // Push frame onto exception stack (already in frame struct, just activate)
+    oss << "    // Normal execution path (try body)\n";
+    oss << "    __cxx_exception_stack = &" << frameVarName << ";\n";
+    oss << "    \n";
+
+    // Try body statements (using dispatcher for translation)
+    const Stmt *tryBody = tryStmt->getTryBlock();
+    if (const CompoundStmt *compound = dyn_cast<CompoundStmt>(tryBody)) {
+        for (const Stmt *stmt : compound->body()) {
+            oss << "    " << stmtToString(stmt, disp, cppCtx, cCtx) << "\n";
+        }
+    } else {
+        oss << "    " << stmtToString(tryBody, disp, cppCtx, cCtx) << "\n";
+    }
+
+    // Pop frame from exception stack (normal path only)
+    oss << "    \n";
+    oss << "    // Pop frame on normal exit\n";
+    oss << "    " << frameGenerator->generateFramePop(frameVarName);
+
+    return oss.str();
+}
+
+// Generate catch handlers code (with dispatcher)
+std::string TryCatchTransformer::generateCatchHandlers(
+    const CXXTryStmt *tryStmt,
+    const std::string& frameVarName,
+    const ::CppToCVisitorDispatcher& disp,
+    const ASTContext& cppCtx,
+    ASTContext& cCtx
+) const {
+    std::ostringstream oss;
+
+    oss << "    // Exception caught here (longjmp target)\n";
+    oss << "    // frame.exception_object and frame.exception_type set by cxx_throw\n";
+    oss << "    \n";
+
+    // Generate each catch handler (using dispatcher for handler bodies)
+    unsigned numHandlers = tryStmt->getNumHandlers();
+    for (unsigned i = 0; i < numHandlers; ++i) {
+        const CXXCatchStmt *handler = tryStmt->getHandler(i);
+        bool isFirst = (i == 0);
+        oss << generateCatchHandler(handler, frameVarName, isFirst, disp, cppCtx, cCtx);
+    }
+
+    return oss.str();
+}
+
+// Generate single catch handler (with dispatcher)
+std::string TryCatchTransformer::generateCatchHandler(
+    const CXXCatchStmt *handler,
+    const std::string& frameVarName,
+    bool isFirst,
+    const ::CppToCVisitorDispatcher& disp,
+    const ASTContext& cppCtx,
+    ASTContext& cCtx
+) const {
+    std::ostringstream oss;
+
+    VarDecl *exceptionVar = handler->getExceptionDecl();
+
+    // Check if catch-all (catch (...))
+    if (!exceptionVar) {
+        // Catch-all handler
+        if (!isFirst) {
+            oss << "    else {\n";
+        } else {
+            oss << "    {\n";
+        }
+        oss << "        // Catch-all handler\n";
+        oss << "        " << stmtToString(handler->getHandlerBlock(), disp, cppCtx, cCtx) << "\n";
+        oss << "    }\n";
+        return oss.str();
+    }
+
+    // Typed catch handler
+    QualType exceptionType = exceptionVar->getType();
+
+    // Generate type check
+    if (!isFirst) {
+        oss << "    else ";
+    } else {
+        oss << "    ";
+    }
+
+    oss << generateTypeCheck(exceptionType, frameVarName) << " {\n";
+
+    // Cast exception object to proper type
+    oss << "        " << generateExceptionObjectCast(exceptionVar, frameVarName) << "\n";
+
+    // Handler body (using dispatcher for translation)
+    if (const CompoundStmt *handlerBody = dyn_cast<CompoundStmt>(handler->getHandlerBlock())) {
+        for (const Stmt *stmt : handlerBody->body()) {
+            oss << "        " << stmtToString(stmt, disp, cppCtx, cCtx) << "\n";
+        }
+    } else {
+        oss << "        " << stmtToString(handler->getHandlerBlock(), disp, cppCtx, cCtx) << "\n";
+    }
+
+    // Cleanup exception object
+    oss << "        \n";
+    oss << "        // Cleanup exception object\n";
+    std::string varName = exceptionVar->getNameAsString();
+    oss << "        " << generateExceptionCleanup(exceptionType, varName);
+
+    oss << "    }\n";
+
+    return oss.str();
+}
+
+// Convert Clang statement to C code string (with dispatcher)
+std::string TryCatchTransformer::stmtToString(
+    const Stmt *stmt,
+    const ::CppToCVisitorDispatcher& disp,
+    const ASTContext& cppCtx,
+    ASTContext& cCtx
+) const {
+    if (!stmt) {
+        return "";
+    }
+
+    // Dispatch the statement through the dispatcher
+    Stmt* stmtNonConst = const_cast<Stmt*>(stmt);
+    bool handled = disp.dispatch(cppCtx, cCtx, stmtNonConst);
+
+    if (!handled) {
+        llvm::errs() << "[TryCatchTransformer] WARNING: Statement not handled by dispatcher: "
+                     << stmt->getStmtClassName() << "\n";
+        return "/* unhandled statement */;";
+    }
+
+    // Retrieve the translated C statement from StmtMapper
+    cpptoc::StmtMapper& stmtMapper = disp.getStmtMapper();
+    Stmt* cStmt = stmtMapper.getCreated(stmt);
+
+    if (!cStmt) {
+        llvm::errs() << "[TryCatchTransformer] WARNING: Statement dispatched but not in StmtMapper: "
+                     << stmt->getStmtClassName() << "\n";
+        return "/* statement not mapped */;";
+    }
+
+    // Convert C Stmt* to string using printPretty
+    // Phase 6 will return the Stmt* directly instead of converting to string
+    std::string result;
+    llvm::raw_string_ostream OS(result);
+    clang::PrintingPolicy Policy(cCtx.getLangOpts());
+    Policy.Bool = true;
+    cStmt->printPretty(OS, nullptr, Policy);
+    OS.flush();
+
+    return result;
+}
+
+// ============================================================================
+// Legacy methods (backward compatibility - deprecated)
+// ============================================================================
 
 // Transform complete try-catch statement to C control flow
 std::string TryCatchTransformer::transformTryCatch(const CXXTryStmt *tryStmt,

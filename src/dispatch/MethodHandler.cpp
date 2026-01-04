@@ -198,7 +198,7 @@ clang::ParmVarDecl* MethodHandler::createThisParameter(
     clang::IdentifierInfo& structII = cASTContext.Idents.get(className);
     clang::RecordDecl* structDecl = clang::RecordDecl::Create(
         cASTContext,
-        clang::TagTypeKind::Struct,
+        clang::TTK_Struct,
         cASTContext.getTranslationUnitDecl(),
         clang::SourceLocation(),
         clang::SourceLocation(),

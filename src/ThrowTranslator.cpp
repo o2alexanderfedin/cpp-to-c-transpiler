@@ -189,10 +189,18 @@ std::string ThrowTranslator::exprToString(
         return "/* expression not mapped */";
     }
 
-    // Convert C Expr* to string using CodeGenerator
-    // Phase 5 will return the Expr* directly instead of converting to string
-    CodeGenerator codeGen;
-    std::string result = codeGen.printExpr(cExpr);
+    // Convert C Expr* to string using Clang's printPretty
+    std::string result;
+    llvm::raw_string_ostream OS(result);
+
+    // Create C99 printing policy
+    clang::LangOptions C99Opts;
+    C99Opts.C99 = 1;
+    clang::PrintingPolicy Policy(C99Opts);
+    Policy.SuppressTagKeyword = false;  // Keep 'struct' keyword
+
+    cExpr->printPretty(OS, nullptr, Policy, 0);
+    OS.flush();
 
     return result;
 }

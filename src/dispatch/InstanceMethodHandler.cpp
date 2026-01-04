@@ -214,7 +214,7 @@ clang::ParmVarDecl* InstanceMethodHandler::createThisParameter(
     clang::IdentifierInfo& structII = cASTContext.Idents.get(className);
     clang::RecordDecl* structDecl = clang::RecordDecl::Create(
         cASTContext,
-        clang::TagTypeKind::Struct,
+        clang::TTK_Struct,  // LLVM 15 uses TTK_Struct instead of TTK_Struct
         cASTContext.getTranslationUnitDecl(),
         clang::SourceLocation(),
         clang::SourceLocation(),

@@ -28,9 +28,16 @@ std::vector<FunctionDecl*> DeducingThisTranslator::transformMethod(
     }
 
     // Only handle explicit object member functions (C++23 deducing this)
+    // isExplicitObjectMemberFunction() is only available in LLVM 16+
+    // For LLVM 15, skip deducing this translation (C++23 feature not supported)
+    #if LLVM_VERSION_MAJOR >= 16
     if (!MD->isExplicitObjectMemberFunction()) {
         return result;
     }
+    #else
+    // LLVM 15 doesn't support C++23 deducing this
+    return result;
+    #endif
 
     // Get the explicit object parameter (always the first parameter)
     if (MD->getNumParams() == 0) {
@@ -75,9 +82,15 @@ CallExpr* DeducingThisTranslator::transformCall(
     }
 
     // Only handle explicit object member functions
+    // isExplicitObjectMemberFunction() is only available in LLVM 16+
+    #if LLVM_VERSION_MAJOR >= 16
     if (!Method->isExplicitObjectMemberFunction()) {
         return nullptr;
     }
+    #else
+    // LLVM 15 doesn't support C++23 deducing this
+    return nullptr;
+    #endif
 
     // For explicit object member functions, the first argument is the object
     if (Call->getNumArgs() == 0) {

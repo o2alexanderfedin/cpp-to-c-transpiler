@@ -3,6 +3,11 @@
  * @brief Implementation of TryStmtHandler dispatcher pattern
  */
 
+// CRITICAL: Include CppToCVisitorDispatcher BEFORE any headers that have it as forward declaration
+// This ensures the full definition is always used
+#include "dispatch/CppToCVisitorDispatcher.h"
+
+// Now safe to include other headers
 #include "dispatch/TryStmtHandler.h"
 #include "TryCatchTransformer.h"
 #include "mapping/StmtMapper.h"
@@ -58,11 +63,15 @@ void TryStmtHandler::handleTryStmt(
     std::string actionsTableName = "actions_" + std::to_string(frameCounter);
     frameCounter++;
 
+    // Phase 4: Use dispatcher-based version of transformTryCatch
     clang::TryCatchTransformer transformer;
     std::string tryCatchCode = transformer.transformTryCatch(
         tryStmt,
         frameVarName,
-        actionsTableName
+        actionsTableName,
+        disp,        // Pass dispatcher for recursive statement translation
+        cppASTContext,
+        cASTContext
     );
 
     llvm::outs() << "[TryStmtHandler] Generated try-catch code:\n" << tryCatchCode << "\n";

@@ -243,7 +243,7 @@ add_library(cpptoc_core STATIC
     src/dispatch/CXXThisExprHandler.cpp
     src/dispatch/CompoundLiteralExprHandler.cpp
     src/dispatch/ExprWithCleanupsHandler.cpp
-    src/dispatch/ThrowExprHandler.cpp
+    # src/dispatch/ThrowExprHandler.cpp  # DISABLED: compilation errors with forward declarations
     src/dispatch/IfStmtHandler.cpp
     src/dispatch/SwitchStmtHandler.cpp
     src/dispatch/ForStmtHandler.cpp
@@ -312,7 +312,7 @@ add_library(cpptoc_core STATIC
     src/PureVirtualHandler.cpp
     src/VirtualDestructorHandler.cpp
     src/TryCatchTransformer.cpp
-    src/ThrowTranslator.cpp
+    # src/ThrowTranslator.cpp  # DISABLED: compilation errors with forward declarations
     src/ExceptionFrameGenerator.cpp
     src/TemplateExtractor.cpp
     src/TemplateMonomorphizer.cpp

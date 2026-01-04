@@ -1,7 +1,7 @@
 #include "StateMachine.h"
 
 void StateMachine__transition__GameState(struct StateMachine * this, GameState newState) {
-	if (StateMachine_isValidTransition(this, this->currentState, newState)) 	{
+	if (StateMachine_isValidTransition(&this, this->currentState, newState)) 	{
 		this->currentState = newState;
 		this->transitionCount++;
 	}

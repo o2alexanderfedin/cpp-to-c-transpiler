@@ -174,7 +174,7 @@ void RecordHandler::handleRecord(
     clang::RecordDecl* cRecord = clang::RecordDecl::Create(
         cASTContext,
 #if LLVM_VERSION_MAJOR >= 16
-        clang::TagTypeKind::Struct,
+        clang::TTK_Struct,
 #else
         clang::TTK_Struct,
 #endif

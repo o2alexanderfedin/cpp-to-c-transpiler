@@ -15,6 +15,9 @@
 #include <string>
 #include <memory>
 
+// Forward declaration - CppToCVisitorDispatcher is in global namespace
+class CppToCVisitorDispatcher;
+
 namespace clang {
 
 /// @brief Transforms C++ try-catch blocks into setjmp/longjmp control flow
@@ -33,7 +36,25 @@ public:
     /// @brief Default constructor (creates internal frame generator)
     TryCatchTransformer();
 
-    /// @brief Transform a try-catch statement to C control flow
+    /// @brief Transform a try-catch statement to C control flow (Phase 4: with dispatcher)
+    /// @param tryStmt The CXXTryStmt AST node to transform
+    /// @param frameVarName Name for the exception frame variable
+    /// @param actionsTableName Name of the action table for this try block
+    /// @param disp Dispatcher for recursive statement translation
+    /// @param cppCtx Source C++ ASTContext
+    /// @param cCtx Target C ASTContext
+    /// @return C code implementing setjmp/longjmp control flow
+    std::string transformTryCatch(
+        const CXXTryStmt *tryStmt,
+        const std::string& frameVarName,
+        const std::string& actionsTableName,
+        const ::CppToCVisitorDispatcher& disp,
+        const ASTContext& cppCtx,
+        ASTContext& cCtx
+    ) const;
+
+    /// @brief Transform a try-catch statement to C control flow (legacy, no dispatcher)
+    /// @deprecated Use version with dispatcher
     /// @param tryStmt The CXXTryStmt AST node to transform
     /// @param frameVarName Name for the exception frame variable
     /// @param actionsTableName Name of the action table for this try block
@@ -47,21 +68,71 @@ public:
     /// @return C code: if (setjmp(frame.jmpbuf) == 0)
     std::string generateSetjmpGuard(const std::string& frameVarName) const;
 
-    /// @brief Generate try body code (normal execution path)
+    /// @brief Generate try body code (normal execution path) (Phase 4: with dispatcher)
+    /// @param tryStmt The try statement containing the body
+    /// @param frameVarName Name for frame push/pop operations
+    /// @param disp Dispatcher for recursive statement translation
+    /// @param cppCtx Source C++ ASTContext
+    /// @param cCtx Target C ASTContext
+    /// @return C code for try body with frame push/pop
+    std::string generateTryBody(
+        const CXXTryStmt *tryStmt,
+        const std::string& frameVarName,
+        const ::CppToCVisitorDispatcher& disp,
+        const ASTContext& cppCtx,
+        ASTContext& cCtx
+    ) const;
+
+    /// @brief Generate try body code (legacy, no dispatcher)
+    /// @deprecated Use version with dispatcher
     /// @param tryStmt The try statement containing the body
     /// @param frameVarName Name for frame push/pop operations
     /// @return C code for try body with frame push/pop
     std::string generateTryBody(const CXXTryStmt *tryStmt,
                                  const std::string& frameVarName) const;
 
-    /// @brief Generate catch handlers code (exception path)
+    /// @brief Generate catch handlers code (exception path) (Phase 4: with dispatcher)
+    /// @param tryStmt The try statement containing catch handlers
+    /// @param frameVarName Name of the exception frame variable
+    /// @param disp Dispatcher for recursive statement translation
+    /// @param cppCtx Source C++ ASTContext
+    /// @param cCtx Target C ASTContext
+    /// @return C code for catch handlers with type matching
+    std::string generateCatchHandlers(
+        const CXXTryStmt *tryStmt,
+        const std::string& frameVarName,
+        const ::CppToCVisitorDispatcher& disp,
+        const ASTContext& cppCtx,
+        ASTContext& cCtx
+    ) const;
+
+    /// @brief Generate catch handlers code (legacy, no dispatcher)
+    /// @deprecated Use version with dispatcher
     /// @param tryStmt The try statement containing catch handlers
     /// @param frameVarName Name of the exception frame variable
     /// @return C code for catch handlers with type matching
     std::string generateCatchHandlers(const CXXTryStmt *tryStmt,
                                        const std::string& frameVarName) const;
 
-    /// @brief Generate single catch handler
+    /// @brief Generate single catch handler (Phase 4: with dispatcher)
+    /// @param handler The catch handler statement
+    /// @param frameVarName Name of the exception frame variable
+    /// @param isFirst Whether this is the first catch handler (no else-if needed)
+    /// @param disp Dispatcher for recursive statement translation
+    /// @param cppCtx Source C++ ASTContext
+    /// @param cCtx Target C ASTContext
+    /// @return C code for one catch handler with type check
+    std::string generateCatchHandler(
+        const CXXCatchStmt *handler,
+        const std::string& frameVarName,
+        bool isFirst,
+        const ::CppToCVisitorDispatcher& disp,
+        const ASTContext& cppCtx,
+        ASTContext& cCtx
+    ) const;
+
+    /// @brief Generate single catch handler (legacy, no dispatcher)
+    /// @deprecated Use version with dispatcher
     /// @param handler The catch handler statement
     /// @param frameVarName Name of the exception frame variable
     /// @param isFirst Whether this is the first catch handler (no else-if needed)
@@ -104,7 +175,21 @@ private:
     /// @return Mangled destructor function name
     std::string getDestructorName(const CXXRecordDecl *recordDecl) const;
 
+    /// @brief Convert Clang statement to C code string (Phase 4: with dispatcher)
+    /// @param stmt Statement to convert
+    /// @param disp Dispatcher for statement translation
+    /// @param cppCtx Source C++ ASTContext
+    /// @param cCtx Target C ASTContext
+    /// @return C code string representation
+    std::string stmtToString(
+        const Stmt *stmt,
+        const ::CppToCVisitorDispatcher& disp,
+        const ASTContext& cppCtx,
+        ASTContext& cCtx
+    ) const;
+
     /// @brief Convert Clang statement to C code string (placeholder)
+    /// @deprecated Use version with dispatcher
     /// @param stmt Statement to convert
     /// @return C code string representation
     std::string stmtToString(const Stmt *stmt) const;

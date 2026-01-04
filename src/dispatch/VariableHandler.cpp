@@ -301,7 +301,7 @@ clang::Expr* VariableHandler::translateInitializer(
             charType,
             llvm::APInt(32, length + 1),  // +1 for null terminator
             nullptr,
-            clang::ArraySizeModifier::Normal,
+            clang::ArrayType::Normal,  // LLVM 15 uses ArrayType::Normal
             0
         );
         return clang::StringLiteral::Create(

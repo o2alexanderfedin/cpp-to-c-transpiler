@@ -818,6 +818,21 @@ void CodeGenerator::printExpr(Expr *E) {
         return;
     }
 
+    // Handle CompoundLiteralExpr to ensure "struct" keyword is emitted
+    // CXXConstructExprHandler creates CompoundLiteralExpr for C99 struct literals
+    // but Clang's printPretty doesn't always include "struct" keyword
+    if (CompoundLiteralExpr *CLE = dyn_cast<CompoundLiteralExpr>(E)) {
+        QualType Type = CLE->getType();
+        if (const RecordType *RT = Type->getAs<RecordType>()) {
+            // This is a struct type, emit "(struct TypeName){...}"
+            OS << "(struct " << RT->getDecl()->getNameAsString() << ")";
+            if (Expr *Init = CLE->getInitializer()) {
+                printExpr(Init);
+            }
+            return;
+        }
+    }
+
     // Default: use printPretty, but recursively call printExpr for child expressions
     // to ensure enum constants and member calls are handled correctly
     // For now, just use printPretty (handling all expression types recursively is complex)
