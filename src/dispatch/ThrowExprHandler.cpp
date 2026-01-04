@@ -47,18 +47,27 @@ void ThrowExprHandler::handleThrowExpr(
         return;
     }
 
-    // Phase 3: Delegate to ThrowTranslator service class with dispatcher (string-based for now)
-    // Phase 5 will refactor to return C AST nodes
+    // Phase 5: Delegate to ThrowTranslator service class (AST-based - COMPLETE)
     clang::ThrowTranslator translator;
-    std::string throwCode = translator.generateThrowCode(throwExpr, disp, cppASTContext, cASTContext);
+    clang::CompoundStmt* throwStmt = translator.generateThrowCode(
+        throwExpr, disp, cppASTContext, cASTContext
+    );
 
-    llvm::outs() << "[ThrowExprHandler] Generated throw code (via dispatcher):\n" << throwCode << "\n";
+    if (!throwStmt) {
+        llvm::errs() << "[ThrowExprHandler] ERROR: ThrowTranslator returned null\n";
+        return;
+    }
 
-    // TODO Phase 5: Store C Expr* in ExprMapper instead of string
-    // For now, we don't have a C AST representation yet
-    // The string will be used by parent statement handler
+    llvm::outs() << "[ThrowExprHandler] Generated throw AST with "
+                 << throwStmt->size() << " statements\n";
 
-    llvm::outs() << "[ThrowExprHandler] CXXThrowExpr translation complete (string-based)\n";
+    // Phase 5: Store C CompoundStmt* in ExprMapper (COMPLETE)
+    // Note: CXXThrowExpr is an expression, but we translate it to a statement
+    // The parent compound statement handler will incorporate this
+    // For now, we treat the CompoundStmt as an expression-like construct
+    exprMapper.setCreated(throwExpr, throwStmt);
+
+    llvm::outs() << "[ThrowExprHandler] CXXThrowExpr translation complete (AST-based)\n";
 }
 
 } // namespace cpptoc
