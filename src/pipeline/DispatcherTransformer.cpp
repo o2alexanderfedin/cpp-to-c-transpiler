@@ -20,6 +20,8 @@
 #include "dispatch/CXXTypeidExprHandler.h"
 #include "dispatch/CXXDynamicCastExprHandler.h"
 #include "dispatch/CommaOperatorHandler.h"
+#include "dispatch/CXXConstructExprHandler.h"
+#include "dispatch/InitListExprHandler.h"
 #include "dispatch/CompoundStmtHandler.h"
 #include "dispatch/ReturnStmtHandler.h"
 #include "dispatch/RecordHandler.h"
@@ -86,6 +88,8 @@ void DispatcherTransformer::transform(
   CXXTypeidExprHandler::registerWith(dispatcher);
   CXXDynamicCastExprHandler::registerWith(dispatcher);
   CommaOperatorHandler::registerWith(dispatcher);
+  InitListExprHandler::registerWith(dispatcher);
+  CXXConstructExprHandler::registerWith(dispatcher);
   CompoundStmtHandler::registerWith(dispatcher);
   ReturnStmtHandler::registerWith(dispatcher);
   RecordHandler::registerWith(dispatcher);

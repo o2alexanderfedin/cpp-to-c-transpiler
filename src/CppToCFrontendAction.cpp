@@ -23,6 +23,8 @@
 #include "dispatch/CXXTypeidExprHandler.h"
 #include "dispatch/CXXDynamicCastExprHandler.h"
 #include "dispatch/CommaOperatorHandler.h"
+#include "dispatch/CXXConstructExprHandler.h"
+#include "dispatch/InitListExprHandler.h"
 #include "mapping/PathMapper.h"
 #include "mapping/DeclLocationMapper.h"
 #include "mapping/DeclMapper.h"
@@ -96,6 +98,8 @@ public:
     cpptoc::CXXTypeidExprHandler::registerWith(dispatcher);
     cpptoc::CXXDynamicCastExprHandler::registerWith(dispatcher);
     cpptoc::CommaOperatorHandler::registerWith(dispatcher);
+    cpptoc::InitListExprHandler::registerWith(dispatcher);
+    cpptoc::CXXConstructExprHandler::registerWith(dispatcher);
     cpptoc::CompoundStmtHandler::registerWith(dispatcher);
     cpptoc::ReturnStmtHandler::registerWith(dispatcher);
     cpptoc::RecordHandler::registerWith(dispatcher);

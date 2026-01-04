@@ -231,6 +231,7 @@ add_library(cpptoc_core STATIC
     src/dispatch/ArraySubscriptExprHandler.cpp
     src/dispatch/ParenExprHandler.cpp
     src/dispatch/InitListExprHandler.cpp
+    src/dispatch/CXXConstructExprHandler.cpp
     src/dispatch/CallExprHandler.cpp
     src/dispatch/CXXOperatorCallExprHandler.cpp
     src/dispatch/CXXTypeidExprHandler.cpp
@@ -343,32 +344,32 @@ target_link_libraries(cpptoc_core PUBLIC
 # Create executable target
 # Single responsibility: build the cpptoc tool
 # DELETED: Main executable - cpptoc
-# add_executable(cpptoc
-#     src/main.cpp
-#     src/CppToCFrontendAction.cpp
-# )
+add_executable(cpptoc
+    src/main.cpp
+    src/CppToCFrontendAction.cpp
+)
 
 # Apply LLVM/Clang compile definitions to target
-# target_compile_definitions(cpptoc PRIVATE ${LLVM_DEFINITIONS})
+target_compile_definitions(cpptoc PRIVATE ${LLVM_DEFINITIONS})
 
 # Add LLVM/Clang include directories to target (modern CMake practice)
-# target_include_directories(cpptoc PRIVATE
-#     ${CMAKE_SOURCE_DIR}/include
-#     ${LLVM_INCLUDE_DIRS}
-#     ${CLANG_INCLUDE_DIRS}
-# )
+target_include_directories(cpptoc PRIVATE
+    ${CMAKE_SOURCE_DIR}/include
+    ${LLVM_INCLUDE_DIRS}
+    ${CLANG_INCLUDE_DIRS}
+)
 
 # Link against Clang/LLVM libraries
 # Minimal set needed for LibTooling
 # Note: Order matters - most dependent first
-# target_link_libraries(cpptoc PRIVATE
-#     cpptoc_core
-#     clangTooling
-#     clangFrontend
-#     clangAST
-#     clangBasic
-#     LLVMSupport
-# )
+target_link_libraries(cpptoc PRIVATE
+    cpptoc_core
+    clangTooling
+    clangFrontend
+    clangAST
+    clangBasic
+    LLVMSupport
+)
 
 # ============================================================================
 # API CLI Wrapper (for Node.js API server)
