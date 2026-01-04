@@ -67,6 +67,7 @@ void CXXConstructExprHandler::handleCXXConstructExpr(
         if (!argHandled) {
             llvm::errs() << "[CXXConstructExprHandler] ERROR: Argument " << i
                          << " not handled by any expression handler\n";
+            llvm::errs() << "  Argument type: " << cppArg->getStmtClassName() << "\n";
             assert(false && "Constructor argument must be handled");
         }
 

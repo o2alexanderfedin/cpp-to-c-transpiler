@@ -10,6 +10,14 @@ std::string CppToCVisitorDispatcher::getTargetPath(const clang::ASTContext& cppA
     return declLocationMapper.getTargetPath(cppASTContext, D);
 }
 
+void CppToCVisitorDispatcher::setCurrentTargetPath(const std::string& targetPath) {
+    currentTargetPath_ = targetPath;
+}
+
+std::string CppToCVisitorDispatcher::getCurrentTargetPath() const {
+    return currentTargetPath_;
+}
+
 // ============================================================================
 // Core AST Node Handlers
 // ============================================================================

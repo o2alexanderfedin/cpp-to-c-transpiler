@@ -62,6 +62,7 @@ void CallExprHandler::handleCallExpr(
 
     if (!calleeHandled) {
         llvm::errs() << "[CallExprHandler] ERROR: Callee expression not handled\n";
+        llvm::errs() << "  Callee expression type: " << cppCallee->getStmtClassName() << "\n";
         assert(false && "Callee expression must be handled");
     }
 

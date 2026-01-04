@@ -223,19 +223,40 @@ add_library(cpptoc_core STATIC
     src/dispatch/DeclStmtHandler.cpp
     src/dispatch/StatementHandler.cpp
     src/dispatch/LiteralHandler.cpp
+    src/dispatch/RecoveryExprHandler.cpp
+    src/dispatch/UnresolvedLookupExprHandler.cpp
     src/dispatch/DeclRefExprHandler.cpp
     src/dispatch/BinaryOperatorHandler.cpp
     src/dispatch/UnaryOperatorHandler.cpp
     src/dispatch/CommaOperatorHandler.cpp
+    src/dispatch/ConditionalOperatorHandler.cpp
     src/dispatch/ImplicitCastExprHandler.cpp
     src/dispatch/ArraySubscriptExprHandler.cpp
     src/dispatch/ParenExprHandler.cpp
     src/dispatch/InitListExprHandler.cpp
     src/dispatch/CXXConstructExprHandler.cpp
+    src/dispatch/CXXTemporaryObjectExprHandler.cpp
+    src/dispatch/CXXNullPtrLiteralExprHandler.cpp
+    src/dispatch/CXXDefaultArgExprHandler.cpp
+    src/dispatch/CXXNewExprHandler.cpp
+    src/dispatch/CXXDeleteExprHandler.cpp
+    src/dispatch/CXXThisExprHandler.cpp
+    src/dispatch/CompoundLiteralExprHandler.cpp
+    src/dispatch/ExprWithCleanupsHandler.cpp
+    src/dispatch/IfStmtHandler.cpp
+    src/dispatch/SwitchStmtHandler.cpp
+    src/dispatch/ForStmtHandler.cpp
+    src/dispatch/WhileStmtHandler.cpp
     src/dispatch/CallExprHandler.cpp
     src/dispatch/CXXOperatorCallExprHandler.cpp
+    src/dispatch/CXXMemberCallExprHandler.cpp
     src/dispatch/CXXTypeidExprHandler.cpp
     src/dispatch/CXXDynamicCastExprHandler.cpp
+    src/dispatch/CXXStaticCastExprHandler.cpp
+    src/dispatch/CXXFunctionalCastExprHandler.cpp
+    src/dispatch/CStyleCastExprHandler.cpp
+    src/dispatch/CompoundAssignOperatorHandler.cpp
+    src/dispatch/CXXDependentScopeMemberExprHandler.cpp
     src/dispatch/MemberExprHandler.cpp
     src/dispatch/StaticMethodHandler.cpp
     src/dispatch/InstanceMethodHandler.cpp

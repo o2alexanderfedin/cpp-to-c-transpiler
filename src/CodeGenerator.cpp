@@ -113,35 +113,9 @@ void CodeGenerator::printDecl(Decl *D, bool declarationOnly) {
         // Bug #24: Use custom printer for struct to add 'struct' prefixes
         // Struct definitions should only be in header files
         if (declarationOnly) {
-            // Phase 40 (Bug Fix): Skip struct definitions from other files
-            // This prevents duplicate definitions when headers include other headers
-            if (!CurrentInputFile.empty()) {
-                auto &SM = Context.getSourceManager();
-                SourceLocation Loc = RD->getLocation();
-                llvm::outs() << "[DEBUG struct filter] Checking struct " << RD->getNameAsString() << "\n";
-                llvm::outs() << "[DEBUG struct filter]   CurrentInputFile: " << CurrentInputFile << "\n";
-                if (Loc.isValid()) {
-                    FileID FID = SM.getFileID(SM.getSpellingLoc(Loc));
-                    if (auto FileEntry = SM.getFileEntryRefForID(FID)) {
-                        std::string DeclFile = std::string(FileEntry->getName());
-                        llvm::outs() << "[DEBUG struct filter]   DeclFile: " << DeclFile << "\n";
-                        // Skip if this struct is defined in a different file
-                        if (DeclFile != CurrentInputFile) {
-                            llvm::outs() << "[DEBUG] Skipping struct " << RD->getNameAsString()
-                                       << " (defined in " << DeclFile << ", current file: " << CurrentInputFile << ")\n";
-                            return;  // Skip this struct definition
-                        } else {
-                            llvm::outs() << "[DEBUG struct filter]   Keeping struct (same file)\n";
-                        }
-                    } else {
-                        llvm::outs() << "[DEBUG struct filter]   No FileEntry\n";
-                    }
-                } else {
-                    llvm::outs() << "[DEBUG struct filter]   Invalid location\n";
-                }
-            } else {
-                llvm::outs() << "[DEBUG struct filter] CurrentInputFile is empty!\n";
-            }
+            // Fixed: RecordHandler already ensures structs are in correct C_TU
+            // No need to filter by source file location
+            llvm::outs() << "[CodeGenerator] Emitting struct " << RD->getNameAsString() << " to header\n";
             printStructDecl(RD);
             OS << ";\n";
         }

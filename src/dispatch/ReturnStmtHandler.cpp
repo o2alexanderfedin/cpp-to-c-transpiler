@@ -70,6 +70,7 @@ void ReturnStmtHandler::handleReturnStmt(
         } else {
             // No handler matched - this is an error
             llvm::errs() << "[ReturnStmtHandler] ERROR: Return value expression not handled by any handler\n";
+            llvm::errs() << "  Return expression type: " << cppRetValue->getStmtClassName() << "\n";
             assert(false && "Return value expression must be handled");
         }
 

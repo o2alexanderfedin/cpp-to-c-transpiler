@@ -2,6 +2,7 @@
 // Story #79: Implement Throw Expression Translation
 
 #include "ThrowTranslator.h"
+#include "NameMangler.h"
 #include "clang/AST/ASTContext.h"
 #include "clang/AST/DeclCXX.h"
 #include "clang/AST/ExprCXX.h"
@@ -139,8 +140,7 @@ std::string ThrowTranslator::generateConstructorCall(const CXXThrowExpr *throwEx
 
     // Get constructor name
     const CXXConstructorDecl *ctorDecl = ctorExpr->getConstructor();
-    const CXXRecordDecl *recordDecl = ctorDecl->getParent();
-    std::string ctorName = getConstructorName(recordDecl);
+    std::string ctorName = cpptoc::mangle_constructor(ctorDecl);
 
     // Generate constructor call with arguments
     std::string args = argumentsToString(ctorExpr);
@@ -182,21 +182,22 @@ std::string ThrowTranslator::getMangledTypeName(QualType type) const {
         actualType = actualType.getNonReferenceType();
     }
 
-    // For now, use simple name (in production, use Itanium mangling)
+    // Use NameMangler API for consistent name generation
     if (const RecordType *RT = actualType->getAs<RecordType>()) {
         if (const CXXRecordDecl *RD = dyn_cast<CXXRecordDecl>(RT->getDecl())) {
-            return RD->getNameAsString();
+            return cpptoc::mangle_class(RD);
         }
     }
 
     return actualType.getAsString();
 }
 
-// Get constructor name for exception type
+// Get constructor name for exception type (deprecated - use cpptoc::mangle_constructor directly)
 std::string ThrowTranslator::getConstructorName(const CXXRecordDecl *recordDecl) const {
-    // Use simple naming pattern: ClassName__ctor
-    // In production, would use proper name mangling
-    return recordDecl->getNameAsString() + "__ctor";
+    // This method is kept for backward compatibility but should not be used
+    // Use cpptoc::mangle_constructor(ctorDecl) directly when constructor decl is available
+    // Fallback: construct default constructor name
+    return cpptoc::mangle_class(recordDecl) + "__ctor__void";
 }
 
 // Convert constructor arguments to C code string

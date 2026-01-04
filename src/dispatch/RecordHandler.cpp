@@ -93,8 +93,8 @@ void RecordHandler::handleRecord(
         // Store mapping
         declMapper.setCreated(cppRecord, cForwardDecl);
 
-        // Get target path and register location
-        std::string targetPath = disp.getTargetPath(cppASTContext, D);
+        // Get current target path and register location
+        std::string targetPath = disp.getCurrentTargetPath();
         cpptoc::PathMapper& pathMapper = disp.getPathMapper();
         pathMapper.setNodeLocation(cForwardDecl, targetPath);
 
@@ -154,8 +154,9 @@ void RecordHandler::handleRecord(
     // Complete definition
     cRecord->completeDefinition();
 
-    // Get target path for this C++ source file
-    std::string targetPath = disp.getTargetPath(cppASTContext, D);
+    // Get current target path (where current source file is being transpiled)
+    // This ensures structs from headers are emitted to the source file's C_TU
+    std::string targetPath = disp.getCurrentTargetPath();
 
     // Get or create C TranslationUnit for this target file
     cpptoc::PathMapper& pathMapper = disp.getPathMapper();

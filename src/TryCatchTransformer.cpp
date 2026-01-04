@@ -2,6 +2,7 @@
 // Story #78: Implement setjmp/longjmp Injection for Try-Catch Blocks
 
 #include "TryCatchTransformer.h"
+#include "NameMangler.h"
 #include "clang/AST/ASTContext.h"
 #include "clang/AST/DeclCXX.h"
 #include "clang/AST/Type.h"
@@ -237,10 +238,10 @@ std::string TryCatchTransformer::getMangledTypeName(QualType type) const {
         actualType = type.getNonReferenceType();
     }
 
-    // For now, use simple name (in production, use Itanium mangling)
+    // Use NameMangler API for consistent name generation
     if (const RecordType *RT = actualType->getAs<RecordType>()) {
         if (const CXXRecordDecl *RD = dyn_cast<CXXRecordDecl>(RT->getDecl())) {
-            return RD->getNameAsString();
+            return cpptoc::mangle_class(RD);
         }
     }
 
@@ -249,9 +250,18 @@ std::string TryCatchTransformer::getMangledTypeName(QualType type) const {
 
 // Get destructor name for exception cleanup
 std::string TryCatchTransformer::getDestructorName(const CXXRecordDecl *recordDecl) const {
-    // Use simple naming pattern: ClassName__dtor
-    // In production, would use proper name mangling
-    return recordDecl->getNameAsString() + "__dtor";
+    if (!recordDecl) {
+        return "__unknown_dtor__void";
+    }
+
+    // Use NameMangler API for consistent destructor names
+    // Get destructor declaration first
+    const CXXDestructorDecl *DD = recordDecl->getDestructor();
+    if (DD) {
+        return cpptoc::mangle_destructor(DD);
+    }
+    // Fallback: manual construction if no destructor found
+    return cpptoc::mangle_class(recordDecl) + "__dtor__void";
 }
 
 // Convert Clang statement to C code string (placeholder)
