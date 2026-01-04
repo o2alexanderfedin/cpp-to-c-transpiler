@@ -136,10 +136,10 @@ TEST_F(StaticMethodHandlerDispatcherTest, Registration) {
     // Create mapping utilities
     cpptoc::PathMapper& mapper = cpptoc::PathMapper::getInstance("/src", "/output");
     cpptoc::DeclLocationMapper locMapper(mapper);
-    cpptoc::DeclMapper declMapper;
-    cpptoc::TypeMapper typeMapper;
-    cpptoc::ExprMapper exprMapper;
-    cpptoc::StmtMapper stmtMapper;
+    cpptoc::DeclMapper& declMapper = cpptoc::DeclMapper::getInstance();
+    cpptoc::TypeMapper& typeMapper = cpptoc::TypeMapper::getInstance();
+    cpptoc::ExprMapper& exprMapper = cpptoc::ExprMapper::getInstance();
+    cpptoc::StmtMapper& stmtMapper = cpptoc::StmtMapper::getInstance();
 
     // Create dispatcher
     CppToCVisitorDispatcher dispatcher(mapper, locMapper, declMapper, typeMapper, exprMapper, stmtMapper);
@@ -186,10 +186,10 @@ TEST_F(StaticMethodHandlerDispatcherTest, SimpleStaticMethod) {
 
     cpptoc::PathMapper& mapper = cpptoc::PathMapper::getInstance("/src", "/output");
     cpptoc::DeclLocationMapper locMapper(mapper);
-    cpptoc::DeclMapper declMapper;
-    cpptoc::TypeMapper typeMapper;
-    cpptoc::ExprMapper exprMapper;
-    cpptoc::StmtMapper stmtMapper;
+    cpptoc::DeclMapper& declMapper = cpptoc::DeclMapper::getInstance();
+    cpptoc::TypeMapper& typeMapper = cpptoc::TypeMapper::getInstance();
+    cpptoc::ExprMapper& exprMapper = cpptoc::ExprMapper::getInstance();
+    cpptoc::StmtMapper& stmtMapper = cpptoc::StmtMapper::getInstance();
 
     CppToCVisitorDispatcher dispatcher(mapper, locMapper, declMapper, typeMapper, exprMapper, stmtMapper);
 
@@ -251,10 +251,10 @@ TEST_F(StaticMethodHandlerDispatcherTest, StaticMethodWithParameters) {
 
     cpptoc::PathMapper& mapper = cpptoc::PathMapper::getInstance("/src", "/output");
     cpptoc::DeclLocationMapper locMapper(mapper);
-    cpptoc::DeclMapper declMapper;
-    cpptoc::TypeMapper typeMapper;
-    cpptoc::ExprMapper exprMapper;
-    cpptoc::StmtMapper stmtMapper;
+    cpptoc::DeclMapper& declMapper = cpptoc::DeclMapper::getInstance();
+    cpptoc::TypeMapper& typeMapper = cpptoc::TypeMapper::getInstance();
+    cpptoc::ExprMapper& exprMapper = cpptoc::ExprMapper::getInstance();
+    cpptoc::StmtMapper& stmtMapper = cpptoc::StmtMapper::getInstance();
 
     CppToCVisitorDispatcher dispatcher(mapper, locMapper, declMapper, typeMapper, exprMapper, stmtMapper);
 
@@ -315,10 +315,10 @@ TEST_F(StaticMethodHandlerDispatcherTest, StaticMethodInNamespace) {
 
     cpptoc::PathMapper& mapper = cpptoc::PathMapper::getInstance("/src", "/output");
     cpptoc::DeclLocationMapper locMapper(mapper);
-    cpptoc::DeclMapper declMapper;
-    cpptoc::TypeMapper typeMapper;
-    cpptoc::ExprMapper exprMapper;
-    cpptoc::StmtMapper stmtMapper;
+    cpptoc::DeclMapper& declMapper = cpptoc::DeclMapper::getInstance();
+    cpptoc::TypeMapper& typeMapper = cpptoc::TypeMapper::getInstance();
+    cpptoc::ExprMapper& exprMapper = cpptoc::ExprMapper::getInstance();
+    cpptoc::StmtMapper& stmtMapper = cpptoc::StmtMapper::getInstance();
 
     CppToCVisitorDispatcher dispatcher(mapper, locMapper, declMapper, typeMapper, exprMapper, stmtMapper);
 
@@ -410,10 +410,10 @@ TEST_F(StaticMethodHandlerDispatcherTest, NestedNamespaceStaticMethod) {
 
     cpptoc::PathMapper& mapper = cpptoc::PathMapper::getInstance("/src", "/output");
     cpptoc::DeclLocationMapper locMapper(mapper);
-    cpptoc::DeclMapper declMapper;
-    cpptoc::TypeMapper typeMapper;
-    cpptoc::ExprMapper exprMapper;
-    cpptoc::StmtMapper stmtMapper;
+    cpptoc::DeclMapper& declMapper = cpptoc::DeclMapper::getInstance();
+    cpptoc::TypeMapper& typeMapper = cpptoc::TypeMapper::getInstance();
+    cpptoc::ExprMapper& exprMapper = cpptoc::ExprMapper::getInstance();
+    cpptoc::StmtMapper& stmtMapper = cpptoc::StmtMapper::getInstance();
 
     CppToCVisitorDispatcher dispatcher(mapper, locMapper, declMapper, typeMapper, exprMapper, stmtMapper);
 
@@ -510,10 +510,10 @@ TEST_F(StaticMethodHandlerDispatcherTest, ReferenceParameterConversion) {
 
     cpptoc::PathMapper& mapper = cpptoc::PathMapper::getInstance("/src", "/output");
     cpptoc::DeclLocationMapper locMapper(mapper);
-    cpptoc::DeclMapper declMapper;
-    cpptoc::TypeMapper typeMapper;
-    cpptoc::ExprMapper exprMapper;
-    cpptoc::StmtMapper stmtMapper;
+    cpptoc::DeclMapper& declMapper = cpptoc::DeclMapper::getInstance();
+    cpptoc::TypeMapper& typeMapper = cpptoc::TypeMapper::getInstance();
+    cpptoc::ExprMapper& exprMapper = cpptoc::ExprMapper::getInstance();
+    cpptoc::StmtMapper& stmtMapper = cpptoc::StmtMapper::getInstance();
 
     CppToCVisitorDispatcher dispatcher(mapper, locMapper, declMapper, typeMapper, exprMapper, stmtMapper);
 
@@ -573,10 +573,10 @@ TEST_F(StaticMethodHandlerDispatcherTest, IgnoresInstanceMethods) {
 
     cpptoc::PathMapper& mapper = cpptoc::PathMapper::getInstance("/src", "/output");
     cpptoc::DeclLocationMapper locMapper(mapper);
-    cpptoc::DeclMapper declMapper;
-    cpptoc::TypeMapper typeMapper;
-    cpptoc::ExprMapper exprMapper;
-    cpptoc::StmtMapper stmtMapper;
+    cpptoc::DeclMapper& declMapper = cpptoc::DeclMapper::getInstance();
+    cpptoc::TypeMapper& typeMapper = cpptoc::TypeMapper::getInstance();
+    cpptoc::ExprMapper& exprMapper = cpptoc::ExprMapper::getInstance();
+    cpptoc::StmtMapper& stmtMapper = cpptoc::StmtMapper::getInstance();
 
     CppToCVisitorDispatcher dispatcher(mapper, locMapper, declMapper, typeMapper, exprMapper, stmtMapper);
 
@@ -620,10 +620,10 @@ TEST_F(StaticMethodHandlerDispatcherTest, IgnoresConstructors) {
 
     cpptoc::PathMapper& mapper = cpptoc::PathMapper::getInstance("/src", "/output");
     cpptoc::DeclLocationMapper locMapper(mapper);
-    cpptoc::DeclMapper declMapper;
-    cpptoc::TypeMapper typeMapper;
-    cpptoc::ExprMapper exprMapper;
-    cpptoc::StmtMapper stmtMapper;
+    cpptoc::DeclMapper& declMapper = cpptoc::DeclMapper::getInstance();
+    cpptoc::TypeMapper& typeMapper = cpptoc::TypeMapper::getInstance();
+    cpptoc::ExprMapper& exprMapper = cpptoc::ExprMapper::getInstance();
+    cpptoc::StmtMapper& stmtMapper = cpptoc::StmtMapper::getInstance();
 
     CppToCVisitorDispatcher dispatcher(mapper, locMapper, declMapper, typeMapper, exprMapper, stmtMapper);
 
@@ -670,10 +670,10 @@ TEST_F(StaticMethodHandlerDispatcherTest, MixedStaticAndInstanceMethods) {
 
     cpptoc::PathMapper& mapper = cpptoc::PathMapper::getInstance("/src", "/output");
     cpptoc::DeclLocationMapper locMapper(mapper);
-    cpptoc::DeclMapper declMapper;
-    cpptoc::TypeMapper typeMapper;
-    cpptoc::ExprMapper exprMapper;
-    cpptoc::StmtMapper stmtMapper;
+    cpptoc::DeclMapper& declMapper = cpptoc::DeclMapper::getInstance();
+    cpptoc::TypeMapper& typeMapper = cpptoc::TypeMapper::getInstance();
+    cpptoc::ExprMapper& exprMapper = cpptoc::ExprMapper::getInstance();
+    cpptoc::StmtMapper& stmtMapper = cpptoc::StmtMapper::getInstance();
 
     CppToCVisitorDispatcher dispatcher(mapper, locMapper, declMapper, typeMapper, exprMapper, stmtMapper);
 

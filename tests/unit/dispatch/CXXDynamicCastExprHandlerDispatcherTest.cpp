@@ -59,10 +59,10 @@ using namespace cpptoc;
 class CXXDynamicCastExprHandlerTest : public ::testing::Test {
 protected:
     std::unique_ptr<ASTUnit> cppAST;
-    DeclMapper declMapper;
-    TypeMapper typeMapper;
-    ExprMapper exprMapper;
-    StmtMapper stmtMapper;
+    DeclMapper& declMapper = DeclMapper::getInstance();
+    TypeMapper& typeMapper = TypeMapper::getInstance();
+    ExprMapper& exprMapper = ExprMapper::getInstance();
+    StmtMapper& stmtMapper = StmtMapper::getInstance();
     std::unique_ptr<CppToCVisitorDispatcher> dispatcher;
 
     /**

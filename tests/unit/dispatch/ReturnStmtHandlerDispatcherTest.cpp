@@ -100,10 +100,10 @@ TEST(ReturnStmtHandlerDispatcherTest, Registration) {
     // Create mapping utilities
     cpptoc::PathMapper& mapper = cpptoc::PathMapper::getInstance("/src", "/output");
     cpptoc::DeclLocationMapper locMapper(mapper);
-    cpptoc::DeclMapper declMapper;
-    cpptoc::TypeMapper typeMapper;
-    cpptoc::ExprMapper exprMapper;
-    cpptoc::StmtMapper stmtMapper;
+    cpptoc::DeclMapper& declMapper = cpptoc::DeclMapper::getInstance();
+    cpptoc::TypeMapper& typeMapper = cpptoc::TypeMapper::getInstance();
+    cpptoc::ExprMapper& exprMapper = cpptoc::ExprMapper::getInstance();
+    cpptoc::StmtMapper& stmtMapper = cpptoc::StmtMapper::getInstance();
 
     // Create dispatcher
     CppToCVisitorDispatcher dispatcher(mapper, locMapper, declMapper, typeMapper, exprMapper, stmtMapper);
@@ -147,10 +147,10 @@ TEST(ReturnStmtHandlerDispatcherTest, PredicateMatchesOnlyReturnStmt) {
 
     cpptoc::PathMapper& mapper = cpptoc::PathMapper::getInstance("/src", "/output");
     cpptoc::DeclLocationMapper locMapper(mapper);
-    cpptoc::DeclMapper declMapper;
-    cpptoc::TypeMapper typeMapper;
-    cpptoc::ExprMapper exprMapper;
-    cpptoc::StmtMapper stmtMapper;
+    cpptoc::DeclMapper& declMapper = cpptoc::DeclMapper::getInstance();
+    cpptoc::TypeMapper& typeMapper = cpptoc::TypeMapper::getInstance();
+    cpptoc::ExprMapper& exprMapper = cpptoc::ExprMapper::getInstance();
+    cpptoc::StmtMapper& stmtMapper = cpptoc::StmtMapper::getInstance();
 
     CppToCVisitorDispatcher dispatcher(mapper, locMapper, declMapper, typeMapper, exprMapper, stmtMapper);
     registerAllHandlers(dispatcher);
@@ -208,10 +208,10 @@ TEST(ReturnStmtHandlerDispatcherTest, ReturnWithIntegerLiteral) {
 
     cpptoc::PathMapper& mapper = cpptoc::PathMapper::getInstance("/src", "/output");
     cpptoc::DeclLocationMapper locMapper(mapper);
-    cpptoc::DeclMapper declMapper;
-    cpptoc::TypeMapper typeMapper;
-    cpptoc::ExprMapper exprMapper;
-    cpptoc::StmtMapper stmtMapper;
+    cpptoc::DeclMapper& declMapper = cpptoc::DeclMapper::getInstance();
+    cpptoc::TypeMapper& typeMapper = cpptoc::TypeMapper::getInstance();
+    cpptoc::ExprMapper& exprMapper = cpptoc::ExprMapper::getInstance();
+    cpptoc::StmtMapper& stmtMapper = cpptoc::StmtMapper::getInstance();
 
     CppToCVisitorDispatcher dispatcher(mapper, locMapper, declMapper, typeMapper, exprMapper, stmtMapper);
     registerAllHandlers(dispatcher);
@@ -252,10 +252,10 @@ TEST(ReturnStmtHandlerDispatcherTest, ReturnWithExpression) {
 
     cpptoc::PathMapper& mapper = cpptoc::PathMapper::getInstance("/src", "/output");
     cpptoc::DeclLocationMapper locMapper(mapper);
-    cpptoc::DeclMapper declMapper;
-    cpptoc::TypeMapper typeMapper;
-    cpptoc::ExprMapper exprMapper;
-    cpptoc::StmtMapper stmtMapper;
+    cpptoc::DeclMapper& declMapper = cpptoc::DeclMapper::getInstance();
+    cpptoc::TypeMapper& typeMapper = cpptoc::TypeMapper::getInstance();
+    cpptoc::ExprMapper& exprMapper = cpptoc::ExprMapper::getInstance();
+    cpptoc::StmtMapper& stmtMapper = cpptoc::StmtMapper::getInstance();
 
     CppToCVisitorDispatcher dispatcher(mapper, locMapper, declMapper, typeMapper, exprMapper, stmtMapper);
     registerAllHandlers(dispatcher);
@@ -300,10 +300,10 @@ TEST(ReturnStmtHandlerDispatcherTest, ReturnWithReference) {
 
     cpptoc::PathMapper& mapper = cpptoc::PathMapper::getInstance("/src", "/output");
     cpptoc::DeclLocationMapper locMapper(mapper);
-    cpptoc::DeclMapper declMapper;
-    cpptoc::TypeMapper typeMapper;
-    cpptoc::ExprMapper exprMapper;
-    cpptoc::StmtMapper stmtMapper;
+    cpptoc::DeclMapper& declMapper = cpptoc::DeclMapper::getInstance();
+    cpptoc::TypeMapper& typeMapper = cpptoc::TypeMapper::getInstance();
+    cpptoc::ExprMapper& exprMapper = cpptoc::ExprMapper::getInstance();
+    cpptoc::StmtMapper& stmtMapper = cpptoc::StmtMapper::getInstance();
 
     CppToCVisitorDispatcher dispatcher(mapper, locMapper, declMapper, typeMapper, exprMapper, stmtMapper);
     registerAllHandlers(dispatcher);
@@ -350,10 +350,10 @@ TEST(ReturnStmtHandlerDispatcherTest, VoidReturn) {
 
     cpptoc::PathMapper& mapper = cpptoc::PathMapper::getInstance("/src", "/output");
     cpptoc::DeclLocationMapper locMapper(mapper);
-    cpptoc::DeclMapper declMapper;
-    cpptoc::TypeMapper typeMapper;
-    cpptoc::ExprMapper exprMapper;
-    cpptoc::StmtMapper stmtMapper;
+    cpptoc::DeclMapper& declMapper = cpptoc::DeclMapper::getInstance();
+    cpptoc::TypeMapper& typeMapper = cpptoc::TypeMapper::getInstance();
+    cpptoc::ExprMapper& exprMapper = cpptoc::ExprMapper::getInstance();
+    cpptoc::StmtMapper& stmtMapper = cpptoc::StmtMapper::getInstance();
 
     CppToCVisitorDispatcher dispatcher(mapper, locMapper, declMapper, typeMapper, exprMapper, stmtMapper);
     registerAllHandlers(dispatcher);
@@ -398,10 +398,10 @@ TEST(ReturnStmtHandlerDispatcherTest, MultipleReturnStatements) {
 
     cpptoc::PathMapper& mapper = cpptoc::PathMapper::getInstance("/src", "/output");
     cpptoc::DeclLocationMapper locMapper(mapper);
-    cpptoc::DeclMapper declMapper;
-    cpptoc::TypeMapper typeMapper;
-    cpptoc::ExprMapper exprMapper;
-    cpptoc::StmtMapper stmtMapper;
+    cpptoc::DeclMapper& declMapper = cpptoc::DeclMapper::getInstance();
+    cpptoc::TypeMapper& typeMapper = cpptoc::TypeMapper::getInstance();
+    cpptoc::ExprMapper& exprMapper = cpptoc::ExprMapper::getInstance();
+    cpptoc::StmtMapper& stmtMapper = cpptoc::StmtMapper::getInstance();
 
     CppToCVisitorDispatcher dispatcher(mapper, locMapper, declMapper, typeMapper, exprMapper, stmtMapper);
     registerAllHandlers(dispatcher);
@@ -440,10 +440,10 @@ TEST(ReturnStmtHandlerDispatcherTest, ReturnWithVariable) {
 
     cpptoc::PathMapper& mapper = cpptoc::PathMapper::getInstance("/src", "/output");
     cpptoc::DeclLocationMapper locMapper(mapper);
-    cpptoc::DeclMapper declMapper;
-    cpptoc::TypeMapper typeMapper;
-    cpptoc::ExprMapper exprMapper;
-    cpptoc::StmtMapper stmtMapper;
+    cpptoc::DeclMapper& declMapper = cpptoc::DeclMapper::getInstance();
+    cpptoc::TypeMapper& typeMapper = cpptoc::TypeMapper::getInstance();
+    cpptoc::ExprMapper& exprMapper = cpptoc::ExprMapper::getInstance();
+    cpptoc::StmtMapper& stmtMapper = cpptoc::StmtMapper::getInstance();
 
     CppToCVisitorDispatcher dispatcher(mapper, locMapper, declMapper, typeMapper, exprMapper, stmtMapper);
     registerAllHandlers(dispatcher);

@@ -20,11 +20,17 @@
 #include "mapping/TypeMapper.h"
 #include "NameMangler.h"
 #include "clang/AST/DeclCXX.h"
+#include "clang/Index/USRGeneration.h"
 #include "llvm/Support/Casting.h"
 #include "llvm/Support/raw_ostream.h"
 #include <cassert>
+#include <set>
 
 namespace cpptoc {
+
+// Global set to track which structs/classes have been translated using USR
+// USR (Unified Symbol Resolution) is unique across translation units
+static std::set<std::string> translatedRecordUSRs;
 
 void RecordHandler::registerWith(CppToCVisitorDispatcher& dispatcher) {
     dispatcher.addHandler(
@@ -54,10 +60,57 @@ void RecordHandler::handleRecord(
 
     const auto* cppRecord = llvm::cast<clang::RecordDecl>(D);
 
-    // Check if already translated (avoid duplicates)
+    // Check if this struct logically belongs to the current file being processed
+    // MUST CHECK THIS FIRST before marking as translated!
+    // Compare base filenames (without extension) to handle src/*.cpp vs include/*.h split
+    std::string currentTargetPath = disp.getCurrentTargetPath();
+    std::string structTargetPath = disp.getTargetPath(cppASTContext, cppRecord);
+
+    // Extract base filenames (e.g., "Vector3D" from "transpiled/src/Vector3D.c")
+    auto getBaseName = [](const std::string& path) -> std::string {
+        size_t lastSlash = path.find_last_of("/\\");
+        std::string filename = (lastSlash == std::string::npos) ? path : path.substr(lastSlash + 1);
+        size_t lastDot = filename.find_last_of('.');
+        return (lastDot == std::string::npos) ? filename : filename.substr(0, lastDot);
+    };
+
+    std::string currentBase = getBaseName(currentTargetPath);
+    std::string structBase = getBaseName(structTargetPath);
+
+    if (currentBase != structBase) {
+        llvm::outs() << "[RecordHandler] Struct/class " << cppRecord->getNameAsString()
+                     << " belongs to different file (" << structBase << " vs " << currentBase
+                     << "), skipping (will be translated in its own file)\n";
+        return;
+    }
+
+    // Generate USR (Unified Symbol Resolution) to identify this struct/class uniquely across TUs
+    llvm::SmallString<128> USR;
+    if (clang::index::generateUSRForDecl(cppRecord, USR)) {
+        // Failed to generate USR - fall back to name-based check (may have duplicates)
+        llvm::outs() << "[RecordHandler] WARNING: Failed to generate USR for "
+                     << cppRecord->getNameAsString() << "\n";
+    } else {
+        std::string usrStr = USR.str().str();
+
+        // Check if already translated using USR (works across different translation units)
+        if (translatedRecordUSRs.find(usrStr) != translatedRecordUSRs.end()) {
+            llvm::outs() << "[RecordHandler] Already translated struct/class: "
+                         << cppRecord->getNameAsString() << " (USR: " << usrStr << ") (skipping)\n";
+            return;
+        }
+
+        // Mark as translated (ONLY after file origin check passed!)
+        translatedRecordUSRs.insert(usrStr);
+    }
+
+    // Use canonical declaration for DeclMapper (still needed for within-TU lookups)
+    const auto* canonicalRecord = cppRecord->getCanonicalDecl();
+
+    // Also store in DeclMapper for within-TU lookups
     cpptoc::DeclMapper& declMapper = disp.getDeclMapper();
-    if (declMapper.hasCreated(cppRecord)) {
-        llvm::outs() << "[RecordHandler] Already translated struct/class: "
+    if (declMapper.hasCreated(canonicalRecord)) {
+        llvm::outs() << "[RecordHandler] Already translated struct/class (DeclMapper): "
                      << cppRecord->getNameAsString() << " (skipping)\n";
         return;
     }
@@ -90,8 +143,8 @@ void RecordHandler::handleRecord(
         clang::CNodeBuilder builder(cASTContext);
         clang::RecordDecl* cForwardDecl = builder.forwardStructDecl(mangledName);
 
-        // Store mapping
-        declMapper.setCreated(cppRecord, cForwardDecl);
+        // Store mapping using canonical declaration
+        declMapper.setCreated(canonicalRecord, cForwardDecl);
 
         // Get current target path and register location
         std::string targetPath = disp.getCurrentTargetPath();
@@ -133,8 +186,8 @@ void RecordHandler::handleRecord(
 
     assert(cRecord && "Failed to create C RecordDecl");
 
-    // Store mapping EARLY (before translating children to handle recursive references)
-    declMapper.setCreated(cppRecord, cRecord);
+    // Store mapping EARLY using canonical declaration (before translating children to handle recursive references)
+    declMapper.setCreated(canonicalRecord, cRecord);
 
     // Start definition
     cRecord->startDefinition();

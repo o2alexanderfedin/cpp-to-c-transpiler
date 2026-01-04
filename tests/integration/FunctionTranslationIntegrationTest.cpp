@@ -148,10 +148,10 @@ TEST_F(FunctionTranslationIntegrationTest, SimpleFunctionWithLiteralReturn) {
     // Create mapping utilities
     cpptoc::PathMapper& mapper = cpptoc::PathMapper::getInstance("/src", "/output");
     cpptoc::DeclLocationMapper locMapper(mapper);
-    cpptoc::DeclMapper declMapper;
-    cpptoc::TypeMapper typeMapper;
-    cpptoc::ExprMapper exprMapper;
-    cpptoc::StmtMapper stmtMapper;
+    cpptoc::DeclMapper& declMapper = cpptoc::DeclMapper::getInstance();
+    cpptoc::TypeMapper& typeMapper = cpptoc::TypeMapper::getInstance();
+    cpptoc::ExprMapper& exprMapper = cpptoc::ExprMapper::getInstance();
+    cpptoc::StmtMapper& stmtMapper = cpptoc::StmtMapper::getInstance();
 
     // Create and configure dispatcher
     auto dispatcher = createDispatcher(mapper, locMapper, declMapper, typeMapper, exprMapper, stmtMapper);
@@ -246,10 +246,10 @@ TEST_F(FunctionTranslationIntegrationTest, FunctionWithParameterReference) {
 
     cpptoc::PathMapper& mapper = cpptoc::PathMapper::getInstance("/src", "/output");
     cpptoc::DeclLocationMapper locMapper(mapper);
-    cpptoc::DeclMapper declMapper;
-    cpptoc::TypeMapper typeMapper;
-    cpptoc::ExprMapper exprMapper;
-    cpptoc::StmtMapper stmtMapper;
+    cpptoc::DeclMapper& declMapper = cpptoc::DeclMapper::getInstance();
+    cpptoc::TypeMapper& typeMapper = cpptoc::TypeMapper::getInstance();
+    cpptoc::ExprMapper& exprMapper = cpptoc::ExprMapper::getInstance();
+    cpptoc::StmtMapper& stmtMapper = cpptoc::StmtMapper::getInstance();
 
     auto dispatcher = createDispatcher(mapper, locMapper, declMapper, typeMapper, exprMapper, stmtMapper);
 
@@ -318,10 +318,10 @@ TEST_F(FunctionTranslationIntegrationTest, FunctionWithArithmeticExpression) {
 
     cpptoc::PathMapper& mapper = cpptoc::PathMapper::getInstance("/src", "/output");
     cpptoc::DeclLocationMapper locMapper(mapper);
-    cpptoc::DeclMapper declMapper;
-    cpptoc::TypeMapper typeMapper;
-    cpptoc::ExprMapper exprMapper;
-    cpptoc::StmtMapper stmtMapper;
+    cpptoc::DeclMapper& declMapper = cpptoc::DeclMapper::getInstance();
+    cpptoc::TypeMapper& typeMapper = cpptoc::TypeMapper::getInstance();
+    cpptoc::ExprMapper& exprMapper = cpptoc::ExprMapper::getInstance();
+    cpptoc::StmtMapper& stmtMapper = cpptoc::StmtMapper::getInstance();
 
     auto dispatcher = createDispatcher(mapper, locMapper, declMapper, typeMapper, exprMapper, stmtMapper);
 
@@ -418,10 +418,10 @@ TEST_F(FunctionTranslationIntegrationTest, FunctionWithNestedExpression) {
 
     cpptoc::PathMapper& mapper = cpptoc::PathMapper::getInstance("/src", "/output");
     cpptoc::DeclLocationMapper locMapper(mapper);
-    cpptoc::DeclMapper declMapper;
-    cpptoc::TypeMapper typeMapper;
-    cpptoc::ExprMapper exprMapper;
-    cpptoc::StmtMapper stmtMapper;
+    cpptoc::DeclMapper& declMapper = cpptoc::DeclMapper::getInstance();
+    cpptoc::TypeMapper& typeMapper = cpptoc::TypeMapper::getInstance();
+    cpptoc::ExprMapper& exprMapper = cpptoc::ExprMapper::getInstance();
+    cpptoc::StmtMapper& stmtMapper = cpptoc::StmtMapper::getInstance();
 
     auto dispatcher = createDispatcher(mapper, locMapper, declMapper, typeMapper, exprMapper, stmtMapper);
 
@@ -540,10 +540,10 @@ TEST_F(FunctionTranslationIntegrationTest, MultipleFunctionsInSameTU) {
 
     cpptoc::PathMapper& mapper = cpptoc::PathMapper::getInstance("/src", "/output");
     cpptoc::DeclLocationMapper locMapper(mapper);
-    cpptoc::DeclMapper declMapper;
-    cpptoc::TypeMapper typeMapper;
-    cpptoc::ExprMapper exprMapper;
-    cpptoc::StmtMapper stmtMapper;
+    cpptoc::DeclMapper& declMapper = cpptoc::DeclMapper::getInstance();
+    cpptoc::TypeMapper& typeMapper = cpptoc::TypeMapper::getInstance();
+    cpptoc::ExprMapper& exprMapper = cpptoc::ExprMapper::getInstance();
+    cpptoc::StmtMapper& stmtMapper = cpptoc::StmtMapper::getInstance();
 
     auto dispatcher = createDispatcher(mapper, locMapper, declMapper, typeMapper, exprMapper, stmtMapper);
 

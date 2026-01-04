@@ -4,7 +4,10 @@
 #include "IncludeGuardGenerator.h"
 #include "mapping/PathMapper.h"
 #include "llvm/Support/raw_ostream.h"
+#include "llvm/Support/Casting.h"
+#include "clang/AST/Decl.h"
 #include <sstream>
+#include <set>
 
 namespace cpptoc {
 namespace pipeline {
@@ -82,7 +85,56 @@ void CCodePrinter::print(TargetContext& targetCtx, const std::string& sourceFile
       headerFilename += ".h";
     }
 
-    implOS << "#include \"" << headerFilename << "\"\n\n";
+    implOS << "#include \"" << headerFilename << "\"\n";
+
+    // Collect all struct/enum types used in this TU
+    // We need to include their headers
+    std::set<std::string> usedTypes;
+    for (auto it = C_TU->decls_begin(); it != C_TU->decls_end(); ++it) {
+      // Scan for FunctionDecl and VarDecl to find used types
+      if (clang::FunctionDecl* FD = llvm::dyn_cast<clang::FunctionDecl>(*it)) {
+        // Check return type
+        clang::QualType retType = FD->getReturnType();
+        if (const clang::RecordType* RT = retType->getAs<clang::RecordType>()) {
+          if (clang::RecordDecl* RD = RT->getDecl()) {
+            // Don't include self
+            if (RD->getDeclContext() != C_TU) {
+              usedTypes.insert(RD->getNameAsString());
+            }
+          }
+        }
+        // Check parameter types
+        for (unsigned i = 0; i < FD->getNumParams(); ++i) {
+          clang::QualType paramType = FD->getParamDecl(i)->getType();
+          // Handle pointer types
+          if (const clang::PointerType* PT = paramType->getAs<clang::PointerType>()) {
+            paramType = PT->getPointeeType();
+          }
+          if (const clang::RecordType* RT = paramType->getAs<clang::RecordType>()) {
+            if (clang::RecordDecl* RD = RT->getDecl()) {
+              if (RD->getDeclContext() != C_TU) {
+                usedTypes.insert(RD->getNameAsString());
+              }
+            }
+          }
+        }
+      }
+    }
+
+    // Add includes for used types
+    for (const auto& typeName : usedTypes) {
+      implOS << "#include \"src/" << typeName << ".h\"\n";
+    }
+
+    // Add standard library includes that are commonly needed
+    // TODO: Track which functions are actually used and only include what's needed
+    implOS << "#include <stdio.h>\n";    // printf, etc.
+    implOS << "#include <stdlib.h>\n";   // malloc, free, etc.
+    implOS << "#include <string.h>\n";   // memcpy, memset, etc.
+    implOS << "#include <stdbool.h>\n";  // bool type
+    implOS << "#include <stdint.h>\n";   // int32_t, etc.
+    implOS << "#include <math.h>\n";     // sqrtf, fabsf, etc.
+    implOS << "\n";
 
     for (auto it = C_TU->decls_begin(); it != C_TU->decls_end(); ++it) {
       implGen.printDecl(*it, false);  // declarationOnly = false

@@ -7,7 +7,7 @@ const char * stateToString(GameState state) {
 }
 
 int main() {
-	struct StateMachine sm = (struct StateMachine){Menu};
+	struct StateMachine sm = (StateMachine){Menu};
 	printf("State Machine Tests:\n");
 	printf("  Initial state: %s\n", stateToString(getCurrentState(sm)));
 	transition(sm, Playing);

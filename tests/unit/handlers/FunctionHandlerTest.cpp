@@ -92,10 +92,10 @@ protected:
 
         PathMapper& mapper = PathMapper::getInstance("/src", "/output");
         DeclLocationMapper locMapper(mapper);
-        DeclMapper declMapper;
-        TypeMapper typeMapper;
-        ExprMapper exprMapper;
-        StmtMapper stmtMapper;
+        DeclMapper& declMapper = DeclMapper::getInstance();
+        TypeMapper& typeMapper = TypeMapper::getInstance();
+        ExprMapper& exprMapper = ExprMapper::getInstance();
+        StmtMapper& stmtMapper = StmtMapper::getInstance();
 
         auto dispatcher = createDispatcher(mapper, locMapper, declMapper, typeMapper, exprMapper, stmtMapper);
 
@@ -159,10 +159,10 @@ TEST_F(FunctionHandlerTest, EmptyFunction) {
     // Create mapping utilities
     PathMapper& mapper = PathMapper::getInstance("/src", "/output");
     DeclLocationMapper locMapper(mapper);
-    DeclMapper declMapper;
-    TypeMapper typeMapper;
-    ExprMapper exprMapper;
-    StmtMapper stmtMapper;
+    DeclMapper& declMapper = DeclMapper::getInstance();
+    TypeMapper& typeMapper = TypeMapper::getInstance();
+    ExprMapper& exprMapper = ExprMapper::getInstance();
+    StmtMapper& stmtMapper = StmtMapper::getInstance();
 
     // Create dispatcher and register handlers
     auto dispatcher = createDispatcher(mapper, locMapper, declMapper, typeMapper, exprMapper, stmtMapper);
@@ -225,10 +225,10 @@ TEST_F(FunctionHandlerTest, FunctionWithIntReturn) {
 
     PathMapper& mapper = PathMapper::getInstance("/src", "/output");
     DeclLocationMapper locMapper(mapper);
-    DeclMapper declMapper;
-    TypeMapper typeMapper;
-    ExprMapper exprMapper;
-    StmtMapper stmtMapper;
+    DeclMapper& declMapper = DeclMapper::getInstance();
+    TypeMapper& typeMapper = TypeMapper::getInstance();
+    ExprMapper& exprMapper = ExprMapper::getInstance();
+    StmtMapper& stmtMapper = StmtMapper::getInstance();
 
     auto dispatcher = createDispatcher(mapper, locMapper, declMapper, typeMapper, exprMapper, stmtMapper);
 
@@ -284,10 +284,10 @@ TEST_F(FunctionHandlerTest, FunctionWithFloatReturn) {
 
     PathMapper& mapper = PathMapper::getInstance("/src", "/output");
     DeclLocationMapper locMapper(mapper);
-    DeclMapper declMapper;
-    TypeMapper typeMapper;
-    ExprMapper exprMapper;
-    StmtMapper stmtMapper;
+    DeclMapper& declMapper = DeclMapper::getInstance();
+    TypeMapper& typeMapper = TypeMapper::getInstance();
+    ExprMapper& exprMapper = ExprMapper::getInstance();
+    StmtMapper& stmtMapper = StmtMapper::getInstance();
 
     auto dispatcher = createDispatcher(mapper, locMapper, declMapper, typeMapper, exprMapper, stmtMapper);
 

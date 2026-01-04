@@ -97,8 +97,26 @@ void CXXMemberCallExprHandler::handleCXXMemberCallExpr(
         clang::Expr* cObj = exprMapper.getCreated(cppImplicitObj);
         assert(cObj && "Implicit object must be in ExprMapper");
 
-        // Add 'this' as first argument
-        cArgs.push_back(cObj);
+        // Wrap implicit object in UnaryOperator (address-of &) to pass by pointer
+        // C methods expect: void Class__method(struct Class* this, ...)
+        // So we need to pass &obj instead of obj
+        clang::QualType cObjPtrType = cASTContext.getPointerType(cObj->getType());
+        clang::UnaryOperator* cObjAddr = clang::UnaryOperator::Create(
+            cASTContext,
+            cObj,
+            clang::UO_AddrOf,
+            cObjPtrType,
+            clang::VK_PRValue,
+            clang::OK_Ordinary,
+            clang::SourceLocation(),
+            false, // CanOverflow
+            clang::FPOptionsOverride()
+        );
+
+        llvm::outs() << "[CXXMemberCallExprHandler] Wrapped implicit object in address-of operator\n";
+
+        // Add '&this' as first argument
+        cArgs.push_back(cObjAddr);
     }
 
     // Dispatch all explicit arguments
@@ -116,7 +134,37 @@ void CXXMemberCallExprHandler::handleCXXMemberCallExpr(
 
         clang::Expr* cArg = exprMapper.getCreated(cppArg);
         assert(cArg && "Argument must be in ExprMapper");
-        cArgs.push_back(cArg);
+
+        // Check if the corresponding C++ parameter is a reference type
+        // If so, wrap the argument in address-of operator
+        if (cppCalleeDecl && i < cppCalleeDecl->getNumParams()) {
+            clang::QualType cppParamType = cppCalleeDecl->getParamDecl(i)->getType();
+
+            if (cppParamType->isReferenceType()) {
+                llvm::outs() << "[CXXMemberCallExprHandler] Parameter " << i
+                             << " is reference type, wrapping in address-of\n";
+
+                clang::QualType cArgPtrType = cASTContext.getPointerType(cArg->getType());
+                clang::UnaryOperator* cArgAddr = clang::UnaryOperator::Create(
+                    cASTContext,
+                    cArg,
+                    clang::UO_AddrOf,
+                    cArgPtrType,
+                    clang::VK_PRValue,
+                    clang::OK_Ordinary,
+                    clang::SourceLocation(),
+                    false, // CanOverflow
+                    clang::FPOptionsOverride()
+                );
+                cArgs.push_back(cArgAddr);
+            } else {
+                // Not a reference, pass by value
+                cArgs.push_back(cArg);
+            }
+        } else {
+            // No parameter info available, pass as-is
+            cArgs.push_back(cArg);
+        }
     }
 
     // Create C CallExpr

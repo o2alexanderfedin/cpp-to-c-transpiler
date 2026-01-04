@@ -127,10 +127,17 @@ void CXXConstructExprHandler::handleCXXConstructExpr(
 
     // Step 4: Wrap in CompoundLiteralExpr to create (struct Type){...}
     // This is the proper C99 syntax for struct literals
+    // Create ElaboratedType with ETK_Struct to ensure "struct" keyword is emitted
+    clang::QualType elaboratedType = cASTContext.getElaboratedType(
+        clang::ETK_Struct,
+        nullptr, // NestedNameSpecifier
+        cType
+    );
+
     clang::CompoundLiteralExpr* compoundLit = new (cASTContext) clang::CompoundLiteralExpr(
         clang::SourceLocation(),
-        cASTContext.getTrivialTypeSourceInfo(cType),
-        cType,
+        cASTContext.getTrivialTypeSourceInfo(elaboratedType),
+        elaboratedType,
         clang::VK_PRValue,
         initList,
         false // isFileScope

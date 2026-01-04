@@ -243,10 +243,12 @@ add_library(cpptoc_core STATIC
     src/dispatch/CXXThisExprHandler.cpp
     src/dispatch/CompoundLiteralExprHandler.cpp
     src/dispatch/ExprWithCleanupsHandler.cpp
+    src/dispatch/ThrowExprHandler.cpp
     src/dispatch/IfStmtHandler.cpp
     src/dispatch/SwitchStmtHandler.cpp
     src/dispatch/ForStmtHandler.cpp
     src/dispatch/WhileStmtHandler.cpp
+    src/dispatch/TryStmtHandler.cpp
     src/dispatch/CallExprHandler.cpp
     src/dispatch/CXXOperatorCallExprHandler.cpp
     src/dispatch/CXXMemberCallExprHandler.cpp
@@ -358,6 +360,7 @@ target_link_libraries(cpptoc_core PUBLIC
     clangFrontend
     clangAST
     clangBasic
+    clangIndex
     range-v3::range-v3
 )
 

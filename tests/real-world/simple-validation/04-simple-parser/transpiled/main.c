@@ -1,7 +1,7 @@
 #include "main.h"
 
 int main() {
-	struct ExpressionEvaluator eval = (struct ExpressionEvaluator){};
+	struct ExpressionEvaluator eval = (ExpressionEvaluator){};
 	printf("Expression Evaluator Tests:\n");
 	const char * expr1 = "2 + 3";
 	int result1 = ExpressionEvaluator_evaluate(eval, expr1);

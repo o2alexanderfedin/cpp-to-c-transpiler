@@ -47,6 +47,8 @@
 #include "dispatch/ForStmtHandler.h"
 #include "dispatch/WhileStmtHandler.h"
 #include "dispatch/DeclStmtHandler.h"
+#include "dispatch/TryStmtHandler.h"
+#include "dispatch/ThrowExprHandler.h"
 #include "dispatch/VariableHandler.h"
 #include "dispatch/RecordHandler.h"
 #include "dispatch/FunctionHandler.h"
@@ -82,10 +84,12 @@ void DispatcherTransformer::transform(
 
   // Create mappers
   DeclLocationMapper locMapper(pathMapper);
-  DeclMapper declMapper;
-  TypeMapper typeMapper;
-  ExprMapper exprMapper;
-  StmtMapper stmtMapper;
+
+  // Get singleton mapper instances (shared across all source files)
+  DeclMapper& declMapper = DeclMapper::getInstance();
+  TypeMapper& typeMapper = TypeMapper::getInstance();
+  ExprMapper& exprMapper = ExprMapper::getInstance();
+  StmtMapper& stmtMapper = StmtMapper::getInstance();
 
   // Create dispatcher
   CppToCVisitorDispatcher dispatcher(
@@ -132,11 +136,13 @@ void DispatcherTransformer::transform(
   CXXThisExprHandler::registerWith(dispatcher);
   CompoundLiteralExprHandler::registerWith(dispatcher);
   ExprWithCleanupsHandler::registerWith(dispatcher);
+  ThrowExprHandler::registerWith(dispatcher);
   IfStmtHandler::registerWith(dispatcher);
   SwitchStmtHandler::registerWith(dispatcher);
   ForStmtHandler::registerWith(dispatcher);
   WhileStmtHandler::registerWith(dispatcher);
   DeclStmtHandler::registerWith(dispatcher);
+  TryStmtHandler::registerWith(dispatcher);
   CompoundStmtHandler::registerWith(dispatcher);
   ReturnStmtHandler::registerWith(dispatcher);
   VariableHandler::registerWith(dispatcher);

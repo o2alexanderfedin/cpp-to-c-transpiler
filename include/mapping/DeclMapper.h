@@ -1,18 +1,18 @@
 /**
  * @file DeclMapper.h
- * @brief Type alias for mapping C++ declarations to created C declarations
+ * @brief Singleton wrapper for mapping C++ declarations to created C declarations
  *
- * This is now a type alias for the generic NodeMapper template.
- * See NodeMapper.h for implementation details.
+ * This provides a singleton wrapper around NodeMapper to ensure all source files
+ * share the same mapping instance during a transpilation session.
  *
- * Single Responsibility: Provide declaration-specific type alias for NodeMapper.
+ * Single Responsibility: Provide declaration-specific singleton mapper for NodeMapper.
  *
  * Migration Note:
- * - Old: declMapper.setCreatedDecl(cppDecl, cDecl)
- * - New: declMapper.setCreated(cppDecl, cDecl)
- * - Old: declMapper.getCreatedDecl(cppDecl)
- * - New: declMapper.getCreated(cppDecl)
- * - New: declMapper.hasCreated(cppDecl) [previously missing]
+ * - Old: DeclMapper declMapper;
+ * - New: DeclMapper& declMapper = DeclMapper::getInstance();
+ * - Usage: declMapper.setCreated(cppDecl, cDecl)
+ * - Usage: declMapper.getCreated(cppDecl)
+ * - Usage: declMapper.hasCreated(cppDecl)
  */
 
 #pragma once
@@ -23,19 +23,74 @@
 namespace cpptoc {
 
 /**
- * @typedef DeclMapper
- * @brief Maps C++ declarations to created C declarations
+ * @class DeclMapper
+ * @brief Singleton wrapper for mapping C++ declarations to created C declarations
  *
- * Type alias for NodeMapper<clang::Decl, clang::Decl*>
+ * Wraps NodeMapper<clang::Decl, clang::Decl*> in a singleton pattern to ensure
+ * all source files share the same declaration mappings during transpilation.
  *
  * Example:
  * ```cpp
- * DeclMapper declMapper;
+ * DeclMapper& declMapper = DeclMapper::getInstance();
  * declMapper.setCreated(cppParam, cParam);
  * clang::Decl* cParam = declMapper.getCreated(cppParam);
  * if (declMapper.hasCreated(cppParam)) { ... }
  * ```
  */
-using DeclMapper = NodeMapper<clang::Decl, clang::Decl*>;
+class DeclMapper {
+public:
+  /**
+   * @brief Get the singleton DeclMapper instance
+   * @return Reference to the global DeclMapper instance
+   *
+   * **Singleton Pattern**: Ensures all files share the same DeclMapper
+   * **Thread Safety**: Not thread-safe; call from single thread during transpilation
+   */
+  static DeclMapper& getInstance() {
+    static DeclMapper instance;
+    return instance;
+  }
+
+  /**
+   * @brief Store mapping from C++ node to created C node
+   * @param cppNode Source C++ AST node
+   * @param cNode Created C AST node
+   */
+  void setCreated(const clang::Decl* cppNode, clang::Decl* cNode) {
+    mapper_.setCreated(cppNode, cNode);
+  }
+
+  /**
+   * @brief Get C node created for a C++ node
+   * @param cppNode Source C++ AST node
+   * @return Created C node, or nullptr if not found
+   */
+  clang::Decl* getCreated(const clang::Decl* cppNode) const {
+    return mapper_.getCreated(cppNode);
+  }
+
+  /**
+   * @brief Check if a C++ node has a mapped C node
+   * @param cppNode Source C++ AST node
+   * @return true if mapping exists, false otherwise
+   */
+  bool hasCreated(const clang::Decl* cppNode) const {
+    return mapper_.hasCreated(cppNode);
+  }
+
+  /**
+   * @brief Reset all mappings (for testing)
+   */
+  static void reset() {
+    getInstance().mapper_ = NodeMapper<clang::Decl, clang::Decl*>();
+  }
+
+private:
+  DeclMapper() = default;
+  DeclMapper(const DeclMapper&) = delete;
+  DeclMapper& operator=(const DeclMapper&) = delete;
+
+  NodeMapper<clang::Decl, clang::Decl*> mapper_;
+};
 
 } // namespace cpptoc
