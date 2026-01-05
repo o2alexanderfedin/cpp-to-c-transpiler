@@ -36,15 +36,15 @@ public:
     /// @brief Default constructor (creates internal frame generator)
     TryCatchTransformer();
 
-    /// @brief Transform a try-catch statement to C control flow (Phase 4: with dispatcher)
+    /// @brief Transform a try-catch statement to C control flow (Phase 6: AST-based)
     /// @param tryStmt The CXXTryStmt AST node to transform
     /// @param frameVarName Name for the exception frame variable
     /// @param actionsTableName Name of the action table for this try block
     /// @param disp Dispatcher for recursive statement translation
     /// @param cppCtx Source C++ ASTContext
     /// @param cCtx Target C ASTContext
-    /// @return C code implementing setjmp/longjmp control flow
-    std::string transformTryCatch(
+    /// @return CompoundStmt* containing complete try-catch as C AST
+    CompoundStmt* transformTryCatch(
         const CXXTryStmt *tryStmt,
         const std::string& frameVarName,
         const std::string& actionsTableName,
@@ -63,19 +63,20 @@ public:
                                    const std::string& frameVarName,
                                    const std::string& actionsTableName) const;
 
-    /// @brief Generate setjmp injection code (if branch guard)
+    /// @brief Generate setjmp injection code (if branch guard) (Phase 6: AST-based)
     /// @param frameVarName Name of the exception frame variable
-    /// @return C code: if (setjmp(frame.jmpbuf) == 0)
-    std::string generateSetjmpGuard(const std::string& frameVarName) const;
+    /// @param cCtx Target C ASTContext
+    /// @return Expr* for condition: setjmp(frame.jmpbuf) == 0
+    Expr* generateSetjmpGuard(const std::string& frameVarName, ASTContext& cCtx) const;
 
-    /// @brief Generate try body code (normal execution path) (Phase 4: with dispatcher)
+    /// @brief Generate try body code (normal execution path) (Phase 6: AST-based)
     /// @param tryStmt The try statement containing the body
     /// @param frameVarName Name for frame push/pop operations
     /// @param disp Dispatcher for recursive statement translation
     /// @param cppCtx Source C++ ASTContext
     /// @param cCtx Target C ASTContext
-    /// @return C code for try body with frame push/pop
-    std::string generateTryBody(
+    /// @return CompoundStmt* for try body with frame push/pop
+    CompoundStmt* generateTryBody(
         const CXXTryStmt *tryStmt,
         const std::string& frameVarName,
         const ::CppToCVisitorDispatcher& disp,
@@ -91,14 +92,14 @@ public:
     std::string generateTryBody(const CXXTryStmt *tryStmt,
                                  const std::string& frameVarName) const;
 
-    /// @brief Generate catch handlers code (exception path) (Phase 4: with dispatcher)
+    /// @brief Generate catch handlers code (exception path) (Phase 6: AST-based)
     /// @param tryStmt The try statement containing catch handlers
     /// @param frameVarName Name of the exception frame variable
     /// @param disp Dispatcher for recursive statement translation
     /// @param cppCtx Source C++ ASTContext
     /// @param cCtx Target C ASTContext
-    /// @return C code for catch handlers with type matching
-    std::string generateCatchHandlers(
+    /// @return CompoundStmt* for catch handlers with type matching (if-else chain)
+    CompoundStmt* generateCatchHandlers(
         const CXXTryStmt *tryStmt,
         const std::string& frameVarName,
         const ::CppToCVisitorDispatcher& disp,
@@ -114,15 +115,15 @@ public:
     std::string generateCatchHandlers(const CXXTryStmt *tryStmt,
                                        const std::string& frameVarName) const;
 
-    /// @brief Generate single catch handler (Phase 4: with dispatcher)
+    /// @brief Generate single catch handler (Phase 6: AST-based)
     /// @param handler The catch handler statement
     /// @param frameVarName Name of the exception frame variable
     /// @param isFirst Whether this is the first catch handler (no else-if needed)
     /// @param disp Dispatcher for recursive statement translation
     /// @param cppCtx Source C++ ASTContext
     /// @param cCtx Target C ASTContext
-    /// @return C code for one catch handler with type check
-    std::string generateCatchHandler(
+    /// @return IfStmt* for one catch handler with type check
+    IfStmt* generateCatchHandler(
         const CXXCatchStmt *handler,
         const std::string& frameVarName,
         bool isFirst,
@@ -141,26 +142,32 @@ public:
                                       const std::string& frameVarName,
                                       bool isFirst) const;
 
-    /// @brief Generate exception type check code
+    /// @brief Generate exception type check code (Phase 6: AST-based)
     /// @param exceptionType The caught exception type
     /// @param frameVarName Name of the exception frame variable
-    /// @return C code: if (strcmp(frame.exception_type, "TypeName") == 0)
-    std::string generateTypeCheck(QualType exceptionType,
-                                   const std::string& frameVarName) const;
+    /// @param cCtx Target C ASTContext
+    /// @return Expr* for condition: strcmp(frame.exception_type, "TypeName") == 0
+    Expr* generateTypeCheck(QualType exceptionType,
+                            const std::string& frameVarName,
+                            ASTContext& cCtx) const;
 
-    /// @brief Generate exception object cast and assignment
+    /// @brief Generate exception object cast and assignment (Phase 6: AST-based)
     /// @param varDecl Variable declaration for caught exception
     /// @param frameVarName Name of the exception frame variable
-    /// @return C code casting exception_object to proper type
-    std::string generateExceptionObjectCast(const VarDecl *varDecl,
-                                             const std::string& frameVarName) const;
+    /// @param cCtx Target C ASTContext
+    /// @return DeclStmt* for: Type *e = (Type*)frame.exception_object;
+    DeclStmt* generateExceptionObjectCast(const VarDecl *varDecl,
+                                          const std::string& frameVarName,
+                                          ASTContext& cCtx) const;
 
-    /// @brief Generate exception cleanup code (destructor + free)
+    /// @brief Generate exception cleanup code (destructor + free) (Phase 6: AST-based)
     /// @param exceptionType The type of the exception to clean up
     /// @param varName Name of the exception variable
-    /// @return C code calling destructor and freeing memory
-    std::string generateExceptionCleanup(QualType exceptionType,
-                                          const std::string& varName) const;
+    /// @param cCtx Target C ASTContext
+    /// @return CompoundStmt* calling destructor and freeing memory
+    CompoundStmt* generateExceptionCleanup(QualType exceptionType,
+                                           const std::string& varName,
+                                           ASTContext& cCtx) const;
 
 private:
     std::shared_ptr<ExceptionFrameGenerator> frameGenerator;

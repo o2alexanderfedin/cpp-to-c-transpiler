@@ -53,8 +53,7 @@ void TryStmtHandler::handleTryStmt(
         return;
     }
 
-    // Phase 2: Delegate to TryCatchTransformer service class (string-based for now)
-    // Phase 6 will refactor to return C AST nodes
+    // Phase 6: Delegate to TryCatchTransformer service class (AST-based)
 
     // Generate unique frame variable and action table names
     // TODO: Use counter or UUID for nested try-catch blocks
@@ -63,9 +62,9 @@ void TryStmtHandler::handleTryStmt(
     std::string actionsTableName = "actions_" + std::to_string(frameCounter);
     frameCounter++;
 
-    // Phase 4: Use dispatcher-based version of transformTryCatch
+    // Phase 6: Use AST-based version of transformTryCatch
     clang::TryCatchTransformer transformer;
-    std::string tryCatchCode = transformer.transformTryCatch(
+    clang::CompoundStmt* tryCatchStmt = transformer.transformTryCatch(
         tryStmt,
         frameVarName,
         actionsTableName,
@@ -74,13 +73,17 @@ void TryStmtHandler::handleTryStmt(
         cASTContext
     );
 
-    llvm::outs() << "[TryStmtHandler] Generated try-catch code:\n" << tryCatchCode << "\n";
+    if (!tryCatchStmt) {
+        llvm::errs() << "[TryStmtHandler] ERROR: transformTryCatch returned null\n";
+        return;
+    }
 
-    // TODO Phase 6: Store C Stmt* in StmtMapper instead of string
-    // For now, we don't have a C AST representation yet
-    // The string will be used by parent statement handler
+    llvm::outs() << "[TryStmtHandler] Generated try-catch AST successfully\n";
 
-    llvm::outs() << "[TryStmtHandler] CXXTryStmt translation complete (string-based)\n";
+    // Phase 6: Store C Stmt* in StmtMapper
+    stmtMapper.setCreated(tryStmt, tryCatchStmt);
+
+    llvm::outs() << "[TryStmtHandler] CXXTryStmt translation complete (AST-based)\n";
 }
 
 } // namespace cpptoc
