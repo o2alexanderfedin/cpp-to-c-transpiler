@@ -49,12 +49,13 @@ namespace test {
 struct UnitTestContext {
     std::unique_ptr<clang::ASTUnit> cppAST;
     std::unique_ptr<clang::ASTUnit> cAST;
+    // All mappers are singletons - store references
     PathMapper* pathMapper;
     std::unique_ptr<DeclLocationMapper> declLocationMapper;
-    std::unique_ptr<DeclMapper> declMapper;
-    std::unique_ptr<TypeMapper> typeMapper;
-    std::unique_ptr<ExprMapper> exprMapper;
-    std::unique_ptr<StmtMapper> stmtMapper;
+    DeclMapper* declMapper;
+    TypeMapper* typeMapper;
+    ExprMapper* exprMapper;
+    StmtMapper* stmtMapper;
     std::unique_ptr<CppToCVisitorDispatcher> dispatcher;
 };
 
@@ -95,12 +96,19 @@ inline UnitTestContext createUnitTestContext(const std::string& cppCode = "int d
     }
 
     // Create mappers
+    // Get singleton instances for all mappers
     ctx.pathMapper = &PathMapper::getInstance("/tmp/test_source", "/tmp/test_output");
     ctx.declLocationMapper = std::make_unique<DeclLocationMapper>(*ctx.pathMapper);
-    ctx.declMapper = std::make_unique<DeclMapper>();
-    ctx.typeMapper = std::make_unique<TypeMapper>();
-    ctx.exprMapper = std::make_unique<ExprMapper>();
-    ctx.stmtMapper = std::make_unique<StmtMapper>();
+    ctx.declMapper = &DeclMapper::getInstance();
+    ctx.typeMapper = &TypeMapper::getInstance();
+    ctx.exprMapper = &ExprMapper::getInstance();
+    ctx.stmtMapper = &StmtMapper::getInstance();
+
+    // Reset singleton state for test isolation
+    DeclMapper::reset();
+    TypeMapper::reset();
+    ExprMapper::reset();
+    StmtMapper::reset();
 
     // Create dispatcher (no handlers registered yet)
     ctx.dispatcher = std::make_unique<CppToCVisitorDispatcher>(

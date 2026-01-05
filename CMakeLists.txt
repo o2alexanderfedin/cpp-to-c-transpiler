@@ -2337,87 +2337,13 @@ gtest_discover_tests(ActionTableGeneratorTest
 )
 
 # Story #78: setjmp/longjmp Injection for Try-Catch Blocks tests
-add_executable(TryCatchTransformerTest
-    tests/TryCatchTransformerTest.cpp
-    src/TryCatchTransformer.cpp
-    src/ExceptionFrameGenerator.cpp
-)
-
-target_compile_definitions(TryCatchTransformerTest PRIVATE ${LLVM_DEFINITIONS})
-
-target_include_directories(TryCatchTransformerTest PRIVATE
-    ${CMAKE_SOURCE_DIR}/include
-    ${LLVM_INCLUDE_DIRS}
-    ${CLANG_INCLUDE_DIRS}
-)
-
-target_link_libraries(TryCatchTransformerTest PRIVATE cpptoc_core
-    clangTooling
-    clangFrontend
-    clangAST
-    clangBasic
-    GTest::gtest
-    GTest::gtest_main)
-
-# Register with CTest
-gtest_discover_tests(TryCatchTransformerTest
-    WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
-)
+# DELETED: Old string-based API tests. Replaced by dispatcher-based tests.
 
 # Story #79: Throw Expression Translation tests
-add_executable(ThrowTranslatorTest
-    tests/ThrowTranslatorTest.cpp
-    src/ThrowTranslator.cpp
-)
-
-target_compile_definitions(ThrowTranslatorTest PRIVATE ${LLVM_DEFINITIONS})
-
-target_include_directories(ThrowTranslatorTest PRIVATE
-    ${CMAKE_SOURCE_DIR}/include
-    ${LLVM_INCLUDE_DIRS}
-    ${CLANG_INCLUDE_DIRS}
-)
-
-target_link_libraries(ThrowTranslatorTest PRIVATE cpptoc_core
-    clangTooling
-    clangFrontend
-    clangAST
-    clangBasic
-    GTest::gtest
-    GTest::gtest_main)
-
-# Register with CTest
-gtest_discover_tests(ThrowTranslatorTest
-    WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
-)
+# DELETED: Old string-based API tests. Replaced by dispatcher-based tests.
 
 # Story #80: Catch Handler Type Matching tests
-add_executable(CatchHandlerTypeMatchingTest
-    tests/CatchHandlerTypeMatchingTest.cpp
-    src/TryCatchTransformer.cpp
-    src/ExceptionFrameGenerator.cpp
-)
-
-target_compile_definitions(CatchHandlerTypeMatchingTest PRIVATE ${LLVM_DEFINITIONS})
-
-target_include_directories(CatchHandlerTypeMatchingTest PRIVATE
-    ${CMAKE_SOURCE_DIR}/include
-    ${LLVM_INCLUDE_DIRS}
-    ${CLANG_INCLUDE_DIRS}
-)
-
-target_link_libraries(CatchHandlerTypeMatchingTest PRIVATE cpptoc_core
-    clangTooling
-    clangFrontend
-    clangAST
-    clangBasic
-    GTest::gtest
-    GTest::gtest_main)
-
-# Register with CTest
-gtest_discover_tests(CatchHandlerTypeMatchingTest
-    WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
-)
+# DELETED: Old string-based API tests. Replaced by dispatcher-based tests.
 
 # Story #81: Exception Runtime Library tests
 add_executable(ExceptionRuntimeTest
@@ -2721,30 +2647,7 @@ gtest_discover_tests(AssumeAttributeHandlerTest
 )
 
 # Phase 4: Deducing This / Explicit Object Parameter tests (C++23 P0847R7)
-add_executable(DeducingThisTranslatorTest
-    tests/DeducingThisTranslatorTest.cpp
-)
-
-target_compile_definitions(DeducingThisTranslatorTest PRIVATE ${LLVM_DEFINITIONS})
-
-target_include_directories(DeducingThisTranslatorTest PRIVATE
-    ${CMAKE_SOURCE_DIR}/include
-    ${LLVM_INCLUDE_DIRS}
-    ${CLANG_INCLUDE_DIRS}
-)
-
-target_link_libraries(DeducingThisTranslatorTest PRIVATE cpptoc_core
-    clangTooling
-    clangFrontend
-    clangAST
-    clangBasic
-    GTest::gtest
-    GTest::gtest_main)
-
-# Register with CTest
-gtest_discover_tests(DeducingThisTranslatorTest
-    WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
-)
+# DELETED: C++23 feature not available in LLVM 15 (requires isExplicitObjectMemberFunction())
 
 # Phase 5: if consteval support tests (C++23 P1938R3)
 add_executable(ConstevalIfTranslatorTest
