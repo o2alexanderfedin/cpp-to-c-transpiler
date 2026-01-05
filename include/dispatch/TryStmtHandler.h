@@ -36,7 +36,7 @@ public:
      * @brief Register handler with dispatcher
      * @param dispatcher Dispatcher to register with
      */
-    static void registerWith(CppToCVisitorDispatcher& dispatcher);
+    static void registerWith(::CppToCVisitorDispatcher& dispatcher);
 
     /**
      * @brief Predicate: Check if statement is a try-catch statement
@@ -59,7 +59,7 @@ public:
      * 4. Catch handlers with type matching
      */
     static void handleTryStmt(
-        const CppToCVisitorDispatcher& disp,
+        const ::CppToCVisitorDispatcher& disp,
         const clang::ASTContext& cppASTContext,
         clang::ASTContext& cASTContext,
         const clang::Stmt* S

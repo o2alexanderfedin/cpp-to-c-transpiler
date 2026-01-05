@@ -10,9 +10,11 @@
 
 #include "dispatch/ThrowExprHandler.h"
 #include "dispatch/CppToCVisitorDispatcher.h"
+#include "../../fixtures/UnitTestHelper.h"
 #include "gtest/gtest.h"
 #include "clang/AST/ASTContext.h"
 #include "clang/AST/ExprCXX.h"
+#include "clang/AST/RecursiveASTVisitor.h"
 #include "clang/Frontend/ASTUnit.h"
 #include "clang/Tooling/Tooling.h"
 
@@ -47,10 +49,10 @@ protected:
 };
 
 TEST_F(ThrowExprHandlerTest, HandlerRegistration) {
-    CppToCVisitorDispatcher dispatcher;
+    auto ctx = test::createUnitTestContext();
 
     // Registration should not throw
-    EXPECT_NO_THROW(ThrowExprHandler::registerWith(dispatcher));
+    EXPECT_NO_THROW(ThrowExprHandler::registerWith(*ctx.dispatcher));
 }
 
 TEST_F(ThrowExprHandlerTest, CanHandleThrowExpr) {
@@ -87,8 +89,8 @@ TEST_F(ThrowExprHandlerTest, CannotHandleNonThrowExpr) {
 }
 
 TEST_F(ThrowExprHandlerTest, BasicHandling) {
-    CppToCVisitorDispatcher dispatcher;
-    ThrowExprHandler::registerWith(dispatcher);
+    auto ctx = test::createUnitTestContext();
+    ThrowExprHandler::registerWith(*ctx.dispatcher);
 
     // Find the throw expression
     CXXThrowExpr* throwExpr = nullptr;
@@ -106,7 +108,7 @@ TEST_F(ThrowExprHandlerTest, BasicHandling) {
     // Handle via dispatcher
     EXPECT_NO_THROW(
         ThrowExprHandler::handleThrowExpr(
-            dispatcher,
+            *ctx.dispatcher,
             cppAST->getASTContext(),
             cAST->getASTContext(),
             throwExpr

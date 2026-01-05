@@ -16,9 +16,7 @@
 #include <vector>
 
 // Forward declarations
-namespace cpptoc {
-    class CppToCVisitorDispatcher;
-}
+class CppToCVisitorDispatcher;
 
 namespace clang {
     class CNodeBuilder;
@@ -47,7 +45,7 @@ public:
     /// @return CompoundStmt containing: allocation, constructor call, cxx_throw call
     CompoundStmt* generateThrowCode(
         const CXXThrowExpr *throwExpr,
-        const cpptoc::CppToCVisitorDispatcher& disp,
+        const ::CppToCVisitorDispatcher& disp,
         const ASTContext& cppCtx,
         ASTContext& cCtx
     ) const;
@@ -78,7 +76,7 @@ public:
     CallExpr* generateConstructorCall(
         const CXXThrowExpr *throwExpr,
         VarDecl* exceptionVar,
-        const cpptoc::CppToCVisitorDispatcher& disp,
+        const ::CppToCVisitorDispatcher& disp,
         const ASTContext& cppCtx,
         ASTContext& cCtx
     ) const;
@@ -114,7 +112,7 @@ private:
     /// @return Vector of C Expr* for arguments
     std::vector<Expr*> translateArguments(
         const CXXConstructExpr *ctorExpr,
-        const cpptoc::CppToCVisitorDispatcher& disp,
+        const ::CppToCVisitorDispatcher& disp,
         const ASTContext& cppCtx,
         ASTContext& cCtx
     ) const;
@@ -137,7 +135,7 @@ private:
     /// @return Translated C FunctionDecl
     FunctionDecl* getConstructorDecl(
         const CXXConstructorDecl* ctorDecl,
-        const cpptoc::CppToCVisitorDispatcher& disp,
+        const ::CppToCVisitorDispatcher& disp,
         const ASTContext& cppCtx,
         ASTContext& cCtx
     ) const;

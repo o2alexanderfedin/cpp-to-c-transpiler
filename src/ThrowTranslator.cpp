@@ -24,7 +24,7 @@ namespace clang {
 // Generate complete throw translation as C AST
 CompoundStmt* ThrowTranslator::generateThrowCode(
     const CXXThrowExpr *throwExpr,
-    const cpptoc::CppToCVisitorDispatcher& disp,
+    const ::CppToCVisitorDispatcher& disp,
     const ASTContext& cppCtx,
     ASTContext& cCtx
 ) const {
@@ -155,7 +155,7 @@ VarDecl* ThrowTranslator::generateExceptionAllocation(
 CallExpr* ThrowTranslator::generateConstructorCall(
     const CXXThrowExpr *throwExpr,
     VarDecl* exceptionVar,
-    const cpptoc::CppToCVisitorDispatcher& disp,
+    const ::CppToCVisitorDispatcher& disp,
     const ASTContext& cppCtx,
     ASTContext& cCtx
 ) const {
@@ -288,7 +288,7 @@ std::string ThrowTranslator::getMangledTypeName(QualType type) const {
 // Translate constructor arguments to C AST
 std::vector<Expr*> ThrowTranslator::translateArguments(
     const CXXConstructExpr *ctorExpr,
-    const cpptoc::CppToCVisitorDispatcher& disp,
+    const ::CppToCVisitorDispatcher& disp,
     const ASTContext& cppCtx,
     ASTContext& cCtx
 ) const {
@@ -375,7 +375,7 @@ FunctionDecl* ThrowTranslator::createCxxThrowDecl(ASTContext& cCtx) const {
 // Get FunctionDecl for constructor
 FunctionDecl* ThrowTranslator::getConstructorDecl(
     const CXXConstructorDecl* ctorDecl,
-    const cpptoc::CppToCVisitorDispatcher& disp,
+    const ::CppToCVisitorDispatcher& disp,
     const ASTContext& cppCtx,
     ASTContext& cCtx
 ) const {

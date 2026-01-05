@@ -17,11 +17,11 @@
 
 namespace cpptoc {
 
-void TryStmtHandler::registerWith(CppToCVisitorDispatcher& dispatcher) {
+void TryStmtHandler::registerWith(::CppToCVisitorDispatcher& dispatcher) {
     // Cast to StmtPredicate and StmtVisitor to match dispatcher interface
     dispatcher.addHandler(
-        static_cast<CppToCVisitorDispatcher::StmtPredicate>(&TryStmtHandler::canHandle),
-        static_cast<CppToCVisitorDispatcher::StmtVisitor>(&TryStmtHandler::handleTryStmt)
+        static_cast<::CppToCVisitorDispatcher::StmtPredicate>(&TryStmtHandler::canHandle),
+        static_cast<::CppToCVisitorDispatcher::StmtVisitor>(&TryStmtHandler::handleTryStmt)
     );
 }
 
@@ -33,7 +33,7 @@ bool TryStmtHandler::canHandle(const clang::Stmt* S) {
 }
 
 void TryStmtHandler::handleTryStmt(
-    const CppToCVisitorDispatcher& disp,
+    const ::CppToCVisitorDispatcher& disp,
     const clang::ASTContext& cppASTContext,
     clang::ASTContext& cASTContext,
     const clang::Stmt* S

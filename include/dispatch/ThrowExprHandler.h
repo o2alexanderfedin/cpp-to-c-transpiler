@@ -36,7 +36,7 @@ public:
      * @brief Register handler with dispatcher
      * @param dispatcher Dispatcher to register with
      */
-    static void registerWith(CppToCVisitorDispatcher& dispatcher);
+    static void registerWith(::CppToCVisitorDispatcher& dispatcher);
 
     /**
      * @brief Predicate: Check if expression is a throw expression
@@ -58,7 +58,7 @@ public:
      * 3. cxx_throw runtime call
      */
     static void handleThrowExpr(
-        const CppToCVisitorDispatcher& disp,
+        const ::CppToCVisitorDispatcher& disp,
         const clang::ASTContext& cppASTContext,
         clang::ASTContext& cASTContext,
         const clang::Expr* E

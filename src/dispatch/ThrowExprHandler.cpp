@@ -4,19 +4,20 @@
  */
 
 #include "dispatch/ThrowExprHandler.h"
+#include "dispatch/CppToCVisitorDispatcher.h"
 #include "ThrowTranslator.h"
-#include "mapping/ExprMapper.h"
+#include "mapping/StmtMapper.h"
 #include "llvm/Support/Casting.h"
 #include "llvm/Support/raw_ostream.h"
 #include <cassert>
 
 namespace cpptoc {
 
-void ThrowExprHandler::registerWith(CppToCVisitorDispatcher& dispatcher) {
+void ThrowExprHandler::registerWith(::CppToCVisitorDispatcher& dispatcher) {
     // Cast to ExprPredicate and ExprVisitor to match dispatcher interface
     dispatcher.addHandler(
-        static_cast<CppToCVisitorDispatcher::ExprPredicate>(&ThrowExprHandler::canHandle),
-        static_cast<CppToCVisitorDispatcher::ExprVisitor>(&ThrowExprHandler::handleThrowExpr)
+        static_cast<::CppToCVisitorDispatcher::ExprPredicate>(&ThrowExprHandler::canHandle),
+        static_cast<::CppToCVisitorDispatcher::ExprVisitor>(&ThrowExprHandler::handleThrowExpr)
     );
 }
 
@@ -28,7 +29,7 @@ bool ThrowExprHandler::canHandle(const clang::Expr* E) {
 }
 
 void ThrowExprHandler::handleThrowExpr(
-    const CppToCVisitorDispatcher& disp,
+    const ::CppToCVisitorDispatcher& disp,
     const clang::ASTContext& cppASTContext,
     clang::ASTContext& cASTContext,
     const clang::Expr* E
@@ -41,8 +42,8 @@ void ThrowExprHandler::handleThrowExpr(
     llvm::outs() << "[ThrowExprHandler] Processing CXXThrowExpr\n";
 
     // Check if already processed
-    cpptoc::ExprMapper& exprMapper = disp.getExprMapper();
-    if (exprMapper.hasCreated(throwExpr)) {
+    cpptoc::StmtMapper& stmtMapper = disp.getStmtMapper();
+    if (stmtMapper.hasCreated(throwExpr)) {
         llvm::outs() << "[ThrowExprHandler] CXXThrowExpr already translated, skipping\n";
         return;
     }
@@ -61,11 +62,10 @@ void ThrowExprHandler::handleThrowExpr(
     llvm::outs() << "[ThrowExprHandler] Generated throw AST with "
                  << throwStmt->size() << " statements\n";
 
-    // Phase 5: Store C CompoundStmt* in ExprMapper (COMPLETE)
-    // Note: CXXThrowExpr is an expression, but we translate it to a statement
-    // The parent compound statement handler will incorporate this
-    // For now, we treat the CompoundStmt as an expression-like construct
-    exprMapper.setCreated(throwExpr, throwStmt);
+    // Phase 5: Store C CompoundStmt* in StmtMapper (COMPLETE)
+    // Note: CXXThrowExpr is an expression in C++, but we translate it to a CompoundStmt in C
+    // Store in StmtMapper so parent statement handlers can retrieve and incorporate it
+    stmtMapper.setCreated(throwExpr, throwStmt);
 
     llvm::outs() << "[ThrowExprHandler] CXXThrowExpr translation complete (AST-based)\n";
 }

@@ -10,9 +10,11 @@
 
 #include "dispatch/TryStmtHandler.h"
 #include "dispatch/CppToCVisitorDispatcher.h"
+#include "../../fixtures/UnitTestHelper.h"
 #include "gtest/gtest.h"
 #include "clang/AST/ASTContext.h"
 #include "clang/AST/StmtCXX.h"
+#include "clang/AST/RecursiveASTVisitor.h"
 #include "clang/Frontend/ASTUnit.h"
 #include "clang/Tooling/Tooling.h"
 
@@ -51,10 +53,10 @@ protected:
 };
 
 TEST_F(TryStmtHandlerTest, HandlerRegistration) {
-    CppToCVisitorDispatcher dispatcher;
+    auto ctx = test::createUnitTestContext();
 
     // Registration should not throw
-    EXPECT_NO_THROW(TryStmtHandler::registerWith(dispatcher));
+    EXPECT_NO_THROW(TryStmtHandler::registerWith(*ctx.dispatcher));
 }
 
 TEST_F(TryStmtHandlerTest, CanHandleTryStmt) {
@@ -86,8 +88,8 @@ TEST_F(TryStmtHandlerTest, CannotHandleNonTryStmt) {
 }
 
 TEST_F(TryStmtHandlerTest, BasicHandling) {
-    CppToCVisitorDispatcher dispatcher;
-    TryStmtHandler::registerWith(dispatcher);
+    auto ctx = test::createUnitTestContext();
+    TryStmtHandler::registerWith(*ctx.dispatcher);
 
     // Find the try statement
     CXXTryStmt* tryStmt = nullptr;
@@ -105,7 +107,7 @@ TEST_F(TryStmtHandlerTest, BasicHandling) {
     // Handle via dispatcher
     EXPECT_NO_THROW(
         TryStmtHandler::handleTryStmt(
-            dispatcher,
+            *ctx.dispatcher,
             cppAST->getASTContext(),
             cAST->getASTContext(),
             tryStmt
@@ -150,12 +152,12 @@ TEST_F(TryStmtHandlerTest, HandlesMultipleCatchHandlers) {
     EXPECT_EQ(tryStmt->getNumHandlers(), 2);
 
     // Test handling
-    CppToCVisitorDispatcher dispatcher;
-    TryStmtHandler::registerWith(dispatcher);
+    auto ctx = test::createUnitTestContext();
+    TryStmtHandler::registerWith(*ctx.dispatcher);
 
     EXPECT_NO_THROW(
         TryStmtHandler::handleTryStmt(
-            dispatcher,
+            *ctx.dispatcher,
             ast->getASTContext(),
             cAST->getASTContext(),
             tryStmt
