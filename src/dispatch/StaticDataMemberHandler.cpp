@@ -109,7 +109,7 @@ void StaticDataMemberHandler::handleStaticDataMember(
     }
 
     // Get target path and C TranslationUnit
-    std::string targetPath = disp.getTargetPath(cppASTContext, D);
+    std::string targetPath = disp.getCurrentTargetPath();  // Use current path set by TranslationUnitHandler
     cpptoc::PathMapper& pathMapper = disp.getPathMapper();
     TranslationUnitDecl* cTU = pathMapper.getOrCreateTU(targetPath);
 

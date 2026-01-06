@@ -201,7 +201,10 @@ void VariableHandler::handleVariable(
     declMapper.setCreated(cppVar, cVar);
 
     // Get target path and register location
-    std::string targetPath = disp.getTargetPath(cppASTContext, D);
+    std::string targetPath = disp.getCurrentTargetPath();  // Use current path set by TranslationUnitHandler
+    if (targetPath.empty()) {
+        targetPath = disp.getTargetPath(cppASTContext, D);
+    }
     cpptoc::PathMapper& pathMapper = disp.getPathMapper();
     pathMapper.setNodeLocation(cVar, targetPath);
 
@@ -301,7 +304,7 @@ clang::Expr* VariableHandler::translateInitializer(
             charType,
             llvm::APInt(32, length + 1),  // +1 for null terminator
             nullptr,
-            clang::ArraySizeModifier::Normal,
+            clang::ArrayType::Normal,  // LLVM 15 uses ArrayType::Normal
             0
         );
         return clang::StringLiteral::Create(

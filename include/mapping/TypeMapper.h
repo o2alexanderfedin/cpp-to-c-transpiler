@@ -1,19 +1,18 @@
 /**
  * @file TypeMapper.h
- * @brief Type alias for mapping C++ types to created C types
+ * @brief Singleton wrapper for mapping C++ types to created C types
  *
- * This is now a type alias for the generic NodeMapper template.
- * See NodeMapper.h for implementation details.
+ * This provides a singleton wrapper around NodeMapper to ensure all source files
+ * share the same mapping instance during a transpilation session.
  *
- * Single Responsibility: Provide type-specific type alias for NodeMapper.
+ * Single Responsibility: Provide type-specific singleton mapper for NodeMapper.
  *
  * Migration Note:
- * - Old: typeMapper.setCreatedType(cppType, cType)
- * - New: typeMapper.setCreated(cppType, cType)
- * - Old: typeMapper.getCreatedType(cppType)
- * - New: typeMapper.getCreated(cppType)
- * - Old: typeMapper.hasCreatedType(cppType)
- * - New: typeMapper.hasCreated(cppType)
+ * - Old: TypeMapper typeMapper;
+ * - New: TypeMapper& typeMapper = TypeMapper::getInstance();
+ * - Usage: typeMapper.setCreated(cppType, cType)
+ * - Usage: typeMapper.getCreated(cppType)
+ * - Usage: typeMapper.hasCreated(cppType)
  */
 
 #pragma once
@@ -24,22 +23,77 @@
 namespace cpptoc {
 
 /**
- * @typedef TypeMapper
- * @brief Maps C++ types to created C types
+ * @class TypeMapper
+ * @brief Singleton wrapper for mapping C++ types to created C types
  *
- * Type alias for NodeMapper<clang::Type, clang::QualType>
+ * Wraps NodeMapper<clang::Type, clang::QualType> in a singleton pattern to ensure
+ * all source files share the same type mappings during transpilation.
  *
  * Note: ValueT is QualType (value type), not QualType* (pointer)
  * QualType is a lightweight handle that acts like a pointer internally.
  *
  * Example:
  * ```cpp
- * TypeMapper typeMapper;
+ * TypeMapper& typeMapper = TypeMapper::getInstance();
  * typeMapper.setCreated(cppRefType, cPtrType);
  * clang::QualType cType = typeMapper.getCreated(cppRefType);
  * if (typeMapper.hasCreated(cppRefType)) { ... }
  * ```
  */
-using TypeMapper = NodeMapper<clang::Type, clang::QualType>;
+class TypeMapper {
+public:
+  /**
+   * @brief Get the singleton TypeMapper instance
+   * @return Reference to the global TypeMapper instance
+   *
+   * **Singleton Pattern**: Ensures all files share the same TypeMapper
+   * **Thread Safety**: Not thread-safe; call from single thread during transpilation
+   */
+  static TypeMapper& getInstance() {
+    static TypeMapper instance;
+    return instance;
+  }
+
+  /**
+   * @brief Store mapping from C++ type to created C type
+   * @param cppNode Source C++ type
+   * @param cNode Created C type (QualType)
+   */
+  void setCreated(const clang::Type* cppNode, clang::QualType cNode) {
+    mapper_.setCreated(cppNode, cNode);
+  }
+
+  /**
+   * @brief Get C type created for a C++ type
+   * @param cppNode Source C++ type
+   * @return Created C type, or null QualType if not found
+   */
+  clang::QualType getCreated(const clang::Type* cppNode) const {
+    return mapper_.getCreated(cppNode);
+  }
+
+  /**
+   * @brief Check if a C++ type has a mapped C type
+   * @param cppNode Source C++ type
+   * @return true if mapping exists, false otherwise
+   */
+  bool hasCreated(const clang::Type* cppNode) const {
+    return mapper_.hasCreated(cppNode);
+  }
+
+  /**
+   * @brief Reset all mappings (for testing)
+   */
+  static void reset() {
+    getInstance().mapper_ = NodeMapper<clang::Type, clang::QualType>();
+  }
+
+private:
+  TypeMapper() = default;
+  TypeMapper(const TypeMapper&) = delete;
+  TypeMapper& operator=(const TypeMapper&) = delete;
+
+  NodeMapper<clang::Type, clang::QualType> mapper_;
+};
 
 } // namespace cpptoc

@@ -148,6 +148,10 @@ private:
     // Statement mapper for C++ → C statement mappings
     cpptoc::StmtMapper& stmtMapper;
 
+    // Current target path context (which source file is currently being transpiled)
+    // Mutable because handlers need to update context even when dispatcher is const
+    mutable std::string currentTargetPath_;
+
 public:
     /**
      * @brief Construct dispatcher with required dependencies
@@ -212,6 +216,25 @@ public:
      * More accurate than getMainFileID() - uses actual node location.
      */
     std::string getTargetPath(const clang::ASTContext& cppASTContext, const clang::Decl* D) const;
+
+    /**
+     * @brief Set the current target path (which source file is being transpiled)
+     * @param targetPath Target file path for current source file
+     *
+     * Should be called at the start of processing each source file, so all declarations
+     * encountered during that source file's processing get added to the correct C_TU.
+     * Const-qualified because it modifies mutable context state (not logical constness).
+     */
+    void setCurrentTargetPath(const std::string& targetPath) const;
+
+    /**
+     * @brief Get the current target path (which source file is being transpiled)
+     * @return Current target file path
+     *
+     * Returns the path set by setCurrentTargetPath(). All declarations encountered
+     * during transpilation of the current source file should go to this C_TU.
+     */
+    std::string getCurrentTargetPath() const;
 
     // Core AST node handlers
     void addHandler(DeclPredicate predicate, DeclVisitor handler);

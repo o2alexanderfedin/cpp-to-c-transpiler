@@ -67,6 +67,7 @@ void CXXConstructExprHandler::handleCXXConstructExpr(
         if (!argHandled) {
             llvm::errs() << "[CXXConstructExprHandler] ERROR: Argument " << i
                          << " not handled by any expression handler\n";
+            llvm::errs() << "  Argument type: " << cppArg->getStmtClassName() << "\n";
             assert(false && "Constructor argument must be handled");
         }
 
@@ -126,6 +127,7 @@ void CXXConstructExprHandler::handleCXXConstructExpr(
 
     // Step 4: Wrap in CompoundLiteralExpr to create (struct Type){...}
     // This is the proper C99 syntax for struct literals
+    // Note: CodeGenerator.printExpr will add "struct" keyword when printing CompoundLiteralExpr
     clang::CompoundLiteralExpr* compoundLit = new (cASTContext) clang::CompoundLiteralExpr(
         clang::SourceLocation(),
         cASTContext.getTrivialTypeSourceInfo(cType),

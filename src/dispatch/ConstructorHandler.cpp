@@ -126,7 +126,10 @@ void ConstructorHandler::handleConstructor(
     declMapper.setCreated(ctor, cFunc);
 
     // Get target path and add to C TranslationUnit
-    std::string targetPath = disp.getTargetPath(cppASTContext, D);
+    std::string targetPath = disp.getCurrentTargetPath();  // Use current path set by TranslationUnitHandler
+    if (targetPath.empty()) {
+        targetPath = disp.getTargetPath(cppASTContext, D);
+    }
     cpptoc::PathMapper& pathMapper = disp.getPathMapper();
     clang::TranslationUnitDecl* cTargetTU = pathMapper.getOrCreateTU(targetPath);
     assert(cTargetTU && "Failed to get/create C TranslationUnit");
@@ -342,7 +345,7 @@ std::vector<clang::Stmt*> ConstructorHandler::injectLpVtblInit(
                 clang::IdentifierInfo& vtableII = cASTContext.Idents.get(vtableStructName);
                 vtableStruct = clang::RecordDecl::Create(
                     cASTContext,
-                    clang::TagTypeKind::Struct,
+                    clang::TTK_Struct,
                     TU,
                     clang::SourceLocation(),
                     clang::SourceLocation(),
@@ -480,7 +483,7 @@ std::vector<clang::Stmt*> ConstructorHandler::injectLpVtblInit(
                     clang::IdentifierInfo& vtableII = cASTContext.Idents.get(vtableStructName);
                     vtableStruct = clang::RecordDecl::Create(
                         cASTContext,
-                        clang::TagTypeKind::Struct,
+                        clang::TTK_Struct,
                         TU,
                         clang::SourceLocation(),
                         clang::SourceLocation(),
@@ -640,7 +643,7 @@ clang::CallExpr* ConstructorHandler::createBaseConstructorCall(
             clang::IdentifierInfo& II = cASTContext.Idents.get(baseName);
             baseStruct = clang::RecordDecl::Create(
                 cASTContext,
-                clang::TagTypeKind::Struct,
+                clang::TTK_Struct,
                 TU,
                 clang::SourceLocation(),
                 clang::SourceLocation(),

@@ -1,6 +1,3 @@
-// Generated from: /Users/alexanderfedin/Projects/hapyy/hupyy-cpp-to-c/./website/test/fixtures/simple-function.cpp
-// Implementation file
-
 #include "simple-function.h"
 
 int add(int a, int b) {

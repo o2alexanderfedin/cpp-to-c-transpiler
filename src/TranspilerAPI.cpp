@@ -149,10 +149,12 @@ public:
         // Create mapping utilities
         cpptoc::PathMapper& mapper = cpptoc::PathMapper::getInstance(".", ".");
         cpptoc::DeclLocationMapper locMapper(mapper);
-        cpptoc::DeclMapper declMapper;
-        cpptoc::TypeMapper typeMapper;
-        cpptoc::ExprMapper exprMapper;
-        cpptoc::StmtMapper stmtMapper;
+
+        // Get singleton mapper instances (shared across all source files)
+        cpptoc::DeclMapper& declMapper = cpptoc::DeclMapper::getInstance();
+        cpptoc::TypeMapper& typeMapper = cpptoc::TypeMapper::getInstance();
+        cpptoc::ExprMapper& exprMapper = cpptoc::ExprMapper::getInstance();
+        cpptoc::StmtMapper& stmtMapper = cpptoc::StmtMapper::getInstance();
 
         // Create dispatcher with all mappers
         CppToCVisitorDispatcher dispatcher(mapper, locMapper, declMapper, typeMapper, exprMapper, stmtMapper);

@@ -52,13 +52,13 @@ namespace test {
 struct DispatcherPipeline {
     std::unique_ptr<clang::ASTUnit> cppAST;
     std::unique_ptr<clang::ASTUnit> cAST;
-    // PathMapper is a singleton - store reference
+    // All mappers are singletons - store references
     PathMapper* pathMapper;
     std::unique_ptr<DeclLocationMapper> declLocationMapper;
-    std::unique_ptr<DeclMapper> declMapper;
-    std::unique_ptr<TypeMapper> typeMapper;
-    std::unique_ptr<ExprMapper> exprMapper;
-    std::unique_ptr<StmtMapper> stmtMapper;
+    DeclMapper* declMapper;
+    TypeMapper* typeMapper;
+    ExprMapper* exprMapper;
+    StmtMapper* stmtMapper;
     std::unique_ptr<CppToCVisitorDispatcher> dispatcher;
 };
 
@@ -100,13 +100,19 @@ inline DispatcherPipeline createDispatcherPipeline(const std::string& cppCode = 
     }
 
     // Create mappers
-    // Get singleton PathMapper instance
+    // Get singleton instances for all mappers
     pipeline.pathMapper = &PathMapper::getInstance("/tmp/test_source", "/tmp/test_output");
     pipeline.declLocationMapper = std::make_unique<DeclLocationMapper>(*pipeline.pathMapper);
-    pipeline.declMapper = std::make_unique<DeclMapper>();
-    pipeline.typeMapper = std::make_unique<TypeMapper>();
-    pipeline.exprMapper = std::make_unique<ExprMapper>();
-    pipeline.stmtMapper = std::make_unique<StmtMapper>();
+    pipeline.declMapper = &DeclMapper::getInstance();
+    pipeline.typeMapper = &TypeMapper::getInstance();
+    pipeline.exprMapper = &ExprMapper::getInstance();
+    pipeline.stmtMapper = &StmtMapper::getInstance();
+
+    // Reset singleton state for test isolation
+    DeclMapper::reset();
+    TypeMapper::reset();
+    ExprMapper::reset();
+    StmtMapper::reset();
 
     // Create dispatcher with all mappers
     pipeline.dispatcher = std::make_unique<CppToCVisitorDispatcher>(
@@ -138,19 +144,22 @@ inline std::string generateCCode(clang::ASTContext& cASTContext, PathMapper& pat
     // Get all target files from PathMapper
     std::vector<std::string> targetFiles = pathMapper.getAllTargetFiles();
 
-    // Print all TUs created by PathMapper (skip <stdin>.c - it's just the dummy TU)
+    // Print all TUs created by PathMapper
+    // Note: We used to skip <stdin>.c assuming it was just the dummy TU,
+    // but after fixing TranslationUnitHandler, actual code may be in <stdin>.c
     for (const auto& targetPath : targetFiles) {
-        // Skip the dummy <stdin>.c TU (created when we initialized C ASTContext)
-        if (targetPath.find("<stdin>") != std::string::npos) {
-            continue;
-        }
-
         llvm::outs() << "[DispatcherTestHelper] About to print TU for: " << targetPath << "\n";
         clang::TranslationUnitDecl* TU = pathMapper.getOrCreateTU(targetPath);
         if (TU) {
             llvm::outs() << "[DispatcherTestHelper] TU has " << std::distance(TU->decls_begin(), TU->decls_end()) << " decls\n";
-            generator.printTranslationUnit(TU);
-            llvm::outs() << "[DispatcherTestHelper] Finished printing TU\n";
+
+            // Only print if TU has declarations (skip empty dummy TUs)
+            if (std::distance(TU->decls_begin(), TU->decls_end()) > 0) {
+                generator.printTranslationUnit(TU);
+                llvm::outs() << "[DispatcherTestHelper] Finished printing TU\n";
+            } else {
+                llvm::outs() << "[DispatcherTestHelper] Skipping empty TU\n";
+            }
         }
     }
 

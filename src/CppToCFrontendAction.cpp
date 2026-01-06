@@ -15,16 +15,41 @@
 #include "dispatch/MemberExprHandler.h"
 #include "dispatch/ArraySubscriptExprHandler.h"
 #include "dispatch/LiteralHandler.h"
+#include "dispatch/RecoveryExprHandler.h"
+#include "dispatch/UnresolvedLookupExprHandler.h"
 #include "dispatch/UnaryOperatorHandler.h"
 #include "dispatch/BinaryOperatorHandler.h"
 #include "dispatch/ParenExprHandler.h"
 #include "dispatch/ImplicitCastExprHandler.h"
+#include "dispatch/CallExprHandler.h"
 #include "dispatch/CXXOperatorCallExprHandler.h"
+#include "dispatch/CXXMemberCallExprHandler.h"
 #include "dispatch/CXXTypeidExprHandler.h"
 #include "dispatch/CXXDynamicCastExprHandler.h"
+#include "dispatch/CXXStaticCastExprHandler.h"
+#include "dispatch/CXXFunctionalCastExprHandler.h"
+#include "dispatch/CStyleCastExprHandler.h"
+#include "dispatch/CompoundAssignOperatorHandler.h"
+#include "dispatch/CXXDependentScopeMemberExprHandler.h"
 #include "dispatch/CommaOperatorHandler.h"
+#include "dispatch/ConditionalOperatorHandler.h"
 #include "dispatch/CXXConstructExprHandler.h"
+#include "dispatch/CXXTemporaryObjectExprHandler.h"
+#include "dispatch/CXXNullPtrLiteralExprHandler.h"
+#include "dispatch/CXXDefaultArgExprHandler.h"
+#include "dispatch/CXXNewExprHandler.h"
+#include "dispatch/CXXDeleteExprHandler.h"
+#include "dispatch/CXXThisExprHandler.h"
+#include "dispatch/CompoundLiteralExprHandler.h"
+#include "dispatch/ExprWithCleanupsHandler.h"
+#include "dispatch/MaterializeTemporaryExprHandler.h"
 #include "dispatch/InitListExprHandler.h"
+#include "dispatch/IfStmtHandler.h"
+#include "dispatch/SwitchStmtHandler.h"
+#include "dispatch/ForStmtHandler.h"
+#include "dispatch/WhileStmtHandler.h"
+#include "dispatch/DeclStmtHandler.h"
+#include "dispatch/VariableHandler.h"
 #include "mapping/PathMapper.h"
 #include "mapping/DeclLocationMapper.h"
 #include "mapping/DeclMapper.h"
@@ -75,18 +100,25 @@ public:
 
     // Create mapping utilities
     cpptoc::DeclLocationMapper locMapper(pathMapper);
-    cpptoc::DeclMapper declMapper;
-    cpptoc::TypeMapper typeMapper;
-    cpptoc::ExprMapper exprMapper;
-    cpptoc::StmtMapper stmtMapper;
+
+    // Get singleton mapper instances (shared across all source files)
+    cpptoc::DeclMapper& declMapper = cpptoc::DeclMapper::getInstance();
+    cpptoc::TypeMapper& typeMapper = cpptoc::TypeMapper::getInstance();
+    cpptoc::ExprMapper& exprMapper = cpptoc::ExprMapper::getInstance();
+    cpptoc::StmtMapper& stmtMapper = cpptoc::StmtMapper::getInstance();
 
     // Create dispatcher with all mappers
     CppToCVisitorDispatcher dispatcher(pathMapper, locMapper, declMapper, typeMapper, exprMapper, stmtMapper);
+
+    // Set the current target path so all declarations go to the correct C_TU
+    dispatcher.setCurrentTargetPath(targetPath);
 
     // Register all handlers in dependency order
     cpptoc::TypeHandler::registerWith(dispatcher);
     cpptoc::ParameterHandler::registerWith(dispatcher);
     cpptoc::LiteralHandler::registerWith(dispatcher);
+    cpptoc::RecoveryExprHandler::registerWith(dispatcher);
+    cpptoc::UnresolvedLookupExprHandler::registerWith(dispatcher);
     cpptoc::DeclRefExprHandler::registerWith(dispatcher);
     cpptoc::MemberExprHandler::registerWith(dispatcher);
     cpptoc::ArraySubscriptExprHandler::registerWith(dispatcher);
@@ -94,14 +126,37 @@ public:
     cpptoc::ImplicitCastExprHandler::registerWith(dispatcher);
     cpptoc::UnaryOperatorHandler::registerWith(dispatcher);
     cpptoc::BinaryOperatorHandler::registerWith(dispatcher);
+    cpptoc::CompoundAssignOperatorHandler::registerWith(dispatcher);
+    cpptoc::CallExprHandler::registerWith(dispatcher);
     cpptoc::CXXOperatorCallExprHandler::registerWith(dispatcher);
+    cpptoc::CXXMemberCallExprHandler::registerWith(dispatcher);
     cpptoc::CXXTypeidExprHandler::registerWith(dispatcher);
     cpptoc::CXXDynamicCastExprHandler::registerWith(dispatcher);
+    cpptoc::CXXStaticCastExprHandler::registerWith(dispatcher);
+    cpptoc::CXXFunctionalCastExprHandler::registerWith(dispatcher);
+    cpptoc::CStyleCastExprHandler::registerWith(dispatcher);
+    cpptoc::CXXDependentScopeMemberExprHandler::registerWith(dispatcher);
     cpptoc::CommaOperatorHandler::registerWith(dispatcher);
+    cpptoc::ConditionalOperatorHandler::registerWith(dispatcher);
     cpptoc::InitListExprHandler::registerWith(dispatcher);
     cpptoc::CXXConstructExprHandler::registerWith(dispatcher);
+    cpptoc::CXXTemporaryObjectExprHandler::registerWith(dispatcher);
+    cpptoc::CXXNullPtrLiteralExprHandler::registerWith(dispatcher);
+    cpptoc::CXXDefaultArgExprHandler::registerWith(dispatcher);
+    cpptoc::CXXNewExprHandler::registerWith(dispatcher);
+    cpptoc::CXXDeleteExprHandler::registerWith(dispatcher);
+    cpptoc::CXXThisExprHandler::registerWith(dispatcher);
+    cpptoc::CompoundLiteralExprHandler::registerWith(dispatcher);
+    cpptoc::ExprWithCleanupsHandler::registerWith(dispatcher);
+    cpptoc::MaterializeTemporaryExprHandler::registerWith(dispatcher);
+    cpptoc::IfStmtHandler::registerWith(dispatcher);
+    cpptoc::SwitchStmtHandler::registerWith(dispatcher);
+    cpptoc::ForStmtHandler::registerWith(dispatcher);
+    cpptoc::WhileStmtHandler::registerWith(dispatcher);
+    cpptoc::DeclStmtHandler::registerWith(dispatcher);
     cpptoc::CompoundStmtHandler::registerWith(dispatcher);
     cpptoc::ReturnStmtHandler::registerWith(dispatcher);
+    cpptoc::VariableHandler::registerWith(dispatcher);
     cpptoc::RecordHandler::registerWith(dispatcher);
     cpptoc::FunctionHandler::registerWith(dispatcher);
     cpptoc::InstanceMethodHandler::registerWith(dispatcher);
@@ -115,6 +170,8 @@ public:
     dispatcher.dispatch(Context, cCtx, TU);
 
     // Generate C code using CodeGenerator
+    // TODO: This should use C ASTContext (cCtx), but currently uses C++ Context
+    // because CodeGenerator's type checking doesn't work correctly with separate contexts
     std::string headerContent;
     std::string implContent;
     llvm::raw_string_ostream headerOS(headerContent);

@@ -160,7 +160,7 @@ void VirtualMethodHandler::handleVirtualMethod(
                 }
             }
         }
-    } else if (cppMethod->isPureVirtual()) {
+    } else if (cppMethod->isPure()) {
         llvm::outs() << "[VirtualMethodHandler] Pure virtual method (no body): " << mangledName << "\n";
     }
 
@@ -184,7 +184,10 @@ void VirtualMethodHandler::handleVirtualMethod(
     }
 
     // Get target path for this C++ source file
-    std::string targetPath = disp.getTargetPath(cppASTContext, D);
+    std::string targetPath = disp.getCurrentTargetPath();  // Use current path set by TranslationUnitHandler
+    if (targetPath.empty()) {
+        targetPath = disp.getTargetPath(cppASTContext, D);
+    }
 
     // Get or create C TranslationUnit for this target file
     cpptoc::PathMapper& pathMapper = disp.getPathMapper();
@@ -215,7 +218,7 @@ void VirtualMethodHandler::handleVirtualMethod(
                  << classDecl->getNameAsString() << "::" << cppMethod->getNameAsString()
                  << " → " << mangledName << "(struct " << classDecl->getNameAsString() << "* this, ...)"
                  << " → " << targetPath;
-    if (cppMethod->isPureVirtual()) {
+    if (cppMethod->isPure()) {
         llvm::outs() << " [PURE VIRTUAL]";
     }
     llvm::outs() << "\n";
@@ -245,7 +248,7 @@ clang::ParmVarDecl* VirtualMethodHandler::createThisParameter(
     clang::IdentifierInfo& structII = cASTContext.Idents.get(className);
     clang::RecordDecl* structDecl = clang::RecordDecl::Create(
         cASTContext,
-        clang::TagTypeKind::Struct,
+        clang::TTK_Struct,
         cASTContext.getTranslationUnitDecl(),
         clang::SourceLocation(),
         clang::SourceLocation(),

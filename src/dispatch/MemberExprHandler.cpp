@@ -62,6 +62,7 @@ void MemberExprHandler::handleMemberExpr(
 
     if (!baseHandled) {
         llvm::errs() << "[MemberExprHandler] ERROR: Base expression not handled by any handler\n";
+        llvm::errs() << "  Base expression type: " << cppBase->getStmtClassName() << "\n";
         assert(false && "Base expression must be handled");
     }
 

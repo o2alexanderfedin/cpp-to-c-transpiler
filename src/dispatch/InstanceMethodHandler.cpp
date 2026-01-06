@@ -175,7 +175,10 @@ void InstanceMethodHandler::handleInstanceMethod(
     }
 
     // Get target path for this C++ source file
-    std::string targetPath = disp.getTargetPath(cppASTContext, D);
+    std::string targetPath = disp.getCurrentTargetPath();  // Use current path set by TranslationUnitHandler
+    if (targetPath.empty()) {
+        targetPath = disp.getTargetPath(cppASTContext, D);
+    }
 
     // Get or create C TranslationUnit for this target file
     cpptoc::PathMapper& pathMapper = disp.getPathMapper();
@@ -214,7 +217,7 @@ clang::ParmVarDecl* InstanceMethodHandler::createThisParameter(
     clang::IdentifierInfo& structII = cASTContext.Idents.get(className);
     clang::RecordDecl* structDecl = clang::RecordDecl::Create(
         cASTContext,
-        clang::TagTypeKind::Struct,
+        clang::TTK_Struct,  // LLVM 15 uses TTK_Struct instead of TTK_Struct
         cASTContext.getTranslationUnitDecl(),
         clang::SourceLocation(),
         clang::SourceLocation(),

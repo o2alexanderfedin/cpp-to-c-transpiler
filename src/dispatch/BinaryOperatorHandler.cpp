@@ -59,6 +59,7 @@ void BinaryOperatorHandler::handleBinaryOperator(
 
     if (!lhsHandled) {
         llvm::errs() << "[BinaryOperatorHandler] ERROR: LHS not handled by any expression handler\n";
+        llvm::errs() << "  LHS expression type: " << cppLHS->getStmtClassName() << "\n";
         assert(false && "LHS must be handled");
     }
 
@@ -72,6 +73,7 @@ void BinaryOperatorHandler::handleBinaryOperator(
 
     if (!rhsHandled) {
         llvm::errs() << "[BinaryOperatorHandler] ERROR: RHS not handled by any expression handler\n";
+        llvm::errs() << "  RHS expression type: " << cppRHS->getStmtClassName() << "\n";
         assert(false && "RHS must be handled");
     }
 

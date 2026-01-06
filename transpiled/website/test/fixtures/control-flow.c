@@ -1,6 +1,3 @@
-// Generated from: /Users/alexanderfedin/Projects/hapyy/hupyy-cpp-to-c/./website/test/fixtures/control-flow.cpp
-// Implementation file
-
 #include "control-flow.h"
 
 int factorial(int n) {
