@@ -1,0 +1,119 @@
+{
+  "tests": 19,
+  "name": "AllTests",
+  "testsuites": [
+    {
+      "name": "ConsoleLoggerTest",
+      "tests": 7,
+      "testsuite": [
+        {
+          "name": "CreateLogger",
+          "file": "\/Users\/alexanderfedin\/Projects\/hapyy\/hupyy-cpp-to-c\/tests\/real-world\/logger\/tests\/test_logger.cpp",
+          "line": 62
+        },
+        {
+          "name": "GetLevel",
+          "file": "\/Users\/alexanderfedin\/Projects\/hapyy\/hupyy-cpp-to-c\/tests\/real-world\/logger\/tests\/test_logger.cpp",
+          "line": 66
+        },
+        {
+          "name": "BasicLogging",
+          "file": "\/Users\/alexanderfedin\/Projects\/hapyy\/hupyy-cpp-to-c\/tests\/real-world\/logger\/tests\/test_logger.cpp",
+          "line": 70
+        },
+        {
+          "name": "TemplateLoggingInteger",
+          "file": "\/Users\/alexanderfedin\/Projects\/hapyy\/hupyy-cpp-to-c\/tests\/real-world\/logger\/tests\/test_logger.cpp",
+          "line": 323
+        },
+        {
+          "name": "TemplateLoggingDouble",
+          "file": "\/Users\/alexanderfedin\/Projects\/hapyy\/hupyy-cpp-to-c\/tests\/real-world\/logger\/tests\/test_logger.cpp",
+          "line": 327
+        },
+        {
+          "name": "TemplateLoggingString",
+          "file": "\/Users\/alexanderfedin\/Projects\/hapyy\/hupyy-cpp-to-c\/tests\/real-world\/logger\/tests\/test_logger.cpp",
+          "line": 331
+        },
+        {
+          "name": "TemplateLoggingBoolean",
+          "file": "\/Users\/alexanderfedin\/Projects\/hapyy\/hupyy-cpp-to-c\/tests\/real-world\/logger\/tests\/test_logger.cpp",
+          "line": 335
+        }
+      ]
+    },
+    {
+      "name": "FileLoggerTest",
+      "tests": 8,
+      "testsuite": [
+        {
+          "name": "CreateFileLogger",
+          "file": "\/Users\/alexanderfedin\/Projects\/hapyy\/hupyy-cpp-to-c\/tests\/real-world\/logger\/tests\/test_logger.cpp",
+          "line": 82
+        },
+        {
+          "name": "LogToFile",
+          "file": "\/Users\/alexanderfedin\/Projects\/hapyy\/hupyy-cpp-to-c\/tests\/real-world\/logger\/tests\/test_logger.cpp",
+          "line": 87
+        },
+        {
+          "name": "LogLineContainsTimestamp",
+          "file": "\/Users\/alexanderfedin\/Projects\/hapyy\/hupyy-cpp-to-c\/tests\/real-world\/logger\/tests\/test_logger.cpp",
+          "line": 108
+        },
+        {
+          "name": "LogLineContainsLevel",
+          "file": "\/Users\/alexanderfedin\/Projects\/hapyy\/hupyy-cpp-to-c\/tests\/real-world\/logger\/tests\/test_logger.cpp",
+          "line": 122
+        },
+        {
+          "name": "LogLevelFiltering",
+          "file": "\/Users\/alexanderfedin\/Projects\/hapyy\/hupyy-cpp-to-c\/tests\/real-world\/logger\/tests\/test_logger.cpp",
+          "line": 153
+        },
+        {
+          "name": "StreamStyleLogging",
+          "file": "\/Users\/alexanderfedin\/Projects\/hapyy\/hupyy-cpp-to-c\/tests\/real-world\/logger\/tests\/test_logger.cpp",
+          "line": 253
+        },
+        {
+          "name": "StreamStyleWithNumbers",
+          "file": "\/Users\/alexanderfedin\/Projects\/hapyy\/hupyy-cpp-to-c\/tests\/real-world\/logger\/tests\/test_logger.cpp",
+          "line": 279
+        },
+        {
+          "name": "StreamStyleWithFloats",
+          "file": "\/Users\/alexanderfedin\/Projects\/hapyy\/hupyy-cpp-to-c\/tests\/real-world\/logger\/tests\/test_logger.cpp",
+          "line": 299
+        }
+      ]
+    },
+    {
+      "name": "MultiLoggerTest",
+      "tests": 4,
+      "testsuite": [
+        {
+          "name": "CreateMultiLogger",
+          "file": "\/Users\/alexanderfedin\/Projects\/hapyy\/hupyy-cpp-to-c\/tests\/real-world\/logger\/tests\/test_logger.cpp",
+          "line": 185
+        },
+        {
+          "name": "AddLoggers",
+          "file": "\/Users\/alexanderfedin\/Projects\/hapyy\/hupyy-cpp-to-c\/tests\/real-world\/logger\/tests\/test_logger.cpp",
+          "line": 190
+        },
+        {
+          "name": "LogToMultipleFiles",
+          "file": "\/Users\/alexanderfedin\/Projects\/hapyy\/hupyy-cpp-to-c\/tests\/real-world\/logger\/tests\/test_logger.cpp",
+          "line": 200
+        },
+        {
+          "name": "MultiLoggerWithConsole",
+          "file": "\/Users\/alexanderfedin\/Projects\/hapyy\/hupyy-cpp-to-c\/tests\/real-world\/logger\/tests\/test_logger.cpp",
+          "line": 228
+        }
+      ]
+    }
+  ]
+}

@@ -1,3 +1,6 @@
 [submodule "website"]
 	path = website
 	url = https://github.com/o2alexanderfedin/cpp-to-c-website.git
+[submodule "tests/real-world/cpp23-validation/external-projects/cpp23-examples"]
+	path = tests/real-world/cpp23-validation/external-projects/cpp23-examples
+	url = https://github.com/scivision/Cpp23-examples.git

@@ -32,13 +32,27 @@ include_directories(${CLANG_INCLUDE_DIRS})
 separate_arguments(LLVM_DEFINITIONS_LIST NATIVE_COMMAND ${LLVM_DEFINITIONS})
 add_definitions(${LLVM_DEFINITIONS_LIST})
 
-# Test executable
+# Test executables
 add_executable(test_operator_overloading
     OperatorOverloadingTest.cpp
 )
 
+add_executable(test_logical_and_operator
+    LogicalAndOperatorTest.cpp
+)
+
 # Link libraries
 target_link_libraries(test_operator_overloading
+    GTest::gtest
+    GTest::gtest_main
+    clangTooling
+    clangFrontend
+    clangBasic
+    clangAST
+    clangLex
+)
+
+target_link_libraries(test_logical_and_operator
     GTest::gtest
     GTest::gtest_main
     clangTooling
@@ -54,4 +68,8 @@ include(GoogleTest)
 gtest_discover_tests(test_operator_overloading
     WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
     PROPERTIES LABELS "unit;operators"
+)
+gtest_discover_tests(test_logical_and_operator
+    WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
+    PROPERTIES LABELS "unit;operators;logical-and"
 )

@@ -2,8 +2,10 @@
 // Story #15: Class-to-struct conversion
 
 #include <gtest/gtest.h>
-#include "CppToCVisitor.h"
 #include "CNodeBuilder.h"
+#include "FileOriginTracker.h"
+#include "TargetContext.h"
+#include "mapping/PathMapper.h"
 #include "clang/Tooling/Tooling.h"
 
 using namespace clang;
@@ -20,46 +22,58 @@ std::unique_ptr<ASTUnit> buildAST(const std::string &code) {
 // Test fixture
 class CppToCVisitorTest : public ::testing::Test {
 protected:
+    // Helper to create a CppToCVisitor with a C TranslationUnitDecl
+    std::unique_ptr<CppToCVisitor> createVisitor(ASTUnit &AST, CNodeBuilder &builder,
+                                                   cpptoc::FileOriginTracker &tracker) {
+        // Get TargetContext
+        TargetContext& targetCtx = TargetContext::getInstance();
+
+        // Create PathMapper (required for Phase 2)
+        cpptoc::PathMapper& pathMapper = cpptoc::PathMapper::getInstance("/src", "/output");
+
+        return std::make_unique<CppToCVisitor>(AST.getASTContext(), builder,
+                                                targetCtx, tracker, &pathMapper);
+    }
 };
 
-TEST_F(CppToCVisitorTest, EmptyClass:_class_Empty_{}__>_struct_Empty_{}) {
-    // Build AST for test
-    const char *code = R"(int main() { return 0; })";
-    std::unique_ptr<ASTUnit> AST = buildAST(code);
-    ASTContext &Ctx = AST->getASTContext();
-
+TEST_F(CppToCVisitorTest, EmptyClass) {
     const char *cpp = "class Empty {};";
         std::unique_ptr<ASTUnit> AST = buildAST(cpp);
         ASSERT_TRUE(AST) << "Failed to parse C++ code";
 
         CNodeBuilder builder(AST->getASTContext());
-        CppToCVisitor visitor(AST->getASTContext(), builder);
+        cpptoc::FileOriginTracker tracker(AST->getASTContext().getSourceManager());
+        // For test code built in-memory, treat all files as user code
+        tracker.addUserHeaderPath("<stdin>");
+        tracker.addUserHeaderPath("input.cc");
+        tracker.addUserHeaderPath(".");
+        auto visitor = createVisitor(*AST, builder, tracker);
 
         // Run visitor on AST
-        visitor.TraverseDecl(AST->getASTContext().getTranslationUnitDecl());
+        visitor->TraverseDecl(AST->getASTContext().getTranslationUnitDecl());
 
         // Verify C struct generated
-        RecordDecl *CStruct = visitor.getCStruct("Empty");
+        RecordDecl *CStruct = visitor->getCStruct("Empty");
         ASSERT_TRUE(CStruct != nullptr) << "C struct not generated";
         ASSERT_TRUE(CStruct->getName() == "Empty") << "Struct name mismatch";
 }
 
-TEST_F(CppToCVisitorTest, ClassWithFields:_class_Point_{_int_x,_y;_}) {
-    // Build AST for test
-    const char *code = R"(int main() { return 0; })";
-    std::unique_ptr<ASTUnit> AST = buildAST(code);
-    ASTContext &Ctx = AST->getASTContext();
-
+TEST_F(CppToCVisitorTest, ClassWithFields) {
     const char *cpp = "class Point { int x, y; };";
         std::unique_ptr<ASTUnit> AST = buildAST(cpp);
         ASSERT_TRUE(AST) << "Failed to parse C++ code";
 
         CNodeBuilder builder(AST->getASTContext());
-        CppToCVisitor visitor(AST->getASTContext(), builder);
+        cpptoc::FileOriginTracker tracker(AST->getASTContext().getSourceManager());
+        // For test code built in-memory, treat all files as user code
+        tracker.addUserHeaderPath("<stdin>");
+        tracker.addUserHeaderPath("input.cc");
+        tracker.addUserHeaderPath(".");
+        auto visitor = createVisitor(*AST, builder, tracker);
 
-        visitor.TraverseDecl(AST->getASTContext().getTranslationUnitDecl());
+        visitor->TraverseDecl(AST->getASTContext().getTranslationUnitDecl());
 
-        RecordDecl *CStruct = visitor.getCStruct("Point");
+        RecordDecl *CStruct = visitor->getCStruct("Point");
         ASSERT_TRUE(CStruct != nullptr) << "C struct not generated";
 
         // Count fields
@@ -70,11 +84,7 @@ TEST_F(CppToCVisitorTest, ClassWithFields:_class_Point_{_int_x,_y;_}) {
         ASSERT_TRUE(fieldCount == 2) << "Expected 2 fields, got different count";
 }
 
-TEST_F(CppToCVisitorTest, MixedAccessSpecifiers:_public/private__>_all_public_in_C) {
-    // Build AST for test
-    const char *code = R"(int main() { return 0; })";
-    std::unique_ptr<ASTUnit> AST = buildAST(code);
-    ASTContext &Ctx = AST->getASTContext();
+TEST_F(CppToCVisitorTest, MixedAccessSpecifiers) {
 
     const char *cpp = R"(
             class Point {
@@ -90,11 +100,16 @@ TEST_F(CppToCVisitorTest, MixedAccessSpecifiers:_public/private__>_all_public_in
         ASSERT_TRUE(AST) << "Failed to parse C++ code";
 
         CNodeBuilder builder(AST->getASTContext());
-        CppToCVisitor visitor(AST->getASTContext(), builder);
+        cpptoc::FileOriginTracker tracker(AST->getASTContext().getSourceManager());
+        // For test code built in-memory, treat all files as user code
+        tracker.addUserHeaderPath("<stdin>");
+        tracker.addUserHeaderPath("input.cc");
+        tracker.addUserHeaderPath(".");
+        auto visitor = createVisitor(*AST, builder, tracker);
 
-        visitor.TraverseDecl(AST->getASTContext().getTranslationUnitDecl());
+        visitor->TraverseDecl(AST->getASTContext().getTranslationUnitDecl());
 
-        RecordDecl *CStruct = visitor.getCStruct("Point");
+        RecordDecl *CStruct = visitor->getCStruct("Point");
         ASSERT_TRUE(CStruct != nullptr) << "C struct not generated";
 
         // All fields should be present (access specifiers ignored in C)
@@ -102,38 +117,31 @@ TEST_F(CppToCVisitorTest, MixedAccessSpecifiers:_public/private__>_all_public_in
         for (auto *Field : CStruct->fields()) {
             fieldCount++;
         }
-        ASSERT_TRUE(fieldCount == 3) << "Expected 3 fields (all access levels;");
+        ASSERT_TRUE(fieldCount == 3) << "Expected 3 fields (all access levels)";
 }
 
-TEST_F(CppToCVisitorTest, ForwardDeclaration:_class_Forward;__>_skip) {
-    // Build AST for test
-    const char *code = R"(int main() { return 0; })";
-    std::unique_ptr<ASTUnit> AST = buildAST(code);
-    ASTContext &Ctx = AST->getASTContext();
-
+TEST_F(CppToCVisitorTest, ForwardDeclaration) {
     const char *cpp = "class Forward;";
         std::unique_ptr<ASTUnit> AST = buildAST(cpp);
         ASSERT_TRUE(AST) << "Failed to parse C++ code";
 
         CNodeBuilder builder(AST->getASTContext());
-        CppToCVisitor visitor(AST->getASTContext(), builder);
+        cpptoc::FileOriginTracker tracker(AST->getASTContext().getSourceManager());
+        // For test code built in-memory, treat all files as user code
+        tracker.addUserHeaderPath("<stdin>");
+        tracker.addUserHeaderPath("input.cc");
+        tracker.addUserHeaderPath(".");
+        auto visitor = createVisitor(*AST, builder, tracker);
 
-        visitor.TraverseDecl(AST->getASTContext().getTranslationUnitDecl());
+        visitor->TraverseDecl(AST->getASTContext().getTranslationUnitDecl());
 
         // Forward declarations should be skipped
-        RecordDecl *CStruct = visitor.getCStruct("Forward");
+        RecordDecl *CStruct = visitor->getCStruct("Forward");
         ASSERT_TRUE(CStruct == nullptr) << "Forward declaration should be skipped";
 }
 
-TEST_F(CppToCVisitorTest, SimpleMethod:_int_getX__>_int_Point_getX(struct_Point_*this)) {
-    // Build AST for test
-    const char *code = R"(int main() { return 0; })";
-    std::unique_ptr<ASTUnit> AST = buildAST(code);
-    ASTContext &Ctx = AST->getASTContext();
-
-    -> int Point_getX(struct Point *this)");
-
-        const char *cpp = R"(
+TEST_F(CppToCVisitorTest, SimpleMethod) {
+    const char *cpp = R"(
             class Point {
                 int x;
             public:
@@ -144,26 +152,24 @@ TEST_F(CppToCVisitorTest, SimpleMethod:_int_getX__>_int_Point_getX(struct_Point_
         ASSERT_TRUE(AST) << "Failed to parse C++ code";
 
         CNodeBuilder builder(AST->getASTContext());
-        CppToCVisitor visitor(AST->getASTContext(), builder);
+        cpptoc::FileOriginTracker tracker(AST->getASTContext().getSourceManager());
+        // For test code built in-memory, treat all files as user code
+        tracker.addUserHeaderPath("<stdin>");
+        tracker.addUserHeaderPath("input.cc");
+        tracker.addUserHeaderPath(".");
+        auto visitor = createVisitor(*AST, builder, tracker);
 
-        visitor.TraverseDecl(AST->getASTContext().getTranslationUnitDecl());
+        visitor->TraverseDecl(AST->getASTContext().getTranslationUnitDecl());
 
         // Verify C function generated with correct signature
-        FunctionDecl *CFunc = visitor.getCFunc("Point_getX");
+        FunctionDecl *CFunc = visitor->getCFunc("Point_getX");
         ASSERT_TRUE(CFunc != nullptr) << "C function not generated";
-        ASSERT_TRUE(CFunc->getNumParams() == 1) << "Expected 1 parameter (this;");
+        ASSERT_TRUE(CFunc->getNumParams() == 1) << "Expected 1 parameter (this)";
         ASSERT_TRUE(CFunc->getParamDecl(0)->getName() == "this") << "First param should be 'this'";
 }
 
-TEST_F(CppToCVisitorTest, MethodWithParams:_void_setX(int_x)__>_void_Point_setX(struct_Point_*this,_int_x)) {
-    // Build AST for test
-    const char *code = R"(int main() { return 0; })";
-    std::unique_ptr<ASTUnit> AST = buildAST(code);
-    ASTContext &Ctx = AST->getASTContext();
-
-    -> void Point_setX(struct Point *this, int x)");
-
-        const char *cpp = R"(
+TEST_F(CppToCVisitorTest, MethodWithParams) {
+    const char *cpp = R"(
             class Point {
                 int x;
             public:
@@ -174,109 +180,108 @@ TEST_F(CppToCVisitorTest, MethodWithParams:_void_setX(int_x)__>_void_Point_setX(
         ASSERT_TRUE(AST) << "Failed to parse C++ code";
 
         CNodeBuilder builder(AST->getASTContext());
-        CppToCVisitor visitor(AST->getASTContext(), builder);
+        cpptoc::FileOriginTracker tracker(AST->getASTContext().getSourceManager());
+        // For test code built in-memory, treat all files as user code
+        tracker.addUserHeaderPath("<stdin>");
+        tracker.addUserHeaderPath("input.cc");
+        tracker.addUserHeaderPath(".");
+        auto visitor = createVisitor(*AST, builder, tracker);
 
-        visitor.TraverseDecl(AST->getASTContext().getTranslationUnitDecl());
+        visitor->TraverseDecl(AST->getASTContext().getTranslationUnitDecl());
 
-        FunctionDecl *CFunc = visitor.getCFunc("Point_setX");
+        FunctionDecl *CFunc = visitor->getCFunc("Point_setX");
         ASSERT_TRUE(CFunc != nullptr) << "C function not generated";
-        ASSERT_TRUE(CFunc->getNumParams() == 2) << "Expected 2 parameters (this + val;");
+        ASSERT_TRUE(CFunc->getNumParams() == 2) << "Expected 2 parameters (this + val)";
         ASSERT_TRUE(CFunc->getParamDecl(0)->getName() == "this") << "First param should be 'this'";
         ASSERT_TRUE(CFunc->getParamDecl(1)->getName() == "val") << "Second param should be 'val'";
 }
 
-TEST_F(CppToCVisitorTest, SkipVirtual:_virtual_void_foo__>_skip_(no_function_generated)) {
-    // Build AST for test
-    const char *code = R"(int main() { return 0; })";
-    std::unique_ptr<ASTUnit> AST = buildAST(code);
-    ASTContext &Ctx = AST->getASTContext();
-
-    -> skip (no function generated)");
-
-        const char *cpp = R"(
-            class Base {
-            public:
-                virtual void foo() {}
-            };
-        )";
-        std::unique_ptr<ASTUnit> AST = buildAST(cpp);
-        ASSERT_TRUE(AST) << "Failed to parse C++ code";
-
-        CNodeBuilder builder(AST->getASTContext());
-        CppToCVisitor visitor(AST->getASTContext(), builder);
-
-        visitor.TraverseDecl(AST->getASTContext().getTranslationUnitDecl());
-
-        // Virtual methods should be skipped in Phase 1
-        FunctionDecl *CFunc = visitor.getCFunc("Base_foo");
-        ASSERT_TRUE(CFunc == nullptr) << "Virtual method should be skipped";
-}
-
-TEST_F(CppToCVisitorTest, ImplicitThisRead:_return_x;__>_return_this_>x;) {
-    // Build AST for test
-    const char *code = R"(int main() { return 0; })";
-    std::unique_ptr<ASTUnit> AST = buildAST(code);
-    ASTContext &Ctx = AST->getASTContext();
-
+TEST_F(CppToCVisitorTest, SkipVirtual) {
     const char *cpp = R"(
-            class Point {
-                int x;
-            public:
-                int getX() { return x; }
-            };
-        )";
-        std::unique_ptr<ASTUnit> AST = buildAST(cpp);
-        ASSERT_TRUE(AST) << "Failed to parse C++ code";
+        class Base {
+        public:
+            virtual void foo() {}
+        };
+    )";
+    std::unique_ptr<ASTUnit> AST = buildAST(cpp);
+    ASSERT_TRUE(AST) << "Failed to parse C++ code";
 
-        CNodeBuilder builder(AST->getASTContext());
-        CppToCVisitor visitor(AST->getASTContext(), builder);
+    CNodeBuilder builder(AST->getASTContext());
+    cpptoc::FileOriginTracker tracker(AST->getASTContext().getSourceManager());
+    // For test code built in-memory, treat all files as user code
+    tracker.addUserHeaderPath("<stdin>");
+    tracker.addUserHeaderPath("input.cc");
+    tracker.addUserHeaderPath(".");
+    auto visitor = createVisitor(*AST, builder, tracker);
 
-        visitor.TraverseDecl(AST->getASTContext().getTranslationUnitDecl());
+    visitor->TraverseDecl(AST->getASTContext().getTranslationUnitDecl());
 
-        // Verify function was generated
-        FunctionDecl *CFunc = visitor.getCFunc("Point_getX");
-        ASSERT_TRUE(CFunc != nullptr) << "C function not generated";
-
-        // Verify function has body
-        Stmt *Body = CFunc->getBody();
-        ASSERT_TRUE(Body != nullptr) << "Function body not translated";
+    // Virtual methods should be skipped in Phase 1
+    FunctionDecl *CFunc = visitor->getCFunc("Base_foo");
+    ASSERT_TRUE(CFunc == nullptr) << "Virtual method should be skipped";
 }
 
-TEST_F(CppToCVisitorTest, ImplicitThisWrite:_x_=_val;__>_this_>x_=_val;) {
-    // Build AST for test
-    const char *code = R"(int main() { return 0; })";
-    std::unique_ptr<ASTUnit> AST = buildAST(code);
-    ASTContext &Ctx = AST->getASTContext();
-
+TEST_F(CppToCVisitorTest, ImplicitThisReadReturnX) {
     const char *cpp = R"(
-            class Point {
-                int x;
-            public:
-                void setX(int val) { x = val; }
-            };
-        )";
-        std::unique_ptr<ASTUnit> AST = buildAST(cpp);
-        ASSERT_TRUE(AST) << "Failed to parse C++ code";
+        class Point {
+            int x;
+        public:
+            int getX() { return x; }
+        };
+    )";
+    std::unique_ptr<ASTUnit> AST = buildAST(cpp);
+    ASSERT_TRUE(AST) << "Failed to parse C++ code";
 
-        CNodeBuilder builder(AST->getASTContext());
-        CppToCVisitor visitor(AST->getASTContext(), builder);
+    CNodeBuilder builder(AST->getASTContext());
+    cpptoc::FileOriginTracker tracker(AST->getASTContext().getSourceManager());
+    // For test code built in-memory, treat all files as user code
+    tracker.addUserHeaderPath("<stdin>");
+    tracker.addUserHeaderPath("input.cc");
+    tracker.addUserHeaderPath(".");
+    auto visitor = createVisitor(*AST, builder, tracker);
 
-        visitor.TraverseDecl(AST->getASTContext().getTranslationUnitDecl());
+    visitor->TraverseDecl(AST->getASTContext().getTranslationUnitDecl());
 
-        // Verify function was generated
-        FunctionDecl *CFunc = visitor.getCFunc("Point_setX");
-        ASSERT_TRUE(CFunc != nullptr) << "C function not generated";
+    // Verify function was generated
+    FunctionDecl *CFunc = visitor->getCFunc("Point_getX");
+    ASSERT_TRUE(CFunc != nullptr) << "C function not generated";
 
-        // Verify function has body with translated assignment
-        Stmt *Body = CFunc->getBody();
-        ASSERT_TRUE(Body != nullptr) << "Function body not translated";
+    // Verify function has body
+    Stmt *Body = CFunc->getBody();
+    ASSERT_TRUE(Body != nullptr) << "Function body not translated";
 }
 
-TEST_F(CppToCVisitorTest, ExplicitMemberAccess:_obj.x_preserved_in_translation) {
-    // Build AST for test
-    const char *code = R"(int main() { return 0; })";
-    std::unique_ptr<ASTUnit> AST = buildAST(code);
-    ASTContext &Ctx = AST->getASTContext();
+TEST_F(CppToCVisitorTest, ImplicitThisWrite) {
+    const char *cpp = R"(
+        class Point {
+            int x;
+        public:
+            void setX(int val) { x = val; }
+        };
+    )";
+    std::unique_ptr<ASTUnit> AST = buildAST(cpp);
+    ASSERT_TRUE(AST) << "Failed to parse C++ code";
+
+    CNodeBuilder builder(AST->getASTContext());
+    cpptoc::FileOriginTracker tracker(AST->getASTContext().getSourceManager());
+    // For test code built in-memory, treat all files as user code
+    tracker.addUserHeaderPath("<stdin>");
+    tracker.addUserHeaderPath("input.cc");
+    tracker.addUserHeaderPath(".");
+    auto visitor = createVisitor(*AST, builder, tracker);
+
+    visitor->TraverseDecl(AST->getASTContext().getTranslationUnitDecl());
+
+    // Verify function was generated
+    FunctionDecl *CFunc = visitor->getCFunc("Point_setX");
+    ASSERT_TRUE(CFunc != nullptr) << "C function not generated";
+
+    // Verify function has body with translated assignment
+    Stmt *Body = CFunc->getBody();
+    ASSERT_TRUE(Body != nullptr) << "Function body not translated";
+}
+
+TEST_F(CppToCVisitorTest, ExplicitMemberAccessObjXPreservedInTranslation) {
 
     const char *cpp = R"(
             class Point {
@@ -289,23 +294,24 @@ TEST_F(CppToCVisitorTest, ExplicitMemberAccess:_obj.x_preserved_in_translation) 
         ASSERT_TRUE(AST) << "Failed to parse C++ code";
 
         CNodeBuilder builder(AST->getASTContext());
-        CppToCVisitor visitor(AST->getASTContext(), builder);
+        cpptoc::FileOriginTracker tracker(AST->getASTContext().getSourceManager());
+        // For test code built in-memory, treat all files as user code
+        tracker.addUserHeaderPath("<stdin>");
+        tracker.addUserHeaderPath("input.cc");
+        tracker.addUserHeaderPath(".");
+        auto visitor = createVisitor(*AST, builder, tracker);
 
-        visitor.TraverseDecl(AST->getASTContext().getTranslationUnitDecl());
+        visitor->TraverseDecl(AST->getASTContext().getTranslationUnitDecl());
 
         // Verify function was generated with translated body
-        FunctionDecl *CFunc = visitor.getCFunc("Point_distance");
+        FunctionDecl *CFunc = visitor->getCFunc("Point_distance");
         ASSERT_TRUE(CFunc != nullptr) << "C function not generated";
 
         Stmt *Body = CFunc->getBody();
         ASSERT_TRUE(Body != nullptr) << "Function body not translated";
 }
 
-TEST_F(CppToCVisitorTest, MultipleFieldAccess:_return_width_*_height;) {
-    // Build AST for test
-    const char *code = R"(int main() { return 0; })";
-    std::unique_ptr<ASTUnit> AST = buildAST(code);
-    ASTContext &Ctx = AST->getASTContext();
+TEST_F(CppToCVisitorTest, MultipleFieldAccessReturnWidthHeight) {
 
     const char *cpp = R"(
             class Rectangle {
@@ -318,12 +324,17 @@ TEST_F(CppToCVisitorTest, MultipleFieldAccess:_return_width_*_height;) {
         ASSERT_TRUE(AST) << "Failed to parse C++ code";
 
         CNodeBuilder builder(AST->getASTContext());
-        CppToCVisitor visitor(AST->getASTContext(), builder);
+        cpptoc::FileOriginTracker tracker(AST->getASTContext().getSourceManager());
+        // For test code built in-memory, treat all files as user code
+        tracker.addUserHeaderPath("<stdin>");
+        tracker.addUserHeaderPath("input.cc");
+        tracker.addUserHeaderPath(".");
+        auto visitor = createVisitor(*AST, builder, tracker);
 
-        visitor.TraverseDecl(AST->getASTContext().getTranslationUnitDecl());
+        visitor->TraverseDecl(AST->getASTContext().getTranslationUnitDecl());
 
         // Verify function was generated
-        FunctionDecl *CFunc = visitor.getCFunc("Rectangle_area");
+        FunctionDecl *CFunc = visitor->getCFunc("Rectangle_area");
         ASSERT_TRUE(CFunc != nullptr) << "C function not generated";
 
         // Verify both implicit member accesses are translated
@@ -331,15 +342,8 @@ TEST_F(CppToCVisitorTest, MultipleFieldAccess:_return_width_*_height;) {
         ASSERT_TRUE(Body != nullptr) << "Function body not translated";
 }
 
-TEST_F(CppToCVisitorTest, DefaultConstructor:_Point_{}__>_void_Point__ctor(struct_Point_*this)_{}) {
-    // Build AST for test
-    const char *code = R"(int main() { return 0; })";
-    std::unique_ptr<ASTUnit> AST = buildAST(code);
-    ASTContext &Ctx = AST->getASTContext();
-
-    {} -> void Point__ctor(struct Point *this) {}");
-
-        const char *cpp = R"(
+TEST_F(CppToCVisitorTest, DefaultConstructorPointVoidPointCtorStructPointThis) {
+    const char *cpp = R"(
             class Point {
                 int x, y;
             public:
@@ -350,26 +354,24 @@ TEST_F(CppToCVisitorTest, DefaultConstructor:_Point_{}__>_void_Point__ctor(struc
         ASSERT_TRUE(AST) << "Failed to parse C++ code";
 
         CNodeBuilder builder(AST->getASTContext());
-        CppToCVisitor visitor(AST->getASTContext(), builder);
+        cpptoc::FileOriginTracker tracker(AST->getASTContext().getSourceManager());
+        // For test code built in-memory, treat all files as user code
+        tracker.addUserHeaderPath("<stdin>");
+        tracker.addUserHeaderPath("input.cc");
+        tracker.addUserHeaderPath(".");
+        auto visitor = createVisitor(*AST, builder, tracker);
 
-        visitor.TraverseDecl(AST->getASTContext().getTranslationUnitDecl());
+        visitor->TraverseDecl(AST->getASTContext().getTranslationUnitDecl());
 
-        // Verify constructor function was generated
-        FunctionDecl *CFunc = visitor.getCtor("Point__ctor");
-        ASSERT_TRUE(CFunc != nullptr) << "Constructor function not generated";
-        ASSERT_TRUE(CFunc->getNumParams() == 1) << "Expected 1 parameter (this;");
-        ASSERT_TRUE(CFunc->getReturnType()->isVoidType()) << "Constructor should return void";
+    // Verify constructor function was generated
+    FunctionDecl *CFunc = visitor->getCtor("Point__ctor");
+    ASSERT_TRUE(CFunc != nullptr) << "Constructor function not generated";
+    ASSERT_TRUE(CFunc->getNumParams() == 1) << "Expected 1 parameter (this)";
+    ASSERT_TRUE(CFunc->getReturnType()->isVoidType()) << "Constructor should return void";
 }
 
-TEST_F(CppToCVisitorTest, MemberInitializers:_Point(int_x,_int_y)_:_x(x),_y(y)_{}) {
-    // Build AST for test
-    const char *code = R"(int main() { return 0; })";
-    std::unique_ptr<ASTUnit> AST = buildAST(code);
-    ASTContext &Ctx = AST->getASTContext();
-
-    : x(x), y(y) {}");
-
-        const char *cpp = R"(
+TEST_F(CppToCVisitorTest, MemberInitializersPointIntXIntY) {
+    const char *cpp = R"(
             class Point {
                 int x, y;
             public:
@@ -380,25 +382,26 @@ TEST_F(CppToCVisitorTest, MemberInitializers:_Point(int_x,_int_y)_:_x(x),_y(y)_{
         ASSERT_TRUE(AST) << "Failed to parse C++ code";
 
         CNodeBuilder builder(AST->getASTContext());
-        CppToCVisitor visitor(AST->getASTContext(), builder);
+        cpptoc::FileOriginTracker tracker(AST->getASTContext().getSourceManager());
+        // For test code built in-memory, treat all files as user code
+        tracker.addUserHeaderPath("<stdin>");
+        tracker.addUserHeaderPath("input.cc");
+        tracker.addUserHeaderPath(".");
+        auto visitor = createVisitor(*AST, builder, tracker);
 
-        visitor.TraverseDecl(AST->getASTContext().getTranslationUnitDecl());
+        visitor->TraverseDecl(AST->getASTContext().getTranslationUnitDecl());
 
-        // Verify constructor function was generated
-        FunctionDecl *CFunc = visitor.getCtor("Point__ctor");
-        ASSERT_TRUE(CFunc != nullptr) << "Constructor function not generated";
-        ASSERT_TRUE(CFunc->getNumParams() == 3) << "Expected 3 parameters (this + 2 params;");
+    // Verify constructor function was generated
+    FunctionDecl *CFunc = visitor->getCtor("Point__ctor");
+    ASSERT_TRUE(CFunc != nullptr) << "Constructor function not generated";
+    ASSERT_TRUE(CFunc->getNumParams() == 3) << "Expected 3 parameters (this + 2 params)";
 
-        // Verify function has body with member initializers translated to assignments
-        Stmt *Body = CFunc->getBody();
-        ASSERT_TRUE(Body != nullptr) << "Constructor body not translated";
+    // Verify function has body with member initializers translated to assignments
+    Stmt *Body = CFunc->getBody();
+    ASSERT_TRUE(Body != nullptr) << "Constructor body not translated";
 }
 
-TEST_F(CppToCVisitorTest, ConstructorWithBody:_Constructor_with_statements_in_body) {
-    // Build AST for test
-    const char *code = R"(int main() { return 0; })";
-    std::unique_ptr<ASTUnit> AST = buildAST(code);
-    ASTContext &Ctx = AST->getASTContext();
+TEST_F(CppToCVisitorTest, ConstructorWithBodyConstructorWithStatementsInBody) {
 
     const char *cpp = R"(
             class Rectangle {
@@ -413,12 +416,17 @@ TEST_F(CppToCVisitorTest, ConstructorWithBody:_Constructor_with_statements_in_bo
         ASSERT_TRUE(AST) << "Failed to parse C++ code";
 
         CNodeBuilder builder(AST->getASTContext());
-        CppToCVisitor visitor(AST->getASTContext(), builder);
+        cpptoc::FileOriginTracker tracker(AST->getASTContext().getSourceManager());
+        // For test code built in-memory, treat all files as user code
+        tracker.addUserHeaderPath("<stdin>");
+        tracker.addUserHeaderPath("input.cc");
+        tracker.addUserHeaderPath(".");
+        auto visitor = createVisitor(*AST, builder, tracker);
 
-        visitor.TraverseDecl(AST->getASTContext().getTranslationUnitDecl());
+        visitor->TraverseDecl(AST->getASTContext().getTranslationUnitDecl());
 
         // Verify constructor was generated
-        FunctionDecl *CFunc = visitor.getCtor("Rectangle__ctor");
+        FunctionDecl *CFunc = visitor->getCtor("Rectangle__ctor");
         ASSERT_TRUE(CFunc != nullptr) << "Constructor function not generated";
 
         // Verify body has both initializers and body statements
@@ -426,11 +434,7 @@ TEST_F(CppToCVisitorTest, ConstructorWithBody:_Constructor_with_statements_in_bo
         ASSERT_TRUE(Body != nullptr) << "Constructor body not translated";
 }
 
-TEST_F(CppToCVisitorTest, DestructorTranslation:_Destructor_translation) {
-    // Build AST for test
-    const char *code = R"(int main() { return 0; })";
-    std::unique_ptr<ASTUnit> AST = buildAST(code);
-    ASTContext &Ctx = AST->getASTContext();
+TEST_F(CppToCVisitorTest, DestructorTranslationDestructorTranslation) {
 
     const char *cpp = R"(
             class Resource {
@@ -444,13 +448,18 @@ TEST_F(CppToCVisitorTest, DestructorTranslation:_Destructor_translation) {
         ASSERT_TRUE(AST) << "Failed to parse C++ code";
 
         CNodeBuilder builder(AST->getASTContext());
-        CppToCVisitor visitor(AST->getASTContext(), builder);
+        cpptoc::FileOriginTracker tracker(AST->getASTContext().getSourceManager());
+        // For test code built in-memory, treat all files as user code
+        tracker.addUserHeaderPath("<stdin>");
+        tracker.addUserHeaderPath("input.cc");
+        tracker.addUserHeaderPath(".");
+        auto visitor = createVisitor(*AST, builder, tracker);
 
-        visitor.TraverseDecl(AST->getASTContext().getTranslationUnitDecl());
+        visitor->TraverseDecl(AST->getASTContext().getTranslationUnitDecl());
 
-        // Verify destructor function was generated
-        FunctionDecl *CDtor = visitor.getDtor("Resource__dtor");
-        ASSERT_TRUE(CDtor != nullptr) << "Destructor function not generated";
-        ASSERT_TRUE(CDtor->getNumParams() == 1) << "Expected 1 parameter (this;");
-        ASSERT_TRUE(CDtor->getReturnType()->isVoidType()) << "Destructor should return void";
+    // Verify destructor function was generated
+    FunctionDecl *CDtor = visitor->getDtor("Resource__dtor");
+    ASSERT_TRUE(CDtor != nullptr) << "Destructor function not generated";
+    ASSERT_TRUE(CDtor->getNumParams() == 1) << "Expected 1 parameter (this)";
+    ASSERT_TRUE(CDtor->getReturnType()->isVoidType()) << "Destructor should return void";
 }

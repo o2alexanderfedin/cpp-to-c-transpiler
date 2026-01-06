@@ -1,0 +1,49 @@
+// Generated from: /Users/alexanderfedin/Projects/hapyy/hupyy-cpp-to-c/tests/real-world/simple-validation/02-custom-container/./main.cpp
+// Header file
+
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+#include <math.h>
+#include <stdint.h>
+#include <stdbool.h>
+
+int main();
+struct LinkedList_int_Node {
+	int data;
+	struct Node * next;
+};
+void LinkedList_int_Node__ctor(struct LinkedList_int_Node * this, int * value);
+struct LinkedList_int {
+	struct Node * head;
+	struct Node * tail;
+	int count;
+};
+void LinkedList_int_push_back(struct LinkedList_int * this, int * value);
+void LinkedList_int_push_front(struct LinkedList_int * this, int * value);
+void LinkedList_int_pop_front(struct LinkedList_int * this);
+int LinkedList_int_front(struct LinkedList_int * this);
+int LinkedList_int_size(struct LinkedList_int * this);
+bool LinkedList_int_isEmpty(struct LinkedList_int * this);
+void LinkedList_int_clear(struct LinkedList_int * this);
+Node *newNode = malloc(sizeof(Node))
+Node *newNode = malloc(sizeof(Node))
+struct LinkedList_float_Node {
+	float data;
+	struct Node * next;
+};
+void LinkedList_float_Node__ctor(struct LinkedList_float_Node * this, float * value);
+struct LinkedList_float {
+	struct Node * head;
+	struct Node * tail;
+	int count;
+};
+void LinkedList_float_push_back(struct LinkedList_float * this, float * value);
+void LinkedList_float_push_front(struct LinkedList_float * this, float * value);
+void LinkedList_float_pop_front(struct LinkedList_float * this);
+float LinkedList_float_front(struct LinkedList_float * this);
+int LinkedList_float_size(struct LinkedList_float * this);
+bool LinkedList_float_isEmpty(struct LinkedList_float * this);
+void LinkedList_float_clear(struct LinkedList_float * this);
+Node *newNode = malloc(sizeof(Node))
+Node *newNode = malloc(sizeof(Node))

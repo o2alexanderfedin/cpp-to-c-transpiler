@@ -1,0 +1,362 @@
+{
+  "tests": 70,
+  "name": "AllTests",
+  "testsuites": [
+    {
+      "name": "JsonParserTest",
+      "tests": 70,
+      "testsuite": [
+        {
+          "name": "ParseNull",
+          "file": "\/Users\/alexanderfedin\/Projects\/hapyy\/hupyy-cpp-to-c\/tests\/real-world\/json-parser\/tests\/test_json_parser.cpp",
+          "line": 9
+        },
+        {
+          "name": "NullToString",
+          "file": "\/Users\/alexanderfedin\/Projects\/hapyy\/hupyy-cpp-to-c\/tests\/real-world\/json-parser\/tests\/test_json_parser.cpp",
+          "line": 16
+        },
+        {
+          "name": "ParseTrue",
+          "file": "\/Users\/alexanderfedin\/Projects\/hapyy\/hupyy-cpp-to-c\/tests\/real-world\/json-parser\/tests\/test_json_parser.cpp",
+          "line": 24
+        },
+        {
+          "name": "TrueValue",
+          "file": "\/Users\/alexanderfedin\/Projects\/hapyy\/hupyy-cpp-to-c\/tests\/real-world\/json-parser\/tests\/test_json_parser.cpp",
+          "line": 31
+        },
+        {
+          "name": "TrueToString",
+          "file": "\/Users\/alexanderfedin\/Projects\/hapyy\/hupyy-cpp-to-c\/tests\/real-world\/json-parser\/tests\/test_json_parser.cpp",
+          "line": 38
+        },
+        {
+          "name": "ParseFalse",
+          "file": "\/Users\/alexanderfedin\/Projects\/hapyy\/hupyy-cpp-to-c\/tests\/real-world\/json-parser\/tests\/test_json_parser.cpp",
+          "line": 45
+        },
+        {
+          "name": "FalseValue",
+          "file": "\/Users\/alexanderfedin\/Projects\/hapyy\/hupyy-cpp-to-c\/tests\/real-world\/json-parser\/tests\/test_json_parser.cpp",
+          "line": 52
+        },
+        {
+          "name": "FalseToString",
+          "file": "\/Users\/alexanderfedin\/Projects\/hapyy\/hupyy-cpp-to-c\/tests\/real-world\/json-parser\/tests\/test_json_parser.cpp",
+          "line": 59
+        },
+        {
+          "name": "ParseInteger",
+          "file": "\/Users\/alexanderfedin\/Projects\/hapyy\/hupyy-cpp-to-c\/tests\/real-world\/json-parser\/tests\/test_json_parser.cpp",
+          "line": 67
+        },
+        {
+          "name": "IntegerValue",
+          "file": "\/Users\/alexanderfedin\/Projects\/hapyy\/hupyy-cpp-to-c\/tests\/real-world\/json-parser\/tests\/test_json_parser.cpp",
+          "line": 74
+        },
+        {
+          "name": "IntegerToString",
+          "file": "\/Users\/alexanderfedin\/Projects\/hapyy\/hupyy-cpp-to-c\/tests\/real-world\/json-parser\/tests\/test_json_parser.cpp",
+          "line": 81
+        },
+        {
+          "name": "ParseNegativeInteger",
+          "file": "\/Users\/alexanderfedin\/Projects\/hapyy\/hupyy-cpp-to-c\/tests\/real-world\/json-parser\/tests\/test_json_parser.cpp",
+          "line": 88
+        },
+        {
+          "name": "ParseDecimal",
+          "file": "\/Users\/alexanderfedin\/Projects\/hapyy\/hupyy-cpp-to-c\/tests\/real-world\/json-parser\/tests\/test_json_parser.cpp",
+          "line": 95
+        },
+        {
+          "name": "DecimalValue",
+          "file": "\/Users\/alexanderfedin\/Projects\/hapyy\/hupyy-cpp-to-c\/tests\/real-world\/json-parser\/tests\/test_json_parser.cpp",
+          "line": 102
+        },
+        {
+          "name": "ParseExponent",
+          "file": "\/Users\/alexanderfedin\/Projects\/hapyy\/hupyy-cpp-to-c\/tests\/real-world\/json-parser\/tests\/test_json_parser.cpp",
+          "line": 109
+        },
+        {
+          "name": "ExponentValue",
+          "file": "\/Users\/alexanderfedin\/Projects\/hapyy\/hupyy-cpp-to-c\/tests\/real-world\/json-parser\/tests\/test_json_parser.cpp",
+          "line": 116
+        },
+        {
+          "name": "ParseDecimalExponent",
+          "file": "\/Users\/alexanderfedin\/Projects\/hapyy\/hupyy-cpp-to-c\/tests\/real-world\/json-parser\/tests\/test_json_parser.cpp",
+          "line": 123
+        },
+        {
+          "name": "ParseString",
+          "file": "\/Users\/alexanderfedin\/Projects\/hapyy\/hupyy-cpp-to-c\/tests\/real-world\/json-parser\/tests\/test_json_parser.cpp",
+          "line": 131
+        },
+        {
+          "name": "StringValue",
+          "file": "\/Users\/alexanderfedin\/Projects\/hapyy\/hupyy-cpp-to-c\/tests\/real-world\/json-parser\/tests\/test_json_parser.cpp",
+          "line": 138
+        },
+        {
+          "name": "StringToString",
+          "file": "\/Users\/alexanderfedin\/Projects\/hapyy\/hupyy-cpp-to-c\/tests\/real-world\/json-parser\/tests\/test_json_parser.cpp",
+          "line": 145
+        },
+        {
+          "name": "StringWithPunctuation",
+          "file": "\/Users\/alexanderfedin\/Projects\/hapyy\/hupyy-cpp-to-c\/tests\/real-world\/json-parser\/tests\/test_json_parser.cpp",
+          "line": 152
+        },
+        {
+          "name": "StringWithEscape",
+          "file": "\/Users\/alexanderfedin\/Projects\/hapyy\/hupyy-cpp-to-c\/tests\/real-world\/json-parser\/tests\/test_json_parser.cpp",
+          "line": 159
+        },
+        {
+          "name": "StringWithQuoteEscape",
+          "file": "\/Users\/alexanderfedin\/Projects\/hapyy\/hupyy-cpp-to-c\/tests\/real-world\/json-parser\/tests\/test_json_parser.cpp",
+          "line": 166
+        },
+        {
+          "name": "EmptyString",
+          "file": "\/Users\/alexanderfedin\/Projects\/hapyy\/hupyy-cpp-to-c\/tests\/real-world\/json-parser\/tests\/test_json_parser.cpp",
+          "line": 173
+        },
+        {
+          "name": "ParseEmptyArray",
+          "file": "\/Users\/alexanderfedin\/Projects\/hapyy\/hupyy-cpp-to-c\/tests\/real-world\/json-parser\/tests\/test_json_parser.cpp",
+          "line": 181
+        },
+        {
+          "name": "EmptyArraySize",
+          "file": "\/Users\/alexanderfedin\/Projects\/hapyy\/hupyy-cpp-to-c\/tests\/real-world\/json-parser\/tests\/test_json_parser.cpp",
+          "line": 188
+        },
+        {
+          "name": "EmptyArrayToString",
+          "file": "\/Users\/alexanderfedin\/Projects\/hapyy\/hupyy-cpp-to-c\/tests\/real-world\/json-parser\/tests\/test_json_parser.cpp",
+          "line": 195
+        },
+        {
+          "name": "ParseIntegerArray",
+          "file": "\/Users\/alexanderfedin\/Projects\/hapyy\/hupyy-cpp-to-c\/tests\/real-world\/json-parser\/tests\/test_json_parser.cpp",
+          "line": 202
+        },
+        {
+          "name": "ArraySize",
+          "file": "\/Users\/alexanderfedin\/Projects\/hapyy\/hupyy-cpp-to-c\/tests\/real-world\/json-parser\/tests\/test_json_parser.cpp",
+          "line": 209
+        },
+        {
+          "name": "ArrayElement0",
+          "file": "\/Users\/alexanderfedin\/Projects\/hapyy\/hupyy-cpp-to-c\/tests\/real-world\/json-parser\/tests\/test_json_parser.cpp",
+          "line": 216
+        },
+        {
+          "name": "ArrayElement1",
+          "file": "\/Users\/alexanderfedin\/Projects\/hapyy\/hupyy-cpp-to-c\/tests\/real-world\/json-parser\/tests\/test_json_parser.cpp",
+          "line": 223
+        },
+        {
+          "name": "ArrayElement2",
+          "file": "\/Users\/alexanderfedin\/Projects\/hapyy\/hupyy-cpp-to-c\/tests\/real-world\/json-parser\/tests\/test_json_parser.cpp",
+          "line": 230
+        },
+        {
+          "name": "ParseStringArray",
+          "file": "\/Users\/alexanderfedin\/Projects\/hapyy\/hupyy-cpp-to-c\/tests\/real-world\/json-parser\/tests\/test_json_parser.cpp",
+          "line": 237
+        },
+        {
+          "name": "StringArrayElement0",
+          "file": "\/Users\/alexanderfedin\/Projects\/hapyy\/hupyy-cpp-to-c\/tests\/real-world\/json-parser\/tests\/test_json_parser.cpp",
+          "line": 244
+        },
+        {
+          "name": "ParseMixedArray",
+          "file": "\/Users\/alexanderfedin\/Projects\/hapyy\/hupyy-cpp-to-c\/tests\/real-world\/json-parser\/tests\/test_json_parser.cpp",
+          "line": 251
+        },
+        {
+          "name": "MixedArrayNumber",
+          "file": "\/Users\/alexanderfedin\/Projects\/hapyy\/hupyy-cpp-to-c\/tests\/real-world\/json-parser\/tests\/test_json_parser.cpp",
+          "line": 258
+        },
+        {
+          "name": "MixedArrayString",
+          "file": "\/Users\/alexanderfedin\/Projects\/hapyy\/hupyy-cpp-to-c\/tests\/real-world\/json-parser\/tests\/test_json_parser.cpp",
+          "line": 265
+        },
+        {
+          "name": "MixedArrayBool",
+          "file": "\/Users\/alexanderfedin\/Projects\/hapyy\/hupyy-cpp-to-c\/tests\/real-world\/json-parser\/tests\/test_json_parser.cpp",
+          "line": 272
+        },
+        {
+          "name": "MixedArrayNull",
+          "file": "\/Users\/alexanderfedin\/Projects\/hapyy\/hupyy-cpp-to-c\/tests\/real-world\/json-parser\/tests\/test_json_parser.cpp",
+          "line": 279
+        },
+        {
+          "name": "ParseNestedArray",
+          "file": "\/Users\/alexanderfedin\/Projects\/hapyy\/hupyy-cpp-to-c\/tests\/real-world\/json-parser\/tests\/test_json_parser.cpp",
+          "line": 286
+        },
+        {
+          "name": "NestedArrayElement",
+          "file": "\/Users\/alexanderfedin\/Projects\/hapyy\/hupyy-cpp-to-c\/tests\/real-world\/json-parser\/tests\/test_json_parser.cpp",
+          "line": 293
+        },
+        {
+          "name": "ParseEmptyObject",
+          "file": "\/Users\/alexanderfedin\/Projects\/hapyy\/hupyy-cpp-to-c\/tests\/real-world\/json-parser\/tests\/test_json_parser.cpp",
+          "line": 301
+        },
+        {
+          "name": "EmptyObjectSize",
+          "file": "\/Users\/alexanderfedin\/Projects\/hapyy\/hupyy-cpp-to-c\/tests\/real-world\/json-parser\/tests\/test_json_parser.cpp",
+          "line": 308
+        },
+        {
+          "name": "EmptyObjectToString",
+          "file": "\/Users\/alexanderfedin\/Projects\/hapyy\/hupyy-cpp-to-c\/tests\/real-world\/json-parser\/tests\/test_json_parser.cpp",
+          "line": 315
+        },
+        {
+          "name": "ParseSimpleObject",
+          "file": "\/Users\/alexanderfedin\/Projects\/hapyy\/hupyy-cpp-to-c\/tests\/real-world\/json-parser\/tests\/test_json_parser.cpp",
+          "line": 322
+        },
+        {
+          "name": "ObjectSize",
+          "file": "\/Users\/alexanderfedin\/Projects\/hapyy\/hupyy-cpp-to-c\/tests\/real-world\/json-parser\/tests\/test_json_parser.cpp",
+          "line": 329
+        },
+        {
+          "name": "ObjectContainsKey",
+          "file": "\/Users\/alexanderfedin\/Projects\/hapyy\/hupyy-cpp-to-c\/tests\/real-world\/json-parser\/tests\/test_json_parser.cpp",
+          "line": 336
+        },
+        {
+          "name": "ObjectValue",
+          "file": "\/Users\/alexanderfedin\/Projects\/hapyy\/hupyy-cpp-to-c\/tests\/real-world\/json-parser\/tests\/test_json_parser.cpp",
+          "line": 343
+        },
+        {
+          "name": "ParseMultiFieldObject",
+          "file": "\/Users\/alexanderfedin\/Projects\/hapyy\/hupyy-cpp-to-c\/tests\/real-world\/json-parser\/tests\/test_json_parser.cpp",
+          "line": 350
+        },
+        {
+          "name": "ObjectNumberField",
+          "file": "\/Users\/alexanderfedin\/Projects\/hapyy\/hupyy-cpp-to-c\/tests\/real-world\/json-parser\/tests\/test_json_parser.cpp",
+          "line": 357
+        },
+        {
+          "name": "ObjectBoolField",
+          "file": "\/Users\/alexanderfedin\/Projects\/hapyy\/hupyy-cpp-to-c\/tests\/real-world\/json-parser\/tests\/test_json_parser.cpp",
+          "line": 364
+        },
+        {
+          "name": "ParseNestedObject",
+          "file": "\/Users\/alexanderfedin\/Projects\/hapyy\/hupyy-cpp-to-c\/tests\/real-world\/json-parser\/tests\/test_json_parser.cpp",
+          "line": 371
+        },
+        {
+          "name": "NestedObjectValue",
+          "file": "\/Users\/alexanderfedin\/Projects\/hapyy\/hupyy-cpp-to-c\/tests\/real-world\/json-parser\/tests\/test_json_parser.cpp",
+          "line": 378
+        },
+        {
+          "name": "ParseComplexJSON",
+          "file": "\/Users\/alexanderfedin\/Projects\/hapyy\/hupyy-cpp-to-c\/tests\/real-world\/json-parser\/tests\/test_json_parser.cpp",
+          "line": 386
+        },
+        {
+          "name": "ComplexObjectName",
+          "file": "\/Users\/alexanderfedin\/Projects\/hapyy\/hupyy-cpp-to-c\/tests\/real-world\/json-parser\/tests\/test_json_parser.cpp",
+          "line": 406
+        },
+        {
+          "name": "ComplexObjectAge",
+          "file": "\/Users\/alexanderfedin\/Projects\/hapyy\/hupyy-cpp-to-c\/tests\/real-world\/json-parser\/tests\/test_json_parser.cpp",
+          "line": 427
+        },
+        {
+          "name": "ComplexObjectActive",
+          "file": "\/Users\/alexanderfedin\/Projects\/hapyy\/hupyy-cpp-to-c\/tests\/real-world\/json-parser\/tests\/test_json_parser.cpp",
+          "line": 448
+        },
+        {
+          "name": "ComplexObjectMetadata",
+          "file": "\/Users\/alexanderfedin\/Projects\/hapyy\/hupyy-cpp-to-c\/tests\/real-world\/json-parser\/tests\/test_json_parser.cpp",
+          "line": 469
+        },
+        {
+          "name": "NestedAddressCity",
+          "file": "\/Users\/alexanderfedin\/Projects\/hapyy\/hupyy-cpp-to-c\/tests\/real-world\/json-parser\/tests\/test_json_parser.cpp",
+          "line": 490
+        },
+        {
+          "name": "HobbiesArraySize",
+          "file": "\/Users\/alexanderfedin\/Projects\/hapyy\/hupyy-cpp-to-c\/tests\/real-world\/json-parser\/tests\/test_json_parser.cpp",
+          "line": 512
+        },
+        {
+          "name": "HobbiesFirst",
+          "file": "\/Users\/alexanderfedin\/Projects\/hapyy\/hupyy-cpp-to-c\/tests\/real-world\/json-parser\/tests\/test_json_parser.cpp",
+          "line": 534
+        },
+        {
+          "name": "ScoresArraySize",
+          "file": "\/Users\/alexanderfedin\/Projects\/hapyy\/hupyy-cpp-to-c\/tests\/real-world\/json-parser\/tests\/test_json_parser.cpp",
+          "line": 556
+        },
+        {
+          "name": "ScoresFirst",
+          "file": "\/Users\/alexanderfedin\/Projects\/hapyy\/hupyy-cpp-to-c\/tests\/real-world\/json-parser\/tests\/test_json_parser.cpp",
+          "line": 578
+        },
+        {
+          "name": "ErrorOnInvalidNull",
+          "file": "\/Users\/alexanderfedin\/Projects\/hapyy\/hupyy-cpp-to-c\/tests\/real-world\/json-parser\/tests\/test_json_parser.cpp",
+          "line": 601
+        },
+        {
+          "name": "ErrorOnInvalidBoolean",
+          "file": "\/Users\/alexanderfedin\/Projects\/hapyy\/hupyy-cpp-to-c\/tests\/real-world\/json-parser\/tests\/test_json_parser.cpp",
+          "line": 606
+        },
+        {
+          "name": "ErrorOnUnterminatedString",
+          "file": "\/Users\/alexanderfedin\/Projects\/hapyy\/hupyy-cpp-to-c\/tests\/real-world\/json-parser\/tests\/test_json_parser.cpp",
+          "line": 611
+        },
+        {
+          "name": "ErrorOnTrailingCommaInArray",
+          "file": "\/Users\/alexanderfedin\/Projects\/hapyy\/hupyy-cpp-to-c\/tests\/real-world\/json-parser\/tests\/test_json_parser.cpp",
+          "line": 616
+        },
+        {
+          "name": "ErrorOnTrailingCommaInObject",
+          "file": "\/Users\/alexanderfedin\/Projects\/hapyy\/hupyy-cpp-to-c\/tests\/real-world\/json-parser\/tests\/test_json_parser.cpp",
+          "line": 621
+        },
+        {
+          "name": "ErrorOnMissingColon",
+          "file": "\/Users\/alexanderfedin\/Projects\/hapyy\/hupyy-cpp-to-c\/tests\/real-world\/json-parser\/tests\/test_json_parser.cpp",
+          "line": 626
+        },
+        {
+          "name": "ErrorOnDuplicateKey",
+          "file": "\/Users\/alexanderfedin\/Projects\/hapyy\/hupyy-cpp-to-c\/tests\/real-world\/json-parser\/tests\/test_json_parser.cpp",
+          "line": 631
+        }
+      ]
+    }
+  ]
+}

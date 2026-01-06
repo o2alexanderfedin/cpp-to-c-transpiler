@@ -44,11 +44,11 @@ TEST_F(CodeGeneratorTest, PrintStructDecl) {
         Builder.fieldDecl(Context.IntTy, "y")
     });
 
-    // Generate code
+    // Generate code (declarationOnly=true for struct declarations - they go in headers)
     std::string Output;
     raw_string_ostream OS(Output);
     CodeGenerator Gen(OS, Context);
-    Gen.printDecl(RD);
+    Gen.printDecl(RD, true);  // true = declaration only (for header files)
     OS.flush();
 
     // Verify output contains expected elements
@@ -101,13 +101,13 @@ TEST_F(CodeGeneratorTest, PrintTranslationUnit) {
 
     FunctionDecl *FD = Builder.funcDecl("test_func", Context.IntTy, {});
 
-    // Generate code for both
+    // Generate code for both (struct needs declarationOnly=true for headers)
     std::string Output;
     raw_string_ostream OS(Output);
     CodeGenerator Gen(OS, Context);
 
-    Gen.printDecl(RD);
-    Gen.printDecl(FD);
+    Gen.printDecl(RD, true);  // Struct declarations go in headers
+    Gen.printDecl(FD);  // Functions can be implementation
     OS.flush();
 
     // Verify both declarations present
@@ -135,7 +135,7 @@ TEST_F(CodeGeneratorTest, OutputToFile) {
     ASSERT_FALSE(EC) << "Could not create file: " << EC.message();
 
     CodeGenerator Gen(OutFile, Context);
-    Gen.printDecl(RD);
+    Gen.printDecl(RD, true);  // Struct declarations go in headers
     OutFile.flush();
     OutFile.close();
 
@@ -201,7 +201,7 @@ TEST_F(CodeGeneratorTest, StructKeyword) {
     std::string Output;
     raw_string_ostream OS(Output);
     CodeGenerator Gen(OS, Context);
-    Gen.printDecl(RD);
+    Gen.printDecl(RD, true);  // Struct declarations go in headers
     OS.flush();
 
     // Verify 'struct' keyword is present
@@ -229,7 +229,7 @@ TEST_F(CodeGeneratorTest, CompileWithGcc) {
     ASSERT_FALSE(EC) << "Could not create file: " << EC.message();
 
     CodeGenerator Gen(OutFile, Context);
-    Gen.printDecl(RD);
+    Gen.printDecl(RD, true);  // Struct declarations go in headers
     OutFile.flush();
     OutFile.close();
 
@@ -262,7 +262,7 @@ TEST_F(CodeGeneratorTest, LineDirectivePresent) {
     std::string Output;
     raw_string_ostream OS(Output);
     CodeGenerator Gen(OS, Context);
-    Gen.printDeclWithLineDirective(RD);
+    Gen.printDeclWithLineDirective(RD);  // printDeclWithLineDirective handles declarationOnly internally
     OS.flush();
 
     // Verify #line directive is present (or gracefully absent for test context)

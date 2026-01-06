@@ -1,0 +1,5 @@
+if(EXISTS "/Users/alexanderfedin/Projects/hapyy/hupyy-cpp-to-c/tests/unit/comparison-operators/test_logical_or_operator[1]_tests.cmake")
+  include("/Users/alexanderfedin/Projects/hapyy/hupyy-cpp-to-c/tests/unit/comparison-operators/test_logical_or_operator[1]_tests.cmake")
+else()
+  add_test(test_logical_or_operator_NOT_BUILT test_logical_or_operator_NOT_BUILT)
+endif()

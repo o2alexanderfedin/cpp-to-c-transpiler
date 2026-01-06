@@ -4,6 +4,127 @@ This directory contains utility scripts for the cpptoc project.
 
 ## Available Scripts
 
+### GCC C++23 Test Adaptation
+
+#### adapt-gcc-test.py
+
+Converts GCC-specific C++23 test format to standalone C++ files for Phase 33.2 validation.
+
+**Quick Start:**
+```bash
+# Single file adaptation
+python3 scripts/adapt-gcc-test.py \
+    --input external-projects/gcc-tests/if-consteval-P1938/consteval-if1.C \
+    --output gcc-adapted/if-consteval-P1938/test01.cpp \
+    --category if-consteval
+
+# Batch directory processing with CMakeLists.txt
+python3 scripts/adapt-gcc-test.py \
+    --input-dir external-projects/gcc-tests/if-consteval-P1938 \
+    --output-dir gcc-adapted/if-consteval-P1938 \
+    --category if-consteval \
+    --generate-cmake
+```
+
+**Features:**
+- Strips GCC-specific directives (`dg-do`, `dg-options`, `dg-error`, `dg-warning`, etc.)
+- Wraps code in standalone C++ structure with `int main()` when needed
+- Preserves namespaces, classes, and function definitions
+- Auto-detects and includes required headers (`<iostream>`, `<cassert>`, etc.)
+- Batch processes entire test directories
+- Generates `CMakeLists.txt` for test categories
+- Handles multiple encodings (UTF-8, Latin-1, CP1252)
+- Preserves original test documentation in header comments
+
+**Options:**
+- `--input FILE` - Single input GCC test file
+- `--output FILE` - Single output C++ file
+- `--input-dir DIR` - Input directory with GCC test files
+- `--output-dir DIR` - Output directory for C++ files
+- `--category NAME` - Test category name (for documentation)
+- `--pattern PATTERN` - File glob pattern for batch (default: `*.C`)
+- `--generate-cmake` - Generate CMakeLists.txt for category
+- `-v, --verbose` - Verbose output
+
+**Examples:**
+```bash
+# Process all if-consteval tests
+python3 scripts/adapt-gcc-test.py \
+    --input-dir tests/real-world/cpp23-validation/external-projects/gcc-tests/if-consteval-P1938 \
+    --output-dir tests/real-world/cpp23-validation/gcc-adapted/if-consteval-P1938 \
+    --category if-consteval \
+    --generate-cmake \
+    -v
+
+# Process miscellaneous tests
+python3 scripts/adapt-gcc-test.py \
+    --input-dir tests/real-world/cpp23-validation/external-projects/gcc-tests/miscellaneous \
+    --output-dir tests/real-world/cpp23-validation/gcc-adapted/miscellaneous \
+    --category miscellaneous \
+    --generate-cmake
+
+# Process with different file extension
+python3 scripts/adapt-gcc-test.py \
+    --input-dir tests/real-world/cpp23-validation/external-projects/gcc-tests/constexpr-enhancements \
+    --output-dir tests/real-world/cpp23-validation/gcc-adapted/constexpr-enhancements \
+    --category constexpr \
+    --pattern "*.C" \
+    --generate-cmake
+```
+
+**What it does:**
+
+1. **Strips GCC Directives**
+   - Removes lines with only `// { dg-do ... }`
+   - Removes inline directives like `{ dg-warning "..." { target c++20_only } }`
+   - Preserves actual C++ code
+
+2. **Wraps in Standalone Structure**
+   - Detects if code already has `main()`
+   - If not, wraps executable code in `int main() { ... return 0; }`
+   - Keeps global declarations (functions, classes, namespaces) at global scope
+
+3. **Includes Management**
+   - Auto-detects usage patterns: `abort()`, `assert`, `std::cout`, etc.
+   - Includes appropriate headers: `<cassert>`, `<cstdlib>`, `<iostream>`, etc.
+   - Adds headers only when needed
+
+4. **Generates CMakeLists.txt**
+   - Creates CMake configuration for building adapted tests
+   - Sets C++23 standard
+   - Creates executable targets for each test
+   - Enables CTest integration
+
+**Output Format:**
+
+Each adapted file includes:
+```cpp
+// Generated from GCC test suite - Phase 33.2 C++23 Validation
+// Original: consteval-if1.C
+// Category: if-consteval
+// Test ID: 01
+//
+// This file was automatically adapted from the GCC test suite.
+// GCC-specific directives have been removed and code wrapped in standalone C++ format.
+// See external-projects/gcc-tests/ for original sources.
+
+#include <cassert>
+#include <cstdlib>
+
+// ... rest of code ...
+```
+
+**Requirements:**
+- Python 3.8+
+- Standard library only (no external dependencies)
+
+**Error Handling:**
+- Gracefully skips files with decode errors
+- Reports errors without stopping batch processing
+- Provides summary of processed/failed files
+
+See [Phase 33.2 - GCC C++23 Test Validation](/docs) for implementation details.
+
 ### Code Coverage
 
 #### generate_coverage.sh

@@ -12,8 +12,8 @@
 
 using namespace clang;
 
-TemplateExtractor::TemplateExtractor(ASTContext& Context)
-    : Context(Context) {
+TemplateExtractor::TemplateExtractor(ASTContext& Context, cpptoc::FileOriginTracker* tracker)
+    : Context(Context), fileTracker(tracker) {
 }
 
 void TemplateExtractor::extractTemplateInstantiations(TranslationUnitDecl* TU) {
@@ -31,9 +31,26 @@ std::vector<FunctionDecl*> TemplateExtractor::getFunctionInstantiations() const 
 }
 
 bool TemplateExtractor::VisitClassTemplateDecl(ClassTemplateDecl* D) {
+    llvm::outs() << "[DEBUG TemplateExtractor] VisitClassTemplateDecl: " << D->getNameAsString() << "\n";
+
+    // Bug #17: Skip templates from system headers to prevent hang
+    if (fileTracker && !fileTracker->shouldTranspile(D)) {
+        llvm::outs() << "  -> Skipped (not user code)\n";
+        return true;
+    }
+
+    llvm::outs() << "  -> Processing specializations (" << D->spec_end() - D->spec_begin() << " found)\n";
+
     // ClassTemplateDecl stores its specializations internally
     // We need to manually iterate through them since RecursiveASTVisitor doesn't do this
     for (auto* Spec : D->specializations()) {
+        llvm::outs() << "    -> Checking specialization\n";
+        // Bug #17: Skip specializations from system headers
+        if (fileTracker && !fileTracker->shouldTranspile(Spec)) {
+            llvm::outs() << "       -> Skipped (system header)\n";
+            continue;
+        }
+        llvm::outs() << "       -> Adding to collection\n";
         // Process each specialization
         VisitClassTemplateSpecializationDecl(Spec);
     }
@@ -41,9 +58,18 @@ bool TemplateExtractor::VisitClassTemplateDecl(ClassTemplateDecl* D) {
 }
 
 bool TemplateExtractor::VisitFunctionTemplateDecl(FunctionTemplateDecl* D) {
+    // Bug #17: Skip templates from system headers to prevent hang
+    if (fileTracker && !fileTracker->shouldTranspile(D)) {
+        return true;
+    }
+
     // FunctionTemplateDecl stores its specializations internally
     // Similar to ClassTemplateDecl, we need to manually iterate
     for (auto* Spec : D->specializations()) {
+        // Bug #17: Skip specializations from system headers
+        if (fileTracker && !fileTracker->shouldTranspile(Spec)) {
+            continue;
+        }
         // Process each function specialization
         VisitFunctionDecl(Spec);
     }
@@ -53,6 +79,11 @@ bool TemplateExtractor::VisitFunctionTemplateDecl(FunctionTemplateDecl* D) {
 bool TemplateExtractor::VisitClassTemplateSpecializationDecl(ClassTemplateSpecializationDecl* D) {
     // Only process valid template specializations
     if (!D) {
+        return true;
+    }
+
+    // Bug #17: Skip specializations from system headers
+    if (fileTracker && !fileTracker->shouldTranspile(D)) {
         return true;
     }
 
@@ -82,6 +113,11 @@ bool TemplateExtractor::VisitClassTemplateSpecializationDecl(ClassTemplateSpecia
 bool TemplateExtractor::VisitFunctionDecl(FunctionDecl* D) {
     // Check if this is a template instantiation
     if (!D || !isFunctionTemplateInstantiation(D)) {
+        return true;
+    }
+
+    // Bug #17: Skip function instantiations from system headers
+    if (fileTracker && !fileTracker->shouldTranspile(D)) {
         return true;
     }
 

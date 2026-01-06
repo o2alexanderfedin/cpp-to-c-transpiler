@@ -15,12 +15,6 @@ std::unique_ptr<ASTUnit> buildAST(const char *code) {
     return tooling::buildASTFromCodeWithArgs(code, args, "input.cc");
 }
 
-// Test helper macros
-    if (!(cond)) { \
-        std::cerr << "\nASSERT FAILED: " << msg << std::endl; \
-        return; \
-    }
-
 // Helper function to find class by name
 CXXRecordDecl* findClass(TranslationUnitDecl* TU, const std::string& name) {
     for (auto *D : TU->decls()) {
@@ -127,7 +121,7 @@ TEST_F(VirtualBaseDetectionTest, DetectDiamondPattern) {
         // Diamond inherits virtual base from Left and Right
         ASSERT_TRUE(analyzer.hasVirtualBases(Diamond)) << "Diamond should have virtual bases";
         auto vbases = analyzer.getVirtualBases(Diamond);
-        ASSERT_TRUE(vbases.size() == 1) << "Diamond should have 1 virtual base (shared Base;");
+        ASSERT_TRUE(vbases.size() == 1) << "Diamond should have 1 virtual base (shared Base)";
         ASSERT_TRUE(vbases[0]->getNameAsString() == "Base") << "Virtual base should be Base";
 
         // Diamond pattern detected
@@ -262,13 +256,13 @@ TEST_F(VirtualBaseDetectionTest, MostDerivedAnalysis) {
         analyzer.analyzeClass(MostDerived);
 
         // When constructing Derived directly, it's most-derived
-        ASSERT_TRUE(analyzer.isMostDerived(Derived) << Derived;, "Derived should be most-derived when constructing Derived");
+        ASSERT_TRUE(analyzer.isMostDerived(Derived, Derived)) << "Derived should be most-derived when constructing Derived";
 
         // When constructing MostDerived, Derived is NOT most-derived
-        ASSERT_TRUE(!analyzer.isMostDerived(Derived) << MostDerived;, "Derived should not be most-derived when constructing MostDerived");
+        ASSERT_TRUE(!analyzer.isMostDerived(Derived, MostDerived)) << "Derived should not be most-derived when constructing MostDerived";
 
         // MostDerived is always most-derived when constructing itself
-        ASSERT_TRUE(analyzer.isMostDerived(MostDerived) << MostDerived;, "MostDerived should be most-derived when constructing MostDerived");
+        ASSERT_TRUE(analyzer.isMostDerived(MostDerived, MostDerived)) << "MostDerived should be most-derived when constructing MostDerived";
 }
 
 TEST_F(VirtualBaseDetectionTest, MultipleVirtualBases) {

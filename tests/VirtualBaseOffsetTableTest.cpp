@@ -8,6 +8,7 @@
 #include "../include/VtableGenerator.h"
 #include "../include/VirtualMethodAnalyzer.h"
 #include "../include/VirtualInheritanceAnalyzer.h"
+#include "../include/OverrideResolver.h"
 #include <cassert>
 #include <sstream>
 
@@ -18,12 +19,13 @@ std::unique_ptr<ASTUnit> buildAST(const char *code) {
     return tooling::buildASTFromCodeWithArgs(code, args, "input.cc");
 }
 
-// Test helper macros
-    if (!(cond)) { \
-        std::cerr << "\nASSERT FAILED: " << msg << std::endl; \
-        std::cerr << "  Condition: " #cond << std::endl; \
-        return; \
-    }
+// Test helper macros (not used, but kept for reference)
+// #define CUSTOM_ASSERT(cond, msg) \
+//     if (!(cond)) { \
+//         std::cerr << "\nASSERT FAILED: " << msg << std::endl; \
+//         std::cerr << "  Condition: " #cond << std::endl; \
+//         return; \
+//     }
 
 // Helper function to find class by name
 CXXRecordDecl* findClass(TranslationUnitDecl* TU, const std::string& name) {
@@ -63,7 +65,8 @@ TEST_F(VirtualBaseOffsetTableTest, SimpleVirtualBaseOffset) {
 
         VirtualMethodAnalyzer vmAnalyzer(AST->getASTContext());
         VirtualInheritanceAnalyzer viAnalyzer;
-        VtableGenerator generator(AST->getASTContext(), vmAnalyzer);
+        OverrideResolver resolver(AST->getASTContext(), vmAnalyzer);
+        VtableGenerator generator(AST->getASTContext(), vmAnalyzer, &resolver);
 
         auto *TU = AST->getASTContext().getTranslationUnitDecl();
         auto *Base = findClass(TU, "Base");
@@ -113,7 +116,8 @@ TEST_F(VirtualBaseOffsetTableTest, DiamondVirtualBaseOffset) {
 
         VirtualMethodAnalyzer vmAnalyzer(AST->getASTContext());
         VirtualInheritanceAnalyzer viAnalyzer;
-        VtableGenerator generator(AST->getASTContext(), vmAnalyzer);
+        OverrideResolver resolver(AST->getASTContext(), vmAnalyzer);
+        VtableGenerator generator(AST->getASTContext(), vmAnalyzer, &resolver);
 
         auto *TU = AST->getASTContext().getTranslationUnitDecl();
         auto *Base = findClass(TU, "Base");
@@ -161,7 +165,8 @@ TEST_F(VirtualBaseOffsetTableTest, MultipleVirtualBaseOffsets) {
 
         VirtualMethodAnalyzer vmAnalyzer(AST->getASTContext());
         VirtualInheritanceAnalyzer viAnalyzer;
-        VtableGenerator generator(AST->getASTContext(), vmAnalyzer);
+        OverrideResolver resolver(AST->getASTContext(), vmAnalyzer);
+        VtableGenerator generator(AST->getASTContext(), vmAnalyzer, &resolver);
 
         auto *TU = AST->getASTContext().getTranslationUnitDecl();
         auto *Base1 = findClass(TU, "Base1");
@@ -210,7 +215,8 @@ TEST_F(VirtualBaseOffsetTableTest, OffsetCalculation) {
 
         VirtualMethodAnalyzer vmAnalyzer(AST->getASTContext());
         VirtualInheritanceAnalyzer viAnalyzer;
-        VtableGenerator generator(AST->getASTContext(), vmAnalyzer);
+        OverrideResolver resolver(AST->getASTContext(), vmAnalyzer);
+        VtableGenerator generator(AST->getASTContext(), vmAnalyzer, &resolver);
 
         auto *TU = AST->getASTContext().getTranslationUnitDecl();
         auto *Derived = findClass(TU, "Derived");
@@ -248,7 +254,8 @@ TEST_F(VirtualBaseOffsetTableTest, NegativeOffsetArea) {
 
         VirtualMethodAnalyzer vmAnalyzer(AST->getASTContext());
         VirtualInheritanceAnalyzer viAnalyzer;
-        VtableGenerator generator(AST->getASTContext(), vmAnalyzer);
+        OverrideResolver resolver(AST->getASTContext(), vmAnalyzer);
+        VtableGenerator generator(AST->getASTContext(), vmAnalyzer, &resolver);
 
         auto *TU = AST->getASTContext().getTranslationUnitDecl();
         auto *Derived = findClass(TU, "Derived");
@@ -294,7 +301,8 @@ TEST_F(VirtualBaseOffsetTableTest, VirtualBaseAccessHelper) {
 
         VirtualMethodAnalyzer vmAnalyzer(AST->getASTContext());
         VirtualInheritanceAnalyzer viAnalyzer;
-        VtableGenerator generator(AST->getASTContext(), vmAnalyzer);
+        OverrideResolver resolver(AST->getASTContext(), vmAnalyzer);
+        VtableGenerator generator(AST->getASTContext(), vmAnalyzer, &resolver);
 
         auto *TU = AST->getASTContext().getTranslationUnitDecl();
         auto *Base = findClass(TU, "Base");
@@ -335,7 +343,8 @@ TEST_F(VirtualBaseOffsetTableTest, NoVirtualBases) {
 
         VirtualMethodAnalyzer vmAnalyzer(AST->getASTContext());
         VirtualInheritanceAnalyzer viAnalyzer;
-        VtableGenerator generator(AST->getASTContext(), vmAnalyzer);
+        OverrideResolver resolver(AST->getASTContext(), vmAnalyzer);
+        VtableGenerator generator(AST->getASTContext(), vmAnalyzer, &resolver);
 
         auto *TU = AST->getASTContext().getTranslationUnitDecl();
         auto *Derived = findClass(TU, "Derived");
@@ -377,7 +386,8 @@ TEST_F(VirtualBaseOffsetTableTest, IndirectVirtualBaseOffset) {
 
         VirtualMethodAnalyzer vmAnalyzer(AST->getASTContext());
         VirtualInheritanceAnalyzer viAnalyzer;
-        VtableGenerator generator(AST->getASTContext(), vmAnalyzer);
+        OverrideResolver resolver(AST->getASTContext(), vmAnalyzer);
+        VtableGenerator generator(AST->getASTContext(), vmAnalyzer, &resolver);
 
         auto *TU = AST->getASTContext().getTranslationUnitDecl();
         auto *Base = findClass(TU, "Base");

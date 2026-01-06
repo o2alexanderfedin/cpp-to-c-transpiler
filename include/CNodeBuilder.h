@@ -32,6 +32,7 @@
 #include "clang/AST/Stmt.h"
 #include "clang/AST/Type.h"
 #include "llvm/Config/llvm-config.h" // For LLVM_VERSION_MAJOR
+#include <cassert>
 
 namespace clang {
 
@@ -57,6 +58,14 @@ public:
    * The ASTContext owns all created nodes - no manual cleanup needed.
    */
   explicit CNodeBuilder(ASTContext &Ctx) : Ctx(Ctx) {}
+
+  /**
+   * @brief Get the ASTContext used by this builder
+   * @return Reference to ASTContext
+   *
+   * Allows handlers to access context for creating nodes directly.
+   */
+  ASTContext& getContext() { return Ctx; }
 
   // ========================================================================
   // Type Helpers (Story #9)
@@ -191,9 +200,14 @@ public:
     QualType intTy = intType();
     IdentifierInfo &II = Ctx.Idents.get(name);
 
-    return VarDecl::Create(Ctx, Ctx.getTranslationUnitDecl(), SourceLocation(),
+    VarDecl *VD = VarDecl::Create(Ctx, Ctx.getTranslationUnitDecl(), SourceLocation(),
                            SourceLocation(), &II, intTy,
                            Ctx.getTrivialTypeSourceInfo(intTy), SC_None);
+
+    // CRITICAL FIX: Add the variable to the TranslationUnitDecl so it gets printed
+    Ctx.getTranslationUnitDecl()->addDecl(VD);
+
+    return VD;
   }
 
   /**
@@ -210,9 +224,14 @@ public:
   VarDecl *structVar(QualType type, llvm::StringRef name) {
     IdentifierInfo &II = Ctx.Idents.get(name);
 
-    return VarDecl::Create(Ctx, Ctx.getTranslationUnitDecl(), SourceLocation(),
+    VarDecl *VD = VarDecl::Create(Ctx, Ctx.getTranslationUnitDecl(), SourceLocation(),
                            SourceLocation(), &II, type,
                            Ctx.getTrivialTypeSourceInfo(type), SC_None);
+
+    // CRITICAL FIX: Add the variable to the TranslationUnitDecl so it gets printed
+    Ctx.getTranslationUnitDecl()->addDecl(VD);
+
+    return VD;
   }
 
   /**
@@ -230,9 +249,14 @@ public:
     QualType ptrTy = ptrType(pointee);
     IdentifierInfo &II = Ctx.Idents.get(name);
 
-    return VarDecl::Create(Ctx, Ctx.getTranslationUnitDecl(), SourceLocation(),
+    VarDecl *VD = VarDecl::Create(Ctx, Ctx.getTranslationUnitDecl(), SourceLocation(),
                            SourceLocation(), &II, ptrTy,
                            Ctx.getTrivialTypeSourceInfo(ptrTy), SC_None);
+
+    // CRITICAL FIX: Add the variable to the TranslationUnitDecl so it gets printed
+    Ctx.getTranslationUnitDecl()->addDecl(VD);
+
+    return VD;
   }
 
   /**
@@ -257,6 +281,9 @@ public:
     if (init) {
       VD->setInit(init);
     }
+
+    // CRITICAL FIX: Add the variable to the TranslationUnitDecl so it gets printed
+    Ctx.getTranslationUnitDecl()->addDecl(VD);
 
     return VD;
   }
@@ -335,6 +362,12 @@ public:
    * @endcode
    */
   DeclRefExpr *ref(VarDecl *var) {
+    // Ensure the VarDecl has a valid parent to avoid crashes in constant expression evaluation
+    if (!var->getDeclContext()) {
+      llvm::errs() << "WARNING: VarDecl has null DeclContext: "
+                   << var->getNameAsString() << "\n";
+    }
+
     return DeclRefExpr::Create(Ctx, NestedNameSpecifierLoc(), SourceLocation(),
                                var, false, SourceLocation(), var->getType(),
                                VK_LValue);
@@ -354,6 +387,22 @@ public:
     return DeclRefExpr::Create(Ctx, NestedNameSpecifierLoc(), SourceLocation(),
                                func, false, SourceLocation(), func->getType(),
                                VK_LValue);
+  }
+
+  /**
+   * @brief Create reference to enum constant (Bug #37)
+   * @param enumConst EnumConstantDecl
+   * @return DeclRefExpr* referring to the enum constant
+   *
+   * Example:
+   * @code
+   *   DeclRefExpr *ref = builder.ref(gameStateMenuConst);
+   * @endcode
+   */
+  DeclRefExpr *ref(EnumConstantDecl *enumConst) {
+    return DeclRefExpr::Create(Ctx, NestedNameSpecifierLoc(), SourceLocation(),
+                               enumConst, false, SourceLocation(), enumConst->getType(),
+                               VK_PRValue);
   }
 
   /**
@@ -397,7 +446,17 @@ public:
    * @endcode
    */
   CallExpr *call(FunctionDecl *func, llvm::ArrayRef<Expr *> args) {
+    // CRITICAL: Function must be valid
+    assert(func != nullptr && "call: FunctionDecl is null!");
+    assert(!func->getReturnType().isNull() && "call: Function has null return type!");
+
+    // CRITICAL: All arguments must be valid
+    for (size_t i = 0; i < args.size(); ++i) {
+      assert(args[i] != nullptr && "call: Argument is null!");
+    }
+
     DeclRefExpr *funcRef = ref(func);
+    assert(funcRef != nullptr && "call: ref() returned null for function!");
 
     return CallExpr::Create(Ctx, funcRef, args, func->getReturnType(),
                             VK_PRValue, SourceLocation(), FPOptionsOverride());
@@ -718,7 +777,53 @@ public:
 
     RD->completeDefinition();
 
+    // CRITICAL FIX: Add the struct to the TranslationUnitDecl so it gets printed
+    Ctx.getTranslationUnitDecl()->addDecl(RD);
+
     return RD;
+  }
+
+  /**
+   * @brief Create enum declaration (Bug #23: Enum class translation)
+   * @param name Enum name
+   * @param enumerators List of enumerator names and values
+   * @return EnumDecl* declaration
+   *
+   * Example:
+   * @code
+   *   EnumDecl *e = builder.enumDecl("Color", {{"Red", 0}, {"Green", 1}});
+   * @endcode
+   */
+  EnumDecl *enumDecl(llvm::StringRef name,
+                     llvm::ArrayRef<std::pair<llvm::StringRef, int>> enumerators) {
+    IdentifierInfo &II = Ctx.Idents.get(name);
+
+    // Create the enum declaration
+    EnumDecl *ED = EnumDecl::Create(
+        Ctx, Ctx.getTranslationUnitDecl(), SourceLocation(), SourceLocation(),
+        &II, nullptr, false, false, true);  // Not scoped, not fixed underlying type
+
+    ED->startDefinition();
+
+    // Add enumerator constants
+    for (const auto &[enumName, enumValue] : enumerators) {
+      IdentifierInfo &EnumII = Ctx.Idents.get(enumName);
+
+      // Create enumerator constant
+      EnumConstantDecl *ECD = EnumConstantDecl::Create(
+          Ctx, ED, SourceLocation(), &EnumII, Ctx.IntTy,
+          nullptr, llvm::APSInt(llvm::APInt(32, enumValue)));
+
+      // Add to enum
+      ED->addDecl(ECD);
+    }
+
+    ED->completeDefinition(Ctx.IntTy, Ctx.IntTy, 0, 0);
+
+    // Add to TranslationUnitDecl
+    Ctx.getTranslationUnitDecl()->addDecl(ED);
+
+    return ED;
   }
 
   /**
@@ -785,14 +890,20 @@ public:
   FunctionDecl *funcDecl(llvm::StringRef name, QualType retType,
                          llvm::ArrayRef<ParmVarDecl *> params,
                          Stmt *body = nullptr, CallingConv callConv = CC_C,
-                         bool isVariadic = false) {
+                         bool isVariadic = false, DeclContext *DC = nullptr) {
+    // CRITICAL: Return type must be valid
+    assert(!retType.isNull() && "funcDecl: Return type is null!");
+
     IdentifierInfo &II = Ctx.Idents.get(name);
     DeclarationName DN(&II);
 
     // Create function type with calling convention
     llvm::SmallVector<QualType, 4> paramTypes;
     for (ParmVarDecl *P : params) {
-      paramTypes.push_back(P->getType());
+      assert(P != nullptr && "funcDecl: Parameter is null!");
+      QualType paramType = P->getType();
+      assert(!paramType.isNull() && "funcDecl: Parameter has null type!");
+      paramTypes.push_back(paramType);
     }
 
     // Prompt #031: Set calling convention via ExtProtoInfo
@@ -802,18 +913,33 @@ public:
     EPI.Variadic = isVariadic;
 
     QualType funcType = Ctx.getFunctionType(retType, paramTypes, EPI);
+    assert(!funcType.isNull() && "funcDecl: Function type is null!");
+
+    // Use provided DeclContext if given, otherwise fall back to global TU
+    // IMPORTANT: Callers should provide file-specific TU for proper organization
+    DeclContext *declCtx = DC ? DC : Ctx.getTranslationUnitDecl();
 
     FunctionDecl *FD = FunctionDecl::Create(
-        Ctx, Ctx.getTranslationUnitDecl(), SourceLocation(), SourceLocation(),
+        Ctx, declCtx, SourceLocation(), SourceLocation(),
         DN, funcType, Ctx.getTrivialTypeSourceInfo(funcType), SC_None);
 
-    // Set parameters
+    assert(FD != nullptr && "funcDecl: FunctionDecl::Create returned null!");
+    assert(!FD->getReturnType().isNull() && "funcDecl: Created function has null return type!");
+
+    // Set parameters and ensure their DeclContext is set to this function
     FD->setParams(params);
+    for (ParmVarDecl *P : params) {
+      P->setDeclContext(FD);
+    }
 
     // Set body if provided
     if (body) {
       FD->setBody(body);
     }
+
+    // REMOVED: Auto-add to shared TU conflicts with per-file TU organization (Bug #30 fix)
+    // Callers now explicitly add to their target C_TranslationUnit via addDecl()
+    // Ctx.getTranslationUnitDecl()->addDecl(FD);
 
     return FD;
   }

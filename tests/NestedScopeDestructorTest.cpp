@@ -4,7 +4,6 @@
 // Tests that destructors are injected at end of nested scopes
 // TDD Approach: Tests verify actual destructor injection and ordering
 
-#include "CppToCVisitor.h"
 #include "CNodeBuilder.h"
 #include "clang/Tooling/Tooling.h"
 #include "clang/Frontend/ASTUnit.h"
@@ -214,7 +213,11 @@ void test_SimpleNestedScopeTranslation() {
 
     ASTContext &Ctx = AST->getASTContext();
     CNodeBuilder Builder(Ctx);
-    CppToCVisitor Visitor(Ctx, Builder);
+    cpptoc::FileOriginTracker tracker(Ctx.getSourceManager());
+    tracker.addUserHeaderPath("<stdin>");
+    clang::TranslationUnitDecl *C_TU = clang::TranslationUnitDecl::Create(Ctx);
+    TargetContext& targetCtx = TargetContext::getInstance();
+    CppToCVisitor Visitor(Ctx, Builder, targetCtx, tracker, C_TU, nullptr);
 
     // Traverse AST to trigger translation
     Visitor.TraverseDecl(Ctx.getTranslationUnitDecl());
@@ -258,7 +261,11 @@ void test_MultipleObjectsLIFO() {
 
     ASTContext &Ctx = AST->getASTContext();
     CNodeBuilder Builder(Ctx);
-    CppToCVisitor Visitor(Ctx, Builder);
+    cpptoc::FileOriginTracker tracker(Ctx.getSourceManager());
+    tracker.addUserHeaderPath("<stdin>");
+    clang::TranslationUnitDecl *C_TU = clang::TranslationUnitDecl::Create(Ctx);
+    TargetContext& targetCtx = TargetContext::getInstance();
+    CppToCVisitor Visitor(Ctx, Builder, targetCtx, tracker, C_TU, nullptr);
 
     Visitor.TraverseDecl(Ctx.getTranslationUnitDecl());
 

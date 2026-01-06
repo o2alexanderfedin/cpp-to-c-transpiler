@@ -27,8 +27,6 @@ TEST_F(OverloadResolutionTest, PrimitiveTypeOverloads) {
     std::unique_ptr<ASTUnit> AST = buildAST(code);
     ASSERT_TRUE(AST) << "Failed to parse C++ code";
 
-    NameMangler mangler(AST->getASTContext());
-
     // Find both add methods
     auto *TU = AST->getASTContext().getTranslationUnitDecl();
     CXXMethodDecl *addInt = nullptr;
@@ -56,11 +54,12 @@ TEST_F(OverloadResolutionTest, PrimitiveTypeOverloads) {
     ASSERT_TRUE(addInt != nullptr) << "Math::add(int, int) not found";
     ASSERT_TRUE(addDouble != nullptr) << "Math::add(double, double) not found";
 
-    std::string mangledInt = mangler.mangleName(addInt);
-    std::string mangledDouble = mangler.mangleName(addDouble);
+    std::string mangledInt = cpptoc::mangle_method(addInt);
+    std::string mangledDouble = cpptoc::mangle_method(addDouble);
 
-    ASSERT_TRUE(mangledInt == "Math_add" || mangledInt == "Math_add_int_int") << "Expected 'Math_add' or 'Math_add_int_int', got: " << mangledInt;
-    ASSERT_TRUE(mangledDouble == "Math_add_float_float") << "Expected 'Math_add_float_float', got: " << mangledDouble;
+    // Verify separator pattern and overload differentiation
+    EXPECT_EQ("Math__add__int_int", mangledInt);
+    EXPECT_EQ("Math__add__double_double", mangledDouble);
     ASSERT_TRUE(mangledInt != mangledDouble) << "Overloaded methods must have different mangled names";
 }
 
@@ -76,8 +75,6 @@ TEST_F(OverloadResolutionTest, ConstQualification) {
 
     std::unique_ptr<ASTUnit> AST = buildAST(code);
     ASSERT_TRUE(AST) << "Failed to parse C++ code";
-
-    NameMangler mangler(AST->getASTContext());
 
     // Find both process methods
     auto *TU = AST->getASTContext().getTranslationUnitDecl();
@@ -104,11 +101,16 @@ TEST_F(OverloadResolutionTest, ConstQualification) {
     ASSERT_TRUE(processNonConst != nullptr) << "Processor::process(int) not found";
     ASSERT_TRUE(processConst != nullptr) << "Processor::process(const int) not found";
 
-    std::string mangledNonConst = mangler.mangleName(processNonConst);
-    std::string mangledConst = mangler.mangleName(processConst);
+    std::string mangledNonConst = cpptoc::mangle_method(processNonConst);
+    std::string mangledConst = cpptoc::mangle_method(processConst);
+
+    // Verify separator pattern
+    EXPECT_TRUE(mangledNonConst.find("__") != std::string::npos) << "Expected __ separator pattern";
+    EXPECT_TRUE(mangledConst.find("__") != std::string::npos) << "Expected __ separator pattern";
 
     // Const qualification should be encoded
-    ASSERT_TRUE(mangledConst.find("const") != std::string::npos || mangledNonConst != mangledConst) << "Const qualification must be preserved in mangling";
+    ASSERT_TRUE(mangledConst.find("const") != std::string::npos || mangledNonConst != mangledConst)
+        << "Const qualification must be preserved in mangling";
 }
 
 // Test 3: Reference types
@@ -123,8 +125,6 @@ TEST_F(OverloadResolutionTest, ReferenceTypes) {
 
     std::unique_ptr<ASTUnit> AST = buildAST(code);
     ASSERT_TRUE(AST) << "Failed to parse C++ code";
-
-    NameMangler mangler(AST->getASTContext());
 
     // Find both handle methods
     auto *TU = AST->getASTContext().getTranslationUnitDecl();
@@ -151,12 +151,17 @@ TEST_F(OverloadResolutionTest, ReferenceTypes) {
     ASSERT_TRUE(handleValue != nullptr) << "Handler::handle(int) not found";
     ASSERT_TRUE(handleRef != nullptr) << "Handler::handle(int&) not found";
 
-    std::string mangledValue = mangler.mangleName(handleValue);
-    std::string mangledRef = mangler.mangleName(handleRef);
+    std::string mangledValue = cpptoc::mangle_method(handleValue);
+    std::string mangledRef = cpptoc::mangle_method(handleRef);
+
+    // Verify separator pattern
+    EXPECT_TRUE(mangledValue.find("__") != std::string::npos) << "Expected __ separator pattern";
+    EXPECT_TRUE(mangledRef.find("__") != std::string::npos) << "Expected __ separator pattern";
 
     // Reference should be encoded differently
     ASSERT_TRUE(mangledValue != mangledRef) << "Reference and value parameters must have different mangled names";
-    ASSERT_TRUE(mangledRef.find("ref") != std::string::npos || mangledRef != mangledValue) << "Reference type must be encoded in mangling";
+    ASSERT_TRUE(mangledRef.find("ref") != std::string::npos || mangledRef != mangledValue)
+        << "Reference type must be encoded in mangling";
 }
 
 // Test 4: Class type parameters
@@ -176,8 +181,6 @@ TEST_F(OverloadResolutionTest, ClassTypeParameters) {
 
     std::unique_ptr<ASTUnit> AST = buildAST(code);
     ASSERT_TRUE(AST) << "Failed to parse C++ code";
-
-    NameMangler mangler(AST->getASTContext());
 
     // Find both compute methods
     auto *TU = AST->getASTContext().getTranslationUnitDecl();
@@ -204,11 +207,16 @@ TEST_F(OverloadResolutionTest, ClassTypeParameters) {
     ASSERT_TRUE(computeInt != nullptr) << "Calculator::compute(int) not found";
     ASSERT_TRUE(computePoint != nullptr) << "Calculator::compute(Point) not found";
 
-    std::string mangledInt = mangler.mangleName(computeInt);
-    std::string mangledPoint = mangler.mangleName(computePoint);
+    std::string mangledInt = cpptoc::mangle_method(computeInt);
+    std::string mangledPoint = cpptoc::mangle_method(computePoint);
+
+    // Verify separator pattern
+    EXPECT_TRUE(mangledInt.find("__") != std::string::npos) << "Expected __ separator pattern";
+    EXPECT_TRUE(mangledPoint.find("__") != std::string::npos) << "Expected __ separator pattern";
 
     ASSERT_TRUE(mangledInt != mangledPoint) << "Overloaded methods with different types must have different names";
-    ASSERT_TRUE(mangledPoint.find("Point") != std::string::npos) << "Class type name must appear in mangled name, got: " << mangledPoint;
+    ASSERT_TRUE(mangledPoint.find("Point") != std::string::npos)
+        << "Class type name must appear in mangled name, got: " << mangledPoint;
 }
 
 // Test 5: Multiple parameters
@@ -224,8 +232,6 @@ TEST_F(OverloadResolutionTest, MultipleParameters) {
 
     std::unique_ptr<ASTUnit> AST = buildAST(code);
     ASSERT_TRUE(AST) << "Failed to parse C++ code";
-
-    NameMangler mangler(AST->getASTContext());
 
     // Find all three combine methods
     auto *TU = AST->getASTContext().getTranslationUnitDecl();
@@ -258,9 +264,14 @@ TEST_F(OverloadResolutionTest, MultipleParameters) {
     ASSERT_TRUE(combine3 != nullptr) << "Combiner::combine(int, int, int) not found";
     ASSERT_TRUE(combineMixed != nullptr) << "Combiner::combine(int, double) not found";
 
-    std::string mangled2 = mangler.mangleName(combine2);
-    std::string mangled3 = mangler.mangleName(combine3);
-    std::string mangledMixed = mangler.mangleName(combineMixed);
+    std::string mangled2 = cpptoc::mangle_method(combine2);
+    std::string mangled3 = cpptoc::mangle_method(combine3);
+    std::string mangledMixed = cpptoc::mangle_method(combineMixed);
+
+    // Verify separator pattern
+    EXPECT_TRUE(mangled2.find("__") != std::string::npos) << "Expected __ separator pattern";
+    EXPECT_TRUE(mangled3.find("__") != std::string::npos) << "Expected __ separator pattern";
+    EXPECT_TRUE(mangledMixed.find("__") != std::string::npos) << "Expected __ separator pattern";
 
     // All three must be unique
     ASSERT_TRUE(mangled2 != mangled3) << "Different parameter counts must produce different names";

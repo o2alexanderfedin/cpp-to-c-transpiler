@@ -14,7 +14,7 @@
 
 #include <gtest/gtest.h>
 #include "CNodeBuilder.h"
-#include "CppToCVisitor.h"
+#include "FileOriginTracker.h"
 #include "NameMangler.h"
 #include "clang/Tooling/Tooling.h"
 #include <memory>
@@ -35,8 +35,7 @@ class StandaloneFunctionTranslationTest : public ::testing::Test {
 protected:
 };
 
-TEST_F(StandaloneFunctionTranslationTest, SimpleFunctionDeclaration: int add(int a, int b) translation) {
-    translation");
+TEST_F(StandaloneFunctionTranslationTest, SimpleFunctionDeclaration) {
 
       const char *cpp = R"(
             int add(int a, int b) {
@@ -48,7 +47,10 @@ TEST_F(StandaloneFunctionTranslationTest, SimpleFunctionDeclaration: int add(int
       ASSERT_TRUE(AST) << "Failed to parse C++ code";
 
       CNodeBuilder builder(AST->getASTContext());
-      CppToCVisitor visitor(AST->getASTContext(), builder);
+      cpptoc::FileOriginTracker tracker(AST->getASTContext().getSourceManager());
+    tracker.addUserHeaderPath("<stdin>");
+    TargetContext& targetCtx = TargetContext::getInstance();
+    CppToCVisitor visitor(AST->getASTContext(), builder, targetCtx, tracker, nullptr);
 
       // Run visitor on AST
       visitor.TraverseDecl(AST->getASTContext().getTranslationUnitDecl());
@@ -60,8 +62,7 @@ TEST_F(StandaloneFunctionTranslationTest, SimpleFunctionDeclaration: int add(int
       ASSERT_TRUE(CFunc->getNumParams() == 2) << "Parameter count mismatch";
 }
 
-TEST_F(StandaloneFunctionTranslationTest, FunctionWithPointerReturn: int* allocate(int size)) {
-    ");
+TEST_F(StandaloneFunctionTranslationTest, FunctionWithPointerReturn) {
 
       const char *cpp = R"(
             int* allocate(int size) {
@@ -73,7 +74,10 @@ TEST_F(StandaloneFunctionTranslationTest, FunctionWithPointerReturn: int* alloca
       ASSERT_TRUE(AST) << "Failed to parse C++ code";
 
       CNodeBuilder builder(AST->getASTContext());
-      CppToCVisitor visitor(AST->getASTContext(), builder);
+      cpptoc::FileOriginTracker tracker(AST->getASTContext().getSourceManager());
+    tracker.addUserHeaderPath("<stdin>");
+    TargetContext& targetCtx = TargetContext::getInstance();
+    CppToCVisitor visitor(AST->getASTContext(), builder, targetCtx, tracker, nullptr);
 
       visitor.TraverseDecl(AST->getASTContext().getTranslationUnitDecl());
 
@@ -82,8 +86,7 @@ TEST_F(StandaloneFunctionTranslationTest, FunctionWithPointerReturn: int* alloca
       ASSERT_TRUE(CFunc->getReturnType()->isPointerType()) << "Return type should be pointer";
 }
 
-TEST_F(StandaloneFunctionTranslationTest, OverloadedFunctions: max(int, int) and max(double, double)) {
-    and max(double, double)");
+TEST_F(StandaloneFunctionTranslationTest, OverloadedFunctions) {
 
       const char *cpp = R"(
             int max(int a, int b) {
@@ -99,7 +102,10 @@ TEST_F(StandaloneFunctionTranslationTest, OverloadedFunctions: max(int, int) and
       ASSERT_TRUE(AST) << "Failed to parse C++ code";
 
       CNodeBuilder builder(AST->getASTContext());
-      CppToCVisitor visitor(AST->getASTContext(), builder);
+      cpptoc::FileOriginTracker tracker(AST->getASTContext().getSourceManager());
+    tracker.addUserHeaderPath("<stdin>");
+    TargetContext& targetCtx = TargetContext::getInstance();
+    CppToCVisitor visitor(AST->getASTContext(), builder, targetCtx, tracker, nullptr);
 
       visitor.TraverseDecl(AST->getASTContext().getTranslationUnitDecl());
 
@@ -112,8 +118,7 @@ TEST_F(StandaloneFunctionTranslationTest, OverloadedFunctions: max(int, int) and
       ASSERT_TRUE(CFunc1 != nullptr || CFunc2 != nullptr) << "Overloaded functions not generated with mangled names";
 }
 
-TEST_F(StandaloneFunctionTranslationTest, RecursiveFunction: int factorial(int n)) {
-    ");
+TEST_F(StandaloneFunctionTranslationTest, RecursiveFunction) {
 
       const char *cpp = R"(
             int factorial(int n) {
@@ -126,7 +131,10 @@ TEST_F(StandaloneFunctionTranslationTest, RecursiveFunction: int factorial(int n
       ASSERT_TRUE(AST) << "Failed to parse C++ code";
 
       CNodeBuilder builder(AST->getASTContext());
-      CppToCVisitor visitor(AST->getASTContext(), builder);
+      cpptoc::FileOriginTracker tracker(AST->getASTContext().getSourceManager());
+    tracker.addUserHeaderPath("<stdin>");
+    TargetContext& targetCtx = TargetContext::getInstance();
+    CppToCVisitor visitor(AST->getASTContext(), builder, targetCtx, tracker, nullptr);
 
       visitor.TraverseDecl(AST->getASTContext().getTranslationUnitDecl());
 
@@ -134,8 +142,7 @@ TEST_F(StandaloneFunctionTranslationTest, RecursiveFunction: int factorial(int n
       ASSERT_TRUE(CFunc != nullptr) << "Recursive function not generated";
 }
 
-TEST_F(StandaloneFunctionTranslationTest, MainFunction: int main() should NOT be mangled) {
-    should NOT be mangled");
+TEST_F(StandaloneFunctionTranslationTest, MainFunction) {
 
       const char *cpp = R"(
             int main(int argc, char* argv[]) {
@@ -147,7 +154,10 @@ TEST_F(StandaloneFunctionTranslationTest, MainFunction: int main() should NOT be
       ASSERT_TRUE(AST) << "Failed to parse C++ code";
 
       CNodeBuilder builder(AST->getASTContext());
-      CppToCVisitor visitor(AST->getASTContext(), builder);
+      cpptoc::FileOriginTracker tracker(AST->getASTContext().getSourceManager());
+    tracker.addUserHeaderPath("<stdin>");
+    TargetContext& targetCtx = TargetContext::getInstance();
+    CppToCVisitor visitor(AST->getASTContext(), builder, targetCtx, tracker, nullptr);
 
       visitor.TraverseDecl(AST->getASTContext().getTranslationUnitDecl());
 
@@ -157,8 +167,7 @@ TEST_F(StandaloneFunctionTranslationTest, MainFunction: int main() should NOT be
       ASSERT_TRUE(CFunc->getName() == "main") << "Main function should not be mangled";
 }
 
-TEST_F(StandaloneFunctionTranslationTest, StaticFunction: static int helper(int x)) {
-    ");
+TEST_F(StandaloneFunctionTranslationTest, StaticFunction) {
 
       const char *cpp = R"(
             static int helper(int x) {
@@ -170,7 +179,10 @@ TEST_F(StandaloneFunctionTranslationTest, StaticFunction: static int helper(int 
       ASSERT_TRUE(AST) << "Failed to parse C++ code";
 
       CNodeBuilder builder(AST->getASTContext());
-      CppToCVisitor visitor(AST->getASTContext(), builder);
+      cpptoc::FileOriginTracker tracker(AST->getASTContext().getSourceManager());
+    tracker.addUserHeaderPath("<stdin>");
+    TargetContext& targetCtx = TargetContext::getInstance();
+    CppToCVisitor visitor(AST->getASTContext(), builder, targetCtx, tracker, nullptr);
 
       visitor.TraverseDecl(AST->getASTContext().getTranslationUnitDecl());
 
@@ -179,8 +191,7 @@ TEST_F(StandaloneFunctionTranslationTest, StaticFunction: static int helper(int 
       ASSERT_TRUE(CFunc->getStorageClass() == SC_Static) << "Static linkage not preserved";
 }
 
-TEST_F(StandaloneFunctionTranslationTest, ExternFunction: extern int external_func(int a)) {
-    ");
+TEST_F(StandaloneFunctionTranslationTest, ExternFunction) {
 
       const char *cpp = R"(
             extern int external_func(int a);
@@ -194,7 +205,10 @@ TEST_F(StandaloneFunctionTranslationTest, ExternFunction: extern int external_fu
       ASSERT_TRUE(AST) << "Failed to parse C++ code";
 
       CNodeBuilder builder(AST->getASTContext());
-      CppToCVisitor visitor(AST->getASTContext(), builder);
+      cpptoc::FileOriginTracker tracker(AST->getASTContext().getSourceManager());
+    tracker.addUserHeaderPath("<stdin>");
+    TargetContext& targetCtx = TargetContext::getInstance();
+    CppToCVisitor visitor(AST->getASTContext(), builder, targetCtx, tracker, nullptr);
 
       visitor.TraverseDecl(AST->getASTContext().getTranslationUnitDecl());
 
@@ -204,8 +218,7 @@ TEST_F(StandaloneFunctionTranslationTest, ExternFunction: extern int external_fu
       ASSERT_TRUE(WrapperFunc != nullptr) << "Wrapper function not generated";
 }
 
-TEST_F(StandaloneFunctionTranslationTest, VariadicFunction: int sum(int count, ...)) {
-    ");
+TEST_F(StandaloneFunctionTranslationTest, VariadicFunction) {
 
       const char *cpp = R"(
             int sum(int count, ...) {
@@ -217,7 +230,10 @@ TEST_F(StandaloneFunctionTranslationTest, VariadicFunction: int sum(int count, .
       ASSERT_TRUE(AST) << "Failed to parse C++ code";
 
       CNodeBuilder builder(AST->getASTContext());
-      CppToCVisitor visitor(AST->getASTContext(), builder);
+      cpptoc::FileOriginTracker tracker(AST->getASTContext().getSourceManager());
+    tracker.addUserHeaderPath("<stdin>");
+    TargetContext& targetCtx = TargetContext::getInstance();
+    CppToCVisitor visitor(AST->getASTContext(), builder, targetCtx, tracker, nullptr);
 
       visitor.TraverseDecl(AST->getASTContext().getTranslationUnitDecl());
 
@@ -226,8 +242,7 @@ TEST_F(StandaloneFunctionTranslationTest, VariadicFunction: int sum(int count, .
       ASSERT_TRUE(CFunc->isVariadic()) << "Variadic property not preserved";
 }
 
-TEST_F(StandaloneFunctionTranslationTest, InlineFunction: inline int abs_val(int x)) {
-    ");
+TEST_F(StandaloneFunctionTranslationTest, InlineFunction) {
 
       const char *cpp = R"(
             inline int abs_val(int x) {
@@ -239,7 +254,10 @@ TEST_F(StandaloneFunctionTranslationTest, InlineFunction: inline int abs_val(int
       ASSERT_TRUE(AST) << "Failed to parse C++ code";
 
       CNodeBuilder builder(AST->getASTContext());
-      CppToCVisitor visitor(AST->getASTContext(), builder);
+      cpptoc::FileOriginTracker tracker(AST->getASTContext().getSourceManager());
+    tracker.addUserHeaderPath("<stdin>");
+    TargetContext& targetCtx = TargetContext::getInstance();
+    CppToCVisitor visitor(AST->getASTContext(), builder, targetCtx, tracker, nullptr);
 
       visitor.TraverseDecl(AST->getASTContext().getTranslationUnitDecl());
 
@@ -248,7 +266,7 @@ TEST_F(StandaloneFunctionTranslationTest, InlineFunction: inline int abs_val(int
       ASSERT_TRUE(CFunc->isInlineSpecified()) << "Inline specifier not preserved";
 }
 
-TEST_F(StandaloneFunctionTranslationTest, MutuallyRecursiveFunctions: isEven/isOdd) {
+TEST_F(StandaloneFunctionTranslationTest, MutuallyRecursiveFunctions) {
     const char *cpp = R"(
             int isEven(int n);
             int isOdd(int n);
@@ -268,7 +286,10 @@ TEST_F(StandaloneFunctionTranslationTest, MutuallyRecursiveFunctions: isEven/isO
       ASSERT_TRUE(AST) << "Failed to parse C++ code";
 
       CNodeBuilder builder(AST->getASTContext());
-      CppToCVisitor visitor(AST->getASTContext(), builder);
+      cpptoc::FileOriginTracker tracker(AST->getASTContext().getSourceManager());
+    tracker.addUserHeaderPath("<stdin>");
+    TargetContext& targetCtx = TargetContext::getInstance();
+    CppToCVisitor visitor(AST->getASTContext(), builder, targetCtx, tracker, nullptr);
 
       visitor.TraverseDecl(AST->getASTContext().getTranslationUnitDecl());
 
@@ -279,8 +300,7 @@ TEST_F(StandaloneFunctionTranslationTest, MutuallyRecursiveFunctions: isEven/isO
       ASSERT_TRUE(OddFunc != nullptr) << "isOdd function not generated";
 }
 
-TEST_F(StandaloneFunctionTranslationTest, ConstQualifiedParameter: int process(const int value)) {
-    ");
+TEST_F(StandaloneFunctionTranslationTest, ConstQualifiedParameter) {
 
       const char *cpp = R"(
             int process(const int value) {
@@ -292,7 +312,10 @@ TEST_F(StandaloneFunctionTranslationTest, ConstQualifiedParameter: int process(c
       ASSERT_TRUE(AST) << "Failed to parse C++ code";
 
       CNodeBuilder builder(AST->getASTContext());
-      CppToCVisitor visitor(AST->getASTContext(), builder);
+      cpptoc::FileOriginTracker tracker(AST->getASTContext().getSourceManager());
+    tracker.addUserHeaderPath("<stdin>");
+    TargetContext& targetCtx = TargetContext::getInstance();
+    CppToCVisitor visitor(AST->getASTContext(), builder, targetCtx, tracker, nullptr);
 
       visitor.TraverseDecl(AST->getASTContext().getTranslationUnitDecl());
 
@@ -305,8 +328,7 @@ TEST_F(StandaloneFunctionTranslationTest, ConstQualifiedParameter: int process(c
       ASSERT_TRUE(Param->getType().isConstQualified()) << "Const qualifier not preserved";
 }
 
-TEST_F(StandaloneFunctionTranslationTest, VoidReturnFunction: void print_hello()) {
-    ");
+TEST_F(StandaloneFunctionTranslationTest, VoidReturnFunction) {
 
       const char *cpp = R"(
             void print_hello() {
@@ -317,7 +339,10 @@ TEST_F(StandaloneFunctionTranslationTest, VoidReturnFunction: void print_hello()
       ASSERT_TRUE(AST) << "Failed to parse C++ code";
 
       CNodeBuilder builder(AST->getASTContext());
-      CppToCVisitor visitor(AST->getASTContext(), builder);
+      cpptoc::FileOriginTracker tracker(AST->getASTContext().getSourceManager());
+    tracker.addUserHeaderPath("<stdin>");
+    TargetContext& targetCtx = TargetContext::getInstance();
+    CppToCVisitor visitor(AST->getASTContext(), builder, targetCtx, tracker, nullptr);
 
       visitor.TraverseDecl(AST->getASTContext().getTranslationUnitDecl());
 
@@ -326,8 +351,7 @@ TEST_F(StandaloneFunctionTranslationTest, VoidReturnFunction: void print_hello()
       ASSERT_TRUE(CFunc->getReturnType()->isVoidType()) << "Return type should be void";
 }
 
-TEST_F(StandaloneFunctionTranslationTest, OverloadingDifferentParamCounts: compute(1/2/3 params)) {
-    ");
+TEST_F(StandaloneFunctionTranslationTest, OverloadingDifferentParamCounts) {
 
       const char *cpp = R"(
             int compute(int a) { return a * 2; }
@@ -339,7 +363,10 @@ TEST_F(StandaloneFunctionTranslationTest, OverloadingDifferentParamCounts: compu
       ASSERT_TRUE(AST) << "Failed to parse C++ code";
 
       CNodeBuilder builder(AST->getASTContext());
-      CppToCVisitor visitor(AST->getASTContext(), builder);
+      cpptoc::FileOriginTracker tracker(AST->getASTContext().getSourceManager());
+    tracker.addUserHeaderPath("<stdin>");
+    TargetContext& targetCtx = TargetContext::getInstance();
+    CppToCVisitor visitor(AST->getASTContext(), builder, targetCtx, tracker, nullptr);
 
       visitor.TraverseDecl(AST->getASTContext().getTranslationUnitDecl());
 
@@ -359,8 +386,7 @@ TEST_F(StandaloneFunctionTranslationTest, OverloadingDifferentParamCounts: compu
       ASSERT_TRUE(functionsFound >= 1) << "Overloaded functions not generated";
 }
 
-TEST_F(StandaloneFunctionTranslationTest, NoParameterFunction: int get_constant()) {
-    ");
+TEST_F(StandaloneFunctionTranslationTest, NoParameterFunction) {
 
       const char *cpp = R"(
             int get_constant() {
@@ -372,7 +398,10 @@ TEST_F(StandaloneFunctionTranslationTest, NoParameterFunction: int get_constant(
       ASSERT_TRUE(AST) << "Failed to parse C++ code";
 
       CNodeBuilder builder(AST->getASTContext());
-      CppToCVisitor visitor(AST->getASTContext(), builder);
+      cpptoc::FileOriginTracker tracker(AST->getASTContext().getSourceManager());
+    tracker.addUserHeaderPath("<stdin>");
+    TargetContext& targetCtx = TargetContext::getInstance();
+    CppToCVisitor visitor(AST->getASTContext(), builder, targetCtx, tracker, nullptr);
 
       visitor.TraverseDecl(AST->getASTContext().getTranslationUnitDecl());
 

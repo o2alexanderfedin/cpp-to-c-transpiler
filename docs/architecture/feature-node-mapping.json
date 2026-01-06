@@ -1,0 +1,325 @@
+{
+  "description": "Maps C++ features to required AST nodes, ordered by complexity for progressive implementation",
+  "implementation_progression": [
+    {
+      "phase": 1,
+      "name": "Basic Functions & Arithmetic",
+      "complexity": 1,
+      "description": "Standalone functions with simple arithmetic and local variables",
+      "features": [
+        "Function declarations and definitions",
+        "Function parameters",
+        "Local variables with initialization",
+        "Arithmetic operators (+, -, *, /, %)",
+        "Integer and float literals",
+        "Variable references",
+        "Return statements"
+      ],
+      "required_nodes": [
+        "FunctionDecl",
+        "ParmVarDecl",
+        "CompoundStmt",
+        "VarDecl",
+        "DeclStmt",
+        "BinaryOperator",
+        "IntegerLiteral",
+        "FloatingLiteral",
+        "DeclRefExpr",
+        "ImplicitCastExpr",
+        "ReturnStmt"
+      ],
+      "c_mapping": "Direct 1:1 mapping - no transformations needed",
+      "test_cases": [
+        "Simple add function",
+        "Function with local variables",
+        "Arithmetic expressions",
+        "Function calls"
+      ]
+    },
+    {
+      "phase": 2,
+      "name": "Control Flow",
+      "complexity": 1,
+      "description": "Basic control flow: if/else, loops, switch",
+      "features": [
+        "If/else statements",
+        "While loops",
+        "For loops",
+        "Switch/case statements",
+        "Break and continue",
+        "Comparison operators (==, !=, <, >, <=, >=)",
+        "Logical operators (&&, ||, !)"
+      ],
+      "required_nodes": [
+        "IfStmt",
+        "WhileStmt",
+        "ForStmt",
+        "SwitchStmt",
+        "CaseStmt",
+        "DefaultStmt",
+        "BreakStmt",
+        "ContinueStmt",
+        "BinaryOperator",
+        "UnaryOperator"
+      ],
+      "c_mapping": "Direct 1:1 mapping - same syntax in C",
+      "test_cases": [
+        "If/else branches",
+        "While loop with break",
+        "For loop with continue",
+        "Switch with multiple cases"
+      ]
+    },
+    {
+      "phase": 3,
+      "name": "Global Variables & Types",
+      "complexity": 1,
+      "description": "Global variables, type definitions, and basic casts",
+      "features": [
+        "Global variables",
+        "Static local variables",
+        "String literals",
+        "Character literals",
+        "Type casts"
+      ],
+      "required_nodes": [
+        "VarDecl (global)",
+        "StringLiteral",
+        "CharacterLiteral",
+        "ImplicitCastExpr",
+        "CStyleCastExpr"
+      ],
+      "c_mapping": "Direct mapping with storage class handling",
+      "test_cases": [
+        "Global variable initialization",
+        "Static local variable persistence",
+        "String constant usage"
+      ]
+    },
+    {
+      "phase": 4,
+      "name": "Structs (C-style)",
+      "complexity": 2,
+      "description": "C-style structs without methods",
+      "features": [
+        "Struct declarations",
+        "Struct field access",
+        "Struct initialization",
+        "Passing structs to functions"
+      ],
+      "required_nodes": [
+        "RecordDecl",
+        "FieldDecl",
+        "MemberExpr",
+        "InitListExpr"
+      ],
+      "c_mapping": "Direct mapping - C structs work the same",
+      "test_cases": [
+        "Struct declaration and usage",
+        "Nested struct access",
+        "Struct initialization"
+      ]
+    },
+    {
+      "phase": 5,
+      "name": "Pointers & References",
+      "complexity": 2,
+      "description": "Pointer operations and C++ references",
+      "features": [
+        "Pointer types",
+        "Address-of operator (&)",
+        "Dereference operator (*)",
+        "Pointer arithmetic",
+        "C++ references (translate to pointers)"
+      ],
+      "required_nodes": [
+        "PointerType",
+        "ReferenceType",
+        "UnaryOperator (UO_AddrOf, UO_Deref)",
+        "BinaryOperator (pointer arithmetic)"
+      ],
+      "c_mapping": "References → pointers, rest is direct",
+      "test_cases": [
+        "Pointer arithmetic",
+        "Reference parameters (as pointers)",
+        "Pointer dereferencing"
+      ]
+    },
+    {
+      "phase": 6,
+      "name": "Classes (Simple)",
+      "complexity": 3,
+      "description": "Classes with methods, constructors, destructors",
+      "features": [
+        "Class declarations",
+        "Member variables",
+        "Member functions",
+        "Constructors",
+        "Destructors",
+        "'this' pointer"
+      ],
+      "required_nodes": [
+        "CXXRecordDecl",
+        "FieldDecl",
+        "CXXMethodDecl",
+        "CXXConstructorDecl",
+        "CXXDestructorDecl",
+        "CXXThisExpr"
+      ],
+      "c_mapping": "Class → struct, methods → functions with 'this' parameter",
+      "test_cases": [
+        "Simple class with methods",
+        "Constructor initialization",
+        "Destructor cleanup"
+      ]
+    },
+    {
+      "phase": 7,
+      "name": "Method Calls",
+      "complexity": 3,
+      "description": "Calling member functions on objects",
+      "features": [
+        "Method calls (obj.method())",
+        "Method calls through pointers (ptr->method())",
+        "Method overloading (name mangling)"
+      ],
+      "required_nodes": [
+        "MemberExpr",
+        "CXXMemberCallExpr",
+        "CallExpr"
+      ],
+      "c_mapping": "obj.method(args) → ClassName_method(&obj, args)",
+      "test_cases": [
+        "Method call on object",
+        "Method call through pointer",
+        "Overloaded methods"
+      ]
+    },
+    {
+      "phase": 8,
+      "name": "Enums",
+      "complexity": 2,
+      "description": "Unscoped and scoped enumerations",
+      "features": [
+        "Unscoped enums",
+        "Scoped enums (enum class)",
+        "Enum constant references"
+      ],
+      "required_nodes": [
+        "EnumDecl",
+        "EnumConstantDecl",
+        "DeclRefExpr (enum constants)"
+      ],
+      "c_mapping": "Unscoped → direct, scoped → prefix with EnumName__",
+      "test_cases": [
+        "Unscoped enum usage",
+        "Scoped enum with prefixed names",
+        "Enum in switch statement"
+      ]
+    },
+    {
+      "phase": 9,
+      "name": "Inheritance (Single)",
+      "complexity": 4,
+      "description": "Single inheritance without virtual methods",
+      "features": [
+        "Single inheritance",
+        "Base class field access",
+        "Base class method calls"
+      ],
+      "required_nodes": [
+        "CXXBaseSpecifier",
+        "CXXRecordDecl (with bases)",
+        "MemberExpr (base field access)"
+      ],
+      "c_mapping": "Embed base struct as first field in derived struct",
+      "test_cases": [
+        "Derived class with base",
+        "Access base class fields",
+        "Call base class methods"
+      ]
+    },
+    {
+      "phase": 10,
+      "name": "Templates (Monomorphization)",
+      "complexity": 5,
+      "description": "Class and function templates via monomorphization",
+      "features": [
+        "Class templates",
+        "Function templates",
+        "Template instantiation"
+      ],
+      "required_nodes": [
+        "ClassTemplateDecl",
+        "FunctionTemplateDecl",
+        "ClassTemplateSpecializationDecl",
+        "TemplateTypeParmDecl",
+        "TemplateSpecializationType"
+      ],
+      "c_mapping": "Generate concrete struct/function for each instantiation",
+      "test_cases": [
+        "Template class with int and float",
+        "Template function instantiation",
+        "Multiple template parameters"
+      ]
+    },
+    {
+      "phase": 11,
+      "name": "Virtual Methods (Advanced)",
+      "complexity": 5,
+      "description": "Virtual methods and polymorphism via vtables",
+      "features": [
+        "Virtual methods",
+        "Virtual destructors",
+        "Pure virtual methods (abstract classes)"
+      ],
+      "required_nodes": [
+        "CXXMethodDecl (isVirtual)",
+        "CXXDestructorDecl (isVirtual)"
+      ],
+      "c_mapping": "Generate vtable struct with function pointers",
+      "test_cases": [
+        "Virtual method override",
+        "Polymorphic calls",
+        "Abstract base class"
+      ]
+    },
+    {
+      "phase": 12,
+      "name": "Namespaces",
+      "complexity": 3,
+      "description": "Namespace declarations and usage",
+      "features": [
+        "Namespace declarations",
+        "Nested namespaces",
+        "Using directives"
+      ],
+      "required_nodes": [
+        "NamespaceDecl",
+        "UsingDirectiveDecl"
+      ],
+      "c_mapping": "Prefix all names with namespace_symbolname",
+      "test_cases": [
+        "Namespace function",
+        "Nested namespace access",
+        "Using directive"
+      ]
+    }
+  ],
+  "summary": {
+    "total_phases": 12,
+    "complexity_levels": {
+      "1_simple": ["Phase 1-3: Functions, control flow, global variables"],
+      "2_intermediate": ["Phase 4-5,8: Structs, pointers, enums"],
+      "3_moderate": ["Phase 6-7,12: Classes, methods, namespaces"],
+      "4_advanced": ["Phase 9: Inheritance"],
+      "5_complex": ["Phase 10-11: Templates, virtual methods"]
+    },
+    "node_coverage": {
+      "basic_nodes": 23,
+      "class_nodes": 10,
+      "advanced_nodes": 14,
+      "total": 47
+    }
+  }
+}

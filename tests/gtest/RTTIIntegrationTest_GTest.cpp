@@ -6,9 +6,10 @@
 #include "VirtualFunctionTestFixtures.h"
 
 using namespace std;
+using namespace clang;
 
 // Test fixture
-class RTTIIntegrationTest : public VirtualFunctionTestBase {
+class RTTIIntegrationTest : public RTTITestBase {
 protected:
     void SetUp() override {
         // Base setup handles AST initialization
@@ -33,24 +34,24 @@ TEST_F(RTTIIntegrationTest, TypidStaticTypeName) {
     )";
 
     AST = buildAST(code);
-    ASSERT_NE(AST != nullptr, nullptr) << "Failed to parse C++ code";
+    ASSERT_NE(AST, nullptr) << "Failed to parse C++ code";
 
     ASTContext& Context = AST->getASTContext();
     VirtualMethodAnalyzer Analyzer(Context);
     TypeidTranslator Translator(Context, Analyzer);
 
     const CXXTypeidExpr* typeidExpr = findTypeidExpr(Context);
-    ASSERT_NE(typeidExpr != nullptr, nullptr) << "typeid expression not found";
+    ASSERT_NE(typeidExpr, nullptr) << "typeid expression not found";
 
     // Verify it's a static typeid
-    ASSERT_NE(typeidExpr->isTypeOperand(), nullptr) << "Expected type operand";
-    ASSERT_NE(!Translator.isPolymorphicTypeid(typeidExpr), nullptr) << "Expected static typeid";
+    ASSERT_TRUE(typeidExpr->isTypeOperand()) << "Expected type operand";
+    ASSERT_FALSE(Translator.isPolymorphicTypeid(typeidExpr)) << "Expected static typeid";
 
     // Translate
     std::string translation = Translator.translateTypeid(typeidExpr);
-    ASSERT_NE(!translation.empty(), nullptr) << "Translation is empty";
-    ASSERT_NE(translation.find("__ti_Animal") != std::string::npos, nullptr) << "Expected __ti_Animal reference";
-    ASSERT_NE(translation.find("&") != std::string::npos, nullptr) << "Expected address-of operator";
+    ASSERT_FALSE(translation.empty()) << "Translation is empty";
+    ASSERT_NE(translation.find("__ti_Animal"), std::string::npos) << "Expected __ti_Animal reference";
+    ASSERT_NE(translation.find("&"), std::string::npos) << "Expected address-of operator";
 
     
 }
@@ -78,23 +79,23 @@ TEST_F(RTTIIntegrationTest, TypeidPolymorphicBasic) {
     )";
 
     AST = buildAST(code);
-    ASSERT_NE(AST != nullptr, nullptr) << "Failed to parse C++ code";
+    ASSERT_NE(AST, nullptr) << "Failed to parse C++ code";
 
     ASTContext& Context = AST->getASTContext();
     VirtualMethodAnalyzer Analyzer(Context);
     TypeidTranslator Translator(Context, Analyzer);
 
     const CXXTypeidExpr* typeidExpr = findTypeidExpr(Context);
-    ASSERT_NE(typeidExpr != nullptr, nullptr) << "typeid expression not found";
+    ASSERT_NE(typeidExpr, nullptr) << "typeid expression not found";
 
     // Verify it's a polymorphic typeid
-    ASSERT_NE(!typeidExpr->isTypeOperand(), nullptr) << "Expected expression operand";
-    ASSERT_NE(Translator.isPolymorphicTypeid(typeidExpr), nullptr) << "Expected polymorphic typeid";
+    ASSERT_FALSE(typeidExpr->isTypeOperand()) << "Expected expression operand";
+    ASSERT_TRUE(Translator.isPolymorphicTypeid(typeidExpr)) << "Expected polymorphic typeid";
 
     // Translate
     std::string translation = Translator.translateTypeid(typeidExpr);
-    ASSERT_NE(!translation.empty(), nullptr) << "Translation is empty";
-    ASSERT_NE(translation.find("vptr") != std::string::npos, nullptr) << "Expected vptr reference for polymorphic lookup";
+    ASSERT_FALSE(translation.empty()) << "Translation is empty";
+    ASSERT_NE(translation.find("vptr"), std::string::npos) << "Expected vptr reference for polymorphic lookup";
 
     
 }
@@ -120,18 +121,18 @@ TEST_F(RTTIIntegrationTest, TypeidNullPointer) {
     )";
 
     AST = buildAST(code);
-    ASSERT_NE(AST != nullptr, nullptr) << "Failed to parse C++ code";
+    ASSERT_NE(AST, nullptr) << "Failed to parse C++ code";
 
     ASTContext& Context = AST->getASTContext();
     VirtualMethodAnalyzer Analyzer(Context);
     TypeidTranslator Translator(Context, Analyzer);
 
     const CXXTypeidExpr* typeidExpr = findTypeidExpr(Context);
-    ASSERT_NE(typeidExpr != nullptr, nullptr) << "typeid expression not found";
+    ASSERT_NE(typeidExpr, nullptr) << "typeid expression not found";
 
     // Translate - should generate code (actual null check is runtime behavior)
     std::string translation = Translator.translateTypeid(typeidExpr);
-    ASSERT_NE(!translation.empty(), nullptr) << "Translation is empty";
+    ASSERT_FALSE(translation.empty()) << "Translation is empty";
 
     
 }
@@ -157,21 +158,21 @@ TEST_F(RTTIIntegrationTest, TypeidEquality) {
     )";
 
     AST = buildAST(code);
-    ASSERT_NE(AST != nullptr, nullptr) << "Failed to parse C++ code";
+    ASSERT_NE(AST, nullptr) << "Failed to parse C++ code";
 
     ASTContext& Context = AST->getASTContext();
     VirtualMethodAnalyzer Analyzer(Context);
     TypeidTranslator Translator(Context, Analyzer);
 
     auto typeids = findAllTypeidExprs(Context);
-    ASSERT_NE(typeids.size() >= 2, nullptr) << "Expected at least 2 typeid expressions";
+    ASSERT_GE(typeids.size(), 2) << "Expected at least 2 typeid expressions";
 
     // Both should be static and reference same type
     std::string trans1 = Translator.translateTypeid(typeids[0]);
     std::string trans2 = Translator.translateTypeid(typeids[1]);
 
-    ASSERT_NE(trans1.find("__ti_Circle") != std::string::npos, nullptr) << "First typeid should reference __ti_Circle";
-    ASSERT_NE(trans2.find("__ti_Circle") != std::string::npos, nullptr) << "Second typeid should reference __ti_Circle";
+    ASSERT_NE(trans1.find("__ti_Circle"), std::string::npos) << "First typeid should reference __ti_Circle";
+    ASSERT_NE(trans2.find("__ti_Circle"), std::string::npos) << "Second typeid should reference __ti_Circle";
 
     
 }
@@ -194,17 +195,17 @@ TEST_F(RTTIIntegrationTest, TypeidNameFunction) {
     )";
 
     AST = buildAST(code);
-    ASSERT_NE(AST != nullptr, nullptr) << "Failed to parse C++ code";
+    ASSERT_NE(AST, nullptr) << "Failed to parse C++ code";
 
     ASTContext& Context = AST->getASTContext();
     VirtualMethodAnalyzer Analyzer(Context);
     TypeidTranslator Translator(Context, Analyzer);
 
     const CXXTypeidExpr* typeidExpr = findTypeidExpr(Context);
-    ASSERT_NE(typeidExpr != nullptr, nullptr) << "typeid expression not found";
+    ASSERT_NE(typeidExpr, nullptr) << "typeid expression not found";
 
     std::string translation = Translator.translateTypeid(typeidExpr);
-    ASSERT_NE(translation.find("__ti_Widget") != std::string::npos, nullptr) << "Expected __ti_Widget reference";
+    ASSERT_NE(translation.find("__ti_Widget"), std::string::npos) << "Expected __ti_Widget reference";
 
     
 }
@@ -232,20 +233,20 @@ TEST_F(RTTIIntegrationTest, TypeidInheritanceChain) {
     )";
 
     AST = buildAST(code);
-    ASSERT_NE(AST != nullptr, nullptr) << "Failed to parse C++ code";
+    ASSERT_NE(AST, nullptr) << "Failed to parse C++ code";
 
     ASTContext& Context = AST->getASTContext();
     VirtualMethodAnalyzer Analyzer(Context);
     TypeidTranslator Translator(Context, Analyzer);
 
     auto typeids = findAllTypeidExprs(Context);
-    ASSERT_NE(typeids.size() >= 3, nullptr) << "Expected at least 3 typeid expressions";
+    ASSERT_GE(typeids.size(), 3) << "Expected at least 3 typeid expressions";
 
     // All should be polymorphic (expression operands)
     for (const auto* expr : typeids) {
-        ASSERT_NE(Translator.isPolymorphicTypeid(expr), nullptr) << "Expected polymorphic typeid";
+        ASSERT_TRUE(Translator.isPolymorphicTypeid(expr)) << "Expected polymorphic typeid";
         std::string trans = Translator.translateTypeid(expr);
-        ASSERT_NE(trans.find("vptr") != std::string::npos, nullptr) << "Expected vptr for polymorphic lookup";
+        ASSERT_NE(trans.find("vptr"), std::string::npos) << "Expected vptr for polymorphic lookup";
     }
 
     
@@ -277,21 +278,21 @@ TEST_F(RTTIIntegrationTest, DynamicCastDowncast) {
     )";
 
     AST = buildAST(code);
-    ASSERT_NE(AST != nullptr, nullptr) << "Failed to parse C++ code";
+    ASSERT_NE(AST, nullptr) << "Failed to parse C++ code";
 
     ASTContext& Context = AST->getASTContext();
     VirtualMethodAnalyzer Analyzer(Context);
     DynamicCastTranslator Translator(Context, Analyzer);
 
     const CXXDynamicCastExpr* castExpr = findDynamicCastExpr(Context);
-    ASSERT_NE(castExpr != nullptr, nullptr) << "dynamic_cast expression not found";
+    ASSERT_NE(castExpr, nullptr) << "dynamic_cast expression not found";
 
     // Translate
     std::string translation = Translator.translateDynamicCast(castExpr);
-    ASSERT_NE(!translation.empty(), nullptr) << "Translation is empty";
-    ASSERT_NE(translation.find("cxx_dynamic_cast") != std::string::npos, nullptr) << "Expected cxx_dynamic_cast call";
-    ASSERT_NE(translation.find("__ti_Shape") != std::string::npos, nullptr) << "Expected source type __ti_Shape";
-    ASSERT_NE(translation.find("__ti_Circle") != std::string::npos, nullptr) << "Expected target type __ti_Circle";
+    ASSERT_FALSE(translation.empty()) << "Translation is empty";
+    ASSERT_NE(translation.find("cxx_dynamic_cast"), std::string::npos) << "Expected cxx_dynamic_cast call";
+    ASSERT_NE(translation.find("__ti_Shape"), std::string::npos) << "Expected source type __ti_Shape";
+    ASSERT_NE(translation.find("__ti_Circle"), std::string::npos) << "Expected target type __ti_Circle";
 
     
 }
@@ -318,18 +319,18 @@ TEST_F(RTTIIntegrationTest, DynamicCastUpcast) {
     )";
 
     AST = buildAST(code);
-    ASSERT_NE(AST != nullptr, nullptr) << "Failed to parse C++ code";
+    ASSERT_NE(AST, nullptr) << "Failed to parse C++ code";
 
     ASTContext& Context = AST->getASTContext();
     VirtualMethodAnalyzer Analyzer(Context);
     DynamicCastTranslator Translator(Context, Analyzer);
 
     const CXXDynamicCastExpr* castExpr = findDynamicCastExpr(Context);
-    ASSERT_NE(castExpr != nullptr, nullptr) << "dynamic_cast expression not found";
+    ASSERT_NE(castExpr, nullptr) << "dynamic_cast expression not found";
 
     // Translate (upcast still generates dynamic_cast for uniformity)
     std::string translation = Translator.translateDynamicCast(castExpr);
-    ASSERT_NE(!translation.empty(), nullptr) << "Translation is empty";
+    ASSERT_FALSE(translation.empty()) << "Translation is empty";
 
     
 }
@@ -357,19 +358,19 @@ TEST_F(RTTIIntegrationTest, DynamicCastWrongType) {
     )";
 
     AST = buildAST(code);
-    ASSERT_NE(AST != nullptr, nullptr) << "Failed to parse C++ code";
+    ASSERT_NE(AST, nullptr) << "Failed to parse C++ code";
 
     ASTContext& Context = AST->getASTContext();
     VirtualMethodAnalyzer Analyzer(Context);
     DynamicCastTranslator Translator(Context, Analyzer);
 
     const CXXDynamicCastExpr* castExpr = findDynamicCastExpr(Context);
-    ASSERT_NE(castExpr != nullptr, nullptr) << "dynamic_cast expression not found";
+    ASSERT_NE(castExpr, nullptr) << "dynamic_cast expression not found";
 
     // Translate
     std::string translation = Translator.translateDynamicCast(castExpr);
-    ASSERT_NE(translation.find("cxx_dynamic_cast") != std::string::npos, nullptr) << "Expected runtime cast function";
-    ASSERT_NE(translation.find("__ti_Boat") != std::string::npos, nullptr) << "Expected target type __ti_Boat";
+    ASSERT_NE(translation.find("cxx_dynamic_cast"), std::string::npos) << "Expected runtime cast function";
+    ASSERT_NE(translation.find("__ti_Boat"), std::string::npos) << "Expected target type __ti_Boat";
 
     
 }
@@ -389,20 +390,20 @@ TEST_F(RTTIIntegrationTest, DynamicCastCrossHierarchy) {
     )";
 
     AST = buildAST(code);
-    ASSERT_NE(AST != nullptr, nullptr) << "Failed to parse C++ code";
+    ASSERT_NE(AST, nullptr) << "Failed to parse C++ code";
 
     ASTContext& Context = AST->getASTContext();
     VirtualMethodAnalyzer Analyzer(Context);
     DynamicCastTranslator Translator(Context, Analyzer);
 
     const CXXDynamicCastExpr* castExpr = findDynamicCastExpr(Context);
-    ASSERT_NE(castExpr != nullptr, nullptr) << "dynamic_cast expression not found";
+    ASSERT_NE(castExpr, nullptr) << "dynamic_cast expression not found";
 
     // Translate
     std::string translation = Translator.translateDynamicCast(castExpr);
-    ASSERT_NE(translation.find("cxx_dynamic_cast") != std::string::npos, nullptr) << "Expected runtime cast";
-    ASSERT_NE(translation.find("__ti_A") != std::string::npos, nullptr) << "Expected source type";
-    ASSERT_NE(translation.find("__ti_B") != std::string::npos, nullptr) << "Expected target type";
+    ASSERT_NE(translation.find("cxx_dynamic_cast"), std::string::npos) << "Expected runtime cast";
+    ASSERT_NE(translation.find("__ti_A"), std::string::npos) << "Expected source type";
+    ASSERT_NE(translation.find("__ti_B"), std::string::npos) << "Expected target type";
 
     
 }
@@ -422,18 +423,18 @@ TEST_F(RTTIIntegrationTest, DynamicCastNullPtr) {
     )";
 
     AST = buildAST(code);
-    ASSERT_NE(AST != nullptr, nullptr) << "Failed to parse C++ code";
+    ASSERT_NE(AST, nullptr) << "Failed to parse C++ code";
 
     ASTContext& Context = AST->getASTContext();
     VirtualMethodAnalyzer Analyzer(Context);
     DynamicCastTranslator Translator(Context, Analyzer);
 
     const CXXDynamicCastExpr* castExpr = findDynamicCastExpr(Context);
-    ASSERT_NE(castExpr != nullptr, nullptr) << "dynamic_cast expression not found";
+    ASSERT_NE(castExpr, nullptr) << "dynamic_cast expression not found";
 
     // Translate (runtime will handle null check)
     std::string translation = Translator.translateDynamicCast(castExpr);
-    ASSERT_NE(!translation.empty(), nullptr) << "Translation is empty";
+    ASSERT_FALSE(translation.empty()) << "Translation is empty";
 
     
 }
@@ -452,18 +453,18 @@ TEST_F(RTTIIntegrationTest, DynamicCastSameType) {
     )";
 
     AST = buildAST(code);
-    ASSERT_NE(AST != nullptr, nullptr) << "Failed to parse C++ code";
+    ASSERT_NE(AST, nullptr) << "Failed to parse C++ code";
 
     ASTContext& Context = AST->getASTContext();
     VirtualMethodAnalyzer Analyzer(Context);
     DynamicCastTranslator Translator(Context, Analyzer);
 
     const CXXDynamicCastExpr* castExpr = findDynamicCastExpr(Context);
-    ASSERT_NE(castExpr != nullptr, nullptr) << "dynamic_cast expression not found";
+    ASSERT_NE(castExpr, nullptr) << "dynamic_cast expression not found";
 
     // Translate
     std::string translation = Translator.translateDynamicCast(castExpr);
-    ASSERT_NE(!translation.empty(), nullptr) << "Translation is empty";
+    ASSERT_FALSE(translation.empty()) << "Translation is empty";
 
     
 }
@@ -487,7 +488,7 @@ TEST_F(RTTIIntegrationTest, MultipleInheritanceRTTI) {
     )";
 
     AST = buildAST(code);
-    ASSERT_NE(AST != nullptr, nullptr) << "Failed to parse C++ code";
+    ASSERT_NE(AST, nullptr) << "Failed to parse C++ code";
 
     ASTContext& Context = AST->getASTContext();
     VirtualMethodAnalyzer Analyzer(Context);
@@ -495,17 +496,17 @@ TEST_F(RTTIIntegrationTest, MultipleInheritanceRTTI) {
     TypeidTranslator TITranslator(Context, Analyzer);
 
     const CXXDynamicCastExpr* castExpr = findDynamicCastExpr(Context);
-    ASSERT_NE(castExpr != nullptr, nullptr) << "dynamic_cast expression not found";
+    ASSERT_NE(castExpr, nullptr) << "dynamic_cast expression not found";
 
     const CXXTypeidExpr* typeidExpr = findTypeidExpr(Context);
-    ASSERT_NE(typeidExpr != nullptr, nullptr) << "typeid expression not found";
+    ASSERT_NE(typeidExpr, nullptr) << "typeid expression not found";
 
     // Test both translations
     std::string castTrans = DCTranslator.translateDynamicCast(castExpr);
     std::string typeidTrans = TITranslator.translateTypeid(typeidExpr);
 
-    ASSERT_NE(castTrans.find("cxx_dynamic_cast") != std::string::npos, nullptr) << "Expected dynamic_cast";
-    ASSERT_NE(typeidTrans.find("vptr") != std::string::npos, nullptr) << "Expected polymorphic typeid";
+    ASSERT_NE(castTrans.find("cxx_dynamic_cast"), std::string::npos) << "Expected dynamic_cast";
+    ASSERT_NE(typeidTrans.find("vptr"), std::string::npos) << "Expected polymorphic typeid";
 
     
 }
@@ -535,7 +536,7 @@ TEST_F(RTTIIntegrationTest, VirtualMethodsWithRTTI) {
     )";
 
     AST = buildAST(code);
-    ASSERT_NE(AST != nullptr, nullptr) << "Failed to parse C++ code";
+    ASSERT_NE(AST, nullptr) << "Failed to parse C++ code";
 
     ASTContext& Context = AST->getASTContext();
     VirtualMethodAnalyzer Analyzer(Context);
@@ -553,8 +554,8 @@ TEST_F(RTTIIntegrationTest, VirtualMethodsWithRTTI) {
     };
     ClassFinder Finder;
     Finder.TraverseDecl(Context.getTranslationUnitDecl());
-    ASSERT_NE(Finder.AnimalClass != nullptr, nullptr) << "Animal class not found";
-    ASSERT_NE(Analyzer.isPolymorphic(Finder.AnimalClass), nullptr) << "Animal should be polymorphic";
+    ASSERT_NE(Finder.AnimalClass, nullptr) << "Animal class not found";
+    ASSERT_TRUE(Analyzer.isPolymorphic(Finder.AnimalClass)) << "Animal should be polymorphic";
 
     
 }
@@ -590,7 +591,7 @@ TEST_F(RTTIIntegrationTest, PolymorphicContainers) {
     )";
 
     AST = buildAST(code);
-    ASSERT_NE(AST != nullptr, nullptr) << "Failed to parse C++ code";
+    ASSERT_NE(AST, nullptr) << "Failed to parse C++ code";
 
     ASTContext& Context = AST->getASTContext();
     VirtualMethodAnalyzer Analyzer(Context);
@@ -598,19 +599,19 @@ TEST_F(RTTIIntegrationTest, PolymorphicContainers) {
     TypeidTranslator TITranslator(Context, Analyzer);
 
     auto casts = findAllDynamicCastExprs(Context);
-    ASSERT_NE(casts.size() >= 2, nullptr) << "Expected at least 2 dynamic_cast expressions";
+    ASSERT_GE(casts.size(), 2) << "Expected at least 2 dynamic_cast expressions";
 
     const CXXTypeidExpr* typeidExpr = findTypeidExpr(Context);
-    ASSERT_NE(typeidExpr != nullptr, nullptr) << "typeid expression not found";
+    ASSERT_NE(typeidExpr, nullptr) << "typeid expression not found";
 
     // Verify all translations work
     for (const auto* cast : casts) {
         std::string trans = DCTranslator.translateDynamicCast(cast);
-        ASSERT_NE(!trans.empty(), nullptr) << "dynamic_cast translation failed";
+        ASSERT_FALSE(trans.empty()) << "dynamic_cast translation failed";
     }
 
     std::string typeidTrans = TITranslator.translateTypeid(typeidExpr);
-    ASSERT_NE(!typeidTrans.empty(), nullptr) << "typeid translation failed";
+    ASSERT_FALSE(typeidTrans.empty()) << "typeid translation failed";
 
     
 }

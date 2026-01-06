@@ -1,0 +1,5 @@
+if(EXISTS "/Users/alexanderfedin/Projects/hapyy/hupyy-cpp-to-c/tests/integration/test_error_handling_gtest[1]_tests.cmake")
+  include("/Users/alexanderfedin/Projects/hapyy/hupyy-cpp-to-c/tests/integration/test_error_handling_gtest[1]_tests.cmake")
+else()
+  add_test(test_error_handling_gtest_NOT_BUILT test_error_handling_gtest_NOT_BUILT)
+endif()

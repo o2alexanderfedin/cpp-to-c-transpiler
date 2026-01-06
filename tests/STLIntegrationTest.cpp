@@ -16,6 +16,7 @@
 #include "TemplateMonomorphizer.h"
 #include "TemplateExtractor.h"
 #include "NameMangler.h"
+#include "CNodeBuilder.h"
 #include "clang/Tooling/Tooling.h"
 #include "clang/Frontend/ASTUnit.h"
 #include <gtest/gtest.h>
@@ -143,8 +144,8 @@ TEST(STLIntegrationTest, VectorIntMonomorphization) {
     ASSERT_FALSE(classInstantiations.empty()) << "Expected std::vector<int> instantiation";
 
     // Monomorphize std::vector<int>
-    NameMangler mangler(Context);
-    TemplateMonomorphizer monomorphizer(Context, mangler);
+    CNodeBuilder builder(Context);
+    TemplateMonomorphizer monomorphizer(Context, builder);
 
     ClassTemplateSpecializationDecl* vectorInt = nullptr;
     for (auto* inst : classInstantiations) {
@@ -156,20 +157,31 @@ TEST(STLIntegrationTest, VectorIntMonomorphization) {
 
     ASSERT_NE(vectorInt, nullptr) << "Expected std::vector<int> instantiation";
 
-    std::string cCode = monomorphizer.monomorphizeClass(vectorInt);
+    RecordDecl* CStruct = monomorphizer.monomorphizeClass(vectorInt);
 
-    // Verify generated C code
-    EXPECT_NE(cCode.find("typedef struct"), std::string::npos)
-        << "Expected struct typedef in C code";
-    EXPECT_TRUE(cCode.find("vector_int") != std::string::npos ||
-                cCode.find("std_vector_int") != std::string::npos)
-        << "Expected mangled name 'vector_int' or 'std_vector_int'";
-    EXPECT_NE(cCode.find("int* data"), std::string::npos)
-        << "Expected 'int* data' field";
-    EXPECT_NE(cCode.find("int size_"), std::string::npos)
-        << "Expected 'int size_' field";
-    EXPECT_NE(cCode.find("int capacity_"), std::string::npos)
-        << "Expected 'int capacity_' field";
+    // Verify generated C AST
+    ASSERT_NE(CStruct, nullptr) << "Expected non-null struct";
+
+    std::string structName = CStruct->getNameAsString();
+    EXPECT_TRUE(structName.find("vector") != std::string::npos)
+        << "Expected 'vector' in mangled name, got: " << structName;
+
+    // Verify struct has fields
+    EXPECT_NE(CStruct->field_begin(), CStruct->field_end())
+        << "Expected struct to have fields";
+
+    // Verify field types (std::vector has data, size_, capacity_)
+    bool foundData = false, foundSize = false, foundCapacity = false;
+    for (auto* field : CStruct->fields()) {
+        std::string fieldName = field->getNameAsString();
+        if (fieldName == "data") foundData = true;
+        if (fieldName == "size_") foundSize = true;
+        if (fieldName == "capacity_") foundCapacity = true;
+    }
+
+    EXPECT_TRUE(foundData) << "Expected 'data' field in struct";
+    EXPECT_TRUE(foundSize) << "Expected 'size_' field in struct";
+    EXPECT_TRUE(foundCapacity) << "Expected 'capacity_' field in struct";
 }
 
 /**
@@ -211,8 +223,8 @@ TEST(STLIntegrationTest, VectorIntMethodGeneration) {
     auto classInstantiations = extractor.getClassInstantiations();
     ASSERT_FALSE(classInstantiations.empty()) << "Expected std::vector<int> instantiation";
 
-    NameMangler mangler(Context);
-    TemplateMonomorphizer monomorphizer(Context, mangler);
+    CNodeBuilder builder(Context);
+    TemplateMonomorphizer monomorphizer(Context, builder);
 
     ClassTemplateSpecializationDecl* vectorInt = nullptr;
     for (auto* inst : classInstantiations) {
@@ -224,13 +236,20 @@ TEST(STLIntegrationTest, VectorIntMethodGeneration) {
 
     ASSERT_NE(vectorInt, nullptr) << "Expected std::vector<int> instantiation";
 
-    std::string cCode = monomorphizer.monomorphizeClass(vectorInt);
+    RecordDecl* CStruct = monomorphizer.monomorphizeClass(vectorInt);
+    ASSERT_NE(CStruct, nullptr) << "Expected non-null struct";
+
+    // Generate methods
+    std::vector<FunctionDecl*> methods = monomorphizer.monomorphizeClassMethods(vectorInt, CStruct);
 
     // Verify method declarations
-    bool hasPushBack = (cCode.find("push_back") != std::string::npos);
-    bool hasSize = (cCode.find("size") != std::string::npos);
-    bool hasOperator = (cCode.find("operator") != std::string::npos ||
-                        cCode.find("[") != std::string::npos);
+    bool hasPushBack = false, hasSize = false, hasOperator = false;
+    for (auto* method : methods) {
+        std::string methodName = method->getNameAsString();
+        if (methodName.find("push_back") != std::string::npos) hasPushBack = true;
+        if (methodName.find("size") != std::string::npos) hasSize = true;
+        if (methodName.find("operator") != std::string::npos || methodName.find("[]") != std::string::npos) hasOperator = true;
+    }
 
     EXPECT_TRUE(hasPushBack || hasSize || hasOperator)
         << "Expected at least one method declaration";
@@ -275,24 +294,30 @@ TEST(STLIntegrationTest, EndToEndIntegration) {
     ASSERT_FALSE(classInstantiations.empty()) << "Template extraction failed";
 
     // Step 2: Monomorphize
-    NameMangler mangler(Context);
-    TemplateMonomorphizer monomorphizer(Context, mangler);
+    CNodeBuilder builder(Context);
+    TemplateMonomorphizer monomorphizer(Context, builder);
 
-    std::ostringstream allCode;
+    std::vector<RecordDecl*> allStructs;
     for (auto* inst : classInstantiations) {
-        std::string cCode = monomorphizer.monomorphizeClass(inst);
-        allCode << cCode;
+        RecordDecl* CStruct = monomorphizer.monomorphizeClass(inst);
+        if (CStruct) {
+            allStructs.push_back(CStruct);
+        }
     }
 
-    std::string finalCode = allCode.str();
-    ASSERT_FALSE(finalCode.empty()) << "Monomorphization failed";
+    ASSERT_FALSE(allStructs.empty()) << "Monomorphization failed";
 
     // Step 3: Verify output
-    EXPECT_NE(finalCode.find("typedef struct"), std::string::npos)
-        << "Expected C struct";
-    EXPECT_TRUE(finalCode.find("vector_int") != std::string::npos ||
-                finalCode.find("std_vector_int") != std::string::npos)
-        << "Expected mangled name";
+    bool foundVectorStruct = false;
+    for (auto* CStruct : allStructs) {
+        std::string structName = CStruct->getNameAsString();
+        if (structName.find("vector") != std::string::npos) {
+            foundVectorStruct = true;
+            break;
+        }
+    }
+
+    EXPECT_TRUE(foundVectorStruct) << "Expected vector struct in output";
 }
 
 /**

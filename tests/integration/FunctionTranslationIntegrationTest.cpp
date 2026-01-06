@@ -1,0 +1,581 @@
+/**
+ * @file FunctionTranslationIntegrationTest.cpp
+ * @brief End-to-end integration test for complete function translation with expressions
+ *
+ * Verifies the entire dispatcher pipeline works together:
+ * 1. FunctionHandler translates function signature
+ * 2. CompoundStmtHandler dispatches function body
+ * 3. ReturnStmtHandler dispatches return statements
+ * 4. Expression handlers translate expressions (literals, DeclRefExpr, BinaryOperator, etc.)
+ *
+ * Test Requirements:
+ * - Simple function with literal return: `int getValue() { return 42; }`
+ * - Function with parameter reference: `int identity(int x) { return x; }`
+ * - Function with arithmetic expression: `int add(int a, int b) { return a + b; }`
+ * - Function with nested expression: `int compute(int a, int b) { return (a + b) * 2; }`
+ *
+ * Design Principles:
+ * - SOLID: Single Responsibility (each test validates one scenario)
+ * - TDD: Write failing test first, implement minimal code to pass, refactor
+ * - Integration: Test full pipeline, not individual handlers
+ */
+
+#include "dispatch/FunctionHandler.h"
+#include "dispatch/ParameterHandler.h"
+#include "dispatch/TypeHandler.h"
+#include "dispatch/CompoundStmtHandler.h"
+#include "dispatch/ReturnStmtHandler.h"
+#include "dispatch/LiteralHandler.h"
+#include "dispatch/DeclRefExprHandler.h"
+#include "dispatch/BinaryOperatorHandler.h"
+#include "dispatch/ParenExprHandler.h"
+#include "dispatch/ImplicitCastExprHandler.h"
+#include "dispatch/CppToCVisitorDispatcher.h"
+#include "mapping/PathMapper.h"
+#include "mapping/DeclLocationMapper.h"
+#include "mapping/DeclMapper.h"
+#include "mapping/TypeMapper.h"
+#include "mapping/ExprMapper.h"
+#include "mapping/StmtMapper.h"
+#include "TargetContext.h"
+#include "clang/AST/ASTContext.h"
+#include "clang/AST/Decl.h"
+#include "clang/AST/Stmt.h"
+#include "clang/AST/Expr.h"
+#include "clang/Tooling/Tooling.h"
+#include "llvm/Support/Casting.h"
+#include <gtest/gtest.h>
+#include <memory>
+
+using namespace clang;
+
+// Helper to build AST from C++ code
+std::unique_ptr<ASTUnit> buildAST(const std::string &code) {
+    return tooling::buildASTFromCode(code);
+}
+
+// ============================================================================
+// Test Fixture: Setup dispatcher with all required handlers
+// ============================================================================
+
+class FunctionTranslationIntegrationTest : public ::testing::Test {
+protected:
+    void SetUp() override {
+        // Nothing to set up - each test creates its own dispatcher
+    }
+
+    void TearDown() override {
+        // Nothing to tear down
+    }
+
+    /**
+     * @brief Helper: Create dispatcher with all handlers registered
+     * @param mapper PathMapper instance
+     * @param locMapper DeclLocationMapper instance
+     * @param declMapper DeclMapper instance
+     * @param typeMapper TypeMapper instance
+     * @param exprMapper ExprMapper instance
+     * @return Configured dispatcher
+     */
+    std::unique_ptr<CppToCVisitorDispatcher> createDispatcher(
+        cpptoc::PathMapper& mapper,
+        cpptoc::DeclLocationMapper& locMapper,
+        cpptoc::DeclMapper& declMapper,
+        cpptoc::TypeMapper& typeMapper,
+        cpptoc::ExprMapper& exprMapper,
+        cpptoc::StmtMapper& stmtMapper)
+    {
+        auto dispatcher = std::make_unique<CppToCVisitorDispatcher>(
+            mapper, locMapper, declMapper, typeMapper, exprMapper, stmtMapper);
+
+        // Register handlers in dependency order (dependencies first)
+        // Type handler must be registered before Parameter and Function handlers
+        cpptoc::TypeHandler::registerWith(*dispatcher);
+        cpptoc::ParameterHandler::registerWith(*dispatcher);
+        cpptoc::FunctionHandler::registerWith(*dispatcher);
+
+        // Statement handlers
+        cpptoc::CompoundStmtHandler::registerWith(*dispatcher);
+        cpptoc::ReturnStmtHandler::registerWith(*dispatcher);
+
+        // Expression handlers
+        cpptoc::LiteralHandler::registerWith(*dispatcher);
+        cpptoc::DeclRefExprHandler::registerWith(*dispatcher);
+        cpptoc::BinaryOperatorHandler::registerWith(*dispatcher);
+        cpptoc::ParenExprHandler::registerWith(*dispatcher);
+        cpptoc::ImplicitCastExprHandler::registerWith(*dispatcher);
+
+        return dispatcher;
+    }
+
+    /**
+     * @brief Helper: Find function by name in translation unit
+     * @param TU Translation unit to search
+     * @param name Function name
+     * @return FunctionDecl if found, nullptr otherwise
+     */
+    FunctionDecl* findFunction(TranslationUnitDecl* TU, const std::string& name) {
+        for (auto* D : TU->decls()) {
+            if (auto* FD = dyn_cast<FunctionDecl>(D)) {
+                if (FD->getNameAsString() == name && !isa<CXXMethodDecl>(FD)) {
+                    return FD;
+                }
+            }
+        }
+        return nullptr;
+    }
+};
+
+// ============================================================================
+// Test 1: Simple function with literal return
+// ============================================================================
+
+TEST_F(FunctionTranslationIntegrationTest, SimpleFunctionWithLiteralReturn) {
+    const char *cpp = R"(
+        int getValue() {
+            return 42;
+        }
+    )";
+
+    std::unique_ptr<ASTUnit> AST = buildAST(cpp);
+    ASSERT_NE(AST, nullptr) << "Failed to parse C++ code";
+
+    // Setup components
+    ASTContext& cppCtx = AST->getASTContext();
+    TargetContext& targetCtx = TargetContext::getInstance();
+    ASTContext& cCtx = targetCtx.getContext();
+
+    // Create mapping utilities
+    cpptoc::PathMapper& mapper = cpptoc::PathMapper::getInstance("/src", "/output");
+    cpptoc::DeclLocationMapper locMapper(mapper);
+    cpptoc::DeclMapper& declMapper = cpptoc::DeclMapper::getInstance();
+    cpptoc::TypeMapper& typeMapper = cpptoc::TypeMapper::getInstance();
+    cpptoc::ExprMapper& exprMapper = cpptoc::ExprMapper::getInstance();
+    cpptoc::StmtMapper& stmtMapper = cpptoc::StmtMapper::getInstance();
+
+    // Create and configure dispatcher
+    auto dispatcher = createDispatcher(mapper, locMapper, declMapper, typeMapper, exprMapper, stmtMapper);
+
+    // Find the function
+    TranslationUnitDecl* cppTU = cppCtx.getTranslationUnitDecl();
+    FunctionDecl* getValue = findFunction(cppTU, "getValue");
+    ASSERT_NE(getValue, nullptr) << "Should find 'getValue' function";
+
+    // Dispatch the function (should translate signature, body, and expressions)
+    bool handled = dispatcher->dispatch(cppCtx, cCtx, getValue);
+    EXPECT_TRUE(handled) << "FunctionDecl should be handled";
+
+    // Verify function was added to C TranslationUnit
+    std::string targetPath = dispatcher->getTargetPath(cppCtx, getValue);
+    TranslationUnitDecl* cTU = mapper.getOrCreateTU(targetPath);
+    ASSERT_NE(cTU, nullptr);
+
+    FunctionDecl* cGetValue = findFunction(cTU, "getValue");
+    ASSERT_NE(cGetValue, nullptr) << "Should find translated 'getValue' function";
+
+    // Verify function signature
+    EXPECT_EQ(cGetValue->getNumParams(), 0) << "Should have no parameters";
+    EXPECT_TRUE(cGetValue->getReturnType()->isIntegerType()) << "Should return int";
+
+    // Verify function body exists
+    Stmt* cBody = cGetValue->getBody();
+    ASSERT_NE(cBody, nullptr) << "Function should have body";
+
+    // Verify body is CompoundStmt
+    auto* cCompound = dyn_cast<CompoundStmt>(cBody);
+    ASSERT_NE(cCompound, nullptr) << "Body should be CompoundStmt";
+
+    // Verify CompoundStmt has one statement (return)
+    ASSERT_EQ(cCompound->size(), 1) << "CompoundStmt should have one statement";
+
+    // Verify return statement exists
+    auto* cReturn = dyn_cast<ReturnStmt>(*cCompound->body_begin());
+    ASSERT_NE(cReturn, nullptr) << "Should have ReturnStmt";
+
+    // Verify return value is literal
+    Expr* cRetValue = cReturn->getRetValue();
+    ASSERT_NE(cRetValue, nullptr) << "Return should have value";
+
+    // Strip implicit casts to get to the literal
+    while (auto* ICE = dyn_cast<ImplicitCastExpr>(cRetValue)) {
+        cRetValue = ICE->getSubExpr();
+    }
+
+    auto* cLiteral = dyn_cast<IntegerLiteral>(cRetValue);
+    ASSERT_NE(cLiteral, nullptr) << "Return value should be IntegerLiteral";
+
+    // Verify literal value is 42
+    EXPECT_EQ(cLiteral->getValue().getLimitedValue(), 42) << "Literal should be 42";
+
+    // Verify expression mappings exist
+    // Find C++ literal
+    const ReturnStmt* cppReturn = dyn_cast<ReturnStmt>(*getValue->getBody()->child_begin());
+    ASSERT_NE(cppReturn, nullptr);
+    const Expr* cppRetValue = cppReturn->getRetValue();
+    ASSERT_NE(cppRetValue, nullptr);
+
+    // Strip implicit casts to get to C++ literal
+    while (auto* ICE = dyn_cast<ImplicitCastExpr>(cppRetValue)) {
+        cppRetValue = ICE->getSubExpr();
+    }
+
+    const IntegerLiteral* cppLiteral = dyn_cast<IntegerLiteral>(cppRetValue);
+    ASSERT_NE(cppLiteral, nullptr);
+
+    // Verify ExprMapper has mapping
+    EXPECT_TRUE(exprMapper.hasCreated(cppLiteral)) << "ExprMapper should have literal mapping";
+}
+
+// ============================================================================
+// Test 2: Function with parameter reference
+// ============================================================================
+
+TEST_F(FunctionTranslationIntegrationTest, FunctionWithParameterReference) {
+    const char *cpp = R"(
+        int identity(int x) {
+            return x;
+        }
+    )";
+
+    std::unique_ptr<ASTUnit> AST = buildAST(cpp);
+    ASSERT_NE(AST, nullptr);
+
+    ASTContext& cppCtx = AST->getASTContext();
+    TargetContext& targetCtx = TargetContext::getInstance();
+    ASTContext& cCtx = targetCtx.getContext();
+
+    cpptoc::PathMapper& mapper = cpptoc::PathMapper::getInstance("/src", "/output");
+    cpptoc::DeclLocationMapper locMapper(mapper);
+    cpptoc::DeclMapper& declMapper = cpptoc::DeclMapper::getInstance();
+    cpptoc::TypeMapper& typeMapper = cpptoc::TypeMapper::getInstance();
+    cpptoc::ExprMapper& exprMapper = cpptoc::ExprMapper::getInstance();
+    cpptoc::StmtMapper& stmtMapper = cpptoc::StmtMapper::getInstance();
+
+    auto dispatcher = createDispatcher(mapper, locMapper, declMapper, typeMapper, exprMapper, stmtMapper);
+
+    TranslationUnitDecl* cppTU = cppCtx.getTranslationUnitDecl();
+    FunctionDecl* identity = findFunction(cppTU, "identity");
+    ASSERT_NE(identity, nullptr);
+
+    bool handled = dispatcher->dispatch(cppCtx, cCtx, identity);
+    EXPECT_TRUE(handled);
+
+    std::string targetPath = dispatcher->getTargetPath(cppCtx, identity);
+    TranslationUnitDecl* cTU = mapper.getOrCreateTU(targetPath);
+    FunctionDecl* cIdentity = findFunction(cTU, "identity");
+    ASSERT_NE(cIdentity, nullptr);
+
+    // Verify function signature
+    EXPECT_EQ(cIdentity->getNumParams(), 1) << "Should have one parameter";
+    EXPECT_EQ(cIdentity->getParamDecl(0)->getNameAsString(), "x");
+
+    // Verify function body
+    Stmt* cBody = cIdentity->getBody();
+    ASSERT_NE(cBody, nullptr);
+
+    auto* cCompound = dyn_cast<CompoundStmt>(cBody);
+    ASSERT_NE(cCompound, nullptr);
+    ASSERT_EQ(cCompound->size(), 1);
+
+    auto* cReturn = dyn_cast<ReturnStmt>(*cCompound->body_begin());
+    ASSERT_NE(cReturn, nullptr);
+
+    // Verify return value is DeclRefExpr
+    Expr* cRetValue = cReturn->getRetValue();
+    ASSERT_NE(cRetValue, nullptr);
+
+    // Strip implicit casts
+    while (auto* ICE = dyn_cast<ImplicitCastExpr>(cRetValue)) {
+        cRetValue = ICE->getSubExpr();
+    }
+
+    auto* cDeclRef = dyn_cast<DeclRefExpr>(cRetValue);
+    ASSERT_NE(cDeclRef, nullptr) << "Return value should be DeclRefExpr";
+
+    // Verify DeclRefExpr refers to parameter 'x'
+    auto* cReferencedDecl = dyn_cast<ParmVarDecl>(cDeclRef->getDecl());
+    ASSERT_NE(cReferencedDecl, nullptr) << "DeclRefExpr should refer to parameter";
+    EXPECT_EQ(cReferencedDecl->getNameAsString(), "x");
+}
+
+// ============================================================================
+// Test 3: Function with arithmetic expression
+// ============================================================================
+
+TEST_F(FunctionTranslationIntegrationTest, FunctionWithArithmeticExpression) {
+    const char *cpp = R"(
+        int add(int a, int b) {
+            return a + b;
+        }
+    )";
+
+    std::unique_ptr<ASTUnit> AST = buildAST(cpp);
+    ASSERT_NE(AST, nullptr);
+
+    ASTContext& cppCtx = AST->getASTContext();
+    TargetContext& targetCtx = TargetContext::getInstance();
+    ASTContext& cCtx = targetCtx.getContext();
+
+    cpptoc::PathMapper& mapper = cpptoc::PathMapper::getInstance("/src", "/output");
+    cpptoc::DeclLocationMapper locMapper(mapper);
+    cpptoc::DeclMapper& declMapper = cpptoc::DeclMapper::getInstance();
+    cpptoc::TypeMapper& typeMapper = cpptoc::TypeMapper::getInstance();
+    cpptoc::ExprMapper& exprMapper = cpptoc::ExprMapper::getInstance();
+    cpptoc::StmtMapper& stmtMapper = cpptoc::StmtMapper::getInstance();
+
+    auto dispatcher = createDispatcher(mapper, locMapper, declMapper, typeMapper, exprMapper, stmtMapper);
+
+    TranslationUnitDecl* cppTU = cppCtx.getTranslationUnitDecl();
+    FunctionDecl* add = findFunction(cppTU, "add");
+    ASSERT_NE(add, nullptr);
+
+    bool handled = dispatcher->dispatch(cppCtx, cCtx, add);
+    EXPECT_TRUE(handled);
+
+    std::string targetPath = dispatcher->getTargetPath(cppCtx, add);
+    TranslationUnitDecl* cTU = mapper.getOrCreateTU(targetPath);
+    FunctionDecl* cAdd = findFunction(cTU, "add");
+    ASSERT_NE(cAdd, nullptr);
+
+    // Verify function signature
+    EXPECT_EQ(cAdd->getNumParams(), 2);
+    EXPECT_EQ(cAdd->getParamDecl(0)->getNameAsString(), "a");
+    EXPECT_EQ(cAdd->getParamDecl(1)->getNameAsString(), "b");
+
+    // Verify function body
+    Stmt* cBody = cAdd->getBody();
+    ASSERT_NE(cBody, nullptr);
+
+    auto* cCompound = dyn_cast<CompoundStmt>(cBody);
+    ASSERT_NE(cCompound, nullptr);
+    ASSERT_EQ(cCompound->size(), 1);
+
+    auto* cReturn = dyn_cast<ReturnStmt>(*cCompound->body_begin());
+    ASSERT_NE(cReturn, nullptr);
+
+    // Verify return value is BinaryOperator
+    Expr* cRetValue = cReturn->getRetValue();
+    ASSERT_NE(cRetValue, nullptr);
+
+    // Strip implicit casts
+    while (auto* ICE = dyn_cast<ImplicitCastExpr>(cRetValue)) {
+        cRetValue = ICE->getSubExpr();
+    }
+
+    auto* cBinOp = dyn_cast<BinaryOperator>(cRetValue);
+    ASSERT_NE(cBinOp, nullptr) << "Return value should be BinaryOperator";
+
+    // Verify operator is addition
+    EXPECT_EQ(cBinOp->getOpcode(), BO_Add) << "Should be addition operator";
+
+    // Verify LHS is 'a'
+    Expr* cLHS = cBinOp->getLHS();
+    while (auto* ICE = dyn_cast<ImplicitCastExpr>(cLHS)) {
+        cLHS = ICE->getSubExpr();
+    }
+    auto* cLHSRef = dyn_cast<DeclRefExpr>(cLHS);
+    ASSERT_NE(cLHSRef, nullptr);
+    EXPECT_EQ(cLHSRef->getDecl()->getNameAsString(), "a");
+
+    // Verify RHS is 'b'
+    Expr* cRHS = cBinOp->getRHS();
+    while (auto* ICE = dyn_cast<ImplicitCastExpr>(cRHS)) {
+        cRHS = ICE->getSubExpr();
+    }
+    auto* cRHSRef = dyn_cast<DeclRefExpr>(cRHS);
+    ASSERT_NE(cRHSRef, nullptr);
+    EXPECT_EQ(cRHSRef->getDecl()->getNameAsString(), "b");
+
+    // Verify ExprMapper has BinaryOperator mapping
+    const ReturnStmt* cppReturn = dyn_cast<ReturnStmt>(*add->getBody()->child_begin());
+    const Expr* cppRetValue = cppReturn->getRetValue();
+    while (auto* ICE = dyn_cast<ImplicitCastExpr>(cppRetValue)) {
+        cppRetValue = ICE->getSubExpr();
+    }
+    const BinaryOperator* cppBinOp = dyn_cast<BinaryOperator>(cppRetValue);
+    ASSERT_NE(cppBinOp, nullptr);
+
+    EXPECT_TRUE(exprMapper.hasCreated(cppBinOp)) << "ExprMapper should have BinaryOperator mapping";
+}
+
+// ============================================================================
+// Test 4: Function with nested expression
+// ============================================================================
+
+TEST_F(FunctionTranslationIntegrationTest, FunctionWithNestedExpression) {
+    const char *cpp = R"(
+        int compute(int a, int b) {
+            return (a + b) * 2;
+        }
+    )";
+
+    std::unique_ptr<ASTUnit> AST = buildAST(cpp);
+    ASSERT_NE(AST, nullptr);
+
+    ASTContext& cppCtx = AST->getASTContext();
+    TargetContext& targetCtx = TargetContext::getInstance();
+    ASTContext& cCtx = targetCtx.getContext();
+
+    cpptoc::PathMapper& mapper = cpptoc::PathMapper::getInstance("/src", "/output");
+    cpptoc::DeclLocationMapper locMapper(mapper);
+    cpptoc::DeclMapper& declMapper = cpptoc::DeclMapper::getInstance();
+    cpptoc::TypeMapper& typeMapper = cpptoc::TypeMapper::getInstance();
+    cpptoc::ExprMapper& exprMapper = cpptoc::ExprMapper::getInstance();
+    cpptoc::StmtMapper& stmtMapper = cpptoc::StmtMapper::getInstance();
+
+    auto dispatcher = createDispatcher(mapper, locMapper, declMapper, typeMapper, exprMapper, stmtMapper);
+
+    TranslationUnitDecl* cppTU = cppCtx.getTranslationUnitDecl();
+    FunctionDecl* compute = findFunction(cppTU, "compute");
+    ASSERT_NE(compute, nullptr);
+
+    bool handled = dispatcher->dispatch(cppCtx, cCtx, compute);
+    EXPECT_TRUE(handled);
+
+    std::string targetPath = dispatcher->getTargetPath(cppCtx, compute);
+    TranslationUnitDecl* cTU = mapper.getOrCreateTU(targetPath);
+    FunctionDecl* cCompute = findFunction(cTU, "compute");
+    ASSERT_NE(cCompute, nullptr);
+
+    // Verify function signature
+    EXPECT_EQ(cCompute->getNumParams(), 2);
+
+    // Verify function body
+    Stmt* cBody = cCompute->getBody();
+    ASSERT_NE(cBody, nullptr);
+
+    auto* cCompound = dyn_cast<CompoundStmt>(cBody);
+    ASSERT_NE(cCompound, nullptr);
+
+    auto* cReturn = dyn_cast<ReturnStmt>(*cCompound->body_begin());
+    ASSERT_NE(cReturn, nullptr);
+
+    // Verify return value is BinaryOperator (multiplication)
+    Expr* cRetValue = cReturn->getRetValue();
+    ASSERT_NE(cRetValue, nullptr);
+
+    // Strip implicit casts
+    while (auto* ICE = dyn_cast<ImplicitCastExpr>(cRetValue)) {
+        cRetValue = ICE->getSubExpr();
+    }
+
+    auto* cMulOp = dyn_cast<BinaryOperator>(cRetValue);
+    ASSERT_NE(cMulOp, nullptr) << "Return value should be BinaryOperator (multiplication)";
+    EXPECT_EQ(cMulOp->getOpcode(), BO_Mul) << "Should be multiplication operator";
+
+    // Verify LHS is (a + b) - could be ParenExpr or just the addition
+    Expr* cLHS = cMulOp->getLHS();
+    while (auto* ICE = dyn_cast<ImplicitCastExpr>(cLHS)) {
+        cLHS = ICE->getSubExpr();
+    }
+
+    // Strip ParenExpr if present
+    if (auto* PE = dyn_cast<ParenExpr>(cLHS)) {
+        cLHS = PE->getSubExpr();
+    }
+
+    auto* cAddOp = dyn_cast<BinaryOperator>(cLHS);
+    ASSERT_NE(cAddOp, nullptr) << "LHS should be BinaryOperator (addition)";
+    EXPECT_EQ(cAddOp->getOpcode(), BO_Add) << "LHS should be addition operator";
+
+    // Verify RHS is literal 2
+    Expr* cRHS = cMulOp->getRHS();
+    while (auto* ICE = dyn_cast<ImplicitCastExpr>(cRHS)) {
+        cRHS = ICE->getSubExpr();
+    }
+    auto* cLiteral = dyn_cast<IntegerLiteral>(cRHS);
+    ASSERT_NE(cLiteral, nullptr) << "RHS should be IntegerLiteral";
+    EXPECT_EQ(cLiteral->getValue().getLimitedValue(), 2) << "Literal should be 2";
+
+    // Verify ExprMapper has all expression mappings
+    const ReturnStmt* cppReturn = dyn_cast<ReturnStmt>(*compute->getBody()->child_begin());
+    const Expr* cppRetValue = cppReturn->getRetValue();
+    while (auto* ICE = dyn_cast<ImplicitCastExpr>(cppRetValue)) {
+        cppRetValue = ICE->getSubExpr();
+    }
+    const BinaryOperator* cppMulOp = dyn_cast<BinaryOperator>(cppRetValue);
+    ASSERT_NE(cppMulOp, nullptr);
+
+    EXPECT_TRUE(exprMapper.hasCreated(cppMulOp)) << "ExprMapper should have multiplication mapping";
+
+    // Verify nested addition expression mapping
+    const Expr* cppLHS = cppMulOp->getLHS();
+    while (auto* ICE = dyn_cast<ImplicitCastExpr>(cppLHS)) {
+        cppLHS = ICE->getSubExpr();
+    }
+    if (auto* PE = dyn_cast<ParenExpr>(cppLHS)) {
+        cppLHS = PE->getSubExpr();
+    }
+    const BinaryOperator* cppAddOp = dyn_cast<BinaryOperator>(cppLHS);
+    ASSERT_NE(cppAddOp, nullptr);
+
+    EXPECT_TRUE(exprMapper.hasCreated(cppAddOp)) << "ExprMapper should have addition mapping";
+}
+
+// ============================================================================
+// Test 5: Multiple functions in same translation unit
+// ============================================================================
+
+TEST_F(FunctionTranslationIntegrationTest, MultipleFunctionsInSameTU) {
+    const char *cpp = R"(
+        int getValue() {
+            return 42;
+        }
+
+        int add(int a, int b) {
+            return a + b;
+        }
+
+        int identity(int x) {
+            return x;
+        }
+    )";
+
+    std::unique_ptr<ASTUnit> AST = buildAST(cpp);
+    ASSERT_NE(AST, nullptr);
+
+    ASTContext& cppCtx = AST->getASTContext();
+    TargetContext& targetCtx = TargetContext::getInstance();
+    ASTContext& cCtx = targetCtx.getContext();
+
+    cpptoc::PathMapper& mapper = cpptoc::PathMapper::getInstance("/src", "/output");
+    cpptoc::DeclLocationMapper locMapper(mapper);
+    cpptoc::DeclMapper& declMapper = cpptoc::DeclMapper::getInstance();
+    cpptoc::TypeMapper& typeMapper = cpptoc::TypeMapper::getInstance();
+    cpptoc::ExprMapper& exprMapper = cpptoc::ExprMapper::getInstance();
+    cpptoc::StmtMapper& stmtMapper = cpptoc::StmtMapper::getInstance();
+
+    auto dispatcher = createDispatcher(mapper, locMapper, declMapper, typeMapper, exprMapper, stmtMapper);
+
+    TranslationUnitDecl* cppTU = cppCtx.getTranslationUnitDecl();
+
+    // Dispatch all functions
+    FunctionDecl* getValue = findFunction(cppTU, "getValue");
+    FunctionDecl* add = findFunction(cppTU, "add");
+    FunctionDecl* identity = findFunction(cppTU, "identity");
+
+    ASSERT_NE(getValue, nullptr);
+    ASSERT_NE(add, nullptr);
+    ASSERT_NE(identity, nullptr);
+
+    EXPECT_TRUE(dispatcher->dispatch(cppCtx, cCtx, getValue));
+    EXPECT_TRUE(dispatcher->dispatch(cppCtx, cCtx, add));
+    EXPECT_TRUE(dispatcher->dispatch(cppCtx, cCtx, identity));
+
+    // Verify all functions were added to C TranslationUnit
+    std::string targetPath = dispatcher->getTargetPath(cppCtx, getValue);
+    TranslationUnitDecl* cTU = mapper.getOrCreateTU(targetPath);
+
+    FunctionDecl* cGetValue = findFunction(cTU, "getValue");
+    FunctionDecl* cAdd = findFunction(cTU, "add");
+    FunctionDecl* cIdentity = findFunction(cTU, "identity");
+
+    EXPECT_NE(cGetValue, nullptr) << "Should find translated 'getValue'";
+    EXPECT_NE(cAdd, nullptr) << "Should find translated 'add'";
+    EXPECT_NE(cIdentity, nullptr) << "Should find translated 'identity'";
+
+    // Verify each function has a body
+    EXPECT_NE(cGetValue->getBody(), nullptr);
+    EXPECT_NE(cAdd->getBody(), nullptr);
+    EXPECT_NE(cIdentity->getBody(), nullptr);
+}

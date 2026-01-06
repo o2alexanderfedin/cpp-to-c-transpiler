@@ -19,6 +19,7 @@ std::unique_ptr<ASTUnit> buildAST(const char *code) {
     return tooling::buildASTFromCodeWithArgs(code, args, "input.cc");
 }
 
+#define ASSERT_MSG(cond, msg) \
     if (!(cond)) { \
         std::cerr << "\nASSERT FAILED: " << msg << std::endl; \
         return; \
@@ -66,7 +67,7 @@ TEST_F(PureVirtualHandlerTest, DetectPureVirtualMethod) {
             }
         }
 
-        ASSERT_TRUE(foundPureVirtual) << "draw(;should be detected as pure virtual");
+        ASSERT_TRUE(foundPureVirtual) << "draw() should be detected as pure virtual";
 }
 
 TEST_F(PureVirtualHandlerTest, DetectAbstractClass) {

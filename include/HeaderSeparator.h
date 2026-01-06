@@ -45,6 +45,11 @@ public:
     /// @return true to continue traversal
     bool VisitFunctionDecl(clang::FunctionDecl *D);
 
+    /// @brief Visitor method for variable declarations
+    /// @param D VarDecl to analyze
+    /// @return true to continue traversal
+    bool VisitVarDecl(clang::VarDecl *D);
+
 private:
     std::vector<clang::Decl*> headerDecls;  ///< Declarations for .h file
     std::vector<clang::Decl*> implDecls;    ///< Declarations for .c file

@@ -28,11 +28,6 @@
 
 using namespace clang;
 
-// Test helper macros
-    if (!(cond)) { \
-        TEST_FAIL("", msg); \
-    }
-
 /**
  * @brief Build AST from C++ code snippet
  */
@@ -123,7 +118,7 @@ class RTTIIntegrationTest : public ::testing::Test {
 protected:
 };
 
-TEST_F(RTTIIntegrationTest, Static typeid on non-polymorphic class) {
+TEST_F(RTTIIntegrationTest, StaticTypeidOnNonPolymorphicClass) {
     const char* code = R"(
             namespace std { class type_info { public: const char* name() const; }; }
 
@@ -158,7 +153,7 @@ TEST_F(RTTIIntegrationTest, Static typeid on non-polymorphic class) {
         ASSERT_TRUE(translation.find("&") != std::string::npos) << "Expected address-of operator";
 }
 
-TEST_F(RTTIIntegrationTest, Polymorphic typeid on derived object) {
+TEST_F(RTTIIntegrationTest, PolymorphicTypeidOnDerivedObject) {
     const char* code = R"(
             namespace std { class type_info { public: const char* name() const; }; }
 
@@ -197,7 +192,7 @@ TEST_F(RTTIIntegrationTest, Polymorphic typeid on derived object) {
         ASSERT_TRUE(translation.find("vptr") != std::string::npos) << "Expected vptr reference for polymorphic lookup";
 }
 
-TEST_F(RTTIIntegrationTest, Typeid on null polymorphic pointer) {
+TEST_F(RTTIIntegrationTest, TypeidOnNullPolymorphicPointer) {
     const char* code = R"(
             namespace std { class type_info { public: const char* name() const; }; }
 
@@ -229,7 +224,7 @@ TEST_F(RTTIIntegrationTest, Typeid on null polymorphic pointer) {
         ASSERT_TRUE(!translation.empty()) << "Translation is empty";
 }
 
-TEST_F(RTTIIntegrationTest, Typeid equality comparison) {
+TEST_F(RTTIIntegrationTest, TypeidEqualityComparison) {
     const char* code = R"(
             namespace std { class type_info { public: const char* name() const; }; }
 
@@ -264,8 +259,7 @@ TEST_F(RTTIIntegrationTest, Typeid equality comparison) {
         ASSERT_TRUE(trans2.find("__ti_Circle") != std::string::npos) << "Second typeid should reference __ti_Circle";
 }
 
-TEST_F(RTTIIntegrationTest, Typeid name() method translation) {
-    method translation");
+TEST_F(RTTIIntegrationTest, TypeidNameMethodTranslation) {
 
         const char* code = R"(
             namespace std { class type_info { public: const char* name() const; }; }
@@ -291,10 +285,10 @@ TEST_F(RTTIIntegrationTest, Typeid name() method translation) {
         ASSERT_TRUE(typeidExpr != nullptr) << "typeid expression not found";
 
         std::string translation = Translator.translateTypeid(typeidExpr);
-        ASSERT_TRUE(translation.find("__ti_Widget") != std::string::npos) << "Expected __ti_Widget reference";method translation");
+        ASSERT_TRUE(translation.find("__ti_Widget") != std::string::npos) << "Expected __ti_Widget reference";
 }
 
-TEST_F(RTTIIntegrationTest, Typeid in inheritance chain) {
+TEST_F(RTTIIntegrationTest, TypeidInInheritanceChain) {
     const char* code = R"(
             namespace std { class type_info { public: const char* name() const; }; }
 
@@ -331,7 +325,7 @@ TEST_F(RTTIIntegrationTest, Typeid in inheritance chain) {
         }
 }
 
-TEST_F(RTTIIntegrationTest, Successful downcast to derived class) {
+TEST_F(RTTIIntegrationTest, SuccessfulDowncastToDerivedClass) {
     const char* code = R"(
             class Shape {
             public:
@@ -371,7 +365,7 @@ TEST_F(RTTIIntegrationTest, Successful downcast to derived class) {
         ASSERT_TRUE(translation.find("__ti_Circle") != std::string::npos) << "Expected target type __ti_Circle";
 }
 
-TEST_F(RTTIIntegrationTest, Upcast to base class) {
+TEST_F(RTTIIntegrationTest, UpcastToBaseClass) {
     const char* code = R"(
             class Vehicle {
             public:
@@ -404,7 +398,7 @@ TEST_F(RTTIIntegrationTest, Upcast to base class) {
         ASSERT_TRUE(!translation.empty()) << "Translation is empty";
 }
 
-TEST_F(RTTIIntegrationTest, Cast to unrelated type) {
+TEST_F(RTTIIntegrationTest, CastToUnrelatedType) {
     const char* code = R"(
             class Vehicle {
             public:
@@ -439,7 +433,7 @@ TEST_F(RTTIIntegrationTest, Cast to unrelated type) {
         ASSERT_TRUE(translation.find("__ti_Boat") != std::string::npos) << "Expected target type __ti_Boat";
 }
 
-TEST_F(RTTIIntegrationTest, Cross-cast between unrelated hierarchies) {
+TEST_F(RTTIIntegrationTest, CrossCastBetweenUnrelatedHierarchies) {
     const char* code = R"(
             class A { public: virtual ~A() {} };
             class B { public: virtual ~B() {} };
@@ -467,7 +461,7 @@ TEST_F(RTTIIntegrationTest, Cross-cast between unrelated hierarchies) {
         ASSERT_TRUE(translation.find("__ti_B") != std::string::npos) << "Expected target type";
 }
 
-TEST_F(RTTIIntegrationTest, dynamic_cast on NULL pointer) {
+TEST_F(RTTIIntegrationTest, DynamicCastOnNullPointer) {
     const char* code = R"(
             class Base { public: virtual ~Base() {} };
             class Derived : public Base {};
@@ -493,7 +487,7 @@ TEST_F(RTTIIntegrationTest, dynamic_cast on NULL pointer) {
         ASSERT_TRUE(!translation.empty()) << "Translation is empty";
 }
 
-TEST_F(RTTIIntegrationTest, dynamic_cast to same type) {
+TEST_F(RTTIIntegrationTest, DynamicCastToSameType) {
     const char* code = R"(
             class MyClass { public: virtual ~MyClass() {} };
 
@@ -518,7 +512,7 @@ TEST_F(RTTIIntegrationTest, dynamic_cast to same type) {
         ASSERT_TRUE(!translation.empty()) << "Translation is empty";
 }
 
-TEST_F(RTTIIntegrationTest, RTTI with multiple inheritance) {
+TEST_F(RTTIIntegrationTest, RttiWithMultipleInheritance) {
     const char* code = R"(
             namespace std { class type_info { public: const char* name() const; }; }
 
@@ -555,7 +549,7 @@ TEST_F(RTTIIntegrationTest, RTTI with multiple inheritance) {
         ASSERT_TRUE(typeidTrans.find("vptr") != std::string::npos) << "Expected polymorphic typeid";
 }
 
-TEST_F(RTTIIntegrationTest, Polymorphic containers) {
+TEST_F(RTTIIntegrationTest, PolymorphicContainers) {
     const char* code = R"(
             namespace std { class type_info { public: const char* name() const; }; }
 

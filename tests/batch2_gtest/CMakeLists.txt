@@ -56,7 +56,13 @@ target_link_libraries(test_memberinit ${COMMON_LIBS})
 add_executable(test_virtual_function_integration ../gtest/VirtualFunctionIntegrationTest_GTest.cpp)
 target_link_libraries(test_virtual_function_integration ${COMMON_LIBS})
 
-add_executable(test_rtti_integration ../gtest/RTTIIntegrationTest_GTest.cpp)
+add_executable(test_rtti_integration
+    ../gtest/RTTIIntegrationTest_GTest.cpp
+    ../../src/TypeidTranslator.cpp
+    ../../src/DynamicCastTranslator.cpp
+    ../../src/TypeInfoGenerator.cpp
+    ../../src/VirtualMethodAnalyzer.cpp
+)
 target_link_libraries(test_rtti_integration ${COMMON_LIBS})
 
 add_executable(test_virtual_method_analyzer ../gtest/VirtualMethodAnalyzerTest_GTest.cpp)

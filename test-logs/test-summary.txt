@@ -1,46 +1,63 @@
-Test Execution Summary - Thu Dec 18 04:20:13 PST 2025
+Test Execution Summary - Sun Dec 21 22:10:19 PST 2025
 =====================================
 
+PASSED: ACSLAxiomaticBuilderTest
+PASSED: ACSLBehaviorAnnotatorTest
+PASSED: ACSLClassAnnotatorTest
+PASSED: ACSLGhostCodeInjectorTest
+PASSED: ACSLLoopAnnotatorTest
+PASSED: ACSLStatementAnnotatorTest
+PASSED: ACSLTypeInvariantGeneratorTest
+PASSED: ActionTableGeneratorTest
+PASSED: CallingConventionTest
+PASSED: CatchHandlerTypeMatchingTest
 PASSED: CFGAnalysisTest
 PASSED: CodeGeneratorTest
-PASSED: CppToCVisitorTest
-PASSED: DependencyAnalyzerTest
+PASSED: ConsoleAppTest
+PASSED: CoroutineDetectorTest_GTest
 PASSED: EarlyReturnDestructorTest
 PASSED: EdgeCasesTest
 PASSED: ErrorHandlingTest
-PASSED: FeatureCombinationTest
+PASSED: ExceptionFrameTest
+PASSED: ExceptionHandlingIntegrationTest
+PASSED: ExceptionIntegrationTest
+PASSED: ExceptionPerformanceTest
+PASSED: ExceptionRuntimeTest
+PASSED: ExceptionThreadSafetyTest
 PASSED: FeatureInteractionTest
-PASSED: FileOutputManagerTest
 PASSED: ForwardDeclTest
 PASSED: FunctionExitDestructorTest
 PASSED: GotoDestructorTest
-PASSED: HeaderSeparatorTest
-PASSED: IncludeGuardGeneratorTest
-PASSED: InheritanceTest
+PASSED: HeaderCompatibilityTest
 PASSED: IntegrationTest
 PASSED: LambdaTranslatorTest
 PASSED: LoopDestructorTest
 PASSED: MetaprogrammingTest
 PASSED: MonomorphizationTest
-PASSED: MoveSemanticTranslatorTest
-PASSED: NameManglerTest
-PASSED: NestedScopeDestructorTest
+FAILED: MoveSemanticTranslatorTest (exit code: 1)
 PASSED: OperatorOverloadingTest
 PASSED: OverloadResolutionTest
+PASSED: PromiseTranslatorTest_GTest
 PASSED: RAIIIntegrationTest
+PASSED: ResumeDestroyFunctionTest_GTest
+PASSED: RuntimeFeatureFlagsTest
+PASSED: RuntimeIntegrationTest
+PASSED: RuntimeModeLibraryTest
 PASSED: SharedPtrTest
-PASSED: SizeOptimizationTest
 PASSED: SmartPointerRaiiIntegrationTest
+PASSED: StateMachineTransformerTest_GTest
 PASSED: STLIntegrationTest
-PASSED: TemplateExtractorTest
+PASSED: SuspendPointIdentifierTest_GTest
+PASSED: ThrowTranslatorTest
 PASSED: TranslationIntegrationTest
+PASSED: TryCatchTransformerTest
 PASSED: TypeTraitsTest
 PASSED: UniquePtrTest
 PASSED: ValidationTest
-PASSED: VirtualMethodAnalyzerTest
+PASSED: VirtualMethodIntegrationTest
 
 =====================================
-Total tests: 37
-Passed: 37
-Failed: 0
+Total tests: 54
+Passed: 53
+Failed: 1
 Pass rate: % Pass rate: %

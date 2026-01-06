@@ -13,7 +13,6 @@
 #include "clang/AST/RecursiveASTVisitor.h"
 #include "clang/Frontend/ASTUnit.h"
 #include "clang/Tooling/Tooling.h"
-#include "CppToCVisitor.h"
 #include "CNodeBuilder.h"
 #include <memory>
 #include <string>

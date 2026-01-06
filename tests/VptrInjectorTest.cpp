@@ -26,11 +26,7 @@ std::unique_ptr<ASTUnit> buildAST(const char *code) {
     return tooling::buildASTFromCodeWithArgs(code, args, "input.cc");
 }
 
-// Test helper macros
-    if (!(cond)) { \
-        std::cerr << "\nASSERT FAILED: " << msg << std::endl; \
-        return; \
-    }
+// Test helper macros (removed - using GTest ASSERT macros instead)
 
 // Helper function to find class by name
 CXXRecordDecl* findClass(TranslationUnitDecl* TU, const std::string& name) {
@@ -82,7 +78,7 @@ TEST_F(VptrInjectorTest, InjectVptrInPolymorphicClass) {
         ASSERT_TRUE(injected) << "Vptr injection should succeed";
 
         // Test: Should have exactly 1 field (vptr)
-        ASSERT_TRUE(fields.size() == 1) << "Expected 1 field (vptr;, got: " + std::to_string(fields.size()));
+        ASSERT_TRUE(fields.size() == 1) << "Expected 1 field (vptr), got: " << fields.size();
 
         // Test: First field should be vptr
         ASSERT_TRUE(fields[0]->getNameAsString() == "vptr") << "First field should be named 'vptr'";
@@ -92,7 +88,7 @@ TEST_F(VptrInjectorTest, InjectVptrInPolymorphicClass) {
 
         // Test: Vptr pointee should be const-qualified (const struct X_vtable*)
         auto pointeeType = fields[0]->getType()->getPointeeType();
-        ASSERT_TRUE(pointeeType.isConstQualified()) << "Vptr pointee (vtable struct;should be const-qualified");
+        ASSERT_TRUE(pointeeType.isConstQualified()) << "Vptr pointee (vtable struct) should be const-qualified";
 }
 
 TEST_F(VptrInjectorTest, NoVptrInNonPolymorphicClass) {
@@ -285,10 +281,10 @@ TEST_F(VptrInjectorTest, VptrCombinedWithExistingFields) {
         }
 
         // Test: Should have 3 fields: vptr, radius, color
-        ASSERT_TRUE(fields.size() == 3) << "Expected 3 fields (vptr + radius + color;, got: " + std::to_string(fields.size()));
+        ASSERT_TRUE(fields.size() == 3) << "Expected 3 fields (vptr + radius + color), got: " << fields.size();
 
         // Test: Vptr must be first
-        ASSERT_TRUE(fields[0]->getNameAsString() == "vptr") << "Vptr must be first field (offset 0;");
+        ASSERT_TRUE(fields[0]->getNameAsString() == "vptr") << "Vptr must be first field (offset 0)";
 
         // Test: Original fields after vptr
         ASSERT_TRUE(fields[1]->getNameAsString() == "radius") << "Second field should be radius";

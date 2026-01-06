@@ -11,7 +11,15 @@
 
 1. [Executive Overview](#1-executive-overview)
 2. [System Architecture](#2-system-architecture)
+   - 2.1 [High-Level Architecture](#21-high-level-architecture)
+   - 2.2 [Two-Phase Translation Pipeline](#22-two-phase-translation-pipeline)
+   - 2.3 [Architecture Decision Record](#23-architecture-decision-record)
 3. [Component Design](#3-component-design)
+   - 3.1 [CNodeBuilder](#31-cnodebuilder)
+   - 3.2 [Translation Layer](#32-translation-layer-recursiveastvisitor)
+   - 3.3 [Clang Printer Integration](#33-clang-printer-integration)
+   - 3.4 [Runtime Library](#34-runtime-library)
+   - 3.5 [CLI Usage & Project-Based Mode](#35-cli-usage--project-based-mode)
 4. [Feature Implementation Architecture](#4-feature-implementation-architecture)
 5. [Data Flow & Transformations](#5-data-flow--transformations)
 6. [Implementation Roadmap](#6-implementation-roadmap)
@@ -25,9 +33,13 @@
 
 The C++ to C Transpiler is a source-to-source compiler that converts modern C++ code (including C++20 features) into readable, verifiable C99 code. It leverages Clang's AST infrastructure to preserve high-level semantics while generating human-readable C code suitable for formal verification with Frama-C.
 
+**Operating Mode**: The transpiler operates exclusively in **project-based mode**, where the `--source-dir` option is **REQUIRED**. All C++ files in the source directory are automatically discovered and processed together as a single project. Individual file arguments on the command line are NOT supported.
+
 ### System Description
 
 The transpiler operates in two phases: (1) Parse C++ source with Clang to obtain a fully-resolved AST with semantic information, (2) Transform the C++ AST into an intermediate C AST using custom translation logic, then emit C code using Clang's battle-tested printer. This approach produces 3-5x cleaner code than direct text generation, critical for formal verification workflows.
+
+All files in the specified source directory are automatically discovered and processed together, enabling proper cross-file dependency resolution and maintaining the original directory structure in the output.
 
 ### Key Architectural Decisions
 
@@ -61,61 +73,66 @@ This architecture synthesizes findings from 13,545+ lines of research across 11 
 
 ```mermaid
 graph TD
-    A[C++ Source Code] --> B[Clang Frontend]
-    B --> C[C++ AST with Semantics]
-    C --> D[Translation Layer]
-    D --> E[C AST with Runtime Calls]
-    E --> F[Clang Printer]
-    F --> G[Generated C Code]
-    G --> H[Runtime Library]
-    H --> I[Frama-C Verification]
+    A[C++ Source Directory] --> B[File Discovery]
+    B --> C[Clang Frontend]
+    C --> D[C++ AST with Semantics]
+    D --> E[Translation Layer]
+    E --> F[C AST with Runtime Calls]
+    F --> G[Clang Printer]
+    G --> H[Generated C Code]
+    H --> I[Runtime Library]
+    I --> J[Frama-C Verification]
 
-    style D fill:#e1f5ff
     style E fill:#e1f5ff
-    style H fill:#fff4e1
+    style F fill:#e1f5ff
+    style I fill:#fff4e1
 ```
 
 **Major Components:**
 
-1. **Clang Frontend** - Parsing, semantic analysis, template instantiation
-2. **Translation Layer** - C++ AST → C AST transformation (RecursiveASTVisitor)
-3. **C AST with Runtime Calls** - Intermediate representation using Clang C nodes
-4. **Clang Printer** - DeclPrinter/StmtPrinter with C99 configuration
-5. **Runtime Library** - Exception handling, RTTI, virtual inheritance support
+1. **File Discovery** - Automatic discovery of .cpp/.h files in source directory
+2. **Clang Frontend** - Parsing, semantic analysis, template instantiation
+3. **Translation Layer** - C++ AST → C AST transformation (RecursiveASTVisitor)
+4. **C AST with Runtime Calls** - Intermediate representation using Clang C nodes
+5. **Clang Printer** - DeclPrinter/StmtPrinter with C99 configuration
+6. **Runtime Library** - Exception handling, RTTI, virtual inheritance support
 
-**Data Flow:** C++ source is parsed into a fully-resolved AST (#1) with template instantiations and type information. The translation layer walks this AST and constructs a parallel C AST (#2) using CNodeBuilder helpers, injecting runtime library calls. The C AST is then printed using Clang's printer, which handles precedence, formatting, and edge cases accumulated over 15+ years of production use.
+**Data Flow:** The transpiler operates in **project-based mode only**. Users must specify a source directory using `--source-dir`, from which all C++ files are automatically discovered. Each C++ source file is parsed into a fully-resolved AST (#1) with template instantiations and type information. The translation layer walks each AST and constructs a parallel C AST (#2) using CNodeBuilder helpers, injecting runtime library calls. The C AST is then printed using Clang's printer, which handles precedence, formatting, and edge cases accumulated over 15+ years of production use.
+
+**IMPORTANT**: The transpiler does NOT support individual file arguments on the command line. The `--source-dir` option is **REQUIRED** for all transpilation operations. All files in the source directory are processed together as a single project.
 
 ### 2.2 Two-Phase Translation Pipeline
 
 ```mermaid
 flowchart TD
-    A[C++ Source File] --> B[Clang Parser + Sema]
-    B --> C[AST #1: Full C++ AST]
+    A[C++ Source Directory] --> B[File Discovery & Analysis]
+    B --> C[Clang Parser + Sema per file]
+    C --> D[AST #1: Full C++ AST]
 
-    C --> D{Translation Layer}
-    D --> |RecursiveASTVisitor| E[Analyze C++ Constructs]
-    E --> F[Build C AST Nodes]
-    F --> G[Inject Runtime Calls]
+    D --> E{Translation Layer}
+    E --> |RecursiveASTVisitor| F[Analyze C++ Constructs]
+    F --> G[Build C AST Nodes]
+    G --> H[Inject Runtime Calls]
 
-    G --> H[AST #2: Pure C AST]
+    H --> I[AST #2: Pure C AST]
 
-    H --> I{Clang Printer}
-    I --> J[DeclPrinter]
-    I --> K[StmtPrinter]
-    J --> L[Apply PrintingPolicy C99]
-    K --> L
-    L --> M[Inject #line Directives]
+    I --> J{Clang Printer}
+    J --> K[DeclPrinter]
+    J --> L[StmtPrinter]
+    K --> M[Apply PrintingPolicy C99]
+    L --> M
+    M --> N[Inject #line Directives]
 
-    M --> N[Generated C Code]
-    N --> O[Runtime Library]
-    O --> P{Frama-C}
-    P --> |Verify Library Once| Q[Verified Runtime]
-    P --> |Verify Generated Code| R[Verified Application]
+    N --> O[Generated C Code]
+    O --> P[Runtime Library]
+    P --> Q{Frama-C}
+    Q --> |Verify Library Once| R[Verified Runtime]
+    Q --> |Verify Generated Code| S[Verified Application]
 
-    style C fill:#ffcccc
-    style H fill:#ccffcc
-    style D fill:#e1f5ff
-    style I fill:#fff4e1
+    style D fill:#ffcccc
+    style I fill:#ccffcc
+    style E fill:#e1f5ff
+    style J fill:#fff4e1
 ```
 
 **Key Transformation Points:**
@@ -129,6 +146,129 @@ flowchart TD
 4. **Generated C + Runtime → Verification**: Clean C code with runtime library calls is tractable for Frama-C. Runtime verified once; generated code verified per-project.
 
 For detailed architectural rationale, see [architecture-decision.md](architecture/architecture-decision.md). For quantitative comparison (9.2/10 vs 4.1/10), see [prototype-comparison.md](architecture/prototype-comparison.md).
+
+#### Phase 32 Architecture Fix (v3.0.0) - December 2025
+
+**Critical Bug Fixed**: C AST nodes were being built but NEVER used for output generation.
+
+**Root Cause**: The `CppToCConsumer` was routing the `CodeGenerator` to print from the C++ TranslationUnit instead of the C TranslationUnit, causing C++ syntax (namespace, class, template) to appear in generated .c files.
+
+**Before Fix**:
+```cpp
+// CppToCConsumer.cpp (BROKEN)
+for (auto *D : TU->decls()) {  // TU = C++ TranslationUnitDecl
+  implGen.printDecl(D, false);  // Prints C++ syntax!
+}
+```
+
+**After Fix**:
+```cpp
+// CppToCConsumer.cpp (FIXED)
+clang::TranslationUnitDecl* C_TU = Visitor.getCTranslationUnit();
+for (auto *D : C_TU->decls()) {  // C_TU = C TranslationUnitDecl
+  implGen.printDecl(D, false);  // Prints C syntax!
+}
+```
+
+**Implementation**:
+1. Added `C_TranslationUnit` member to `CppToCVisitor` (Phase 32 v3.0.0)
+2. Populated C_TU with all generated C AST nodes (structs, functions, etc.)
+3. Routed `CodeGenerator` to C TranslationUnit instead of C++ TranslationUnit
+
+**Impact**: Main source file classes now transpile to valid C structs and functions. C++ keywords (class, private, public, template) no longer appear in generated .c files for main source code.
+
+**Known Limitations**: Header file declarations still skipped (by design in `CppToCVisitor.cpp:106`). Multi-file projects with separate .hpp files require header translation implementation (future work).
+
+**Test Results**: Simple C++ class with methods transpiles to pure C:
+```c
+// Generated C code (VERIFIED - NO C++ SYNTAX)
+struct TestClass {
+    int value;
+};
+void TestClass__ctor(struct TestClass * this);
+void TestClass_setValue(struct TestClass * this, int v);
+int TestClass_getValue(struct TestClass * this);
+```
+
+For detailed fix documentation, see [.planning/phases/32-transpiler-architecture-fix/32-01-SUMMARY.md](../.planning/phases/32-transpiler-architecture-fix/32-01-SUMMARY.md).
+
+#### Handler Architecture Migration (v4.0.0) - December 2025 to January 2026
+
+**Critical Architecture Improvement**: Migration from legacy HandlerContext pattern to modern CppToCVisitorDispatcher pattern.
+
+**Background**: The original handler architecture used a HandlerContext object that each handler received as a constructor parameter, creating tight coupling and making handlers difficult to test and reason about.
+
+**Legacy Pattern (RETIRED)**:
+```cpp
+// OLD: HandlerContext pattern (RETIRED 2026-01-03)
+class ExpressionHandler {
+    HandlerContext& ctx;  // Tight coupling
+public:
+    ExpressionHandler(HandlerContext& context) : ctx(context) {}
+    void handle(Expr* expr) { /* uses ctx everywhere */ }
+};
+```
+
+**Modern Pattern (CURRENT)**:
+```cpp
+// NEW: Dispatcher pattern (Current as of 2026-01-03)
+class ExpressionHandler {
+public:
+    static void handle(
+        const clang::Expr* expr,
+        CppToCVisitorDispatcher& dispatcher,
+        clang::ASTContext& cppCtx,
+        clang::ASTContext& cCtx
+    );
+
+    static void registerHandler(CppToCVisitorDispatcher& dispatcher);
+};
+
+// Registration in CppToCVisitor constructor
+ExpressionHandler::registerHandler(dispatcher);
+```
+
+**Benefits of Dispatcher Pattern**:
+1. **Separation of Concerns**: Handlers don't manage context, only perform translation
+2. **Better Testability**: Static methods with explicit dependencies
+3. **Clearer Data Flow**: All inputs explicit in function signatures
+4. **Simplified Registration**: Static registration via dispatcher
+5. **No Shared State**: Each handler invocation is independent
+
+**Migration Status** (as of 2026-01-03):
+- ✅ Core handlers migrated: Expression, Statement, Declaration, Type handlers
+- ✅ E2E tests migrated: All Phase 1-7 E2E tests use dispatcher pattern
+- ✅ Integration tests migrated: All 10 integration test files migrated
+- ✅ Unit tests migrated: All active unit tests use dispatcher pattern
+- ✅ **HandlerContext class DELETED**: Source files removed from codebase
+- ⚠️  Legacy tests archived: ~15 test targets disabled pending migration/removal
+
+**HandlerContext Retirement Timeline**:
+- 2025-12-31: Analysis and migration plan created (Prompt 059, 063)
+- 2026-01-01: E2E Phase 1 tests migrated (Prompt 060)
+- 2026-01-01: Remaining E2E tests migrated (Prompt 061)
+- 2026-01-01: Unit tests migrated (Prompt 062)
+- 2026-01-01: Integration tests migrated (Prompt 065)
+- 2026-01-02: Array loop tests migrated (Prompt 064)
+- 2026-01-02: Final E2E tests migrated (Prompt 066)
+- 2026-01-03: **HandlerContext class deleted** (Prompt 067) ✅
+
+**Files Deleted**:
+- `include/handlers/HandlerContext.h` - Legacy context class header
+- `src/handlers/HandlerContext.cpp` - Legacy context class implementation
+
+**Documentation References**:
+- Migration analysis: `analyses/handlercontext-vs-dispatcher-analysis.md`
+- Retirement verification: `HANDLERCONTEXT_RETIREMENT_VERIFICATION.md`
+- Executive summary: `HANDLERCONTEXT_RETIREMENT_EXECUTIVE_SUMMARY.md`
+- Cleanup status: `HANDLERCONTEXT_CLEANUP_STATUS.md`
+
+**Current Architecture**: All active production code uses the CppToCVisitorDispatcher pattern. Legacy HandlerContext references exist only in:
+- Archived test fixtures (commented out in CMakeLists.txt)
+- Historical documentation
+- Code comments explaining migration
+
+For new handler development, always use the dispatcher pattern with static registration. See `docs/architecture/02-handler-chain-pattern.md` for implementation guide.
 
 ### 2.3 Architecture Decision Record
 
@@ -472,6 +612,82 @@ void* cxx_get_vbase(const void *obj, const void *vtable,
 ```
 
 For complete runtime library design and Frama-C verification strategy, see [runtime-library-design.md](architecture/runtime-library-design.md).
+
+### 3.5 CLI Usage & Project-Based Mode
+
+**Transpilation Mode**: The transpiler operates exclusively in **project-based mode**. Individual file transpilation is NOT supported.
+
+**Command-Line Interface**:
+
+```bash
+# Basic usage (REQUIRED parameters)
+cpptoc --source-dir <path> --output-dir <path>
+
+# Full example with all options
+cpptoc --source-dir src/ \
+       --output-dir build/ \
+       --runtime-mode library \
+       --header-separation \
+       --include-tests
+```
+
+**Required Options**:
+
+| Option | Description | Example |
+|--------|-------------|---------|
+| `--source-dir` | **REQUIRED**. Path to C++ source directory | `--source-dir src/` |
+| `--output-dir` | **REQUIRED**. Path to output directory for generated C | `--output-dir build/` |
+
+**Optional Parameters**:
+
+| Option | Description | Default |
+|--------|-------------|---------|
+| `--runtime-mode` | Runtime library mode: `inline` or `library` | `inline` |
+| `--header-separation` | Generate separate .h/.c files | enabled |
+| `--include-tests` | Include test files in transpilation | disabled |
+
+**File Discovery**:
+
+The transpiler automatically discovers and processes:
+- All `.cpp` files in source directory (recursively)
+- All `.h` and `.hpp` header files
+- Respects directory structure in output
+
+**Output Structure**:
+
+```
+src/                          build/
+├── Point.cpp        →       ├── Point.c
+├── Point.h          →       ├── Point.h
+├── util/            →       ├── util/
+│   └── Helper.cpp   →       │   ├── Helper.c
+│   └── Helper.h     →       │   └── Helper.h
+└── tests/           →       └── (excluded unless --include-tests)
+    └── test.cpp
+```
+
+**IMPORTANT Notes**:
+
+1. **No Individual Files**: The transpiler does NOT accept individual file paths as arguments. Commands like `cpptoc file.cpp` are NOT supported.
+
+2. **Directory Processing**: All files in `--source-dir` are processed together as a single project, enabling cross-file dependency resolution.
+
+3. **Output Mirroring**: The directory structure of `--source-dir` is mirrored in `--output-dir`.
+
+4. **Automatic Discovery**: No need to specify individual files - the transpiler finds them automatically.
+
+**Migration from Legacy Usage**:
+
+❌ **OLD (NOT SUPPORTED)**:
+```bash
+cpptoc input.cpp -o output.c
+cpptoc file1.cpp file2.cpp -o output/
+```
+
+✅ **NEW (REQUIRED)**:
+```bash
+cpptoc --source-dir src/ --output-dir build/
+```
 
 ---
 
@@ -1194,22 +1410,25 @@ void B_ctor(struct B *this);
 
 **Testing Strategy**:
 ```bash
+# Transpile project
+cpptoc --source-dir src/ --output-dir build/
+
 # Test 1: Header standalone compilation
-gcc -c Point.h -o /dev/null || exit 1
+gcc -c build/Point.h -o /dev/null || exit 1
 
 # Test 2: Implementation compilation
-gcc -c Point.c -o Point.o || exit 1
+gcc -c build/Point.c -o build/Point.o || exit 1
 
 # Test 3: Multiple inclusion
 cat > test_multi.c << EOF
-#include "Point.h"
-#include "Point.h"
+#include "build/Point.h"
+#include "build/Point.h"
 int main() { return 0; }
 EOF
-gcc test_multi.c Point.o -o test || exit 1
+gcc test_multi.c build/Point.o -o test || exit 1
 
 # Test 4: Forward declarations
-gcc -c CircularDeps.c -o CircularDeps.o || exit 1
+gcc -c build/CircularDeps.c -o build/CircularDeps.o || exit 1
 ```
 
 For complete file output system design and command-line options, see Epic #19.
@@ -1476,8 +1695,11 @@ gantt
 **Deliverable**: Tool converts simple C++ class to compilable C.
 
 **Example**:
-```cpp
-// Input: simple.cpp
+```bash
+# Command
+cpptoc --source-dir src/ --output-dir build/
+
+# Input: src/simple.cpp
 class Point {
     int x, y;
 public:
@@ -1485,7 +1707,7 @@ public:
     int getX() { return x; }
 };
 
-// Output: simple.c (via tool)
+# Output: build/simple.c (via tool)
 struct Point { int x; int y; };
 void Point_ctor(struct Point *this, int x, int y) {
     this->x = x; this->y = y;
@@ -1669,6 +1891,15 @@ int Point_getX(struct Point *this) { return this->x; }
       clangTooling clangFrontend clangAST clangBasic)
   target_compile_features(cpptoc PRIVATE cxx_std_17)
   ```
+- **Usage Example**:
+  ```bash
+  # Build the transpiler
+  cmake -B build -S .
+  cmake --build build
+
+  # Use the transpiler (project-based mode)
+  ./build/cpptoc --source-dir examples/ --output-dir output/
+  ```
 
 ### Verification
 
@@ -1779,8 +2010,8 @@ struct Base_vtable {
 
 **User Command**:
 ```bash
-cpptoc input.cpp                      # Inline (default)
-cpptoc --runtime-mode=library input.cpp  # Library
+cpptoc --source-dir src/ --output-dir build/                    # Inline (default)
+cpptoc --source-dir src/ --output-dir build/ --runtime-mode=library  # Library
 ```
 
 ### Trade-offs Summary

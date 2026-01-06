@@ -26,13 +26,9 @@
 #include <cstddef>
 #include <cstring>
 
-using namespace clang;
 
 // Test helper macros
-  if (!(cond)) {                                                               \
-    std::cerr << "\nASSERT FAILED: " << msg << std::endl;                      \
-    return;                                                                    \
-  }
+
 
 // Forward declarations of runtime functions to be implemented
 extern "C" {
@@ -83,7 +79,7 @@ const void *__vt_vmi_class_type_info = (const void *)0x3000;
  * Test: Derived* -> Base* should succeed
  */
 
-TEST(HierarchyTraversal, SingleInheritanceDirectBase) {
+TEST(HierarchyTraversalTest, HierarchyTraversal) {
     // Setup type_info structures
       const struct __class_type_info ti_Base = {.vtable_ptr = __vt_class_type_info,
                                                 .type_name = "4Base"};
@@ -105,7 +101,7 @@ TEST(HierarchyTraversal, SingleInheritanceDirectBase) {
       ASSERT_TRUE(result == ptr) << "Direct base should return original pointer";
 }
 
-TEST(HierarchyTraversal, SingleInheritanceMultiLevel) {
+TEST(HierarchyTraversalTest, HierarchyTraversal2) {
     // Setup type_info structures
       const struct __class_type_info ti_Base = {.vtable_ptr = __vt_class_type_info,
                                                 .type_name = "4Base"};
@@ -132,7 +128,7 @@ TEST(HierarchyTraversal, SingleInheritanceMultiLevel) {
       ASSERT_TRUE(result == ptr) << "Multi-level traversal should find Base";
 }
 
-TEST(HierarchyTraversal, SingleInheritanceNotFound) {
+TEST(HierarchyTraversalTest, HierarchyTraversal3) {
     // Setup type_info structures
       const struct __class_type_info ti_Base = {.vtable_ptr = __vt_class_type_info,
                                                 .type_name = "4Base"};
@@ -157,7 +153,7 @@ TEST(HierarchyTraversal, SingleInheritanceNotFound) {
       ASSERT_TRUE(result == nullptr) << "Unrelated type should return NULL";
 }
 
-TEST(HierarchyTraversal, NullPointerHandling) {
+TEST(HierarchyTraversalTest, HierarchyTraversal4) {
     const struct __class_type_info ti_Base = {.vtable_ptr = __vt_class_type_info,
                                                 .type_name = "4Base"};
 
@@ -174,7 +170,7 @@ TEST(HierarchyTraversal, NullPointerHandling) {
       ASSERT_TRUE(result == nullptr) << "NULL pointer should return NULL";
 }
 
-TEST(HierarchyTraversal, SameTypeOptimization) {
+TEST(HierarchyTraversalTest, HierarchyTraversal5) {
     const struct __class_type_info ti_Base = {.vtable_ptr = __vt_class_type_info,
                                                 .type_name = "4Base"};
 

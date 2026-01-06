@@ -8,9 +8,8 @@
 #include <cassert>
 #include <algorithm>
 
-using namespace clang;
 
-TEST(DependencyGraphVisualizer, EmptyVisualizer) {
+TEST(DependencyGraphVisualizer, EmptyVisualizerState) {
     DependencyGraphVisualizer viz;
 
         // Empty visualizer should have no files
@@ -34,7 +33,7 @@ TEST(DependencyGraphVisualizer, SingleFileNoDependencies) {
         ASSERT_TRUE(!viz.hasDependencies("Point.h")) << "Expected no dependencies for Point.h";
 }
 
-TEST(DependencyGraphVisualizer, FileWithDependencies) {
+TEST(DependencyGraphVisualizer, SimpleDependency) {
     DependencyGraphVisualizer viz;
         viz.addFile("Point.c", {"Point.h"});
         viz.addFile("Point.h", {});
@@ -51,7 +50,7 @@ TEST(DependencyGraphVisualizer, FileWithDependencies) {
         ASSERT_TRUE(deps[0] == "Point.h") << "Expected dependency on Point.h";
 }
 
-TEST(DependencyGraphVisualizer, MultipleDependencies) {
+TEST(DependencyGraphVisualizer, MultipleFileDependencies) {
     DependencyGraphVisualizer viz;
         viz.addFile("Circle.h", {"Point.h"});
         viz.addFile("Circle.c", {"Circle.h"});
@@ -71,7 +70,7 @@ TEST(DependencyGraphVisualizer, MultipleDependencies) {
         ASSERT_TRUE(circleHDeps[0] == "Point.h") << "Expected Circle.h to depend on Point.h";
 }
 
-TEST(DependencyGraphVisualizer, ForwardDeclarations) {
+TEST(DependencyGraphVisualizer, ForwardDeclarationTracking) {
     DependencyGraphVisualizer viz;
         viz.addFile("A.h", {});
         viz.addForwardDeclaration("A.h", "struct B");
@@ -81,7 +80,7 @@ TEST(DependencyGraphVisualizer, ForwardDeclarations) {
         ASSERT_TRUE(dot.find("struct B") != std::string::npos) << "Expected DOT to mention forward declaration";
 }
 
-TEST(DependencyGraphVisualizer, SimpleCircularDependency) {
+TEST(DependencyGraphVisualizer, CircularDependencyDetection) {
     DependencyGraphVisualizer viz;
         viz.addFile("A.h", {"B.h"});
         viz.addFile("B.h", {"A.h"});
@@ -112,7 +111,7 @@ TEST(DependencyGraphVisualizer, NoCircularDependencies) {
         ASSERT_TRUE(cycles.empty()) << "Expected no circular dependencies";
 }
 
-TEST(DependencyGraphVisualizer, DOTOutputFormat) {
+TEST(DependencyGraphVisualizer, DOTFormatGeneration) {
     DependencyGraphVisualizer viz;
         viz.addFile("Point.h", {});
         viz.addFile("Point.c", {"Point.h"});
@@ -145,7 +144,7 @@ TEST(DependencyGraphVisualizer, NodeStyling) {
         ASSERT_TRUE(dot.find("Point.c") != std::string::npos) << "Expected Point.c in output";
 }
 
-TEST(DependencyGraphVisualizer, Clear) {
+TEST(DependencyGraphVisualizer, ClearFunctionality) {
     DependencyGraphVisualizer viz;
         viz.addFile("Point.h", {});
         viz.addFile("Point.c", {"Point.h"});
@@ -157,7 +156,7 @@ TEST(DependencyGraphVisualizer, Clear) {
         ASSERT_TRUE(viz.getAllFiles().empty()) << "Expected empty file list after clear";
 }
 
-TEST(DependencyGraphVisualizer, WriteToFile) {
+TEST(DependencyGraphVisualizer, FileWriting) {
     DependencyGraphVisualizer viz;
         viz.addFile("Point.h", {});
         viz.addFile("Point.c", {"Point.h"});
@@ -180,7 +179,7 @@ TEST(DependencyGraphVisualizer, WriteToFile) {
         file.close();
 }
 
-TEST(DependencyGraphVisualizer, RealWorldScenario) {
+TEST(DependencyGraphVisualizer, ComplexProjectStructure) {
     DependencyGraphVisualizer viz;
 
         // Simulate a real project structure:
@@ -217,7 +216,7 @@ TEST(DependencyGraphVisualizer, RealWorldScenario) {
         ASSERT_TRUE(!dot.empty()) << "Expected non-empty DOT output";
 }
 
-TEST(DependencyGraphVisualizer, SelfDependency) {
+TEST(DependencyGraphVisualizer, SelfDependencyDetection) {
     DependencyGraphVisualizer viz;
         viz.addFile("SelfRef.h", {"SelfRef.h"});
 
@@ -226,7 +225,7 @@ TEST(DependencyGraphVisualizer, SelfDependency) {
         ASSERT_TRUE(cycles.size() >= 1) << "Expected self-dependency to be detected as cycle";
 }
 
-TEST(DependencyGraphVisualizer, EmptyFilename) {
+TEST(DependencyGraphVisualizer, EmptyFilenameHandling) {
     DependencyGraphVisualizer viz;
         viz.addFile("", {});
 

@@ -1,0 +1,194 @@
+// Tests for CppToCVisitorDispatcher
+// Demonstrates Chain of Responsibility pattern for AST node handling
+
+#include "dispatch/CppToCVisitorDispatcher.h"
+#include "dispatch/TranslationUnitHandler.h"
+#include "mapping/PathMapper.h"
+#include "mapping/DeclLocationMapper.h"
+#include "mapping/DeclMapper.h"
+#include "mapping/TypeMapper.h"
+#include "mapping/ExprMapper.h"
+#include "mapping/StmtMapper.h"
+#include "TargetContext.h"
+#include "clang/Tooling/Tooling.h"
+#include <gtest/gtest.h>
+#include <iostream>
+
+using namespace clang;
+
+// Helper to build AST from C++ code
+std::unique_ptr<ASTUnit> buildAST(const std::string &code) {
+    return tooling::buildASTFromCode(code);
+}
+
+// ============================================================================
+// Test: TranslationUnitDecl Handler
+// ============================================================================
+
+TEST(DispatcherTest, TranslationUnitHandler) {
+    const char *cpp = R"(
+        class Point {
+            int x, y;
+        public:
+            int getX() { return x; }
+        };
+
+        int globalFunc() { return 42; }
+    )";
+
+    std::unique_ptr<ASTUnit> AST = buildAST(cpp);
+    ASSERT_NE(AST, nullptr) << "Failed to parse C++ code";
+
+    // Setup components
+    ASTContext& cppCtx = AST->getASTContext();
+    TargetContext& targetCtx = TargetContext::getInstance();
+    ASTContext& cCtx = targetCtx.getContext();
+
+    // Create path mapping utilities
+    cpptoc::PathMapper& mapper = cpptoc::PathMapper::getInstance("/src", "/output");
+    cpptoc::DeclLocationMapper locMapper(mapper);
+    cpptoc::DeclMapper& declMapper = cpptoc::DeclMapper::getInstance();
+    cpptoc::TypeMapper& typeMapper = cpptoc::TypeMapper::getInstance();
+    cpptoc::ExprMapper& exprMapper = cpptoc::ExprMapper::getInstance();
+    cpptoc::StmtMapper& stmtMapper = cpptoc::StmtMapper::getInstance();
+
+    // Create dispatcher with all utilities
+    CppToCVisitorDispatcher dispatcher(mapper, locMapper, declMapper, typeMapper, exprMapper, stmtMapper);
+
+    // Register production TranslationUnitHandler
+    cpptoc::TranslationUnitHandler::registerWith(dispatcher);
+
+    // Dispatch the TranslationUnit
+    TranslationUnitDecl* TU = cppCtx.getTranslationUnitDecl();
+    bool handled = dispatcher.dispatch(cppCtx, cCtx, TU);
+
+    // Verify handler was invoked
+    EXPECT_TRUE(handled) << "TranslationUnit should be handled by TranslationUnitHandler";
+}
+
+// ============================================================================
+// Test: Handler Chain (Multiple Handlers)
+// ============================================================================
+
+TEST(DispatcherTest, HandlerChainOrder) {
+    const char *cpp = R"(
+        class TestClass {};
+    )";
+
+    std::unique_ptr<ASTUnit> AST = buildAST(cpp);
+    ASSERT_NE(AST, nullptr);
+
+    ASTContext& cppCtx = AST->getASTContext();
+    TargetContext& targetCtx = TargetContext::getInstance();
+    ASTContext& cCtx = targetCtx.getContext();
+
+    cpptoc::PathMapper& mapper = cpptoc::PathMapper::getInstance("/src", "/output");
+    cpptoc::DeclLocationMapper locMapper(mapper);
+    cpptoc::DeclMapper& declMapper = cpptoc::DeclMapper::getInstance();
+    cpptoc::TypeMapper& typeMapper = cpptoc::TypeMapper::getInstance();
+    cpptoc::ExprMapper& exprMapper = cpptoc::ExprMapper::getInstance();
+    cpptoc::StmtMapper& stmtMapper = cpptoc::StmtMapper::getInstance();
+
+    CppToCVisitorDispatcher dispatcher(mapper, locMapper, declMapper, typeMapper, exprMapper, stmtMapper);
+
+    std::vector<std::string> invocations;
+
+    // Register first handler (catches all Decls)
+    dispatcher.addHandler(
+        [](const clang::Decl* D) { return true; },  // Match all
+        [&invocations](const CppToCVisitorDispatcher&, const clang::ASTContext&,
+                       clang::ASTContext&, const clang::Decl*) {
+            invocations.push_back("FirstHandler");
+        }
+    );
+
+    // Register second handler (never invoked - first handler matches)
+    dispatcher.addHandler(
+        [](const clang::Decl* D) { return true; },
+        [&invocations](const CppToCVisitorDispatcher&, const clang::ASTContext&,
+                       clang::ASTContext&, const clang::Decl*) {
+            invocations.push_back("SecondHandler");
+        }
+    );
+
+    // Dispatch any declaration
+    TranslationUnitDecl* TU = cppCtx.getTranslationUnitDecl();
+    dispatcher.dispatch(cppCtx, cCtx, TU);
+
+    // Verify only first handler was invoked (chain stops after first match)
+    ASSERT_EQ(invocations.size(), 1);
+    EXPECT_EQ(invocations[0], "FirstHandler");
+}
+
+// ============================================================================
+// Test: No Handler Match
+// ============================================================================
+
+TEST(DispatcherTest, NoHandlerMatch) {
+    const char *cpp = "class Test {};";
+    std::unique_ptr<ASTUnit> AST = buildAST(cpp);
+    ASSERT_NE(AST, nullptr);
+
+    ASTContext& cppCtx = AST->getASTContext();
+    TargetContext& targetCtx = TargetContext::getInstance();
+    ASTContext& cCtx = targetCtx.getContext();
+
+    cpptoc::PathMapper& mapper = cpptoc::PathMapper::getInstance("/src", "/output");
+    cpptoc::DeclLocationMapper locMapper(mapper);
+    cpptoc::DeclMapper& declMapper = cpptoc::DeclMapper::getInstance();
+    cpptoc::TypeMapper& typeMapper = cpptoc::TypeMapper::getInstance();
+    cpptoc::ExprMapper& exprMapper = cpptoc::ExprMapper::getInstance();
+    cpptoc::StmtMapper& stmtMapper = cpptoc::StmtMapper::getInstance();
+
+    CppToCVisitorDispatcher dispatcher(mapper, locMapper, declMapper, typeMapper, exprMapper, stmtMapper);
+
+    // No handlers registered
+    TranslationUnitDecl* TU = cppCtx.getTranslationUnitDecl();
+    bool handled = dispatcher.dispatch(cppCtx, cCtx, TU);
+
+    // Should return false when no handler matches
+    EXPECT_FALSE(handled);
+}
+
+// ============================================================================
+// Test: PathMapper Access
+// ============================================================================
+
+TEST(DispatcherTest, PathMapperAccess) {
+    const char *cpp = "int x;";
+    std::unique_ptr<ASTUnit> AST = buildAST(cpp);
+    ASSERT_NE(AST, nullptr);
+
+    ASTContext& cppCtx = AST->getASTContext();
+    TargetContext& targetCtx = TargetContext::getInstance();
+    ASTContext& cCtx = targetCtx.getContext();
+
+    cpptoc::PathMapper& mapper = cpptoc::PathMapper::getInstance("/src", "/output");
+    cpptoc::DeclLocationMapper locMapper(mapper);
+    cpptoc::DeclMapper& declMapper = cpptoc::DeclMapper::getInstance();
+    cpptoc::TypeMapper& typeMapper = cpptoc::TypeMapper::getInstance();
+    cpptoc::ExprMapper& exprMapper = cpptoc::ExprMapper::getInstance();
+    cpptoc::StmtMapper& stmtMapper = cpptoc::StmtMapper::getInstance();
+
+    CppToCVisitorDispatcher dispatcher(mapper, locMapper, declMapper, typeMapper, exprMapper, stmtMapper);
+
+    bool mapperAccessed = false;
+
+    // Handler that accesses PathMapper
+    dispatcher.addHandler(
+        [](const clang::Decl* D) { return llvm::isa<clang::TranslationUnitDecl>(D); },
+        [&mapperAccessed](const CppToCVisitorDispatcher& disp,
+                          const clang::ASTContext&, clang::ASTContext&,
+                          const clang::Decl*) {
+            cpptoc::PathMapper& pm = disp.getPathMapper();
+            std::string target = pm.mapSourceToTarget("/src/test.cpp");
+            EXPECT_EQ(target, "/output/test.c");
+            mapperAccessed = true;
+        }
+    );
+
+    TranslationUnitDecl* TU = cppCtx.getTranslationUnitDecl();
+    dispatcher.dispatch(cppCtx, cCtx, TU);
+
+    EXPECT_TRUE(mapperAccessed) << "Handler should access PathMapper";
+}

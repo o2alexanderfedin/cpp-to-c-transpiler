@@ -6,8 +6,6 @@
 #include "ACSLGenerator.h"
 #include <string>
 
-using namespace clang;
-
 TEST(ACSLGenerator, FormatBasicACSLComment) {
     ACSLGenerator generator;
         std::string annotation = "requires x > 0;";

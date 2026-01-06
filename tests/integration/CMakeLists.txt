@@ -12,6 +12,9 @@ set(Clang_DIR "/opt/homebrew/opt/llvm/lib/cmake/clang")
 find_package(LLVM REQUIRED CONFIG)
 find_package(Clang REQUIRED CONFIG)
 
+# Find range-v3 (required by dispatcher pattern tests)
+find_package(range-v3 REQUIRED)
+
 message(STATUS "Found LLVM ${LLVM_PACKAGE_VERSION}")
 message(STATUS "Using LLVMConfig.cmake in: ${LLVM_DIR}")
 
@@ -59,6 +62,114 @@ target_link_libraries(test_error_handling_gtest GTest::gtest GTest::gtest_main $
 add_executable(test_move_semantic_integration MoveSemanticIntegrationTest.cpp)
 target_link_libraries(test_move_semantic_integration GTest::gtest GTest::gtest_main ${CLANG_LIBS})
 
+# Phase 42: Pointers and References Integration Tests
+add_executable(PointersIntegrationTest handlers/PointersIntegrationTest.cpp)
+target_link_libraries(PointersIntegrationTest GTest::gtest GTest::gtest_main ${CLANG_LIBS})
+target_include_directories(PointersIntegrationTest PRIVATE
+    ${CMAKE_SOURCE_DIR}/../../include
+    ${CMAKE_SOURCE_DIR}/../../include/handlers
+    ${CMAKE_SOURCE_DIR}/../../src
+)
+
+# Phase 43: Structs (C-style) Integration Tests
+add_executable(StructsIntegrationTest handlers/StructsIntegrationTest.cpp)
+target_link_libraries(StructsIntegrationTest GTest::gtest GTest::gtest_main ${CLANG_LIBS})
+target_include_directories(StructsIntegrationTest PRIVATE
+    ${CMAKE_SOURCE_DIR}/../../include
+    ${CMAKE_SOURCE_DIR}/../../include/handlers
+    ${CMAKE_SOURCE_DIR}/../../src
+)
+
+# Shared source files for dispatcher-pattern tests
+# All tests migrated to dispatcher pattern need these implementation files
+set(DISPATCHER_TEST_SOURCES
+    # Core infrastructure
+    ${CMAKE_SOURCE_DIR}/../../src/TargetContext.cpp
+    # Dispatcher core
+    ${CMAKE_SOURCE_DIR}/../../src/dispatch/CppToCVisitorDispatcher.cpp
+    ${CMAKE_SOURCE_DIR}/../../src/dispatch/NamespaceHandler.cpp
+    ${CMAKE_SOURCE_DIR}/../../src/dispatch/FunctionHandler.cpp
+    ${CMAKE_SOURCE_DIR}/../../src/dispatch/VariableHandler.cpp
+    ${CMAKE_SOURCE_DIR}/../../src/dispatch/StatementHandler.cpp
+    ${CMAKE_SOURCE_DIR}/../../src/dispatch/RecordHandler.cpp
+    ${CMAKE_SOURCE_DIR}/../../src/dispatch/StaticMethodHandler.cpp
+    ${CMAKE_SOURCE_DIR}/../../src/dispatch/InstanceMethodHandler.cpp
+    ${CMAKE_SOURCE_DIR}/../../src/dispatch/VirtualMethodHandler.cpp
+    ${CMAKE_SOURCE_DIR}/../../src/dispatch/ConstructorHandler.cpp
+    ${CMAKE_SOURCE_DIR}/../../src/dispatch/DestructorHandler.cpp
+    # Mappers needed by DispatcherTestHelper
+    ${CMAKE_SOURCE_DIR}/../../src/mapping/PathMapper.cpp
+    ${CMAKE_SOURCE_DIR}/../../src/mapping/DeclLocationMapper.cpp
+)
+
+# Phase 44: Classes (C++ classes) Integration Tests (Migrated to dispatcher pattern)
+add_executable(ClassesIntegrationTest
+    handlers/ClassesIntegrationTest.cpp
+    ${DISPATCHER_TEST_SOURCES}
+)
+target_link_libraries(ClassesIntegrationTest
+    GTest::gtest
+    GTest::gtest_main
+    ${CLANG_LIBS}
+    range-v3::range-v3
+)
+target_include_directories(ClassesIntegrationTest PRIVATE
+    ${CMAKE_SOURCE_DIR}/../../tests/fixtures
+    ${CMAKE_SOURCE_DIR}/../../include
+    ${CMAKE_SOURCE_DIR}/../../src
+)
+
+# Phase 45: Virtual Methods Integration Tests (Migrated to dispatcher pattern)
+add_executable(VirtualMethodsIntegrationTest
+    handlers/VirtualMethodsIntegrationTest.cpp
+    ${DISPATCHER_TEST_SOURCES}
+)
+target_link_libraries(VirtualMethodsIntegrationTest
+    GTest::gtest
+    GTest::gtest_main
+    ${CLANG_LIBS}
+    range-v3::range-v3
+)
+target_include_directories(VirtualMethodsIntegrationTest PRIVATE
+    ${CMAKE_SOURCE_DIR}/../../tests/fixtures
+    ${CMAKE_SOURCE_DIR}/../../include
+    ${CMAKE_SOURCE_DIR}/../../src
+)
+
+# Phase 46: Multiple Inheritance Integration Tests (Migrated to dispatcher pattern)
+add_executable(MultipleInheritanceIntegrationTest
+    handlers/MultipleInheritanceIntegrationTest.cpp
+    ${DISPATCHER_TEST_SOURCES}
+)
+target_link_libraries(MultipleInheritanceIntegrationTest
+    GTest::gtest
+    GTest::gtest_main
+    ${CLANG_LIBS}
+    range-v3::range-v3
+)
+target_include_directories(MultipleInheritanceIntegrationTest PRIVATE
+    ${CMAKE_SOURCE_DIR}/../../tests/fixtures
+    ${CMAKE_SOURCE_DIR}/../../include
+    ${CMAKE_SOURCE_DIR}/../../src
+)
+
+# Phase 47: Scoped Enums Integration Tests (Migrated to dispatcher pattern)
+add_executable(EnumIntegrationTest
+    handlers/EnumIntegrationTest.cpp
+    ${DISPATCHER_TEST_SOURCES}
+)
+target_link_libraries(EnumIntegrationTest
+    GTest::gtest
+    GTest::gtest_main
+    ${CLANG_LIBS}
+    range-v3::range-v3
+)
+target_include_directories(EnumIntegrationTest PRIVATE
+    ${CMAKE_SOURCE_DIR}/../../tests/fixtures
+    ${CMAKE_SOURCE_DIR}/../../include
+    ${CMAKE_SOURCE_DIR}/../../src
+)
+
 # Enable testing
 enable_testing()
 include(GoogleTest)
@@ -73,6 +184,30 @@ gtest_discover_tests(test_move_semantic_integration
     WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
     PROPERTIES LABELS "integration;move_semantics;epic18"
 )
+gtest_discover_tests(PointersIntegrationTest
+    WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
+    PROPERTIES LABELS "integration;pointers;phase42"
+)
+gtest_discover_tests(StructsIntegrationTest
+    WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
+    PROPERTIES LABELS "integration;structs;phase43"
+)
+gtest_discover_tests(ClassesIntegrationTest
+    WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
+    PROPERTIES LABELS "integration;classes;phase44"
+)
+gtest_discover_tests(VirtualMethodsIntegrationTest
+    WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
+    PROPERTIES LABELS "integration;virtual_methods;phase45"
+)
+gtest_discover_tests(MultipleInheritanceIntegrationTest
+    WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
+    PROPERTIES LABELS "integration;multiple_inheritance;phase46"
+)
+gtest_discover_tests(EnumIntegrationTest
+    WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
+    PROPERTIES LABELS "integration;enums;phase47"
+)
 
 message(STATUS "Integration tests configured:")
 message(STATUS "  - FeatureInteractionTest: 30 tests")
@@ -81,4 +216,10 @@ message(STATUS "  - EdgeCasesTest: 30 tests")
 message(STATUS "  - ErrorHandlingTest: 25 tests (legacy)")
 message(STATUS "  - ErrorHandlingTest_gtest: 25 tests (Google Test)")
 message(STATUS "  - MoveSemanticIntegrationTest: 16 tests (Google Test)")
-message(STATUS "  Total: 146 integration tests")
+message(STATUS "  - PointersIntegrationTest: 24 tests (Phase 42)")
+message(STATUS "  - StructsIntegrationTest: 25 tests (Phase 43)")
+message(STATUS "  - ClassesIntegrationTest: 35 tests (Phase 44)")
+message(STATUS "  - VirtualMethodsIntegrationTest: 35 tests (Phase 45)")
+message(STATUS "  - MultipleInheritanceIntegrationTest: 37 tests (Phase 46)")
+message(STATUS "  - EnumIntegrationTest: 12 tests (Phase 47)")
+message(STATUS "  Total: 314 integration tests")

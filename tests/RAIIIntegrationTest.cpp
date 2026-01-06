@@ -3,7 +3,6 @@
 //
 // Comprehensive RAII pattern integration tests
 
-#include "CppToCVisitor.h"
 #include "clang/Tooling/Tooling.h"
 #include <cassert>
 #include <iostream>

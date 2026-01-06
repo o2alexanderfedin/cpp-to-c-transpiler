@@ -18,17 +18,70 @@ export interface ACSLOptions {
     behaviors?: boolean;
 }
 
+/**
+ * Header provider interface for resolving #include directives
+ * Enables on-demand header loading in WebAssembly scenario
+ */
+export interface HeaderProvider {
+    /**
+     * Get header content by name
+     * @param headerName - e.g., "stdio.h", "vector", "custom/myheader.h"
+     * @returns Header content as string, or null if not found
+     */
+    getHeader(headerName: string): string | null;
+
+    /**
+     * Check if header exists
+     */
+    hasHeader(headerName: string): boolean;
+
+    /**
+     * List all available headers
+     */
+    listHeaders(): string[];
+}
+
 export interface TranspileOptions {
     acsl?: ACSLOptions;
     target?: 'c89' | 'c99' | 'c11' | 'c17';
     optimize?: boolean;
+    /**
+     * Header provider for resolving #include directives
+     * Required for transpiling code that includes headers
+     */
+    headerProvider?: HeaderProvider;
+    /**
+     * C++ standard version (11, 14, 17, 20)
+     */
+    cppStandard?: 11 | 14 | 17 | 20;
+    /**
+     * Enable ACSL annotation generation
+     */
+    enableACSL?: boolean;
+    /**
+     * ACSL annotation level (1-5)
+     */
+    acslLevel?: 1 | 2 | 3 | 4 | 5;
 }
 
 export interface TranspileResult {
     success: boolean;
     c: string;
+    /**
+     * Header file (.h) - Phase 28
+     * Contains forward declarations, struct definitions, and function signatures
+     */
+    h: string;
     acsl: string;
     diagnostics: Diagnostic[];
+    /**
+     * Required headers not found by header provider
+     */
+    missingHeaders?: string[];
+    /**
+     * Header files generated or used (name → content)
+     */
+    headers?: Map<string, string>;
 }
 
 export interface WASMModule {

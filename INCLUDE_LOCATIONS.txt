@@ -1,0 +1,328 @@
+INCLUDE DIRECTIVE HANDLING - CODE LOCATIONS REFERENCE
+=====================================================
+
+This file maps every significant include-related code section to its location.
+
+================================================================================
+PRIMARY CODE LOCATIONS
+================================================================================
+
+Include Generation Main Entry Point:
+  FILE: src/CppToCConsumer.cpp
+  METHOD: void CppToCConsumer::HandleTranslationUnit(clang::ASTContext &Context)
+  LINES: 100-261 (Include generation)
+  LINES: 23-325 (Full method)
+
+  Key Sections:
+    Lines 106-113    - Standard C headers
+    Lines 118-122    - Get user headers from tracker
+    Lines 123-136    - Calculate current file's basename
+    Lines 138-261    - Loop through user headers
+    Lines 140-141    - Self-include prevention (file-level)
+    Lines 144-184    - Template-only header detection
+    Lines 186-235    - Include path calculation
+    Lines 201-204    - include/ → src/ directory mapping (CRITICAL)
+    Lines 237-255    - Self-include prevention (basename-level)
+    Lines 257-258    - Emit include directive
+    Lines 273-287    - Implementation file header include
+
+================================================================================
+KEY CLASS IMPLEMENTATIONS
+================================================================================
+
+FileOriginTracker - Track Declaration Origins:
+  HEADER: include/FileOriginTracker.h
+  IMPL:   src/FileOriginTracker.cpp
+  
+  Key Methods:
+    getUserHeaderFiles()              - Returns all user header paths
+    getDeclarationsFromFile()         - Returns declarations from specific file
+    recordDeclaration()               - Records where a declaration comes from
+    shouldTranspile()                 - Determines if declaration generates output
+
+CppToCConsumer - Include Generation Orchestrator:
+  HEADER: include/CppToCConsumer.h
+  IMPL:   src/CppToCConsumer.cpp
+  
+  Key Variables (relevant to includes):
+    InputFilename       - Current file being transpiled
+    SourceDir          - Root source directory for relative paths
+    fileOriginTracker  - Tracks file origins
+  
+  Key Methods:
+    HandleTranslationUnit() - Main method (lines 100-261 for includes)
+
+CodeGenerator - C Code Emission (Not Include Handling):
+  HEADER: include/CodeGenerator.h
+  IMPL:   src/CodeGenerator.cpp
+  
+  NOTE: This class does NOT handle includes. Includes are added by 
+  CppToCConsumer BEFORE CodeGenerator is called.
+  
+  Key Methods:
+    printDecl()         - Emits declarations
+    printStmt()         - Emits statements
+    printExpr()         - Emits expressions
+
+IncludeGuardGenerator - Header Guard Generation (Not Currently Used):
+  HEADER: include/IncludeGuardGenerator.h
+  IMPL:   src/IncludeGuardGenerator.cpp
+  
+  NOTE: Transpiler currently uses #pragma once instead of this class.
+  Available for alternative guard styles.
+  
+  Key Methods:
+    generateGuardName()  - Creates guard name from filename
+    emitGuardBegin()     - Emits #pragma once or #ifndef
+    emitGuardEnd()       - Emits #endif for traditional guards
+
+FileOutputManager - File Writing:
+  HEADER: include/FileOutputManager.h
+  IMPL:   src/FileOutputManager.cpp
+  
+  Key Methods:
+    writeFiles()         - Writes header and impl files with includes already present
+    setInputFilename()   - Sets input filename
+    setSourceDir()       - Sets root directory for relative paths
+
+================================================================================
+SUPPORTING CODE SECTIONS
+================================================================================
+
+User Header Detection:
+  METHOD: fileOriginTracker.getUserHeaderFiles()
+  CALLED: CppToCConsumer.cpp line 118
+  PURPOSE: Get list of all user header files encountered
+  FILTERS: Excludes system headers automatically
+
+Template Detection:
+  CODE: Lines 147-179 in CppToCConsumer.cpp
+  PURPOSE: Determine if header contains non-template declarations
+  CHECKS:
+    - CXXRecordDecl: Skip if template, implicit, or nested in template
+    - FunctionDecl: Skip if template, implicit, or member function
+    - VarDecl: Skip if implicit
+
+Path Transformation:
+  CODE: Lines 186-235 in CppToCConsumer.cpp
+  PURPOSE: Calculate relative include path
+  STEPS:
+    1. Canonicalize paths (lines 190-191)
+    2. Make relative to SourceDir (line 192)
+    3. Replace extension to .h (line 195)
+    4. Apply include/ → src/ mapping (lines 201-204)
+
+Include Directive Emission:
+  CODE: Line 257 in CppToCConsumer.cpp
+  FORMAT: #include "relative/path.h"
+  ALTERNATIVE: Could use #include <path.h> for system headers
+
+Implementation File Include:
+  CODE: Lines 273-287 in CppToCConsumer.cpp
+  PATTERN: Each .c file includes its own .h file
+  EXAMPLE: Vector3D.c → #include "Vector3D.h"
+
+================================================================================
+DATA STRUCTURES
+================================================================================
+
+User Headers Set:
+  TYPE: std::set<std::string>
+  SOURCE: fileOriginTracker.getUserHeaderFiles()
+  CONTENT: Absolute paths to all user header files
+  EXAMPLE: {
+    "/project/main.cpp",
+    "/project/include/Vector3D.h",
+    "/project/include/Matrix3x3.h"
+  }
+
+Include Paths Map (Logical):
+  "include/Vector3D.h"     → "src/Vector3D.h"
+  "include/Matrix3x3.h"    → "src/Matrix3x3.h"
+  "src/Utility.cpp"        → "src/Utility.h"
+  "src/main.cpp"           → SKIP (self)
+  "include/LinkedList.h"   → SKIP (template-only)
+
+================================================================================
+TESTING LOCATIONS
+================================================================================
+
+Test Case 1: Math Library (Single File):
+  DIR: tests/real-world/simple-validation/01-math-library/
+  OUTPUT: transpiled/main.h
+  INCLUDES: "src/Vector3D.h", "src/Matrix3x3.h"
+
+Test Case 2: State Machine (Single File):
+  DIR: tests/real-world/simple-validation/03-state-machine/
+  OUTPUT: transpiled/main.h
+  INCLUDES: "src/StateMachine.h"
+
+Test Case 3: Parser (Multiple Classes):
+  DIR: tests/real-world/simple-validation/04-simple-parser/
+  OUTPUT: transpiled/main.h
+  INCLUDES: "src/Tokenizer.h", "src/ExpressionEvaluator.h"
+
+Test Case 4: Game Logic (Complex Dependencies):
+  DIR: tests/real-world/simple-validation/05-game-logic/
+  OUTPUT: transpiled/main.h
+  INCLUDES: Multiple cross-file includes
+
+Test Unit:
+  FILE: tests/CppToCVisitorTest.cpp
+  COVERAGE: Various aspects of transpilation including includes
+
+================================================================================
+CONFIGURATION VARIABLES
+================================================================================
+
+CppToCConsumer Members:
+  std::string InputFilename      - Current file being transpiled
+  std::string SourceDir          - Root directory for relative paths
+  FileOriginTracker fileOriginTracker - Tracks file origins
+
+Clang AST Context:
+  clang::ASTContext Context      - AST context for parsing
+  clang::SourceManager SM        - Source location management
+
+Output Streams:
+  llvm::raw_string_ostream headerOS   - Accumulates header content
+  llvm::raw_string_ostream implOS     - Accumulates impl content
+
+================================================================================
+MAGIC VALUES & CONSTANTS
+================================================================================
+
+Standard Headers (Always Included):
+  "stdio.h"      - Input/output
+  "stdlib.h"     - Memory, exit
+  "string.h"     - String operations
+  "math.h"       - Math functions
+  "stdint.h"     - Fixed-width integers
+  "stdbool.h"    - Boolean type
+
+Include Format:
+  Quoted:  #include "path/to/header.h"
+  Angle:   #include <system_header.h>  (not used currently)
+
+Header Guard:
+  #pragma once  (current approach)
+
+Directory Mapping:
+  "include/"  →  "src/"  (hardcoded mapping)
+
+Basename Extraction:
+  Uses find_last_of("/\\") for separator
+  Uses find_last_of('.') for extension
+  Strips extension to get base name
+
+================================================================================
+CONDITIONAL COMPILATION
+================================================================================
+
+Current: No conditional compilation directives used
+
+Possible Future Additions:
+  #ifdef _WIN32
+    #include <windows.h>
+  #elif defined(__linux__)
+    #include <unistd.h>
+  #endif
+
+Performance Optimization Possible:
+  #ifndef VECTOR3D_H_INCLUDED
+    #define VECTOR3D_H_INCLUDED
+    // content
+  #endif
+
+================================================================================
+ERROR HANDLING
+================================================================================
+
+Current Error Handling in CppToCConsumer:
+
+1. FileOriginTracker Failures:
+   - Returns empty set for getUserHeaderFiles()
+   - Loop doesn't execute, no includes generated
+
+2. Filesystem Path Errors (lines 206-220):
+   try {
+       // Path calculation with fs:: operations
+   } catch (const fs::filesystem_error& e) {
+       // Fallback: use basename only
+   }
+
+3. File Output Failures:
+   if (!outputMgr.writeFiles(headerContent, implContent)) {
+       llvm::errs() << "Error: Failed to write output files\n";
+   }
+
+================================================================================
+DEBUGGING HOOKS
+================================================================================
+
+Debug Output Locations:
+
+Line 121: llvm::outs() << "[DEBUG] Skipping struct " << RD->getNameAsString()
+
+Line 253: llvm::outs() << "[DEBUG] Skipping self-include: " << includePath
+
+Line 61:  llvm::outs() << "[Bug #30 FIX] Created C_TU @ " << (void*)C_TU
+
+Line 30:  llvm::outs() << "Parsed file: " << FileEntry->getName()
+
+Line 79-81: llvm::outs() << "C TranslationUnit has " << CTU_DeclCount
+
+Add Custom Debugging:
+  - Before line 257: Log include decision
+  - Before path calculation: Log header being processed
+  - After mapping: Log transformed path
+  - In template detection: Log decision reasoning
+
+================================================================================
+RELATED CODE
+================================================================================
+
+AST Visitor (Creates C AST):
+  FILE: include/CppToCVisitor.h, src/CppToCVisitor.cpp
+  ROLE: Traverses C++ AST, creates C AST nodes
+  NOTE: Include directives NOT handled here (done in CppToCConsumer)
+
+Code Generation:
+  FILE: include/CodeGenerator.h, src/CodeGenerator.cpp
+  ROLE: Emits C code from C AST
+  NOTE: Include directives already in content when this is called
+
+Header Separation:
+  FILE: include/HeaderSeparator.h, src/HeaderSeparator.cpp
+  ROLE: Separates declarations into header vs impl
+  NOTE: Include directive separation is different concern
+
+Include Path Tracking Infrastructure:
+  FILE: include/FileOriginTracker.h, src/FileOriginTracker.cpp
+  ROLE: Tracks which declarations come from which files
+  NOTE: Provides the user headers list used in include generation
+
+================================================================================
+QUICK NAVIGATION
+================================================================================
+
+To understand include generation:
+  1. START: src/CppToCConsumer.cpp lines 100-261
+  2. DEEP DIVE: INCLUDE_DIRECTIVES_ANALYSIS.md
+  3. QUICK REF: INCLUDE_QUICK_REFERENCE.md
+  4. EXAMPLES: INCLUDE_CODE_SNIPPETS.md
+  5. HERE: INCLUDE_LOCATIONS.txt (you are here)
+
+To modify include generation:
+  1. Edit: src/CppToCConsumer.cpp (lines 100-261)
+  2. Test: tests/real-world/simple-validation/*/
+  3. Verify: Check transpiled/main.h for correct includes
+  4. Deploy: Commit changes to src/CppToCConsumer.cpp
+
+To debug include generation:
+  1. Add printf statements in src/CppToCConsumer.cpp
+  2. Build: cmake && make
+  3. Run: ./transpile-cli test-input.cpp
+  4. Check: Output includes in transpiled files
+
+================================================================================

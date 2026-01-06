@@ -107,9 +107,9 @@ TEST(HeaderSeparator, ClassWithMethods) {
         //
         // Expected counts: Header: 5 (1 class + 4 methods), Impl: 4 (methods with bodies)
 
-        ASSERT_TRUE(separator.getHeaderDecls().size() == 5) << "Expected 5 header declarations (1 class + 4 method declarations;");
+        ASSERT_TRUE(separator.getHeaderDecls().size() == 5) << "Expected 5 header declarations (1 class + 4 method declarations)";
 
-        ASSERT_TRUE(separator.getImplDecls().size() == 4) << "Expected 4 implementation declarations (4 methods with bodies;");
+        ASSERT_TRUE(separator.getImplDecls().size() == 4) << "Expected 4 implementation declarations (4 methods with bodies)";
 }
 
 TEST(HeaderSeparator, EmptyTranslationUnit) {
@@ -150,6 +150,6 @@ TEST(HeaderSeparator, MultipleClasses) {
         separator.analyzeTranslationUnit(TU);
 
         // All 3 structs should go to header
-        ASSERT_TRUE(separator.getHeaderDecls().size() == 3) << "Expected 3 header declarations (Point, Circle, Rectangle;");
+        ASSERT_TRUE(separator.getHeaderDecls().size() == 3) << "Expected 3 header declarations (Point, Circle, Rectangle)";
         ASSERT_TRUE(separator.getImplDecls().size() == 0) << "Expected 0 implementation declarations";
 }

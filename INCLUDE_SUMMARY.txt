@@ -1,0 +1,359 @@
+INCLUDE DIRECTIVE HANDLING - EXECUTIVE SUMMARY
+================================================
+
+GOAL: Understand how the transpiler generates correct #include directives for C output files.
+
+KEY FINDING: The transpiler has a sophisticated multi-stage system for include generation.
+
+================================================================================
+THREE DOCUMENTS CREATED
+================================================================================
+
+1. INCLUDE_DIRECTIVES_ANALYSIS.md (Comprehensive Technical Analysis)
+   ├─ 550+ lines covering all aspects
+   ├─ Architecture overview with diagrams
+   ├─ Detailed process flow for each stage
+   ├─ Example outputs from test cases
+   ├─ Potential improvements and issues
+   └─ Full class/method reference
+
+2. INCLUDE_QUICK_REFERENCE.md (Fast Lookup Guide)
+   ├─ Where includes are generated (line numbers)
+   ├─ Generation flow in 3 steps
+   ├─ Quick code snippets
+   ├─ Key classes table
+   ├─ Path transformation rules
+   ├─ Debugging tips
+   └─ Perfect for quick reference while coding
+
+3. INCLUDE_CODE_SNIPPETS.md (Code Examples)
+   ├─ 9 detailed code snippets with explanations
+   ├─ Real examples from the codebase
+   ├─ Flowchart decision making
+   ├─ Full walkthrough of main.cpp example
+   ├─ Debugging code to add
+   └─ Expected output examples
+
+================================================================================
+HOW INCLUDES ARE CURRENTLY GENERATED
+================================================================================
+
+LOCATION: src/CppToCConsumer.cpp, HandleTranslationUnit() method, lines 100-261
+
+PROCESS:
+
+Step 1 - Standard C Headers (lines 106-113)
+├─ Always includes: stdio.h, stdlib.h, string.h, math.h, stdint.h, stdbool.h
+├─ These replace C++ standard library headers
+└─ Unconditional (always emitted)
+
+Step 2 - User Header Includes (lines 115-261)
+├─ Get all user headers from FileOriginTracker
+├─ For each header:
+│  ├─ Skip self-includes (prevent circular dependencies)
+│  ├─ Skip template-only headers (no separate file generated)
+│  ├─ Calculate include path (with include/ → src/ mapping)
+│  ├─ Skip by basename (prevent Vector3D.cpp from including Vector3D.h)
+│  └─ Emit: #include "calculated/path.h"
+└─ Result: List of user header includes
+
+Step 3 - Implementation File Header Include (lines 273-287)
+├─ Extract basename from InputFilename
+├─ Emit: #include "basename.h"
+└─ Result: Each .c file includes its corresponding .h
+
+================================================================================
+KEY CLASSES AND THEIR ROLES
+================================================================================
+
+FileOriginTracker
+├─ ROLE: Track which declarations come from which files
+├─ KEY METHOD: getUserHeaderFiles() → returns all user headers encountered
+├─ LOCATION: include/FileOriginTracker.h
+└─ FILTERS OUT: System headers (/usr/include, /Library, etc.)
+
+CppToCConsumer
+├─ ROLE: Orchestrate include generation and code emission
+├─ KEY METHOD: HandleTranslationUnit() → generates includes + code
+├─ LOCATION: src/CppToCConsumer.cpp (lines 100-261 for includes)
+└─ OUTPUT: headerContent (with includes), implContent (with includes)
+
+CodeGenerator
+├─ ROLE: Emit C code (does NOT handle includes)
+├─ KEY METHOD: printDecl(), printStmt()
+├─ LOCATION: include/CodeGenerator.h
+└─ NOTE: Includes are added BEFORE CodeGenerator is called
+
+FileOutputManager
+├─ ROLE: Write .h and .c files to disk
+├─ KEY METHOD: writeFiles(headerContent, implContent)
+├─ LOCATION: include/FileOutputManager.h
+└─ INPUT: String content already containing includes
+
+================================================================================
+INCLUDE PATH TRANSFORMATION - CRITICAL FEATURE
+================================================================================
+
+DIRECTORY MAPPING:
+
+include/Vector3D.h  →  src/Vector3D.h
+include/Matrix.h    →  src/Matrix.h
+
+WHY THIS MAPPING IS ESSENTIAL:
+
+Traditional C++ project structure:
+  include/Vector3D.h       ← Public header (declarations only)
+  src/Vector3D.cpp         ← Implementation
+
+When transpiling:
+  Vector3D.h  - NO separate output file (just declarations)
+  Vector3D.cpp - GENERATES:
+    • src/Vector3D.h (C header with declarations)
+    • src/Vector3D.c (C implementation)
+
+Therefore:
+  When main.cpp includes "include/Vector3D.h"
+  The transpiler MUST output: #include "src/Vector3D.h"
+  (Because include/Vector3D.h doesn't exist; the transpiled output is in src/)
+
+IMPLEMENTATION: Lines 201-204 in CppToCConsumer.cpp
+  if (relPathStr.rfind("include/", 0) == 0) {
+      relPathStr = "src/" + relPathStr.substr(8);
+  }
+
+================================================================================
+SELF-INCLUDE PREVENTION - TWO-LAYER DEFENSE
+================================================================================
+
+Layer 1: File Path Comparison (line 140)
+├─ Check: headerPath == InputFilename?
+├─ Example: /project/main.cpp == /project/main.cpp → SKIP
+└─ PREVENTS: Including the same file being transpiled
+
+Layer 2: Basename Comparison (lines 237-255)
+├─ Calculate currentOutputBasename ("main" from "main.cpp")
+├─ Calculate includeBasename ("Vector3D" from "src/Vector3D.h")
+├─ Check: includeBasename == currentOutputBasename?
+├─ Example: "Vector3D" == "Vector3D" → SKIP
+└─ PREVENTS: Vector3D.cpp including Vector3D.h
+
+RESULT: Two independent checks ensure no circular dependencies
+
+================================================================================
+TEMPLATE-ONLY HEADER SKIPPING
+================================================================================
+
+PROBLEM: Headers like LinkedList.h contain only templates
+  ├─ Templates don't generate separate files
+  ├─ They're monomorphized inline into each .cpp that uses them
+  └─ Therefore, should NOT be included in transpiled output
+
+SOLUTION: Detect non-template declarations (lines 144-184)
+
+For each class/function/variable in header:
+  ├─ Is it a template? → SKIP
+  ├─ Is it implicit (compiler-generated)? → SKIP
+  ├─ Is it nested in a template? → SKIP
+  └─ Otherwise → COUNT IT
+
+If hasNonTemplateDecls == false:
+  └─ SKIP the entire #include directive
+
+EXAMPLES:
+
+Headers with output (DO include):
+  • Vector3D.h - concrete class Vector3D
+  • Matrix.h - concrete class Matrix
+  • Parser.h - concrete class Parser
+
+Headers without output (DON'T include):
+  • LinkedList.h - only template class LinkedList<T>
+  • Stack.h - only template class Stack<T>
+  • Utility.h - only template function util<T>()
+
+================================================================================
+EXAMPLE: COMPLETE INCLUDE GENERATION FOR main.cpp
+================================================================================
+
+INPUT FILES:
+  /project/main.cpp
+  /project/include/Vector3D.h
+  /project/include/Matrix3x3.h
+
+CONFIGURATION:
+  SourceDir: /project
+  InputFilename: main.cpp
+
+STEP-BY-STEP:
+
+1. Standard headers (always):
+   #include <stdio.h>
+   #include <stdlib.h>
+   #include <string.h>
+   #include <math.h>
+   #include <stdint.h>
+   #include <stdbool.h>
+
+2. Get user headers:
+   FileOriginTracker returns: {main.cpp, include/Vector3D.h, include/Matrix3x3.h}
+
+3. Process main.cpp:
+   → Is it InputFilename? YES
+   → SKIP (self-include prevention)
+
+4. Process include/Vector3D.h:
+   → Has non-template decls? YES (Vector3D is a concrete class)
+   → Calculate path: include/Vector3D.h → src/Vector3D.h
+   → Basename match current? "Vector3D" == "main"? NO
+   → EMIT: #include "src/Vector3D.h"
+
+5. Process include/Matrix3x3.h:
+   → Has non-template decls? YES (Matrix3x3 is a concrete class)
+   → Calculate path: include/Matrix3x3.h → src/Matrix3x3.h
+   → Basename match current? "Matrix3x3" == "main"? NO
+   → EMIT: #include "src/Matrix3x3.h"
+
+GENERATED main.h:
+   // Generated from: main.cpp
+   // Header file
+
+   #pragma once
+
+   #include <stdio.h>
+   #include <stdlib.h>
+   #include <string.h>
+   #include <math.h>
+   #include <stdint.h>
+   #include <stdbool.h>
+
+   #include "src/Vector3D.h"
+   #include "src/Matrix3x3.h"
+
+   // Declarations...
+
+GENERATED main.c:
+   // Generated from: main.cpp
+   // Implementation file
+
+   #include "main.h"
+
+   // Implementations...
+
+================================================================================
+CURRENT BEHAVIOR CHECKLIST
+================================================================================
+
+✓ Standard C headers included
+✓ User headers auto-detected
+✓ Include paths correctly calculated
+✓ include/ → src/ mapping applied
+✓ Self-includes prevented (file-level)
+✓ Self-includes prevented (basename-level)
+✓ Template-only headers skipped
+✓ Relative paths from SourceDir
+✓ Header guard (#pragma once)
+✓ Implementation file includes header
+✓ Deduplication via file tracking
+
+================================================================================
+POTENTIAL IMPROVEMENTS
+================================================================================
+
+1. Hardcoded Standard Headers
+   CURRENT: Always include 6 headers regardless of use
+   IMPROVEMENT: Analyze generated code to determine actual needs
+
+2. No Include Deduplication Across Files
+   CURRENT: Each .h file independently decides on includes
+   IMPROVEMENT: Track already-included files globally
+
+3. No Conditional Compilation
+   CURRENT: Same includes for all platforms
+   IMPROVEMENT: Add platform-specific conditional includes
+
+4. Manual Path Mapping
+   CURRENT: Hardcoded include/ → src/ mapping
+   IMPROVEMENT: Make configurable via command-line arguments
+
+5. No System Header Distinction
+   CURRENT: All user includes use quoted format (#include "")
+   IMPROVEMENT: Use angle brackets for system (#include <>)
+
+================================================================================
+HOW TO CUSTOMIZE
+================================================================================
+
+To add custom include path mapping:
+  LOCATION: CppToCConsumer.cpp, line 205
+  CODE:
+    includePath = relPathStr;
+    // Add custom mapping here
+    if (includePath.find("vendor/") == 0) {
+        includePath = "external/" + includePath;
+    }
+
+To change header guard style:
+  LOCATION: CppToCConsumer.cpp, line 104
+  CODE:
+    // Current: #pragma once
+    // Alternative: Use IncludeGuardGenerator for traditional guards
+    IncludeGuardGenerator gen(false);
+    headerOS << gen.emitGuardBegin("VECTOR3D_H") << "\n";
+
+To filter specific headers:
+  LOCATION: CppToCConsumer.cpp, line 138 (after getting userHeaders)
+  CODE:
+    // Add filtering logic
+    if (headerPath.find("internal/") != std::string::npos) {
+        continue;  // Skip internal headers
+    }
+
+================================================================================
+VALIDATION RESULTS
+================================================================================
+
+Test Case: 01-math-library
+  INPUT: main.cpp with includes to Vector3D.h, Matrix3x3.h
+  OUTPUT: ✓ main.h includes "src/Vector3D.h", "src/Matrix3x3.h"
+  STATUS: PASS
+
+Test Case: 03-state-machine
+  INPUT: main.cpp with include to StateMachine.h
+  OUTPUT: ✓ main.h includes "src/StateMachine.h"
+  STATUS: PASS
+
+Test Case: 04-simple-parser
+  INPUT: main.cpp with includes to Tokenizer.h, ExpressionEvaluator.h
+  OUTPUT: ✓ main.h includes both headers
+  STATUS: PASS
+
+Test Case: 05-game-logic
+  INPUT: Complex multi-file project with dependencies
+  OUTPUT: ✓ Correct includes generated for all files
+  STATUS: PASS
+
+================================================================================
+SUMMARY
+================================================================================
+
+The transpiler's include handling is a sophisticated three-stage pipeline:
+
+1. COLLECT: FileOriginTracker collects all user headers
+2. GENERATE: CppToCConsumer generates #include directives with rules
+3. OUTPUT: FileOutputManager writes .h and .c files with includes
+
+Key Features:
+• Automatic user header detection
+• Smart include path transformation (include/ → src/)
+• Self-include prevention (dual-layer)
+• Template header skipping (no orphan includes)
+• Standard C header injection
+• Proper deduplication via file tracking
+
+All generation happens in CppToCConsumer.cpp lines 100-261.
+Safe to customize while maintaining architecture integrity.
+
+For detailed information, see:
+• INCLUDE_DIRECTIVES_ANALYSIS.md - Full technical details
+• INCLUDE_QUICK_REFERENCE.md - Fast lookup guide
+• INCLUDE_CODE_SNIPPETS.md - Code examples and debugging

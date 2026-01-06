@@ -13,7 +13,14 @@ IncludeGuardGenerator::IncludeGuardGenerator(bool usePragmaOnce)
 }
 
 std::string IncludeGuardGenerator::generateGuardName(const std::string& filename) {
-    std::string result = filename;
+    // Extract just the filename from the path (if path is provided)
+    std::string basename = filename;
+    size_t lastSlash = filename.find_last_of("/\\");
+    if (lastSlash != std::string::npos) {
+        basename = filename.substr(lastSlash + 1);
+    }
+
+    std::string result = basename;
 
     // Replace special characters with underscores
     // Keep only alphanumeric and underscore

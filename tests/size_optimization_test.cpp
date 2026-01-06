@@ -30,15 +30,12 @@
 #include "SizeOptimizer.h"
 #include "BuildConfiguration.h"
 
-using namespace clang;
 
-* Test: Function Inlining for Small Helpers
- *
- * Verify that functions with < 3 lines are inlined
- * Expected: Small helpers replaced with inline code
- */
+// Test: Function Inlining for Small Helpers
+// Verify that functions with < 3 lines are inlined
+// Expected: Small helpers replaced with inline code
 
-TEST(size_optimization_test, test_dead_code_elimination) {
+TEST(size_optimization_test, size_optimization_test) {
     SizeOptimizer optimizer;
         std::string code = "void used() {}\nvoid unused() {}\nused();";
         optimizer.enableDeadCodeElimination();
@@ -47,7 +44,7 @@ TEST(size_optimization_test, test_dead_code_elimination) {
         ASSERT_TRUE(result.find("unused") == std::string::npos) << "Unused function should be removed";
 }
 
-TEST(size_optimization_test, test_function_inlining) {
+TEST(size_optimization_test, size_optimization_test2) {
     SizeOptimizer optimizer;
         std::string code = "int add(int a, int b) {\nreturn a + b;\n}";
         optimizer.enableFunctionInlining(3); // Max 3 lines
@@ -55,7 +52,7 @@ TEST(size_optimization_test, test_function_inlining) {
         ASSERT_TRUE(result.find("static inline") != std::string::npos) << "Small function should be marked inline";
 }
 
-TEST(size_optimization_test, test_constant_folding) {
+TEST(size_optimization_test, size_optimization_test3) {
     SizeOptimizer optimizer;
         std::string code = "int result = 5 + 3 * 2;";
         optimizer.enableConstantFolding();
@@ -64,7 +61,7 @@ TEST(size_optimization_test, test_constant_folding) {
         ASSERT_TRUE(result_code.find("5 + 3") == std::string::npos) << "Original expression should be removed";
 }
 
-TEST(size_optimization_test, test_string_deduplication) {
+TEST(size_optimization_test, size_optimization_test4) {
     SizeOptimizer optimizer;
         std::string code = "const char* s1 = \"test\"; const char* s2 = \"test\";";
         optimizer.enableStringDeduplication();
@@ -78,7 +75,7 @@ TEST(size_optimization_test, test_string_deduplication) {
         ASSERT_TRUE(count == 1) << "Duplicate strings should be deduplicated to single occurrence";
 }
 
-TEST(size_optimization_test, test_lto_integration) {
+TEST(size_optimization_test, size_optimization_test5) {
     BuildConfiguration config;
         config.enableLTO();
         std::vector<std::string> flags = config.getCompilerFlags();
@@ -92,7 +89,7 @@ TEST(size_optimization_test, test_lto_integration) {
         ASSERT_TRUE(hasLTO) << "LTO flag should be present when LTO is enabled";
 }
 
-TEST(size_optimization_test, test_lto_linker_flags) {
+TEST(size_optimization_test, size_optimization_test6) {
     BuildConfiguration config;
         config.enableLTO();
         std::vector<std::string> flags = config.getLinkerFlags();
@@ -106,7 +103,7 @@ TEST(size_optimization_test, test_lto_linker_flags) {
         ASSERT_TRUE(hasLTO) << "LTO linker flag should be present when LTO is enabled";
 }
 
-TEST(size_optimization_test, test_pgo_profile_generation) {
+TEST(size_optimization_test, size_optimization_test7) {
     BuildConfiguration config;
         config.enablePGO(BuildConfiguration::PGOMode::Generate);
         std::vector<std::string> flags = config.getCompilerFlags();
@@ -120,7 +117,7 @@ TEST(size_optimization_test, test_pgo_profile_generation) {
         ASSERT_TRUE(hasPGOGen) << "PGO profile generation flag should be present";
 }
 
-TEST(size_optimization_test, test_pgo_profile_usage) {
+TEST(size_optimization_test, size_optimization_test8) {
     BuildConfiguration config;
         config.enablePGO(BuildConfiguration::PGOMode::Use);
         std::vector<std::string> flags = config.getCompilerFlags();
@@ -134,7 +131,7 @@ TEST(size_optimization_test, test_pgo_profile_usage) {
         ASSERT_TRUE(hasPGOUse) << "PGO profile usage flag should be present";
 }
 
-TEST(size_optimization_test, test_optimization_level_size) {
+TEST(size_optimization_test, size_optimization_test9) {
     BuildConfiguration config;
         config.setOptimizationLevel(BuildConfiguration::OptLevel::Size);
         std::vector<std::string> flags = config.getCompilerFlags();
@@ -148,7 +145,7 @@ TEST(size_optimization_test, test_optimization_level_size) {
         ASSERT_TRUE(hasOs) << "Size optimization flag -Os should be present";
 }
 
-TEST(size_optimization_test, test_function_data_sections) {
+TEST(size_optimization_test, size_optimization_test10) {
     BuildConfiguration config;
         config.enableDeadCodeElimination();
         std::vector<std::string> flags = config.getCompilerFlags();
@@ -162,7 +159,7 @@ TEST(size_optimization_test, test_function_data_sections) {
         ASSERT_TRUE(hasDataSections) << "Data sections flag should be present";
 }
 
-TEST(size_optimization_test, test_size_reduction_baseline) {
+TEST(size_optimization_test, size_optimization_test11) {
     BuildConfiguration baseline;
         // Test with a non-existent file (should return 0)
         size_t nonExistentSize = baseline.measureBinarySize("nonexistent_file");
@@ -186,7 +183,7 @@ TEST(size_optimization_test, test_size_reduction_baseline) {
         }
 }
 
-TEST(size_optimization_test, test_size_reduction_os) {
+TEST(size_optimization_test, size_optimization_test12) {
     BuildConfiguration baseline;
         BuildConfiguration optimized;
         optimized.setOptimizationLevel(BuildConfiguration::OptLevel::Size);
@@ -206,7 +203,7 @@ TEST(size_optimization_test, test_size_reduction_os) {
         ASSERT_TRUE(hasOs) << "Flag -Os should be present for size optimization";
 }
 
-TEST(size_optimization_test, test_size_reduction_os_lto) {
+TEST(size_optimization_test, size_optimization_test13) {
     BuildConfiguration optimized;
         optimized.setOptimizationLevel(BuildConfiguration::OptLevel::Size);
         optimized.enableLTO();
@@ -227,7 +224,7 @@ TEST(size_optimization_test, test_size_reduction_os_lto) {
         ASSERT_TRUE(hasLTO) << "Flag -flto should be present";
 }
 
-TEST(size_optimization_test, test_size_reduction_full) {
+TEST(size_optimization_test, size_optimization_test14) {
     BuildConfiguration optimized;
         optimized.setOptimizationLevel(BuildConfiguration::OptLevel::Size);
         optimized.enableLTO();

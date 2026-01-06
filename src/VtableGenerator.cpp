@@ -1,16 +1,22 @@
 /**
  * @file VtableGenerator.cpp
  * @brief Implementation of VtableGenerator
+ *
+ * Phase 31-04: Optimized for performance with:
+ * - Pre-allocated string buffers (reserve())
+ * - Direct string concatenation (faster than ostringstream)
+ * - Cached method properties (avoid repeated AST queries)
+ * - No legacy code paths (single, clean code path)
  */
 
 #include "../include/VtableGenerator.h"
+#include "../include/MethodSignatureHelper.h"
 #include "../include/OverrideResolver.h"
 #include "../include/VirtualInheritanceAnalyzer.h"
+#include "../include/MultipleInheritanceAnalyzer.h"
 #include "clang/AST/DeclCXX.h"
 #include "clang/AST/RecordLayout.h"
-#include <sstream>
-#include <map>
-#include <functional>
+#include <string>
 #include <cstddef>
 
 using namespace clang;
@@ -24,27 +30,71 @@ std::string VtableGenerator::generateVtableStruct(const CXXRecordDecl* Record) {
         return ""; // Not polymorphic, no vtable needed
     }
 
-    std::ostringstream code;
+    // Phase 31-04: Pre-allocate string buffer for better performance
+    std::string code;
+    code.reserve(512);  // Typical vtable struct ~300-500 chars
+
     std::string className = Record->getNameAsString();
 
     // Generate vtable struct
-    code << "struct " << className << "_vtable {\n";
+    code += "struct ";
+    code += className;
+    code += "_vtable {\n";
 
     // Story #84: Add type_info pointer as first field (Itanium ABI vtable[-1])
     // In C, we place it at offset 0 instead of -1
-    code << "    const struct __class_type_info *type_info;  /**< RTTI type_info pointer (Itanium ABI vtable[-1]) */\n";
+    code += "    const struct __class_type_info *type_info;  /**< RTTI type_info pointer (Itanium ABI vtable[-1]) */\n";
 
     // Get methods in vtable order
     auto methods = getVtableMethodOrder(Record);
 
     // Generate function pointers for each method
     for (auto* method : methods) {
-        code << "    " << generateFunctionPointer(method, className) << ";\n";
+        code += "    ";
+        code += generateFunctionPointer(method, className);
+        code += ";\n";
     }
 
-    code << "};\n";
+    code += "};\n";
 
-    return code.str();
+    return code;
+}
+
+// ============================================================================
+// Phase 31-02: COM-Style Static Declarations for Virtual Methods
+// ============================================================================
+
+std::string VtableGenerator::generateStaticDeclarations(const CXXRecordDecl* Record) {
+    if (!Record || !Analyzer.isPolymorphic(Record)) {
+        return ""; // Not polymorphic, no declarations needed
+    }
+
+    // Phase 31-04: Pre-allocate string buffer for better performance
+    std::string decls;
+    std::string className = Record->getNameAsString();
+    auto methods = getVtableMethodOrder(Record);
+
+    // Estimate size: ~120 chars per declaration
+    decls.reserve(50 + methods.size() * 120);
+
+    // Add comment header
+    decls += "// Static declarations for ";
+    decls += className;
+    decls += " virtual methods\n";
+
+    // Generate declaration for each virtual method
+    for (auto* method : methods) {
+        decls += getMethodSignature(method, className);
+        decls += ";\n";
+    }
+
+    return decls;
+}
+
+std::string VtableGenerator::getMethodSignature(const CXXMethodDecl* Method,
+                                                 const std::string& ClassName) {
+    // Phase 31-03: Delegate to MethodSignatureHelper (DRY principle)
+    return MethodSignatureHelper::generateSignature(Method, ClassName);
 }
 
 std::vector<CXXMethodDecl*> VtableGenerator::getVtableMethodOrder(const CXXRecordDecl* Record) {
@@ -52,140 +102,64 @@ std::vector<CXXMethodDecl*> VtableGenerator::getVtableMethodOrder(const CXXRecor
         return {};
     }
 
-    // Story #170: Use OverrideResolver if available for proper override resolution
-    if (Resolver) {
-        return Resolver->resolveVtableLayout(Record);
-    }
-
-    // Legacy fallback: basic implementation (kept for backwards compatibility)
-    std::vector<CXXMethodDecl*> methods;
-
-    // Collect all virtual methods including inherited ones
-    // Use a map to track methods by name (for overrides)
-    std::map<std::string, CXXMethodDecl*> methodMap;
-    CXXDestructorDecl* destructor = nullptr;
-
-    // Walk the inheritance hierarchy
-    std::function<void(const CXXRecordDecl*)> collectMethods =
-        [&](const CXXRecordDecl* R) {
-            if (!R) return;
-
-            // Process base classes first
-            for (const auto& Base : R->bases()) {
-                if (const auto* BaseRecord = Base.getType()->getAsCXXRecordDecl()) {
-                    collectMethods(BaseRecord);
-                }
-            }
-
-            // Process methods in this class
-            for (auto* method : R->methods()) {
-                if (!method->isVirtual()) continue;
-
-                if (isa<CXXDestructorDecl>(method)) {
-                    // Always use the most derived destructor
-                    destructor = cast<CXXDestructorDecl>(method);
-                } else {
-                    // For regular methods, derived versions override base versions
-                    std::string methodName = method->getNameAsString();
-                    methodMap[methodName] = method;
-                }
-            }
-        };
-
-    collectMethods(Record);
-
-    // Add destructor first if present
-    if (destructor) {
-        methods.push_back(destructor);
-    }
-
-    // Add virtual methods in order
-    for (const auto& pair : methodMap) {
-        methods.push_back(pair.second);
-    }
-
-    return methods;
+    // Phase 31-04: OverrideResolver is always provided (required dependency)
+    // Legacy fallback code removed - all callers now provide OverrideResolver
+    return Resolver->resolveVtableLayout(Record);
 }
 
 std::string VtableGenerator::generateFunctionPointer(const CXXMethodDecl* Method,
                                                       const std::string& ClassName) {
-    std::ostringstream ptr;
+    // Phase 31-04: Pre-allocate and use string concatenation for better performance
+    std::string ptr;
+    ptr.reserve(100);  // Typical function pointer ~60-100 chars
+
+    // Cache method properties
+    const bool isDestructor = isa<CXXDestructorDecl>(Method);
+    const unsigned numParams = Method->getNumParams();
 
     // Return type
     QualType returnType = Method->getReturnType();
-    ptr << getTypeString(returnType) << " ";
+    ptr += getTypeString(returnType);
+    ptr += " ";
 
     // Function pointer name
-    if (isa<CXXDestructorDecl>(Method)) {
-        ptr << "(*destructor)";
+    if (isDestructor) {
+        ptr += "(*destructor)";
     } else {
-        ptr << "(*" << Method->getNameAsString() << ")";
+        ptr += "(*";
+        ptr += Method->getNameAsString();
+        ptr += ")";
     }
 
     // Parameters: always starts with 'this' pointer
-    ptr << "(struct " << ClassName << " *this";
+    ptr += "(struct ";
+    ptr += ClassName;
+    ptr += " *this";
 
     // Add method parameters
-    for (unsigned i = 0; i < Method->getNumParams(); ++i) {
+    for (unsigned i = 0; i < numParams; ++i) {
         const ParmVarDecl* param = Method->getParamDecl(i);
-        ptr << ", " << getTypeString(param->getType());
+        ptr += ", ";
+        ptr += getTypeString(param->getType());
 
         // Add parameter name if available
         if (!param->getName().empty()) {
-            ptr << " " << param->getNameAsString();
+            ptr += " ";
+            ptr += param->getNameAsString();
         } else {
-            ptr << " arg" << i;
+            ptr += " arg";
+            ptr += std::to_string(i);
         }
     }
 
-    ptr << ")";
+    ptr += ")";
 
-    return ptr.str();
+    return ptr;
 }
 
 std::string VtableGenerator::getTypeString(QualType Type) {
-    // Handle const qualifier
-    std::string typeStr;
-
-    if (Type.isConstQualified()) {
-        typeStr = "const ";
-    }
-
-    // Get base type
-    const clang::Type* T = Type.getTypePtr();
-
-    if (T->isVoidType()) {
-        typeStr += "void";
-    } else if (T->isBooleanType()) {
-        typeStr += "int"; // C doesn't have bool, use int
-    } else if (T->isIntegerType()) {
-        if (T->isSignedIntegerType()) {
-            typeStr += "int";
-        } else {
-            typeStr += "unsigned int";
-        }
-    } else if (T->isFloatingType()) {
-        if (T->isSpecificBuiltinType(BuiltinType::Float)) {
-            typeStr += "float";
-        } else {
-            typeStr += "double";
-        }
-    } else if (T->isPointerType()) {
-        QualType pointeeType = T->getPointeeType();
-        typeStr += getTypeString(pointeeType) + " *";
-    } else if (T->isReferenceType()) {
-        QualType refType = T->getPointeeType();
-        typeStr += getTypeString(refType) + " *"; // References become pointers in C
-    } else if (const RecordType* RT = T->getAs<RecordType>()) {
-        // Class/struct type
-        RecordDecl* RD = RT->getDecl();
-        typeStr += "struct " + RD->getNameAsString();
-    } else {
-        // Fallback for unknown types
-        typeStr += "void";
-    }
-
-    return typeStr;
+    // Phase 31-03: Delegate to MethodSignatureHelper (DRY principle)
+    return MethodSignatureHelper::getTypeString(Type);
 }
 
 // ============================================================================
@@ -200,26 +174,35 @@ std::string VtableGenerator::generateVtableWithVirtualBaseOffsets(
         return ""; // Not polymorphic, no vtable needed
     }
 
-    std::ostringstream code;
+    // Phase 31-04: Pre-allocate string buffer
+    std::string code;
+    code.reserve(512);
+
     std::string className = Record->getNameAsString();
 
     // Generate vtable struct
-    code << "struct " << className << "_vtable {\n";
+    code += "struct ";
+    code += className;
+    code += "_vtable {\n";
 
     // Add type_info pointer (Itanium ABI vtable[-1])
-    code << "    const struct __class_type_info *type_info;  /**< RTTI type_info pointer (Itanium ABI vtable[-1]) */\n";
+    code += "    const struct __class_type_info *type_info;  /**< RTTI type_info pointer (Itanium ABI vtable[-1]) */\n";
 
     // Story #90: Add virtual base offset table (negative offset area in Itanium ABI)
     // In our C representation, we put it before function pointers
     auto virtualBases = ViAnalyzer.getVirtualBases(Record);
     if (!virtualBases.empty()) {
-        code << "\n    // Virtual base offset table (Itanium ABI negative offset area)\n";
+        code += "\n    // Virtual base offset table (Itanium ABI negative offset area)\n";
 
         for (const auto* vbase : virtualBases) {
             std::string vbaseName = vbase->getNameAsString();
-            code << "    ptrdiff_t vbase_offset_to_" << vbaseName << ";  /**< Offset to virtual base " << vbaseName << " */\n";
+            code += "    ptrdiff_t vbase_offset_to_";
+            code += vbaseName;
+            code += ";  /**< Offset to virtual base ";
+            code += vbaseName;
+            code += " */\n";
         }
-        code << "\n";
+        code += "\n";
     }
 
     // Get methods in vtable order
@@ -227,12 +210,14 @@ std::string VtableGenerator::generateVtableWithVirtualBaseOffsets(
 
     // Generate function pointers for each method
     for (auto* method : methods) {
-        code << "    " << generateFunctionPointer(method, className) << ";\n";
+        code += "    ";
+        code += generateFunctionPointer(method, className);
+        code += ";\n";
     }
 
-    code << "};\n";
+    code += "};\n";
 
-    return code.str();
+    return code;
 }
 
 ptrdiff_t VtableGenerator::calculateVirtualBaseOffset(
@@ -271,21 +256,185 @@ std::string VtableGenerator::generateVirtualBaseAccessHelper(
         return "";
     }
 
-    std::ostringstream code;
+    // Phase 31-04: Pre-allocate string buffer
+    std::string code;
+    code.reserve(300);
+
     std::string derivedName = Derived->getNameAsString();
     std::string vbaseName = VirtualBase->getNameAsString();
 
     // Generate helper function to access virtual base
-    code << "// Helper function to access virtual base " << vbaseName << " from " << derivedName << "\n";
-    code << "static inline struct " << vbaseName << "* " << derivedName << "_get_" << vbaseName << "_base(";
-    code << "struct " << derivedName << " *obj) {\n";
-    code << "    // Get vbase_offset from vtable\n";
-    code << "    struct " << derivedName << "_vtable *vtable = (struct " << derivedName << "_vtable *)obj->vptr;\n";
-    code << "    ptrdiff_t offset = vtable->vbase_offset_to_" << vbaseName << ";\n";
-    code << "    \n";
-    code << "    // Calculate virtual base pointer\n";
-    code << "    return (struct " << vbaseName << " *)((char*)obj + offset);\n";
-    code << "}\n";
+    code += "// Helper function to access virtual base ";
+    code += vbaseName;
+    code += " from ";
+    code += derivedName;
+    code += "\n";
+    code += "static inline struct ";
+    code += vbaseName;
+    code += "* ";
+    code += derivedName;
+    code += "_get_";
+    code += vbaseName;
+    code += "_base(";
+    code += "struct ";
+    code += derivedName;
+    code += " *obj) {\n";
+    code += "    // Get vbase_offset from vtable\n";
+    code += "    struct ";
+    code += derivedName;
+    code += "_vtable *vtable = (struct ";
+    code += derivedName;
+    code += "_vtable *)obj->vptr;\n";
+    code += "    ptrdiff_t offset = vtable->vbase_offset_to_";
+    code += vbaseName;
+    code += ";\n";
+    code += "    \n";
+    code += "    // Calculate virtual base pointer\n";
+    code += "    return (struct ";
+    code += vbaseName;
+    code += " *)((char*)obj + offset);\n";
+    code += "}\n";
 
-    return code.str();
+    return code;
 }
+
+// ============================================================================
+// Phase 46: Multiple Inheritance Vtable Generation
+// ============================================================================
+
+std::string VtableGenerator::generateVtableForBase(
+    const CXXRecordDecl* Derived,
+    const CXXRecordDecl* Base) {
+
+    if (!Derived || !Base) {
+        return "";
+    }
+
+    // Check if base is polymorphic
+    if (!Base->isPolymorphic()) {
+        return "";
+    }
+
+    // Pre-allocate string buffer
+    std::string code;
+    code.reserve(512);
+
+    std::string derivedName = Derived->getNameAsString();
+    std::string baseName = Base->getNameAsString();
+
+    // Generate vtable struct name: Derived_Base_vtable
+    code += "struct ";
+    code += derivedName;
+    code += "_";
+    code += baseName;
+    code += "_vtable {\n";
+
+    // Add type_info pointer
+    code += "    const struct __class_type_info *type_info;  /**< RTTI type_info pointer */\n";
+
+    // Get virtual methods from base class
+    // We only include methods that are part of this base's interface
+    std::vector<CXXMethodDecl*> baseMethods;
+
+    // Walk through base's methods
+    for (auto* method : Base->methods()) {
+        if (method->isVirtual()) {
+            baseMethods.push_back(method);
+        }
+    }
+
+    // For overridden methods in derived class, we still use the signature
+    // from the base class interface
+    for (auto* baseMethod : baseMethods) {
+        code += "    ";
+
+        // Find if this method is overridden in derived
+        CXXMethodDecl* implMethod = nullptr;
+        for (auto* derivedMethod : Derived->methods()) {
+            if (derivedMethod->isVirtual() &&
+                derivedMethod->getNameAsString() == baseMethod->getNameAsString()) {
+                implMethod = derivedMethod;
+                break;
+            }
+        }
+
+        // Use derived method if found, otherwise base method
+        CXXMethodDecl* methodToUse = implMethod ? implMethod : baseMethod;
+
+        // Generate function pointer with derived class as 'this' type
+        QualType returnType = methodToUse->getReturnType();
+        code += getTypeString(returnType);
+        code += " ";
+
+        // Function pointer name
+        if (isa<CXXDestructorDecl>(methodToUse)) {
+            code += "(*destructor)";
+        } else {
+            code += "(*";
+            code += methodToUse->getNameAsString();
+            code += ")";
+        }
+
+        // Parameters: 'this' pointer is always to Derived class
+        code += "(struct ";
+        code += derivedName;
+        code += " *this";
+
+        // Add method parameters
+        for (unsigned i = 0; i < methodToUse->getNumParams(); ++i) {
+            const ParmVarDecl* param = methodToUse->getParamDecl(i);
+            code += ", ";
+            code += getTypeString(param->getType());
+
+            if (!param->getName().empty()) {
+                code += " ";
+                code += param->getNameAsString();
+            } else {
+                code += " arg";
+                code += std::to_string(i);
+            }
+        }
+
+        code += ");\n";
+    }
+
+    code += "};\n";
+
+    return code;
+}
+
+std::string VtableGenerator::generateAllVtablesForMultipleInheritance(
+    const CXXRecordDecl* Record) {
+
+    if (!Record) {
+        return "";
+    }
+
+    // Use MultipleInheritanceAnalyzer to get polymorphic bases
+    MultipleInheritanceAnalyzer miAnalyzer(Context);
+    auto bases = miAnalyzer.analyzePolymorphicBases(Record);
+
+    if (bases.empty()) {
+        return "";
+    }
+
+    // If only one polymorphic base (single inheritance), use regular vtable
+    if (bases.size() == 1) {
+        return generateVtableStruct(Record);
+    }
+
+    // Generate vtable for each polymorphic base
+    std::string code;
+    code.reserve(512 * bases.size());
+
+    for (const auto& baseInfo : bases) {
+        std::string vtable = generateVtableForBase(Record, baseInfo.BaseDecl);
+        if (!vtable.empty()) {
+            code += vtable;
+            code += "\n";
+        }
+    }
+
+    return code;
+}
+

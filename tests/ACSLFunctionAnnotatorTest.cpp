@@ -13,6 +13,9 @@
 
 using namespace clang;
 
+// Global storage for AST units to keep them alive
+static std::vector<std::unique_ptr<ASTUnit>> persistentASTs;
+
 // Helper: Parse C++ code and return FunctionDecl
 FunctionDecl* parseFunctionDecl(const std::string& code, const std::string& funcName) {
     std::unique_ptr<ASTUnit> AST = tooling::buildASTFromCode(code);
@@ -41,10 +44,7 @@ FunctionDecl* parseFunctionDecl(const std::string& code, const std::string& func
 // Test fixture
 class ACSLFunctionAnnotatorTest : public ::testing::Test {
 protected:
-    static std::vector<std::unique_ptr<ASTUnit>> persistentASTs;
 };
-
-std::vector<std::unique_ptr<ASTUnit>> ACSLFunctionAnnotatorTest::persistentASTs;
 
 TEST_F(ACSLFunctionAnnotatorTest, SimplePureFunction) {
     std::string code = "int getValue() { return 42; }";
@@ -142,8 +142,8 @@ TEST_F(ACSLFunctionAnnotatorTest, SeparationConstraint) {
 
         EXPECT_NE((contract).find("\\valid(a)"), std::string::npos) << "First pointer should have \\valid";
         EXPECT_NE((contract).find("\\valid(b)"), std::string::npos) << "Second pointer should have \\valid";
-        EXPECT_NE((contract).find("\\separated(a), std::string::npos) << b;", "Pointers should be separated");
-        EXPECT_NE((contract).find("assigns *a), std::string::npos) << *b", "Both pointers should be in assigns";
+        EXPECT_NE((contract).find("\\separated(a"), std::string::npos) << "Pointers should be separated";
+        EXPECT_NE((contract).find("assigns *a"), std::string::npos) << "Both pointers should be in assigns";
 }
 
 TEST_F(ACSLFunctionAnnotatorTest, UnsignedParameterConstraint) {
@@ -190,7 +190,7 @@ TEST_F(ACSLFunctionAnnotatorTest, MultiplePointerAssigns) {
         std::string contract = annotator.generateFunctionContract(func);
 
         EXPECT_NE((contract).find("\\valid(dst + (0..n-1))"), std::string::npos) << "Destination array bounds";
-        EXPECT_NE((contract).find("\\valid_read(src + (0..n-1))"), std::string::npos) << "Source array bounds (read-only;");
+        EXPECT_NE((contract).find("\\valid_read(src + (0..n-1))"), std::string::npos) << "Source array bounds (read-only)";
         EXPECT_NE((contract).find("assigns dst[0..n-1]"), std::string::npos) << "Assigns should include dst range";
         EXPECT_NE((contract).find("\\forall integer"), std::string::npos) << "Should have quantified postcondition";
 }

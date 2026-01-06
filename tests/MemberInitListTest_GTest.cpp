@@ -4,8 +4,8 @@
 // Epic #7: Advanced Constructor/Destructor Features
 
 #include <gtest/gtest.h>
-#include "CppToCVisitor.h"
 #include "CNodeBuilder.h"
+#include "FileOriginTracker.h"
 #include "CodeGenerator.h"
 #include <clang/AST/ASTContext.h>
 #include <clang/Frontend/ASTUnit.h>
@@ -40,7 +40,11 @@ TEST_F(MemberInitListTestFixture, BasicMemberInitList) {
     ASSERT_TRUE(AST) << "Failed to parse C++ code";
 
     CNodeBuilder builder(AST->getASTContext());
-    CppToCVisitor visitor(AST->getASTContext(), builder);
+    cpptoc::FileOriginTracker tracker(AST->getASTContext().getSourceManager());
+    tracker.addUserHeaderPath("<stdin>");
+    clang::TranslationUnitDecl *C_TU = clang::TranslationUnitDecl::Create(AST->getASTContext());
+    TargetContext& targetCtx = TargetContext::getInstance();
+    CppToCVisitor visitor(AST->getASTContext(), builder, targetCtx, tracker, C_TU, nullptr);
     visitor.TraverseDecl(AST->getASTContext().getTranslationUnitDecl());
 
     FunctionDecl *CtorFunc = visitor.getCtor("Vector__ctor");
@@ -83,7 +87,11 @@ TEST_F(MemberInitListTestFixture, MixedTypesMemberInitList) {
     ASSERT_TRUE(AST) << "Failed to parse C++ code";
 
     CNodeBuilder builder(AST->getASTContext());
-    CppToCVisitor visitor(AST->getASTContext(), builder);
+    cpptoc::FileOriginTracker tracker(AST->getASTContext().getSourceManager());
+    tracker.addUserHeaderPath("<stdin>");
+    clang::TranslationUnitDecl *C_TU = clang::TranslationUnitDecl::Create(AST->getASTContext());
+    TargetContext& targetCtx = TargetContext::getInstance();
+    CppToCVisitor visitor(AST->getASTContext(), builder, targetCtx, tracker, C_TU, nullptr);
     visitor.TraverseDecl(AST->getASTContext().getTranslationUnitDecl());
 
     FunctionDecl *CtorFunc = visitor.getCtor("Entity__ctor");
@@ -115,7 +123,11 @@ TEST_F(MemberInitListTestFixture, PartialMemberInitList) {
     ASSERT_TRUE(AST) << "Failed to parse C++ code";
 
     CNodeBuilder builder(AST->getASTContext());
-    CppToCVisitor visitor(AST->getASTContext(), builder);
+    cpptoc::FileOriginTracker tracker(AST->getASTContext().getSourceManager());
+    tracker.addUserHeaderPath("<stdin>");
+    clang::TranslationUnitDecl *C_TU = clang::TranslationUnitDecl::Create(AST->getASTContext());
+    TargetContext& targetCtx = TargetContext::getInstance();
+    CppToCVisitor visitor(AST->getASTContext(), builder, targetCtx, tracker, C_TU, nullptr);
     visitor.TraverseDecl(AST->getASTContext().getTranslationUnitDecl());
 
     FunctionDecl *CtorFunc = visitor.getCtor("Particle__ctor");
@@ -150,7 +162,11 @@ TEST_F(MemberInitListTestFixture, MemberInitListWithConstants) {
     ASSERT_TRUE(AST) << "Failed to parse C++ code";
 
     CNodeBuilder builder(AST->getASTContext());
-    CppToCVisitor visitor(AST->getASTContext(), builder);
+    cpptoc::FileOriginTracker tracker(AST->getASTContext().getSourceManager());
+    tracker.addUserHeaderPath("<stdin>");
+    clang::TranslationUnitDecl *C_TU = clang::TranslationUnitDecl::Create(AST->getASTContext());
+    TargetContext& targetCtx = TargetContext::getInstance();
+    CppToCVisitor visitor(AST->getASTContext(), builder, targetCtx, tracker, C_TU, nullptr);
     visitor.TraverseDecl(AST->getASTContext().getTranslationUnitDecl());
 
     FunctionDecl *CtorFunc = visitor.getCtor("Config__ctor");
@@ -180,7 +196,11 @@ TEST_F(MemberInitListTestFixture, DeclarationOrderPreserved) {
     ASSERT_TRUE(AST) << "Failed to parse C++ code";
 
     CNodeBuilder builder(AST->getASTContext());
-    CppToCVisitor visitor(AST->getASTContext(), builder);
+    cpptoc::FileOriginTracker tracker(AST->getASTContext().getSourceManager());
+    tracker.addUserHeaderPath("<stdin>");
+    clang::TranslationUnitDecl *C_TU = clang::TranslationUnitDecl::Create(AST->getASTContext());
+    TargetContext& targetCtx = TargetContext::getInstance();
+    CppToCVisitor visitor(AST->getASTContext(), builder, targetCtx, tracker, C_TU, nullptr);
     visitor.TraverseDecl(AST->getASTContext().getTranslationUnitDecl());
 
     FunctionDecl *CtorFunc = visitor.getCtor("Test__ctor");
