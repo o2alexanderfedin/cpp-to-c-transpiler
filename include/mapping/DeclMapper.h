@@ -1,15 +1,14 @@
 /**
  * @file DeclMapper.h
- * @brief Singleton wrapper for mapping C++ declarations to created C declarations
+ * @brief RAII mapper for C++ declarations to created C declarations
  *
- * This provides a singleton wrapper around NodeMapper to ensure all source files
- * share the same mapping instance during a transpilation session.
+ * This provides a per-instance mapper around NodeMapper using RAII pattern.
+ * Each instance maintains its own mapping state.
  *
- * Single Responsibility: Provide declaration-specific singleton mapper for NodeMapper.
+ * Single Responsibility: Provide declaration-specific mapper for NodeMapper.
  *
- * Migration Note:
- * - Old: DeclMapper declMapper;
- * - New: DeclMapper& declMapper = DeclMapper::getInstance();
+ * Usage:
+ * - Create: DeclMapper declMapper;
  * - Usage: declMapper.setCreated(cppDecl, cDecl)
  * - Usage: declMapper.getCreated(cppDecl)
  * - Usage: declMapper.hasCreated(cppDecl)
@@ -24,32 +23,28 @@ namespace cpptoc {
 
 /**
  * @class DeclMapper
- * @brief Singleton wrapper for mapping C++ declarations to created C declarations
+ * @brief RAII wrapper for mapping C++ declarations to created C declarations
  *
- * Wraps NodeMapper<clang::Decl, clang::Decl*> in a singleton pattern to ensure
- * all source files share the same declaration mappings during transpilation.
+ * Wraps NodeMapper<clang::Decl, clang::Decl*> with RAII semantics.
+ * Each test/thread creates its own instance for complete isolation.
  *
  * Example:
  * ```cpp
- * DeclMapper& declMapper = DeclMapper::getInstance();
- * declMapper.setCreated(cppParam, cParam);
- * clang::Decl* cParam = declMapper.getCreated(cppParam);
- * if (declMapper.hasCreated(cppParam)) { ... }
+ * auto declMapper = std::make_unique<DeclMapper>();
+ * declMapper->setCreated(cppParam, cParam);
+ * clang::Decl* cParam = declMapper->getCreated(cppParam);
+ * if (declMapper->hasCreated(cppParam)) { ... }
  * ```
  */
 class DeclMapper {
 public:
   /**
-   * @brief Get the singleton DeclMapper instance
-   * @return Reference to the global DeclMapper instance
+   * @brief Public constructor for RAII pattern
    *
-   * **Singleton Pattern**: Ensures all files share the same DeclMapper
-   * **Thread Safety**: Not thread-safe; call from single thread during transpilation
+   * **RAII Pattern**: Each test creates its own DeclMapper instance
+   * **Thread Safety**: Each thread/test has isolated instance - fully thread-safe
    */
-  static DeclMapper& getInstance() {
-    static DeclMapper instance;
-    return instance;
-  }
+  DeclMapper() = default;
 
   /**
    * @brief Store mapping from C++ node to created C node
@@ -78,18 +73,15 @@ public:
     return mapper_.hasCreated(cppNode);
   }
 
-  /**
-   * @brief Reset all mappings (for testing)
-   */
-  static void reset() {
-    getInstance().mapper_ = NodeMapper<clang::Decl, clang::Decl*>();
-  }
-
-private:
-  DeclMapper() = default;
+  // Prevent copying (use move semantics or unique_ptr instead)
   DeclMapper(const DeclMapper&) = delete;
   DeclMapper& operator=(const DeclMapper&) = delete;
 
+  // Allow move semantics for modern C++
+  DeclMapper(DeclMapper&&) = default;
+  DeclMapper& operator=(DeclMapper&&) = default;
+
+private:
   NodeMapper<clang::Decl, clang::Decl*> mapper_;
 };
 

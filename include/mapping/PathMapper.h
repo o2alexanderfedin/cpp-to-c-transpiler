@@ -58,32 +58,33 @@ namespace cpptoc {
 class PathMapper {
 public:
   /**
-   * @brief Get the singleton PathMapper instance
-   * @param sourceDir Source root directory (optional, only needed on first call)
-   * @param outputDir Output root directory (optional, only needed on first call)
-   * @return Reference to the global PathMapper instance
-   *
-   * **Singleton Pattern**: Ensures all files share the same PathMapper and C_TU instances
-   * **First Call**: Must provide sourceDir and outputDir to initialize
-   * **Subsequent Calls**: Parameters are ignored, returns existing instance
-   *
-   * **Thread Safety**: Not thread-safe; call from single thread during initialization
-   */
-  static PathMapper& getInstance(const std::string& sourceDir = "", const std::string& outputDir = "");
-
-private:
-  /**
-   * @brief Private constructor for singleton pattern
+   * @brief Public constructor for RAII pattern
+   * @param targetCtx Reference to TargetContext instance (dependency injection)
    * @param sourceDir Source root directory (e.g., "/src")
    * @param outputDir Output root directory (e.g., "/output")
+   *
+   * **RAII Pattern**: Each test creates its own PathMapper instance
+   * **Dependency Injection**: Receives TargetContext by reference (non-owning)
+   * **Thread Safety**: Each thread/test has isolated instance - fully thread-safe
+   * **Lifetime**: Automatically cleaned up when object goes out of scope
+   *
+   * Example:
+   * ```cpp
+   * TargetContext targetCtx;
+   * auto pathMapper = std::make_unique<PathMapper>(targetCtx, "/src", "/output");
+   * // Use pathMapper...
+   * // Automatic cleanup when unique_ptr goes out of scope
+   * ```
    */
-  PathMapper(const std::string& sourceDir, const std::string& outputDir);
+  PathMapper(TargetContext& targetCtx, const std::string& sourceDir, const std::string& outputDir);
 
-  // Prevent copying and assignment
+  // Prevent copying (contains reference member)
   PathMapper(const PathMapper&) = delete;
   PathMapper& operator=(const PathMapper&) = delete;
 
-public:
+  // Prevent moving (contains reference member - references can't be reseated)
+  PathMapper(PathMapper&&) = delete;
+  PathMapper& operator=(PathMapper&&) = delete;
 
   /**
    * @brief Map a source file path to its target output path
@@ -213,16 +214,8 @@ public:
    */
   std::vector<const clang::Decl*> getAllNodesForFile(const std::string& file) const;
 
-  /**
-   * @brief Reset all internal state (for testing)
-   *
-   * Clears all maps to ensure test isolation:
-   * - fileToTU_
-   * - declToTarget_
-   *
-   * NOTE: Does NOT reset sourceDir_/outputDir_ or destroy singletons
-   */
-  static void reset();
+  // Note: reset() method removed - no longer needed with RAII pattern
+  // Each test gets its own instance which is automatically cleaned up
 
 private:
   // Core references (not owned)

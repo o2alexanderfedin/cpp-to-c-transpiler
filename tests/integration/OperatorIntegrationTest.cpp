@@ -146,15 +146,15 @@ TEST_F(OperatorIntegrationTest, AllOperatorHandlersRegistered) {
     ASSERT_NE(AST, nullptr);
 
     ASTContext& cppCtx = AST->getASTContext();
-    TargetContext& targetCtx = TargetContext::getInstance();
+    TargetContext targetCtx;
     ASTContext& cCtx = targetCtx.getContext();
 
-    cpptoc::PathMapper& mapper = cpptoc::PathMapper::getInstance("/src", "/output");
+    cpptoc::PathMapper mapper(targetCtx, "/src", "/output");
     cpptoc::DeclLocationMapper locMapper(mapper);
-    cpptoc::DeclMapper& declMapper = cpptoc::DeclMapper::getInstance();
-    cpptoc::TypeMapper& typeMapper = cpptoc::TypeMapper::getInstance();
-    cpptoc::ExprMapper& exprMapper = cpptoc::ExprMapper::getInstance();
-    cpptoc::StmtMapper& stmtMapper = cpptoc::StmtMapper::getInstance();
+    cpptoc::DeclMapper declMapper;
+    cpptoc::TypeMapper typeMapper;
+    cpptoc::ExprMapper exprMapper;
+    cpptoc::StmtMapper stmtMapper;
 
     CppToCVisitorDispatcher dispatcher(mapper, locMapper, declMapper, typeMapper, exprMapper, stmtMapper);
 
@@ -179,15 +179,15 @@ TEST_F(OperatorIntegrationTest, ArithmeticOperatorsIntegration) {
     ASSERT_NE(AST, nullptr);
 
     ASTContext& cppCtx = AST->getASTContext();
-    TargetContext& targetCtx = TargetContext::getInstance();
+    TargetContext targetCtx;
     ASTContext& cCtx = targetCtx.getContext();
 
-    cpptoc::PathMapper& mapper = cpptoc::PathMapper::getInstance("/src", "/output");
+    cpptoc::PathMapper mapper(targetCtx, "/src", "/output");
     cpptoc::DeclLocationMapper locMapper(mapper);
-    cpptoc::DeclMapper& declMapper = cpptoc::DeclMapper::getInstance();
-    cpptoc::TypeMapper& typeMapper = cpptoc::TypeMapper::getInstance();
-    cpptoc::ExprMapper& exprMapper = cpptoc::ExprMapper::getInstance();
-    cpptoc::StmtMapper& stmtMapper = cpptoc::StmtMapper::getInstance();
+    cpptoc::DeclMapper declMapper;
+    cpptoc::TypeMapper typeMapper;
+    cpptoc::ExprMapper exprMapper;
+    cpptoc::StmtMapper stmtMapper;
 
     CppToCVisitorDispatcher dispatcher(mapper, locMapper, declMapper, typeMapper, exprMapper, stmtMapper);
     registerAllOperatorHandlers(dispatcher);
@@ -240,15 +240,15 @@ TEST_F(OperatorIntegrationTest, AssignmentAndBinaryOperations) {
     ASSERT_NE(AST, nullptr);
 
     ASTContext& cppCtx = AST->getASTContext();
-    TargetContext& targetCtx = TargetContext::getInstance();
+    TargetContext targetCtx;
     ASTContext& cCtx = targetCtx.getContext();
 
-    cpptoc::PathMapper& mapper = cpptoc::PathMapper::getInstance("/src", "/output");
+    cpptoc::PathMapper mapper(targetCtx, "/src", "/output");
     cpptoc::DeclLocationMapper locMapper(mapper);
-    cpptoc::DeclMapper& declMapper = cpptoc::DeclMapper::getInstance();
-    cpptoc::TypeMapper& typeMapper = cpptoc::TypeMapper::getInstance();
-    cpptoc::ExprMapper& exprMapper = cpptoc::ExprMapper::getInstance();
-    cpptoc::StmtMapper& stmtMapper = cpptoc::StmtMapper::getInstance();
+    cpptoc::DeclMapper declMapper;
+    cpptoc::TypeMapper typeMapper;
+    cpptoc::ExprMapper exprMapper;
+    cpptoc::StmtMapper stmtMapper;
 
     CppToCVisitorDispatcher dispatcher(mapper, locMapper, declMapper, typeMapper, exprMapper, stmtMapper);
     registerAllOperatorHandlers(dispatcher);
@@ -289,15 +289,15 @@ TEST_F(OperatorIntegrationTest, IncrementDecrementIntegration) {
     ASSERT_NE(AST, nullptr);
 
     ASTContext& cppCtx = AST->getASTContext();
-    TargetContext& targetCtx = TargetContext::getInstance();
+    TargetContext targetCtx;
     ASTContext& cCtx = targetCtx.getContext();
 
-    cpptoc::PathMapper& mapper = cpptoc::PathMapper::getInstance("/src", "/output");
+    cpptoc::PathMapper mapper(targetCtx, "/src", "/output");
     cpptoc::DeclLocationMapper locMapper(mapper);
-    cpptoc::DeclMapper& declMapper = cpptoc::DeclMapper::getInstance();
-    cpptoc::TypeMapper& typeMapper = cpptoc::TypeMapper::getInstance();
-    cpptoc::ExprMapper& exprMapper = cpptoc::ExprMapper::getInstance();
-    cpptoc::StmtMapper& stmtMapper = cpptoc::StmtMapper::getInstance();
+    cpptoc::DeclMapper declMapper;
+    cpptoc::TypeMapper typeMapper;
+    cpptoc::ExprMapper exprMapper;
+    cpptoc::StmtMapper stmtMapper;
 
     CppToCVisitorDispatcher dispatcher(mapper, locMapper, declMapper, typeMapper, exprMapper, stmtMapper);
     registerAllOperatorHandlers(dispatcher);
@@ -340,15 +340,15 @@ TEST_F(OperatorIntegrationTest, MemberAccessIntegration) {
     ASSERT_NE(AST, nullptr);
 
     ASTContext& cppCtx = AST->getASTContext();
-    TargetContext& targetCtx = TargetContext::getInstance();
+    TargetContext targetCtx;
     ASTContext& cCtx = targetCtx.getContext();
 
-    cpptoc::PathMapper& mapper = cpptoc::PathMapper::getInstance("/src", "/output");
+    cpptoc::PathMapper mapper(targetCtx, "/src", "/output");
     cpptoc::DeclLocationMapper locMapper(mapper);
-    cpptoc::DeclMapper& declMapper = cpptoc::DeclMapper::getInstance();
-    cpptoc::TypeMapper& typeMapper = cpptoc::TypeMapper::getInstance();
-    cpptoc::ExprMapper& exprMapper = cpptoc::ExprMapper::getInstance();
-    cpptoc::StmtMapper& stmtMapper = cpptoc::StmtMapper::getInstance();
+    cpptoc::DeclMapper declMapper;
+    cpptoc::TypeMapper typeMapper;
+    cpptoc::ExprMapper exprMapper;
+    cpptoc::StmtMapper stmtMapper;
 
     CppToCVisitorDispatcher dispatcher(mapper, locMapper, declMapper, typeMapper, exprMapper, stmtMapper);
     registerAllOperatorHandlers(dispatcher);
@@ -392,15 +392,15 @@ TEST_F(OperatorIntegrationTest, ArraySubscriptIntegration) {
     ASSERT_NE(AST, nullptr);
 
     ASTContext& cppCtx = AST->getASTContext();
-    TargetContext& targetCtx = TargetContext::getInstance();
+    TargetContext targetCtx;
     ASTContext& cCtx = targetCtx.getContext();
 
-    cpptoc::PathMapper& mapper = cpptoc::PathMapper::getInstance("/src", "/output");
+    cpptoc::PathMapper mapper(targetCtx, "/src", "/output");
     cpptoc::DeclLocationMapper locMapper(mapper);
-    cpptoc::DeclMapper& declMapper = cpptoc::DeclMapper::getInstance();
-    cpptoc::TypeMapper& typeMapper = cpptoc::TypeMapper::getInstance();
-    cpptoc::ExprMapper& exprMapper = cpptoc::ExprMapper::getInstance();
-    cpptoc::StmtMapper& stmtMapper = cpptoc::StmtMapper::getInstance();
+    cpptoc::DeclMapper declMapper;
+    cpptoc::TypeMapper typeMapper;
+    cpptoc::ExprMapper exprMapper;
+    cpptoc::StmtMapper stmtMapper;
 
     CppToCVisitorDispatcher dispatcher(mapper, locMapper, declMapper, typeMapper, exprMapper, stmtMapper);
     registerAllOperatorHandlers(dispatcher);
@@ -445,15 +445,15 @@ TEST_F(OperatorIntegrationTest, CommaOperatorIntegration) {
     ASSERT_NE(AST, nullptr);
 
     ASTContext& cppCtx = AST->getASTContext();
-    TargetContext& targetCtx = TargetContext::getInstance();
+    TargetContext targetCtx;
     ASTContext& cCtx = targetCtx.getContext();
 
-    cpptoc::PathMapper& mapper = cpptoc::PathMapper::getInstance("/src", "/output");
+    cpptoc::PathMapper mapper(targetCtx, "/src", "/output");
     cpptoc::DeclLocationMapper locMapper(mapper);
-    cpptoc::DeclMapper& declMapper = cpptoc::DeclMapper::getInstance();
-    cpptoc::TypeMapper& typeMapper = cpptoc::TypeMapper::getInstance();
-    cpptoc::ExprMapper& exprMapper = cpptoc::ExprMapper::getInstance();
-    cpptoc::StmtMapper& stmtMapper = cpptoc::StmtMapper::getInstance();
+    cpptoc::DeclMapper declMapper;
+    cpptoc::TypeMapper typeMapper;
+    cpptoc::ExprMapper exprMapper;
+    cpptoc::StmtMapper stmtMapper;
 
     CppToCVisitorDispatcher dispatcher(mapper, locMapper, declMapper, typeMapper, exprMapper, stmtMapper);
     registerAllOperatorHandlers(dispatcher);
@@ -504,15 +504,15 @@ TEST_F(OperatorIntegrationTest, ComplexNestedExpression) {
     ASSERT_NE(AST, nullptr);
 
     ASTContext& cppCtx = AST->getASTContext();
-    TargetContext& targetCtx = TargetContext::getInstance();
+    TargetContext targetCtx;
     ASTContext& cCtx = targetCtx.getContext();
 
-    cpptoc::PathMapper& mapper = cpptoc::PathMapper::getInstance("/src", "/output");
+    cpptoc::PathMapper mapper(targetCtx, "/src", "/output");
     cpptoc::DeclLocationMapper locMapper(mapper);
-    cpptoc::DeclMapper& declMapper = cpptoc::DeclMapper::getInstance();
-    cpptoc::TypeMapper& typeMapper = cpptoc::TypeMapper::getInstance();
-    cpptoc::ExprMapper& exprMapper = cpptoc::ExprMapper::getInstance();
-    cpptoc::StmtMapper& stmtMapper = cpptoc::StmtMapper::getInstance();
+    cpptoc::DeclMapper declMapper;
+    cpptoc::TypeMapper typeMapper;
+    cpptoc::ExprMapper exprMapper;
+    cpptoc::StmtMapper stmtMapper;
 
     CppToCVisitorDispatcher dispatcher(mapper, locMapper, declMapper, typeMapper, exprMapper, stmtMapper);
     registerAllOperatorHandlers(dispatcher);
@@ -569,15 +569,15 @@ TEST_F(OperatorIntegrationTest, MultiDimensionalArrayWithMemberAccess) {
     ASSERT_NE(AST, nullptr);
 
     ASTContext& cppCtx = AST->getASTContext();
-    TargetContext& targetCtx = TargetContext::getInstance();
+    TargetContext targetCtx;
     ASTContext& cCtx = targetCtx.getContext();
 
-    cpptoc::PathMapper& mapper = cpptoc::PathMapper::getInstance("/src", "/output");
+    cpptoc::PathMapper mapper(targetCtx, "/src", "/output");
     cpptoc::DeclLocationMapper locMapper(mapper);
-    cpptoc::DeclMapper& declMapper = cpptoc::DeclMapper::getInstance();
-    cpptoc::TypeMapper& typeMapper = cpptoc::TypeMapper::getInstance();
-    cpptoc::ExprMapper& exprMapper = cpptoc::ExprMapper::getInstance();
-    cpptoc::StmtMapper& stmtMapper = cpptoc::StmtMapper::getInstance();
+    cpptoc::DeclMapper declMapper;
+    cpptoc::TypeMapper typeMapper;
+    cpptoc::ExprMapper exprMapper;
+    cpptoc::StmtMapper stmtMapper;
 
     CppToCVisitorDispatcher dispatcher(mapper, locMapper, declMapper, typeMapper, exprMapper, stmtMapper);
     registerAllOperatorHandlers(dispatcher);
@@ -626,15 +626,15 @@ TEST_F(OperatorIntegrationTest, LogicalAndComparisonOperators) {
     ASSERT_NE(AST, nullptr);
 
     ASTContext& cppCtx = AST->getASTContext();
-    TargetContext& targetCtx = TargetContext::getInstance();
+    TargetContext targetCtx;
     ASTContext& cCtx = targetCtx.getContext();
 
-    cpptoc::PathMapper& mapper = cpptoc::PathMapper::getInstance("/src", "/output");
+    cpptoc::PathMapper mapper(targetCtx, "/src", "/output");
     cpptoc::DeclLocationMapper locMapper(mapper);
-    cpptoc::DeclMapper& declMapper = cpptoc::DeclMapper::getInstance();
-    cpptoc::TypeMapper& typeMapper = cpptoc::TypeMapper::getInstance();
-    cpptoc::ExprMapper& exprMapper = cpptoc::ExprMapper::getInstance();
-    cpptoc::StmtMapper& stmtMapper = cpptoc::StmtMapper::getInstance();
+    cpptoc::DeclMapper declMapper;
+    cpptoc::TypeMapper typeMapper;
+    cpptoc::ExprMapper exprMapper;
+    cpptoc::StmtMapper stmtMapper;
 
     CppToCVisitorDispatcher dispatcher(mapper, locMapper, declMapper, typeMapper, exprMapper, stmtMapper);
     registerAllOperatorHandlers(dispatcher);
@@ -683,15 +683,15 @@ TEST_F(OperatorIntegrationTest, BitwiseOperatorsIntegration) {
     ASSERT_NE(AST, nullptr);
 
     ASTContext& cppCtx = AST->getASTContext();
-    TargetContext& targetCtx = TargetContext::getInstance();
+    TargetContext targetCtx;
     ASTContext& cCtx = targetCtx.getContext();
 
-    cpptoc::PathMapper& mapper = cpptoc::PathMapper::getInstance("/src", "/output");
+    cpptoc::PathMapper mapper(targetCtx, "/src", "/output");
     cpptoc::DeclLocationMapper locMapper(mapper);
-    cpptoc::DeclMapper& declMapper = cpptoc::DeclMapper::getInstance();
-    cpptoc::TypeMapper& typeMapper = cpptoc::TypeMapper::getInstance();
-    cpptoc::ExprMapper& exprMapper = cpptoc::ExprMapper::getInstance();
-    cpptoc::StmtMapper& stmtMapper = cpptoc::StmtMapper::getInstance();
+    cpptoc::DeclMapper declMapper;
+    cpptoc::TypeMapper typeMapper;
+    cpptoc::ExprMapper exprMapper;
+    cpptoc::StmtMapper stmtMapper;
 
     CppToCVisitorDispatcher dispatcher(mapper, locMapper, declMapper, typeMapper, exprMapper, stmtMapper);
     registerAllOperatorHandlers(dispatcher);
@@ -732,15 +732,15 @@ TEST_F(OperatorIntegrationTest, PointerAndAddressOfOperators) {
     ASSERT_NE(AST, nullptr);
 
     ASTContext& cppCtx = AST->getASTContext();
-    TargetContext& targetCtx = TargetContext::getInstance();
+    TargetContext targetCtx;
     ASTContext& cCtx = targetCtx.getContext();
 
-    cpptoc::PathMapper& mapper = cpptoc::PathMapper::getInstance("/src", "/output");
+    cpptoc::PathMapper mapper(targetCtx, "/src", "/output");
     cpptoc::DeclLocationMapper locMapper(mapper);
-    cpptoc::DeclMapper& declMapper = cpptoc::DeclMapper::getInstance();
-    cpptoc::TypeMapper& typeMapper = cpptoc::TypeMapper::getInstance();
-    cpptoc::ExprMapper& exprMapper = cpptoc::ExprMapper::getInstance();
-    cpptoc::StmtMapper& stmtMapper = cpptoc::StmtMapper::getInstance();
+    cpptoc::DeclMapper declMapper;
+    cpptoc::TypeMapper typeMapper;
+    cpptoc::ExprMapper exprMapper;
+    cpptoc::StmtMapper stmtMapper;
 
     CppToCVisitorDispatcher dispatcher(mapper, locMapper, declMapper, typeMapper, exprMapper, stmtMapper);
     registerAllOperatorHandlers(dispatcher);
@@ -794,15 +794,15 @@ TEST_F(OperatorIntegrationTest, AllOperatorsTogether) {
     ASSERT_NE(AST, nullptr);
 
     ASTContext& cppCtx = AST->getASTContext();
-    TargetContext& targetCtx = TargetContext::getInstance();
+    TargetContext targetCtx;
     ASTContext& cCtx = targetCtx.getContext();
 
-    cpptoc::PathMapper& mapper = cpptoc::PathMapper::getInstance("/src", "/output");
+    cpptoc::PathMapper mapper(targetCtx, "/src", "/output");
     cpptoc::DeclLocationMapper locMapper(mapper);
-    cpptoc::DeclMapper& declMapper = cpptoc::DeclMapper::getInstance();
-    cpptoc::TypeMapper& typeMapper = cpptoc::TypeMapper::getInstance();
-    cpptoc::ExprMapper& exprMapper = cpptoc::ExprMapper::getInstance();
-    cpptoc::StmtMapper& stmtMapper = cpptoc::StmtMapper::getInstance();
+    cpptoc::DeclMapper declMapper;
+    cpptoc::TypeMapper typeMapper;
+    cpptoc::ExprMapper exprMapper;
+    cpptoc::StmtMapper stmtMapper;
 
     CppToCVisitorDispatcher dispatcher(mapper, locMapper, declMapper, typeMapper, exprMapper, stmtMapper);
     registerAllOperatorHandlers(dispatcher);

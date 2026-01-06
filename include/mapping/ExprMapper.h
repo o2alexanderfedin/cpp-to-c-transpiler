@@ -1,15 +1,14 @@
 /**
  * @file ExprMapper.h
- * @brief Singleton wrapper for mapping C++ expressions to created C expressions
+ * @brief RAII mapper for C++ expressions to created C expressions
  *
- * This provides a singleton wrapper around NodeMapper to ensure all source files
- * share the same mapping instance during a transpilation session.
+ * This provides a per-instance mapper around NodeMapper using RAII pattern.
+ * Each instance maintains its own mapping state.
  *
- * Single Responsibility: Provide expression-specific singleton mapper for NodeMapper.
+ * Single Responsibility: Provide expression-specific mapper for NodeMapper.
  *
- * Migration Note:
- * - Old: ExprMapper exprMapper;
- * - New: ExprMapper& exprMapper = ExprMapper::getInstance();
+ * Usage:
+ * - Create: ExprMapper exprMapper;
  * - Usage: exprMapper.setCreated(cppExpr, cExpr)
  * - Usage: exprMapper.getCreated(cppExpr)
  * - Usage: exprMapper.hasCreated(cppExpr)
@@ -24,32 +23,28 @@ namespace cpptoc {
 
 /**
  * @class ExprMapper
- * @brief Singleton wrapper for mapping C++ expressions to created C expressions
+ * @brief RAII wrapper for mapping C++ expressions to created C expressions
  *
- * Wraps NodeMapper<clang::Expr, clang::Expr*> in a singleton pattern to ensure
- * all source files share the same expression mappings during transpilation.
+ * Wraps NodeMapper<clang::Expr, clang::Expr*> with RAII semantics.
+ * Each test/thread creates its own instance for complete isolation.
  *
  * Example:
  * ```cpp
- * ExprMapper& exprMapper = ExprMapper::getInstance();
- * exprMapper.setCreated(cppBinOp, cBinOp);
- * clang::Expr* cExpr = exprMapper.getCreated(cppBinOp);
- * if (exprMapper.hasCreated(cppBinOp)) { ... }
+ * auto exprMapper = std::make_unique<ExprMapper>();
+ * exprMapper->setCreated(cppBinOp, cBinOp);
+ * clang::Expr* cExpr = exprMapper->getCreated(cppBinOp);
+ * if (exprMapper->hasCreated(cppBinOp)) { ... }
  * ```
  */
 class ExprMapper {
 public:
   /**
-   * @brief Get the singleton ExprMapper instance
-   * @return Reference to the global ExprMapper instance
+   * @brief Public constructor for RAII pattern
    *
-   * **Singleton Pattern**: Ensures all files share the same ExprMapper
-   * **Thread Safety**: Not thread-safe; call from single thread during transpilation
+   * **RAII Pattern**: Each test creates its own ExprMapper instance
+   * **Thread Safety**: Each thread/test has isolated instance - fully thread-safe
    */
-  static ExprMapper& getInstance() {
-    static ExprMapper instance;
-    return instance;
-  }
+  ExprMapper() = default;
 
   /**
    * @brief Store mapping from C++ expression to created C expression
@@ -78,18 +73,15 @@ public:
     return mapper_.hasCreated(cppNode);
   }
 
-  /**
-   * @brief Reset all mappings (for testing)
-   */
-  static void reset() {
-    getInstance().mapper_ = NodeMapper<clang::Expr, clang::Expr*>();
-  }
-
-private:
-  ExprMapper() = default;
+  // Prevent copying (use move semantics or unique_ptr instead)
   ExprMapper(const ExprMapper&) = delete;
   ExprMapper& operator=(const ExprMapper&) = delete;
 
+  // Allow move semantics for modern C++
+  ExprMapper(ExprMapper&&) = default;
+  ExprMapper& operator=(ExprMapper&&) = default;
+
+private:
   NodeMapper<clang::Expr, clang::Expr*> mapper_;
 };
 

@@ -80,18 +80,19 @@ public:
     : InputFilename(filename), SourceDir(sourceDir) {}
 
   void HandleTranslationUnit(clang::ASTContext& Context) override {
-    // Setup target context for C AST
-    TargetContext& targetCtx = TargetContext::getInstance();
+    // RAII: Create TargetContext instance for this transpilation session
+    // Must be created BEFORE mappers since they may depend on it
+    TargetContext targetCtx;
     clang::ASTContext& cCtx = targetCtx.getContext();
 
-    // PathMapper Integration: Get singleton PathMapper instance
+    // PathMapper Integration: Get output directory configuration
     std::string outputDir = getOutputDir();
     if (outputDir.empty()) {
       outputDir = ".";
     }
 
-    // Get the shared PathMapper instance
-    cpptoc::PathMapper& pathMapper = cpptoc::PathMapper::getInstance(SourceDir, outputDir);
+    // Create PathMapper instance with dependency injection
+    cpptoc::PathMapper pathMapper(targetCtx, SourceDir, outputDir);
 
     // Map source file to target path and get/create C_TU
     std::string targetPath = pathMapper.mapSourceToTarget(InputFilename);
@@ -100,12 +101,10 @@ public:
 
     // Create mapping utilities
     cpptoc::DeclLocationMapper locMapper(pathMapper);
-
-    // Get singleton mapper instances (shared across all source files)
-    cpptoc::DeclMapper& declMapper = cpptoc::DeclMapper::getInstance();
-    cpptoc::TypeMapper& typeMapper = cpptoc::TypeMapper::getInstance();
-    cpptoc::ExprMapper& exprMapper = cpptoc::ExprMapper::getInstance();
-    cpptoc::StmtMapper& stmtMapper = cpptoc::StmtMapper::getInstance();
+    cpptoc::DeclMapper declMapper;
+    cpptoc::TypeMapper typeMapper;
+    cpptoc::ExprMapper exprMapper;
+    cpptoc::StmtMapper stmtMapper;
 
     // Create dispatcher with all mappers
     CppToCVisitorDispatcher dispatcher(pathMapper, locMapper, declMapper, typeMapper, exprMapper, stmtMapper);

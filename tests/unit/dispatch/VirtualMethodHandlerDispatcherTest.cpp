@@ -152,15 +152,13 @@ protected:
     void SetUp() override {
         // Reset singletons before each test to ensure test isolation
         cpptoc::OverloadRegistry::getInstance().reset();
-        TargetContext::getInstance().reset();  // Reset state, don't destroy singleton
-        cpptoc::PathMapper::reset();
+          // Reset state, don't destroy singleton
     }
 
     void TearDown() override {
         // Clean up after each test
         cpptoc::OverloadRegistry::getInstance().reset();
-        TargetContext::getInstance().reset();  // Reset state, don't destroy singleton
-        cpptoc::PathMapper::reset();
+          // Reset state, don't destroy singleton
     }
 };
 TEST_F(VirtualMethodHandlerDispatcherTest, Registration) {
@@ -176,16 +174,16 @@ TEST_F(VirtualMethodHandlerDispatcherTest, Registration) {
 
     // Setup components
     ASTContext& cppCtx = AST->getASTContext();
-    TargetContext& targetCtx = TargetContext::getInstance();
+    TargetContext targetCtx;
     ASTContext& cCtx = targetCtx.getContext();
 
     // Create mapping utilities
-    cpptoc::PathMapper& mapper = cpptoc::PathMapper::getInstance("/src", "/output");
+    cpptoc::PathMapper mapper(targetCtx, "/src", "/output");
     cpptoc::DeclLocationMapper locMapper(mapper);
-    cpptoc::DeclMapper& declMapper = cpptoc::DeclMapper::getInstance();
-    cpptoc::TypeMapper& typeMapper = cpptoc::TypeMapper::getInstance();
-    cpptoc::ExprMapper& exprMapper = cpptoc::ExprMapper::getInstance();
-    cpptoc::StmtMapper& stmtMapper = cpptoc::StmtMapper::getInstance();
+    cpptoc::DeclMapper declMapper;
+    cpptoc::TypeMapper typeMapper;
+    cpptoc::ExprMapper exprMapper;
+    cpptoc::StmtMapper stmtMapper;
 
     // Create dispatcher
     CppToCVisitorDispatcher dispatcher(mapper, locMapper, declMapper, typeMapper, exprMapper, stmtMapper);
@@ -226,15 +224,15 @@ TEST_F(VirtualMethodHandlerDispatcherTest, SimpleVirtualMethod) {
     ASSERT_NE(AST, nullptr);
 
     ASTContext& cppCtx = AST->getASTContext();
-    TargetContext& targetCtx = TargetContext::getInstance();
+    TargetContext targetCtx;
     ASTContext& cCtx = targetCtx.getContext();
 
-    cpptoc::PathMapper& mapper = cpptoc::PathMapper::getInstance("/src", "/output");
+    cpptoc::PathMapper mapper(targetCtx, "/src", "/output");
     cpptoc::DeclLocationMapper locMapper(mapper);
-    cpptoc::DeclMapper& declMapper = cpptoc::DeclMapper::getInstance();
-    cpptoc::TypeMapper& typeMapper = cpptoc::TypeMapper::getInstance();
-    cpptoc::ExprMapper& exprMapper = cpptoc::ExprMapper::getInstance();
-    cpptoc::StmtMapper& stmtMapper = cpptoc::StmtMapper::getInstance();
+    cpptoc::DeclMapper declMapper;
+    cpptoc::TypeMapper typeMapper;
+    cpptoc::ExprMapper exprMapper;
+    cpptoc::StmtMapper stmtMapper;
 
     CppToCVisitorDispatcher dispatcher(mapper, locMapper, declMapper, typeMapper, exprMapper, stmtMapper);
 
@@ -287,15 +285,15 @@ TEST_F(VirtualMethodHandlerDispatcherTest, VirtualMethodWithParameters) {
     ASSERT_NE(AST, nullptr);
 
     ASTContext& cppCtx = AST->getASTContext();
-    TargetContext& targetCtx = TargetContext::getInstance();
+    TargetContext targetCtx;
     ASTContext& cCtx = targetCtx.getContext();
 
-    cpptoc::PathMapper& mapper = cpptoc::PathMapper::getInstance("/src", "/output");
+    cpptoc::PathMapper mapper(targetCtx, "/src", "/output");
     cpptoc::DeclLocationMapper locMapper(mapper);
-    cpptoc::DeclMapper& declMapper = cpptoc::DeclMapper::getInstance();
-    cpptoc::TypeMapper& typeMapper = cpptoc::TypeMapper::getInstance();
-    cpptoc::ExprMapper& exprMapper = cpptoc::ExprMapper::getInstance();
-    cpptoc::StmtMapper& stmtMapper = cpptoc::StmtMapper::getInstance();
+    cpptoc::DeclMapper declMapper;
+    cpptoc::TypeMapper typeMapper;
+    cpptoc::ExprMapper exprMapper;
+    cpptoc::StmtMapper stmtMapper;
 
     CppToCVisitorDispatcher dispatcher(mapper, locMapper, declMapper, typeMapper, exprMapper, stmtMapper);
 
@@ -408,15 +406,15 @@ TEST_F(VirtualMethodHandlerDispatcherTest, InheritanceWithOverride) {
     ASSERT_NE(AST, nullptr);
 
     ASTContext& cppCtx = AST->getASTContext();
-    TargetContext& targetCtx = TargetContext::getInstance();
+    TargetContext targetCtx;
     ASTContext& cCtx = targetCtx.getContext();
 
-    cpptoc::PathMapper& mapper = cpptoc::PathMapper::getInstance("/src", "/output");
+    cpptoc::PathMapper mapper(targetCtx, "/src", "/output");
     cpptoc::DeclLocationMapper locMapper(mapper);
-    cpptoc::DeclMapper& declMapper = cpptoc::DeclMapper::getInstance();
-    cpptoc::TypeMapper& typeMapper = cpptoc::TypeMapper::getInstance();
-    cpptoc::ExprMapper& exprMapper = cpptoc::ExprMapper::getInstance();
-    cpptoc::StmtMapper& stmtMapper = cpptoc::StmtMapper::getInstance();
+    cpptoc::DeclMapper declMapper;
+    cpptoc::TypeMapper typeMapper;
+    cpptoc::ExprMapper exprMapper;
+    cpptoc::StmtMapper stmtMapper;
 
     CppToCVisitorDispatcher dispatcher(mapper, locMapper, declMapper, typeMapper, exprMapper, stmtMapper);
 
@@ -466,15 +464,15 @@ TEST_F(VirtualMethodHandlerDispatcherTest, VirtualDestructor) {
     ASSERT_NE(AST, nullptr);
 
     ASTContext& cppCtx = AST->getASTContext();
-    TargetContext& targetCtx = TargetContext::getInstance();
+    TargetContext targetCtx;
     ASTContext& cCtx = targetCtx.getContext();
 
-    cpptoc::PathMapper& mapper = cpptoc::PathMapper::getInstance("/src", "/output");
+    cpptoc::PathMapper mapper(targetCtx, "/src", "/output");
     cpptoc::DeclLocationMapper locMapper(mapper);
-    cpptoc::DeclMapper& declMapper = cpptoc::DeclMapper::getInstance();
-    cpptoc::TypeMapper& typeMapper = cpptoc::TypeMapper::getInstance();
-    cpptoc::ExprMapper& exprMapper = cpptoc::ExprMapper::getInstance();
-    cpptoc::StmtMapper& stmtMapper = cpptoc::StmtMapper::getInstance();
+    cpptoc::DeclMapper declMapper;
+    cpptoc::TypeMapper typeMapper;
+    cpptoc::ExprMapper exprMapper;
+    cpptoc::StmtMapper stmtMapper;
 
     CppToCVisitorDispatcher dispatcher(mapper, locMapper, declMapper, typeMapper, exprMapper, stmtMapper);
 
@@ -508,15 +506,15 @@ TEST_F(VirtualMethodHandlerDispatcherTest, PureVirtualMethod) {
     ASSERT_NE(AST, nullptr);
 
     ASTContext& cppCtx = AST->getASTContext();
-    TargetContext& targetCtx = TargetContext::getInstance();
+    TargetContext targetCtx;
     ASTContext& cCtx = targetCtx.getContext();
 
-    cpptoc::PathMapper& mapper = cpptoc::PathMapper::getInstance("/src", "/output");
+    cpptoc::PathMapper mapper(targetCtx, "/src", "/output");
     cpptoc::DeclLocationMapper locMapper(mapper);
-    cpptoc::DeclMapper& declMapper = cpptoc::DeclMapper::getInstance();
-    cpptoc::TypeMapper& typeMapper = cpptoc::TypeMapper::getInstance();
-    cpptoc::ExprMapper& exprMapper = cpptoc::ExprMapper::getInstance();
-    cpptoc::StmtMapper& stmtMapper = cpptoc::StmtMapper::getInstance();
+    cpptoc::DeclMapper declMapper;
+    cpptoc::TypeMapper typeMapper;
+    cpptoc::ExprMapper exprMapper;
+    cpptoc::StmtMapper stmtMapper;
 
     CppToCVisitorDispatcher dispatcher(mapper, locMapper, declMapper, typeMapper, exprMapper, stmtMapper);
 
@@ -528,7 +526,7 @@ TEST_F(VirtualMethodHandlerDispatcherTest, PureVirtualMethod) {
     ASSERT_NE(getArea, nullptr);
 
     // Verify it's pure virtual
-    EXPECT_TRUE(getArea->isPure()) << "Method should be pure virtual";
+    EXPECT_TRUE(getArea->isPureVirtual()) << "Method should be pure virtual";
     EXPECT_TRUE(getArea->isVirtual()) << "Method should be virtual";
 
     dispatcher.dispatch(cppCtx, cCtx, getArea);
@@ -558,15 +556,15 @@ TEST_F(VirtualMethodHandlerDispatcherTest, TypeConversions) {
     ASSERT_NE(AST, nullptr);
 
     ASTContext& cppCtx = AST->getASTContext();
-    TargetContext& targetCtx = TargetContext::getInstance();
+    TargetContext targetCtx;
     ASTContext& cCtx = targetCtx.getContext();
 
-    cpptoc::PathMapper& mapper = cpptoc::PathMapper::getInstance("/src", "/output");
+    cpptoc::PathMapper mapper(targetCtx, "/src", "/output");
     cpptoc::DeclLocationMapper locMapper(mapper);
-    cpptoc::DeclMapper& declMapper = cpptoc::DeclMapper::getInstance();
-    cpptoc::TypeMapper& typeMapper = cpptoc::TypeMapper::getInstance();
-    cpptoc::ExprMapper& exprMapper = cpptoc::ExprMapper::getInstance();
-    cpptoc::StmtMapper& stmtMapper = cpptoc::StmtMapper::getInstance();
+    cpptoc::DeclMapper declMapper;
+    cpptoc::TypeMapper typeMapper;
+    cpptoc::ExprMapper exprMapper;
+    cpptoc::StmtMapper stmtMapper;
 
     CppToCVisitorDispatcher dispatcher(mapper, locMapper, declMapper, typeMapper, exprMapper, stmtMapper);
 
@@ -610,15 +608,15 @@ TEST_F(VirtualMethodHandlerDispatcherTest, ExclusionTests) {
     ASSERT_NE(AST, nullptr);
 
     ASTContext& cppCtx = AST->getASTContext();
-    TargetContext& targetCtx = TargetContext::getInstance();
+    TargetContext targetCtx;
     ASTContext& cCtx = targetCtx.getContext();
 
-    cpptoc::PathMapper& mapper = cpptoc::PathMapper::getInstance("/src", "/output");
+    cpptoc::PathMapper mapper(targetCtx, "/src", "/output");
     cpptoc::DeclLocationMapper locMapper(mapper);
-    cpptoc::DeclMapper& declMapper = cpptoc::DeclMapper::getInstance();
-    cpptoc::TypeMapper& typeMapper = cpptoc::TypeMapper::getInstance();
-    cpptoc::ExprMapper& exprMapper = cpptoc::ExprMapper::getInstance();
-    cpptoc::StmtMapper& stmtMapper = cpptoc::StmtMapper::getInstance();
+    cpptoc::DeclMapper declMapper;
+    cpptoc::TypeMapper typeMapper;
+    cpptoc::ExprMapper exprMapper;
+    cpptoc::StmtMapper stmtMapper;
 
     CppToCVisitorDispatcher dispatcher(mapper, locMapper, declMapper, typeMapper, exprMapper, stmtMapper);
 
@@ -675,15 +673,15 @@ TEST_F(VirtualMethodHandlerDispatcherTest, MultipleVirtualMethods) {
     ASSERT_NE(AST, nullptr);
 
     ASTContext& cppCtx = AST->getASTContext();
-    TargetContext& targetCtx = TargetContext::getInstance();
+    TargetContext targetCtx;
     ASTContext& cCtx = targetCtx.getContext();
 
-    cpptoc::PathMapper& mapper = cpptoc::PathMapper::getInstance("/src", "/output");
+    cpptoc::PathMapper mapper(targetCtx, "/src", "/output");
     cpptoc::DeclLocationMapper locMapper(mapper);
-    cpptoc::DeclMapper& declMapper = cpptoc::DeclMapper::getInstance();
-    cpptoc::TypeMapper& typeMapper = cpptoc::TypeMapper::getInstance();
-    cpptoc::ExprMapper& exprMapper = cpptoc::ExprMapper::getInstance();
-    cpptoc::StmtMapper& stmtMapper = cpptoc::StmtMapper::getInstance();
+    cpptoc::DeclMapper declMapper;
+    cpptoc::TypeMapper typeMapper;
+    cpptoc::ExprMapper exprMapper;
+    cpptoc::StmtMapper stmtMapper;
 
     CppToCVisitorDispatcher dispatcher(mapper, locMapper, declMapper, typeMapper, exprMapper, stmtMapper);
 
@@ -735,7 +733,7 @@ TEST_F(VirtualMethodHandlerDispatcherTest, VtableStructGeneration) {
     ASSERT_NE(AST, nullptr);
 
     ASTContext& cppCtx = AST->getASTContext();
-    TargetContext& targetCtx = TargetContext::getInstance();
+    TargetContext targetCtx;
     ASTContext& cCtx = targetCtx.getContext();
 
     // Find class and method
@@ -784,7 +782,7 @@ TEST_F(VirtualMethodHandlerDispatcherTest, VtableInstanceGeneration) {
     ASSERT_NE(AST, nullptr);
 
     ASTContext& cppCtx = AST->getASTContext();
-    TargetContext& targetCtx = TargetContext::getInstance();
+    TargetContext targetCtx;
     ASTContext& cCtx = targetCtx.getContext();
 
     // Find class and method
@@ -835,7 +833,7 @@ TEST_F(VirtualMethodHandlerDispatcherTest, MultipleVirtualMethodsVtable) {
     ASSERT_NE(AST, nullptr);
 
     ASTContext& cppCtx = AST->getASTContext();
-    TargetContext& targetCtx = TargetContext::getInstance();
+    TargetContext targetCtx;
     ASTContext& cCtx = targetCtx.getContext();
 
     // Find class and methods
@@ -888,7 +886,7 @@ TEST_F(VirtualMethodHandlerDispatcherTest, NamespacedClassVtable) {
     ASSERT_NE(AST, nullptr);
 
     ASTContext& cppCtx = AST->getASTContext();
-    TargetContext& targetCtx = TargetContext::getInstance();
+    TargetContext targetCtx;
     ASTContext& cCtx = targetCtx.getContext();
 
     // Find namespace

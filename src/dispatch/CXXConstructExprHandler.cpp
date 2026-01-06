@@ -81,12 +81,42 @@ void CXXConstructExprHandler::handleCXXConstructExpr(
     llvm::outs() << "[CXXConstructExprHandler] All " << translatedArgs.size()
                  << " arguments translated successfully\n";
 
-    // Step 2: Get the C struct type from DeclMapper
+    // Step 2: Check if this is a copy constructor
+    // Copy constructor has 1 argument of the same type (or const ref to same type)
+    // In C, we just use the value directly without wrapping in compound literal
+    const clang::CXXConstructorDecl* ctor = cppConstructExpr->getConstructor();
+
+    // Check if this is a copy or move constructor
+    // Both should be handled the same way in C - just use the value directly
+    if (ctor && (ctor->isCopyConstructor() || ctor->isMoveConstructor())) {
+        llvm::outs() << "[CXXConstructExprHandler] Copy/move constructor detected - using argument directly\n";
+
+        // Just use the translated argument directly (skip ImplicitCastExpr if present)
+        clang::Expr* resultExpr = translatedArgs[0];
+
+        // If the argument is an ImplicitCastExpr (NoOp cast), unwrap it
+        if (auto* implCast = llvm::dyn_cast<clang::ImplicitCastExpr>(resultExpr)) {
+            if (implCast->getCastKind() == clang::CK_NoOp ||
+                implCast->getCastKind() == clang::CK_LValueToRValue) {
+                resultExpr = implCast->getSubExpr();
+                llvm::outs() << "[CXXConstructExprHandler] Unwrapped ImplicitCastExpr\n";
+            }
+        }
+
+        // Store the direct reference (no compound literal needed for copy/move)
+        exprMapper.setCreated(E, resultExpr);
+        llvm::outs() << "[CXXConstructExprHandler] Copy/move constructor translation complete (direct reference)\n";
+        return;
+    }
+
+    // Step 3: Get the C struct type from DeclMapper
     // C++ constructor expression has type of the class being constructed
     clang::QualType cppType = cppConstructExpr->getType();
     const clang::CXXRecordDecl* cppClass = cppType->getAsCXXRecordDecl();
 
     clang::QualType cType;
+    bool isArrayType = cppType->isArrayType();
+
     if (cppClass) {
         llvm::outs() << "[CXXConstructExprHandler] Looking up C struct for C++ class: "
                      << cppClass->getNameAsString() << "\n";
@@ -108,8 +138,11 @@ void CXXConstructExprHandler::handleCXXConstructExpr(
                          << cppClass->getNameAsString() << ", using C++ type as fallback\n";
             cType = cppType; // Fallback
         }
+    } else if (isArrayType) {
+        llvm::outs() << "[CXXConstructExprHandler] Constructor expression type is an array, will use InitListExpr only\n";
+        cType = cppType;
     } else {
-        llvm::errs() << "[CXXConstructExprHandler] WARNING: Constructor expression type is not a class\n";
+        llvm::errs() << "[CXXConstructExprHandler] WARNING: Constructor expression type is neither class nor array\n";
         cType = cppType; // Fallback
     }
 
@@ -125,7 +158,16 @@ void CXXConstructExprHandler::handleCXXConstructExpr(
 
     llvm::outs() << "[CXXConstructExprHandler] Created InitListExpr\n";
 
-    // Step 4: Wrap in CompoundLiteralExpr to create (struct Type){...}
+    // Step 4: For array types, use InitListExpr directly (e.g., Student arr[3] = {})
+    // For struct types, wrap in CompoundLiteralExpr (e.g., (struct Student){})
+    if (isArrayType) {
+        llvm::outs() << "[CXXConstructExprHandler] Array type - using InitListExpr directly\n";
+        exprMapper.setCreated(E, initList);
+        llvm::outs() << "[CXXConstructExprHandler] CXXConstructExpr translation complete (array)\n";
+        return;
+    }
+
+    // Step 5: Wrap in CompoundLiteralExpr to create (struct Type){...}
     // This is the proper C99 syntax for struct literals
     // Note: CodeGenerator.printExpr will add "struct" keyword when printing CompoundLiteralExpr
     clang::CompoundLiteralExpr* compoundLit = new (cASTContext) clang::CompoundLiteralExpr(
@@ -139,7 +181,7 @@ void CXXConstructExprHandler::handleCXXConstructExpr(
 
     llvm::outs() << "[CXXConstructExprHandler] Created CompoundLiteralExpr (C99 syntax)\n";
 
-    // Step 5: Store mapping in ExprMapper
+    // Step 6: Store mapping in ExprMapper
     exprMapper.setCreated(E, compoundLit);
 
     llvm::outs() << "[CXXConstructExprHandler] CXXConstructExpr translation complete\n";

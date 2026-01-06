@@ -26,10 +26,10 @@ protected:
     std::unique_ptr<CppToCVisitor> createVisitor(ASTUnit &AST, CNodeBuilder &builder,
                                                    cpptoc::FileOriginTracker &tracker) {
         // Get TargetContext
-        TargetContext& targetCtx = TargetContext::getInstance();
+        TargetContext targetCtx;
 
         // Create PathMapper (required for Phase 2)
-        cpptoc::PathMapper& pathMapper = cpptoc::PathMapper::getInstance("/src", "/output");
+        cpptoc::PathMapper pathMapper("/src", "/output");
 
         return std::make_unique<CppToCVisitor>(AST.getASTContext(), builder,
                                                 targetCtx, tracker, &pathMapper);

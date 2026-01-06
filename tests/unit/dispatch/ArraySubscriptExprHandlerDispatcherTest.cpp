@@ -69,15 +69,15 @@ TEST(ArraySubscriptExprHandlerDispatcherTest, Registration) {
     ASSERT_NE(AST, nullptr);
 
     ASTContext& cppCtx = AST->getASTContext();
-    TargetContext& targetCtx = TargetContext::getInstance();
+    TargetContext targetCtx;
     ASTContext& cCtx = targetCtx.getContext();
 
-    cpptoc::PathMapper& mapper = cpptoc::PathMapper::getInstance("/src", "/output");
+    cpptoc::PathMapper mapper(targetCtx, "/src", "/output");
     cpptoc::DeclLocationMapper locMapper(mapper);
-    cpptoc::DeclMapper& declMapper = cpptoc::DeclMapper::getInstance();
-    cpptoc::TypeMapper& typeMapper = cpptoc::TypeMapper::getInstance();
-    cpptoc::ExprMapper& exprMapper = cpptoc::ExprMapper::getInstance();
-    cpptoc::StmtMapper& stmtMapper = cpptoc::StmtMapper::getInstance();
+    cpptoc::DeclMapper declMapper;
+    cpptoc::TypeMapper typeMapper;
+    cpptoc::ExprMapper exprMapper;
+    cpptoc::StmtMapper stmtMapper;
 
     CppToCVisitorDispatcher dispatcher(mapper, locMapper, declMapper, typeMapper, exprMapper, stmtMapper);
     cpptoc::LiteralHandler::registerWith(dispatcher);
@@ -123,15 +123,15 @@ TEST(ArraySubscriptExprHandlerDispatcherTest, SimpleLiteralIndex) {
     ASSERT_NE(AST, nullptr);
 
     ASTContext& cppCtx = AST->getASTContext();
-    TargetContext& targetCtx = TargetContext::getInstance();
+    TargetContext targetCtx;
     ASTContext& cCtx = targetCtx.getContext();
 
-    cpptoc::PathMapper& mapper = cpptoc::PathMapper::getInstance("/src", "/output");
+    cpptoc::PathMapper mapper(targetCtx, "/src", "/output");
     cpptoc::DeclLocationMapper locMapper(mapper);
-    cpptoc::DeclMapper& declMapper = cpptoc::DeclMapper::getInstance();
-    cpptoc::TypeMapper& typeMapper = cpptoc::TypeMapper::getInstance();
-    cpptoc::ExprMapper& exprMapper = cpptoc::ExprMapper::getInstance();
-    cpptoc::StmtMapper& stmtMapper = cpptoc::StmtMapper::getInstance();
+    cpptoc::DeclMapper declMapper;
+    cpptoc::TypeMapper typeMapper;
+    cpptoc::ExprMapper exprMapper;
+    cpptoc::StmtMapper stmtMapper;
 
     CppToCVisitorDispatcher dispatcher(mapper, locMapper, declMapper, typeMapper, exprMapper, stmtMapper);
     cpptoc::LiteralHandler::registerWith(dispatcher);
@@ -183,15 +183,15 @@ TEST(ArraySubscriptExprHandlerDispatcherTest, VariableIndex) {
     ASSERT_NE(AST, nullptr);
 
     ASTContext& cppCtx = AST->getASTContext();
-    TargetContext& targetCtx = TargetContext::getInstance();
+    TargetContext targetCtx;
     ASTContext& cCtx = targetCtx.getContext();
 
-    cpptoc::PathMapper& mapper = cpptoc::PathMapper::getInstance("/src", "/output");
+    cpptoc::PathMapper mapper(targetCtx, "/src", "/output");
     cpptoc::DeclLocationMapper locMapper(mapper);
-    cpptoc::DeclMapper& declMapper = cpptoc::DeclMapper::getInstance();
-    cpptoc::TypeMapper& typeMapper = cpptoc::TypeMapper::getInstance();
-    cpptoc::ExprMapper& exprMapper = cpptoc::ExprMapper::getInstance();
-    cpptoc::StmtMapper& stmtMapper = cpptoc::StmtMapper::getInstance();
+    cpptoc::DeclMapper declMapper;
+    cpptoc::TypeMapper typeMapper;
+    cpptoc::ExprMapper exprMapper;
+    cpptoc::StmtMapper stmtMapper;
 
     CppToCVisitorDispatcher dispatcher(mapper, locMapper, declMapper, typeMapper, exprMapper, stmtMapper);
     cpptoc::DeclRefExprHandler::registerWith(dispatcher);
@@ -242,15 +242,15 @@ TEST(ArraySubscriptExprHandlerDispatcherTest, MultiDimensionalArray) {
     ASSERT_NE(AST, nullptr);
 
     ASTContext& cppCtx = AST->getASTContext();
-    TargetContext& targetCtx = TargetContext::getInstance();
+    TargetContext targetCtx;
     ASTContext& cCtx = targetCtx.getContext();
 
-    cpptoc::PathMapper& mapper = cpptoc::PathMapper::getInstance("/src", "/output");
+    cpptoc::PathMapper mapper(targetCtx, "/src", "/output");
     cpptoc::DeclLocationMapper locMapper(mapper);
-    cpptoc::DeclMapper& declMapper = cpptoc::DeclMapper::getInstance();
-    cpptoc::TypeMapper& typeMapper = cpptoc::TypeMapper::getInstance();
-    cpptoc::ExprMapper& exprMapper = cpptoc::ExprMapper::getInstance();
-    cpptoc::StmtMapper& stmtMapper = cpptoc::StmtMapper::getInstance();
+    cpptoc::DeclMapper declMapper;
+    cpptoc::TypeMapper typeMapper;
+    cpptoc::ExprMapper exprMapper;
+    cpptoc::StmtMapper stmtMapper;
 
     CppToCVisitorDispatcher dispatcher(mapper, locMapper, declMapper, typeMapper, exprMapper, stmtMapper);
     cpptoc::DeclRefExprHandler::registerWith(dispatcher);
@@ -307,15 +307,15 @@ TEST(ArraySubscriptExprHandlerDispatcherTest, ComplexIndexExpression) {
     ASSERT_NE(AST, nullptr);
 
     ASTContext& cppCtx = AST->getASTContext();
-    TargetContext& targetCtx = TargetContext::getInstance();
+    TargetContext targetCtx;
     ASTContext& cCtx = targetCtx.getContext();
 
-    cpptoc::PathMapper& mapper = cpptoc::PathMapper::getInstance("/src", "/output");
+    cpptoc::PathMapper mapper(targetCtx, "/src", "/output");
     cpptoc::DeclLocationMapper locMapper(mapper);
-    cpptoc::DeclMapper& declMapper = cpptoc::DeclMapper::getInstance();
-    cpptoc::TypeMapper& typeMapper = cpptoc::TypeMapper::getInstance();
-    cpptoc::ExprMapper& exprMapper = cpptoc::ExprMapper::getInstance();
-    cpptoc::StmtMapper& stmtMapper = cpptoc::StmtMapper::getInstance();
+    cpptoc::DeclMapper declMapper;
+    cpptoc::TypeMapper typeMapper;
+    cpptoc::ExprMapper exprMapper;
+    cpptoc::StmtMapper stmtMapper;
 
     CppToCVisitorDispatcher dispatcher(mapper, locMapper, declMapper, typeMapper, exprMapper, stmtMapper);
     cpptoc::DeclRefExprHandler::registerWith(dispatcher);
@@ -369,15 +369,15 @@ TEST(ArraySubscriptExprHandlerDispatcherTest, ComplexIndexWithMultiplication) {
     ASSERT_NE(AST, nullptr);
 
     ASTContext& cppCtx = AST->getASTContext();
-    TargetContext& targetCtx = TargetContext::getInstance();
+    TargetContext targetCtx;
     ASTContext& cCtx = targetCtx.getContext();
 
-    cpptoc::PathMapper& mapper = cpptoc::PathMapper::getInstance("/src", "/output");
+    cpptoc::PathMapper mapper(targetCtx, "/src", "/output");
     cpptoc::DeclLocationMapper locMapper(mapper);
-    cpptoc::DeclMapper& declMapper = cpptoc::DeclMapper::getInstance();
-    cpptoc::TypeMapper& typeMapper = cpptoc::TypeMapper::getInstance();
-    cpptoc::ExprMapper& exprMapper = cpptoc::ExprMapper::getInstance();
-    cpptoc::StmtMapper& stmtMapper = cpptoc::StmtMapper::getInstance();
+    cpptoc::DeclMapper declMapper;
+    cpptoc::TypeMapper typeMapper;
+    cpptoc::ExprMapper exprMapper;
+    cpptoc::StmtMapper stmtMapper;
 
     CppToCVisitorDispatcher dispatcher(mapper, locMapper, declMapper, typeMapper, exprMapper, stmtMapper);
     cpptoc::DeclRefExprHandler::registerWith(dispatcher);
@@ -427,15 +427,15 @@ TEST(ArraySubscriptExprHandlerDispatcherTest, PointerIndexing) {
     ASSERT_NE(AST, nullptr);
 
     ASTContext& cppCtx = AST->getASTContext();
-    TargetContext& targetCtx = TargetContext::getInstance();
+    TargetContext targetCtx;
     ASTContext& cCtx = targetCtx.getContext();
 
-    cpptoc::PathMapper& mapper = cpptoc::PathMapper::getInstance("/src", "/output");
+    cpptoc::PathMapper mapper(targetCtx, "/src", "/output");
     cpptoc::DeclLocationMapper locMapper(mapper);
-    cpptoc::DeclMapper& declMapper = cpptoc::DeclMapper::getInstance();
-    cpptoc::TypeMapper& typeMapper = cpptoc::TypeMapper::getInstance();
-    cpptoc::ExprMapper& exprMapper = cpptoc::ExprMapper::getInstance();
-    cpptoc::StmtMapper& stmtMapper = cpptoc::StmtMapper::getInstance();
+    cpptoc::DeclMapper declMapper;
+    cpptoc::TypeMapper typeMapper;
+    cpptoc::ExprMapper exprMapper;
+    cpptoc::StmtMapper stmtMapper;
 
     CppToCVisitorDispatcher dispatcher(mapper, locMapper, declMapper, typeMapper, exprMapper, stmtMapper);
     cpptoc::DeclRefExprHandler::registerWith(dispatcher);
@@ -482,15 +482,15 @@ TEST(ArraySubscriptExprHandlerDispatcherTest, NestedMultiDimensionalWithComplexI
     ASSERT_NE(AST, nullptr);
 
     ASTContext& cppCtx = AST->getASTContext();
-    TargetContext& targetCtx = TargetContext::getInstance();
+    TargetContext targetCtx;
     ASTContext& cCtx = targetCtx.getContext();
 
-    cpptoc::PathMapper& mapper = cpptoc::PathMapper::getInstance("/src", "/output");
+    cpptoc::PathMapper mapper(targetCtx, "/src", "/output");
     cpptoc::DeclLocationMapper locMapper(mapper);
-    cpptoc::DeclMapper& declMapper = cpptoc::DeclMapper::getInstance();
-    cpptoc::TypeMapper& typeMapper = cpptoc::TypeMapper::getInstance();
-    cpptoc::ExprMapper& exprMapper = cpptoc::ExprMapper::getInstance();
-    cpptoc::StmtMapper& stmtMapper = cpptoc::StmtMapper::getInstance();
+    cpptoc::DeclMapper declMapper;
+    cpptoc::TypeMapper typeMapper;
+    cpptoc::ExprMapper exprMapper;
+    cpptoc::StmtMapper stmtMapper;
 
     CppToCVisitorDispatcher dispatcher(mapper, locMapper, declMapper, typeMapper, exprMapper, stmtMapper);
     cpptoc::LiteralHandler::registerWith(dispatcher);
@@ -586,15 +586,15 @@ TEST(ArraySubscriptExprHandlerDispatcherTest, ExprMapperDeduplication) {
     ASSERT_NE(AST, nullptr);
 
     ASTContext& cppCtx = AST->getASTContext();
-    TargetContext& targetCtx = TargetContext::getInstance();
+    TargetContext targetCtx;
     ASTContext& cCtx = targetCtx.getContext();
 
-    cpptoc::PathMapper& mapper = cpptoc::PathMapper::getInstance("/src", "/output");
+    cpptoc::PathMapper mapper(targetCtx, "/src", "/output");
     cpptoc::DeclLocationMapper locMapper(mapper);
-    cpptoc::DeclMapper& declMapper = cpptoc::DeclMapper::getInstance();
-    cpptoc::TypeMapper& typeMapper = cpptoc::TypeMapper::getInstance();
-    cpptoc::ExprMapper& exprMapper = cpptoc::ExprMapper::getInstance();
-    cpptoc::StmtMapper& stmtMapper = cpptoc::StmtMapper::getInstance();
+    cpptoc::DeclMapper declMapper;
+    cpptoc::TypeMapper typeMapper;
+    cpptoc::ExprMapper exprMapper;
+    cpptoc::StmtMapper stmtMapper;
 
     CppToCVisitorDispatcher dispatcher(mapper, locMapper, declMapper, typeMapper, exprMapper, stmtMapper);
     cpptoc::LiteralHandler::registerWith(dispatcher);

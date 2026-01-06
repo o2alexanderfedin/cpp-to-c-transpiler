@@ -21,6 +21,8 @@
 #include "dispatch/ParenExprHandler.h"
 #include "dispatch/CallExprHandler.h"
 #include "dispatch/ArraySubscriptExprHandler.h"
+#include "dispatch/InitListExprHandler.h"
+#include "dispatch/CXXConstructExprHandler.h"
 #include "dispatch/CompoundStmtHandler.h"
 #include "dispatch/DeclStmtHandler.h"
 #include "dispatch/ReturnStmtHandler.h"
@@ -64,6 +66,8 @@ protected:
         ParenExprHandler::registerWith(*pipeline.dispatcher);
         CallExprHandler::registerWith(*pipeline.dispatcher);
         ArraySubscriptExprHandler::registerWith(*pipeline.dispatcher);
+        InitListExprHandler::registerWith(*pipeline.dispatcher);
+        CXXConstructExprHandler::registerWith(*pipeline.dispatcher);
 
         // Statement handlers
         CompoundStmtHandler::registerWith(*pipeline.dispatcher);
@@ -130,7 +134,7 @@ TEST_F(StructsE2ETest, SimpleStructCreationAndUsage) {
 // E2E Test 2: Struct Initialization and Field Access
 // ============================================================================
 
-TEST_F(StructsE2ETest, DISABLED_StructInitializationAndFieldAccess) {
+TEST_F(StructsE2ETest, StructInitializationAndFieldAccess) {
     std::string cppCode = R"(
         struct Rectangle {
             int width;
@@ -154,7 +158,7 @@ TEST_F(StructsE2ETest, DISABLED_StructInitializationAndFieldAccess) {
 // E2E Test 3: Linked List Implementation
 // ============================================================================
 
-TEST_F(StructsE2ETest, DISABLED_LinkedListImplementation) {
+TEST_F(StructsE2ETest, LinkedListImplementation) {
     std::string cppCode = R"(
         struct Node {
             int data;
@@ -186,7 +190,7 @@ TEST_F(StructsE2ETest, DISABLED_LinkedListImplementation) {
 // E2E Test 4: Binary Tree Operations
 // ============================================================================
 
-TEST_F(StructsE2ETest, DISABLED_BinaryTreeOperations) {
+TEST_F(StructsE2ETest, BinaryTreeOperations) {
     std::string cppCode = R"(
         struct TreeNode {
             int value;
@@ -216,7 +220,7 @@ TEST_F(StructsE2ETest, DISABLED_BinaryTreeOperations) {
 // E2E Test 5: Point/Rectangle Geometry Calculations
 // ============================================================================
 
-TEST_F(StructsE2ETest, DISABLED_PointRectangleGeometry) {
+TEST_F(StructsE2ETest, PointRectangleGeometry) {
     std::string cppCode = R"(
         struct Point {
             int x;
@@ -249,7 +253,7 @@ TEST_F(StructsE2ETest, DISABLED_PointRectangleGeometry) {
 // E2E Test 6: Color Manipulation
 // ============================================================================
 
-TEST_F(StructsE2ETest, DISABLED_ColorManipulation) {
+TEST_F(StructsE2ETest, ColorManipulation) {
     std::string cppCode = R"(
         struct Color {
             int red;
@@ -315,7 +319,7 @@ TEST_F(StructsE2ETest, StudentRecordManagement) {
 // E2E Test 8: 2D Vector Operations
 // ============================================================================
 
-TEST_F(StructsE2ETest, DISABLED_Vector2DOperations) {
+TEST_F(StructsE2ETest, Vector2DOperations) {
     std::string cppCode = R"(
         struct Vector2D {
             int x;
@@ -440,7 +444,7 @@ TEST_F(StructsE2ETest, QueueImplementation) {
 // E2E Test 11: Distance Calculation Between Points
 // ============================================================================
 
-TEST_F(StructsE2ETest, DISABLED_DistanceCalculation) {
+TEST_F(StructsE2ETest, DistanceCalculation) {
     std::string cppCode = R"(
         struct Point {
             int x;

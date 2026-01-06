@@ -1,15 +1,14 @@
 /**
  * @file TypeMapper.h
- * @brief Singleton wrapper for mapping C++ types to created C types
+ * @brief RAII mapper for C++ types to created C types
  *
- * This provides a singleton wrapper around NodeMapper to ensure all source files
- * share the same mapping instance during a transpilation session.
+ * This provides a per-instance mapper around NodeMapper using RAII pattern.
+ * Each instance maintains its own mapping state.
  *
- * Single Responsibility: Provide type-specific singleton mapper for NodeMapper.
+ * Single Responsibility: Provide type-specific mapper for NodeMapper.
  *
- * Migration Note:
- * - Old: TypeMapper typeMapper;
- * - New: TypeMapper& typeMapper = TypeMapper::getInstance();
+ * Usage:
+ * - Create: TypeMapper typeMapper;
  * - Usage: typeMapper.setCreated(cppType, cType)
  * - Usage: typeMapper.getCreated(cppType)
  * - Usage: typeMapper.hasCreated(cppType)
@@ -24,35 +23,31 @@ namespace cpptoc {
 
 /**
  * @class TypeMapper
- * @brief Singleton wrapper for mapping C++ types to created C types
+ * @brief RAII wrapper for mapping C++ types to created C types
  *
- * Wraps NodeMapper<clang::Type, clang::QualType> in a singleton pattern to ensure
- * all source files share the same type mappings during transpilation.
+ * Wraps NodeMapper<clang::Type, clang::QualType> with RAII semantics.
+ * Each test/thread creates its own instance for complete isolation.
  *
  * Note: ValueT is QualType (value type), not QualType* (pointer)
  * QualType is a lightweight handle that acts like a pointer internally.
  *
  * Example:
  * ```cpp
- * TypeMapper& typeMapper = TypeMapper::getInstance();
- * typeMapper.setCreated(cppRefType, cPtrType);
- * clang::QualType cType = typeMapper.getCreated(cppRefType);
- * if (typeMapper.hasCreated(cppRefType)) { ... }
+ * auto typeMapper = std::make_unique<TypeMapper>();
+ * typeMapper->setCreated(cppRefType, cPtrType);
+ * clang::QualType cType = typeMapper->getCreated(cppRefType);
+ * if (typeMapper->hasCreated(cppRefType)) { ... }
  * ```
  */
 class TypeMapper {
 public:
   /**
-   * @brief Get the singleton TypeMapper instance
-   * @return Reference to the global TypeMapper instance
+   * @brief Public constructor for RAII pattern
    *
-   * **Singleton Pattern**: Ensures all files share the same TypeMapper
-   * **Thread Safety**: Not thread-safe; call from single thread during transpilation
+   * **RAII Pattern**: Each test creates its own TypeMapper instance
+   * **Thread Safety**: Each thread/test has isolated instance - fully thread-safe
    */
-  static TypeMapper& getInstance() {
-    static TypeMapper instance;
-    return instance;
-  }
+  TypeMapper() = default;
 
   /**
    * @brief Store mapping from C++ type to created C type
@@ -81,18 +76,15 @@ public:
     return mapper_.hasCreated(cppNode);
   }
 
-  /**
-   * @brief Reset all mappings (for testing)
-   */
-  static void reset() {
-    getInstance().mapper_ = NodeMapper<clang::Type, clang::QualType>();
-  }
-
-private:
-  TypeMapper() = default;
+  // Prevent copying (use move semantics or unique_ptr instead)
   TypeMapper(const TypeMapper&) = delete;
   TypeMapper& operator=(const TypeMapper&) = delete;
 
+  // Allow move semantics for modern C++
+  TypeMapper(TypeMapper&&) = default;
+  TypeMapper& operator=(TypeMapper&&) = default;
+
+private:
   NodeMapper<clang::Type, clang::QualType> mapper_;
 };
 

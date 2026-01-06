@@ -26,17 +26,37 @@
 // has its own C_TU for proper file-based output.
 
 /**
- * @brief Singleton manager for the shared target (C output) ASTContext
+ * @brief RAII manager for the target (C output) ASTContext
  *
- * Manages ONE shared ASTContext used for ALL C AST node creation across
- * all source files. Each file creates its own TranslationUnit within this
- * shared context.
+ * Manages ONE ASTContext used for C AST node creation.
+ * Each file creates its own TranslationUnit within this context.
+ *
+ * RAII Pattern: Each test/transpilation session creates its own instance
+ * for complete isolation. Thread-safe through instance isolation.
  */
 class TargetContext {
+public:
+    // Public constructor for RAII pattern
+    TargetContext();
+
+    // Destructor - must destroy Context before other dependencies
+    ~TargetContext();
+
+    // Prevent copying (use move semantics or unique_ptr instead)
+    TargetContext(const TargetContext&) = delete;
+    TargetContext& operator=(const TargetContext&) = delete;
+
+    // Allow move semantics for modern C++
+    TargetContext(TargetContext&&) = default;
+    TargetContext& operator=(TargetContext&&) = default;
+
 private:
     // Infrastructure for independent target ASTContext
-    // NOTE: DiagClient must be declared BEFORE Diagnostics so it's destroyed AFTER
+    // NOTE: DiagClient and DiagOpts must be declared BEFORE Diagnostics so they're destroyed AFTER
+    // NOTE: TargetOpts must be declared BEFORE Target so it's destroyed AFTER
     std::unique_ptr<clang::DiagnosticConsumer> DiagClient;
+    std::unique_ptr<clang::DiagnosticOptions> DiagOpts;
+    std::unique_ptr<clang::TargetOptions> TargetOpts;
     std::unique_ptr<clang::FileManager> FileMgr;
     std::unique_ptr<clang::SourceManager> SourceMgr;
     std::unique_ptr<clang::DiagnosticsEngine> Diagnostics;
@@ -45,31 +65,10 @@ private:
     std::unique_ptr<clang::SelectorTable> Selectors;
     std::unique_ptr<clang::Builtin::Context> Builtins;
 
-    // The shared target ASTContext for all C nodes
+    // The target ASTContext for all C nodes
     std::unique_ptr<clang::ASTContext> Context;
 
-    // Singleton instance
-    static TargetContext* instance;
-
-    // Private constructor creates independent target context
-    TargetContext();
-
 public:
-    // Destructor - must destroy Context before other dependencies
-    ~TargetContext();
-
-    // Singleton access
-    static TargetContext& getInstance();
-
-    // Singleton cleanup (call before program exit)
-    static void cleanup();
-
-    // Reset state for test isolation (clears maps but keeps singleton alive)
-    void reset();
-
-    // Delete copy/move constructors
-    TargetContext(const TargetContext&) = delete;
-    TargetContext& operator=(const TargetContext&) = delete;
 
     /**
      * @brief Get the shared target ASTContext for C code generation

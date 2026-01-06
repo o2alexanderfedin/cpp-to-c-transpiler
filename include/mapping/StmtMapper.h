@@ -1,15 +1,14 @@
 /**
  * @file StmtMapper.h
- * @brief Singleton wrapper for mapping C++ statements to created C statements
+ * @brief RAII mapper for C++ statements to created C statements
  *
- * This provides a singleton wrapper around NodeMapper to ensure all source files
- * share the same mapping instance during a transpilation session.
+ * This provides a per-instance mapper around NodeMapper using RAII pattern.
+ * Each instance maintains its own mapping state.
  *
- * Single Responsibility: Provide statement-specific singleton mapper for NodeMapper.
+ * Single Responsibility: Provide statement-specific mapper for NodeMapper.
  *
- * Migration Note:
- * - Old: StmtMapper stmtMapper;
- * - New: StmtMapper& stmtMapper = StmtMapper::getInstance();
+ * Usage:
+ * - Create: StmtMapper stmtMapper;
  * - Usage: stmtMapper.setCreated(cppStmt, cStmt)
  * - Usage: stmtMapper.getCreated(cppStmt)
  * - Usage: stmtMapper.hasCreated(cppStmt)
@@ -24,32 +23,28 @@ namespace cpptoc {
 
 /**
  * @class StmtMapper
- * @brief Singleton wrapper for mapping C++ statements to created C statements
+ * @brief RAII wrapper for mapping C++ statements to created C statements
  *
- * Wraps NodeMapper<clang::Stmt, clang::Stmt*> in a singleton pattern to ensure
- * all source files share the same statement mappings during transpilation.
+ * Wraps NodeMapper<clang::Stmt, clang::Stmt*> with RAII semantics.
+ * Each test/thread creates its own instance for complete isolation.
  *
  * Example:
  * ```cpp
- * StmtMapper& stmtMapper = StmtMapper::getInstance();
- * stmtMapper.setCreated(cppCompound, cCompound);
- * clang::Stmt* cStmt = stmtMapper.getCreated(cppCompound);
- * if (stmtMapper.hasCreated(cppCompound)) { ... }
+ * auto stmtMapper = std::make_unique<StmtMapper>();
+ * stmtMapper->setCreated(cppCompound, cCompound);
+ * clang::Stmt* cStmt = stmtMapper->getCreated(cppCompound);
+ * if (stmtMapper->hasCreated(cppCompound)) { ... }
  * ```
  */
 class StmtMapper {
 public:
   /**
-   * @brief Get the singleton StmtMapper instance
-   * @return Reference to the global StmtMapper instance
+   * @brief Public constructor for RAII pattern
    *
-   * **Singleton Pattern**: Ensures all files share the same StmtMapper
-   * **Thread Safety**: Not thread-safe; call from single thread during transpilation
+   * **RAII Pattern**: Each test creates its own StmtMapper instance
+   * **Thread Safety**: Each thread/test has isolated instance - fully thread-safe
    */
-  static StmtMapper& getInstance() {
-    static StmtMapper instance;
-    return instance;
-  }
+  StmtMapper() = default;
 
   /**
    * @brief Store mapping from C++ statement to created C statement
@@ -78,18 +73,15 @@ public:
     return mapper_.hasCreated(cppNode);
   }
 
-  /**
-   * @brief Reset all mappings (for testing)
-   */
-  static void reset() {
-    getInstance().mapper_ = NodeMapper<clang::Stmt, clang::Stmt*>();
-  }
-
-private:
-  StmtMapper() = default;
+  // Prevent copying (use move semantics or unique_ptr instead)
   StmtMapper(const StmtMapper&) = delete;
   StmtMapper& operator=(const StmtMapper&) = delete;
 
+  // Allow move semantics for modern C++
+  StmtMapper(StmtMapper&&) = default;
+  StmtMapper& operator=(StmtMapper&&) = default;
+
+private:
   NodeMapper<clang::Stmt, clang::Stmt*> mapper_;
 };
 

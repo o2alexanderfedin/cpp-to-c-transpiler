@@ -40,15 +40,14 @@ using namespace cpptoc;
 class FunctionHandlerTest : public ::testing::Test {
 protected:
     void SetUp() override {
-        // Reset singleton state before each test
-        PathMapper::reset();
+        // Note: Mappers now use RAII pattern, no reset needed
         // Note: TargetContext is a singleton without reset method
         // Tests should handle TargetContext lifecycle appropriately
     }
 
     void TearDown() override {
-        // Clean up singletons after each test
-        PathMapper::reset();
+        // Clean up after each test
+        // Note: Mappers now use RAII pattern, no reset needed
     }
 
     /**
@@ -87,15 +86,15 @@ protected:
         if (!AST) return nullptr;
 
         cppCtx = &AST->getASTContext();
-        TargetContext& targetCtx = TargetContext::getInstance();
+        TargetContext targetCtx;
         cCtx = &targetCtx.getContext();
 
-        PathMapper& mapper = PathMapper::getInstance("/src", "/output");
+        PathMapper mapper("/src", "/output");
         DeclLocationMapper locMapper(mapper);
-        DeclMapper& declMapper = DeclMapper::getInstance();
-        TypeMapper& typeMapper = TypeMapper::getInstance();
-        ExprMapper& exprMapper = ExprMapper::getInstance();
-        StmtMapper& stmtMapper = StmtMapper::getInstance();
+        DeclMapper declMapper;
+        TypeMapper typeMapper;
+        ExprMapper exprMapper;
+        StmtMapper stmtMapper;
 
         auto dispatcher = createDispatcher(mapper, locMapper, declMapper, typeMapper, exprMapper, stmtMapper);
 
@@ -153,16 +152,16 @@ TEST_F(FunctionHandlerTest, EmptyFunction) {
     ASSERT_NE(AST, nullptr) << "Failed to parse C++ code";
 
     clang::ASTContext& cppCtx = AST->getASTContext();
-    TargetContext& targetCtx = TargetContext::getInstance();
+    TargetContext targetCtx;
     clang::ASTContext& cCtx = targetCtx.getContext();
 
     // Create mapping utilities
-    PathMapper& mapper = PathMapper::getInstance("/src", "/output");
+    PathMapper mapper("/src", "/output");
     DeclLocationMapper locMapper(mapper);
-    DeclMapper& declMapper = DeclMapper::getInstance();
-    TypeMapper& typeMapper = TypeMapper::getInstance();
-    ExprMapper& exprMapper = ExprMapper::getInstance();
-    StmtMapper& stmtMapper = StmtMapper::getInstance();
+    DeclMapper declMapper;
+    TypeMapper typeMapper;
+    ExprMapper exprMapper;
+    StmtMapper stmtMapper;
 
     // Create dispatcher and register handlers
     auto dispatcher = createDispatcher(mapper, locMapper, declMapper, typeMapper, exprMapper, stmtMapper);
@@ -220,15 +219,15 @@ TEST_F(FunctionHandlerTest, FunctionWithIntReturn) {
     ASSERT_NE(AST, nullptr);
 
     clang::ASTContext& cppCtx = AST->getASTContext();
-    TargetContext& targetCtx = TargetContext::getInstance();
+    TargetContext targetCtx;
     clang::ASTContext& cCtx = targetCtx.getContext();
 
-    PathMapper& mapper = PathMapper::getInstance("/src", "/output");
+    PathMapper mapper("/src", "/output");
     DeclLocationMapper locMapper(mapper);
-    DeclMapper& declMapper = DeclMapper::getInstance();
-    TypeMapper& typeMapper = TypeMapper::getInstance();
-    ExprMapper& exprMapper = ExprMapper::getInstance();
-    StmtMapper& stmtMapper = StmtMapper::getInstance();
+    DeclMapper declMapper;
+    TypeMapper typeMapper;
+    ExprMapper exprMapper;
+    StmtMapper stmtMapper;
 
     auto dispatcher = createDispatcher(mapper, locMapper, declMapper, typeMapper, exprMapper, stmtMapper);
 
@@ -279,15 +278,15 @@ TEST_F(FunctionHandlerTest, FunctionWithFloatReturn) {
     ASSERT_NE(AST, nullptr);
 
     clang::ASTContext& cppCtx = AST->getASTContext();
-    TargetContext& targetCtx = TargetContext::getInstance();
+    TargetContext targetCtx;
     clang::ASTContext& cCtx = targetCtx.getContext();
 
-    PathMapper& mapper = PathMapper::getInstance("/src", "/output");
+    PathMapper mapper("/src", "/output");
     DeclLocationMapper locMapper(mapper);
-    DeclMapper& declMapper = DeclMapper::getInstance();
-    TypeMapper& typeMapper = TypeMapper::getInstance();
-    ExprMapper& exprMapper = ExprMapper::getInstance();
-    StmtMapper& stmtMapper = StmtMapper::getInstance();
+    DeclMapper declMapper;
+    TypeMapper typeMapper;
+    ExprMapper exprMapper;
+    StmtMapper stmtMapper;
 
     auto dispatcher = createDispatcher(mapper, locMapper, declMapper, typeMapper, exprMapper, stmtMapper);
 

@@ -154,7 +154,7 @@ QualType TemplateMonomorphizer::convertToCType(QualType Type) {
 
         // If it's a CXXRecordDecl (C++ class/struct), create a C struct type
         if (isa<CXXRecordDecl>(RD)) {
-            // Create a new RecordDecl with TTK_Struct for C output
+            // Create a new RecordDecl with TagTypeKind::Struct for C output
             std::string name = RD->getNameAsString();
             IdentifierInfo& II = Context.Idents.get(name);
 
@@ -163,7 +163,7 @@ QualType TemplateMonomorphizer::convertToCType(QualType Type) {
 #if LLVM_VERSION_MAJOR >= 16
                 TagTypeKind::Struct,
 #else
-                TTK_Struct,
+                TagTypeKind::Struct,
 #endif
                 Context.getTranslationUnitDecl(),
                 SourceLocation(),
@@ -398,7 +398,7 @@ FunctionDecl* TemplateMonomorphizer::createMethodFunction(
 #if LLVM_VERSION_MAJOR >= 16
                 TagTypeKind::Struct,
 #else
-                TTK_Struct,
+                TagTypeKind::Struct,
 #endif
                 Context.getTranslationUnitDecl(),
                 SourceLocation(),
@@ -491,7 +491,7 @@ QualType TemplateMonomorphizer::substituteType(QualType Type,
 #if LLVM_VERSION_MAJOR >= 16
                 TagTypeKind::Struct,
 #else
-                TTK_Struct,
+                TagTypeKind::Struct,
 #endif
                 Context.getTranslationUnitDecl(),
                 SourceLocation(),

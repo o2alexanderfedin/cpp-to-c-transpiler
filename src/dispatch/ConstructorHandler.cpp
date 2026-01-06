@@ -345,7 +345,7 @@ std::vector<clang::Stmt*> ConstructorHandler::injectLpVtblInit(
                 clang::IdentifierInfo& vtableII = cASTContext.Idents.get(vtableStructName);
                 vtableStruct = clang::RecordDecl::Create(
                     cASTContext,
-                    clang::TTK_Struct,
+                    clang::TagTypeKind::Struct,
                     TU,
                     clang::SourceLocation(),
                     clang::SourceLocation(),
@@ -483,7 +483,7 @@ std::vector<clang::Stmt*> ConstructorHandler::injectLpVtblInit(
                     clang::IdentifierInfo& vtableII = cASTContext.Idents.get(vtableStructName);
                     vtableStruct = clang::RecordDecl::Create(
                         cASTContext,
-                        clang::TTK_Struct,
+                        clang::TagTypeKind::Struct,
                         TU,
                         clang::SourceLocation(),
                         clang::SourceLocation(),
@@ -643,7 +643,7 @@ clang::CallExpr* ConstructorHandler::createBaseConstructorCall(
             clang::IdentifierInfo& II = cASTContext.Idents.get(baseName);
             baseStruct = clang::RecordDecl::Create(
                 cASTContext,
-                clang::TTK_Struct,
+                clang::TagTypeKind::Struct,
                 TU,
                 clang::SourceLocation(),
                 clang::SourceLocation(),

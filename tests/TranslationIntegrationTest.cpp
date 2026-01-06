@@ -19,7 +19,7 @@ std::unique_ptr<ASTUnit> buildAST(const std::string &code) {
 // Helper to create CppToCVisitor with all required components
 std::unique_ptr<CppToCVisitor> createVisitor(ASTUnit &AST, CNodeBuilder &builder,
                                                cpptoc::FileOriginTracker &tracker) {
-    TargetContext& targetCtx = TargetContext::getInstance();
+    TargetContext targetCtx;
     return std::make_unique<CppToCVisitor>(AST.getASTContext(), builder,
                                             targetCtx, tracker, nullptr);
 }

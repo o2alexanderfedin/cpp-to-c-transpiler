@@ -69,6 +69,9 @@ void CallExprHandler::handleCallExpr(
     clang::Expr* cCallee = exprMapper.getCreated(cppCallee);
     assert(cCallee && "Callee must be in ExprMapper after successful dispatch");
 
+    // Get the function declaration to check parameter types
+    const clang::FunctionDecl* calleeDecl = cppCall->getDirectCallee();
+
     // Dispatch all arguments
     std::vector<clang::Expr*> cArgs;
     for (unsigned i = 0; i < cppCall->getNumArgs(); ++i) {
@@ -85,6 +88,34 @@ void CallExprHandler::handleCallExpr(
 
         clang::Expr* cArg = exprMapper.getCreated(cppArg);
         assert(cArg && "Argument must be in ExprMapper after successful dispatch");
+
+        // Check if parameter is a reference type - if so, wrap argument with &
+        if (calleeDecl && i < calleeDecl->getNumParams()) {
+            const clang::ParmVarDecl* param = calleeDecl->getParamDecl(i);
+            clang::QualType paramType = param->getType();
+
+            // If parameter is a reference type, wrap the argument with address-of operator
+            if (paramType->isLValueReferenceType() || paramType->isRValueReferenceType()) {
+                llvm::outs() << "[CallExprHandler] Parameter " << i << " is reference type, wrapping argument with &\n";
+
+                // Create UnaryOperator with & (address-of)
+                clang::QualType argType = cArg->getType();
+                clang::QualType ptrType = cASTContext.getPointerType(argType);
+
+                cArg = clang::UnaryOperator::Create(
+                    cASTContext,
+                    cArg,
+                    clang::UO_AddrOf,
+                    ptrType,
+                    clang::VK_PRValue,
+                    clang::OK_Ordinary,
+                    clang::SourceLocation(),
+                    false,  // canOverflow
+                    clang::FPOptionsOverride()
+                );
+            }
+        }
+
         cArgs.push_back(cArg);
     }
 

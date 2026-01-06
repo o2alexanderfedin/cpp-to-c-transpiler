@@ -2,11 +2,8 @@
 #include "clang/Basic/DiagnosticIDs.h"
 #include "clang/Basic/DiagnosticOptions.h"
 #include "clang/Basic/FileSystemOptions.h"
-#include "llvm/Support/Host.h"
+#include "llvm/TargetParser/Host.h"
 #include "llvm/Support/raw_ostream.h"
-
-// Initialize static instance
-TargetContext* TargetContext::instance = nullptr;
 
 TargetContext::TargetContext() {
     llvm::outs() << "[Bug #30 FIX] Creating independent target ASTContext for C output...\n";
@@ -20,19 +17,19 @@ TargetContext::TargetContext() {
     // CRITICAL: Pass ShouldOwnClient=false to prevent double-free
     // TargetContext owns DiagClient, not DiagnosticsEngine
     clang::IntrusiveRefCntPtr<clang::DiagnosticIDs> DiagID(new clang::DiagnosticIDs());
-    clang::IntrusiveRefCntPtr<clang::DiagnosticOptions> DiagOpts(new clang::DiagnosticOptions());
+    DiagOpts = std::make_unique<clang::DiagnosticOptions>();
     DiagClient = std::make_unique<clang::IgnoringDiagConsumer>();
     Diagnostics = std::make_unique<clang::DiagnosticsEngine>(
-        DiagID, DiagOpts.get(), DiagClient.get(), /* ShouldOwnClient */ false);
+        DiagID, *DiagOpts, DiagClient.get(), /* ShouldOwnClient */ false);
 
     // 3. Create SourceManager
     SourceMgr = std::make_unique<clang::SourceManager>(*Diagnostics, *FileMgr);
 
     // 4. Create TargetInfo (use host triple for C output)
     std::string TargetTriple = llvm::sys::getDefaultTargetTriple();
-    auto TargetOpts = std::make_shared<clang::TargetOptions>();
+    TargetOpts = std::make_unique<clang::TargetOptions>();
     TargetOpts->Triple = TargetTriple;
-    Target.reset(clang::TargetInfo::CreateTargetInfo(*Diagnostics, TargetOpts));
+    Target.reset(clang::TargetInfo::CreateTargetInfo(*Diagnostics, *TargetOpts));
 
     // 5. Create LangOptions for C11
     clang::LangOptions LangOpts;
@@ -102,34 +99,6 @@ TargetContext::~TargetContext() {
 
     // Other members will be destroyed automatically in reverse declaration order:
     // Builtins, Selectors, Idents, Target, SourceMgr, FileMgr, DiagClient
-}
-
-TargetContext& TargetContext::getInstance() {
-    if (!instance) {
-        instance = new TargetContext();
-    }
-    return *instance;
-}
-
-void TargetContext::cleanup() {
-    // Bug #31 FIX: Clean up singleton before program exit
-    // This is called via atexit handler to ensure proper cleanup order
-    if (instance) {
-        delete instance;
-        instance = nullptr;
-    }
-}
-
-void TargetContext::reset() {
-    // Reset all maps for test isolation
-    // Keeps singleton alive to avoid dangling references in PathMapper
-    ctorMap.clear();
-    methodMap.clear();
-    dtorMap.clear();
-    nodeToLocation.clear();
-    globalEnums.clear();
-    globalStructs.clear();
-    globalTypedefs.clear();
 }
 
 // Phase 1.1: Node tracking and deduplication methods

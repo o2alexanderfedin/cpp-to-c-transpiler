@@ -182,11 +182,7 @@ void RecordHandler::handleRecord(
     // Always use Struct tag (C has no classes)
     clang::RecordDecl* cRecord = clang::RecordDecl::Create(
         cASTContext,
-#if LLVM_VERSION_MAJOR >= 16
-        clang::TTK_Struct,
-#else
-        clang::TTK_Struct,
-#endif
+        clang::TagTypeKind::Struct,
         cASTContext.getTranslationUnitDecl(),
         clang::SourceLocation(),
         clang::SourceLocation(),
