@@ -181,6 +181,15 @@ message(STATUS "LLVM definitions: ${LLVM_DEFINITIONS}")
 # ============================================================================
 # Google Test Framework (Phase 15-01)
 # ============================================================================
+# IMPORTANT: When using LLVM compiler, we need to ensure GoogleTest links against LLVM's libc++
+# This must be done BEFORE fetching GoogleTest
+if(CMAKE_CXX_COMPILER MATCHES ".*llvm.*" OR CMAKE_CXX_COMPILER MATCHES ".*clang.*")
+    if(APPLE)
+        # Set linker flags to use LLVM's libc++ statically
+        set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} -L/opt/homebrew/opt/llvm/lib/c++ -lc++ -lc++abi")
+    endif()
+endif()
+
 include(FetchContent)
 FetchContent_Declare(
   googletest
@@ -423,6 +432,17 @@ target_link_libraries(cpptoc PRIVATE
     clangBasic
     LLVMSupport
 )
+
+# Explicitly link against LLVM's libc++ when using LLVM compiler
+# This ensures std::__1:: symbols are resolved correctly
+if(CMAKE_CXX_COMPILER MATCHES ".*llvm.*" OR CMAKE_CXX_COMPILER MATCHES ".*clang.*")
+    if(APPLE)
+        target_link_libraries(cpptoc PRIVATE
+            /opt/homebrew/opt/llvm/lib/c++/libc++.a
+            /opt/homebrew/opt/llvm/lib/c++/libc++abi.a
+        )
+    endif()
+endif()
 
 # ============================================================================
 # API CLI Wrapper (for Node.js API server)
