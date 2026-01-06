@@ -124,3 +124,8 @@ __pycache__/
 venv/
 ENV/
 verification-results/
+
+# Auto Claude data directory and config files
+.auto-claude/
+.auto-claude-security.json
+.claude_settings.json
