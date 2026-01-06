@@ -2,7 +2,15 @@
 #include "clang/Basic/DiagnosticIDs.h"
 #include "clang/Basic/DiagnosticOptions.h"
 #include "clang/Basic/FileSystemOptions.h"
+#include "llvm/Config/llvm-config.h" // For LLVM_VERSION_MAJOR
+
+// LLVM 16+ moved Host.h to TargetParser subdirectory
+#if LLVM_VERSION_MAJOR >= 16
 #include "llvm/TargetParser/Host.h"
+#else
+#include "llvm/Support/Host.h"
+#endif
+
 #include "llvm/Support/raw_ostream.h"
 
 TargetContext::TargetContext() {
@@ -29,7 +37,16 @@ TargetContext::TargetContext() {
     std::string TargetTriple = llvm::sys::getDefaultTargetTriple();
     TargetOpts = std::make_unique<clang::TargetOptions>();
     TargetOpts->Triple = TargetTriple;
+
+    // API change: LLVM 15 uses shared_ptr, LLVM 16+ uses reference
+    #if LLVM_VERSION_MAJOR >= 16
     Target.reset(clang::TargetInfo::CreateTargetInfo(*Diagnostics, *TargetOpts));
+    #else
+    // LLVM 15: CreateTargetInfo expects shared_ptr, takes ownership
+    std::shared_ptr<clang::TargetOptions> SharedTargetOpts(TargetOpts.release());
+    Target.reset(clang::TargetInfo::CreateTargetInfo(*Diagnostics, SharedTargetOpts));
+    // Note: SharedTargetOpts now owns the TargetOptions, TargetOpts is null
+    #endif
 
     // 5. Create LangOptions for C11
     clang::LangOptions LangOpts;
