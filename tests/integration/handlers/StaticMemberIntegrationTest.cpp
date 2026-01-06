@@ -35,21 +35,18 @@ std::unique_ptr<ASTUnit> buildAST(const char *code) {
 // Helper to create test context
 struct TestContext {
     std::unique_ptr<ASTUnit> cAST;
-    // All mappers are singletons - store references
-    PathMapper* pathMapper;
+    // All mappers use RAII pattern
+    std::unique_ptr<PathMapper> pathMapper;
     std::unique_ptr<DeclLocationMapper> declLocationMapper;
-    DeclMapper* declMapper;
-    TypeMapper* typeMapper;
-    ExprMapper* exprMapper;
-    StmtMapper* stmtMapper;
+    std::unique_ptr<DeclMapper> declMapper;
+    std::unique_ptr<TypeMapper> typeMapper;
+    std::unique_ptr<ExprMapper> exprMapper;
+    std::unique_ptr<StmtMapper> stmtMapper;
     std::unique_ptr<CppToCVisitorDispatcher> dispatcher;
 };
 
 TestContext createTestContext() {
     TestContext ctx;
-
-    // Reset PathMapper for test isolation
-    PathMapper::reset();
 
     // Create C context
     ctx.cAST = tooling::buildASTFromCode("int dummy;");
@@ -57,20 +54,13 @@ TestContext createTestContext() {
         throw std::runtime_error("Failed to create C context");
     }
 
-    // Create mappers
-    // Get singleton instances for all mappers
-    ctx.pathMapper = &PathMapper::getInstance("/tmp/test_source", "/tmp/test_output");
+    // Create mappers using RAII pattern
+    ctx.pathMapper = std::make_unique<PathMapper>("/tmp/test_source", "/tmp/test_output");
     ctx.declLocationMapper = std::make_unique<DeclLocationMapper>(*ctx.pathMapper);
-    ctx.declMapper = &DeclMapper::getInstance();
-    ctx.typeMapper = &TypeMapper::getInstance();
-    ctx.exprMapper = &ExprMapper::getInstance();
-    ctx.stmtMapper = &StmtMapper::getInstance();
-
-    // Reset singleton state for test isolation
-    DeclMapper::reset();
-    TypeMapper::reset();
-    ExprMapper::reset();
-    StmtMapper::reset();
+    ctx.declMapper = std::make_unique<DeclMapper>();
+    ctx.typeMapper = std::make_unique<TypeMapper>();
+    ctx.exprMapper = std::make_unique<ExprMapper>();
+    ctx.stmtMapper = std::make_unique<StmtMapper>();
 
     // Create dispatcher (no handlers registered yet)
     ctx.dispatcher = std::make_unique<CppToCVisitorDispatcher>(

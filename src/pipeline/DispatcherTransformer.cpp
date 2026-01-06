@@ -74,8 +74,8 @@ void DispatcherTransformer::transform(
   TargetContext& targetCtx = TargetContext::getInstance();
   clang::ASTContext& cCtx = targetCtx.getContext();
 
-  // Get/create PathMapper
-  PathMapper& pathMapper = PathMapper::getInstance(
+  // Create PathMapper
+  PathMapper pathMapper(
     config_.sourceDir,
     config_.outputDir
   );
@@ -85,12 +85,10 @@ void DispatcherTransformer::transform(
 
   // Create mappers
   DeclLocationMapper locMapper(pathMapper);
-
-  // Get singleton mapper instances (shared across all source files)
-  DeclMapper& declMapper = DeclMapper::getInstance();
-  TypeMapper& typeMapper = TypeMapper::getInstance();
-  ExprMapper& exprMapper = ExprMapper::getInstance();
-  StmtMapper& stmtMapper = StmtMapper::getInstance();
+  DeclMapper declMapper;
+  TypeMapper typeMapper;
+  ExprMapper exprMapper;
+  StmtMapper stmtMapper;
 
   // Create dispatcher
   CppToCVisitorDispatcher dispatcher(

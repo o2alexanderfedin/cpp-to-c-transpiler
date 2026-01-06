@@ -146,15 +146,14 @@ public:
         TargetContext& targetCtx = TargetContext::getInstance();
         clang::ASTContext& cCtx = targetCtx.getContext();
 
-        // Create mapping utilities
-        cpptoc::PathMapper& mapper = cpptoc::PathMapper::getInstance(".", ".");
+        // RAII: Create mapper instances for this transpilation session
+        // These will be automatically cleaned up when HandleTranslationUnit exits
+        cpptoc::PathMapper mapper(".", ".");
         cpptoc::DeclLocationMapper locMapper(mapper);
-
-        // Get singleton mapper instances (shared across all source files)
-        cpptoc::DeclMapper& declMapper = cpptoc::DeclMapper::getInstance();
-        cpptoc::TypeMapper& typeMapper = cpptoc::TypeMapper::getInstance();
-        cpptoc::ExprMapper& exprMapper = cpptoc::ExprMapper::getInstance();
-        cpptoc::StmtMapper& stmtMapper = cpptoc::StmtMapper::getInstance();
+        cpptoc::DeclMapper declMapper;
+        cpptoc::TypeMapper typeMapper;
+        cpptoc::ExprMapper exprMapper;
+        cpptoc::StmtMapper stmtMapper;
 
         // Create dispatcher with all mappers
         CppToCVisitorDispatcher dispatcher(mapper, locMapper, declMapper, typeMapper, exprMapper, stmtMapper);

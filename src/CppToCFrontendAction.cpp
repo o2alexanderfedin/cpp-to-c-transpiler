@@ -90,8 +90,8 @@ public:
       outputDir = ".";
     }
 
-    // Get the shared PathMapper instance
-    cpptoc::PathMapper& pathMapper = cpptoc::PathMapper::getInstance(SourceDir, outputDir);
+    // Create PathMapper instance
+    cpptoc::PathMapper pathMapper(SourceDir, outputDir);
 
     // Map source file to target path and get/create C_TU
     std::string targetPath = pathMapper.mapSourceToTarget(InputFilename);
@@ -100,12 +100,10 @@ public:
 
     // Create mapping utilities
     cpptoc::DeclLocationMapper locMapper(pathMapper);
-
-    // Get singleton mapper instances (shared across all source files)
-    cpptoc::DeclMapper& declMapper = cpptoc::DeclMapper::getInstance();
-    cpptoc::TypeMapper& typeMapper = cpptoc::TypeMapper::getInstance();
-    cpptoc::ExprMapper& exprMapper = cpptoc::ExprMapper::getInstance();
-    cpptoc::StmtMapper& stmtMapper = cpptoc::StmtMapper::getInstance();
+    cpptoc::DeclMapper declMapper;
+    cpptoc::TypeMapper typeMapper;
+    cpptoc::ExprMapper exprMapper;
+    cpptoc::StmtMapper stmtMapper;
 
     // Create dispatcher with all mappers
     CppToCVisitorDispatcher dispatcher(pathMapper, locMapper, declMapper, typeMapper, exprMapper, stmtMapper);

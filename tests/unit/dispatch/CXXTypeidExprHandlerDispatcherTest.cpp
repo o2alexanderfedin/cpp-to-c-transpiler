@@ -57,10 +57,10 @@ using namespace cpptoc;
 class CXXTypeidExprHandlerTest : public ::testing::Test {
 protected:
     std::unique_ptr<ASTUnit> cppAST;
-    DeclMapper& declMapper = DeclMapper::getInstance();
-    TypeMapper& typeMapper = TypeMapper::getInstance();
-    ExprMapper& exprMapper = ExprMapper::getInstance();
-    StmtMapper& stmtMapper = StmtMapper::getInstance();
+    DeclMapper declMapper;
+    TypeMapper typeMapper;
+    ExprMapper exprMapper;
+    StmtMapper stmtMapper;
     std::unique_ptr<CppToCVisitorDispatcher> dispatcher;
 
     /**
@@ -78,7 +78,7 @@ protected:
         TargetContext& targetCtx = TargetContext::getInstance();
 
         // Get PathMapper singleton
-        PathMapper& pathMapper = PathMapper::getInstance("/src", "/output");
+        PathMapper pathMapper("/src", "/output");
         DeclLocationMapper locMapper(pathMapper);
 
         // Create dispatcher

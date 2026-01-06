@@ -29,7 +29,7 @@ protected:
         TargetContext& targetCtx = TargetContext::getInstance();
 
         // Create PathMapper (required for Phase 2)
-        cpptoc::PathMapper& pathMapper = cpptoc::PathMapper::getInstance("/src", "/output");
+        cpptoc::PathMapper pathMapper("/src", "/output");
 
         return std::make_unique<CppToCVisitor>(AST.getASTContext(), builder,
                                                 targetCtx, tracker, &pathMapper);

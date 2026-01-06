@@ -21,8 +21,8 @@ CCodePrinter::CCodePrinter(const PipelineConfig& config)
   : config_(config) {}
 
 void CCodePrinter::print(TargetContext& targetCtx, const std::string& sourceFilePath) {
-  // Get PathMapper
-  PathMapper& pathMapper = PathMapper::getInstance(
+  // Create PathMapper
+  PathMapper pathMapper(
     config_.sourceDir,
     config_.outputDir
   );
@@ -155,8 +155,8 @@ void CCodePrinter::print(TargetContext& targetCtx, const std::string& sourceFile
 }
 
 void CCodePrinter::printAll(TargetContext& targetCtx) {
-  // Get PathMapper
-  PathMapper& pathMapper = PathMapper::getInstance(
+  // Create PathMapper
+  PathMapper pathMapper(
     config_.sourceDir,
     config_.outputDir
   );
