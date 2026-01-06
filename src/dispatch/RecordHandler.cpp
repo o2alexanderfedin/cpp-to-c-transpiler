@@ -18,6 +18,7 @@
 #include "CNodeBuilder.h"
 #include "mapping/DeclMapper.h"
 #include "mapping/TypeMapper.h"
+#include "llvm/Config/llvm-config.h" // For LLVM_VERSION_MAJOR
 #include "NameMangler.h"
 #include "clang/AST/DeclCXX.h"
 #include "clang/Index/USRGeneration.h"
@@ -180,9 +181,14 @@ void RecordHandler::handleRecord(
 
     // Create C struct (normalize class → struct)
     // Always use Struct tag (C has no classes)
+    // API change: LLVM 15 uses TTK_Struct, LLVM 16+ uses Struct (enum class)
     clang::RecordDecl* cRecord = clang::RecordDecl::Create(
         cASTContext,
+        #if LLVM_VERSION_MAJOR >= 16
         clang::TagTypeKind::Struct,
+        #else
+        clang::TTK_Struct,
+        #endif
         cASTContext.getTranslationUnitDecl(),
         clang::SourceLocation(),
         clang::SourceLocation(),
