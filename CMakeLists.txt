@@ -147,10 +147,36 @@ if(ENABLE_ASAN OR ENABLE_UBSAN OR ENABLE_TSAN OR ENABLE_MSAN)
     message(STATUS "Use scripts/run-sanitizers.sh for automated sanitizer testing")
 endif()
 
+# ============================================================================
+# LLVM Configuration - Default to LLVM 21
+# ============================================================================
+# Automatically use LLVM 21 if LLVM_DIR is not explicitly set
+if(NOT DEFINED LLVM_DIR OR LLVM_DIR STREQUAL "")
+    if(APPLE)
+        # macOS: Use Homebrew LLVM 21
+        set(LLVM_DIR "/opt/homebrew/opt/llvm/lib/cmake/llvm" CACHE PATH "LLVM CMake directory")
+        set(Clang_DIR "/opt/homebrew/opt/llvm/lib/cmake/clang" CACHE PATH "Clang CMake directory")
+        message(STATUS "Using default LLVM 21 from Homebrew: ${LLVM_DIR}")
+    elseif(UNIX)
+        # Linux: Try common LLVM 21 locations
+        if(EXISTS "/usr/lib/llvm-21/cmake")
+            set(LLVM_DIR "/usr/lib/llvm-21/cmake/llvm" CACHE PATH "LLVM CMake directory")
+            set(Clang_DIR "/usr/lib/llvm-21/cmake/clang" CACHE PATH "Clang CMake directory")
+        elseif(EXISTS "/usr/local/lib/cmake/llvm")
+            set(LLVM_DIR "/usr/local/lib/cmake/llvm" CACHE PATH "LLVM CMake directory")
+            set(Clang_DIR "/usr/local/lib/cmake/clang" CACHE PATH "Clang CMake directory")
+        endif()
+        message(STATUS "Using LLVM from: ${LLVM_DIR}")
+    endif()
+endif()
+
 # Find LLVM and Clang packages
 # Using CONFIG mode for better reliability
 find_package(LLVM REQUIRED CONFIG)
 find_package(Clang REQUIRED CONFIG)
+
+message(STATUS "Found LLVM ${LLVM_PACKAGE_VERSION}")
+message(STATUS "LLVM definitions: ${LLVM_DEFINITIONS}")
 
 # ============================================================================
 # Google Test Framework (Phase 15-01)
