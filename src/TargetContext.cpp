@@ -27,8 +27,17 @@ TargetContext::TargetContext() {
     clang::IntrusiveRefCntPtr<clang::DiagnosticIDs> DiagID(new clang::DiagnosticIDs());
     DiagOpts = std::make_unique<clang::DiagnosticOptions>();
     DiagClient = std::make_unique<clang::IgnoringDiagConsumer>();
+
+    // API change: LLVM 15 uses IntrusiveRefCntPtr, LLVM 16+ uses reference
+    #if LLVM_VERSION_MAJOR >= 16
     Diagnostics = std::make_unique<clang::DiagnosticsEngine>(
         DiagID, *DiagOpts, DiagClient.get(), /* ShouldOwnClient */ false);
+    #else
+    // LLVM 15: DiagnosticsEngine expects IntrusiveRefCntPtr for DiagnosticOptions
+    clang::IntrusiveRefCntPtr<clang::DiagnosticOptions> DiagOptsPtr(DiagOpts.get());
+    Diagnostics = std::make_unique<clang::DiagnosticsEngine>(
+        DiagID, DiagOptsPtr, DiagClient.get(), /* ShouldOwnClient */ false);
+    #endif
 
     // 3. Create SourceManager
     SourceMgr = std::make_unique<clang::SourceManager>(*Diagnostics, *FileMgr);
