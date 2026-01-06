@@ -528,7 +528,7 @@ TEST_F(VirtualMethodHandlerDispatcherTest, PureVirtualMethod) {
     ASSERT_NE(getArea, nullptr);
 
     // Verify it's pure virtual
-    EXPECT_TRUE(getArea->isPure()) << "Method should be pure virtual";
+    EXPECT_TRUE(getArea->isPureVirtual()) << "Method should be pure virtual";
     EXPECT_TRUE(getArea->isVirtual()) << "Method should be virtual";
 
     dispatcher.dispatch(cppCtx, cCtx, getArea);

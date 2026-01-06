@@ -35,8 +35,11 @@
 class TargetContext {
 private:
     // Infrastructure for independent target ASTContext
-    // NOTE: DiagClient must be declared BEFORE Diagnostics so it's destroyed AFTER
+    // NOTE: DiagClient and DiagOpts must be declared BEFORE Diagnostics so they're destroyed AFTER
+    // NOTE: TargetOpts must be declared BEFORE Target so it's destroyed AFTER
     std::unique_ptr<clang::DiagnosticConsumer> DiagClient;
+    std::unique_ptr<clang::DiagnosticOptions> DiagOpts;
+    std::unique_ptr<clang::TargetOptions> TargetOpts;
     std::unique_ptr<clang::FileManager> FileMgr;
     std::unique_ptr<clang::SourceManager> SourceMgr;
     std::unique_ptr<clang::DiagnosticsEngine> Diagnostics;

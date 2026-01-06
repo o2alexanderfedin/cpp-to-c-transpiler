@@ -160,7 +160,7 @@ void VirtualMethodHandler::handleVirtualMethod(
                 }
             }
         }
-    } else if (cppMethod->isPure()) {
+    } else if (cppMethod->isPureVirtual()) {
         llvm::outs() << "[VirtualMethodHandler] Pure virtual method (no body): " << mangledName << "\n";
     }
 
@@ -218,7 +218,7 @@ void VirtualMethodHandler::handleVirtualMethod(
                  << classDecl->getNameAsString() << "::" << cppMethod->getNameAsString()
                  << " → " << mangledName << "(struct " << classDecl->getNameAsString() << "* this, ...)"
                  << " → " << targetPath;
-    if (cppMethod->isPure()) {
+    if (cppMethod->isPureVirtual()) {
         llvm::outs() << " [PURE VIRTUAL]";
     }
     llvm::outs() << "\n";
@@ -248,7 +248,7 @@ clang::ParmVarDecl* VirtualMethodHandler::createThisParameter(
     clang::IdentifierInfo& structII = cASTContext.Idents.get(className);
     clang::RecordDecl* structDecl = clang::RecordDecl::Create(
         cASTContext,
-        clang::TTK_Struct,
+        clang::TagTypeKind::Struct,
         cASTContext.getTranslationUnitDecl(),
         clang::SourceLocation(),
         clang::SourceLocation(),

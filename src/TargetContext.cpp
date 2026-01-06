@@ -2,7 +2,7 @@
 #include "clang/Basic/DiagnosticIDs.h"
 #include "clang/Basic/DiagnosticOptions.h"
 #include "clang/Basic/FileSystemOptions.h"
-#include "llvm/Support/Host.h"
+#include "llvm/TargetParser/Host.h"
 #include "llvm/Support/raw_ostream.h"
 
 // Initialize static instance
@@ -20,19 +20,19 @@ TargetContext::TargetContext() {
     // CRITICAL: Pass ShouldOwnClient=false to prevent double-free
     // TargetContext owns DiagClient, not DiagnosticsEngine
     clang::IntrusiveRefCntPtr<clang::DiagnosticIDs> DiagID(new clang::DiagnosticIDs());
-    clang::IntrusiveRefCntPtr<clang::DiagnosticOptions> DiagOpts(new clang::DiagnosticOptions());
+    DiagOpts = std::make_unique<clang::DiagnosticOptions>();
     DiagClient = std::make_unique<clang::IgnoringDiagConsumer>();
     Diagnostics = std::make_unique<clang::DiagnosticsEngine>(
-        DiagID, DiagOpts.get(), DiagClient.get(), /* ShouldOwnClient */ false);
+        DiagID, *DiagOpts, DiagClient.get(), /* ShouldOwnClient */ false);
 
     // 3. Create SourceManager
     SourceMgr = std::make_unique<clang::SourceManager>(*Diagnostics, *FileMgr);
 
     // 4. Create TargetInfo (use host triple for C output)
     std::string TargetTriple = llvm::sys::getDefaultTargetTriple();
-    auto TargetOpts = std::make_shared<clang::TargetOptions>();
+    TargetOpts = std::make_unique<clang::TargetOptions>();
     TargetOpts->Triple = TargetTriple;
-    Target.reset(clang::TargetInfo::CreateTargetInfo(*Diagnostics, TargetOpts));
+    Target.reset(clang::TargetInfo::CreateTargetInfo(*Diagnostics, *TargetOpts));
 
     // 5. Create LangOptions for C11
     clang::LangOptions LangOpts;

@@ -6,6 +6,7 @@
 #include "dispatch/DeclRefExprHandler.h"
 #include "mapping/ExprMapper.h"
 #include "mapping/DeclMapper.h"
+#include "clang/AST/ASTContext.h"
 #include "clang/AST/Expr.h"
 #include "clang/AST/Decl.h"
 #include "llvm/Support/Casting.h"
@@ -69,6 +70,21 @@ void DeclRefExprHandler::handleDeclRefExpr(
     clang::ValueDecl* cValueDecl = llvm::dyn_cast<clang::ValueDecl>(cDecl);
     assert(cValueDecl && "Declaration must be ValueDecl for DeclRefExpr");
 
+    // Check if original C++ declaration was a reference type
+    // If so, we need to wrap the DeclRefExpr with a dereference operator
+    bool needsDereference = false;
+    clang::QualType resultType = cppDeclRef->getType();
+
+    // Check if this is a parameter with reference type
+    if (const auto* cppParmVar = llvm::dyn_cast<clang::ParmVarDecl>(cppDecl)) {
+        clang::QualType cppParamType = cppParmVar->getType();
+        if (cppParamType->isLValueReferenceType() || cppParamType->isRValueReferenceType()) {
+            needsDereference = true;
+            // The result type should be the pointee type (without reference)
+            resultType = cppParamType.getNonReferenceType();
+        }
+    }
+
     // Create C DeclRefExpr
     clang::DeclRefExpr* cDeclRef = clang::DeclRefExpr::Create(
         cASTContext,
@@ -77,15 +93,35 @@ void DeclRefExprHandler::handleDeclRefExpr(
         cValueDecl,
         false,                            // refersToEnclosingVariableOrCapture
         clang::SourceLocation(),          // Location
-        cppDeclRef->getType(),            // Type (may need translation in future)
+        needsDereference ? cASTContext.getPointerType(resultType) : resultType,
         clang::VK_LValue                  // Value kind
     );
+
+    clang::Expr* resultExpr = cDeclRef;
+
+    // If this was a reference parameter, wrap with dereference operator
+    if (needsDereference) {
+        llvm::outs() << "[DeclRefExprHandler] Parameter was reference type, wrapping with dereference: "
+                     << cppDecl->getNameAsString() << "\n";
+
+        resultExpr = clang::UnaryOperator::Create(
+            cASTContext,
+            cDeclRef,
+            clang::UO_Deref,
+            resultType,
+            clang::VK_LValue,
+            clang::OK_Ordinary,
+            clang::SourceLocation(),
+            false,  // canOverflow
+            clang::FPOptionsOverride()
+        );
+    }
 
     llvm::outs() << "[DeclRefExprHandler] Translated DeclRefExpr: "
                  << cppDecl->getNameAsString() << "\n";
 
     // Store mapping in ExprMapper
-    exprMapper.setCreated(E, cDeclRef);
+    exprMapper.setCreated(E, resultExpr);
 }
 
 } // namespace cpptoc

@@ -64,8 +64,15 @@ void VariableHandler::handleVariable(
     clang::QualType cppType = cppVar->getType();
     clang::StorageClass storageClass = cppVar->getStorageClass();
 
+    // Determine scope EARLY (we need this to decide on name mangling)
+    const clang::DeclContext* parentContext = cppVar->getDeclContext();
+    bool isGlobalScope = llvm::isa<clang::TranslationUnitDecl>(parentContext);
+    bool isStaticLocal = !isGlobalScope && (storageClass == clang::SC_Static);
+
     llvm::outs() << "[VariableHandler] Translating variable: " << name
-                 << " (type: " << cppType.getAsString() << ")\n";
+                 << " (type: " << cppType.getAsString()
+                 << ", isGlobal: " << isGlobalScope
+                 << ", isStaticLocal: " << isStaticLocal << ")\n";
 
     // Dispatch type via TypeHandler (handles reference → pointer conversion)
     // For reference types, TypeHandler will create pointer types
@@ -108,6 +115,28 @@ void VariableHandler::handleVariable(
         }
     }
 
+    // Mangle name for static local variables
+    // Static locals need unique names when hoisted to global scope
+    // Format: functionName__varName
+    std::string mangledName = name;
+    if (isStaticLocal) {
+        // Find the enclosing function
+        const clang::FunctionDecl* enclosingFunc = nullptr;
+        const clang::DeclContext* ctx = parentContext;
+        while (ctx && !enclosingFunc) {
+            enclosingFunc = llvm::dyn_cast<clang::FunctionDecl>(ctx);
+            ctx = ctx->getParent();
+        }
+
+        if (enclosingFunc) {
+            mangledName = enclosingFunc->getNameAsString() + "__" + name;
+            llvm::outs() << "[VariableHandler] Static local variable mangled: "
+                         << name << " → " << mangledName << "\n";
+        } else {
+            llvm::errs() << "[VariableHandler] Warning: Could not find enclosing function for static local\n";
+        }
+    }
+
     // Translate storage class
     clang::StorageClass cStorageClass = translateStorageClass(storageClass);
 
@@ -135,15 +164,27 @@ void VariableHandler::handleVariable(
         }
     }
 
-    // Determine scope (global vs local)
-    const clang::DeclContext* parentContext = cppVar->getDeclContext();
-    bool isGlobalScope = llvm::isa<clang::TranslationUnitDecl>(parentContext);
-
     // Determine target DeclContext
+    // CRITICAL: Static local variables MUST be hoisted to global scope
+    // They retain their value between function calls, so they act like globals
     clang::DeclContext* cDeclContext;
-    if (isGlobalScope) {
-        cDeclContext = cASTContext.getTranslationUnitDecl();
-        llvm::outs() << "[VariableHandler] Global scope variable\n";
+    if (isGlobalScope || isStaticLocal) {
+        // CRITICAL FIX: For global variables, use PathMapper to get the correct C TU
+        // Don't use cASTContext.getTranslationUnitDecl() - that's the root TU, not the per-file TU!
+        // This matches the pattern used by FunctionHandler, MethodHandler, etc.
+        std::string targetPath = disp.getCurrentTargetPath();
+        if (targetPath.empty()) {
+            targetPath = disp.getTargetPath(cppASTContext, D);
+        }
+        cpptoc::PathMapper& pathMapper = disp.getPathMapper();
+        cDeclContext = pathMapper.getOrCreateTU(targetPath);
+        if (isStaticLocal) {
+            llvm::outs() << "[VariableHandler] Static local variable hoisted to global scope (PathMapper TU for: "
+                         << targetPath << ")\n";
+        } else {
+            llvm::outs() << "[VariableHandler] Global scope variable (using PathMapper TU for: "
+                         << targetPath << ")\n";
+        }
     } else {
         // For local variables, find the translated parent function
         // DeclContext might be null or might not be a Decl, so use dyn_cast_or_null
@@ -154,19 +195,29 @@ void VariableHandler::handleVariable(
                 cDeclContext = llvm::cast<clang::DeclContext>(translatedParent);
                 llvm::outs() << "[VariableHandler] Local scope variable (parent found)\n";
             } else {
-                // Fallback to global scope
-                cDeclContext = cASTContext.getTranslationUnitDecl();
-                llvm::outs() << "[VariableHandler] Warning: Parent not a DeclContext, using global scope\n";
+                // Fallback to global scope - use PathMapper here too
+                std::string targetPath = disp.getCurrentTargetPath();
+                if (targetPath.empty()) {
+                    targetPath = disp.getTargetPath(cppASTContext, D);
+                }
+                cpptoc::PathMapper& pathMapper = disp.getPathMapper();
+                cDeclContext = pathMapper.getOrCreateTU(targetPath);
+                llvm::outs() << "[VariableHandler] Warning: Parent not a DeclContext, using PathMapper TU\n";
             }
         } else {
-            // Fallback to global scope
-            cDeclContext = cASTContext.getTranslationUnitDecl();
-            llvm::outs() << "[VariableHandler] Warning: Parent not translated, using global scope\n";
+            // Fallback to global scope - use PathMapper here too
+            std::string targetPath = disp.getCurrentTargetPath();
+            if (targetPath.empty()) {
+                targetPath = disp.getTargetPath(cppASTContext, D);
+            }
+            cpptoc::PathMapper& pathMapper = disp.getPathMapper();
+            cDeclContext = pathMapper.getOrCreateTU(targetPath);
+            llvm::outs() << "[VariableHandler] Warning: Parent not translated, using PathMapper TU\n";
         }
     }
 
-    // Create identifier for variable name
-    clang::IdentifierInfo& II = cASTContext.Idents.get(name);
+    // Create identifier for variable name (use mangled name for static locals)
+    clang::IdentifierInfo& II = cASTContext.Idents.get(mangledName);
 
     // Create C variable
     clang::VarDecl* cVar = clang::VarDecl::Create(
@@ -187,13 +238,17 @@ void VariableHandler::handleVariable(
         cVar->setInit(cInitExpr);
     }
 
-    // IMPORTANT: For global variables, add to TU. For local variables, DON'T add to DeclContext
-    // Local variables are owned by the DeclStmt, not the function's decl list
-    if (isGlobalScope) {
+    // IMPORTANT: For global variables and static locals, add to TU.
+    // For regular local variables, DON'T add to DeclContext - they're owned by the DeclStmt
+    if (isGlobalScope || isStaticLocal) {
         cDeclContext->addDecl(cVar);
-        llvm::outs() << "[VariableHandler] Added global variable to TU\n";
+        if (isStaticLocal) {
+            llvm::outs() << "[VariableHandler] Added static local variable to TU (hoisted to global)\n";
+        } else {
+            llvm::outs() << "[VariableHandler] Added global variable to TU\n";
+        }
     } else {
-        // Local variable - don't add to function's decl list (it's in the DeclStmt)
+        // Regular local variable - don't add to function's decl list (it's in the DeclStmt)
         llvm::outs() << "[VariableHandler] Local variable - not added to function decl list\n";
     }
 
@@ -208,7 +263,7 @@ void VariableHandler::handleVariable(
     cpptoc::PathMapper& pathMapper = disp.getPathMapper();
     pathMapper.setNodeLocation(cVar, targetPath);
 
-    llvm::outs() << "[VariableHandler] Created C variable: " << name
+    llvm::outs() << "[VariableHandler] Created C variable: " << mangledName
                  << " (type: " << cType.getAsString() << ")\n";
 }
 
@@ -304,7 +359,7 @@ clang::Expr* VariableHandler::translateInitializer(
             charType,
             llvm::APInt(32, length + 1),  // +1 for null terminator
             nullptr,
-            clang::ArrayType::Normal,  // LLVM 15 uses ArrayType::Normal
+            clang::ArraySizeModifier::Normal,
             0
         );
         return clang::StringLiteral::Create(

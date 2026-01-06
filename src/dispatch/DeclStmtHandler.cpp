@@ -64,9 +64,28 @@ void DeclStmtHandler::handleDeclStmt(
         clang::Decl* cDecl = declMapper.getCreated(cppDecl);
 
         if (cDecl) {
-            cDecls.push_back(cDecl);
-            llvm::outs() << "[DeclStmtHandler] Declaration translated: "
-                         << cppDecl->getDeclKindName() << "\n";
+            // CRITICAL: Skip static local variables that were hoisted to global scope
+            // They should not appear in the function's DeclStmt
+            // How to detect: C++ VarDecl had static storage, C VarDecl is at global scope
+            bool isHoistedStatic = false;
+            if (auto* cppVar = llvm::dyn_cast<clang::VarDecl>(cppDecl)) {
+                if (cppVar->getStorageClass() == clang::SC_Static) {
+                    // Check if C decl is at global scope (TranslationUnit)
+                    if (auto* cVar = llvm::dyn_cast<clang::VarDecl>(cDecl)) {
+                        if (llvm::isa<clang::TranslationUnitDecl>(cVar->getDeclContext())) {
+                            isHoistedStatic = true;
+                            llvm::outs() << "[DeclStmtHandler] Skipping hoisted static local: "
+                                         << cppVar->getNameAsString() << "\n";
+                        }
+                    }
+                }
+            }
+
+            if (!isHoistedStatic) {
+                cDecls.push_back(cDecl);
+                llvm::outs() << "[DeclStmtHandler] Declaration translated: "
+                             << cppDecl->getDeclKindName() << "\n";
+            }
         } else {
             llvm::errs() << "[DeclStmtHandler] ERROR: Declaration not in DeclMapper after successful dispatch\n";
         }

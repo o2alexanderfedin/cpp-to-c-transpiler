@@ -7,10 +7,13 @@
 #include "clang/AST/Decl.h"
 #include "clang/AST/DeclCXX.h"  // For CXXMethodDecl
 #include "clang/AST/Stmt.h"
+#include "clang/AST/StmtCXX.h"  // For ForStmt
 #include "clang/AST/Expr.h"  // Bug #21: For Expr and RecoveryExpr
 #include "clang/AST/ExprCXX.h"  // For CXXMemberCallExpr
 #include "clang/AST/ASTContext.h"
 #include "clang/Basic/SourceManager.h"  // Story #23: For #line directives
+#include <vector>  // For multi-dimensional array handling
+#include <string>  // For std::to_string
 
 using namespace clang;
 using namespace llvm;
@@ -68,6 +71,7 @@ PrintingPolicy CodeGenerator::createC99Policy(ASTContext &Ctx) {
     Policy.SuppressSpecifiers = false;  // Keep type specifiers
     Policy.IncludeTagDefinition = false;  // DON'T expand struct definitions in types (Phase 28 fix)
     Policy.Indentation = 4;  // 4-space indentation (standard C style)
+    Policy.PolishForDeclaration = true;  // Include initializers in variable declarations
 
     // DRY: Reuse Clang's well-tested policy defaults for everything else
     return Policy;
@@ -122,11 +126,17 @@ void CodeGenerator::printDecl(Decl *D, bool declarationOnly) {
         // When declarationOnly=false, skip struct definitions (already in header)
     } else if (auto *VD = dyn_cast<VarDecl>(D)) {
         // Bug #35 FIX: Skip ONLY local variables (they belong in function bodies)
-        // Global variables MUST be emitted
-        if (VD->isLocalVarDecl()) {
+        // Global variables MUST be emitted, including hoisted static locals
+        // Check DeclContext instead of isLocalVarDecl() - hoisted statics are at TU level
+        if (VD->isLocalVarDecl() && !isa<TranslationUnitDecl>(VD->getDeclContext())) {
             llvm::outs() << "[Bug #35] Skipping local VarDecl at top level: "
                          << VD->getNameAsString() << "\n";
             return;
+        }
+        // If it's at TU level, emit it even if isLocalVarDecl() returns true (hoisted static)
+        if (isa<TranslationUnitDecl>(VD->getDeclContext())) {
+            llvm::outs() << "[CodeGenerator] Emitting global/hoisted VarDecl: "
+                         << VD->getNameAsString() << "\n";
         }
 
         // Emit global variable
@@ -139,17 +149,10 @@ void CodeGenerator::printDecl(Decl *D, bool declarationOnly) {
             }
         } else {
             // Implementation file: emit full definition with initializer
-            if (VD->getStorageClass() == SC_Static) {
-                OS << "static ";
-            }
-            printCType(VD->getType());
-            OS << " " << VD->getNameAsString();
-
-            // Print initializer if present
-            if (VD->hasInit()) {
-                OS << " = ";
-                printExpr(VD->getInit());
-            }
+            // CRITICAL FIX: For array types, we can't use printCType() + name
+            // because C syntax requires: int arr[5], not int[5] arr
+            // Use Clang's built-in printer which handles this correctly
+            VD->print(OS, Policy);
             OS << ";\n";
         }
     } else {
@@ -192,7 +195,7 @@ void CodeGenerator::printStmt(Stmt *S, unsigned Indent) {
         OS << std::string(Indent, '\t') << "return";
         if (Expr *RetValue = RS->getRetValue()) {
             OS << " ";
-            printStmt(RetValue, 0);  // Print the return expression
+            printExpr(RetValue);  // Use printExpr, not printStmt, to avoid extra semicolon
         }
         OS << ";\n";
         return;
@@ -278,20 +281,32 @@ void CodeGenerator::printStmt(Stmt *S, unsigned Indent) {
 
             if (VarDecl *VD = dyn_cast<VarDecl>(D)) {
                 // BUG FIX: Handle array types correctly (int arr[5] not int[5] arr)
+                // CRITICAL: Handle multi-dimensional arrays (int arr[2][3] not int[3] arr[2])
                 QualType VarType = VD->getType();
 
                 if (const ArrayType *AT = VarType->getAsArrayTypeUnsafe()) {
-                    // For array types, print: element_type name[size]
-                    QualType ElementType = AT->getElementType();
+                    // For array types, print: element_type name[size1][size2]...
+                    // Get the element type recursively and collect all dimensions
+                    QualType ElementType = VarType;
+                    std::vector<std::string> dimensions;
+
+                    // Collect all dimensions from outermost to innermost
+                    while (const ArrayType *CurrentAT = ElementType->getAsArrayTypeUnsafe()) {
+                        if (const ConstantArrayType *CAT = dyn_cast<ConstantArrayType>(CurrentAT)) {
+                            dimensions.push_back("[" + std::to_string(CAT->getSize().getZExtValue()) + "]");
+                        } else {
+                            // Incomplete array type: int arr[]
+                            dimensions.push_back("[]");
+                        }
+                        ElementType = CurrentAT->getElementType();
+                    }
+
+                    // Print: element_type name[dim1][dim2]...
                     printCType(ElementType);
                     OS << " " << VD->getNameAsString();
-
-                    // Print array dimensions
-                    if (const ConstantArrayType *CAT = dyn_cast<ConstantArrayType>(AT)) {
-                        OS << "[" << CAT->getSize().getZExtValue() << "]";
-                    } else {
-                        // Incomplete array type: int arr[]
-                        OS << "[]";
+                    // Print dimensions in order
+                    for (const std::string& dim : dimensions) {
+                        OS << dim;
                     }
                 } else {
                     // Non-array type: print normally
@@ -363,6 +378,61 @@ void CodeGenerator::printStmt(Stmt *S, unsigned Indent) {
             }
             return;
         }
+    }
+
+    // Handle ForStmt manually to avoid extra semicolons after closing brace
+    if (ForStmt *FS = dyn_cast<ForStmt>(S)) {
+        OS << std::string(Indent, '\t') << "for (";
+
+        // Print initialization
+        if (Stmt *Init = FS->getInit()) {
+            if (DeclStmt *DS = dyn_cast<DeclStmt>(Init)) {
+                // Print declaration without newline/indentation
+                bool first = true;
+                for (auto *D : DS->decls()) {
+                    if (!first) OS << ", ";
+                    first = false;
+                    if (VarDecl *VD = dyn_cast<VarDecl>(D)) {
+                        printCType(VD->getType());
+                        OS << " " << VD->getNameAsString();
+                        if (VD->hasInit()) {
+                            OS << " = ";
+                            printExpr(VD->getInit());
+                        }
+                    }
+                }
+            } else {
+                // Expression initialization
+                printExpr(dyn_cast<Expr>(Init));
+            }
+        }
+        OS << "; ";
+
+        // Print condition
+        if (Expr *Cond = FS->getCond()) {
+            printExpr(Cond);
+        }
+        OS << "; ";
+
+        // Print increment
+        if (Expr *Inc = FS->getInc()) {
+            printExpr(Inc);
+        }
+        OS << ") ";
+
+        // Print body
+        if (Stmt *Body = FS->getBody()) {
+            if (isa<CompoundStmt>(Body)) {
+                printStmt(Body, Indent);
+            } else {
+                OS << "{\n";
+                printStmt(Body, Indent + 1);
+                OS << std::string(Indent, '\t') << "}\n";
+            }
+        } else {
+            OS << "{}\n";
+        }
+        return;
     }
 
     // Bug #42 fix: Handle BinaryOperator manually to use printExpr for C-compatible syntax
@@ -718,10 +788,67 @@ void CodeGenerator::printFunctionSignature(FunctionDecl *FD) {
         // Phase 35-02: Convert C++ reference parameters to C pointers
         // Phase 35-03: Add 'struct' prefix for class/struct parameters
         QualType ParamType = convertToCType(Param->getType());
-        printCType(ParamType);
 
-        if (!Param->getNameAsString().empty()) {
-            OS << " " << Param->getNameAsString();
+        // CRITICAL FIX: Handle array types specially
+        // In C, array parameters have special syntax: int arr[][3] not int (*)[3] arr
+        // NOTE: Clang represents "int arr[][3]" as "int (*)[3]" (pointer to array)
+        // We need to detect this and convert back to array syntax
+
+        QualType ElementType = ParamType;
+        std::vector<std::string> dimensions;
+        bool isArrayParam = false;
+
+        // Check if it's a pointer-to-array (canonical form of multi-dim array parameter)
+        if (const PointerType *PT = ParamType->getAs<PointerType>()) {
+            QualType PointeeType = PT->getPointeeType();
+            if (const ArrayType *AT = PointeeType->getAsArrayTypeUnsafe()) {
+                // This is pointer-to-array: int (*)[3]
+                // Convert to: int [][3]
+                isArrayParam = true;
+                dimensions.push_back("[]");  // First dimension is always empty for params
+                ElementType = PointeeType;
+
+                // Collect remaining array dimensions
+                while (const ArrayType *CurrentAT = ElementType->getAsArrayTypeUnsafe()) {
+                    if (const ConstantArrayType *CAT = dyn_cast<ConstantArrayType>(CurrentAT)) {
+                        dimensions.push_back("[" + std::to_string(CAT->getSize().getZExtValue()) + "]");
+                    } else {
+                        dimensions.push_back("[]");
+                    }
+                    ElementType = CurrentAT->getElementType();
+                }
+            }
+        }
+        // Also check for direct array types (less common for parameters)
+        else if (const ArrayType *AT = ParamType->getAsArrayTypeUnsafe()) {
+            isArrayParam = true;
+            // Collect all dimensions
+            while (const ArrayType *CurrentAT = ElementType->getAsArrayTypeUnsafe()) {
+                if (const ConstantArrayType *CAT = dyn_cast<ConstantArrayType>(CurrentAT)) {
+                    dimensions.push_back("[" + std::to_string(CAT->getSize().getZExtValue()) + "]");
+                } else {
+                    dimensions.push_back("[]");
+                }
+                ElementType = CurrentAT->getElementType();
+            }
+        }
+
+        if (isArrayParam) {
+            // Print: element_type name[dim1][dim2]...
+            printCType(ElementType);
+            if (!Param->getNameAsString().empty()) {
+                OS << " " << Param->getNameAsString();
+            }
+            // Print dimensions in order
+            for (const std::string& dim : dimensions) {
+                OS << dim;
+            }
+        } else {
+            // Non-array parameter: use normal printing
+            printCType(ParamType);
+            if (!Param->getNameAsString().empty()) {
+                OS << " " << Param->getNameAsString();
+            }
         }
     }
     OS << ")";

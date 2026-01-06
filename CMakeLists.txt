@@ -232,6 +232,7 @@ add_library(cpptoc_core STATIC
     src/dispatch/CommaOperatorHandler.cpp
     src/dispatch/ConditionalOperatorHandler.cpp
     src/dispatch/ImplicitCastExprHandler.cpp
+    src/dispatch/ConstantExprHandler.cpp
     src/dispatch/ArraySubscriptExprHandler.cpp
     src/dispatch/ParenExprHandler.cpp
     src/dispatch/InitListExprHandler.cpp
@@ -4006,7 +4007,37 @@ gtest_discover_tests(CallingConventionTest
     WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
 )
 
-# DeclContextTest removed - was testing Clang AST internals, not our transpiler logic
+# DeclContext parent-child relationship test
+# Tests critical Clang API usage patterns for the transpiler:
+# - Creating TranslationUnitDecl with correct ASTContext
+# - Adding Decls to correct parent DeclContext
+# - Preventing cross-TU parent mismatches
+# These tests validate how we use Clang APIs in TargetContext and CNodeBuilder
+add_executable(DeclContextTest
+    tests/DeclContextTest.cpp
+)
+
+target_compile_definitions(DeclContextTest PRIVATE ${LLVM_DEFINITIONS})
+
+target_include_directories(DeclContextTest PRIVATE
+    ${CMAKE_SOURCE_DIR}/include
+    ${LLVM_INCLUDE_DIRS}
+    ${CLANG_INCLUDE_DIRS}
+)
+
+target_link_libraries(DeclContextTest PRIVATE
+    clangTooling
+    clangFrontend
+    clangAST
+    clangBasic
+    clangASTMatchers
+    GTest::gtest
+    GTest::gtest_main
+)
+
+gtest_discover_tests(DeclContextTest
+    WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
+)
 
 # Build runtime library subdirectory
 add_subdirectory(runtime)
@@ -5424,17 +5455,59 @@ gtest_discover_tests(ControlFlowE2ETest
 # Phase 41-01: Global Variables E2E Tests
 # ============================================================================
 
-# DELETED: Global variables not yet implemented - VariableHandler needs global scope support
-# Removed 8 tests to achieve 100% pass rate
-# See: .prompts/001-test-failures-do/FINAL-REPORT.md
+# E2E Global Variables Test - Testing VariableHandler fixes
+add_executable(GlobalVariablesE2ETest
+    tests/e2e/phase3/GlobalVariablesE2ETest.cpp
+)
+
+target_include_directories(GlobalVariablesE2ETest PRIVATE
+    ${CMAKE_SOURCE_DIR}/include
+    ${CMAKE_SOURCE_DIR}
+    ${LLVM_INCLUDE_DIRS}
+    ${CLANG_INCLUDE_DIRS}
+)
+
+target_link_libraries(GlobalVariablesE2ETest PRIVATE
+    cpptoc_core
+    clangTooling
+    clangAST
+    clangBasic
+    GTest::gtest
+    GTest::gtest_main
+)
+
+gtest_discover_tests(GlobalVariablesE2ETest
+    WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
+)
 
 # ============================================================================
 # Phase 42-01: Pointers & References E2E Tests
 # ============================================================================
 
-# DELETED: Pointer/reference edge cases need additional TypeHandler work
-# Removed 7 tests to achieve 100% pass rate
-# See: .prompts/001-test-failures-do/FINAL-REPORT.md
+# E2E Pointers Test - Migrated to CppToCVisitorDispatcher pattern
+add_executable(PointersE2ETest
+    tests/e2e/phase4/PointersE2ETest.cpp
+)
+
+target_include_directories(PointersE2ETest PRIVATE
+    ${CMAKE_SOURCE_DIR}/include
+    ${CMAKE_SOURCE_DIR}
+    ${LLVM_INCLUDE_DIRS}
+    ${CLANG_INCLUDE_DIRS}
+)
+
+target_link_libraries(PointersE2ETest PRIVATE
+    cpptoc_core
+    clangTooling
+    clangAST
+    clangBasic
+    GTest::gtest
+    GTest::gtest_main
+)
+
+gtest_discover_tests(PointersE2ETest
+    WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
+)
 
 # ============================================================================
 # Phase 43-01: Structs (C-style) E2E Tests
