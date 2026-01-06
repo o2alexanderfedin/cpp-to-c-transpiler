@@ -22,7 +22,7 @@ concurrency:
 env:
   REGRESSION_THRESHOLD: ${{ github.event.inputs.threshold || '5.0' }}
   BUILD_TYPE: Release
-  LLVM_VERSION: 15
+  LLVM_VERSION: 21
 
 jobs:
   benchmark:
