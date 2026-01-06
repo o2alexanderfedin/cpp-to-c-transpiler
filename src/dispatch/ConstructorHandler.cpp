@@ -126,7 +126,10 @@ void ConstructorHandler::handleConstructor(
     declMapper.setCreated(ctor, cFunc);
 
     // Get target path and add to C TranslationUnit
-    std::string targetPath = disp.getTargetPath(cppASTContext, D);
+    std::string targetPath = disp.getCurrentTargetPath();  // Use current path set by TranslationUnitHandler
+    if (targetPath.empty()) {
+        targetPath = disp.getTargetPath(cppASTContext, D);
+    }
     cpptoc::PathMapper& pathMapper = disp.getPathMapper();
     clang::TranslationUnitDecl* cTargetTU = pathMapper.getOrCreateTU(targetPath);
     assert(cTargetTU && "Failed to get/create C TranslationUnit");

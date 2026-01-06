@@ -1,6 +1,6 @@
 #include "main.h"
 
-const char * stateToString(GameState state) {
+const char * stateToString(enum GameState state) {
 	switch (state) 	{
 	}
 

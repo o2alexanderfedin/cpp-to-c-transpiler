@@ -1,6 +1,7 @@
 #include "ExpressionEvaluator.h"
 
 void ExpressionEvaluator__advance__void(struct ExpressionEvaluator * this) {
+	operator=(this->currentToken, nextToken(&this->tokenizer));
 }
 
 int ExpressionEvaluator__parseFactor__void(struct ExpressionEvaluator * this) {
@@ -18,7 +19,7 @@ int ExpressionEvaluator__parseFactor__void(struct ExpressionEvaluator * this) {
 int ExpressionEvaluator__parseTerm__void(struct ExpressionEvaluator * this) {
 	int left = ExpressionEvaluator__parseFactor__void(&this);
 	while (this->currentToken.type == Multiply || this->currentToken.type == Divide) 	{
-		TokenType op = this->currentToken.type;
+		enum TokenType op = this->currentToken.type;
 		ExpressionEvaluator__advance__void(&this);
 		int right = ExpressionEvaluator__parseFactor__void(&this);
 		if (op == Multiply) 		{
@@ -41,7 +42,7 @@ int ExpressionEvaluator__evaluate__constcharptr(struct ExpressionEvaluator * thi
 	ExpressionEvaluator__advance__void(&this);
 	int result = ExpressionEvaluator__parseTerm__void(&this);
 	while (this->currentToken.type == Plus || this->currentToken.type == Minus) 	{
-		TokenType op = this->currentToken.type;
+		enum TokenType op = this->currentToken.type;
 		ExpressionEvaluator__advance__void(&this);
 		int right = ExpressionEvaluator__parseTerm__void(&this);
 		if (op == Plus) 		{

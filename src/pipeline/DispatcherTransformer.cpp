@@ -39,6 +39,7 @@
 #include "dispatch/CXXThisExprHandler.h"
 #include "dispatch/CompoundLiteralExprHandler.h"
 #include "dispatch/ExprWithCleanupsHandler.h"
+#include "dispatch/MaterializeTemporaryExprHandler.h"
 #include "dispatch/InitListExprHandler.h"
 #include "dispatch/CompoundStmtHandler.h"
 #include "dispatch/ReturnStmtHandler.h"
@@ -136,6 +137,7 @@ void DispatcherTransformer::transform(
   CXXThisExprHandler::registerWith(dispatcher);
   CompoundLiteralExprHandler::registerWith(dispatcher);
   ExprWithCleanupsHandler::registerWith(dispatcher);
+  MaterializeTemporaryExprHandler::registerWith(dispatcher);
   ThrowExprHandler::registerWith(dispatcher);
   IfStmtHandler::registerWith(dispatcher);
   SwitchStmtHandler::registerWith(dispatcher);

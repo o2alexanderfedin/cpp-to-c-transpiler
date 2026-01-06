@@ -1,6 +1,6 @@
 #include "CollisionDetector.h"
 
-bool CollisionDetector__checkCollision__constEntityref_constEntityref(const struct Entity * a, const struct Entity * b) {
+bool CollisionDetector__checkCollision__constclassEntityref_constclassEntityref(const struct Entity * a, const struct Entity * b) {
 	float aLeft = Entity_getX(&a);
 	float aRight = Entity_getX(&a) + Entity_getWidth(&a);
 	float aTop = Entity_getY(&a);
@@ -13,7 +13,7 @@ bool CollisionDetector__checkCollision__constEntityref_constEntityref(const stru
 ;
 }
 
-bool CollisionDetector__pointInside__float_float_constEntityref(float px, float py, const struct Entity * entity) {
+bool CollisionDetector__pointInside__float_float_constclassEntityref(float px, float py, const struct Entity * entity) {
 	return px >= Entity_getX(&entity) && px <= Entity_getX(&entity) + Entity_getWidth(&entity) && py >= Entity_getY(&entity) && py <= Entity_getY(&entity) + Entity_getHeight(&entity);
 ;
 }

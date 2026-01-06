@@ -1,10 +1,10 @@
 #pragma once
 
 struct StateMachine {
-	GameState currentState;
+	enum GameState currentState;
 	int transitionCount;
 };
-void StateMachine__transition__GameState(struct StateMachine * this, GameState newState);
-GameState StateMachine__getCurrentState__void(struct StateMachine * this);
+void StateMachine__transition__enumGameState(struct StateMachine * this, enum GameState newState);
+enum GameState StateMachine__getCurrentState__void(struct StateMachine * this);
 int StateMachine__getTransitionCount__void(struct StateMachine * this);
-bool StateMachine__isValidTransition__GameState_GameState(struct StateMachine * this, GameState from, GameState to);
+bool StateMachine__isValidTransition__enumGameState_enumGameState(struct StateMachine * this, enum GameState from, enum GameState to);

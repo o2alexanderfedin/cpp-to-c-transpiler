@@ -121,6 +121,9 @@ TEST(NamespaceHandlerDispatcherTest, Registration) {
     NamespaceDecl* cppNS = findNamespace(TU, "MyApp");
     ASSERT_NE(cppNS, nullptr);
 
+    // Set current target path for file origin check
+    dispatcher.setCurrentTargetPath("input");
+
     bool handled = dispatcher.dispatch(cppCtx, cCtx, cppNS);
     EXPECT_TRUE(handled);
 
@@ -159,6 +162,9 @@ TEST(NamespaceHandlerDispatcherTest, BasicNamespace) {
     NamespaceDecl* cppNS = findNamespace(TU, "MyApp");
     ASSERT_NE(cppNS, nullptr);
     EXPECT_EQ(cppNS->getNameAsString(), "MyApp");
+
+    // Set current target path for file origin check
+    dispatcher.setCurrentTargetPath("input");
 
     bool handled = dispatcher.dispatch(cppCtx, cCtx, cppNS);
     ASSERT_TRUE(handled);
@@ -205,6 +211,9 @@ TEST(NamespaceHandlerDispatcherTest, NestedNamespaces) {
     ASSERT_NE(cppNS_A, nullptr);
 
     // Dispatch outer namespace A
+    // Set current target path for file origin check
+    dispatcher.setCurrentTargetPath("input");
+
     bool handled_A = dispatcher.dispatch(cppCtx, cCtx, cppNS_A);
     ASSERT_TRUE(handled_A);
     EXPECT_TRUE(declMapper.hasCreated(cppNS_A));
@@ -262,6 +271,9 @@ TEST(NamespaceHandlerDispatcherTest, Cpp17NestedNamespaceSyntax) {
     ASSERT_NE(cppNS_A, nullptr);
 
     // Dispatch outer namespace
+    // Set current target path for file origin check
+    dispatcher.setCurrentTargetPath("input");
+
     bool handled = dispatcher.dispatch(cppCtx, cCtx, cppNS_A);
     ASSERT_TRUE(handled);
 
@@ -325,6 +337,9 @@ TEST(NamespaceHandlerDispatcherTest, AnonymousNamespace) {
     ASSERT_NE(cppNS, nullptr);
     EXPECT_TRUE(cppNS->isAnonymousNamespace());
 
+    // Set current target path for file origin check
+    dispatcher.setCurrentTargetPath("input");
+
     bool handled = dispatcher.dispatch(cppCtx, cCtx, cppNS);
     ASSERT_TRUE(handled);
 
@@ -374,6 +389,9 @@ TEST(NamespaceHandlerDispatcherTest, FunctionInNamespace) {
     ASSERT_NE(cppNS, nullptr);
 
     // Dispatch namespace (should recursively dispatch function)
+    // Set current target path for file origin check
+    dispatcher.setCurrentTargetPath("input");
+
     bool handled = dispatcher.dispatch(cppCtx, cCtx, cppNS);
     ASSERT_TRUE(handled);
 
@@ -437,6 +455,9 @@ TEST(NamespaceHandlerDispatcherTest, ClassInNamespace) {
     ASSERT_NE(cppNS, nullptr);
 
     // Dispatch namespace (should recursively dispatch struct)
+    // Set current target path for file origin check
+    dispatcher.setCurrentTargetPath("input");
+
     bool handled = dispatcher.dispatch(cppCtx, cCtx, cppNS);
     ASSERT_TRUE(handled);
 
@@ -491,11 +512,17 @@ TEST(NamespaceHandlerDispatcherTest, DuplicateDetection) {
     ASSERT_NE(cppNS, nullptr);
 
     // First dispatch
+    // Set current target path for file origin check
+    dispatcher.setCurrentTargetPath("input");
+
     bool handled1 = dispatcher.dispatch(cppCtx, cCtx, cppNS);
     ASSERT_TRUE(handled1);
     EXPECT_TRUE(declMapper.hasCreated(cppNS));
 
     // Second dispatch should detect duplicate and return early
+    // Set current target path for file origin check
+    dispatcher.setCurrentTargetPath("input");
+
     bool handled2 = dispatcher.dispatch(cppCtx, cCtx, cppNS);
     EXPECT_TRUE(handled2);
 

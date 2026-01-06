@@ -1,12 +1,10 @@
 /**
  * @file ExprWithCleanupsHandler.cpp
- * @brief Implementation of ExprWithCleanupsHandler
+ * @brief Implementation of ExprWithCleanupsHandler dispatcher pattern
  */
 
 #include "dispatch/ExprWithCleanupsHandler.h"
-#include "mapping/StmtMapper.h"
 #include "mapping/ExprMapper.h"
-#include "clang/AST/ASTContext.h"
 #include "clang/AST/Expr.h"
 #include "clang/AST/ExprCXX.h"
 #include "llvm/Support/Casting.h"
@@ -16,59 +14,73 @@
 namespace cpptoc {
 
 void ExprWithCleanupsHandler::registerWith(CppToCVisitorDispatcher& dispatcher) {
+    // Cast to ExprPredicate and ExprVisitor to avoid ambiguity
     dispatcher.addHandler(
-        static_cast<CppToCVisitorDispatcher::StmtPredicate>(&ExprWithCleanupsHandler::canHandle),
-        static_cast<CppToCVisitorDispatcher::StmtVisitor>(&ExprWithCleanupsHandler::handleExprWithCleanups)
+        static_cast<CppToCVisitorDispatcher::ExprPredicate>(&ExprWithCleanupsHandler::canHandle),
+        static_cast<CppToCVisitorDispatcher::ExprVisitor>(&ExprWithCleanupsHandler::handleExprWithCleanups)
     );
 }
 
-bool ExprWithCleanupsHandler::canHandle(const clang::Stmt* S) {
-    assert(S && "Statement must not be null");
-    return S->getStmtClass() == clang::Stmt::ExprWithCleanupsClass;
+bool ExprWithCleanupsHandler::canHandle(const clang::Expr* E) {
+    assert(E && "Expression must not be null");
+
+    // Use exact type matching with getStmtClass
+    return E->getStmtClass() == clang::Stmt::ExprWithCleanupsClass;
 }
 
 void ExprWithCleanupsHandler::handleExprWithCleanups(
     const CppToCVisitorDispatcher& disp,
     const clang::ASTContext& cppASTContext,
     clang::ASTContext& cASTContext,
-    const clang::Stmt* S
+    const clang::Expr* E
 ) {
-    assert(S && "Statement must not be null");
-    assert(canHandle(S) && "Must be ExprWithCleanups");
+    assert(E && "Expression must not be null");
+    assert(canHandle(E) && "Expression must be ExprWithCleanups");
 
-    const auto* cppCleanups = llvm::cast<clang::ExprWithCleanups>(S);
+    const auto* cppCleanups = llvm::cast<clang::ExprWithCleanups>(E);
     cpptoc::ExprMapper& exprMapper = disp.getExprMapper();
-    cpptoc::StmtMapper& stmtMapper = disp.getStmtMapper();
 
     // Check if already processed
-    if (exprMapper.hasCreated(llvm::cast<clang::Expr>(S))) {
-        llvm::outs() << "[ExprWithCleanupsHandler] Already translated, skipping\n";
+    if (exprMapper.hasCreated(cppCleanups)) {
+        llvm::outs() << "[ExprWithCleanupsHandler] ExprWithCleanups already translated, skipping\n";
         return;
     }
 
     llvm::outs() << "[ExprWithCleanupsHandler] Processing ExprWithCleanups\n";
-    llvm::outs() << "[ExprWithCleanupsHandler] Note: C doesn't have RAII cleanup, using subexpression directly\n";
+    llvm::outs() << "[ExprWithCleanupsHandler] Note: C doesn't have RAII cleanup, unwrapping to subexpression\n";
 
-    // Get the subexpression (the actual expression without cleanup)
+    // Extract subexpression (the actual expression without cleanup wrapper)
     const clang::Expr* cppSubExpr = cppCleanups->getSubExpr();
+    assert(cppSubExpr && "ExprWithCleanups must have subexpression");
 
-    // Dispatch subexpression
-    bool handled = disp.dispatch(cppASTContext, cASTContext, const_cast<clang::Expr*>(cppSubExpr));
+    // CRITICAL: Dispatch subexpression via dispatcher (recursive)
+    llvm::outs() << "[ExprWithCleanupsHandler] Dispatching subexpression (type: "
+                 << cppSubExpr->getStmtClassName() << ")\n";
+    bool subExprHandled = disp.dispatch(
+        cppASTContext,
+        cASTContext,
+        const_cast<clang::Expr*>(cppSubExpr)
+    );
 
-    if (!handled) {
-        llvm::errs() << "[ExprWithCleanupsHandler] ERROR: Subexpression not handled\n";
+    // Retrieve translated subexpression from ExprMapper
+    clang::Expr* cSubExpr = exprMapper.getCreated(cppSubExpr);
+
+    if (!cSubExpr) {
+        llvm::errs() << "[ExprWithCleanupsHandler] ERROR: Failed to retrieve translated subexpression\n";
         llvm::errs() << "  Subexpression type: " << cppSubExpr->getStmtClassName() << "\n";
-        assert(false && "Subexpression must be handled");
+        llvm::errs() << "  Was handled: " << (subExprHandled ? "yes" : "no") << "\n";
+        assert(false && "ExprWithCleanups subexpression must be translated");
     }
 
-    clang::Expr* cSubExpr = exprMapper.getCreated(cppSubExpr);
-    assert(cSubExpr && "Subexpression must be in ExprMapper");
+    llvm::outs() << "[ExprWithCleanupsHandler] Subexpression translated successfully\n";
 
-    llvm::outs() << "[ExprWithCleanupsHandler] Using subexpression directly (cleanup actions omitted in C)\n";
+    // CRITICAL: Map ExprWithCleanups directly to translated subexpression
+    // This unwraps the cleanup wrapper since C doesn't support RAII
+    // The outer ExprWithCleanups node transparently passes through to the inner expression
+    llvm::outs() << "[ExprWithCleanupsHandler] Mapping ExprWithCleanups directly to subexpression (transparent unwrap)\n";
+    exprMapper.setCreated(cppCleanups, cSubExpr);
 
-    // Store the subexpression directly (ExprWithCleanups is just a wrapper)
-    exprMapper.setCreated(llvm::cast<clang::Expr>(S), cSubExpr);
-    stmtMapper.setCreated(S, cSubExpr);
+    llvm::outs() << "[ExprWithCleanupsHandler] ExprWithCleanups successfully unwrapped\n";
 }
 
 } // namespace cpptoc

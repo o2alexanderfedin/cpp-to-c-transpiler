@@ -1,22 +1,22 @@
 #include "Vector3D.h"
 
-struct Vector3D Vector3D__add__constVector3Dref(struct Vector3D * this, const struct Vector3D * other) {
-	return (struct Vector3D){this->x + other.x, this->y + other.y, this->z + other.z};
+struct Vector3D Vector3D__add__constclassVector3Dref(struct Vector3D * this, const struct Vector3D * other) {
+	return (struct Vector3D){(struct Vector3D){this->x + other.x, this->y + other.y, this->z + other.z}};
 ;
 }
 
-struct Vector3D Vector3D__subtract__constVector3Dref(struct Vector3D * this, const struct Vector3D * other) {
-	return (struct Vector3D){this->x - other.x, this->y - other.y, this->z - other.z};
+struct Vector3D Vector3D__subtract__constclassVector3Dref(struct Vector3D * this, const struct Vector3D * other) {
+	return (struct Vector3D){(struct Vector3D){this->x - other.x, this->y - other.y, this->z - other.z}};
 ;
 }
 
-float Vector3D__dot__constVector3Dref(struct Vector3D * this, const struct Vector3D * other) {
+float Vector3D__dot__constclassVector3Dref(struct Vector3D * this, const struct Vector3D * other) {
 	return this->x * other.x + this->y * other.y + this->z * other.z;
 ;
 }
 
-struct Vector3D Vector3D__cross__constVector3Dref(struct Vector3D * this, const struct Vector3D * other) {
-	return (struct Vector3D){this->y * other.z - this->z * other.y, this->z * other.x - this->x * other.z, this->x * other.y - this->y * other.x};
+struct Vector3D Vector3D__cross__constclassVector3Dref(struct Vector3D * this, const struct Vector3D * other) {
+	return (struct Vector3D){(struct Vector3D){this->y * other.z - this->z * other.y, this->z * other.x - this->x * other.z, this->x * other.y - this->y * other.x}};
 ;
 }
 

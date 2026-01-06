@@ -532,7 +532,9 @@ void CodeGenerator::printDeclWithLineDirective(Decl *D) {
     }
 
     // Print the declaration (with or without #line)
-    printDecl(D);
+    // Structs need declarationOnly=true (they go in headers)
+    bool isStruct = (D && llvm::isa<clang::RecordDecl>(D));
+    printDecl(D, isStruct);
 }
 
 // Print entire translation unit
@@ -545,7 +547,10 @@ void CodeGenerator::printTranslationUnit(TranslationUnitDecl *TU) {
         // Skip implicit declarations (e.g., built-in types)
         // YAGNI: Only print what we actually need
         if (!D->isImplicit()) {
-            printDecl(D);
+            // Structs and enums need declarationOnly=true to be printed
+            // (they were originally designed to go in headers, but in E2E tests we put everything in one file)
+            bool isStructOrEnum = llvm::isa<clang::RecordDecl>(D) || llvm::isa<clang::EnumDecl>(D);
+            printDecl(D, isStructOrEnum);
         }
     }
 }

@@ -10,7 +10,7 @@ std::string CppToCVisitorDispatcher::getTargetPath(const clang::ASTContext& cppA
     return declLocationMapper.getTargetPath(cppASTContext, D);
 }
 
-void CppToCVisitorDispatcher::setCurrentTargetPath(const std::string& targetPath) {
+void CppToCVisitorDispatcher::setCurrentTargetPath(const std::string& targetPath) const {
     currentTargetPath_ = targetPath;
 }
 

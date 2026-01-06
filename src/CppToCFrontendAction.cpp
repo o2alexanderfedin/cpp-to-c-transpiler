@@ -42,6 +42,7 @@
 #include "dispatch/CXXThisExprHandler.h"
 #include "dispatch/CompoundLiteralExprHandler.h"
 #include "dispatch/ExprWithCleanupsHandler.h"
+#include "dispatch/MaterializeTemporaryExprHandler.h"
 #include "dispatch/InitListExprHandler.h"
 #include "dispatch/IfStmtHandler.h"
 #include "dispatch/SwitchStmtHandler.h"
@@ -147,6 +148,7 @@ public:
     cpptoc::CXXThisExprHandler::registerWith(dispatcher);
     cpptoc::CompoundLiteralExprHandler::registerWith(dispatcher);
     cpptoc::ExprWithCleanupsHandler::registerWith(dispatcher);
+    cpptoc::MaterializeTemporaryExprHandler::registerWith(dispatcher);
     cpptoc::IfStmtHandler::registerWith(dispatcher);
     cpptoc::SwitchStmtHandler::registerWith(dispatcher);
     cpptoc::ForStmtHandler::registerWith(dispatcher);
@@ -168,6 +170,8 @@ public:
     dispatcher.dispatch(Context, cCtx, TU);
 
     // Generate C code using CodeGenerator
+    // TODO: This should use C ASTContext (cCtx), but currently uses C++ Context
+    // because CodeGenerator's type checking doesn't work correctly with separate contexts
     std::string headerContent;
     std::string implContent;
     llvm::raw_string_ostream headerOS(headerContent);

@@ -1,4 +1,4 @@
 #pragma once
 
-const char * stateToString(GameState state);
+const char * stateToString(enum GameState state);
 int main();

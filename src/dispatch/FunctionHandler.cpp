@@ -149,8 +149,14 @@ void FunctionHandler::handleFunction(
         llvm::outs() << "[FunctionHandler] Function body successfully attached to: " << name << "\n";
     }
 
-    // Get target path for this C++ source file
-    std::string targetPath = disp.getTargetPath(cppASTContext, D);
+    // Get current target path (set by TranslationUnitHandler)
+    // IMPORTANT: Use getCurrentTargetPath() instead of getTargetPath()
+    // All declarations from the same source file should go to the same TU
+    // TranslationUnitHandler sets the current path before dispatching children
+    std::string targetPath = disp.getCurrentTargetPath();
+    if (targetPath.empty()) {
+        targetPath = disp.getTargetPath(cppASTContext, D);
+    }
 
     // Get or create C TranslationUnit for this target file
     cpptoc::PathMapper& pathMapper = disp.getPathMapper();

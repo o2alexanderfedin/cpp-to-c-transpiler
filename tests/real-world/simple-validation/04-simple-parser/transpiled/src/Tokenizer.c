@@ -19,13 +19,13 @@ int Tokenizer__parseNumber__void(struct Tokenizer * this) {
 struct Token Tokenizer__nextToken__void(struct Tokenizer * this) {
 	Tokenizer__skipWhitespace__void(&this);
 	if (this->input[this->position] == '\x00') 	{
-		return (Token)(Token){EndOfInput, 0};
+		return (struct Token){(struct Token)(struct Token){EndOfInput, 0}};
 ;
 	}
 
 	if (isdigit(this->input[this->position])) 	{
 		int value = Tokenizer__parseNumber__void(&this);
-		return (Token){Number, value};
+		return (struct Token){(struct Token){Number, value}};
 ;
 	}
 

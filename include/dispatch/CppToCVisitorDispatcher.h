@@ -149,7 +149,8 @@ private:
     cpptoc::StmtMapper& stmtMapper;
 
     // Current target path context (which source file is currently being transpiled)
-    std::string currentTargetPath_;
+    // Mutable because handlers need to update context even when dispatcher is const
+    mutable std::string currentTargetPath_;
 
 public:
     /**
@@ -222,8 +223,9 @@ public:
      *
      * Should be called at the start of processing each source file, so all declarations
      * encountered during that source file's processing get added to the correct C_TU.
+     * Const-qualified because it modifies mutable context state (not logical constness).
      */
-    void setCurrentTargetPath(const std::string& targetPath);
+    void setCurrentTargetPath(const std::string& targetPath) const;
 
     /**
      * @brief Get the current target path (which source file is being transpiled)

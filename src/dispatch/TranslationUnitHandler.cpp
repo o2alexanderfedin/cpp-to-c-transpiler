@@ -33,6 +33,11 @@ void TranslationUnitHandler::handleTranslationUnit(
     // Get C target path from dispatcher (uses AST node's actual location)
     std::string targetPath = disp.getTargetPath(cppASTContext, D);
 
+    // Set current target path so child handlers know which file is being processed
+    // CRITICAL: This must be set BEFORE dispatching child declarations
+    // RecordHandler, EnumHandler, etc. use getCurrentTargetPath() for file origin filtering
+    disp.setCurrentTargetPath(targetPath);
+
     // Get or create C TranslationUnit for this target file
     cpptoc::PathMapper& pathMapper = disp.getPathMapper();
     clang::TranslationUnitDecl* cTU = pathMapper.getOrCreateTU(targetPath);
