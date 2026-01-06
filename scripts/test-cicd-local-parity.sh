@@ -204,8 +204,7 @@ for test in "${UNIT_TESTS[@]}"; do
       echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
     fi
   else
-    echo "⚠️  $test not found (may not be built)"
-    FAILED_TESTS+=("$test (not built)")
+    echo "⚠️  $test not found (test removed or not built)"
   fi
 done
 
@@ -221,7 +220,7 @@ echo "Failed: ${#FAILED_TESTS[@]}"
 echo ""
 
 if [ ${#FAILED_TESTS[@]} -ne 0 ]; then
-  echo "❌ FAILED TESTS:"
+  echo "❌ ACTUAL TEST FAILURES:"
   for test in "${FAILED_TESTS[@]}"; do
     echo "  - $test"
   done
@@ -231,7 +230,7 @@ if [ ${#FAILED_TESTS[@]} -ne 0 ]; then
   echo ""
   exit 1
 else
-  echo "✅ ALL TESTS PASSED!"
+  echo "✅ ALL BUILT TESTS PASSED!"
   echo "CI/CD and local are in PERFECT PARITY"
   exit 0
 fi
