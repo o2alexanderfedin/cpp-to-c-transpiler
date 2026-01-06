@@ -21,27 +21,27 @@ echo ""
 # ============================================================================
 echo "Step 1: Validating environment..."
 
-# Check LLVM 15 availability
-if ! command -v /opt/homebrew/opt/llvm@15/bin/clang &> /dev/null; then
-    echo "❌ ERROR: LLVM 15 not found"
-    echo "CI/CD uses LLVM 15, but local environment has different version"
+# Check LLVM 21 availability
+if ! command -v /opt/homebrew/opt/llvm/bin/clang &> /dev/null; then
+    echo "❌ ERROR: LLVM 21 not found"
+    echo "CI/CD uses LLVM 21, but local environment has different version"
     echo ""
-    echo "Install LLVM 15:"
-    echo "  brew install llvm@15"
+    echo "Install LLVM 21:"
+    echo "  brew install llvm"
     echo ""
     echo "Then run this script again."
     exit 1
 fi
 
-# Verify we're using LLVM 15 (not 21)
-LLVM_VERSION=$(/opt/homebrew/opt/llvm@15/bin/clang --version | head -1)
+# Verify we're using LLVM 21
+LLVM_VERSION=$(/opt/homebrew/opt/llvm/bin/clang --version | head -1)
 echo "Using: $LLVM_VERSION"
-if [[ ! "$LLVM_VERSION" =~ "15." ]]; then
-    echo "❌ ERROR: Must use LLVM 15 to match CI/CD"
+if [[ ! "$LLVM_VERSION" =~ "21." ]]; then
+    echo "❌ ERROR: Must use LLVM 21 to match CI/CD"
     exit 1
 fi
 
-echo "✓ LLVM 15 verified"
+echo "✓ LLVM 21 verified"
 
 # ============================================================================
 # CLEAN BUILD (eliminate stale state)
@@ -65,16 +65,16 @@ echo "Step 3: Configuring with EXACT CI/CD flags..."
 
 # EXACT environment variables from CI/CD
 export BUILD_TYPE=Release
-export LLVM_VERSION=15
-export LLVM_DIR=/opt/homebrew/opt/llvm@15/lib/cmake/llvm
-export Clang_DIR=/opt/homebrew/opt/llvm@15/lib/cmake/clang
+export LLVM_VERSION=21
+export LLVM_DIR=/opt/homebrew/opt/llvm/lib/cmake/llvm
+export Clang_DIR=/opt/homebrew/opt/llvm/lib/cmake/clang
 
 cmake -B build \
   -DCMAKE_BUILD_TYPE=Release \
-  -DLLVM_DIR=/opt/homebrew/opt/llvm@15/lib/cmake/llvm \
-  -DClang_DIR=/opt/homebrew/opt/llvm@15/lib/cmake/clang \
-  -DCMAKE_CXX_COMPILER=/opt/homebrew/opt/llvm@15/bin/clang++ \
-  -DCMAKE_C_COMPILER=/opt/homebrew/opt/llvm@15/bin/clang
+  -DLLVM_DIR=/opt/homebrew/opt/llvm/lib/cmake/llvm \
+  -DClang_DIR=/opt/homebrew/opt/llvm/lib/cmake/clang \
+  -DCMAKE_CXX_COMPILER=/opt/homebrew/opt/llvm/bin/clang++ \
+  -DCMAKE_C_COMPILER=/opt/homebrew/opt/llvm/bin/clang
 
 if [ $? -ne 0 ]; then
     echo "❌ CMake configuration FAILED"

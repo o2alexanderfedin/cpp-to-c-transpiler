@@ -13,7 +13,7 @@ concurrency:
 
 env:
   BUILD_TYPE: Release
-  LLVM_VERSION: 15
+  LLVM_VERSION: 21
 
 jobs:
   # Fast unit tests on Linux (main platform)
