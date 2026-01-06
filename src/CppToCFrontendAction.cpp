@@ -80,18 +80,19 @@ public:
     : InputFilename(filename), SourceDir(sourceDir) {}
 
   void HandleTranslationUnit(clang::ASTContext& Context) override {
-    // Setup target context for C AST
-    TargetContext& targetCtx = TargetContext::getInstance();
+    // RAII: Create TargetContext instance for this transpilation session
+    // Must be created BEFORE mappers since they may depend on it
+    TargetContext targetCtx;
     clang::ASTContext& cCtx = targetCtx.getContext();
 
-    // PathMapper Integration: Get singleton PathMapper instance
+    // PathMapper Integration: Get output directory configuration
     std::string outputDir = getOutputDir();
     if (outputDir.empty()) {
       outputDir = ".";
     }
 
-    // Create PathMapper instance
-    cpptoc::PathMapper pathMapper(SourceDir, outputDir);
+    // Create PathMapper instance with dependency injection
+    cpptoc::PathMapper pathMapper(targetCtx, SourceDir, outputDir);
 
     // Map source file to target path and get/create C_TU
     std::string targetPath = pathMapper.mapSourceToTarget(InputFilename);

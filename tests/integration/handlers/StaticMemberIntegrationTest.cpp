@@ -35,6 +35,8 @@ std::unique_ptr<ASTUnit> buildAST(const char *code) {
 // Helper to create test context
 struct TestContext {
     std::unique_ptr<ASTUnit> cAST;
+    // RAII: TargetContext must be created BEFORE PathMapper
+    std::unique_ptr<TargetContext> targetContext;
     // All mappers use RAII pattern
     std::unique_ptr<PathMapper> pathMapper;
     std::unique_ptr<DeclLocationMapper> declLocationMapper;
@@ -54,8 +56,11 @@ TestContext createTestContext() {
         throw std::runtime_error("Failed to create C context");
     }
 
-    // Create mappers using RAII pattern
-    ctx.pathMapper = std::make_unique<PathMapper>("/tmp/test_source", "/tmp/test_output");
+    // RAII: Create TargetContext FIRST (before PathMapper that depends on it)
+    ctx.targetContext = std::make_unique<TargetContext>();
+
+    // Create mappers using RAII pattern with dependency injection
+    ctx.pathMapper = std::make_unique<PathMapper>(*ctx.targetContext, "/tmp/test_source", "/tmp/test_output");
     ctx.declLocationMapper = std::make_unique<DeclLocationMapper>(*ctx.pathMapper);
     ctx.declMapper = std::make_unique<DeclMapper>();
     ctx.typeMapper = std::make_unique<TypeMapper>();

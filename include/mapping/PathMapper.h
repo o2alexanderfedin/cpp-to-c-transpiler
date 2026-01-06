@@ -59,29 +59,32 @@ class PathMapper {
 public:
   /**
    * @brief Public constructor for RAII pattern
+   * @param targetCtx Reference to TargetContext instance (dependency injection)
    * @param sourceDir Source root directory (e.g., "/src")
    * @param outputDir Output root directory (e.g., "/output")
    *
    * **RAII Pattern**: Each test creates its own PathMapper instance
+   * **Dependency Injection**: Receives TargetContext by reference (non-owning)
    * **Thread Safety**: Each thread/test has isolated instance - fully thread-safe
    * **Lifetime**: Automatically cleaned up when object goes out of scope
    *
    * Example:
    * ```cpp
-   * auto pathMapper = std::make_unique<PathMapper>("/src", "/output");
+   * TargetContext targetCtx;
+   * auto pathMapper = std::make_unique<PathMapper>(targetCtx, "/src", "/output");
    * // Use pathMapper...
    * // Automatic cleanup when unique_ptr goes out of scope
    * ```
    */
-  PathMapper(const std::string& sourceDir, const std::string& outputDir);
+  PathMapper(TargetContext& targetCtx, const std::string& sourceDir, const std::string& outputDir);
 
-  // Prevent copying (use move semantics or unique_ptr instead)
+  // Prevent copying (contains reference member)
   PathMapper(const PathMapper&) = delete;
   PathMapper& operator=(const PathMapper&) = delete;
 
-  // Allow move semantics for modern C++
-  PathMapper(PathMapper&&) = default;
-  PathMapper& operator=(PathMapper&&) = default;
+  // Prevent moving (contains reference member - references can't be reseated)
+  PathMapper(PathMapper&&) = delete;
+  PathMapper& operator=(PathMapper&&) = delete;
 
   /**
    * @brief Map a source file path to its target output path

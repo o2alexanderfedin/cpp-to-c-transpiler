@@ -86,7 +86,7 @@ protected:
         if (!AST) return nullptr;
 
         cppCtx = &AST->getASTContext();
-        TargetContext& targetCtx = TargetContext::getInstance();
+        TargetContext targetCtx;
         cCtx = &targetCtx.getContext();
 
         PathMapper mapper("/src", "/output");
@@ -152,7 +152,7 @@ TEST_F(FunctionHandlerTest, EmptyFunction) {
     ASSERT_NE(AST, nullptr) << "Failed to parse C++ code";
 
     clang::ASTContext& cppCtx = AST->getASTContext();
-    TargetContext& targetCtx = TargetContext::getInstance();
+    TargetContext targetCtx;
     clang::ASTContext& cCtx = targetCtx.getContext();
 
     // Create mapping utilities
@@ -219,7 +219,7 @@ TEST_F(FunctionHandlerTest, FunctionWithIntReturn) {
     ASSERT_NE(AST, nullptr);
 
     clang::ASTContext& cppCtx = AST->getASTContext();
-    TargetContext& targetCtx = TargetContext::getInstance();
+    TargetContext targetCtx;
     clang::ASTContext& cCtx = targetCtx.getContext();
 
     PathMapper mapper("/src", "/output");
@@ -278,7 +278,7 @@ TEST_F(FunctionHandlerTest, FunctionWithFloatReturn) {
     ASSERT_NE(AST, nullptr);
 
     clang::ASTContext& cppCtx = AST->getASTContext();
-    TargetContext& targetCtx = TargetContext::getInstance();
+    TargetContext targetCtx;
     clang::ASTContext& cCtx = targetCtx.getContext();
 
     PathMapper mapper("/src", "/output");

@@ -7,9 +7,9 @@
 namespace fs = std::filesystem;
 namespace cpptoc {
 
-// Public constructor for RAII pattern
-PathMapper::PathMapper(const std::string& sourceDir, const std::string& outputDir)
-    : targetCtx_(TargetContext::getInstance()),
+// Public constructor for RAII pattern with dependency injection
+PathMapper::PathMapper(TargetContext& targetCtx, const std::string& sourceDir, const std::string& outputDir)
+    : targetCtx_(targetCtx),
       sourceDir_(sourceDir),
       outputDir_(outputDir) {
   llvm::outs() << "[PathMapper] Initialized:\n";

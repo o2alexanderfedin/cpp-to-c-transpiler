@@ -142,13 +142,14 @@ public:
         : Context(Context), CStream(CStream), HStream(HStream), Filename(Filename) {}
 
     void HandleTranslationUnit(clang::ASTContext &Context) override {
-        // Setup target context for C AST
-        TargetContext& targetCtx = TargetContext::getInstance();
+        // RAII: Create TargetContext instance for this transpilation session
+        // Must be created BEFORE mappers since they may depend on it
+        TargetContext targetCtx;
         clang::ASTContext& cCtx = targetCtx.getContext();
 
         // RAII: Create mapper instances for this transpilation session
         // These will be automatically cleaned up when HandleTranslationUnit exits
-        cpptoc::PathMapper mapper(".", ".");
+        cpptoc::PathMapper mapper(targetCtx, ".", ".");
         cpptoc::DeclLocationMapper locMapper(mapper);
         cpptoc::DeclMapper declMapper;
         cpptoc::TypeMapper typeMapper;

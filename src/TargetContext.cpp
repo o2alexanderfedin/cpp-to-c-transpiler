@@ -5,9 +5,6 @@
 #include "llvm/TargetParser/Host.h"
 #include "llvm/Support/raw_ostream.h"
 
-// Initialize static instance
-TargetContext* TargetContext::instance = nullptr;
-
 TargetContext::TargetContext() {
     llvm::outs() << "[Bug #30 FIX] Creating independent target ASTContext for C output...\n";
 
@@ -102,34 +99,6 @@ TargetContext::~TargetContext() {
 
     // Other members will be destroyed automatically in reverse declaration order:
     // Builtins, Selectors, Idents, Target, SourceMgr, FileMgr, DiagClient
-}
-
-TargetContext& TargetContext::getInstance() {
-    if (!instance) {
-        instance = new TargetContext();
-    }
-    return *instance;
-}
-
-void TargetContext::cleanup() {
-    // Bug #31 FIX: Clean up singleton before program exit
-    // This is called via atexit handler to ensure proper cleanup order
-    if (instance) {
-        delete instance;
-        instance = nullptr;
-    }
-}
-
-void TargetContext::reset() {
-    // Reset all maps for test isolation
-    // Keeps singleton alive to avoid dangling references in PathMapper
-    ctorMap.clear();
-    methodMap.clear();
-    dtorMap.clear();
-    nodeToLocation.clear();
-    globalEnums.clear();
-    globalStructs.clear();
-    globalTypedefs.clear();
 }
 
 // Phase 1.1: Node tracking and deduplication methods

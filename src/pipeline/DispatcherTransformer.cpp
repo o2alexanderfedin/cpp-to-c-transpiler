@@ -63,19 +63,19 @@ namespace cpptoc {
 namespace pipeline {
 
 DispatcherTransformer::DispatcherTransformer(const PipelineConfig& config)
-  : config_(config) {}
+  : config_(config), targetCtx_() {}
 
 void DispatcherTransformer::transform(
     clang::ASTContext& cppASTContext,
     clang::TranslationUnitDecl* cppTU,
     const std::string& sourceFilePath) {
 
-  // Get singletons
-  TargetContext& targetCtx = TargetContext::getInstance();
-  clang::ASTContext& cCtx = targetCtx.getContext();
+  // Get C AST context from owned TargetContext instance
+  clang::ASTContext& cCtx = targetCtx_.getContext();
 
-  // Create PathMapper
+  // Create PathMapper with dependency injection
   PathMapper pathMapper(
+    targetCtx_,
     config_.sourceDir,
     config_.outputDir
   );
@@ -159,7 +159,7 @@ void DispatcherTransformer::transform(
 }
 
 TargetContext& DispatcherTransformer::getTargetContext() {
-  return TargetContext::getInstance();
+  return targetCtx_;
 }
 
 }} // namespace cpptoc::pipeline

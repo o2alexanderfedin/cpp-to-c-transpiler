@@ -57,6 +57,9 @@ using namespace cpptoc;
 class CXXTypeidExprHandlerTest : public ::testing::Test {
 protected:
     std::unique_ptr<ASTUnit> cppAST;
+    std::unique_ptr<TargetContext> targetCtx;
+    std::unique_ptr<PathMapper> pathMapper;
+    std::unique_ptr<DeclLocationMapper> locMapper;
     DeclMapper declMapper;
     TypeMapper typeMapper;
     ExprMapper exprMapper;
@@ -74,17 +77,15 @@ protected:
         cppAST = tooling::buildASTFromCodeWithArgs(cppCode, args);
         ASSERT_TRUE(cppAST) << "Failed to parse C++ code";
 
-        // Get target context (singleton C AST)
-        TargetContext& targetCtx = TargetContext::getInstance();
-
-        // Get PathMapper singleton
-        PathMapper pathMapper("/src", "/output");
-        DeclLocationMapper locMapper(pathMapper);
+        // RAII: Create fresh instances for test isolation
+        targetCtx = std::make_unique<TargetContext>();
+        pathMapper = std::make_unique<PathMapper>(*targetCtx, "/src", "/output");
+        locMapper = std::make_unique<DeclLocationMapper>(*pathMapper);
 
         // Create dispatcher
         dispatcher = std::make_unique<CppToCVisitorDispatcher>(
-            pathMapper,
-            locMapper,
+            *pathMapper,
+            *locMapper,
             declMapper,
             typeMapper,
             exprMapper,
@@ -149,7 +150,7 @@ protected:
     }
 
     ASTContext& getCppContext() { return cppAST->getASTContext(); }
-    ASTContext& getCContext() { return TargetContext::getInstance().getContext(); }
+    ASTContext& getCContext() { return targetCtx->getContext(); }
 };
 
 /**
