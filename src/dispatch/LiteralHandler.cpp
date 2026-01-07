@@ -87,11 +87,15 @@ clang::Expr* LiteralHandler::createIntegerLiteral(
 ) {
     assert(cppLit && "IntegerLiteral must not be null");
 
+    clang::SourceLocation targetLoc = cASTContext.getSourceManager().getLocForStartOfFile(
+        cASTContext.getSourceManager().getFileID(cppLit->getBeginLoc())
+    );
+
     clang::Expr* cLiteral = clang::IntegerLiteral::Create(
         cASTContext,
         cppLit->getValue(),
         cppLit->getType(),
-        clang::SourceLocation()
+        targetLoc
     );
 
     llvm::outs() << "[LiteralHandler] Translated IntegerLiteral: "
@@ -106,12 +110,16 @@ clang::Expr* LiteralHandler::createFloatingLiteral(
 ) {
     assert(cppLit && "FloatingLiteral must not be null");
 
+    clang::SourceLocation targetLoc = cASTContext.getSourceManager().getLocForStartOfFile(
+        cASTContext.getSourceManager().getFileID(cppLit->getBeginLoc())
+    );
+
     clang::Expr* cLiteral = clang::FloatingLiteral::Create(
         cASTContext,
         cppLit->getValue(),
         cppLit->isExact(),
         cppLit->getType(),
-        clang::SourceLocation()
+        targetLoc
     );
 
     llvm::outs() << "[LiteralHandler] Translated FloatingLiteral\n";
@@ -125,13 +133,17 @@ clang::Expr* LiteralHandler::createStringLiteral(
 ) {
     assert(cppLit && "StringLiteral must not be null");
 
+    clang::SourceLocation targetLoc = cASTContext.getSourceManager().getLocForStartOfFile(
+        cASTContext.getSourceManager().getFileID(cppLit->getBeginLoc())
+    );
+
     clang::Expr* cLiteral = clang::StringLiteral::Create(
         cASTContext,
         cppLit->getString(),
         cppLit->getKind(),
         cppLit->isPascal(),
         cppLit->getType(),
-        clang::SourceLocation()
+        targetLoc
     );
 
     llvm::outs() << "[LiteralHandler] Translated StringLiteral: \""
@@ -146,11 +158,15 @@ clang::Expr* LiteralHandler::createCharacterLiteral(
 ) {
     assert(cppLit && "CharacterLiteral must not be null");
 
+    clang::SourceLocation targetLoc = cASTContext.getSourceManager().getLocForStartOfFile(
+        cASTContext.getSourceManager().getFileID(cppLit->getBeginLoc())
+    );
+
     clang::Expr* cLiteral = new (cASTContext) clang::CharacterLiteral(
         cppLit->getValue(),
         cppLit->getKind(),
         cppLit->getType(),
-        clang::SourceLocation()
+        targetLoc
     );
 
     llvm::outs() << "[LiteralHandler] Translated CharacterLiteral: '"
@@ -165,6 +181,10 @@ clang::Expr* LiteralHandler::createBoolLiteral(
 ) {
     assert(cppLit && "CXXBoolLiteralExpr must not be null");
 
+    clang::SourceLocation targetLoc = cASTContext.getSourceManager().getLocForStartOfFile(
+        cASTContext.getSourceManager().getFileID(cppLit->getBeginLoc())
+    );
+
     // In C, booleans are represented as integers (0 or 1)
     // Create IntegerLiteral for C compatibility
     llvm::APInt boolValue(32, cppLit->getValue() ? 1 : 0);
@@ -172,7 +192,7 @@ clang::Expr* LiteralHandler::createBoolLiteral(
         cASTContext,
         boolValue,
         cASTContext.IntTy,
-        clang::SourceLocation()
+        targetLoc
     );
 
     llvm::outs() << "[LiteralHandler] Translated CXXBoolLiteralExpr to int: "

@@ -215,12 +215,15 @@ clang::ParmVarDecl* InstanceMethodHandler::createThisParameter(
 
     // Create struct type with properly mangled class name
     clang::IdentifierInfo& structII = cASTContext.Idents.get(className);
+    clang::SourceLocation targetLoc = cASTContext.getSourceManager().getLocForStartOfFile(
+        cASTContext.getSourceManager().getFileID(classDecl->getBeginLoc())
+    );
     clang::RecordDecl* structDecl = clang::RecordDecl::Create(
         cASTContext,
         clang::TagTypeKind::Struct,  // LLVM 15 uses TTK_Struct instead of TTK_Struct
         cASTContext.getTranslationUnitDecl(),
-        clang::SourceLocation(),
-        clang::SourceLocation(),
+        targetLoc,
+        targetLoc,
         &structII
     );
 
@@ -233,8 +236,8 @@ clang::ParmVarDecl* InstanceMethodHandler::createThisParameter(
     clang::ParmVarDecl* thisParam = clang::ParmVarDecl::Create(
         cASTContext,
         nullptr,  // DeclContext set later by FunctionDecl
-        clang::SourceLocation(),
-        clang::SourceLocation(),
+        targetLoc,
+        targetLoc,
         &thisII,
         pointerType,
         cASTContext.getTrivialTypeSourceInfo(pointerType),
