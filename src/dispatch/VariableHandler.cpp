@@ -7,6 +7,7 @@
  */
 
 #include "dispatch/VariableHandler.h"
+#include "dispatch/TypeHandler.h"
 #include "CNodeBuilder.h"
 #include "mapping/DeclMapper.h"
 #include "mapping/PathMapper.h"
@@ -74,46 +75,11 @@ void VariableHandler::handleVariable(
                  << ", isGlobal: " << isGlobalScope
                  << ", isStaticLocal: " << isStaticLocal << ")\n";
 
-    // Dispatch type via TypeHandler (handles reference → pointer conversion)
-    // For reference types, TypeHandler will create pointer types
-    // For other types, it passes through
-    cpptoc::TypeMapper& typeMapper = disp.getTypeMapper();
+    // Translate type via TypeHandler (handles all type conversions including reference → pointer)
+    clang::QualType cType = TypeHandler::translateType(cppType, cppASTContext, cASTContext);
 
-    // Check if type is already translated
-    clang::QualType cType;
-    if (typeMapper.hasCreated(cppType.getTypePtr())) {
-        cType = typeMapper.getCreated(cppType.getTypePtr());
-        llvm::outs() << "[VariableHandler] Using cached translated type: "
-                     << cType.getAsString() << "\n";
-    } else {
-        // Dispatch type to TypeHandler
-        // TypeHandler will handle reference types (T& → T*, T&& → T*)
-        const clang::Type* cppTypePtr = cppType.getTypePtr();
-
-        // For reference types, dispatch to TypeHandler
-        if (llvm::isa<clang::LValueReferenceType>(cppTypePtr) ||
-            llvm::isa<clang::RValueReferenceType>(cppTypePtr)) {
-
-            // TypeHandler should have been registered and will handle this
-            // It will store the translated type in TypeMapper
-            disp.dispatch(cppASTContext, cASTContext, const_cast<clang::Type*>(cppTypePtr));
-
-            // Retrieve translated type
-            if (typeMapper.hasCreated(cppTypePtr)) {
-                cType = typeMapper.getCreated(cppTypePtr);
-                llvm::outs() << "[VariableHandler] Type translated by TypeHandler: "
-                             << cppType.getAsString() << " → " << cType.getAsString() << "\n";
-            } else {
-                // TypeHandler didn't translate (shouldn't happen for reference types)
-                llvm::errs() << "[VariableHandler] Warning: TypeHandler didn't translate reference type\n";
-                cType = cppType;
-            }
-        } else {
-            // For non-reference types, pass through unchanged
-            cType = cppType;
-            llvm::outs() << "[VariableHandler] Type passed through: " << cType.getAsString() << "\n";
-        }
-    }
+    llvm::outs() << "[VariableHandler] Translated variable type: "
+                 << cppType.getAsString() << " → " << cType.getAsString() << "\n";
 
     // Mangle name for static local variables
     // Static locals need unique names when hoisted to global scope
