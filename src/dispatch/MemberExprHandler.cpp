@@ -6,6 +6,7 @@
 #include "dispatch/MemberExprHandler.h"
 #include "mapping/ExprMapper.h"
 #include "mapping/DeclMapper.h"
+#include "SourceLocationMapper.h"
 #include "clang/AST/Expr.h"
 #include "llvm/Support/Casting.h"
 #include "llvm/Support/raw_ostream.h"
@@ -83,7 +84,11 @@ void MemberExprHandler::handleMemberExpr(
     }
 
     // Get source location from target context
-    clang::SourceLocation targetLoc = disp.getTargetSourceLocation(cppASTContext, cppMemberExpr);
+    // Expression handlers rely on getCurrentTargetPath() being set
+    std::string targetPath = disp.getCurrentTargetPath();
+    assert(!targetPath.empty() && "Target path must be set before expression handling");
+    SourceLocationMapper& locMapper = disp.getTargetContext().getLocationMapper();
+    clang::SourceLocation targetLoc = locMapper.getStartOfFile(targetPath);
 
     // Create C MemberExpr with translated base
     // CRITICAL: Preserve arrow vs dot flag for correct C semantics

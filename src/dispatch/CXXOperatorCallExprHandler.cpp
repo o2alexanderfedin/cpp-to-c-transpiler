@@ -104,10 +104,9 @@ void CXXOperatorCallExprHandler::handleOperatorCall(
     }
 
     // Get valid SourceLocation for C AST nodes
+    // Expression handlers rely on getCurrentTargetPath() being set
     std::string targetPath = disp.getCurrentTargetPath();
-    if (targetPath.empty()) {
-        targetPath = disp.getTargetPath(cppASTContext, E);
-    }
+    assert(!targetPath.empty() && "Target path must be set before expression handling");
     SourceLocationMapper& locMapper = disp.getTargetContext().getLocationMapper();
     clang::SourceLocation targetLoc = locMapper.getStartOfFile(targetPath);
 
