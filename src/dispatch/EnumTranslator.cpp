@@ -58,6 +58,11 @@ void EnumTranslator::handleEnum(
     if (targetPath.empty()) {
         targetPath = disp.getTargetPath(cppASTContext, D);
     }
+
+    // CRITICAL: Set current target path so child handlers (StatementHandler, etc.) can access it
+    // This must be set BEFORE any dispatching work (similar to TranslationUnitHandler pattern)
+    disp.setCurrentTargetPath(targetPath);
+
     SourceLocationMapper& locMapper = disp.getTargetContext().getLocationMapper();
     clang::SourceLocation targetLoc = locMapper.getStartOfFile(targetPath);
 
