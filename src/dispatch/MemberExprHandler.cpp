@@ -102,7 +102,7 @@ void MemberExprHandler::handleMemberExpr(
         isArrow,  // Preserve arrow vs dot distinction
         targetLoc,  // OperatorLoc
         clang::NestedNameSpecifierLoc(),  // QualifierLoc (no qualifiers in C)
-        targetLoc,  // TemplateKWLoc - No template keyword in C
+        clang::SourceLocation(),  // TemplateKWLoc - No template keyword in C (MUST be invalid to prevent "template" in output)
         cMemberDecl,
         clang::DeclAccessPair::make(cMemberDecl, clang::AS_public),
         clang::DeclarationNameInfo(cMemberDecl->getDeclName(), targetLoc),
