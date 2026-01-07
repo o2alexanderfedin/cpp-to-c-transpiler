@@ -14,6 +14,7 @@
 #include "clang/Frontend/ASTUnit.h"
 #include "clang/AST/DeclCXX.h"
 #include "dispatch/StaticDataMemberHandler.h"
+#include "dispatch/LiteralHandler.h"
 #include "dispatch/CppToCVisitorDispatcher.h"
 #include "mapping/PathMapper.h"
 #include "mapping/DeclLocationMapper.h"
@@ -106,6 +107,7 @@ TEST_F(StaticDataMemberIntegrationTest, StaticIntWithOutOfClassDefinition) {
 
     // Create context
     auto ctx = createTestContext();
+    LiteralHandler::registerWith(*ctx.dispatcher);
     StaticDataMemberHandler::registerWith(*ctx.dispatcher);
 
     // Find Counter class
@@ -199,6 +201,7 @@ TEST_F(StaticDataMemberIntegrationTest, ConstStaticWithInClassInitializer) {
 
     // Create context
     auto ctx = createTestContext();
+    LiteralHandler::registerWith(*ctx.dispatcher);
     StaticDataMemberHandler::registerWith(*ctx.dispatcher);
 
     auto *TU = AST->getASTContext().getTranslationUnitDecl();
@@ -261,6 +264,7 @@ TEST_F(StaticDataMemberIntegrationTest, StaticArrayWithDefinition) {
 
     // Create context
     auto ctx = createTestContext();
+    LiteralHandler::registerWith(*ctx.dispatcher);
     StaticDataMemberHandler::registerWith(*ctx.dispatcher);
 
     auto *TU = AST->getASTContext().getTranslationUnitDecl();
@@ -318,6 +322,7 @@ TEST_F(StaticDataMemberIntegrationTest, MultipleStaticMembersInClass) {
 
     // Create context
     auto ctx = createTestContext();
+    LiteralHandler::registerWith(*ctx.dispatcher);
     StaticDataMemberHandler::registerWith(*ctx.dispatcher);
 
     auto *TU = AST->getASTContext().getTranslationUnitDecl();
@@ -381,6 +386,7 @@ TEST_F(StaticDataMemberIntegrationTest, StaticMemberInNamespacedClass) {
 
     // Create context
     auto ctx = createTestContext();
+    LiteralHandler::registerWith(*ctx.dispatcher);
     StaticDataMemberHandler::registerWith(*ctx.dispatcher);
 
     auto *TU = AST->getASTContext().getTranslationUnitDecl();

@@ -1176,6 +1176,8 @@ target_link_libraries(UnaryOperatorHandlerDispatcherTest
 
 gtest_discover_tests(UnaryOperatorHandlerDispatcherTest
     WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
+    DISCOVERY_MODE POST_BUILD
+
 )
 
 # CXXOperatorCallExprHandler Tests
@@ -1201,6 +1203,8 @@ target_link_libraries(CXXOperatorCallExprHandlerDispatcherTest
 
 gtest_discover_tests(CXXOperatorCallExprHandlerDispatcherTest
     WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
+    DISCOVERY_MODE POST_BUILD
+
 )
 
 # CXXTypeidExprHandler Tests
@@ -1226,6 +1230,8 @@ target_link_libraries(CXXTypeidExprHandlerDispatcherTest
 
 gtest_discover_tests(CXXTypeidExprHandlerDispatcherTest
     WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
+    DISCOVERY_MODE POST_BUILD
+
 )
 
 # CXXDynamicCastExprHandler Tests
@@ -1251,6 +1257,8 @@ target_link_libraries(CXXDynamicCastExprHandlerDispatcherTest
 
 gtest_discover_tests(CXXDynamicCastExprHandlerDispatcherTest
     WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
+    DISCOVERY_MODE POST_BUILD
+
 )
 
 # MemberExprHandler Tests
@@ -1276,6 +1284,8 @@ target_link_libraries(MemberExprHandlerDispatcherTest
 
 gtest_discover_tests(MemberExprHandlerDispatcherTest
     WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
+    DISCOVERY_MODE POST_BUILD
+
 )
 
 # CommaOperatorHandler Tests
@@ -1301,6 +1311,8 @@ target_link_libraries(CommaOperatorHandlerDispatcherTest
 
 gtest_discover_tests(CommaOperatorHandlerDispatcherTest
     WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
+    DISCOVERY_MODE POST_BUILD
+
 )
 
 # ImplicitCastExprHandler Tests
@@ -1326,6 +1338,8 @@ target_link_libraries(ImplicitCastExprHandlerDispatcherTest
 
 gtest_discover_tests(ImplicitCastExprHandlerDispatcherTest
     WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
+    DISCOVERY_MODE POST_BUILD
+
 )
 
 # ArraySubscriptExprHandler Tests
@@ -1351,6 +1365,8 @@ target_link_libraries(ArraySubscriptExprHandlerDispatcherTest
 
 gtest_discover_tests(ArraySubscriptExprHandlerDispatcherTest
     WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
+    DISCOVERY_MODE POST_BUILD
+
 )
 
 # Exception Handling Dispatcher Tests (Phase 7: Test Migration)
@@ -1439,6 +1455,8 @@ GTest::gtest
 # Register with CTest
 gtest_discover_tests(CodeGeneratorTest
     WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
+    DISCOVERY_MODE POST_BUILD
+
     PROPERTIES LABELS "unit;phase15-03"
 )
 
@@ -1581,6 +1599,8 @@ target_link_libraries(HeaderSeparatorTest PRIVATE cpptoc_core
 # Register with CTest
 gtest_discover_tests(HeaderSeparatorTest
     WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
+    DISCOVERY_MODE POST_BUILD
+
 )
 
 # Story #138: Include Guard Generation tests
