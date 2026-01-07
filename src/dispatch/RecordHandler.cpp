@@ -16,6 +16,7 @@
 #include "dispatch/RecordHandler.h"
 #include "dispatch/NamespaceHandler.h"
 #include "CNodeBuilder.h"
+#include "SourceLocationMapper.h"
 #include "mapping/DeclMapper.h"
 #include "mapping/TypeMapper.h"
 #include "llvm/Config/llvm-config.h" // For LLVM_VERSION_MAJOR
@@ -179,6 +180,14 @@ void RecordHandler::handleRecord(
     // Create identifier for struct name (use mangled name for nested structs)
     clang::IdentifierInfo& II = cASTContext.Idents.get(mangledName);
 
+    // Get source location from SourceLocationMapper
+    std::string targetPath = disp.getCurrentTargetPath();
+    if (targetPath.empty()) {
+        targetPath = disp.getTargetPath(cppASTContext, cppRecord);
+    }
+    SourceLocationMapper& locMapper = disp.getTargetContext().getLocationMapper();
+    clang::SourceLocation targetLoc = locMapper.getStartOfFile(targetPath);
+
     // Create C struct (normalize class → struct)
     // Always use Struct tag (C has no classes)
     // API change: LLVM 15 uses TTK_Struct, LLVM 16+ uses Struct (enum class)
@@ -190,8 +199,8 @@ void RecordHandler::handleRecord(
         clang::TTK_Struct,
         #endif
         cASTContext.getTranslationUnitDecl(),
-        clang::SourceLocation(),
-        clang::SourceLocation(),
+        targetLoc,
+        targetLoc,
         &II
     );
 
@@ -224,11 +233,8 @@ void RecordHandler::handleRecord(
     // Complete definition
     cRecord->completeDefinition();
 
-    // Get current target path (where current source file is being transpiled)
-    // This ensures structs from headers are emitted to the source file's C_TU
-    std::string targetPath = disp.getCurrentTargetPath();
-
     // Get or create C TranslationUnit for this target file
+    // (targetPath already obtained above with SourceLocationMapper)
     cpptoc::PathMapper& pathMapper = disp.getPathMapper();
     clang::TranslationUnitDecl* cTU = pathMapper.getOrCreateTU(targetPath);
     assert(cTU && "Failed to get/create C TranslationUnit");
@@ -279,12 +285,20 @@ std::vector<clang::FieldDecl*> RecordHandler::translateFields(
         // Create identifier for field name
         clang::IdentifierInfo& fieldII = cASTContext.Idents.get(fieldName);
 
+        // Get source location from SourceLocationMapper
+        std::string fieldTargetPath = disp.getCurrentTargetPath();
+        if (fieldTargetPath.empty()) {
+            fieldTargetPath = disp.getTargetPath(cppASTContext, cppRecord);
+        }
+        SourceLocationMapper& fieldLocMapper = disp.getTargetContext().getLocationMapper();
+        clang::SourceLocation fieldTargetLoc = fieldLocMapper.getStartOfFile(fieldTargetPath);
+
         // Create C FieldDecl
         clang::FieldDecl* cField = clang::FieldDecl::Create(
             cASTContext,
             cRecord,  // Parent record
-            clang::SourceLocation(),
-            clang::SourceLocation(),
+            fieldTargetLoc,
+            fieldTargetLoc,
             &fieldII,
             cFieldType,
             cASTContext.getTrivialTypeSourceInfo(cFieldType),

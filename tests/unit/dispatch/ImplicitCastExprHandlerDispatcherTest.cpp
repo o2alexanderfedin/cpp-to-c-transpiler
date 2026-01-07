@@ -101,7 +101,7 @@ TEST(ImplicitCastExprHandlerDispatcherTest, Registration) {
     cpptoc::StmtMapper stmtMapper;
 
     // Create dispatcher
-    CppToCVisitorDispatcher dispatcher(mapper, locMapper, declMapper, typeMapper, exprMapper, stmtMapper);
+    CppToCVisitorDispatcher dispatcher(mapper, locMapper, declMapper, typeMapper, exprMapper, stmtMapper, targetCtx);
 
     // Register handlers
     cpptoc::LiteralHandler::registerWith(dispatcher);
@@ -157,7 +157,7 @@ TEST(ImplicitCastExprHandlerDispatcherTest, PredicateMatchesOnlyImplicitCast) {
     cpptoc::ExprMapper exprMapper;
     cpptoc::StmtMapper stmtMapper;
 
-    CppToCVisitorDispatcher dispatcher(mapper, locMapper, declMapper, typeMapper, exprMapper, stmtMapper);
+    CppToCVisitorDispatcher dispatcher(mapper, locMapper, declMapper, typeMapper, exprMapper, stmtMapper, targetCtx);
     cpptoc::LiteralHandler::registerWith(dispatcher);
     cpptoc::DeclRefExprHandler::registerWith(dispatcher);
     cpptoc::ImplicitCastExprHandler::registerWith(dispatcher);
@@ -228,7 +228,7 @@ TEST(ImplicitCastExprHandlerDispatcherTest, LValueToRValueCast) {
     cpptoc::ExprMapper exprMapper;
     cpptoc::StmtMapper stmtMapper;
 
-    CppToCVisitorDispatcher dispatcher(mapper, locMapper, declMapper, typeMapper, exprMapper, stmtMapper);
+    CppToCVisitorDispatcher dispatcher(mapper, locMapper, declMapper, typeMapper, exprMapper, stmtMapper, targetCtx);
     cpptoc::LiteralHandler::registerWith(dispatcher);
     cpptoc::DeclRefExprHandler::registerWith(dispatcher);
     cpptoc::ImplicitCastExprHandler::registerWith(dispatcher);
@@ -291,7 +291,7 @@ TEST(ImplicitCastExprHandlerDispatcherTest, NestedImplicitCast) {
     cpptoc::ExprMapper exprMapper;
     cpptoc::StmtMapper stmtMapper;
 
-    CppToCVisitorDispatcher dispatcher(mapper, locMapper, declMapper, typeMapper, exprMapper, stmtMapper);
+    CppToCVisitorDispatcher dispatcher(mapper, locMapper, declMapper, typeMapper, exprMapper, stmtMapper, targetCtx);
     cpptoc::LiteralHandler::registerWith(dispatcher);
     cpptoc::DeclRefExprHandler::registerWith(dispatcher);
     cpptoc::ImplicitCastExprHandler::registerWith(dispatcher);
@@ -353,7 +353,7 @@ TEST(ImplicitCastExprHandlerDispatcherTest, ImplicitCastWithLiteral) {
     cpptoc::ExprMapper exprMapper;
     cpptoc::StmtMapper stmtMapper;
 
-    CppToCVisitorDispatcher dispatcher(mapper, locMapper, declMapper, typeMapper, exprMapper, stmtMapper);
+    CppToCVisitorDispatcher dispatcher(mapper, locMapper, declMapper, typeMapper, exprMapper, stmtMapper, targetCtx);
     cpptoc::LiteralHandler::registerWith(dispatcher);
     cpptoc::DeclRefExprHandler::registerWith(dispatcher);
     cpptoc::ImplicitCastExprHandler::registerWith(dispatcher);
@@ -411,7 +411,7 @@ TEST(ImplicitCastExprHandlerDispatcherTest, MultipleImplicitCasts) {
     cpptoc::ExprMapper exprMapper;
     cpptoc::StmtMapper stmtMapper;
 
-    CppToCVisitorDispatcher dispatcher(mapper, locMapper, declMapper, typeMapper, exprMapper, stmtMapper);
+    CppToCVisitorDispatcher dispatcher(mapper, locMapper, declMapper, typeMapper, exprMapper, stmtMapper, targetCtx);
     cpptoc::LiteralHandler::registerWith(dispatcher);
     cpptoc::DeclRefExprHandler::registerWith(dispatcher);
     cpptoc::ImplicitCastExprHandler::registerWith(dispatcher);
@@ -466,7 +466,7 @@ TEST(ImplicitCastExprHandlerDispatcherTest, IntegrationWithBinaryOperator) {
     cpptoc::ExprMapper exprMapper;
     cpptoc::StmtMapper stmtMapper;
 
-    CppToCVisitorDispatcher dispatcher(mapper, locMapper, declMapper, typeMapper, exprMapper, stmtMapper);
+    CppToCVisitorDispatcher dispatcher(mapper, locMapper, declMapper, typeMapper, exprMapper, stmtMapper, targetCtx);
     cpptoc::LiteralHandler::registerWith(dispatcher);
     cpptoc::ImplicitCastExprHandler::registerWith(dispatcher);
 

@@ -134,7 +134,8 @@ inline DispatcherPipeline createDispatcherPipeline(const std::string& cppCode = 
         *pipeline.declMapper,
         *pipeline.typeMapper,
         *pipeline.exprMapper,
-        *pipeline.stmtMapper
+        *pipeline.stmtMapper,
+        *pipeline.targetContext
     );
 
     return pipeline;

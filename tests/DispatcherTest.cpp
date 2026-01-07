@@ -53,7 +53,7 @@ TEST(DispatcherTest, TranslationUnitHandler) {
     cpptoc::StmtMapper stmtMapper;
 
     // Create dispatcher with all utilities
-    CppToCVisitorDispatcher dispatcher(mapper, locMapper, declMapper, typeMapper, exprMapper, stmtMapper);
+    CppToCVisitorDispatcher dispatcher(mapper, locMapper, declMapper, typeMapper, exprMapper, stmtMapper, targetCtx);
 
     // Register production TranslationUnitHandler
     cpptoc::TranslationUnitHandler::registerWith(dispatcher);
@@ -89,7 +89,7 @@ TEST(DispatcherTest, HandlerChainOrder) {
     cpptoc::ExprMapper exprMapper;
     cpptoc::StmtMapper stmtMapper;
 
-    CppToCVisitorDispatcher dispatcher(mapper, locMapper, declMapper, typeMapper, exprMapper, stmtMapper);
+    CppToCVisitorDispatcher dispatcher(mapper, locMapper, declMapper, typeMapper, exprMapper, stmtMapper, targetCtx);
 
     std::vector<std::string> invocations;
 
@@ -140,7 +140,7 @@ TEST(DispatcherTest, NoHandlerMatch) {
     cpptoc::ExprMapper exprMapper;
     cpptoc::StmtMapper stmtMapper;
 
-    CppToCVisitorDispatcher dispatcher(mapper, locMapper, declMapper, typeMapper, exprMapper, stmtMapper);
+    CppToCVisitorDispatcher dispatcher(mapper, locMapper, declMapper, typeMapper, exprMapper, stmtMapper, targetCtx);
 
     // No handlers registered
     TranslationUnitDecl* TU = cppCtx.getTranslationUnitDecl();
@@ -170,7 +170,7 @@ TEST(DispatcherTest, PathMapperAccess) {
     cpptoc::ExprMapper exprMapper;
     cpptoc::StmtMapper stmtMapper;
 
-    CppToCVisitorDispatcher dispatcher(mapper, locMapper, declMapper, typeMapper, exprMapper, stmtMapper);
+    CppToCVisitorDispatcher dispatcher(mapper, locMapper, declMapper, typeMapper, exprMapper, stmtMapper, targetCtx);
 
     bool mapperAccessed = false;
 

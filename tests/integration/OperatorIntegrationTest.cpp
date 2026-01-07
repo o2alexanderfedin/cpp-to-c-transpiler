@@ -156,7 +156,7 @@ TEST_F(OperatorIntegrationTest, AllOperatorHandlersRegistered) {
     cpptoc::ExprMapper exprMapper;
     cpptoc::StmtMapper stmtMapper;
 
-    CppToCVisitorDispatcher dispatcher(mapper, locMapper, declMapper, typeMapper, exprMapper, stmtMapper);
+    CppToCVisitorDispatcher dispatcher(mapper, locMapper, declMapper, typeMapper, exprMapper, stmtMapper, targetCtx);
 
     // Should not throw or crash when registering all handlers
     EXPECT_NO_THROW(registerAllOperatorHandlers(dispatcher));
@@ -189,7 +189,7 @@ TEST_F(OperatorIntegrationTest, ArithmeticOperatorsIntegration) {
     cpptoc::ExprMapper exprMapper;
     cpptoc::StmtMapper stmtMapper;
 
-    CppToCVisitorDispatcher dispatcher(mapper, locMapper, declMapper, typeMapper, exprMapper, stmtMapper);
+    CppToCVisitorDispatcher dispatcher(mapper, locMapper, declMapper, typeMapper, exprMapper, stmtMapper, targetCtx);
     registerAllOperatorHandlers(dispatcher);
 
     // Find the return statement's expression
@@ -250,7 +250,7 @@ TEST_F(OperatorIntegrationTest, AssignmentAndBinaryOperations) {
     cpptoc::ExprMapper exprMapper;
     cpptoc::StmtMapper stmtMapper;
 
-    CppToCVisitorDispatcher dispatcher(mapper, locMapper, declMapper, typeMapper, exprMapper, stmtMapper);
+    CppToCVisitorDispatcher dispatcher(mapper, locMapper, declMapper, typeMapper, exprMapper, stmtMapper, targetCtx);
     registerAllOperatorHandlers(dispatcher);
 
     // Find and verify assignment operations work
@@ -299,7 +299,7 @@ TEST_F(OperatorIntegrationTest, IncrementDecrementIntegration) {
     cpptoc::ExprMapper exprMapper;
     cpptoc::StmtMapper stmtMapper;
 
-    CppToCVisitorDispatcher dispatcher(mapper, locMapper, declMapper, typeMapper, exprMapper, stmtMapper);
+    CppToCVisitorDispatcher dispatcher(mapper, locMapper, declMapper, typeMapper, exprMapper, stmtMapper, targetCtx);
     registerAllOperatorHandlers(dispatcher);
 
     // Find and verify all increment/decrement operations
@@ -350,7 +350,7 @@ TEST_F(OperatorIntegrationTest, MemberAccessIntegration) {
     cpptoc::ExprMapper exprMapper;
     cpptoc::StmtMapper stmtMapper;
 
-    CppToCVisitorDispatcher dispatcher(mapper, locMapper, declMapper, typeMapper, exprMapper, stmtMapper);
+    CppToCVisitorDispatcher dispatcher(mapper, locMapper, declMapper, typeMapper, exprMapper, stmtMapper, targetCtx);
     registerAllOperatorHandlers(dispatcher);
 
     // Find the return expression with member access
@@ -402,7 +402,7 @@ TEST_F(OperatorIntegrationTest, ArraySubscriptIntegration) {
     cpptoc::ExprMapper exprMapper;
     cpptoc::StmtMapper stmtMapper;
 
-    CppToCVisitorDispatcher dispatcher(mapper, locMapper, declMapper, typeMapper, exprMapper, stmtMapper);
+    CppToCVisitorDispatcher dispatcher(mapper, locMapper, declMapper, typeMapper, exprMapper, stmtMapper, targetCtx);
     registerAllOperatorHandlers(dispatcher);
 
     // Find the return expression with array subscripts
@@ -455,7 +455,7 @@ TEST_F(OperatorIntegrationTest, CommaOperatorIntegration) {
     cpptoc::ExprMapper exprMapper;
     cpptoc::StmtMapper stmtMapper;
 
-    CppToCVisitorDispatcher dispatcher(mapper, locMapper, declMapper, typeMapper, exprMapper, stmtMapper);
+    CppToCVisitorDispatcher dispatcher(mapper, locMapper, declMapper, typeMapper, exprMapper, stmtMapper, targetCtx);
     registerAllOperatorHandlers(dispatcher);
 
     // Find return statement with comma expression
@@ -514,7 +514,7 @@ TEST_F(OperatorIntegrationTest, ComplexNestedExpression) {
     cpptoc::ExprMapper exprMapper;
     cpptoc::StmtMapper stmtMapper;
 
-    CppToCVisitorDispatcher dispatcher(mapper, locMapper, declMapper, typeMapper, exprMapper, stmtMapper);
+    CppToCVisitorDispatcher dispatcher(mapper, locMapper, declMapper, typeMapper, exprMapper, stmtMapper, targetCtx);
     registerAllOperatorHandlers(dispatcher);
 
     // Find the return expression: x + 5
@@ -579,7 +579,7 @@ TEST_F(OperatorIntegrationTest, MultiDimensionalArrayWithMemberAccess) {
     cpptoc::ExprMapper exprMapper;
     cpptoc::StmtMapper stmtMapper;
 
-    CppToCVisitorDispatcher dispatcher(mapper, locMapper, declMapper, typeMapper, exprMapper, stmtMapper);
+    CppToCVisitorDispatcher dispatcher(mapper, locMapper, declMapper, typeMapper, exprMapper, stmtMapper, targetCtx);
     registerAllOperatorHandlers(dispatcher);
 
     // Find the return expression with nested subscripts and member access
@@ -636,7 +636,7 @@ TEST_F(OperatorIntegrationTest, LogicalAndComparisonOperators) {
     cpptoc::ExprMapper exprMapper;
     cpptoc::StmtMapper stmtMapper;
 
-    CppToCVisitorDispatcher dispatcher(mapper, locMapper, declMapper, typeMapper, exprMapper, stmtMapper);
+    CppToCVisitorDispatcher dispatcher(mapper, locMapper, declMapper, typeMapper, exprMapper, stmtMapper, targetCtx);
     registerAllOperatorHandlers(dispatcher);
 
     // Find the if condition
@@ -693,7 +693,7 @@ TEST_F(OperatorIntegrationTest, BitwiseOperatorsIntegration) {
     cpptoc::ExprMapper exprMapper;
     cpptoc::StmtMapper stmtMapper;
 
-    CppToCVisitorDispatcher dispatcher(mapper, locMapper, declMapper, typeMapper, exprMapper, stmtMapper);
+    CppToCVisitorDispatcher dispatcher(mapper, locMapper, declMapper, typeMapper, exprMapper, stmtMapper, targetCtx);
     registerAllOperatorHandlers(dispatcher);
 
     // Find return statement
@@ -742,7 +742,7 @@ TEST_F(OperatorIntegrationTest, PointerAndAddressOfOperators) {
     cpptoc::ExprMapper exprMapper;
     cpptoc::StmtMapper stmtMapper;
 
-    CppToCVisitorDispatcher dispatcher(mapper, locMapper, declMapper, typeMapper, exprMapper, stmtMapper);
+    CppToCVisitorDispatcher dispatcher(mapper, locMapper, declMapper, typeMapper, exprMapper, stmtMapper, targetCtx);
     registerAllOperatorHandlers(dispatcher);
 
     // Find return expression with pointer operations
@@ -804,7 +804,7 @@ TEST_F(OperatorIntegrationTest, AllOperatorsTogether) {
     cpptoc::ExprMapper exprMapper;
     cpptoc::StmtMapper stmtMapper;
 
-    CppToCVisitorDispatcher dispatcher(mapper, locMapper, declMapper, typeMapper, exprMapper, stmtMapper);
+    CppToCVisitorDispatcher dispatcher(mapper, locMapper, declMapper, typeMapper, exprMapper, stmtMapper, targetCtx);
     registerAllOperatorHandlers(dispatcher);
 
     // Find the return statement

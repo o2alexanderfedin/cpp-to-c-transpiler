@@ -64,7 +64,7 @@ TEST(FunctionHandlerDispatcherTest, Registration) {
     cpptoc::StmtMapper stmtMapper;
 
     // Create dispatcher
-    CppToCVisitorDispatcher dispatcher(mapper, locMapper, declMapper, typeMapper, exprMapper, stmtMapper);
+    CppToCVisitorDispatcher dispatcher(mapper, locMapper, declMapper, typeMapper, exprMapper, stmtMapper, targetCtx);
 
     // Register handlers (TypeHandler and ParameterHandler must be registered before FunctionHandler)
     // FunctionHandler depends on TypeHandler for type translation and ParameterHandler for parameters
@@ -120,7 +120,7 @@ TEST(FunctionHandlerDispatcherTest, PredicateExcludesMethods) {
     cpptoc::ExprMapper exprMapper;
     cpptoc::StmtMapper stmtMapper;
 
-    CppToCVisitorDispatcher dispatcher(mapper, locMapper, declMapper, typeMapper, exprMapper, stmtMapper);
+    CppToCVisitorDispatcher dispatcher(mapper, locMapper, declMapper, typeMapper, exprMapper, stmtMapper, targetCtx);
 
     // Register handlers (TypeHandler and ParameterHandler must be registered before FunctionHandler)
     cpptoc::TypeHandler::registerWith(dispatcher);
@@ -185,7 +185,7 @@ TEST(FunctionHandlerDispatcherTest, FreeFunctionVsMethod) {
     cpptoc::ExprMapper exprMapper;
     cpptoc::StmtMapper stmtMapper;
 
-    CppToCVisitorDispatcher dispatcher(mapper, locMapper, declMapper, typeMapper, exprMapper, stmtMapper);
+    CppToCVisitorDispatcher dispatcher(mapper, locMapper, declMapper, typeMapper, exprMapper, stmtMapper, targetCtx);
 
     // Register handlers
     cpptoc::TypeHandler::registerWith(dispatcher);
@@ -260,7 +260,7 @@ TEST(FunctionHandlerDispatcherTest, ReferenceToPointerTranslation) {
     cpptoc::ExprMapper exprMapper;
     cpptoc::StmtMapper stmtMapper;
 
-    CppToCVisitorDispatcher dispatcher(mapper, locMapper, declMapper, typeMapper, exprMapper, stmtMapper);
+    CppToCVisitorDispatcher dispatcher(mapper, locMapper, declMapper, typeMapper, exprMapper, stmtMapper, targetCtx);
 
     // Register handlers
     cpptoc::TypeHandler::registerWith(dispatcher);
@@ -346,7 +346,7 @@ TEST(FunctionHandlerDispatcherTest, Phase1NoFunctionBody) {
     cpptoc::ExprMapper exprMapper;
     cpptoc::StmtMapper stmtMapper;
 
-    CppToCVisitorDispatcher dispatcher(mapper, locMapper, declMapper, typeMapper, exprMapper, stmtMapper);
+    CppToCVisitorDispatcher dispatcher(mapper, locMapper, declMapper, typeMapper, exprMapper, stmtMapper, targetCtx);
 
     // Register handlers
     cpptoc::TypeHandler::registerWith(dispatcher);

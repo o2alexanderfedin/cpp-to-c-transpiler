@@ -94,7 +94,7 @@ TEST(CXXOperatorCallExprHandlerDispatcherTest, Registration) {
     cpptoc::ExprMapper exprMapper;
     cpptoc::StmtMapper stmtMapper;
 
-    CppToCVisitorDispatcher dispatcher(mapper, locMapper, declMapper, typeMapper, exprMapper, stmtMapper);
+    CppToCVisitorDispatcher dispatcher(mapper, locMapper, declMapper, typeMapper, exprMapper, stmtMapper, targetCtx);
     cpptoc::CXXOperatorCallExprHandler::registerWith(dispatcher);
 
     TranslationUnitDecl* TU = cppCtx.getTranslationUnitDecl();
@@ -206,7 +206,7 @@ TEST(CXXOperatorCallExprHandlerDispatcherTest, InstanceSubscriptOperator) {
     cpptoc::ExprMapper exprMapper;
     cpptoc::StmtMapper stmtMapper;
 
-    CppToCVisitorDispatcher dispatcher(mapper, locMapper, declMapper, typeMapper, exprMapper, stmtMapper);
+    CppToCVisitorDispatcher dispatcher(mapper, locMapper, declMapper, typeMapper, exprMapper, stmtMapper, targetCtx);
     cpptoc::DeclRefExprHandler::registerWith(dispatcher);
     cpptoc::LiteralHandler::registerWith(dispatcher);
     cpptoc::ImplicitCastExprHandler::registerWith(dispatcher);
@@ -264,7 +264,7 @@ TEST(CXXOperatorCallExprHandlerDispatcherTest, InstanceCallOperator) {
     cpptoc::ExprMapper exprMapper;
     cpptoc::StmtMapper stmtMapper;
 
-    CppToCVisitorDispatcher dispatcher(mapper, locMapper, declMapper, typeMapper, exprMapper, stmtMapper);
+    CppToCVisitorDispatcher dispatcher(mapper, locMapper, declMapper, typeMapper, exprMapper, stmtMapper, targetCtx);
     cpptoc::DeclRefExprHandler::registerWith(dispatcher);
     cpptoc::LiteralHandler::registerWith(dispatcher);
     cpptoc::ImplicitCastExprHandler::registerWith(dispatcher);
@@ -326,7 +326,7 @@ TEST(CXXOperatorCallExprHandlerDispatcherTest, SmartPointerArrowOperator) {
     cpptoc::ExprMapper exprMapper;
     cpptoc::StmtMapper stmtMapper;
 
-    CppToCVisitorDispatcher dispatcher(mapper, locMapper, declMapper, typeMapper, exprMapper, stmtMapper);
+    CppToCVisitorDispatcher dispatcher(mapper, locMapper, declMapper, typeMapper, exprMapper, stmtMapper, targetCtx);
     cpptoc::DeclRefExprHandler::registerWith(dispatcher);
     cpptoc::ImplicitCastExprHandler::registerWith(dispatcher);
     cpptoc::CXXOperatorCallExprHandler::registerWith(dispatcher);
@@ -388,7 +388,7 @@ TEST(CXXOperatorCallExprHandlerDispatcherTest, SmartPointerDereferenceOperator) 
     cpptoc::ExprMapper exprMapper;
     cpptoc::StmtMapper stmtMapper;
 
-    CppToCVisitorDispatcher dispatcher(mapper, locMapper, declMapper, typeMapper, exprMapper, stmtMapper);
+    CppToCVisitorDispatcher dispatcher(mapper, locMapper, declMapper, typeMapper, exprMapper, stmtMapper, targetCtx);
     cpptoc::DeclRefExprHandler::registerWith(dispatcher);
     cpptoc::ImplicitCastExprHandler::registerWith(dispatcher);
     cpptoc::CXXOperatorCallExprHandler::registerWith(dispatcher);
@@ -445,7 +445,7 @@ TEST(CXXOperatorCallExprHandlerDispatcherTest, CopyAssignmentOperator) {
     cpptoc::ExprMapper exprMapper;
     cpptoc::StmtMapper stmtMapper;
 
-    CppToCVisitorDispatcher dispatcher(mapper, locMapper, declMapper, typeMapper, exprMapper, stmtMapper);
+    CppToCVisitorDispatcher dispatcher(mapper, locMapper, declMapper, typeMapper, exprMapper, stmtMapper, targetCtx);
     cpptoc::DeclRefExprHandler::registerWith(dispatcher);
     cpptoc::ImplicitCastExprHandler::registerWith(dispatcher);
     cpptoc::CXXOperatorCallExprHandler::registerWith(dispatcher);
@@ -502,7 +502,7 @@ TEST(CXXOperatorCallExprHandlerDispatcherTest, ExprMapperIntegration) {
     cpptoc::ExprMapper exprMapper;
     cpptoc::StmtMapper stmtMapper;
 
-    CppToCVisitorDispatcher dispatcher(mapper, locMapper, declMapper, typeMapper, exprMapper, stmtMapper);
+    CppToCVisitorDispatcher dispatcher(mapper, locMapper, declMapper, typeMapper, exprMapper, stmtMapper, targetCtx);
     cpptoc::DeclRefExprHandler::registerWith(dispatcher);
     cpptoc::LiteralHandler::registerWith(dispatcher);
     cpptoc::ImplicitCastExprHandler::registerWith(dispatcher);
@@ -566,7 +566,7 @@ TEST(CXXOperatorCallExprHandlerDispatcherTest, NestedOperatorCalls) {
     cpptoc::ExprMapper exprMapper;
     cpptoc::StmtMapper stmtMapper;
 
-    CppToCVisitorDispatcher dispatcher(mapper, locMapper, declMapper, typeMapper, exprMapper, stmtMapper);
+    CppToCVisitorDispatcher dispatcher(mapper, locMapper, declMapper, typeMapper, exprMapper, stmtMapper, targetCtx);
     cpptoc::DeclRefExprHandler::registerWith(dispatcher);
     cpptoc::LiteralHandler::registerWith(dispatcher);
     cpptoc::ImplicitCastExprHandler::registerWith(dispatcher);
@@ -643,7 +643,7 @@ TEST(CXXOperatorCallExprHandlerDispatcherTest, MultipleOperatorTypes) {
     cpptoc::ExprMapper exprMapper;
     cpptoc::StmtMapper stmtMapper;
 
-    CppToCVisitorDispatcher dispatcher(mapper, locMapper, declMapper, typeMapper, exprMapper, stmtMapper);
+    CppToCVisitorDispatcher dispatcher(mapper, locMapper, declMapper, typeMapper, exprMapper, stmtMapper, targetCtx);
     cpptoc::DeclRefExprHandler::registerWith(dispatcher);
     cpptoc::LiteralHandler::registerWith(dispatcher);
     cpptoc::ImplicitCastExprHandler::registerWith(dispatcher);
@@ -781,7 +781,7 @@ TEST(CXXOperatorCallExprHandlerDispatcherTest, AddressOfOperatorRare) {
     cpptoc::ExprMapper exprMapper;
     cpptoc::StmtMapper stmtMapper;
 
-    CppToCVisitorDispatcher dispatcher(mapper, locMapper, declMapper, typeMapper, exprMapper, stmtMapper);
+    CppToCVisitorDispatcher dispatcher(mapper, locMapper, declMapper, typeMapper, exprMapper, stmtMapper, targetCtx);
     cpptoc::DeclRefExprHandler::registerWith(dispatcher);
     cpptoc::ImplicitCastExprHandler::registerWith(dispatcher);
     cpptoc::CXXOperatorCallExprHandler::registerWith(dispatcher);
@@ -838,7 +838,7 @@ TEST(CXXOperatorCallExprHandlerDispatcherTest, CommaOperatorVeryRare) {
     cpptoc::ExprMapper exprMapper;
     cpptoc::StmtMapper stmtMapper;
 
-    CppToCVisitorDispatcher dispatcher(mapper, locMapper, declMapper, typeMapper, exprMapper, stmtMapper);
+    CppToCVisitorDispatcher dispatcher(mapper, locMapper, declMapper, typeMapper, exprMapper, stmtMapper, targetCtx);
     cpptoc::DeclRefExprHandler::registerWith(dispatcher);
     cpptoc::LiteralHandler::registerWith(dispatcher);
     cpptoc::ImplicitCastExprHandler::registerWith(dispatcher);

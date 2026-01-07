@@ -89,7 +89,8 @@ protected:
             declMapper,
             typeMapper,
             exprMapper,
-            stmtMapper
+            stmtMapper,
+            *targetCtx
         );
 
         // Register CXXTypeidExprHandler

@@ -245,6 +245,7 @@ include(GoogleTest)
 add_library(cpptoc_core STATIC
     src/TranspilerAPI.cpp
     src/TargetContext.cpp
+    src/SourceLocationMapper.cpp
     src/dispatch/CppToCVisitorDispatcher.cpp
     src/dispatch/TranslationUnitHandler.cpp
     src/dispatch/NamespaceHandler.cpp
@@ -598,6 +599,32 @@ target_link_libraries(OverloadRegistryTest PRIVATE cpptoc_core
 
 # Register with CTest
 gtest_discover_tests(OverloadRegistryTest
+    WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
+)
+
+# SourceLocationMapper unit tests
+add_executable(SourceLocationMapperTest
+    tests/SourceLocationMapperTest.cpp
+)
+
+target_compile_definitions(SourceLocationMapperTest PRIVATE ${LLVM_DEFINITIONS})
+
+target_include_directories(SourceLocationMapperTest PRIVATE
+    ${CMAKE_SOURCE_DIR}/include
+    ${LLVM_INCLUDE_DIRS}
+    ${CLANG_INCLUDE_DIRS}
+)
+
+target_link_libraries(SourceLocationMapperTest PRIVATE cpptoc_core
+    clangTooling
+    clangFrontend
+    clangAST
+    clangBasic
+    GTest::gtest
+    GTest::gtest_main)
+
+# Register with CTest
+gtest_discover_tests(SourceLocationMapperTest
     WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
 )
 

@@ -106,7 +106,7 @@ TEST(ReturnStmtHandlerDispatcherTest, Registration) {
     cpptoc::StmtMapper stmtMapper;
 
     // Create dispatcher
-    CppToCVisitorDispatcher dispatcher(mapper, locMapper, declMapper, typeMapper, exprMapper, stmtMapper);
+    CppToCVisitorDispatcher dispatcher(mapper, locMapper, declMapper, typeMapper, exprMapper, stmtMapper, targetCtx);
 
     // Register all necessary handlers
     registerAllHandlers(dispatcher);
@@ -152,7 +152,7 @@ TEST(ReturnStmtHandlerDispatcherTest, PredicateMatchesOnlyReturnStmt) {
     cpptoc::ExprMapper exprMapper;
     cpptoc::StmtMapper stmtMapper;
 
-    CppToCVisitorDispatcher dispatcher(mapper, locMapper, declMapper, typeMapper, exprMapper, stmtMapper);
+    CppToCVisitorDispatcher dispatcher(mapper, locMapper, declMapper, typeMapper, exprMapper, stmtMapper, targetCtx);
     registerAllHandlers(dispatcher);
 
     // Find the function
@@ -213,7 +213,7 @@ TEST(ReturnStmtHandlerDispatcherTest, ReturnWithIntegerLiteral) {
     cpptoc::ExprMapper exprMapper;
     cpptoc::StmtMapper stmtMapper;
 
-    CppToCVisitorDispatcher dispatcher(mapper, locMapper, declMapper, typeMapper, exprMapper, stmtMapper);
+    CppToCVisitorDispatcher dispatcher(mapper, locMapper, declMapper, typeMapper, exprMapper, stmtMapper, targetCtx);
     registerAllHandlers(dispatcher);
 
     // Find the return statement
@@ -257,7 +257,7 @@ TEST(ReturnStmtHandlerDispatcherTest, ReturnWithExpression) {
     cpptoc::ExprMapper exprMapper;
     cpptoc::StmtMapper stmtMapper;
 
-    CppToCVisitorDispatcher dispatcher(mapper, locMapper, declMapper, typeMapper, exprMapper, stmtMapper);
+    CppToCVisitorDispatcher dispatcher(mapper, locMapper, declMapper, typeMapper, exprMapper, stmtMapper, targetCtx);
     registerAllHandlers(dispatcher);
 
     // Find the return statement
@@ -305,7 +305,7 @@ TEST(ReturnStmtHandlerDispatcherTest, ReturnWithReference) {
     cpptoc::ExprMapper exprMapper;
     cpptoc::StmtMapper stmtMapper;
 
-    CppToCVisitorDispatcher dispatcher(mapper, locMapper, declMapper, typeMapper, exprMapper, stmtMapper);
+    CppToCVisitorDispatcher dispatcher(mapper, locMapper, declMapper, typeMapper, exprMapper, stmtMapper, targetCtx);
     registerAllHandlers(dispatcher);
 
     // Find the return statement
@@ -355,7 +355,7 @@ TEST(ReturnStmtHandlerDispatcherTest, VoidReturn) {
     cpptoc::ExprMapper exprMapper;
     cpptoc::StmtMapper stmtMapper;
 
-    CppToCVisitorDispatcher dispatcher(mapper, locMapper, declMapper, typeMapper, exprMapper, stmtMapper);
+    CppToCVisitorDispatcher dispatcher(mapper, locMapper, declMapper, typeMapper, exprMapper, stmtMapper, targetCtx);
     registerAllHandlers(dispatcher);
 
     // Find the return statement
@@ -403,7 +403,7 @@ TEST(ReturnStmtHandlerDispatcherTest, MultipleReturnStatements) {
     cpptoc::ExprMapper exprMapper;
     cpptoc::StmtMapper stmtMapper;
 
-    CppToCVisitorDispatcher dispatcher(mapper, locMapper, declMapper, typeMapper, exprMapper, stmtMapper);
+    CppToCVisitorDispatcher dispatcher(mapper, locMapper, declMapper, typeMapper, exprMapper, stmtMapper, targetCtx);
     registerAllHandlers(dispatcher);
 
     // Find the function
@@ -445,7 +445,7 @@ TEST(ReturnStmtHandlerDispatcherTest, ReturnWithVariable) {
     cpptoc::ExprMapper exprMapper;
     cpptoc::StmtMapper stmtMapper;
 
-    CppToCVisitorDispatcher dispatcher(mapper, locMapper, declMapper, typeMapper, exprMapper, stmtMapper);
+    CppToCVisitorDispatcher dispatcher(mapper, locMapper, declMapper, typeMapper, exprMapper, stmtMapper, targetCtx);
     registerAllHandlers(dispatcher);
 
     // Find the function

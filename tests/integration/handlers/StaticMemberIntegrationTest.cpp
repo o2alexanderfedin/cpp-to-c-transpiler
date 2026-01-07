@@ -74,7 +74,8 @@ TestContext createTestContext() {
         *ctx.declMapper,
         *ctx.typeMapper,
         *ctx.exprMapper,
-        *ctx.stmtMapper
+        *ctx.stmtMapper,
+        *ctx.targetContext
     );
 
     return ctx;

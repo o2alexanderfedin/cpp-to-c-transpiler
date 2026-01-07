@@ -59,7 +59,7 @@ TEST(TypeHandlerDispatcherTest, Registration) {
     cpptoc::StmtMapper stmtMapper;
 
     // Create dispatcher
-    CppToCVisitorDispatcher dispatcher(mapper, locMapper, declMapper, typeMapper, exprMapper, stmtMapper);
+    CppToCVisitorDispatcher dispatcher(mapper, locMapper, declMapper, typeMapper, exprMapper, stmtMapper, targetCtx);
 
     // Register TypeHandler
     cpptoc::TypeHandler::registerWith(dispatcher);
@@ -121,7 +121,7 @@ TEST(TypeHandlerDispatcherTest, LValueReferenceTranslation) {
     cpptoc::ExprMapper exprMapper;
     cpptoc::StmtMapper stmtMapper;
 
-    CppToCVisitorDispatcher dispatcher(mapper, locMapper, declMapper, typeMapper, exprMapper, stmtMapper);
+    CppToCVisitorDispatcher dispatcher(mapper, locMapper, declMapper, typeMapper, exprMapper, stmtMapper, targetCtx);
     cpptoc::TypeHandler::registerWith(dispatcher);
 
     // Find the function parameter type
@@ -177,7 +177,7 @@ TEST(TypeHandlerDispatcherTest, RValueReferenceTranslation) {
     cpptoc::ExprMapper exprMapper;
     cpptoc::StmtMapper stmtMapper;
 
-    CppToCVisitorDispatcher dispatcher(mapper, locMapper, declMapper, typeMapper, exprMapper, stmtMapper);
+    CppToCVisitorDispatcher dispatcher(mapper, locMapper, declMapper, typeMapper, exprMapper, stmtMapper, targetCtx);
     cpptoc::TypeHandler::registerWith(dispatcher);
 
     // Find the function parameter type
@@ -235,7 +235,7 @@ TEST(TypeHandlerDispatcherTest, ConstReferenceTranslation) {
     cpptoc::ExprMapper exprMapper;
     cpptoc::StmtMapper stmtMapper;
 
-    CppToCVisitorDispatcher dispatcher(mapper, locMapper, declMapper, typeMapper, exprMapper, stmtMapper);
+    CppToCVisitorDispatcher dispatcher(mapper, locMapper, declMapper, typeMapper, exprMapper, stmtMapper, targetCtx);
     cpptoc::TypeHandler::registerWith(dispatcher);
 
     // Find the function parameter type
@@ -292,7 +292,7 @@ TEST(TypeHandlerDispatcherTest, PassThroughNonReferenceTypes) {
     cpptoc::ExprMapper exprMapper;
     cpptoc::StmtMapper stmtMapper;
 
-    CppToCVisitorDispatcher dispatcher(mapper, locMapper, declMapper, typeMapper, exprMapper, stmtMapper);
+    CppToCVisitorDispatcher dispatcher(mapper, locMapper, declMapper, typeMapper, exprMapper, stmtMapper, targetCtx);
     cpptoc::TypeHandler::registerWith(dispatcher);
 
     // Find the function parameter type
@@ -341,7 +341,7 @@ TEST(TypeHandlerDispatcherTest, MultipleTypeTranslations) {
     cpptoc::ExprMapper exprMapper;
     cpptoc::StmtMapper stmtMapper;
 
-    CppToCVisitorDispatcher dispatcher(mapper, locMapper, declMapper, typeMapper, exprMapper, stmtMapper);
+    CppToCVisitorDispatcher dispatcher(mapper, locMapper, declMapper, typeMapper, exprMapper, stmtMapper, targetCtx);
     cpptoc::TypeHandler::registerWith(dispatcher);
 
     // Find the function

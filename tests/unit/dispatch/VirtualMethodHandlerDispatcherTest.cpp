@@ -186,7 +186,7 @@ TEST_F(VirtualMethodHandlerDispatcherTest, Registration) {
     cpptoc::StmtMapper stmtMapper;
 
     // Create dispatcher
-    CppToCVisitorDispatcher dispatcher(mapper, locMapper, declMapper, typeMapper, exprMapper, stmtMapper);
+    CppToCVisitorDispatcher dispatcher(mapper, locMapper, declMapper, typeMapper, exprMapper, stmtMapper, targetCtx);
 
     // Register handlers
     cpptoc::TypeHandler::registerWith(dispatcher);
@@ -234,7 +234,7 @@ TEST_F(VirtualMethodHandlerDispatcherTest, SimpleVirtualMethod) {
     cpptoc::ExprMapper exprMapper;
     cpptoc::StmtMapper stmtMapper;
 
-    CppToCVisitorDispatcher dispatcher(mapper, locMapper, declMapper, typeMapper, exprMapper, stmtMapper);
+    CppToCVisitorDispatcher dispatcher(mapper, locMapper, declMapper, typeMapper, exprMapper, stmtMapper, targetCtx);
 
     cpptoc::TypeHandler::registerWith(dispatcher);
     cpptoc::ParameterHandler::registerWith(dispatcher);
@@ -295,7 +295,7 @@ TEST_F(VirtualMethodHandlerDispatcherTest, VirtualMethodWithParameters) {
     cpptoc::ExprMapper exprMapper;
     cpptoc::StmtMapper stmtMapper;
 
-    CppToCVisitorDispatcher dispatcher(mapper, locMapper, declMapper, typeMapper, exprMapper, stmtMapper);
+    CppToCVisitorDispatcher dispatcher(mapper, locMapper, declMapper, typeMapper, exprMapper, stmtMapper, targetCtx);
 
     cpptoc::TypeHandler::registerWith(dispatcher);
     cpptoc::ParameterHandler::registerWith(dispatcher);
@@ -416,7 +416,7 @@ TEST_F(VirtualMethodHandlerDispatcherTest, InheritanceWithOverride) {
     cpptoc::ExprMapper exprMapper;
     cpptoc::StmtMapper stmtMapper;
 
-    CppToCVisitorDispatcher dispatcher(mapper, locMapper, declMapper, typeMapper, exprMapper, stmtMapper);
+    CppToCVisitorDispatcher dispatcher(mapper, locMapper, declMapper, typeMapper, exprMapper, stmtMapper, targetCtx);
 
     cpptoc::TypeHandler::registerWith(dispatcher);
     cpptoc::ParameterHandler::registerWith(dispatcher);
@@ -474,7 +474,7 @@ TEST_F(VirtualMethodHandlerDispatcherTest, VirtualDestructor) {
     cpptoc::ExprMapper exprMapper;
     cpptoc::StmtMapper stmtMapper;
 
-    CppToCVisitorDispatcher dispatcher(mapper, locMapper, declMapper, typeMapper, exprMapper, stmtMapper);
+    CppToCVisitorDispatcher dispatcher(mapper, locMapper, declMapper, typeMapper, exprMapper, stmtMapper, targetCtx);
 
     cpptoc::VirtualMethodHandler::registerWith(dispatcher);
 
@@ -516,7 +516,7 @@ TEST_F(VirtualMethodHandlerDispatcherTest, PureVirtualMethod) {
     cpptoc::ExprMapper exprMapper;
     cpptoc::StmtMapper stmtMapper;
 
-    CppToCVisitorDispatcher dispatcher(mapper, locMapper, declMapper, typeMapper, exprMapper, stmtMapper);
+    CppToCVisitorDispatcher dispatcher(mapper, locMapper, declMapper, typeMapper, exprMapper, stmtMapper, targetCtx);
 
     cpptoc::TypeHandler::registerWith(dispatcher);
     cpptoc::ParameterHandler::registerWith(dispatcher);
@@ -566,7 +566,7 @@ TEST_F(VirtualMethodHandlerDispatcherTest, TypeConversions) {
     cpptoc::ExprMapper exprMapper;
     cpptoc::StmtMapper stmtMapper;
 
-    CppToCVisitorDispatcher dispatcher(mapper, locMapper, declMapper, typeMapper, exprMapper, stmtMapper);
+    CppToCVisitorDispatcher dispatcher(mapper, locMapper, declMapper, typeMapper, exprMapper, stmtMapper, targetCtx);
 
     cpptoc::TypeHandler::registerWith(dispatcher);
     cpptoc::ParameterHandler::registerWith(dispatcher);
@@ -618,7 +618,7 @@ TEST_F(VirtualMethodHandlerDispatcherTest, ExclusionTests) {
     cpptoc::ExprMapper exprMapper;
     cpptoc::StmtMapper stmtMapper;
 
-    CppToCVisitorDispatcher dispatcher(mapper, locMapper, declMapper, typeMapper, exprMapper, stmtMapper);
+    CppToCVisitorDispatcher dispatcher(mapper, locMapper, declMapper, typeMapper, exprMapper, stmtMapper, targetCtx);
 
     cpptoc::VirtualMethodHandler::registerWith(dispatcher);
 
@@ -683,7 +683,7 @@ TEST_F(VirtualMethodHandlerDispatcherTest, MultipleVirtualMethods) {
     cpptoc::ExprMapper exprMapper;
     cpptoc::StmtMapper stmtMapper;
 
-    CppToCVisitorDispatcher dispatcher(mapper, locMapper, declMapper, typeMapper, exprMapper, stmtMapper);
+    CppToCVisitorDispatcher dispatcher(mapper, locMapper, declMapper, typeMapper, exprMapper, stmtMapper, targetCtx);
 
     cpptoc::TypeHandler::registerWith(dispatcher);
     cpptoc::ParameterHandler::registerWith(dispatcher);

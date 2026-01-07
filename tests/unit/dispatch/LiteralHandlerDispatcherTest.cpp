@@ -97,7 +97,7 @@ TEST(LiteralHandlerDispatcherTest, Registration) {
     cpptoc::StmtMapper stmtMapper;
 
     // Create dispatcher
-    CppToCVisitorDispatcher dispatcher(mapper, locMapper, declMapper, typeMapper, exprMapper, stmtMapper);
+    CppToCVisitorDispatcher dispatcher(mapper, locMapper, declMapper, typeMapper, exprMapper, stmtMapper, targetCtx);
 
     // Register LiteralHandler
     cpptoc::LiteralHandler::registerWith(dispatcher);
@@ -151,7 +151,7 @@ TEST(LiteralHandlerDispatcherTest, IntegerLiteralTranslation) {
     cpptoc::ExprMapper exprMapper;
     cpptoc::StmtMapper stmtMapper;
 
-    CppToCVisitorDispatcher dispatcher(mapper, locMapper, declMapper, typeMapper, exprMapper, stmtMapper);
+    CppToCVisitorDispatcher dispatcher(mapper, locMapper, declMapper, typeMapper, exprMapper, stmtMapper, targetCtx);
     cpptoc::LiteralHandler::registerWith(dispatcher);
 
     // Find IntegerLiteral
@@ -204,7 +204,7 @@ TEST(LiteralHandlerDispatcherTest, FloatingLiteralTranslation) {
     cpptoc::ExprMapper exprMapper;
     cpptoc::StmtMapper stmtMapper;
 
-    CppToCVisitorDispatcher dispatcher(mapper, locMapper, declMapper, typeMapper, exprMapper, stmtMapper);
+    CppToCVisitorDispatcher dispatcher(mapper, locMapper, declMapper, typeMapper, exprMapper, stmtMapper, targetCtx);
     cpptoc::LiteralHandler::registerWith(dispatcher);
 
     // Find FloatingLiteral
@@ -254,7 +254,7 @@ TEST(LiteralHandlerDispatcherTest, StringLiteralTranslation) {
     cpptoc::ExprMapper exprMapper;
     cpptoc::StmtMapper stmtMapper;
 
-    CppToCVisitorDispatcher dispatcher(mapper, locMapper, declMapper, typeMapper, exprMapper, stmtMapper);
+    CppToCVisitorDispatcher dispatcher(mapper, locMapper, declMapper, typeMapper, exprMapper, stmtMapper, targetCtx);
     cpptoc::LiteralHandler::registerWith(dispatcher);
 
     // Find StringLiteral
@@ -307,7 +307,7 @@ TEST(LiteralHandlerDispatcherTest, CharacterLiteralTranslation) {
     cpptoc::ExprMapper exprMapper;
     cpptoc::StmtMapper stmtMapper;
 
-    CppToCVisitorDispatcher dispatcher(mapper, locMapper, declMapper, typeMapper, exprMapper, stmtMapper);
+    CppToCVisitorDispatcher dispatcher(mapper, locMapper, declMapper, typeMapper, exprMapper, stmtMapper, targetCtx);
     cpptoc::LiteralHandler::registerWith(dispatcher);
 
     // Find CharacterLiteral
@@ -360,7 +360,7 @@ TEST(LiteralHandlerDispatcherTest, BoolLiteralTranslation) {
     cpptoc::ExprMapper exprMapper;
     cpptoc::StmtMapper stmtMapper;
 
-    CppToCVisitorDispatcher dispatcher(mapper, locMapper, declMapper, typeMapper, exprMapper, stmtMapper);
+    CppToCVisitorDispatcher dispatcher(mapper, locMapper, declMapper, typeMapper, exprMapper, stmtMapper, targetCtx);
     cpptoc::LiteralHandler::registerWith(dispatcher);
 
     // Find CXXBoolLiteralExpr
@@ -419,7 +419,7 @@ TEST(LiteralHandlerDispatcherTest, MultipleLiterals) {
     cpptoc::ExprMapper exprMapper;
     cpptoc::StmtMapper stmtMapper;
 
-    CppToCVisitorDispatcher dispatcher(mapper, locMapper, declMapper, typeMapper, exprMapper, stmtMapper);
+    CppToCVisitorDispatcher dispatcher(mapper, locMapper, declMapper, typeMapper, exprMapper, stmtMapper, targetCtx);
     cpptoc::LiteralHandler::registerWith(dispatcher);
 
     // Find all IntegerLiterals
@@ -477,7 +477,7 @@ TEST(LiteralHandlerDispatcherTest, NonLiteralNotHandled) {
     cpptoc::ExprMapper exprMapper;
     cpptoc::StmtMapper stmtMapper;
 
-    CppToCVisitorDispatcher dispatcher(mapper, locMapper, declMapper, typeMapper, exprMapper, stmtMapper);
+    CppToCVisitorDispatcher dispatcher(mapper, locMapper, declMapper, typeMapper, exprMapper, stmtMapper, targetCtx);
     cpptoc::LiteralHandler::registerWith(dispatcher);
 
     // Find DeclRefExpr (not a literal)

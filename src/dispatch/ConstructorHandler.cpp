@@ -12,6 +12,7 @@
 #include "NameMangler.h"
 #include "mapping/DeclMapper.h"
 #include "mapping/PathMapper.h"
+#include "mapping/SourceLocationMapper.h"
 #include "clang/AST/DeclCXX.h"
 #include "clang/AST/RecordLayout.h"
 #include "llvm/Support/Casting.h"
@@ -70,9 +71,17 @@ void ConstructorHandler::handleConstructor(
         return;
     }
 
+    // Get valid SourceLocation for C AST nodes (needed early for this parameter)
+    std::string targetPathForThis = disp.getCurrentTargetPath();
+    if (targetPathForThis.empty()) {
+        targetPathForThis = disp.getTargetPath(cppASTContext, D);
+    }
+    SourceLocationMapper& locMapperForThis = disp.getTargetContext().getLocationMapper();
+    clang::SourceLocation targetLocForThis = locMapperForThis.getStartOfFile(targetPathForThis);
+
     // Create 'this' parameter
     clang::QualType classType = cASTContext.getRecordType(cRecordDecl);
-    clang::ParmVarDecl* thisParam = createThisParameter(classType, cASTContext);
+    clang::ParmVarDecl* thisParam = createThisParameter(classType, cASTContext, targetLocForThis);
 
     // Translate constructor parameters
     std::vector<clang::ParmVarDecl*> ctorParams = translateParameters(ctor, disp, cppASTContext, cASTContext);
@@ -95,19 +104,19 @@ void ConstructorHandler::handleConstructor(
 
     // Add lpVtbl initialization(s) AFTER base constructors (Task 7)
     if (parentClass->isPolymorphic()) {
-        auto lpVtblInitStmts = injectLpVtblInit(parentClass, thisParam, cppASTContext, cASTContext);
+        auto lpVtblInitStmts = injectLpVtblInit(parentClass, thisParam, cppASTContext, cASTContext, targetLocForThis);
         bodyStmts.insert(bodyStmts.end(), lpVtblInitStmts.begin(), lpVtblInitStmts.end());
     }
 
     // TODO: Add member initializer list translations here
 
-    // Create CompoundStmt (constructor body)
+    // Create CompoundStmt (constructor body) using the same targetLoc
     clang::CompoundStmt* body = clang::CompoundStmt::Create(
         cASTContext,
         bodyStmts,
         clang::FPOptionsOverride(),
-        clang::SourceLocation(),
-        clang::SourceLocation()
+        targetLocForThis,
+        targetLocForThis
     );
 
     // Create C function using CNodeBuilder
@@ -156,6 +165,14 @@ std::vector<clang::ParmVarDecl*> ConstructorHandler::translateParameters(
 ) {
     std::vector<clang::ParmVarDecl*> cParams;
 
+    // Get valid SourceLocation for C AST nodes
+    std::string targetPath = disp.getCurrentTargetPath();
+    if (targetPath.empty()) {
+        targetPath = disp.getTargetPath(cppASTContext, ctor);
+    }
+    SourceLocationMapper& locMapper = disp.getTargetContext().getLocationMapper();
+    clang::SourceLocation targetLoc = locMapper.getStartOfFile(targetPath);
+
     for (const auto* cppParam : ctor->parameters()) {
         clang::IdentifierInfo& II = cASTContext.Idents.get(cppParam->getNameAsString());
         clang::QualType cppParamType = cppParam->getType();
@@ -164,8 +181,8 @@ std::vector<clang::ParmVarDecl*> ConstructorHandler::translateParameters(
         clang::ParmVarDecl* cParam = clang::ParmVarDecl::Create(
             cASTContext,
             cASTContext.getTranslationUnitDecl(),
-            clang::SourceLocation(),
-            clang::SourceLocation(),
+            targetLoc,
+            targetLoc,
             &II,
             cParamType,
             cASTContext.getTrivialTypeSourceInfo(cParamType),
@@ -181,7 +198,8 @@ std::vector<clang::ParmVarDecl*> ConstructorHandler::translateParameters(
 
 clang::ParmVarDecl* ConstructorHandler::createThisParameter(
     clang::QualType recordType,
-    clang::ASTContext& cASTContext
+    clang::ASTContext& cASTContext,
+    clang::SourceLocation targetLoc
 ) {
     clang::IdentifierInfo& II = cASTContext.Idents.get("this");
     clang::QualType thisType = cASTContext.getPointerType(recordType);
@@ -189,8 +207,8 @@ clang::ParmVarDecl* ConstructorHandler::createThisParameter(
     return clang::ParmVarDecl::Create(
         cASTContext,
         cASTContext.getTranslationUnitDecl(),
-        clang::SourceLocation(),
-        clang::SourceLocation(),
+        targetLoc,
+        targetLoc,
         &II,
         thisType,
         cASTContext.getTrivialTypeSourceInfo(thisType),
@@ -222,7 +240,8 @@ std::vector<clang::Stmt*> ConstructorHandler::injectLpVtblInit(
     const clang::CXXRecordDecl* parentClass,
     clang::ParmVarDecl* thisParam,
     const clang::ASTContext& cppASTContext,
-    clang::ASTContext& cASTContext
+    clang::ASTContext& cASTContext,
+    clang::SourceLocation targetLoc
 ) {
     std::vector<clang::Stmt*> stmts;
 
@@ -277,10 +296,10 @@ std::vector<clang::Stmt*> ConstructorHandler::injectLpVtblInit(
         clang::DeclRefExpr* thisExpr = clang::DeclRefExpr::Create(
             cASTContext,
             clang::NestedNameSpecifierLoc(),
-            clang::SourceLocation(),
+            targetLoc,
             thisParam,
             false,
-            clang::SourceLocation(),
+            targetLoc,
             thisParam->getType(),
             clang::VK_LValue
         );
@@ -289,12 +308,12 @@ std::vector<clang::Stmt*> ConstructorHandler::injectLpVtblInit(
             cASTContext,
             thisExpr,
             true,  // isArrow
-            clang::SourceLocation(),
+            targetLoc,
             clang::NestedNameSpecifierLoc(),
-            clang::SourceLocation(),
+            targetLoc,
             lpVtblField,
             clang::DeclAccessPair::make(lpVtblField, clang::AS_public),
-            clang::DeclarationNameInfo(lpVtblField->getDeclName(), clang::SourceLocation()),
+            clang::DeclarationNameInfo(lpVtblField->getDeclName(), targetLoc),
             nullptr,
             lpVtblField->getType(),
             clang::VK_LValue,
@@ -347,8 +366,8 @@ std::vector<clang::Stmt*> ConstructorHandler::injectLpVtblInit(
                     cASTContext,
                     clang::TagTypeKind::Struct,
                     TU,
-                    clang::SourceLocation(),
-                    clang::SourceLocation(),
+                    targetLoc,
+                    targetLoc,
                     &vtableII
                 );
                 vtableStruct->startDefinition();
@@ -362,8 +381,8 @@ std::vector<clang::Stmt*> ConstructorHandler::injectLpVtblInit(
             vtableInstanceVar = clang::VarDecl::Create(
                 cASTContext,
                 TU,
-                clang::SourceLocation(),
-                clang::SourceLocation(),
+                targetLoc,
+                targetLoc,
                 &instanceII,
                 constVtableType,
                 cASTContext.getTrivialTypeSourceInfo(constVtableType),
@@ -377,10 +396,10 @@ std::vector<clang::Stmt*> ConstructorHandler::injectLpVtblInit(
         clang::DeclRefExpr* vtableInstanceExpr = clang::DeclRefExpr::Create(
             cASTContext,
             clang::NestedNameSpecifierLoc(),
-            clang::SourceLocation(),
+            targetLoc,
             vtableInstanceVar,
             false,
-            clang::SourceLocation(),
+            targetLoc,
             vtableInstanceVar->getType(),
             clang::VK_LValue
         );
@@ -393,7 +412,7 @@ std::vector<clang::Stmt*> ConstructorHandler::injectLpVtblInit(
             ptrType,
             clang::VK_PRValue,
             clang::OK_Ordinary,
-            clang::SourceLocation(),
+            targetLoc,
             false,
             clang::FPOptionsOverride()
         );
@@ -407,7 +426,7 @@ std::vector<clang::Stmt*> ConstructorHandler::injectLpVtblInit(
             lpVtblField->getType(),
             clang::VK_LValue,
             clang::OK_Ordinary,
-            clang::SourceLocation(),
+            targetLoc,
             clang::FPOptionsOverride()
         );
 
@@ -428,10 +447,10 @@ std::vector<clang::Stmt*> ConstructorHandler::injectLpVtblInit(
             clang::DeclRefExpr* thisExpr = clang::DeclRefExpr::Create(
                 cASTContext,
                 clang::NestedNameSpecifierLoc(),
-                clang::SourceLocation(),
+                targetLoc,
                 thisParam,
                 false,
-                clang::SourceLocation(),
+                targetLoc,
                 thisParam->getType(),
                 clang::VK_LValue
             );
@@ -440,12 +459,12 @@ std::vector<clang::Stmt*> ConstructorHandler::injectLpVtblInit(
                 cASTContext,
                 thisExpr,
                 true,
-                clang::SourceLocation(),
+                targetLoc,
                 clang::NestedNameSpecifierLoc(),
-                clang::SourceLocation(),
+                targetLoc,
                 lpVtblField,
                 clang::DeclAccessPair::make(lpVtblField, clang::AS_public),
-                clang::DeclarationNameInfo(lpVtblField->getDeclName(), clang::SourceLocation()),
+                clang::DeclarationNameInfo(lpVtblField->getDeclName(), targetLoc),
                 nullptr,
                 lpVtblField->getType(),
                 clang::VK_LValue,
@@ -485,8 +504,8 @@ std::vector<clang::Stmt*> ConstructorHandler::injectLpVtblInit(
                         cASTContext,
                         clang::TagTypeKind::Struct,
                         TU,
-                        clang::SourceLocation(),
-                        clang::SourceLocation(),
+                        targetLoc,
+                        targetLoc,
                         &vtableII
                     );
                     vtableStruct->startDefinition();
@@ -500,8 +519,8 @@ std::vector<clang::Stmt*> ConstructorHandler::injectLpVtblInit(
                 vtableInstanceVar = clang::VarDecl::Create(
                     cASTContext,
                     TU,
-                    clang::SourceLocation(),
-                    clang::SourceLocation(),
+                    targetLoc,
+                    targetLoc,
                     &instanceII,
                     constVtableType,
                     cASTContext.getTrivialTypeSourceInfo(constVtableType),
@@ -514,10 +533,10 @@ std::vector<clang::Stmt*> ConstructorHandler::injectLpVtblInit(
             clang::DeclRefExpr* vtableInstanceExpr = clang::DeclRefExpr::Create(
                 cASTContext,
                 clang::NestedNameSpecifierLoc(),
-                clang::SourceLocation(),
+                targetLoc,
                 vtableInstanceVar,
                 false,
-                clang::SourceLocation(),
+                targetLoc,
                 vtableInstanceVar->getType(),
                 clang::VK_LValue
             );
@@ -530,7 +549,7 @@ std::vector<clang::Stmt*> ConstructorHandler::injectLpVtblInit(
                 ptrType,
                 clang::VK_PRValue,
                 clang::OK_Ordinary,
-                clang::SourceLocation(),
+                targetLoc,
                 false,
                 clang::FPOptionsOverride()
             );
@@ -543,7 +562,7 @@ std::vector<clang::Stmt*> ConstructorHandler::injectLpVtblInit(
                 lpVtblField->getType(),
                 clang::VK_LValue,
                 clang::OK_Ordinary,
-                clang::SourceLocation(),
+                targetLoc,
                 clang::FPOptionsOverride()
             );
 
@@ -568,6 +587,14 @@ std::vector<clang::Stmt*> ConstructorHandler::generateBaseConstructorCalls(
         return calls;
     }
 
+    // Get valid SourceLocation for C AST nodes
+    std::string targetPath = disp.getCurrentTargetPath();
+    if (targetPath.empty()) {
+        targetPath = disp.getTargetPath(cppASTContext, ctor);
+    }
+    SourceLocationMapper& locMapper = disp.getTargetContext().getLocationMapper();
+    clang::SourceLocation targetLoc = locMapper.getStartOfFile(targetPath);
+
     unsigned baseIndex = 0;
     for (const auto& base : parentClass->bases()) {
         const auto* baseClass = base.getType()->getAsCXXRecordDecl();
@@ -580,7 +607,7 @@ std::vector<clang::Stmt*> ConstructorHandler::generateBaseConstructorCalls(
             offset = static_cast<unsigned>(baseOffset.getQuantity());
         }
 
-        clang::CallExpr* call = createBaseConstructorCall(baseClass, thisParam, offset, cASTContext);
+        clang::CallExpr* call = createBaseConstructorCall(baseClass, thisParam, offset, cASTContext, targetLoc);
         if (call) {
             calls.push_back(call);
         }
@@ -595,7 +622,8 @@ clang::CallExpr* ConstructorHandler::createBaseConstructorCall(
     const clang::CXXRecordDecl* baseClass,
     clang::ParmVarDecl* thisParam,
     unsigned offset,
-    clang::ASTContext& cASTContext
+    clang::ASTContext& cASTContext,
+    clang::SourceLocation targetLoc
 ) {
     std::string baseName = baseClass->getNameAsString();
 
@@ -645,8 +673,8 @@ clang::CallExpr* ConstructorHandler::createBaseConstructorCall(
                 cASTContext,
                 clang::TagTypeKind::Struct,
                 TU,
-                clang::SourceLocation(),
-                clang::SourceLocation(),
+                targetLoc,
+                targetLoc,
                 &II
             );
             baseStruct->startDefinition();
@@ -661,8 +689,8 @@ clang::CallExpr* ConstructorHandler::createBaseConstructorCall(
         clang::ParmVarDecl* baseThisParam = clang::ParmVarDecl::Create(
             cASTContext,
             TU,
-            clang::SourceLocation(),
-            clang::SourceLocation(),
+            targetLoc,
+            targetLoc,
             &thisII,
             basePtrType,
             cASTContext.getTrivialTypeSourceInfo(basePtrType),
@@ -674,8 +702,8 @@ clang::CallExpr* ConstructorHandler::createBaseConstructorCall(
         baseCtorFunc = clang::FunctionDecl::Create(
             cASTContext,
             TU,
-            clang::SourceLocation(),
-            clang::SourceLocation(),
+            targetLoc,
+            targetLoc,
             clang::DeclarationName(&funcII),
             cASTContext.VoidTy,
             cASTContext.getTrivialTypeSourceInfo(cASTContext.VoidTy),
@@ -690,10 +718,10 @@ clang::CallExpr* ConstructorHandler::createBaseConstructorCall(
     clang::DeclRefExpr* thisExpr = clang::DeclRefExpr::Create(
         cASTContext,
         clang::NestedNameSpecifierLoc(),
-        clang::SourceLocation(),
+        targetLoc,
         thisParam,
         false,
-        clang::SourceLocation(),
+        targetLoc,
         thisParam->getType(),
         clang::VK_LValue
     );
@@ -712,8 +740,8 @@ clang::CallExpr* ConstructorHandler::createBaseConstructorCall(
             nullptr,
             clang::FPOptionsOverride(),
             cASTContext.getTrivialTypeSourceInfo(charPtrType),
-            clang::SourceLocation(),
-            clang::SourceLocation()
+            targetLoc,
+            targetLoc
         );
 
         llvm::APInt offsetValue(32, offset);
@@ -721,7 +749,7 @@ clang::CallExpr* ConstructorHandler::createBaseConstructorCall(
             cASTContext,
             offsetValue,
             cASTContext.IntTy,
-            clang::SourceLocation()
+            targetLoc
         );
 
         clang::BinaryOperator* addExpr = clang::BinaryOperator::Create(
@@ -732,7 +760,7 @@ clang::CallExpr* ConstructorHandler::createBaseConstructorCall(
             charPtrType,
             clang::VK_PRValue,
             clang::OK_Ordinary,
-            clang::SourceLocation(),
+            targetLoc,
             clang::FPOptionsOverride()
         );
 
@@ -766,8 +794,8 @@ clang::CallExpr* ConstructorHandler::createBaseConstructorCall(
         nullptr,
         clang::FPOptionsOverride(),
         cASTContext.getTrivialTypeSourceInfo(basePtrType),
-        clang::SourceLocation(),
-        clang::SourceLocation()
+        targetLoc,
+        targetLoc
     );
 
     // Create CallExpr
@@ -778,17 +806,17 @@ clang::CallExpr* ConstructorHandler::createBaseConstructorCall(
         clang::DeclRefExpr::Create(
             cASTContext,
             clang::NestedNameSpecifierLoc(),
-            clang::SourceLocation(),
+            targetLoc,
             baseCtorFunc,
             false,
-            clang::SourceLocation(),
+            targetLoc,
             baseCtorFunc->getType(),
             clang::VK_LValue
         ),
         args,
         cASTContext.VoidTy,
         clang::VK_PRValue,
-        clang::SourceLocation(),
+        targetLoc,
         clang::FPOptionsOverride()
     );
 

@@ -42,6 +42,12 @@ TargetContext::TargetContext() {
     // 3. Create SourceManager
     SourceMgr = std::make_unique<clang::SourceManager>(*Diagnostics, *FileMgr);
 
+    // 3.5. Create SourceLocationMapper for C AST nodes
+    // This enables valid SourceLocations for all C AST nodes, allowing
+    // CodeGenerator to emit #line directives for debugging
+    LocationMapper = std::make_unique<SourceLocationMapper>(*FileMgr, *Diagnostics);
+    llvm::outs() << "[SourceLocation] SourceLocationMapper created for C AST nodes\n";
+
     // 4. Create TargetInfo (use host triple for C output)
     std::string TargetTriple = llvm::sys::getDefaultTargetTriple();
     TargetOpts = std::make_unique<clang::TargetOptions>();
@@ -114,7 +120,12 @@ TargetContext::~TargetContext() {
             Context.reset();
         }
 
-        // Destroy Diagnostics second
+        // Destroy LocationMapper second (uses Diagnostics and FileMgr)
+        if (LocationMapper) {
+            LocationMapper.reset();
+        }
+
+        // Destroy Diagnostics third
         if (Diagnostics) {
             Diagnostics.reset();
         }

@@ -97,7 +97,8 @@ void DispatcherTransformer::transform(
     declMapper,
     typeMapper,
     exprMapper,
-    stmtMapper
+    stmtMapper,
+    targetCtx_
   );
 
   // Register all handlers in dependency order (matches CppToCFrontendAction.cpp)

@@ -140,7 +140,7 @@ TEST_F(StaticMethodHandlerDispatcherTest, Registration) {
     cpptoc::StmtMapper stmtMapper;
 
     // Create dispatcher
-    CppToCVisitorDispatcher dispatcher(mapper, locMapper, declMapper, typeMapper, exprMapper, stmtMapper);
+    CppToCVisitorDispatcher dispatcher(mapper, locMapper, declMapper, typeMapper, exprMapper, stmtMapper, targetCtx);
 
     // Register handlers (TypeHandler and ParameterHandler must be registered before StaticMethodHandler)
     cpptoc::TypeHandler::registerWith(dispatcher);
@@ -189,7 +189,7 @@ TEST_F(StaticMethodHandlerDispatcherTest, SimpleStaticMethod) {
     cpptoc::ExprMapper exprMapper;
     cpptoc::StmtMapper stmtMapper;
 
-    CppToCVisitorDispatcher dispatcher(mapper, locMapper, declMapper, typeMapper, exprMapper, stmtMapper);
+    CppToCVisitorDispatcher dispatcher(mapper, locMapper, declMapper, typeMapper, exprMapper, stmtMapper, targetCtx);
 
     // Register handlers
     cpptoc::TypeHandler::registerWith(dispatcher);
@@ -254,7 +254,7 @@ TEST_F(StaticMethodHandlerDispatcherTest, StaticMethodWithParameters) {
     cpptoc::ExprMapper exprMapper;
     cpptoc::StmtMapper stmtMapper;
 
-    CppToCVisitorDispatcher dispatcher(mapper, locMapper, declMapper, typeMapper, exprMapper, stmtMapper);
+    CppToCVisitorDispatcher dispatcher(mapper, locMapper, declMapper, typeMapper, exprMapper, stmtMapper, targetCtx);
 
     // Register handlers
     cpptoc::TypeHandler::registerWith(dispatcher);
@@ -318,7 +318,7 @@ TEST_F(StaticMethodHandlerDispatcherTest, StaticMethodInNamespace) {
     cpptoc::ExprMapper exprMapper;
     cpptoc::StmtMapper stmtMapper;
 
-    CppToCVisitorDispatcher dispatcher(mapper, locMapper, declMapper, typeMapper, exprMapper, stmtMapper);
+    CppToCVisitorDispatcher dispatcher(mapper, locMapper, declMapper, typeMapper, exprMapper, stmtMapper, targetCtx);
 
     // Register handlers (NamespaceHandler must be registered for namespace handling)
     cpptoc::TypeHandler::registerWith(dispatcher);
@@ -413,7 +413,7 @@ TEST_F(StaticMethodHandlerDispatcherTest, NestedNamespaceStaticMethod) {
     cpptoc::ExprMapper exprMapper;
     cpptoc::StmtMapper stmtMapper;
 
-    CppToCVisitorDispatcher dispatcher(mapper, locMapper, declMapper, typeMapper, exprMapper, stmtMapper);
+    CppToCVisitorDispatcher dispatcher(mapper, locMapper, declMapper, typeMapper, exprMapper, stmtMapper, targetCtx);
 
     // Register handlers
     cpptoc::TypeHandler::registerWith(dispatcher);
@@ -513,7 +513,7 @@ TEST_F(StaticMethodHandlerDispatcherTest, ReferenceParameterConversion) {
     cpptoc::ExprMapper exprMapper;
     cpptoc::StmtMapper stmtMapper;
 
-    CppToCVisitorDispatcher dispatcher(mapper, locMapper, declMapper, typeMapper, exprMapper, stmtMapper);
+    CppToCVisitorDispatcher dispatcher(mapper, locMapper, declMapper, typeMapper, exprMapper, stmtMapper, targetCtx);
 
     // Register handlers
     cpptoc::TypeHandler::registerWith(dispatcher);
@@ -576,7 +576,7 @@ TEST_F(StaticMethodHandlerDispatcherTest, IgnoresInstanceMethods) {
     cpptoc::ExprMapper exprMapper;
     cpptoc::StmtMapper stmtMapper;
 
-    CppToCVisitorDispatcher dispatcher(mapper, locMapper, declMapper, typeMapper, exprMapper, stmtMapper);
+    CppToCVisitorDispatcher dispatcher(mapper, locMapper, declMapper, typeMapper, exprMapper, stmtMapper, targetCtx);
 
     // Register handlers
     cpptoc::TypeHandler::registerWith(dispatcher);
@@ -623,7 +623,7 @@ TEST_F(StaticMethodHandlerDispatcherTest, IgnoresConstructors) {
     cpptoc::ExprMapper exprMapper;
     cpptoc::StmtMapper stmtMapper;
 
-    CppToCVisitorDispatcher dispatcher(mapper, locMapper, declMapper, typeMapper, exprMapper, stmtMapper);
+    CppToCVisitorDispatcher dispatcher(mapper, locMapper, declMapper, typeMapper, exprMapper, stmtMapper, targetCtx);
 
     // Register handlers
     cpptoc::TypeHandler::registerWith(dispatcher);
@@ -673,7 +673,7 @@ TEST_F(StaticMethodHandlerDispatcherTest, MixedStaticAndInstanceMethods) {
     cpptoc::ExprMapper exprMapper;
     cpptoc::StmtMapper stmtMapper;
 
-    CppToCVisitorDispatcher dispatcher(mapper, locMapper, declMapper, typeMapper, exprMapper, stmtMapper);
+    CppToCVisitorDispatcher dispatcher(mapper, locMapper, declMapper, typeMapper, exprMapper, stmtMapper, targetCtx);
 
     // Register handlers
     cpptoc::TypeHandler::registerWith(dispatcher);

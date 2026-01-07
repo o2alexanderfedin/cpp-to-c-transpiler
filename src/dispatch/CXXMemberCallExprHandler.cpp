@@ -6,6 +6,7 @@
 #include "dispatch/CXXMemberCallExprHandler.h"
 #include "mapping/ExprMapper.h"
 #include "mapping/DeclMapper.h"
+#include "SourceLocationMapper.h"
 #include "clang/AST/ASTContext.h"
 #include "clang/AST/Expr.h"
 #include "clang/AST/ExprCXX.h"
@@ -68,14 +69,22 @@ void CXXMemberCallExprHandler::handleCXXMemberCallExpr(
         cCalleeDecl = const_cast<clang::FunctionDecl*>(cppCalleeDecl);
     }
 
+    // Get valid SourceLocation for C AST node
+    std::string targetPath = disp.getCurrentTargetPath();
+    if (targetPath.empty()) {
+        targetPath = disp.getTargetPath(cppASTContext, const_cast<clang::Expr*>(E));
+    }
+    SourceLocationMapper& locMapper = disp.getTargetContext().getLocationMapper();
+    clang::SourceLocation targetLoc = locMapper.getStartOfFile(targetPath);
+
     // Create DeclRefExpr for the C function
     clang::DeclRefExpr* cCalleeDRE = clang::DeclRefExpr::Create(
         cASTContext,
         clang::NestedNameSpecifierLoc(),
-        clang::SourceLocation(),
+        targetLoc,
         llvm::cast<clang::FunctionDecl>(cCalleeDecl),
         false, // RefersToEnclosingVariableOrCapture
-        clang::SourceLocation(),
+        targetLoc,
         llvm::cast<clang::FunctionDecl>(cCalleeDecl)->getType(),
         clang::VK_LValue
     );
@@ -108,7 +117,7 @@ void CXXMemberCallExprHandler::handleCXXMemberCallExpr(
             cObjPtrType,
             clang::VK_PRValue,
             clang::OK_Ordinary,
-            clang::SourceLocation(),
+            targetLoc,
             false, // CanOverflow
             clang::FPOptionsOverride()
         );
@@ -152,7 +161,7 @@ void CXXMemberCallExprHandler::handleCXXMemberCallExpr(
                     cArgPtrType,
                     clang::VK_PRValue,
                     clang::OK_Ordinary,
-                    clang::SourceLocation(),
+                    targetLoc,
                     false, // CanOverflow
                     clang::FPOptionsOverride()
                 );
@@ -174,7 +183,7 @@ void CXXMemberCallExprHandler::handleCXXMemberCallExpr(
         cArgs,
         cppMemberCall->getType(),
         cppMemberCall->getValueKind(),
-        clang::SourceLocation(),
+        targetLoc,
         clang::FPOptionsOverride()
     );
 

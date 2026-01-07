@@ -107,7 +107,7 @@ public:
     cpptoc::StmtMapper stmtMapper;
 
     // Create dispatcher with all mappers
-    CppToCVisitorDispatcher dispatcher(pathMapper, locMapper, declMapper, typeMapper, exprMapper, stmtMapper);
+    CppToCVisitorDispatcher dispatcher(pathMapper, locMapper, declMapper, typeMapper, exprMapper, stmtMapper, targetCtx);
 
     // Set the current target path so all declarations go to the correct C_TU
     dispatcher.setCurrentTargetPath(targetPath);

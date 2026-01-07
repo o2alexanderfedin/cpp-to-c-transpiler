@@ -29,6 +29,8 @@
 #include <vector>
 
 // Forward declarations
+class TargetContext;
+
 namespace cpptoc {
     class PathMapper;
     class DeclLocationMapper;
@@ -148,6 +150,9 @@ private:
     // Statement mapper for C++ → C statement mappings
     cpptoc::StmtMapper& stmtMapper;
 
+    // Target context for C AST creation (provides LocationMapper)
+    TargetContext& targetContext;
+
     // Current target path context (which source file is currently being transpiled)
     // Mutable because handlers need to update context even when dispatcher is const
     mutable std::string currentTargetPath_;
@@ -161,6 +166,7 @@ public:
      * @param tMapper TypeMapper for C++ → C type mappings (required)
      * @param eMapper ExprMapper for C++ → C expression mappings (required)
      * @param sMapper StmtMapper for C++ → C statement mappings (required)
+     * @param tgtContext TargetContext for C AST creation (provides LocationMapper)
      */
     explicit CppToCVisitorDispatcher(
         cpptoc::PathMapper& mapper,
@@ -168,8 +174,9 @@ public:
         cpptoc::DeclMapper& dMapper,
         cpptoc::TypeMapper& tMapper,
         cpptoc::ExprMapper& eMapper,
-        cpptoc::StmtMapper& sMapper
-    ) : pathMapper(mapper), declLocationMapper(locMapper), declMapper(dMapper), typeMapper(tMapper), exprMapper(eMapper), stmtMapper(sMapper) {}
+        cpptoc::StmtMapper& sMapper,
+        TargetContext& tgtContext
+    ) : pathMapper(mapper), declLocationMapper(locMapper), declMapper(dMapper), typeMapper(tMapper), exprMapper(eMapper), stmtMapper(sMapper), targetContext(tgtContext) {}
 
     /**
      * @brief Get the path mapper
@@ -200,6 +207,12 @@ public:
      * @return Reference to StmtMapper
      */
     cpptoc::StmtMapper& getStmtMapper() const { return stmtMapper; }
+
+    /**
+     * @brief Get the target context
+     * @return Reference to TargetContext
+     */
+    TargetContext& getTargetContext() const { return targetContext; }
 
     /**
      * @brief Helper: Get C target path for AST node's source file

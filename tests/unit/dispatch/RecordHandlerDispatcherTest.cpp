@@ -88,7 +88,7 @@ TEST(RecordHandlerDispatcherTest, Registration) {
     cpptoc::ExprMapper exprMapper;
     cpptoc::StmtMapper stmtMapper;
 
-    CppToCVisitorDispatcher dispatcher(mapper, locMapper, declMapper, typeMapper, exprMapper, stmtMapper);
+    CppToCVisitorDispatcher dispatcher(mapper, locMapper, declMapper, typeMapper, exprMapper, stmtMapper, targetCtx);
     cpptoc::TypeHandler::registerWith(dispatcher);
     cpptoc::RecordHandler::registerWith(dispatcher);
 
@@ -133,7 +133,7 @@ TEST(RecordHandlerDispatcherTest, BasicStruct) {
     cpptoc::ExprMapper exprMapper;
     cpptoc::StmtMapper stmtMapper;
 
-    CppToCVisitorDispatcher dispatcher(mapper, locMapper, declMapper, typeMapper, exprMapper, stmtMapper);
+    CppToCVisitorDispatcher dispatcher(mapper, locMapper, declMapper, typeMapper, exprMapper, stmtMapper, targetCtx);
     cpptoc::TypeHandler::registerWith(dispatcher);
     cpptoc::RecordHandler::registerWith(dispatcher);
 
@@ -193,7 +193,7 @@ TEST(RecordHandlerDispatcherTest, ClassToStruct) {
     cpptoc::ExprMapper exprMapper;
     cpptoc::StmtMapper stmtMapper;
 
-    CppToCVisitorDispatcher dispatcher(mapper, locMapper, declMapper, typeMapper, exprMapper, stmtMapper);
+    CppToCVisitorDispatcher dispatcher(mapper, locMapper, declMapper, typeMapper, exprMapper, stmtMapper, targetCtx);
     cpptoc::TypeHandler::registerWith(dispatcher);
     cpptoc::RecordHandler::registerWith(dispatcher);
 
@@ -246,7 +246,7 @@ TEST(RecordHandlerDispatcherTest, ForwardDeclaration) {
     cpptoc::ExprMapper exprMapper;
     cpptoc::StmtMapper stmtMapper;
 
-    CppToCVisitorDispatcher dispatcher(mapper, locMapper, declMapper, typeMapper, exprMapper, stmtMapper);
+    CppToCVisitorDispatcher dispatcher(mapper, locMapper, declMapper, typeMapper, exprMapper, stmtMapper, targetCtx);
     cpptoc::TypeHandler::registerWith(dispatcher);
     cpptoc::RecordHandler::registerWith(dispatcher);
 
@@ -305,7 +305,7 @@ TEST(RecordHandlerDispatcherTest, FieldTypes) {
     cpptoc::ExprMapper exprMapper;
     cpptoc::StmtMapper stmtMapper;
 
-    CppToCVisitorDispatcher dispatcher(mapper, locMapper, declMapper, typeMapper, exprMapper, stmtMapper);
+    CppToCVisitorDispatcher dispatcher(mapper, locMapper, declMapper, typeMapper, exprMapper, stmtMapper, targetCtx);
     cpptoc::TypeHandler::registerWith(dispatcher);
     cpptoc::RecordHandler::registerWith(dispatcher);
 
@@ -362,7 +362,7 @@ TEST(RecordHandlerDispatcherTest, NestedStruct) {
     cpptoc::ExprMapper exprMapper;
     cpptoc::StmtMapper stmtMapper;
 
-    CppToCVisitorDispatcher dispatcher(mapper, locMapper, declMapper, typeMapper, exprMapper, stmtMapper);
+    CppToCVisitorDispatcher dispatcher(mapper, locMapper, declMapper, typeMapper, exprMapper, stmtMapper, targetCtx);
     cpptoc::TypeHandler::registerWith(dispatcher);
     cpptoc::RecordHandler::registerWith(dispatcher);
 
@@ -433,7 +433,7 @@ TEST(RecordHandlerDispatcherTest, SkipPolymorphicClass) {
     cpptoc::ExprMapper exprMapper;
     cpptoc::StmtMapper stmtMapper;
 
-    CppToCVisitorDispatcher dispatcher(mapper, locMapper, declMapper, typeMapper, exprMapper, stmtMapper);
+    CppToCVisitorDispatcher dispatcher(mapper, locMapper, declMapper, typeMapper, exprMapper, stmtMapper, targetCtx);
     cpptoc::TypeHandler::registerWith(dispatcher);
     cpptoc::RecordHandler::registerWith(dispatcher);
 
@@ -480,7 +480,7 @@ TEST(RecordHandlerDispatcherTest, DuplicateDetection) {
     cpptoc::ExprMapper exprMapper;
     cpptoc::StmtMapper stmtMapper;
 
-    CppToCVisitorDispatcher dispatcher(mapper, locMapper, declMapper, typeMapper, exprMapper, stmtMapper);
+    CppToCVisitorDispatcher dispatcher(mapper, locMapper, declMapper, typeMapper, exprMapper, stmtMapper, targetCtx);
     cpptoc::TypeHandler::registerWith(dispatcher);
     cpptoc::RecordHandler::registerWith(dispatcher);
 

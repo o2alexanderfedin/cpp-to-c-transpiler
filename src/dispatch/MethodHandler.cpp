@@ -12,6 +12,7 @@
 #include "dispatch/MethodHandler.h"
 #include "CNodeBuilder.h"
 #include "NameMangler.h"
+#include "SourceLocationMapper.h"
 #include "mapping/DeclMapper.h"
 #include "mapping/StmtMapper.h"
 #include "mapping/TypeMapper.h"
@@ -98,7 +99,7 @@ void MethodHandler::handleMethod(
 
     // Add "this" parameter ONLY if not a static method
     if (!cppMethod->isStatic()) {
-        clang::ParmVarDecl* thisParam = createThisParameter(classDecl, cASTContext);
+        clang::ParmVarDecl* thisParam = createThisParameter(classDecl, cASTContext, disp);
         assert(thisParam && "Failed to create 'this' parameter");
         allParams.push_back(thisParam);
     }
@@ -192,19 +193,25 @@ void MethodHandler::handleMethod(
 
 clang::ParmVarDecl* MethodHandler::createThisParameter(
     const clang::CXXRecordDecl* classDecl,
-    clang::ASTContext& cASTContext
+    clang::ASTContext& cASTContext,
+    const CppToCVisitorDispatcher& disp
 ) {
     // Use NameMangler API to get properly mangled class name (includes namespace prefix)
     std::string className = cpptoc::mangle_class(classDecl);
 
     // Create struct type with properly mangled class name
     clang::IdentifierInfo& structII = cASTContext.Idents.get(className);
+
+    // Get source location from SourceLocationMapper
+    SourceLocationMapper& locMapper = disp.getTargetContext().getLocationMapper();
+    clang::SourceLocation targetLoc = locMapper.getStartOfFile("");
+
     clang::RecordDecl* structDecl = clang::RecordDecl::Create(
         cASTContext,
         clang::TagTypeKind::Struct,
         cASTContext.getTranslationUnitDecl(),
-        clang::SourceLocation(),
-        clang::SourceLocation(),
+        targetLoc,
+        targetLoc,
         &structII
     );
 
@@ -217,8 +224,8 @@ clang::ParmVarDecl* MethodHandler::createThisParameter(
     clang::ParmVarDecl* thisParam = clang::ParmVarDecl::Create(
         cASTContext,
         nullptr,  // DeclContext set later by FunctionDecl
-        clang::SourceLocation(),
-        clang::SourceLocation(),
+        targetLoc,
+        targetLoc,
         &thisII,
         pointerType,
         cASTContext.getTrivialTypeSourceInfo(pointerType),

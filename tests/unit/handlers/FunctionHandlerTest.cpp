@@ -59,10 +59,12 @@ protected:
         DeclMapper& declMapper,
         TypeMapper& typeMapper,
         ExprMapper& exprMapper,
-        StmtMapper& stmtMapper
+        StmtMapper& stmtMapper,
+        TargetContext& targetCtx
     ) {
         auto dispatcher = std::make_unique<CppToCVisitorDispatcher>(
-            mapper, locMapper, declMapper, typeMapper, exprMapper, stmtMapper
+            mapper, locMapper, declMapper, typeMapper, exprMapper, stmtMapper,
+            targetCtx
         );
 
         // Register handlers in dependency order
@@ -89,14 +91,14 @@ protected:
         TargetContext targetCtx;
         cCtx = &targetCtx.getContext();
 
-        PathMapper mapper("/src", "/output");
+        PathMapper mapper(targetCtx, "/src", "/output");
         DeclLocationMapper locMapper(mapper);
         DeclMapper declMapper;
         TypeMapper typeMapper;
         ExprMapper exprMapper;
         StmtMapper stmtMapper;
 
-        auto dispatcher = createDispatcher(mapper, locMapper, declMapper, typeMapper, exprMapper, stmtMapper);
+        auto dispatcher = createDispatcher(mapper, locMapper, declMapper, typeMapper, exprMapper, stmtMapper, targetCtx);
 
         // Find function
         clang::FunctionDecl* cppFunc = nullptr;
@@ -156,7 +158,7 @@ TEST_F(FunctionHandlerTest, EmptyFunction) {
     clang::ASTContext& cCtx = targetCtx.getContext();
 
     // Create mapping utilities
-    PathMapper mapper("/src", "/output");
+    PathMapper mapper(targetCtx, "/src", "/output");
     DeclLocationMapper locMapper(mapper);
     DeclMapper declMapper;
     TypeMapper typeMapper;
@@ -164,7 +166,7 @@ TEST_F(FunctionHandlerTest, EmptyFunction) {
     StmtMapper stmtMapper;
 
     // Create dispatcher and register handlers
-    auto dispatcher = createDispatcher(mapper, locMapper, declMapper, typeMapper, exprMapper, stmtMapper);
+    auto dispatcher = createDispatcher(mapper, locMapper, declMapper, typeMapper, exprMapper, stmtMapper, targetCtx);
 
     // Find the function
     clang::TranslationUnitDecl* TU = cppCtx.getTranslationUnitDecl();
@@ -222,14 +224,14 @@ TEST_F(FunctionHandlerTest, FunctionWithIntReturn) {
     TargetContext targetCtx;
     clang::ASTContext& cCtx = targetCtx.getContext();
 
-    PathMapper mapper("/src", "/output");
+    PathMapper mapper(targetCtx, "/src", "/output");
     DeclLocationMapper locMapper(mapper);
     DeclMapper declMapper;
     TypeMapper typeMapper;
     ExprMapper exprMapper;
     StmtMapper stmtMapper;
 
-    auto dispatcher = createDispatcher(mapper, locMapper, declMapper, typeMapper, exprMapper, stmtMapper);
+    auto dispatcher = createDispatcher(mapper, locMapper, declMapper, typeMapper, exprMapper, stmtMapper, targetCtx);
 
     // Find function
     clang::FunctionDecl* cppFunc = nullptr;
@@ -281,14 +283,14 @@ TEST_F(FunctionHandlerTest, FunctionWithFloatReturn) {
     TargetContext targetCtx;
     clang::ASTContext& cCtx = targetCtx.getContext();
 
-    PathMapper mapper("/src", "/output");
+    PathMapper mapper(targetCtx, "/src", "/output");
     DeclLocationMapper locMapper(mapper);
     DeclMapper declMapper;
     TypeMapper typeMapper;
     ExprMapper exprMapper;
     StmtMapper stmtMapper;
 
-    auto dispatcher = createDispatcher(mapper, locMapper, declMapper, typeMapper, exprMapper, stmtMapper);
+    auto dispatcher = createDispatcher(mapper, locMapper, declMapper, typeMapper, exprMapper, stmtMapper, targetCtx);
 
     // Find function
     clang::FunctionDecl* cppFunc = nullptr;

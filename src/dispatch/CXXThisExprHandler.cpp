@@ -4,6 +4,7 @@
  */
 
 #include "dispatch/CXXThisExprHandler.h"
+#include "SourceLocationMapper.h"
 #include "mapping/ExprMapper.h"
 #include "clang/AST/ASTContext.h"
 #include "clang/AST/Decl.h"
@@ -53,6 +54,14 @@ void CXXThisExprHandler::handleCXXThisExpr(
     // The actual parameter decl should be created by the method handler
     // For now, we create a DeclRefExpr with identifier "this"
 
+    // Get source location from SourceLocationMapper
+    std::string targetPath = disp.getCurrentTargetPath();
+    if (targetPath.empty()) {
+        targetPath = disp.getTargetPath(cppASTContext, E);
+    }
+    SourceLocationMapper& locMapper = disp.getTargetContext().getLocationMapper();
+    clang::SourceLocation targetLoc = locMapper.getStartOfFile(targetPath);
+
     // Create an IdentifierInfo for "this"
     clang::IdentifierInfo* thisIdent = &cASTContext.Idents.get("this");
 
@@ -62,8 +71,8 @@ void CXXThisExprHandler::handleCXXThisExpr(
     clang::ParmVarDecl* thisParam = clang::ParmVarDecl::Create(
         cASTContext,
         nullptr, // DeclContext - will be set by method handler
-        clang::SourceLocation(),
-        clang::SourceLocation(),
+        targetLoc,
+        targetLoc,
         thisIdent,
         thisType,
         cASTContext.getTrivialTypeSourceInfo(thisType),
@@ -75,10 +84,10 @@ void CXXThisExprHandler::handleCXXThisExpr(
     clang::DeclRefExpr* cThisRef = clang::DeclRefExpr::Create(
         cASTContext,
         clang::NestedNameSpecifierLoc(),
-        clang::SourceLocation(),
+        targetLoc,
         thisParam,
         false, // refersToEnclosingVariableOrCapture
-        clang::SourceLocation(),
+        targetLoc,
         thisType,
         clang::VK_LValue
     );

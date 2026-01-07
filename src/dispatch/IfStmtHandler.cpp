@@ -4,6 +4,7 @@
  */
 
 #include "dispatch/IfStmtHandler.h"
+#include "SourceLocationMapper.h"
 #include "mapping/StmtMapper.h"
 #include "clang/AST/Stmt.h"
 #include "llvm/Support/Casting.h"
@@ -86,18 +87,26 @@ void IfStmtHandler::handleIfStmt(
         assert(cElse && "Else branch must be in StmtMapper");
     }
 
+    // Get source location from SourceLocationMapper
+    std::string targetPath = disp.getCurrentTargetPath();
+    if (targetPath.empty()) {
+        targetPath = disp.getTargetPath(cppASTContext, S);
+    }
+    SourceLocationMapper& locMapper = disp.getTargetContext().getLocationMapper();
+    clang::SourceLocation targetLoc = locMapper.getStartOfFile(targetPath);
+
     // Create C IfStmt
     clang::IfStmt* cIfStmt = clang::IfStmt::Create(
         cASTContext,
-        clang::SourceLocation(), // if loc
+        targetLoc, // if loc
         clang::IfStatementKind::Ordinary,
         nullptr, // init
         nullptr, // condition variable
         cCond,
-        clang::SourceLocation(), // lparen loc
-        clang::SourceLocation(), // rparen loc
+        targetLoc, // lparen loc
+        targetLoc, // rparen loc
         cThen,
-        clang::SourceLocation(), // else loc
+        targetLoc, // else loc
         cElse
     );
 

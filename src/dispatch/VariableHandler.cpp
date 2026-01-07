@@ -219,12 +219,20 @@ void VariableHandler::handleVariable(
     // Create identifier for variable name (use mangled name for static locals)
     clang::IdentifierInfo& II = cASTContext.Idents.get(mangledName);
 
+    // Get valid SourceLocation for C AST node
+    std::string targetPath = disp.getCurrentTargetPath();
+    if (targetPath.empty()) {
+        targetPath = disp.getTargetPath(cppASTContext, D);
+    }
+    SourceLocationMapper& locMapper = disp.getTargetContext().getLocationMapper();
+    clang::SourceLocation targetLoc = locMapper.getStartOfFile(targetPath);
+
     // Create C variable
     clang::VarDecl* cVar = clang::VarDecl::Create(
         cASTContext,
         cDeclContext,
-        clang::SourceLocation(),
-        clang::SourceLocation(),
+        targetLoc,
+        targetLoc,
         &II,
         cType,
         cASTContext.getTrivialTypeSourceInfo(cType),
@@ -255,11 +263,7 @@ void VariableHandler::handleVariable(
     // Store mapping
     declMapper.setCreated(cppVar, cVar);
 
-    // Get target path and register location
-    std::string targetPath = disp.getCurrentTargetPath();  // Use current path set by TranslationUnitHandler
-    if (targetPath.empty()) {
-        targetPath = disp.getTargetPath(cppASTContext, D);
-    }
+    // Register location (targetPath already retrieved earlier)
     cpptoc::PathMapper& pathMapper = disp.getPathMapper();
     pathMapper.setNodeLocation(cVar, targetPath);
 
@@ -298,7 +302,8 @@ clang::StorageClass VariableHandler::translateStorageClass(clang::StorageClass s
 
 clang::Expr* VariableHandler::translateInitializer(
     const clang::Expr* init,
-    clang::ASTContext& cASTContext
+    clang::ASTContext& cASTContext,
+    clang::SourceLocation targetLoc
 ) {
     if (!init) {
         return nullptr;
@@ -314,7 +319,7 @@ clang::Expr* VariableHandler::translateInitializer(
             cASTContext,
             intLit->getValue(),
             cASTContext.IntTy,  // Get int type from C context
-            clang::SourceLocation()
+            targetLoc
         );
     }
 
@@ -334,7 +339,7 @@ clang::Expr* VariableHandler::translateInitializer(
             floatLit->getValue(),
             floatLit->isExact(),
             cFloatType,
-            clang::SourceLocation()
+            targetLoc
         );
     }
 
@@ -345,7 +350,7 @@ clang::Expr* VariableHandler::translateInitializer(
             charLit->getValue(),
             charLit->getKind(),
             cASTContext.CharTy,  // Get char type from C context
-            clang::SourceLocation()
+            targetLoc
         );
     }
 
@@ -368,7 +373,7 @@ clang::Expr* VariableHandler::translateInitializer(
             strLit->getKind(),
             strLit->isPascal(),
             arrayType,
-            clang::SourceLocation()
+            targetLoc
         );
     }
 

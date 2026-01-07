@@ -118,11 +118,13 @@ private:
      * @brief Create 'this' parameter for init function
      * @param recordType Type of the C struct (NOT C++ class)
      * @param cASTContext Target C ASTContext
+     * @param targetLoc Valid SourceLocation for C AST node
      * @return ParmVarDecl for 'this' parameter (struct ClassName* this)
      */
     static clang::ParmVarDecl* createThisParameter(
         clang::QualType recordType,
-        clang::ASTContext& cASTContext
+        clang::ASTContext& cASTContext,
+        clang::SourceLocation targetLoc
     );
 
     /**
@@ -142,6 +144,7 @@ private:
      * @param thisParam C this parameter (struct ClassName* this)
      * @param cppASTContext Source C++ ASTContext
      * @param cASTContext Target C ASTContext
+     * @param targetLoc Valid SourceLocation for C AST nodes
      * @return Vector of statements for all lpVtbl initializations
      *
      * Only injects if class is polymorphic (has virtual methods).
@@ -158,7 +161,8 @@ private:
         const clang::CXXRecordDecl* parentClass,
         clang::ParmVarDecl* thisParam,
         const clang::ASTContext& cppASTContext,
-        clang::ASTContext& cASTContext
+        clang::ASTContext& cASTContext,
+        clang::SourceLocation targetLoc
     );
 
     /**
@@ -191,13 +195,15 @@ private:
      * @param thisParam C this parameter
      * @param offset Offset of base in derived class (0 for primary base)
      * @param cASTContext Target C ASTContext
+     * @param targetLoc Valid SourceLocation for C AST nodes
      * @return CallExpr for base constructor
      */
     static clang::CallExpr* createBaseConstructorCall(
         const clang::CXXRecordDecl* baseClass,
         clang::ParmVarDecl* thisParam,
         unsigned offset,
-        clang::ASTContext& cASTContext
+        clang::ASTContext& cASTContext,
+        clang::SourceLocation targetLoc
     );
 };
 

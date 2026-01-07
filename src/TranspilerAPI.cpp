@@ -157,7 +157,7 @@ public:
         cpptoc::StmtMapper stmtMapper;
 
         // Create dispatcher with all mappers
-        CppToCVisitorDispatcher dispatcher(mapper, locMapper, declMapper, typeMapper, exprMapper, stmtMapper);
+        CppToCVisitorDispatcher dispatcher(mapper, locMapper, declMapper, typeMapper, exprMapper, stmtMapper, targetCtx);
 
         // Register all handlers in dependency order
         // Base handlers first (these are used by others)

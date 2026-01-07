@@ -7,6 +7,7 @@
 #include "clang/Basic/SourceManager.h"
 #include "clang/Basic/TargetInfo.h"
 #include "clang/Basic/Builtins.h"
+#include "SourceLocationMapper.h"
 #include <memory>
 
 // Phase 35-02 (Bug #30 FIX): Separate source and target ASTContexts
@@ -68,6 +69,9 @@ private:
     // The target ASTContext for all C nodes
     std::unique_ptr<clang::ASTContext> Context;
 
+    // SourceLocation mapper for creating valid locations in C AST nodes
+    std::unique_ptr<SourceLocationMapper> LocationMapper;
+
 public:
 
     /**
@@ -77,6 +81,15 @@ public:
      * All C nodes (from all files) are created in this context
      */
     clang::ASTContext& getContext() { return *Context; }
+
+    /**
+     * @brief Get the SourceLocationMapper for creating valid C AST node locations
+     * @return Reference to the SourceLocationMapper
+     *
+     * Use this to create valid SourceLocations when creating C AST nodes.
+     * This ensures CodeGenerator can emit #line directives for debugging.
+     */
+    SourceLocationMapper& getLocationMapper() { return *LocationMapper; }
 
     /**
      * @brief Create a new C_TranslationUnit for a source file
