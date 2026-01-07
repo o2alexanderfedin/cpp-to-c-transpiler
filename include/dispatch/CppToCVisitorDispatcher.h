@@ -29,8 +29,6 @@
 #include <vector>
 
 // Forward declarations
-class TargetContext;
-
 namespace cpptoc {
     class PathMapper;
     class DeclLocationMapper;
@@ -41,6 +39,10 @@ namespace cpptoc {
 #include "mapping/TypeMapper.h"
 #include "mapping/ExprMapper.h"
 #include "mapping/StmtMapper.h"
+
+// Need full definition of TargetContext for getTargetSourceLocation()
+// which calls targetContext.getLocationMapper()
+#include "TargetContext.h"
 
 /**
  * @class CppToCVisitorDispatcher

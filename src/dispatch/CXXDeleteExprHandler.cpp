@@ -6,6 +6,8 @@
 #include "dispatch/CXXDeleteExprHandler.h"
 #include "mapping/StmtMapper.h"
 #include "mapping/ExprMapper.h"
+#include "SourceLocationMapper.h"
+#include "TargetContext.h"
 #include "clang/AST/ASTContext.h"
 #include "clang/AST/Expr.h"
 #include "clang/AST/ExprCXX.h"
@@ -46,6 +48,12 @@ void CXXDeleteExprHandler::handleCXXDeleteExpr(
         return;
     }
 
+    // Get target location for this expression
+    std::string targetPath = disp.getCurrentTargetPath();
+    assert(!targetPath.empty() && "Target path must be set before expression handling");
+    SourceLocationMapper& locMapper = disp.getTargetContext().getLocationMapper();
+    clang::SourceLocation targetLoc = locMapper.getStartOfFile(targetPath);
+
     llvm::outs() << "[CXXDeleteExprHandler] Processing CXXDeleteExpr (translating to free)\n";
 
     // Get the argument (pointer being deleted)
@@ -75,7 +83,7 @@ void CXXDeleteExprHandler::handleCXXDeleteExpr(
         cASTContext,
         zeroValue,
         cASTContext.IntTy,
-        clang::SourceLocation()
+        targetLoc
     );
 
     llvm::outs() << "[CXXDeleteExprHandler] Created placeholder for delete expression (full free translation not yet implemented)\n";

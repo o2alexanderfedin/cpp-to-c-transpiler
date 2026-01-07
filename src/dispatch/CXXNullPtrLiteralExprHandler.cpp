@@ -5,6 +5,8 @@
 
 #include "dispatch/CXXNullPtrLiteralExprHandler.h"
 #include "mapping/ExprMapper.h"
+#include "SourceLocationMapper.h"
+#include "TargetContext.h"
 #include "clang/AST/ASTContext.h"
 #include "clang/AST/Expr.h"
 #include "clang/AST/ExprCXX.h"
@@ -43,6 +45,12 @@ void CXXNullPtrLiteralExprHandler::handleCXXNullPtrLiteralExpr(
         return;
     }
 
+    // Get target location for this expression
+    std::string targetPath = disp.getCurrentTargetPath();
+    assert(!targetPath.empty() && "Target path must be set before expression handling");
+    SourceLocationMapper& locMapper = disp.getTargetContext().getLocationMapper();
+    clang::SourceLocation targetLoc = locMapper.getStartOfFile(targetPath);
+
     llvm::outs() << "[CXXNullPtrLiteralExprHandler] Processing nullptr literal\n";
 
     // For nullptr, create integer literal 0 (C uses 0 or NULL)
@@ -51,7 +59,7 @@ void CXXNullPtrLiteralExprHandler::handleCXXNullPtrLiteralExpr(
         cASTContext,
         zeroValue,
         cASTContext.IntTy,
-        clang::SourceLocation()
+        targetLoc
     );
 
     llvm::outs() << "[CXXNullPtrLiteralExprHandler] Created integer literal 0 for nullptr\n";

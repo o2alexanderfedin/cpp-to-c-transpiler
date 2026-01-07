@@ -164,6 +164,13 @@ void VariableHandler::handleVariable(
         }
     }
 
+    // Get target path early - needed for both DeclContext and location registration
+    std::string targetPath = disp.getCurrentTargetPath();
+    if (targetPath.empty()) {
+        targetPath = disp.getTargetPath(cppASTContext, D);
+    }
+    cpptoc::PathMapper& pathMapper = disp.getPathMapper();
+
     // Determine target DeclContext
     // CRITICAL: Static local variables MUST be hoisted to global scope
     // They retain their value between function calls, so they act like globals
@@ -172,11 +179,6 @@ void VariableHandler::handleVariable(
         // CRITICAL FIX: For global variables, use PathMapper to get the correct C TU
         // Don't use cASTContext.getTranslationUnitDecl() - that's the root TU, not the per-file TU!
         // This matches the pattern used by FunctionHandler, MethodHandler, etc.
-        std::string targetPath = disp.getCurrentTargetPath();
-        if (targetPath.empty()) {
-            targetPath = disp.getTargetPath(cppASTContext, D);
-        }
-        cpptoc::PathMapper& pathMapper = disp.getPathMapper();
         cDeclContext = pathMapper.getOrCreateTU(targetPath);
         if (isStaticLocal) {
             llvm::outs() << "[VariableHandler] Static local variable hoisted to global scope (PathMapper TU for: "
@@ -196,21 +198,11 @@ void VariableHandler::handleVariable(
                 llvm::outs() << "[VariableHandler] Local scope variable (parent found)\n";
             } else {
                 // Fallback to global scope - use PathMapper here too
-                std::string targetPath = disp.getCurrentTargetPath();
-                if (targetPath.empty()) {
-                    targetPath = disp.getTargetPath(cppASTContext, D);
-                }
-                cpptoc::PathMapper& pathMapper = disp.getPathMapper();
                 cDeclContext = pathMapper.getOrCreateTU(targetPath);
                 llvm::outs() << "[VariableHandler] Warning: Parent not a DeclContext, using PathMapper TU\n";
             }
         } else {
             // Fallback to global scope - use PathMapper here too
-            std::string targetPath = disp.getCurrentTargetPath();
-            if (targetPath.empty()) {
-                targetPath = disp.getTargetPath(cppASTContext, D);
-            }
-            cpptoc::PathMapper& pathMapper = disp.getPathMapper();
             cDeclContext = pathMapper.getOrCreateTU(targetPath);
             llvm::outs() << "[VariableHandler] Warning: Parent not translated, using PathMapper TU\n";
         }
@@ -220,12 +212,7 @@ void VariableHandler::handleVariable(
     clang::IdentifierInfo& II = cASTContext.Idents.get(mangledName);
 
     // Get valid SourceLocation for C AST node
-    std::string targetPath = disp.getCurrentTargetPath();
-    if (targetPath.empty()) {
-        targetPath = disp.getTargetPath(cppASTContext, D);
-    }
-    SourceLocationMapper& locMapper = disp.getTargetContext().getLocationMapper();
-    clang::SourceLocation targetLoc = locMapper.getStartOfFile(targetPath);
+    clang::SourceLocation targetLoc = disp.getTargetSourceLocation(cppASTContext, D);
 
     // Create C variable
     clang::VarDecl* cVar = clang::VarDecl::Create(
@@ -263,8 +250,7 @@ void VariableHandler::handleVariable(
     // Store mapping
     declMapper.setCreated(cppVar, cVar);
 
-    // Register location (targetPath already retrieved earlier)
-    cpptoc::PathMapper& pathMapper = disp.getPathMapper();
+    // Register location (targetPath and pathMapper already retrieved earlier)
     pathMapper.setNodeLocation(cVar, targetPath);
 
     llvm::outs() << "[VariableHandler] Created C variable: " << mangledName

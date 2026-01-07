@@ -6,6 +6,7 @@
 #include "dispatch/WhileStmtHandler.h"
 #include "mapping/StmtMapper.h"
 #include "mapping/ExprMapper.h"
+#include "SourceLocationMapper.h"
 #include "clang/AST/ASTContext.h"
 #include "clang/AST/Stmt.h"
 #include "llvm/Support/Casting.h"
@@ -80,7 +81,12 @@ void WhileStmtHandler::handleWhileStmt(
     }
 
     // Get source location from target context
-    clang::SourceLocation targetLoc = disp.getTargetSourceLocation(cppASTContext, cppWhile);
+    std::string targetPath = disp.getCurrentTargetPath();
+    if (targetPath.empty()) {
+        targetPath = disp.getTargetPath(cppASTContext, nullptr);
+    }
+    SourceLocationMapper& locMapper = disp.getTargetContext().getLocationMapper();
+    clang::SourceLocation targetLoc = locMapper.getStartOfFile(targetPath);
 
     // Create C WhileStmt
     clang::WhileStmt* cWhile = clang::WhileStmt::Create(

@@ -9,6 +9,8 @@
 #include "dispatch/ParameterHandler.h"
 #include "mapping/DeclMapper.h"
 #include "mapping/TypeMapper.h"
+#include "SourceLocationMapper.h"
+#include "TargetContext.h"
 #include "llvm/Support/Casting.h"
 #include "llvm/Support/raw_ostream.h"
 #include <cassert>
@@ -40,6 +42,14 @@ void ParameterHandler::handleParameter(
 
     const auto* cppParam = llvm::cast<clang::ParmVarDecl>(D);
 
+    // Get target location for this declaration
+    std::string targetPath = disp.getCurrentTargetPath();
+    if (targetPath.empty()) {
+        targetPath = disp.getTargetPath(cppASTContext, D);
+    }
+    SourceLocationMapper& locMapper = disp.getTargetContext().getLocationMapper();
+    clang::SourceLocation targetLoc = locMapper.getStartOfFile(targetPath);
+
     // Extract parameter name
     std::string paramName = cppParam->getNameAsString();
     clang::IdentifierInfo& II = cASTContext.Idents.get(paramName);
@@ -67,8 +77,8 @@ void ParameterHandler::handleParameter(
     clang::ParmVarDecl* cParam = clang::ParmVarDecl::Create(
         cASTContext,
         cASTContext.getTranslationUnitDecl(),
-        clang::SourceLocation(),
-        clang::SourceLocation(),
+        targetLoc,
+        targetLoc,
         &II,
         cParamType,
         cASTContext.getTrivialTypeSourceInfo(cParamType),

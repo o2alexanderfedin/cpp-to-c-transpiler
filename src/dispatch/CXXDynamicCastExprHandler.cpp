@@ -15,6 +15,8 @@
 #include "DynamicCastTranslator.h"
 #include "VirtualMethodAnalyzer.h"
 #include "mapping/ExprMapper.h"
+#include "SourceLocationMapper.h"
+#include "TargetContext.h"
 #include "clang/AST/Expr.h"
 #include "clang/AST/ExprCXX.h"
 #include "llvm/Support/Casting.h"
@@ -90,12 +92,18 @@ void CXXDynamicCastExprHandler::handleDynamicCast(
         return;
     }
 
+    // Get target location for C expression
+    std::string targetPath = disp.getCurrentTargetPath();
+    assert(!targetPath.empty() && "Target path must be set before expression handling");
+    SourceLocationMapper& locMapper = disp.getTargetContext().getLocationMapper();
+    clang::SourceLocation targetLoc = locMapper.getStartOfFile(targetPath);
+
     // Create C expression from translation result
     // The result type should be pointer to target type
     // Extract target type from cast expression
     clang::QualType resultType = cppCastExpr->getType();
 
-    clang::Expr* cExpr = createCExprFromString(cASTContext, translationStr, resultType);
+    clang::Expr* cExpr = createCExprFromString(cASTContext, translationStr, resultType, targetLoc);
     if (!cExpr) {
         llvm::errs() << "[CXXDynamicCastExprHandler] ERROR: Failed to create C expression\n";
         return;
@@ -155,7 +163,8 @@ void CXXDynamicCastExprHandler::dispatchSubexpression(
 clang::Expr* CXXDynamicCastExprHandler::createCExprFromString(
     clang::ASTContext& cASTContext,
     const std::string& translationStr,
-    clang::QualType resultType
+    clang::QualType resultType,
+    clang::SourceLocation targetLoc
 ) {
     // TEMPORARY IMPLEMENTATION:
     // For now, we create a StringLiteral as a placeholder for the C expression.
@@ -196,7 +205,7 @@ clang::Expr* CXXDynamicCastExprHandler::createCExprFromString(
 #endif
         false,
         resultType,
-        clang::SourceLocation()
+        targetLoc
     );
 }
 

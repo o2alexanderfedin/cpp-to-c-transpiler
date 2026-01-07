@@ -115,7 +115,7 @@ void ForStmtHandler::handleForStmt(
     // Get valid SourceLocation for C AST nodes
     std::string targetPath = disp.getCurrentTargetPath();
     if (targetPath.empty()) {
-        targetPath = disp.getTargetPath(cppASTContext, S);
+        targetPath = disp.getTargetPath(cppASTContext, nullptr);
     }
     SourceLocationMapper& locMapper = disp.getTargetContext().getLocationMapper();
     clang::SourceLocation targetLoc = locMapper.getStartOfFile(targetPath);

@@ -5,6 +5,8 @@
 
 #include "dispatch/ParenExprHandler.h"
 #include "mapping/ExprMapper.h"
+#include "SourceLocationMapper.h"
+#include "TargetContext.h"
 #include "clang/AST/Expr.h"
 #include "llvm/Support/Casting.h"
 #include "llvm/Support/raw_ostream.h"
@@ -45,6 +47,12 @@ void ParenExprHandler::handleParenExpr(
         return;
     }
 
+    // Get target location for this expression
+    std::string targetPath = disp.getCurrentTargetPath();
+    assert(!targetPath.empty() && "Target path must be set before expression handling");
+    SourceLocationMapper& locMapper = disp.getTargetContext().getLocationMapper();
+    clang::SourceLocation targetLoc = locMapper.getStartOfFile(targetPath);
+
     // Extract inner expression (the expression inside the parentheses)
     const clang::Expr* cppInnerExpr = cppParen->getSubExpr();
     assert(cppInnerExpr && "ParenExpr must have inner expression");
@@ -73,8 +81,8 @@ void ParenExprHandler::handleParenExpr(
 
     // Create C ParenExpr with translated inner expression
     clang::ParenExpr* cParen = new (cASTContext) clang::ParenExpr(
-        clang::SourceLocation(),
-        clang::SourceLocation(),
+        targetLoc,
+        targetLoc,
         cInnerExpr
     );
 

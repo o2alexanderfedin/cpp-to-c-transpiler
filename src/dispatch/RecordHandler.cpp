@@ -146,6 +146,13 @@ void RecordHandler::handleRecord(
                      << name << " → " << mangledName << "\n";
     }
 
+    // Get target path early for both forward declarations and complete definitions
+    std::string targetPath = disp.getCurrentTargetPath();
+    if (targetPath.empty()) {
+        targetPath = disp.getTargetPath(cppASTContext, cppRecord);
+    }
+    cpptoc::PathMapper& pathMapper = disp.getPathMapper();
+
     // Handle forward declaration first (before checking polymorphism)
     // isPolymorphic() requires a complete definition
     if (!cppRecord->isCompleteDefinition()) {
@@ -157,9 +164,7 @@ void RecordHandler::handleRecord(
         // Store mapping using canonical declaration
         declMapper.setCreated(canonicalRecord, cForwardDecl);
 
-        // Get current target path and register location
-        std::string targetPath = disp.getCurrentTargetPath();
-        cpptoc::PathMapper& pathMapper = disp.getPathMapper();
+        // Register location with target path
         pathMapper.setNodeLocation(cForwardDecl, targetPath);
 
         llvm::outs() << "[RecordHandler] Created forward declaration: " << mangledName << "\n";
@@ -181,12 +186,7 @@ void RecordHandler::handleRecord(
     clang::IdentifierInfo& II = cASTContext.Idents.get(mangledName);
 
     // Get source location from SourceLocationMapper
-    std::string targetPath = disp.getCurrentTargetPath();
-    if (targetPath.empty()) {
-        targetPath = disp.getTargetPath(cppASTContext, cppRecord);
-    }
-    SourceLocationMapper& locMapper = disp.getTargetContext().getLocationMapper();
-    clang::SourceLocation targetLoc = locMapper.getStartOfFile(targetPath);
+    clang::SourceLocation targetLoc = disp.getTargetSourceLocation(cppASTContext, cppRecord);
 
     // Create C struct (normalize class → struct)
     // Always use Struct tag (C has no classes)
@@ -235,7 +235,6 @@ void RecordHandler::handleRecord(
 
     // Get or create C TranslationUnit for this target file
     // (targetPath already obtained above with SourceLocationMapper)
-    cpptoc::PathMapper& pathMapper = disp.getPathMapper();
     clang::TranslationUnitDecl* cTU = pathMapper.getOrCreateTU(targetPath);
     assert(cTU && "Failed to get/create C TranslationUnit");
 
@@ -286,12 +285,7 @@ std::vector<clang::FieldDecl*> RecordHandler::translateFields(
         clang::IdentifierInfo& fieldII = cASTContext.Idents.get(fieldName);
 
         // Get source location from SourceLocationMapper
-        std::string fieldTargetPath = disp.getCurrentTargetPath();
-        if (fieldTargetPath.empty()) {
-            fieldTargetPath = disp.getTargetPath(cppASTContext, cppRecord);
-        }
-        SourceLocationMapper& fieldLocMapper = disp.getTargetContext().getLocationMapper();
-        clang::SourceLocation fieldTargetLoc = fieldLocMapper.getStartOfFile(fieldTargetPath);
+        clang::SourceLocation fieldTargetLoc = disp.getTargetSourceLocation(cppASTContext, cppRecord);
 
         // Create C FieldDecl
         clang::FieldDecl* cField = clang::FieldDecl::Create(

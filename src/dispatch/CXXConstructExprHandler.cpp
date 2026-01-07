@@ -6,6 +6,8 @@
 #include "dispatch/CXXConstructExprHandler.h"
 #include "mapping/ExprMapper.h"
 #include "mapping/DeclMapper.h"
+#include "SourceLocationMapper.h"
+#include "TargetContext.h"
 #include "clang/AST/Expr.h"
 #include "clang/AST/ExprCXX.h"
 #include "clang/AST/DeclCXX.h"
@@ -48,6 +50,12 @@ void CXXConstructExprHandler::handleCXXConstructExpr(
         llvm::outs() << "[CXXConstructExprHandler] CXXConstructExpr already translated, skipping\n";
         return;
     }
+
+    // Get target location for this expression
+    std::string targetPath = disp.getCurrentTargetPath();
+    assert(!targetPath.empty() && "Target path must be set before expression handling");
+    SourceLocationMapper& locMapper = disp.getTargetContext().getLocationMapper();
+    clang::SourceLocation targetLoc = locMapper.getStartOfFile(targetPath);
 
     llvm::outs() << "[CXXConstructExprHandler] Processing CXXConstructExpr with "
                  << cppConstructExpr->getNumArgs() << " arguments\n";
@@ -150,9 +158,9 @@ void CXXConstructExprHandler::handleCXXConstructExpr(
     // This generates {arg1, arg2, ...} syntax
     clang::InitListExpr* initList = new (cASTContext) clang::InitListExpr(
         cASTContext,
-        clang::SourceLocation(),
+        targetLoc,
         translatedArgs,
-        clang::SourceLocation()
+        targetLoc
     );
     initList->setType(cType);
 
@@ -171,7 +179,7 @@ void CXXConstructExprHandler::handleCXXConstructExpr(
     // This is the proper C99 syntax for struct literals
     // Note: CodeGenerator.printExpr will add "struct" keyword when printing CompoundLiteralExpr
     clang::CompoundLiteralExpr* compoundLit = new (cASTContext) clang::CompoundLiteralExpr(
-        clang::SourceLocation(),
+        targetLoc,
         cASTContext.getTrivialTypeSourceInfo(cType),
         cType,
         clang::VK_PRValue,

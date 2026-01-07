@@ -12,7 +12,7 @@
 #include "NameMangler.h"
 #include "mapping/DeclMapper.h"
 #include "mapping/PathMapper.h"
-#include "mapping/SourceLocationMapper.h"
+#include "SourceLocationMapper.h"
 #include "clang/AST/DeclCXX.h"
 #include "clang/AST/RecordLayout.h"
 #include "llvm/Support/Casting.h"
@@ -166,12 +166,7 @@ std::vector<clang::ParmVarDecl*> ConstructorHandler::translateParameters(
     std::vector<clang::ParmVarDecl*> cParams;
 
     // Get valid SourceLocation for C AST nodes
-    std::string targetPath = disp.getCurrentTargetPath();
-    if (targetPath.empty()) {
-        targetPath = disp.getTargetPath(cppASTContext, ctor);
-    }
-    SourceLocationMapper& locMapper = disp.getTargetContext().getLocationMapper();
-    clang::SourceLocation targetLoc = locMapper.getStartOfFile(targetPath);
+    clang::SourceLocation targetLoc = disp.getTargetSourceLocation(cppASTContext, ctor);
 
     for (const auto* cppParam : ctor->parameters()) {
         clang::IdentifierInfo& II = cASTContext.Idents.get(cppParam->getNameAsString());
@@ -588,12 +583,7 @@ std::vector<clang::Stmt*> ConstructorHandler::generateBaseConstructorCalls(
     }
 
     // Get valid SourceLocation for C AST nodes
-    std::string targetPath = disp.getCurrentTargetPath();
-    if (targetPath.empty()) {
-        targetPath = disp.getTargetPath(cppASTContext, ctor);
-    }
-    SourceLocationMapper& locMapper = disp.getTargetContext().getLocationMapper();
-    clang::SourceLocation targetLoc = locMapper.getStartOfFile(targetPath);
+    clang::SourceLocation targetLoc = disp.getTargetSourceLocation(cppASTContext, ctor);
 
     unsigned baseIndex = 0;
     for (const auto& base : parentClass->bases()) {

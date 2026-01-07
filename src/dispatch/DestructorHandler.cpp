@@ -86,7 +86,7 @@ void DestructorHandler::handleDestructor(
 
     // Create this parameter: struct ClassName* this
     clang::QualType classType = cASTContext.getRecordType(cRecordDecl);
-    clang::ParmVarDecl* thisParam = createThisParameter(classType, cASTContext);
+    clang::ParmVarDecl* thisParam = createThisParameter(classType, cASTContext, disp);
 
     // Create parameters vector with just this parameter
     std::vector<clang::ParmVarDecl*> params = { thisParam };
@@ -170,7 +170,8 @@ void DestructorHandler::handleDestructor(
 
 clang::ParmVarDecl* DestructorHandler::createThisParameter(
     clang::QualType recordType,
-    clang::ASTContext& cASTContext
+    clang::ASTContext& cASTContext,
+    const CppToCVisitorDispatcher& disp
 ) {
     // Create pointer type: struct ClassName*
     clang::QualType thisType = cASTContext.getPointerType(recordType);
@@ -178,12 +179,16 @@ clang::ParmVarDecl* DestructorHandler::createThisParameter(
     // Create identifier for parameter name
     clang::IdentifierInfo& II = cASTContext.Idents.get("this");
 
+    // Get source location for SourceLocation initialization
+    SourceLocationMapper& locMapper = disp.getTargetContext().getLocationMapper();
+    clang::SourceLocation targetLoc = locMapper.getStartOfFile("");
+
     // Create parameter declaration
     clang::ParmVarDecl* thisParam = clang::ParmVarDecl::Create(
         cASTContext,
         cASTContext.getTranslationUnitDecl(),
-        clang::SourceLocation(),
-        clang::SourceLocation(),
+        targetLoc,
+        targetLoc,
         &II,
         thisType,
         cASTContext.getTrivialTypeSourceInfo(thisType),

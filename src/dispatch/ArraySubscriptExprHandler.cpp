@@ -5,6 +5,8 @@
 
 #include "dispatch/ArraySubscriptExprHandler.h"
 #include "mapping/ExprMapper.h"
+#include "SourceLocationMapper.h"
+#include "TargetContext.h"
 #include "clang/AST/Expr.h"
 #include "llvm/Support/Casting.h"
 #include "llvm/Support/raw_ostream.h"
@@ -44,6 +46,12 @@ void ArraySubscriptExprHandler::handleArraySubscript(
         llvm::outs() << "[ArraySubscriptExprHandler] ArraySubscriptExpr already translated, skipping\n";
         return;
     }
+
+    // Get target location for this expression
+    std::string targetPath = disp.getCurrentTargetPath();
+    assert(!targetPath.empty() && "Target path must be set before expression handling");
+    SourceLocationMapper& locMapper = disp.getTargetContext().getLocationMapper();
+    clang::SourceLocation targetLoc = locMapper.getStartOfFile(targetPath);
 
     // Extract base and index subexpressions
     const clang::Expr* cppBase = cppArrSub->getBase();
@@ -88,7 +96,7 @@ void ArraySubscriptExprHandler::handleArraySubscript(
         cppArrSub->getType(),
         cppArrSub->getValueKind(),
         cppArrSub->getObjectKind(),
-        clang::SourceLocation()
+        targetLoc
     );
 
     llvm::outs() << "[ArraySubscriptExprHandler] Created C ArraySubscriptExpr\n";

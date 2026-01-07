@@ -5,6 +5,8 @@
 
 #include "dispatch/CStyleCastExprHandler.h"
 #include "mapping/ExprMapper.h"
+#include "SourceLocationMapper.h"
+#include "TargetContext.h"
 #include "clang/AST/ASTContext.h"
 #include "clang/AST/Expr.h"
 #include "llvm/Support/Casting.h"
@@ -43,6 +45,12 @@ void CStyleCastExprHandler::handleCStyleCastExpr(
         return;
     }
 
+    // Get target location for this expression
+    std::string targetPath = disp.getCurrentTargetPath();
+    assert(!targetPath.empty() && "Target path must be set before expression handling");
+    SourceLocationMapper& locMapper = disp.getTargetContext().getLocationMapper();
+    clang::SourceLocation targetLoc = locMapper.getStartOfFile(targetPath);
+
     llvm::outs() << "[CStyleCastExprHandler] Processing C-style cast\n";
 
     // Dispatch subexpression
@@ -72,8 +80,8 @@ void CStyleCastExprHandler::handleCStyleCastExpr(
         nullptr,
         clang::FPOptionsOverride(),
         cASTContext.getTrivialTypeSourceInfo(targetType),
-        clang::SourceLocation(),
-        clang::SourceLocation()
+        targetLoc,
+        targetLoc
     );
 
     llvm::outs() << "[CStyleCastExprHandler] Created C-style cast\n";

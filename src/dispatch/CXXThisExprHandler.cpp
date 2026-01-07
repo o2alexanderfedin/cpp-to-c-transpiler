@@ -57,7 +57,7 @@ void CXXThisExprHandler::handleCXXThisExpr(
     // Get source location from SourceLocationMapper
     std::string targetPath = disp.getCurrentTargetPath();
     if (targetPath.empty()) {
-        targetPath = disp.getTargetPath(cppASTContext, E);
+        targetPath = disp.getTargetPath(cppASTContext, nullptr);
     }
     SourceLocationMapper& locMapper = disp.getTargetContext().getLocationMapper();
     clang::SourceLocation targetLoc = locMapper.getStartOfFile(targetPath);

@@ -5,6 +5,8 @@
 
 #include "dispatch/CXXFunctionalCastExprHandler.h"
 #include "mapping/ExprMapper.h"
+#include "SourceLocationMapper.h"
+#include "TargetContext.h"
 #include "clang/AST/ASTContext.h"
 #include "clang/AST/Expr.h"
 #include "clang/AST/ExprCXX.h"
@@ -44,6 +46,12 @@ void CXXFunctionalCastExprHandler::handleCXXFunctionalCastExpr(
         return;
     }
 
+    // Get target location for this expression
+    std::string targetPath = disp.getCurrentTargetPath();
+    assert(!targetPath.empty() && "Target path must be set before expression handling");
+    SourceLocationMapper& locMapper = disp.getTargetContext().getLocationMapper();
+    clang::SourceLocation targetLoc = locMapper.getStartOfFile(targetPath);
+
     llvm::outs() << "[CXXFunctionalCastExprHandler] Processing functional-style cast\n";
 
     // Dispatch subexpression
@@ -74,8 +82,8 @@ void CXXFunctionalCastExprHandler::handleCXXFunctionalCastExpr(
         nullptr,
         clang::FPOptionsOverride(),
         cASTContext.getTrivialTypeSourceInfo(targetType),
-        clang::SourceLocation(),
-        clang::SourceLocation()
+        targetLoc,
+        targetLoc
     );
 
     llvm::outs() << "[CXXFunctionalCastExprHandler] Created C-style cast from functional cast\n";

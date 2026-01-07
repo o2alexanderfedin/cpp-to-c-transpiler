@@ -6,6 +6,8 @@
 #include "dispatch/CXXTemporaryObjectExprHandler.h"
 #include "mapping/ExprMapper.h"
 #include "mapping/DeclMapper.h"
+#include "SourceLocationMapper.h"
+#include "TargetContext.h"
 #include "clang/AST/ASTContext.h"
 #include "clang/AST/Decl.h"
 #include "clang/AST/ExprCXX.h"
@@ -44,6 +46,12 @@ void CXXTemporaryObjectExprHandler::handleCXXTemporaryObjectExpr(
         llvm::outs() << "[CXXTemporaryObjectExprHandler] Already translated, skipping\n";
         return;
     }
+
+    // Get target location for this expression
+    std::string targetPath = disp.getCurrentTargetPath();
+    assert(!targetPath.empty() && "Target path must be set before expression handling");
+    SourceLocationMapper& locMapper = disp.getTargetContext().getLocationMapper();
+    clang::SourceLocation targetLoc = locMapper.getStartOfFile(targetPath);
 
     llvm::outs() << "[CXXTemporaryObjectExprHandler] Processing CXXTemporaryObjectExpr\n";
 
@@ -103,16 +111,16 @@ void CXXTemporaryObjectExprHandler::handleCXXTemporaryObjectExpr(
     // Create InitListExpr for compound literal
     clang::InitListExpr* cInitList = new (cASTContext) clang::InitListExpr(
         cASTContext,
-        clang::SourceLocation(),
+        targetLoc,
         cArgs,
-        clang::SourceLocation()
+        targetLoc
     );
 
     cInitList->setType(cType);
 
     // Create CompoundLiteralExpr: (struct Type){...}
     clang::CompoundLiteralExpr* cCompoundLit = new (cASTContext) clang::CompoundLiteralExpr(
-        clang::SourceLocation(),
+        targetLoc,
         cASTContext.getTrivialTypeSourceInfo(cType),
         cType,
         clang::VK_PRValue,

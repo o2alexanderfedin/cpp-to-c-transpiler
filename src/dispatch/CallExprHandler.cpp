@@ -8,6 +8,7 @@
 #include "dispatch/CallExprHandler.h"
 #include "mapping/ExprMapper.h"
 #include "CNodeBuilder.h"
+#include "SourceLocationMapper.h"
 #include "llvm/Support/Casting.h"
 #include "llvm/Support/raw_ostream.h"
 #include <cassert>
@@ -69,6 +70,10 @@ void CallExprHandler::handleCallExpr(
     clang::Expr* cCallee = exprMapper.getCreated(cppCallee);
     assert(cCallee && "Callee must be in ExprMapper after successful dispatch");
 
+    // Get source location for SourceLocation initialization
+    SourceLocationMapper& locMapper = disp.getTargetContext().getLocationMapper();
+    clang::SourceLocation targetLoc = locMapper.getStartOfFile("");
+
     // Get the function declaration to check parameter types
     const clang::FunctionDecl* calleeDecl = cppCall->getDirectCallee();
 
@@ -109,7 +114,7 @@ void CallExprHandler::handleCallExpr(
                     ptrType,
                     clang::VK_PRValue,
                     clang::OK_Ordinary,
-                    clang::SourceLocation(),
+                    targetLoc,
                     false,  // canOverflow
                     clang::FPOptionsOverride()
                 );
@@ -119,14 +124,14 @@ void CallExprHandler::handleCallExpr(
         cArgs.push_back(cArg);
     }
 
-    // Create C CallExpr
+    // Create C CallExpr (targetLoc already initialized above)
     clang::CallExpr* cCall = clang::CallExpr::Create(
         cASTContext,
         cCallee,
         cArgs,
         cppCall->getType(),  // Return type
         clang::VK_PRValue,
-        clang::SourceLocation(),
+        targetLoc,
         clang::FPOptionsOverride()
     );
 

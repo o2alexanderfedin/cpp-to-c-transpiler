@@ -10,6 +10,8 @@
 #include "dispatch/EnumTranslator.h"
 #include "CNodeBuilder.h"
 #include "mapping/DeclMapper.h"
+#include "SourceLocationMapper.h"
+#include "TargetContext.h"
 #include "clang/AST/Decl.h"
 #include "llvm/ADT/APSInt.h"
 #include "llvm/Support/Casting.h"
@@ -51,6 +53,14 @@ void EnumTranslator::handleEnum(
         return;
     }
 
+    // Get target location for this declaration
+    std::string targetPath = disp.getCurrentTargetPath();
+    if (targetPath.empty()) {
+        targetPath = disp.getTargetPath(cppASTContext, D);
+    }
+    SourceLocationMapper& locMapper = disp.getTargetContext().getLocationMapper();
+    clang::SourceLocation targetLoc = locMapper.getStartOfFile(targetPath);
+
     // Extract enum properties
     // CRITICAL: Use getName() not getNameAsString()!
     // getNameAsString() returns temporary std::string, StringRef becomes dangling pointer
@@ -76,8 +86,8 @@ void EnumTranslator::handleEnum(
     clang::EnumDecl* C_Enum = clang::EnumDecl::Create(
         cASTContext,
         cASTContext.getTranslationUnitDecl(),
-        clang::SourceLocation(),
-        clang::SourceLocation(),
+        targetLoc,
+        targetLoc,
         &enumII,
         nullptr,  // No previous declaration
         false,    // Not scoped (C doesn't support scoped enums)
@@ -120,13 +130,7 @@ void EnumTranslator::handleEnum(
     // Complete definition
     C_Enum->completeDefinition(intType, intType, 0, 0);
 
-    // Get target path for this C++ source file
-    std::string targetPath = disp.getCurrentTargetPath();  // Use current path set by TranslationUnitHandler
-    if (targetPath.empty()) {
-        targetPath = disp.getTargetPath(cppASTContext, D);
-    }
-
-    // Get or create C TranslationUnit for this target file
+    // Get or create C TranslationUnit for this target file (reuse targetPath from above)
     cpptoc::PathMapper& pathMapper = disp.getPathMapper();
     clang::TranslationUnitDecl* cTU = pathMapper.getOrCreateTU(targetPath);
     assert(cTU && "Failed to get/create C TranslationUnit");
@@ -174,11 +178,14 @@ clang::EnumConstantDecl* EnumTranslator::translateEnumConstant(
     // Get type (use int for C enums)
     clang::QualType type = cASTContext.IntTy;
 
+    // Get target location from parent enum (which was already created with proper location)
+    clang::SourceLocation targetLoc = parentEnum->getLocation();
+
     // Create C EnumConstantDecl with parent enum
     clang::EnumConstantDecl* C_ECD = clang::EnumConstantDecl::Create(
         cASTContext,
         parentEnum,  // Parent EnumDecl must be set at creation time
-        clang::SourceLocation(),
+        targetLoc,
         &constII,
         type,
         nullptr,  // No initializer expression

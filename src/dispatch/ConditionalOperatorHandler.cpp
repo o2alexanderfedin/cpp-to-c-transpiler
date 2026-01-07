@@ -5,6 +5,8 @@
 
 #include "dispatch/ConditionalOperatorHandler.h"
 #include "mapping/ExprMapper.h"
+#include "SourceLocationMapper.h"
+#include "TargetContext.h"
 #include "clang/AST/ASTContext.h"
 #include "clang/AST/Expr.h"
 #include "llvm/Support/Casting.h"
@@ -42,6 +44,12 @@ void ConditionalOperatorHandler::handleConditionalOperator(
         llvm::outs() << "[ConditionalOperatorHandler] Already translated, skipping\n";
         return;
     }
+
+    // Get target location for this expression
+    std::string targetPath = disp.getCurrentTargetPath();
+    assert(!targetPath.empty() && "Target path must be set before expression handling");
+    SourceLocationMapper& locMapper = disp.getTargetContext().getLocationMapper();
+    clang::SourceLocation targetLoc = locMapper.getStartOfFile(targetPath);
 
     llvm::outs() << "[ConditionalOperatorHandler] Processing ConditionalOperator (? :)\n";
 
@@ -87,9 +95,9 @@ void ConditionalOperatorHandler::handleConditionalOperator(
     // Create C conditional operator
     clang::ConditionalOperator* cCondOp = new (cASTContext) clang::ConditionalOperator(
         cCondExpr,
-        clang::SourceLocation(),
+        targetLoc,
         cTrueExpr,
-        clang::SourceLocation(),
+        targetLoc,
         cFalseExpr,
         cppCond->getType(),
         cppCond->getValueKind(),

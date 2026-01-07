@@ -5,6 +5,8 @@
 
 #include "dispatch/CommaOperatorHandler.h"
 #include "mapping/ExprMapper.h"
+#include "SourceLocationMapper.h"
+#include "TargetContext.h"
 #include "clang/AST/Expr.h"
 #include "llvm/Support/Casting.h"
 #include "llvm/Support/raw_ostream.h"
@@ -51,6 +53,12 @@ void CommaOperatorHandler::handleCommaOperator(
         return;
     }
 
+    // Get target location for this expression
+    std::string targetPath = disp.getCurrentTargetPath();
+    assert(!targetPath.empty() && "Target path must be set before expression handling");
+    SourceLocationMapper& locMapper = disp.getTargetContext().getLocationMapper();
+    clang::SourceLocation targetLoc = locMapper.getStartOfFile(targetPath);
+
     // Extract LHS and RHS subexpressions
     const clang::Expr* cppLHS = cppCommaOp->getLHS();
     const clang::Expr* cppRHS = cppCommaOp->getRHS();
@@ -95,7 +103,7 @@ void CommaOperatorHandler::handleCommaOperator(
         cppCommaOp->getType(),
         cppCommaOp->getValueKind(),
         cppCommaOp->getObjectKind(),
-        clang::SourceLocation(),
+        targetLoc,
         clang::FPOptionsOverride()
     );
 

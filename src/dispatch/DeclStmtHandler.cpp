@@ -8,6 +8,7 @@
 #include "dispatch/DeclStmtHandler.h"
 #include "mapping/DeclMapper.h"
 #include "mapping/StmtMapper.h"
+#include "SourceLocationMapper.h"
 #include "llvm/Support/Casting.h"
 #include "llvm/Support/raw_ostream.h"
 #include <cassert>
@@ -94,12 +95,16 @@ void DeclStmtHandler::handleDeclStmt(
     // Create C DeclStmt with all translated declarations
     clang::DeclStmt* cDeclStmt = nullptr;
 
+    // Get source location for SourceLocation initialization
+    SourceLocationMapper& locMapper = disp.getTargetContext().getLocationMapper();
+    clang::SourceLocation targetLoc = locMapper.getStartOfFile("");
+
     if (cDecls.size() == 1) {
         // Single declaration
         cDeclStmt = new (cASTContext) clang::DeclStmt(
             clang::DeclGroupRef(cDecls[0]),
-            clang::SourceLocation(),
-            clang::SourceLocation()
+            targetLoc,
+            targetLoc
         );
     } else if (cDecls.size() > 1) {
         // Multiple declarations (e.g., "int a, b;")
@@ -110,8 +115,8 @@ void DeclStmtHandler::handleDeclStmt(
         );
         cDeclStmt = new (cASTContext) clang::DeclStmt(
             clang::DeclGroupRef(declGroup),
-            clang::SourceLocation(),
-            clang::SourceLocation()
+            targetLoc,
+            targetLoc
         );
     } else {
         // No declarations translated - create empty DeclStmt
