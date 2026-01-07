@@ -857,92 +857,88 @@ void CodeGenerator::printFunctionSignature(FunctionDecl *FD) {
 // Bug #37, #40, #41: Print expression with C-compatible syntax
 // Handles:
 // - DeclRefExpr to EnumConstantDecl: GameState::Menu -> Menu
-// - CXXMemberCallExpr: obj.method() -> Class_method(&obj)
-// - CXXOperatorCallExpr for static: Class::method() -> Class_method()
+// Pipeline Stage 3: Emit C AST to C source code
+// IMPORTANT: This method should ONLY receive C AST nodes, not C++ nodes.
+// All translation from C++ to C happens in Stage 2 (CppToCVisitor + handlers).
+//
+// Pipeline Separation:
+// - Stage 2 creates C AST with correct names (e.g., "GameState__Menu", "Class_method")
+// - Stage 3 simply emits what's in the C AST
+//
+// See INVESTIGATION_CODEGEN_PIPELINE_VIOLATIONS.md for details.
 void CodeGenerator::printExpr(Expr *E) {
     if (!E) {
         OS << "/* null expr */";
         return;
     }
 
-    // Bug #37: Handle DeclRefExpr to enum constants
-    // Need to unwrap ConstantExpr, ImplicitCastExpr, etc. to get to the DeclRefExpr
-    // In C++: GameState::Menu  In C: Menu (or the integer value)
-    Expr *Unwrapped = E->IgnoreImpCasts();  // Strip implicit casts, ConstantExpr, etc.
+    // PIPELINE VIOLATION DETECTION:
+    // C AST should NOT contain C++-specific nodes. If we see them, Stage 2 is broken.
+    // These assertions enforce pipeline separation and catch bugs early.
 
-    if (DeclRefExpr *DRE = dyn_cast<DeclRefExpr>(Unwrapped)) {
-        if (EnumConstantDecl *ECD = dyn_cast<EnumConstantDecl>(DRE->getDecl())) {
-            // Bug #42: Print the enum constant name (should already be prefixed for scoped enums)
-            // Phase 47: The enum constant name in C AST should already have the prefix (e.g., GameState__Playing)
-            // We just print the name, ignoring any C++ nested name specifier
-            std::string enumName = ECD->getNameAsString();
-            OS << enumName;
-            return;
-        }
+    Expr *Unwrapped = E->IgnoreImpCasts();
+
+    // Assert: C AST should not contain CXXMemberCallExpr
+    // Stage 2 (CXXMemberCallExprHandler) should create CallExpr instead
+    if (isa<CXXMemberCallExpr>(Unwrapped)) {
+        llvm::errs() << "ERROR: C AST contains CXXMemberCallExpr - pipeline violation!\n";
+        llvm::errs() << "Stage 2 (CXXMemberCallExprHandler) should create CallExpr.\n";
+        llvm::errs() << "Expression: ";
+        Unwrapped->dump();
+        assert(false && "Pipeline violation: CXXMemberCallExpr in C AST");
     }
 
-    // Bug #40: Handle CXXMemberCallExpr: obj.method() -> Class_method(&obj)
-    if (CXXMemberCallExpr *MCE = dyn_cast<CXXMemberCallExpr>(E)) {
-        CXXMethodDecl *Method = MCE->getMethodDecl();
-        if (Method) {
-            // Get the class name
-            std::string ClassName = Method->getParent()->getNameAsString();
-            std::string MethodName = Method->getNameAsString();
-
-            // Print as: ClassName_methodName
-            OS << ClassName << "_" << MethodName << "(";
-
-            // Print implicit object argument first
-            if (Expr *ImplicitObject = MCE->getImplicitObjectArgument()) {
-                OS << "&";
-                printExpr(ImplicitObject);
-            }
-
-            // Print other arguments
-            for (unsigned i = 0; i < MCE->getNumArgs(); ++i) {
-                if (i > 0 || MCE->getImplicitObjectArgument()) {
-                    OS << ", ";
-                }
-                printExpr(MCE->getArg(i));
-            }
-            OS << ")";
-            return;
-        }
+    // Assert: C AST should not contain CXXOperatorCallExpr
+    // Stage 2 handlers should create CallExpr or BinaryOperator instead
+    if (isa<CXXOperatorCallExpr>(Unwrapped)) {
+        llvm::errs() << "ERROR: C AST contains CXXOperatorCallExpr - pipeline violation!\n";
+        llvm::errs() << "Stage 2 should create CallExpr or BinaryOperator.\n";
+        llvm::errs() << "Expression: ";
+        Unwrapped->dump();
+        assert(false && "Pipeline violation: CXXOperatorCallExpr in C AST");
     }
 
-    // Bug #41: Handle static member calls (represented as CallExpr or CXXOperatorCallExpr)
-    // CollisionDetector::checkCollision(...) -> CollisionDetector_checkCollision(...)
-    if (CallExpr *CE = dyn_cast<CallExpr>(E)) {
-        // Check if the callee is a member function reference
-        if (Expr *Callee = CE->getCallee()) {
-            if (DeclRefExpr *DRE = dyn_cast<DeclRefExpr>(Callee)) {
-                if (CXXMethodDecl *Method = dyn_cast<CXXMethodDecl>(DRE->getDecl())) {
-                    // Static method call
-                    std::string ClassName = Method->getParent()->getNameAsString();
-                    std::string MethodName = Method->getNameAsString();
+    // Assert: C AST should not contain CXXConstructExpr (unless wrapped in CompoundLiteralExpr)
+    // Stage 2 (CXXConstructExprHandler) should create CompoundLiteralExpr
+    if (isa<CXXConstructExpr>(Unwrapped) && !isa<CompoundLiteralExpr>(E)) {
+        llvm::errs() << "ERROR: C AST contains unwrapped CXXConstructExpr - pipeline violation!\n";
+        llvm::errs() << "Stage 2 (CXXConstructExprHandler) should wrap in CompoundLiteralExpr.\n";
+        llvm::errs() << "Expression: ";
+        Unwrapped->dump();
+        assert(false && "Pipeline violation: unwrapped CXXConstructExpr in C AST");
+    }
 
-                    OS << ClassName << "_" << MethodName << "(";
-                    for (unsigned i = 0; i < CE->getNumArgs(); ++i) {
-                        if (i > 0) OS << ", ";
-                        printExpr(CE->getArg(i));
+    // Assert: CallExpr in C AST should reference FunctionDecl, not CXXMethodDecl
+    // Stage 2 should create regular FunctionDecl for translated methods
+    if (CallExpr *CE = dyn_cast<CallExpr>(Unwrapped)) {
+        if (!isa<CXXOperatorCallExpr>(CE) && !isa<CXXMemberCallExpr>(CE)) {
+            if (Expr *Callee = CE->getCallee()) {
+                if (DeclRefExpr *DRE = dyn_cast<DeclRefExpr>(Callee->IgnoreImpCasts())) {
+                    if (isa<CXXMethodDecl>(DRE->getDecl())) {
+                        llvm::errs() << "ERROR: C AST CallExpr references CXXMethodDecl - pipeline violation!\n";
+                        llvm::errs() << "Stage 2 should create FunctionDecl for translated methods.\n";
+                        llvm::errs() << "Method: " << DRE->getDecl()->getNameAsString() << "\n";
+                        assert(false && "Pipeline violation: CallExpr references CXXMethodDecl in C AST");
                     }
-                    OS << ")";
-                    return;
                 }
             }
         }
     }
 
-    // Bug #42: Handle BinaryOperator recursively to ensure subexpressions are translated
-    // Example: passed && (sm.getCurrentState() == GameState::Menu)
-    if (BinaryOperator *BO = dyn_cast<BinaryOperator>(E)) {
+    // LEGITIMATE C NODE HANDLING:
+    // The following are valid C nodes that need custom emission logic.
+
+    // Handle BinaryOperator with recursive emission for subexpressions
+    // This is a legitimate C node (e.g., a + b, a == b)
+    if (BinaryOperator *BO = dyn_cast<BinaryOperator>(Unwrapped)) {
         printExpr(BO->getLHS());
         OS << " " << BO->getOpcodeStr().str() << " ";
         printExpr(BO->getRHS());
         return;
     }
 
-    // Bug #42: Handle ParenExpr by recursively printing the subexpression with parentheses
+    // Handle ParenExpr with recursive emission
+    // This is a legitimate C node (e.g., (a + b))
     if (ParenExpr *PE = dyn_cast<ParenExpr>(E)) {
         OS << "(";
         printExpr(PE->getSubExpr());
@@ -951,6 +947,7 @@ void CodeGenerator::printExpr(Expr *E) {
     }
 
     // Handle CompoundLiteralExpr to ensure "struct" keyword is emitted
+    // This is a legitimate C99 node (e.g., (struct Point){1, 2})
     // CXXConstructExprHandler creates CompoundLiteralExpr for C99 struct literals
     // but Clang's printPretty doesn't always include "struct" keyword
     if (CompoundLiteralExpr *CLE = dyn_cast<CompoundLiteralExpr>(E)) {
@@ -965,9 +962,12 @@ void CodeGenerator::printExpr(Expr *E) {
         }
     }
 
-    // Default: use printPretty, but recursively call printExpr for child expressions
-    // to ensure enum constants and member calls are handled correctly
-    // For now, just use printPretty (handling all expression types recursively is complex)
-    // TODO: Implement full recursive expression printing for all operators
+    // DEFAULT: Use printPretty for all other C nodes
+    // C AST nodes (DeclRefExpr, CallExpr, IntegerLiteral, etc.) already have correct names
+    // - EnumConstantDecl has prefixed name (e.g., "GameState__Menu")
+    // - FunctionDecl has translated name (e.g., "Class_method")
+    // - DeclRefExpr points to C declarations with correct names
+    //
+    // No translation logic needed - just emit what's in the C AST.
     E->printPretty(OS, nullptr, Policy, 0);
 }
