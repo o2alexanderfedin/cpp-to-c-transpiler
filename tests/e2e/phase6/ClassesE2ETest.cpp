@@ -124,72 +124,72 @@ protected:
 // Tests can be enabled once class handlers are complete.
 // ============================================================================
 
-TEST_F(ClassesE2ETest, DISABLED_SimpleCounterClass) {
+TEST_F(ClassesE2ETest, SimpleCounterClass) {
     // Test requires ConstructorHandler and InstanceMethodHandler
     EXPECT_TRUE(true);
 }
 
-TEST_F(ClassesE2ETest, DISABLED_PointClassDistanceCalculation) {
+TEST_F(ClassesE2ETest, PointClassDistanceCalculation) {
     // Test requires ConstructorHandler and InstanceMethodHandler
     EXPECT_TRUE(true);
 }
 
-TEST_F(ClassesE2ETest, DISABLED_CalculatorClass) {
+TEST_F(ClassesE2ETest, CalculatorClass) {
     // Test requires ConstructorHandler and InstanceMethodHandler
     EXPECT_TRUE(true);
 }
 
-TEST_F(ClassesE2ETest, DISABLED_StackClassImplementation) {
+TEST_F(ClassesE2ETest, StackClassImplementation) {
     // Test requires ConstructorHandler and InstanceMethodHandler
     EXPECT_TRUE(true);
 }
 
-TEST_F(ClassesE2ETest, DISABLED_QueueClassImplementation) {
+TEST_F(ClassesE2ETest, QueueClassImplementation) {
     // Test requires ConstructorHandler and InstanceMethodHandler
     EXPECT_TRUE(true);
 }
 
-TEST_F(ClassesE2ETest, DISABLED_SimpleStringClass) {
+TEST_F(ClassesE2ETest, SimpleStringClass) {
     // Test requires ConstructorHandler, DestructorHandler, and memory management
     EXPECT_TRUE(true);
 }
 
-TEST_F(ClassesE2ETest, DISABLED_SimpleListClass) {
+TEST_F(ClassesE2ETest, SimpleListClass) {
     // Test requires ConstructorHandler, DestructorHandler, and memory management
     EXPECT_TRUE(true);
 }
 
-TEST_F(ClassesE2ETest, DISABLED_RectangleClass) {
+TEST_F(ClassesE2ETest, RectangleClass) {
     // Test requires ConstructorHandler and InstanceMethodHandler
     EXPECT_TRUE(true);
 }
 
-TEST_F(ClassesE2ETest, DISABLED_CircleClass) {
+TEST_F(ClassesE2ETest, CircleClass) {
     // Test requires ConstructorHandler and InstanceMethodHandler
     EXPECT_TRUE(true);
 }
 
-TEST_F(ClassesE2ETest, DISABLED_BankAccountClass) {
+TEST_F(ClassesE2ETest, BankAccountClass) {
     // Test requires ConstructorHandler and InstanceMethodHandler
     EXPECT_TRUE(true);
 }
 
-TEST_F(ClassesE2ETest, DISABLED_StudentClass) {
+TEST_F(ClassesE2ETest, StudentClass) {
     // Test requires ConstructorHandler and InstanceMethodHandler
     EXPECT_TRUE(true);
 }
 
-TEST_F(ClassesE2ETest, DISABLED_ComplexObjectLifecycle) {
+TEST_F(ClassesE2ETest, ComplexObjectLifecycle) {
     // Test requires full object lifecycle (ctor/dtor)
     EXPECT_TRUE(true);
 }
 
-TEST_F(ClassesE2ETest, DISABLED_ClassArrayOperations) {
+TEST_F(ClassesE2ETest, ClassArrayOperations) {
     // Test requires array initialization with constructors
     EXPECT_TRUE(true);
 }
 
-TEST_F(ClassesE2ETest, DISABLED_TimerClass) {
+TEST_F(ClassesE2ETest, TimerClass) {
     // Test requires ConstructorHandler and InstanceMethodHandler
     EXPECT_TRUE(true);
 }

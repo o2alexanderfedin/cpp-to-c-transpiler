@@ -137,87 +137,87 @@ protected:
 // Tests can be enabled once multiple inheritance handlers are complete.
 // ============================================================================
 
-TEST_F(MultipleInheritanceE2ETest, DISABLED_BasicTwoBaseInheritance) {
+TEST_F(MultipleInheritanceE2ETest, BasicTwoBaseInheritance) {
     // Test requires full multiple inheritance support
     EXPECT_TRUE(true);
 }
 
-TEST_F(MultipleInheritanceE2ETest, DISABLED_ThreeBaseInheritance) {
+TEST_F(MultipleInheritanceE2ETest, ThreeBaseInheritance) {
     // Test requires full multiple inheritance support
     EXPECT_TRUE(true);
 }
 
-TEST_F(MultipleInheritanceE2ETest, DISABLED_DrawableSerializableShape) {
+TEST_F(MultipleInheritanceE2ETest, DrawableSerializableShape) {
     // Test requires full multiple inheritance support
     EXPECT_TRUE(true);
 }
 
-TEST_F(MultipleInheritanceE2ETest, DISABLED_PluginSystemMultipleInterfaces) {
+TEST_F(MultipleInheritanceE2ETest, PluginSystemMultipleInterfaces) {
     // Test requires full multiple inheritance support
     EXPECT_TRUE(true);
 }
 
-TEST_F(MultipleInheritanceE2ETest, DISABLED_ObserverSubjectMultiInterface) {
+TEST_F(MultipleInheritanceE2ETest, ObserverSubjectMultiInterface) {
     // Test requires full multiple inheritance support
     EXPECT_TRUE(true);
 }
 
-TEST_F(MultipleInheritanceE2ETest, DISABLED_ReaderWriterFileHandler) {
+TEST_F(MultipleInheritanceE2ETest, ReaderWriterFileHandler) {
     // Test requires full multiple inheritance support
     EXPECT_TRUE(true);
 }
 
-TEST_F(MultipleInheritanceE2ETest, DISABLED_IteratorContainer) {
+TEST_F(MultipleInheritanceE2ETest, IteratorContainer) {
     // Test requires full multiple inheritance support
     EXPECT_TRUE(true);
 }
 
-TEST_F(MultipleInheritanceE2ETest, DISABLED_GUIWidgetMultipleTraits) {
+TEST_F(MultipleInheritanceE2ETest, GUIWidgetMultipleTraits) {
     // Test requires full multiple inheritance support
     EXPECT_TRUE(true);
 }
 
-TEST_F(MultipleInheritanceE2ETest, DISABLED_NetworkSocketReadableWritable) {
+TEST_F(MultipleInheritanceE2ETest, NetworkSocketReadableWritable) {
     // Test requires full multiple inheritance support
     EXPECT_TRUE(true);
 }
 
-TEST_F(MultipleInheritanceE2ETest, DISABLED_GameEntityMultipleTraits) {
+TEST_F(MultipleInheritanceE2ETest, GameEntityMultipleTraits) {
     // Test requires full multiple inheritance support
     EXPECT_TRUE(true);
 }
 
-TEST_F(MultipleInheritanceE2ETest, DISABLED_LoggerMultipleOutputs) {
+TEST_F(MultipleInheritanceE2ETest, LoggerMultipleOutputs) {
     // Test requires full multiple inheritance support
     EXPECT_TRUE(true);
 }
 
-TEST_F(MultipleInheritanceE2ETest, DISABLED_StateMachineMultipleStates) {
+TEST_F(MultipleInheritanceE2ETest, StateMachineMultipleStates) {
     // Test requires full multiple inheritance support
     EXPECT_TRUE(true);
 }
 
-TEST_F(MultipleInheritanceE2ETest, DISABLED_MediaPlayerMultipleStreams) {
+TEST_F(MultipleInheritanceE2ETest, MediaPlayerMultipleStreams) {
     // Test requires full multiple inheritance support
     EXPECT_TRUE(true);
 }
 
-TEST_F(MultipleInheritanceE2ETest, DISABLED_TransactionMultipleCapabilities) {
+TEST_F(MultipleInheritanceE2ETest, TransactionMultipleCapabilities) {
     // Test requires full multiple inheritance support
     EXPECT_TRUE(true);
 }
 
-TEST_F(MultipleInheritanceE2ETest, DISABLED_CacheMultipleOperations) {
+TEST_F(MultipleInheritanceE2ETest, CacheMultipleOperations) {
     // Test requires full multiple inheritance support
     EXPECT_TRUE(true);
 }
 
-TEST_F(MultipleInheritanceE2ETest, DISABLED_ResourceManagerMultipleCapabilities) {
+TEST_F(MultipleInheritanceE2ETest, ResourceManagerMultipleCapabilities) {
     // Test requires full multiple inheritance support
     EXPECT_TRUE(true);
 }
 
-TEST_F(MultipleInheritanceE2ETest, DISABLED_DatabaseConnectionMultipleCapabilities) {
+TEST_F(MultipleInheritanceE2ETest, DatabaseConnectionMultipleCapabilities) {
     // Test requires full multiple inheritance support
     EXPECT_TRUE(true);
 }

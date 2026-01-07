@@ -304,7 +304,7 @@ TEST_F(VirtualMethodsE2ETest, MultipleVirtualMethods) {
  * Classic polymorphism example with geometric shapes.
  * Tests inheritance, virtual method override, and polymorphic array.
  */
-TEST_F(VirtualMethodsE2ETest, DISABLED_ShapeHierarchy) {
+TEST_F(VirtualMethodsE2ETest, ShapeHierarchy) {
     std::string cppCode = R"(
         class Shape {
         public:
@@ -349,7 +349,7 @@ TEST_F(VirtualMethodsE2ETest, DISABLED_ShapeHierarchy) {
  * Tests polymorphism with animal sounds.
  * Multiple derived classes from same base.
  */
-TEST_F(VirtualMethodsE2ETest, DISABLED_AnimalHierarchy) {
+TEST_F(VirtualMethodsE2ETest, AnimalHierarchy) {
     std::string cppCode = R"(
         class Animal {
         public:
@@ -389,7 +389,7 @@ TEST_F(VirtualMethodsE2ETest, DISABLED_AnimalHierarchy) {
  * Tests interface (pure virtual) with concrete implementations.
  * Array-based stack and linked-list stack.
  */
-TEST_F(VirtualMethodsE2ETest, DISABLED_StackInterface) {
+TEST_F(VirtualMethodsE2ETest, StackInterface) {
     std::string cppCode = R"(
         class IStack {
         public:
@@ -432,7 +432,7 @@ TEST_F(VirtualMethodsE2ETest, DISABLED_StackInterface) {
 /**
  * E2E Test 7: List Interface with Implementations - DISABLED
  */
-TEST_F(VirtualMethodsE2ETest, DISABLED_ListInterface) {
+TEST_F(VirtualMethodsE2ETest, ListInterface) {
     std::string cppCode = R"(
         class IList {
         public:
@@ -473,7 +473,7 @@ TEST_F(VirtualMethodsE2ETest, DISABLED_ListInterface) {
 /**
  * E2E Test 8: Iterator Pattern - DISABLED
  */
-TEST_F(VirtualMethodsE2ETest, DISABLED_IteratorPattern) {
+TEST_F(VirtualMethodsE2ETest, IteratorPattern) {
     std::string cppCode = R"(
         class Iterator {
         public:
@@ -513,7 +513,7 @@ TEST_F(VirtualMethodsE2ETest, DISABLED_IteratorPattern) {
 /**
  * E2E Test 9: Strategy Pattern - DISABLED
  */
-TEST_F(VirtualMethodsE2ETest, DISABLED_StrategyPattern) {
+TEST_F(VirtualMethodsE2ETest, StrategyPattern) {
     std::string cppCode = R"(
         class Strategy {
         public:
@@ -567,7 +567,7 @@ TEST_F(VirtualMethodsE2ETest, DISABLED_StrategyPattern) {
 /**
  * E2E Test 10: Observer Pattern - DISABLED
  */
-TEST_F(VirtualMethodsE2ETest, DISABLED_ObserverPattern) {
+TEST_F(VirtualMethodsE2ETest, ObserverPattern) {
     std::string cppCode = R"(
         class Observer {
         public:
@@ -627,7 +627,7 @@ TEST_F(VirtualMethodsE2ETest, DISABLED_ObserverPattern) {
 /**
  * E2E Test 11: Factory Pattern - DISABLED
  */
-TEST_F(VirtualMethodsE2ETest, DISABLED_FactoryPattern) {
+TEST_F(VirtualMethodsE2ETest, FactoryPattern) {
     std::string cppCode = R"(
         class Product {
         public:
@@ -671,7 +671,7 @@ TEST_F(VirtualMethodsE2ETest, DISABLED_FactoryPattern) {
 /**
  * E2E Test 12: Plugin System - DISABLED
  */
-TEST_F(VirtualMethodsE2ETest, DISABLED_PluginSystem) {
+TEST_F(VirtualMethodsE2ETest, PluginSystem) {
     std::string cppCode = R"(
         class Plugin {
         public:
@@ -728,7 +728,7 @@ TEST_F(VirtualMethodsE2ETest, DISABLED_PluginSystem) {
 /**
  * E2E Test 13: Event Handler System - DISABLED
  */
-TEST_F(VirtualMethodsE2ETest, DISABLED_EventHandlerSystem) {
+TEST_F(VirtualMethodsE2ETest, EventHandlerSystem) {
     std::string cppCode = R"(
         class EventHandler {
         public:
@@ -788,7 +788,7 @@ TEST_F(VirtualMethodsE2ETest, DISABLED_EventHandlerSystem) {
 /**
  * E2E Test 14: Virtual Destructor Chain - DISABLED
  */
-TEST_F(VirtualMethodsE2ETest, DISABLED_VirtualDestructorChain) {
+TEST_F(VirtualMethodsE2ETest, VirtualDestructorChain) {
     std::string cppCode = R"(
         int destructorCount = 0;
 
@@ -823,7 +823,7 @@ TEST_F(VirtualMethodsE2ETest, DISABLED_VirtualDestructorChain) {
  * Tests virtual inheritance and diamond problem.
  * This is an advanced scenario requiring VTT (Virtual Table Table).
  */
-TEST_F(VirtualMethodsE2ETest, DISABLED_DiamondProblemResolution) {
+TEST_F(VirtualMethodsE2ETest, DiamondProblemResolution) {
     std::string cppCode = R"(
         class Base {
         public:

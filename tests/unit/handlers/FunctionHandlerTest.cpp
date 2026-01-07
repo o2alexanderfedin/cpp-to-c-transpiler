@@ -342,7 +342,7 @@ TEST_F(FunctionHandlerTest, FunctionWithFloatReturn) {
  *
  * Tests reference parameter transformation to pointer parameter.
  */
-TEST_F(FunctionHandlerTest, DISABLED_FunctionWithLValueReferenceParameter) {
+TEST_F(FunctionHandlerTest, FunctionWithLValueReferenceParameter) {
     // NOTE: This test is disabled until refactored to use dispatcher pattern
     // See FunctionHandlerDispatcherTest::ReferenceToPointerTranslation for working example
     GTEST_SKIP() << "Test needs refactoring to use dispatcher pattern with buildASTFromCode";
@@ -421,7 +421,7 @@ TEST_F(FunctionHandlerTest, DISABLED_FunctionWithLValueReferenceParameter) {
  *
  * Tests const reference parameter transformation.
  */
-TEST_F(FunctionHandlerTest, DISABLED_FunctionWithConstReferenceParameter) {
+TEST_F(FunctionHandlerTest, FunctionWithConstReferenceParameter) {
     GTEST_SKIP() << "Test needs refactoring to use dispatcher pattern with buildASTFromCode";
     /* Original test code - kept for reference during refactoring
     // Arrange: Create void func(const int& x)
@@ -495,7 +495,7 @@ TEST_F(FunctionHandlerTest, DISABLED_FunctionWithConstReferenceParameter) {
  *
  * Tests multiple reference parameters.
  */
-TEST_F(FunctionHandlerTest, DISABLED_FunctionWithMultipleReferenceParameters) {
+TEST_F(FunctionHandlerTest, FunctionWithMultipleReferenceParameters) {
     GTEST_SKIP() << "Test needs refactoring to use dispatcher pattern with buildASTFromCode";
     /* Original test code - kept for reference during refactoring
     // Arrange: Create void swap(int& a, int& b)
@@ -585,7 +585,7 @@ TEST_F(FunctionHandlerTest, DISABLED_FunctionWithMultipleReferenceParameters) {
  *
  * Tests reference return type transformation.
  */
-TEST_F(FunctionHandlerTest, DISABLED_FunctionWithReferenceReturnType) {
+TEST_F(FunctionHandlerTest, FunctionWithReferenceReturnType) {
     GTEST_SKIP() << "Test needs refactoring to use dispatcher pattern with buildASTFromCode";
     /* Original test code - kept for reference during refactoring
     // Arrange: Create int& getRef()
@@ -638,7 +638,7 @@ TEST_F(FunctionHandlerTest, DISABLED_FunctionWithReferenceReturnType) {
  *
  * Tests mixed parameter types including references.
  */
-TEST_F(FunctionHandlerTest, DISABLED_FunctionWithMixedParameters) {
+TEST_F(FunctionHandlerTest, FunctionWithMixedParameters) {
     GTEST_SKIP() << "Test needs refactoring to use dispatcher pattern with buildASTFromCode";
     /* Original test code - kept for reference during refactoring
     // Arrange: Create void process(int x, int& y, const int& z)
@@ -752,7 +752,7 @@ TEST_F(FunctionHandlerTest, DISABLED_FunctionWithMixedParameters) {
  *
  * Tests struct parameter translation with struct keyword insertion.
  */
-TEST_F(FunctionHandlerTest, DISABLED_FunctionWithStructParameterByValue) {
+TEST_F(FunctionHandlerTest, FunctionWithStructParameterByValue) {
     GTEST_SKIP() << "Test needs refactoring to use dispatcher pattern with buildASTFromCode";
     /* Original test code - kept for reference during refactoring
     // Arrange: First create a struct Point
@@ -846,7 +846,7 @@ TEST_F(FunctionHandlerTest, DISABLED_FunctionWithStructParameterByValue) {
  *
  * Tests struct pointer parameter translation.
  */
-TEST_F(FunctionHandlerTest, DISABLED_FunctionWithStructParameterByPointer) {
+TEST_F(FunctionHandlerTest, FunctionWithStructParameterByPointer) {
     GTEST_SKIP() << "Test needs refactoring to use dispatcher pattern with buildASTFromCode";
     /* Original test code - kept for reference during refactoring
     // Arrange: Create struct Point and function void func(Point* p)
@@ -940,7 +940,7 @@ TEST_F(FunctionHandlerTest, DISABLED_FunctionWithStructParameterByPointer) {
  *
  * Tests struct return type translation.
  */
-TEST_F(FunctionHandlerTest, DISABLED_FunctionReturningStructByValue) {
+TEST_F(FunctionHandlerTest, FunctionReturningStructByValue) {
     GTEST_SKIP() << "Test needs refactoring to use dispatcher pattern with buildASTFromCode";
     /* Original test code - kept for reference during refactoring
     // Arrange: Create struct Point and function Point createPoint()
@@ -1012,7 +1012,7 @@ TEST_F(FunctionHandlerTest, DISABLED_FunctionReturningStructByValue) {
  *
  * Tests struct pointer return type translation.
  */
-TEST_F(FunctionHandlerTest, DISABLED_FunctionReturningStructPointer) {
+TEST_F(FunctionHandlerTest, FunctionReturningStructPointer) {
     GTEST_SKIP() << "Test needs refactoring to use dispatcher pattern with buildASTFromCode";
     /* Original test code - kept for reference during refactoring
     // Arrange
@@ -1085,7 +1085,7 @@ TEST_F(FunctionHandlerTest, DISABLED_FunctionReturningStructPointer) {
  *
  * Tests multiple struct parameters.
  */
-TEST_F(FunctionHandlerTest, DISABLED_FunctionWithMultipleStructParameters) {
+TEST_F(FunctionHandlerTest, FunctionWithMultipleStructParameters) {
     GTEST_SKIP() << "Test needs refactoring to use dispatcher pattern with buildASTFromCode";
     /* Original test code - kept for reference during refactoring
     // Arrange

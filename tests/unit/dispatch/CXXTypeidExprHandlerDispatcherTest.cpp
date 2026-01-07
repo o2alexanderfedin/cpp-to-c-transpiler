@@ -428,7 +428,7 @@ TEST_F(CXXTypeidExprHandlerTest, ComplexNestedExpression) {
  * integration tests), but this unit test needs a full <typeinfo> header which
  * requires complex include path setup.
  */
-TEST_F(CXXTypeidExprHandlerTest, DISABLED_IntegrationWithComparisonOperators) {
+TEST_F(CXXTypeidExprHandlerTest, IntegrationWithComparisonOperators) {
     const char* code = R"(
         namespace std {
             class type_info {};

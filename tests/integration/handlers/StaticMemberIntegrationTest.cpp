@@ -186,7 +186,7 @@ TEST_F(StaticDataMemberIntegrationTest, StaticIntWithOutOfClassDefinition) {
 // DISABLED: In-class initializers need special handling for const static members
 // The current implementation doesn't preserve the initializer because
 // isThisDeclarationADefinition() returns false for const static with in-class init
-TEST_F(StaticDataMemberIntegrationTest, DISABLED_ConstStaticWithInClassInitializer) {
+TEST_F(StaticDataMemberIntegrationTest, ConstStaticWithInClassInitializer) {
     const char *code = R"(
         class Config {
         public:
