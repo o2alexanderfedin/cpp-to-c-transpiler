@@ -102,7 +102,7 @@ void DeclRefExprHandler::handleDeclRefExpr(
     clang::DeclRefExpr* cDeclRef = clang::DeclRefExpr::Create(
         cASTContext,
         clang::NestedNameSpecifierLoc(),  // No nested name specifier in C
-        clang::SourceLocation(),          // No template keyword in C
+        targetLoc,                        // No template keyword in C
         cValueDecl,
         false,                            // refersToEnclosingVariableOrCapture
         targetLoc,                        // Location (from target path)
