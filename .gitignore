@@ -82,6 +82,7 @@ compile_commands.json
 
 # Editor backup files
 *.bak
+*.backup
 *.orig
 \#*\#
 
