@@ -4,6 +4,7 @@
  */
 
 #include "dispatch/DeclRefExprHandler.h"
+#include "dispatch/TypeHandler.h"
 #include "mapping/ExprMapper.h"
 #include "mapping/DeclMapper.h"
 #include "SourceLocationMapper.h"
@@ -74,7 +75,7 @@ void DeclRefExprHandler::handleDeclRefExpr(
     // Check if original C++ declaration was a reference type
     // If so, we need to wrap the DeclRefExpr with a dereference operator
     bool needsDereference = false;
-    clang::QualType resultType = cppDeclRef->getType();
+    clang::QualType cppResultType = cppDeclRef->getType();
 
     // Check if this is a parameter with reference type
     if (const auto* cppParmVar = llvm::dyn_cast<clang::ParmVarDecl>(cppDecl)) {
@@ -82,9 +83,12 @@ void DeclRefExprHandler::handleDeclRefExpr(
         if (cppParamType->isLValueReferenceType() || cppParamType->isRValueReferenceType()) {
             needsDereference = true;
             // The result type should be the pointee type (without reference)
-            resultType = cppParamType.getNonReferenceType();
+            cppResultType = cppParamType.getNonReferenceType();
         }
     }
+
+    // Translate type from C++ to C ASTContext
+    clang::QualType cResultType = TypeHandler::translateType(cppResultType, cppASTContext, cASTContext);
 
     // Get valid SourceLocation for C AST nodes
     std::string targetPath = disp.getCurrentTargetPath();
@@ -94,15 +98,15 @@ void DeclRefExprHandler::handleDeclRefExpr(
     SourceLocationMapper& locMapper = disp.getTargetContext().getLocationMapper();
     clang::SourceLocation targetLoc = locMapper.getStartOfFile(targetPath);
 
-    // Create C DeclRefExpr
+    // Create C DeclRefExpr with translated type
     clang::DeclRefExpr* cDeclRef = clang::DeclRefExpr::Create(
         cASTContext,
         clang::NestedNameSpecifierLoc(),  // No nested name specifier in C
-        targetLoc,                        // Template keyword location (from target path)
+        clang::SourceLocation(),          // No template keyword in C
         cValueDecl,
         false,                            // refersToEnclosingVariableOrCapture
         targetLoc,                        // Location (from target path)
-        needsDereference ? cASTContext.getPointerType(resultType) : resultType,
+        needsDereference ? cASTContext.getPointerType(cResultType) : cResultType,
         clang::VK_LValue                  // Value kind
     );
 
@@ -117,7 +121,7 @@ void DeclRefExprHandler::handleDeclRefExpr(
             cASTContext,
             cDeclRef,
             clang::UO_Deref,
-            resultType,
+            cResultType,  // Use translated C type
             clang::VK_LValue,
             clang::OK_Ordinary,
             targetLoc,  // Location from target path

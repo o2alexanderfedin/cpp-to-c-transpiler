@@ -4,6 +4,7 @@
  */
 
 #include "dispatch/ImplicitCastExprHandler.h"
+#include "dispatch/TypeHandler.h"
 #include "mapping/ExprMapper.h"
 #include "clang/AST/Expr.h"
 #include "llvm/Support/Casting.h"
@@ -72,11 +73,14 @@ void ImplicitCastExprHandler::handleImplicitCast(
 
     llvm::outs() << "[ImplicitCastExprHandler] Subexpression translated successfully\n";
 
-    // Create C ImplicitCastExpr with translated subexpression
+    // Translate type from C++ to C ASTContext
+    clang::QualType cType = TypeHandler::translateType(cppCast->getType(), cppASTContext, cASTContext);
+
+    // Create C ImplicitCastExpr with translated subexpression and type
     // Note: ImplicitCastExpr::Create requires cast kind, type, subexpression, and FP options
     clang::ImplicitCastExpr* cCast = clang::ImplicitCastExpr::Create(
         cASTContext,
-        cppCast->getType(),           // Keep same type (will be adjusted by type translation)
+        cType,                         // Use translated C type
         cppCast->getCastKind(),        // Keep same cast kind
         cSubExpr,                      // Translated subexpression
         nullptr,                       // No base path (for class casts)

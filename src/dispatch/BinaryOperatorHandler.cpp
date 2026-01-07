@@ -4,6 +4,7 @@
  */
 
 #include "dispatch/BinaryOperatorHandler.h"
+#include "dispatch/TypeHandler.h"
 #include "mapping/ExprMapper.h"
 #include "SourceLocationMapper.h"
 #include "clang/AST/Expr.h"
@@ -88,13 +89,16 @@ void BinaryOperatorHandler::handleBinaryOperator(
     SourceLocationMapper& locMapper = disp.getTargetContext().getLocationMapper();
     clang::SourceLocation targetLoc = locMapper.getStartOfFile("");
 
-    // Create C BinaryOperator with translated operands
+    // Translate type from C++ to C ASTContext
+    clang::QualType cType = TypeHandler::translateType(cppBinOp->getType(), cppASTContext, cASTContext);
+
+    // Create C BinaryOperator with translated operands and type
     clang::BinaryOperator* cBinOp = clang::BinaryOperator::Create(
         cASTContext,
         cLHS,
         cRHS,
         cppBinOp->getOpcode(),
-        cppBinOp->getType(),  // May need type translation in future
+        cType,  // Use translated C type
         cppBinOp->getValueKind(),
         cppBinOp->getObjectKind(),
         targetLoc,

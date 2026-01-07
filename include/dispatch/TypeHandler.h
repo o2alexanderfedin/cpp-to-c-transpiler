@@ -66,6 +66,29 @@ public:
      */
     static void registerWith(CppToCVisitorDispatcher& dispatcher);
 
+    /**
+     * @brief Translate C++ QualType to equivalent C QualType
+     * @param cppType Type from C++ ASTContext
+     * @param cppASTContext Source C++ ASTContext
+     * @param cASTContext Target C ASTContext
+     * @return Equivalent type in C ASTContext
+     *
+     * Translation rules:
+     * - Builtin types (int, void, etc.) → C ASTContext builtins
+     * - Pointer types → recursively translate pointee, create C pointer
+     * - Array types → recursively translate element, create C array
+     * - Record types → pass through (struct names are same)
+     * - Reference types → convert to pointers
+     *
+     * CRITICAL: Never return C++ types in C AST nodes!
+     * This function ensures all types belong to the C ASTContext.
+     */
+    static clang::QualType translateType(
+        clang::QualType cppType,
+        const clang::ASTContext& cppASTContext,
+        clang::ASTContext& cASTContext
+    );
+
 private:
     /**
      * @brief Predicate: Check if type is a reference type
