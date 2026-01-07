@@ -69,8 +69,20 @@ export LLVM_VERSION=21
 export LLVM_DIR=/opt/homebrew/opt/llvm/lib/cmake/llvm
 export Clang_DIR=/opt/homebrew/opt/llvm/lib/cmake/clang
 
+# Detect architecture and set CMAKE_OSX_ARCHITECTURES
+# Force native architecture (fixes issue with Rosetta or arch command interference)
+ARCH=$(uname -m)
+if [ "$ARCH" = "x86_64" ] && [ -f /usr/sbin/sysctl ] && /usr/sbin/sysctl -n hw.optional.arm64 2>/dev/null | grep -q 1; then
+    # Running under Rosetta on Apple Silicon - use arm64
+    ARCH="arm64"
+    echo "Detected architecture: x86_64 (Rosetta), forcing arm64 for native build"
+else
+    echo "Detected architecture: $ARCH"
+fi
+
 cmake -B build \
   -DCMAKE_BUILD_TYPE=Release \
+  -DCMAKE_OSX_ARCHITECTURES=$ARCH \
   -DLLVM_DIR=/opt/homebrew/opt/llvm/lib/cmake/llvm \
   -DClang_DIR=/opt/homebrew/opt/llvm/lib/cmake/clang \
   -DCMAKE_CXX_COMPILER=/opt/homebrew/opt/llvm/bin/clang++ \
