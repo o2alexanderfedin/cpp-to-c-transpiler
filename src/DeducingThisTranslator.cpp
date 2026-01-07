@@ -19,7 +19,8 @@ DeducingThisTranslator::DeducingThisTranslator(CNodeBuilder& Builder)
 std::vector<FunctionDecl*> DeducingThisTranslator::transformMethod(
     CXXMethodDecl* MD,
     ASTContext& Ctx,
-    TranslationUnitDecl* C_TU) {
+    TranslationUnitDecl* C_TU,
+    SourceLocation targetLoc) {
 
     std::vector<FunctionDecl*> result;
 
@@ -52,7 +53,7 @@ std::vector<FunctionDecl*> DeducingThisTranslator::transformMethod(
 
     // Generate each overload
     for (const auto& Quals : overloads) {
-        FunctionDecl* overload = generateOverload(MD, Quals, Ctx, C_TU);
+        FunctionDecl* overload = generateOverload(MD, Quals, Ctx, C_TU, targetLoc);
         if (overload) {
             result.push_back(overload);
         }
@@ -63,7 +64,8 @@ std::vector<FunctionDecl*> DeducingThisTranslator::transformMethod(
 
 CallExpr* DeducingThisTranslator::transformCall(
     CallExpr* Call,
-    ASTContext& Ctx) {
+    ASTContext& Ctx,
+    SourceLocation targetLoc) {
 
     if (!Call) {
         return nullptr;
@@ -129,7 +131,7 @@ CallExpr* DeducingThisTranslator::transformCall(
 
         TargetFunc = FunctionDecl::Create(
             Ctx, Ctx.getTranslationUnitDecl(),
-            SourceLocation(), SourceLocation(),
+            targetLoc, targetLoc,
             DN, funcType, Ctx.getTrivialTypeSourceInfo(funcType), SC_None);
     }
 
@@ -145,7 +147,7 @@ CallExpr* DeducingThisTranslator::transformCall(
             objAddr = UnaryOperator::Create(
                 Ctx, Object, UO_AddrOf,
                 Ctx.getPointerType(Object->getType()),
-                VK_PRValue, OK_Ordinary, SourceLocation(),
+                VK_PRValue, OK_Ordinary, targetLoc,
                 false, FPOptionsOverride());
         }
         args.push_back(objAddr);
@@ -161,14 +163,14 @@ CallExpr* DeducingThisTranslator::transformCall(
 
     // Create function reference
     DeclRefExpr* funcRef = DeclRefExpr::Create(
-        Ctx, NestedNameSpecifierLoc(), SourceLocation(),
-        TargetFunc, false, SourceLocation(),
+        Ctx, NestedNameSpecifierLoc(), targetLoc,
+        TargetFunc, false, targetLoc,
         TargetFunc->getType(), VK_LValue);
 
     // Create call expression
     CallExpr* callExpr = CallExpr::Create(
         Ctx, funcRef, args, Method->getReturnType(),
-        VK_PRValue, SourceLocation(), FPOptionsOverride());
+        VK_PRValue, targetLoc, FPOptionsOverride());
 
     return callExpr;
 }
@@ -205,7 +207,8 @@ FunctionDecl* DeducingThisTranslator::generateOverload(
     CXXMethodDecl* MD,
     const QualifierSet& Quals,
     ASTContext& Ctx,
-    TranslationUnitDecl* C_TU) {
+    TranslationUnitDecl* C_TU,
+    SourceLocation targetLoc) {
 
     if (!MD || !C_TU) {
         return nullptr;
@@ -287,7 +290,7 @@ FunctionDecl* DeducingThisTranslator::generateOverload(
 
     // Create function declaration
     FunctionDecl* FD = FunctionDecl::Create(
-        Ctx, C_TU, SourceLocation(), SourceLocation(),
+        Ctx, C_TU, targetLoc, targetLoc,
         DN, funcType, Ctx.getTrivialTypeSourceInfo(funcType), SC_None);
 
     FD->setParams(params);
