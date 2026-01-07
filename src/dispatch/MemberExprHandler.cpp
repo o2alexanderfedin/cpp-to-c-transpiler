@@ -4,6 +4,7 @@
  */
 
 #include "dispatch/MemberExprHandler.h"
+#include "dispatch/TypeHandler.h"
 #include "mapping/ExprMapper.h"
 #include "mapping/DeclMapper.h"
 #include "SourceLocationMapper.h"
@@ -90,6 +91,9 @@ void MemberExprHandler::handleMemberExpr(
     SourceLocationMapper& locMapper = disp.getTargetContext().getLocationMapper();
     clang::SourceLocation targetLoc = locMapper.getStartOfFile(targetPath);
 
+    // Translate type from C++ to C ASTContext
+    clang::QualType cType = TypeHandler::translateType(cppMemberExpr->getType(), cppASTContext, cASTContext);
+
     // Create C MemberExpr with translated base
     // CRITICAL: Preserve arrow vs dot flag for correct C semantics
     clang::MemberExpr* cMemberExpr = clang::MemberExpr::Create(
@@ -98,12 +102,12 @@ void MemberExprHandler::handleMemberExpr(
         isArrow,  // Preserve arrow vs dot distinction
         targetLoc,  // OperatorLoc
         clang::NestedNameSpecifierLoc(),  // QualifierLoc (no qualifiers in C)
-        targetLoc,  // TemplateKWLoc (no templates in C)
+        clang::SourceLocation(),  // TemplateKWLoc - No template keyword in C
         cMemberDecl,
         clang::DeclAccessPair::make(cMemberDecl, clang::AS_public),
         clang::DeclarationNameInfo(cMemberDecl->getDeclName(), targetLoc),
         nullptr,  // TemplateArgs (no templates in C)
-        cppMemberExpr->getType(),  // May need type translation in future
+        cType,  // Use translated C type
         cppMemberExpr->getValueKind(),
         cppMemberExpr->getObjectKind(),
         clang::NOUR_None  // NonOdrUseReason

@@ -5373,6 +5373,7 @@ target_link_libraries(E2EPhase1Test PRIVATE
 )
 
 gtest_discover_tests(E2EPhase1Test
+    DISCOVERY_MODE POST_BUILD
     WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
 )
 
@@ -5432,6 +5433,7 @@ target_link_libraries(GlobalVariablesIntegrationTest PRIVATE
 )
 
 gtest_discover_tests(GlobalVariablesIntegrationTest
+    DISCOVERY_MODE POST_BUILD
     WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
 )
 
@@ -5521,6 +5523,7 @@ target_link_libraries(ControlFlowE2ETest PRIVATE
 )
 
 gtest_discover_tests(ControlFlowE2ETest
+    DISCOVERY_MODE POST_BUILD
     WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
 )
 
@@ -5550,6 +5553,7 @@ target_link_libraries(GlobalVariablesE2ETest PRIVATE
 )
 
 gtest_discover_tests(GlobalVariablesE2ETest
+    DISCOVERY_MODE POST_BUILD
     WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
 )
 
@@ -5579,6 +5583,7 @@ target_link_libraries(PointersE2ETest PRIVATE
 )
 
 gtest_discover_tests(PointersE2ETest
+    DISCOVERY_MODE POST_BUILD
     WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
 )
 
@@ -5608,6 +5613,7 @@ target_link_libraries(StructsE2ETest PRIVATE
 )
 
 gtest_discover_tests(StructsE2ETest
+    DISCOVERY_MODE POST_BUILD
     WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
 )
 
