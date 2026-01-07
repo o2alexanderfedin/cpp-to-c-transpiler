@@ -6,6 +6,7 @@
 #include "dispatch/DeclRefExprHandler.h"
 #include "mapping/ExprMapper.h"
 #include "mapping/DeclMapper.h"
+#include "SourceLocationMapper.h"
 #include "clang/AST/ASTContext.h"
 #include "clang/AST/Expr.h"
 #include "clang/AST/Decl.h"
@@ -85,14 +86,22 @@ void DeclRefExprHandler::handleDeclRefExpr(
         }
     }
 
+    // Get valid SourceLocation for C AST nodes
+    std::string targetPath = disp.getCurrentTargetPath();
+    if (targetPath.empty()) {
+        targetPath = disp.getTargetPath(cppASTContext, cppDecl);
+    }
+    SourceLocationMapper& locMapper = disp.getTargetContext().getLocationMapper();
+    clang::SourceLocation targetLoc = locMapper.getStartOfFile(targetPath);
+
     // Create C DeclRefExpr
     clang::DeclRefExpr* cDeclRef = clang::DeclRefExpr::Create(
         cASTContext,
         clang::NestedNameSpecifierLoc(),  // No nested name specifier in C
-        clang::SourceLocation(),          // No template keyword location
+        targetLoc,                        // Template keyword location (from target path)
         cValueDecl,
         false,                            // refersToEnclosingVariableOrCapture
-        clang::SourceLocation(),          // Location
+        targetLoc,                        // Location (from target path)
         needsDereference ? cASTContext.getPointerType(resultType) : resultType,
         clang::VK_LValue                  // Value kind
     );
@@ -111,7 +120,7 @@ void DeclRefExprHandler::handleDeclRefExpr(
             resultType,
             clang::VK_LValue,
             clang::OK_Ordinary,
-            clang::SourceLocation(),
+            targetLoc,  // Location from target path
             false,  // canOverflow
             clang::FPOptionsOverride()
         );

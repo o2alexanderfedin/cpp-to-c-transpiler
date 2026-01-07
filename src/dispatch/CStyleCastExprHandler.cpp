@@ -69,11 +69,11 @@ void CStyleCastExprHandler::handleCStyleCastExpr(
         cppCast->getValueKind(),
         castKind,
         cSubExpr,
-        nullptr,  // path (not used for most casts)
+        nullptr,
         clang::FPOptionsOverride(),
         cASTContext.getTrivialTypeSourceInfo(targetType),
-        clang::SourceLocation(),  // LParenLoc
-        clang::SourceLocation()   // RParenLoc
+        clang::SourceLocation(),
+        clang::SourceLocation()
     );
 
     llvm::outs() << "[CStyleCastExprHandler] Created C-style cast\n";

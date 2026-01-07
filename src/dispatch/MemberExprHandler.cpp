@@ -82,18 +82,21 @@ void MemberExprHandler::handleMemberExpr(
         llvm::outs() << "[MemberExprHandler] WARNING: Member not in DeclMapper, using original declaration\n";
     }
 
+    // Get source location from target context
+    clang::SourceLocation targetLoc = disp.getTargetSourceLocation(cppASTContext, cppMemberExpr);
+
     // Create C MemberExpr with translated base
     // CRITICAL: Preserve arrow vs dot flag for correct C semantics
     clang::MemberExpr* cMemberExpr = clang::MemberExpr::Create(
         cASTContext,
         cBase,
         isArrow,  // Preserve arrow vs dot distinction
-        clang::SourceLocation(),  // OperatorLoc
+        targetLoc,  // OperatorLoc
         clang::NestedNameSpecifierLoc(),  // QualifierLoc (no qualifiers in C)
-        clang::SourceLocation(),  // TemplateKWLoc (no templates in C)
+        targetLoc,  // TemplateKWLoc (no templates in C)
         cMemberDecl,
         clang::DeclAccessPair::make(cMemberDecl, clang::AS_public),
-        clang::DeclarationNameInfo(cMemberDecl->getDeclName(), clang::SourceLocation()),
+        clang::DeclarationNameInfo(cMemberDecl->getDeclName(), targetLoc),
         nullptr,  // TemplateArgs (no templates in C)
         cppMemberExpr->getType(),  // May need type translation in future
         cppMemberExpr->getValueKind(),

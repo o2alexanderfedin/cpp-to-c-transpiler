@@ -127,91 +127,104 @@ private:
         const clang::IfStmt* IS,
         const CppToCVisitorDispatcher& disp,
         const clang::ASTContext& cppASTContext,
-        clang::ASTContext& cASTContext
+        clang::ASTContext& cASTContext,
+        clang::SourceLocation targetLoc
     );
 
     static clang::WhileStmt* translateWhileStmt(
         const clang::WhileStmt* WS,
         const CppToCVisitorDispatcher& disp,
         const clang::ASTContext& cppASTContext,
-        clang::ASTContext& cASTContext
+        clang::ASTContext& cASTContext,
+        clang::SourceLocation targetLoc
     );
 
     static clang::DoStmt* translateDoStmt(
         const clang::DoStmt* DS,
         const CppToCVisitorDispatcher& disp,
         const clang::ASTContext& cppASTContext,
-        clang::ASTContext& cASTContext
+        clang::ASTContext& cASTContext,
+        clang::SourceLocation targetLoc
     );
 
     static clang::ForStmt* translateForStmt(
         const clang::ForStmt* FS,
         const CppToCVisitorDispatcher& disp,
         const clang::ASTContext& cppASTContext,
-        clang::ASTContext& cASTContext
+        clang::ASTContext& cASTContext,
+        clang::SourceLocation targetLoc
     );
 
     static clang::ForStmt* translateCXXForRangeStmt(
         const clang::CXXForRangeStmt* RFS,
         const CppToCVisitorDispatcher& disp,
         const clang::ASTContext& cppASTContext,
-        clang::ASTContext& cASTContext
+        clang::ASTContext& cASTContext,
+        clang::SourceLocation targetLoc
     );
 
     static clang::SwitchStmt* translateSwitchStmt(
         const clang::SwitchStmt* SS,
         const CppToCVisitorDispatcher& disp,
         const clang::ASTContext& cppASTContext,
-        clang::ASTContext& cASTContext
+        clang::ASTContext& cASTContext,
+        clang::SourceLocation targetLoc
     );
 
     static clang::CaseStmt* translateCaseStmt(
         const clang::CaseStmt* CS,
         const CppToCVisitorDispatcher& disp,
         const clang::ASTContext& cppASTContext,
-        clang::ASTContext& cASTContext
+        clang::ASTContext& cASTContext,
+        clang::SourceLocation targetLoc
     );
 
     static clang::DefaultStmt* translateDefaultStmt(
         const clang::DefaultStmt* DS,
         const CppToCVisitorDispatcher& disp,
         const clang::ASTContext& cppASTContext,
-        clang::ASTContext& cASTContext
+        clang::ASTContext& cASTContext,
+        clang::SourceLocation targetLoc
     );
 
     static clang::BreakStmt* translateBreakStmt(
         const clang::BreakStmt* BS,
         const CppToCVisitorDispatcher& disp,
         const clang::ASTContext& cppASTContext,
-        clang::ASTContext& cASTContext
+        clang::ASTContext& cASTContext,
+        clang::SourceLocation targetLoc
     );
 
     static clang::ContinueStmt* translateContinueStmt(
         const clang::ContinueStmt* CS,
         const CppToCVisitorDispatcher& disp,
         const clang::ASTContext& cppASTContext,
-        clang::ASTContext& cASTContext
+        clang::ASTContext& cASTContext,
+        clang::SourceLocation targetLoc
     );
 
     static clang::GotoStmt* translateGotoStmt(
         const clang::GotoStmt* GS,
         const CppToCVisitorDispatcher& disp,
         const clang::ASTContext& cppASTContext,
-        clang::ASTContext& cASTContext
+        clang::ASTContext& cASTContext,
+        clang::SourceLocation targetLoc
     );
 
     static clang::LabelStmt* translateLabelStmt(
         const clang::LabelStmt* LS,
         const CppToCVisitorDispatcher& disp,
         const clang::ASTContext& cppASTContext,
-        clang::ASTContext& cASTContext
+        clang::ASTContext& cASTContext,
+        clang::SourceLocation targetLoc
     );
 
     static clang::Stmt* translateDeclStmt(
         const clang::DeclStmt* DS,
         const CppToCVisitorDispatcher& disp,
         const clang::ASTContext& cppASTContext,
-        clang::ASTContext& cASTContext
+        clang::ASTContext& cASTContext,
+        clang::SourceLocation targetLoc
     );
 };
 

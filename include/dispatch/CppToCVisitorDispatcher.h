@@ -249,6 +249,33 @@ public:
      */
     std::string getCurrentTargetPath() const;
 
+    /**
+     * @brief Helper: Get target SourceLocation for AST node
+     * @param cppASTContext C++ ASTContext containing SourceManager
+     * @param D AST node to extract file location from (used as fallback if current path is empty)
+     * @return clang::SourceLocation pointing to start of target file
+     *
+     * Encapsulates the common pattern used in all handlers:
+     * 1. Get current target path or extract from AST node's location
+     * 2. Lookup target file's starting location via LocationMapper
+     * 3. Return the SourceLocation
+     *
+     * Usage:
+     * @code
+     * clang::SourceLocation targetLoc = disp.getTargetSourceLocation(cppASTContext, someNode);
+     * clang::WhileStmt* cWhile = clang::WhileStmt::Create(
+     *     cASTContext,
+     *     nullptr,
+     *     cCond,
+     *     cBody,
+     *     targetLoc,  // WhileLoc
+     *     targetLoc,  // LParenLoc
+     *     targetLoc   // RParenLoc
+     * );
+     * @endcode
+     */
+    clang::SourceLocation getTargetSourceLocation(const clang::ASTContext& cppASTContext, const clang::Decl* D) const;
+
     // Core AST node handlers
     void addHandler(DeclPredicate predicate, DeclVisitor handler);
     bool dispatch(const clang::ASTContext& cppASTContext, clang::ASTContext& cASTContext, const clang::Decl* cppDecl) const;

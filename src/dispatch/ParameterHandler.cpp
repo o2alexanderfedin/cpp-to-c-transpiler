@@ -73,7 +73,7 @@ void ParameterHandler::handleParameter(
         cParamType,
         cASTContext.getTrivialTypeSourceInfo(cParamType),
         clang::SC_None,
-        nullptr  // No default argument
+        nullptr
     );
 
     assert(cParam && "Failed to create C ParmVarDecl");

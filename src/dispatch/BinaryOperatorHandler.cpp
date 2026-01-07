@@ -5,6 +5,7 @@
 
 #include "dispatch/BinaryOperatorHandler.h"
 #include "mapping/ExprMapper.h"
+#include "SourceLocationMapper.h"
 #include "clang/AST/Expr.h"
 #include "llvm/Support/Casting.h"
 #include "llvm/Support/raw_ostream.h"
@@ -83,6 +84,10 @@ void BinaryOperatorHandler::handleBinaryOperator(
 
     llvm::outs() << "[BinaryOperatorHandler] Both operands translated successfully\n";
 
+    // Get source location for SourceLocation initialization
+    SourceLocationMapper& locMapper = disp.getTargetContext().getLocationMapper();
+    clang::SourceLocation targetLoc = locMapper.getStartOfFile("");
+
     // Create C BinaryOperator with translated operands
     clang::BinaryOperator* cBinOp = clang::BinaryOperator::Create(
         cASTContext,
@@ -92,7 +97,7 @@ void BinaryOperatorHandler::handleBinaryOperator(
         cppBinOp->getType(),  // May need type translation in future
         cppBinOp->getValueKind(),
         cppBinOp->getObjectKind(),
-        clang::SourceLocation(),
+        targetLoc,
         clang::FPOptionsOverride()
     );
 

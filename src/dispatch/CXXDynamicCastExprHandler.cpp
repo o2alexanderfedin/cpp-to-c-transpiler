@@ -194,7 +194,7 @@ clang::Expr* CXXDynamicCastExprHandler::createCExprFromString(
 #else
         clang::StringLiteral::Ordinary,
 #endif
-        false, // isPascal
+        false,
         resultType,
         clang::SourceLocation()
     );

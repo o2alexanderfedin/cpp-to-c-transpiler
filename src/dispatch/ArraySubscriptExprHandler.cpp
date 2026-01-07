@@ -85,7 +85,7 @@ void ArraySubscriptExprHandler::handleArraySubscript(
     clang::ArraySubscriptExpr* cArrSub = new (cASTContext) clang::ArraySubscriptExpr(
         cBase,
         cIdx,
-        cppArrSub->getType(),  // May need type translation in future
+        cppArrSub->getType(),
         cppArrSub->getValueKind(),
         cppArrSub->getObjectKind(),
         clang::SourceLocation()

@@ -71,11 +71,11 @@ void CXXFunctionalCastExprHandler::handleCXXFunctionalCastExpr(
         cppCast->getValueKind(),
         castKind,
         cSubExpr,
-        nullptr,  // path (not used for most casts)
+        nullptr,
         clang::FPOptionsOverride(),
         cASTContext.getTrivialTypeSourceInfo(targetType),
-        clang::SourceLocation(),  // LParenLoc
-        clang::SourceLocation()   // RParenLoc
+        clang::SourceLocation(),
+        clang::SourceLocation()
     );
 
     llvm::outs() << "[CXXFunctionalCastExprHandler] Created C-style cast from functional cast\n";

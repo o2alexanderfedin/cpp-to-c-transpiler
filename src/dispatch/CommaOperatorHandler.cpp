@@ -92,7 +92,7 @@ void CommaOperatorHandler::handleCommaOperator(
         cLHS,
         cRHS,
         clang::BO_Comma,
-        cppCommaOp->getType(),  // May need type translation in future
+        cppCommaOp->getType(),
         cppCommaOp->getValueKind(),
         cppCommaOp->getObjectKind(),
         clang::SourceLocation(),

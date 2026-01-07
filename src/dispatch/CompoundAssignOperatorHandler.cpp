@@ -5,6 +5,7 @@
 
 #include "dispatch/CompoundAssignOperatorHandler.h"
 #include "mapping/ExprMapper.h"
+#include "SourceLocationMapper.h"
 #include "clang/AST/Expr.h"
 #include "llvm/Support/Casting.h"
 #include "llvm/Support/raw_ostream.h"
@@ -134,6 +135,10 @@ void CompoundAssignOperatorHandler::handleCompoundAssignOperator(
     // For complex LHS (like a[i++]), this might need special handling in the future
     clang::Expr* cLHSForOperation = cLHS;
 
+    // Get source location for SourceLocation initialization
+    SourceLocationMapper& locMapper = disp.getTargetContext().getLocationMapper();
+    clang::SourceLocation targetLoc = locMapper.getStartOfFile("");
+
     // Create BinaryOperator for the operation (e.g., x + 5)
     clang::BinaryOperator* cOperation = clang::BinaryOperator::Create(
         cASTContext,
@@ -143,7 +148,7 @@ void CompoundAssignOperatorHandler::handleCompoundAssignOperator(
         cppCompoundAssign->getType(),  // Result type of the operation
         cppCompoundAssign->getValueKind(),
         cppCompoundAssign->getObjectKind(),
-        clang::SourceLocation(),
+        targetLoc,
         clang::FPOptionsOverride()
     );
 
@@ -159,7 +164,7 @@ void CompoundAssignOperatorHandler::handleCompoundAssignOperator(
         cppCompoundAssign->getType(),  // Result type of the assignment
         cppCompoundAssign->getValueKind(),
         cppCompoundAssign->getObjectKind(),
-        clang::SourceLocation(),
+        targetLoc,
         clang::FPOptionsOverride()
     );
 

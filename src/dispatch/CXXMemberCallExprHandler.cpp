@@ -7,6 +7,7 @@
 #include "mapping/ExprMapper.h"
 #include "mapping/DeclMapper.h"
 #include "SourceLocationMapper.h"
+#include "TargetContext.h"
 #include "clang/AST/ASTContext.h"
 #include "clang/AST/Expr.h"
 #include "clang/AST/ExprCXX.h"
@@ -70,10 +71,10 @@ void CXXMemberCallExprHandler::handleCXXMemberCallExpr(
     }
 
     // Get valid SourceLocation for C AST node
+    // For expressions, we rely on getCurrentTargetPath() since expressions
+    // don't carry file location information like Decls do
     std::string targetPath = disp.getCurrentTargetPath();
-    if (targetPath.empty()) {
-        targetPath = disp.getTargetPath(cppASTContext, const_cast<clang::Expr*>(E));
-    }
+    assert(!targetPath.empty() && "Target path must be set for expression handling");
     SourceLocationMapper& locMapper = disp.getTargetContext().getLocationMapper();
     clang::SourceLocation targetLoc = locMapper.getStartOfFile(targetPath);
 

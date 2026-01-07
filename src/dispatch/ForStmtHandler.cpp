@@ -6,6 +6,7 @@
 #include "dispatch/ForStmtHandler.h"
 #include "mapping/StmtMapper.h"
 #include "mapping/ExprMapper.h"
+#include "SourceLocationMapper.h"
 #include "clang/AST/ASTContext.h"
 #include "clang/AST/Stmt.h"
 #include "llvm/Support/Casting.h"
@@ -111,6 +112,14 @@ void ForStmtHandler::handleForStmt(
         assert(cBody && "Body statement must be in StmtMapper");
     }
 
+    // Get valid SourceLocation for C AST nodes
+    std::string targetPath = disp.getCurrentTargetPath();
+    if (targetPath.empty()) {
+        targetPath = disp.getTargetPath(cppASTContext, S);
+    }
+    SourceLocationMapper& locMapper = disp.getTargetContext().getLocationMapper();
+    clang::SourceLocation targetLoc = locMapper.getStartOfFile(targetPath);
+
     // Create C ForStmt
     clang::ForStmt* cFor = new (cASTContext) clang::ForStmt(
         cASTContext,
@@ -119,9 +128,9 @@ void ForStmtHandler::handleForStmt(
         nullptr,  // ConditionVariable (not used in C)
         cInc,
         cBody,
-        clang::SourceLocation(),  // ForLoc
-        clang::SourceLocation(),  // LParenLoc
-        clang::SourceLocation()   // RParenLoc
+        targetLoc,  // ForLoc (from target path)
+        targetLoc,  // LParenLoc (from target path)
+        targetLoc   // RParenLoc (from target path)
     );
 
     llvm::outs() << "[ForStmtHandler] Created C ForStmt\n";

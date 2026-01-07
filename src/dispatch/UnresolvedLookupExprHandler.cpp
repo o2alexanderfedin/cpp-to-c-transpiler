@@ -6,6 +6,7 @@
 #include "dispatch/UnresolvedLookupExprHandler.h"
 #include "mapping/ExprMapper.h"
 #include "mapping/DeclMapper.h"
+#include "SourceLocationMapper.h"
 #include "clang/AST/ASTContext.h"
 #include "clang/AST/ExprCXX.h"
 #include "llvm/Support/Casting.h"
@@ -79,6 +80,14 @@ void UnresolvedLookupExprHandler::handleUnresolvedLookupExpr(
         llvm::outs() << "[UnresolvedLookupExprHandler] Using C++ declaration as fallback\n";
     }
 
+    // Get source location from target context
+    std::string targetPath = disp.getCurrentTargetPath();
+    if (targetPath.empty()) {
+        targetPath = disp.getTargetPath(cppASTContext, nullptr);
+    }
+    SourceLocationMapper& locMapper = disp.getTargetContext().getLocationMapper();
+    clang::SourceLocation targetLoc = locMapper.getStartOfFile(targetPath);
+
     if (!cValueDecl) {
         llvm::errs() << "[UnresolvedLookupExprHandler] WARNING: Could not resolve " << nameStr << "\n";
         llvm::errs() << "[UnresolvedLookupExprHandler] Creating placeholder\n";
@@ -89,7 +98,7 @@ void UnresolvedLookupExprHandler::handleUnresolvedLookupExpr(
             cASTContext,
             zeroValue,
             cASTContext.IntTy,
-            clang::SourceLocation()
+            targetLoc
         );
         exprMapper.setCreated(E, cPlaceholder);
         return;
@@ -99,10 +108,10 @@ void UnresolvedLookupExprHandler::handleUnresolvedLookupExpr(
     clang::DeclRefExpr* cDeclRef = clang::DeclRefExpr::Create(
         cASTContext,
         clang::NestedNameSpecifierLoc(),
-        clang::SourceLocation(),
+        targetLoc,
         cValueDecl,
         false,
-        clang::SourceLocation(),
+        targetLoc,
         cppUnresolved->getType(),
         clang::VK_LValue
     );

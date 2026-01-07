@@ -6,6 +6,7 @@
 #include "dispatch/SwitchStmtHandler.h"
 #include "mapping/StmtMapper.h"
 #include "mapping/ExprMapper.h"
+#include "SourceLocationMapper.h"
 #include "clang/AST/ASTContext.h"
 #include "clang/AST/Stmt.h"
 #include "llvm/Support/Casting.h"
@@ -79,14 +80,18 @@ void SwitchStmtHandler::handleSwitchStmt(
         assert(cBody && "Body must be in StmtMapper");
     }
 
+    // Get source location for SourceLocation initialization
+    SourceLocationMapper& locMapper = disp.getTargetContext().getLocationMapper();
+    clang::SourceLocation targetLoc = locMapper.getStartOfFile("");
+
     // Create C SwitchStmt (body is set separately)
     clang::SwitchStmt* cSwitch = clang::SwitchStmt::Create(
         cASTContext,
         nullptr,  // Init statement (C doesn't support this)
         nullptr,  // ConditionVariable (C doesn't support this)
         cCond,
-        clang::SourceLocation(),  // LParenLoc
-        clang::SourceLocation()   // RParenLoc
+        targetLoc,  // LParenLoc
+        targetLoc   // RParenLoc
     );
 
     // Set the body separately

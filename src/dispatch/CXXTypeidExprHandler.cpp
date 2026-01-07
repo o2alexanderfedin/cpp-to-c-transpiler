@@ -185,7 +185,7 @@ clang::Expr* CXXTypeidExprHandler::createCExprFromString(
 #else
         clang::StringLiteral::Ordinary,
 #endif
-        false, // isPascal
+        false,
         resultType,
         clang::SourceLocation()
     );

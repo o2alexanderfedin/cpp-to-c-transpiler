@@ -5,6 +5,7 @@
 
 #include "dispatch/CompoundStmtHandler.h"
 #include "mapping/StmtMapper.h"
+#include "SourceLocationMapper.h"
 #include "clang/AST/Stmt.h"
 #include "llvm/Support/Casting.h"
 #include "llvm/Support/raw_ostream.h"
@@ -127,13 +128,17 @@ void CompoundStmtHandler::handleCompoundStmt(
     llvm::outs() << "[CompoundStmtHandler] Collected " << cStmts.size()
                  << " translated statements (out of " << cppCompound->size() << " original)\n";
 
+    // Get source location for SourceLocation initialization
+    SourceLocationMapper& locMapper = disp.getTargetContext().getLocationMapper();
+    clang::SourceLocation targetLoc = locMapper.getStartOfFile("");
+
     // Create C CompoundStmt with translated statements
     clang::CompoundStmt* cCompound = clang::CompoundStmt::Create(
         cASTContext,
         cStmts,
         clang::FPOptionsOverride(),
-        clang::SourceLocation(),
-        clang::SourceLocation()
+        targetLoc,
+        targetLoc
     );
 
     llvm::outs() << "[CompoundStmtHandler] Created C CompoundStmt with "

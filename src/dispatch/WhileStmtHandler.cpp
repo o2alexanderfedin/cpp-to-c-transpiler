@@ -79,15 +79,18 @@ void WhileStmtHandler::handleWhileStmt(
         assert(cBody && "Body must be in StmtMapper");
     }
 
+    // Get source location from target context
+    clang::SourceLocation targetLoc = disp.getTargetSourceLocation(cppASTContext, cppWhile);
+
     // Create C WhileStmt
     clang::WhileStmt* cWhile = clang::WhileStmt::Create(
         cASTContext,
         nullptr,  // ConditionVariable (C doesn't support this)
         cCond,
         cBody,
-        clang::SourceLocation(),  // WhileLoc
-        clang::SourceLocation(),  // LParenLoc
-        clang::SourceLocation()   // RParenLoc
+        targetLoc,  // WhileLoc
+        targetLoc,  // LParenLoc
+        targetLoc   // RParenLoc
     );
 
     llvm::outs() << "[WhileStmtHandler] Created C WhileStmt\n";

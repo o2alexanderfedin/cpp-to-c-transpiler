@@ -11,6 +11,7 @@
 #include "mapping/ExprMapper.h"
 #include "mapping/StmtMapper.h"
 #include "translation/TypeTranslator.h"
+#include "SourceLocationMapper.h"
 #include "llvm/Support/Casting.h"
 #include "llvm/Support/raw_ostream.h"
 #include <cassert>
@@ -51,6 +52,10 @@ void ReturnStmtHandler::handleReturnStmt(
     clang::ReturnStmt* cReturn = nullptr;
     clang::Expr* cRetValue = nullptr;
 
+    // Get source location for SourceLocation initialization
+    SourceLocationMapper& locMapper = disp.getTargetContext().getLocationMapper();
+    clang::SourceLocation targetLoc = locMapper.getStartOfFile("");
+
     if (cppRetValue) {
         // Following Chain of Responsibility pattern: Dispatch expression to ExpressionHandler
         // Cast away const for dispatch (dispatcher interface requires non-const)
@@ -77,7 +82,7 @@ void ReturnStmtHandler::handleReturnStmt(
         // Create C return statement with return value
         cReturn = clang::ReturnStmt::Create(
             cASTContext,
-            clang::SourceLocation(),
+            targetLoc,
             cRetValue,
             nullptr  // No NRVOCandidate in C
         );
@@ -85,7 +90,7 @@ void ReturnStmtHandler::handleReturnStmt(
         // Void return: "return;"
         cReturn = clang::ReturnStmt::Create(
             cASTContext,
-            clang::SourceLocation(),
+            targetLoc,
             nullptr,  // No return value
             nullptr   // No NRVOCandidate in C
         );

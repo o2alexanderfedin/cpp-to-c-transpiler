@@ -70,11 +70,11 @@ void CXXStaticCastExprHandler::handleCXXStaticCastExpr(
         cppCast->getValueKind(),
         castKind,
         cSubExpr,
-        nullptr,  // path (not used for most casts)
+        nullptr,
         clang::FPOptionsOverride(),
         cASTContext.getTrivialTypeSourceInfo(targetType),
-        clang::SourceLocation(),  // LParenLoc
-        clang::SourceLocation()   // RParenLoc
+        clang::SourceLocation(),
+        clang::SourceLocation()
     );
 
     llvm::outs() << "[CXXStaticCastExprHandler] Created C-style cast\n";

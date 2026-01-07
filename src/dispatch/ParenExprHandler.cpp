@@ -73,9 +73,9 @@ void ParenExprHandler::handleParenExpr(
 
     // Create C ParenExpr with translated inner expression
     clang::ParenExpr* cParen = new (cASTContext) clang::ParenExpr(
-        clang::SourceLocation(),  // L paren location
-        clang::SourceLocation(),  // R paren location
-        cInnerExpr                // Translated inner expression
+        clang::SourceLocation(),
+        clang::SourceLocation(),
+        cInnerExpr
     );
 
     assert(cParen && "Failed to create C ParenExpr");

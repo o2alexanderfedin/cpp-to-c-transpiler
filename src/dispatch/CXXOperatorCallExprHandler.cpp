@@ -17,6 +17,7 @@
 
 #include "dispatch/CXXOperatorCallExprHandler.h"
 #include "mapping/ExprMapper.h"
+#include "SourceLocationMapper.h"
 #include "clang/AST/Expr.h"
 #include "clang/AST/ExprCXX.h"
 #include "llvm/Support/Casting.h"
@@ -102,16 +103,24 @@ void CXXOperatorCallExprHandler::handleOperatorCall(
         return;
     }
 
+    // Get valid SourceLocation for C AST nodes
+    std::string targetPath = disp.getCurrentTargetPath();
+    if (targetPath.empty()) {
+        targetPath = disp.getTargetPath(cppASTContext, E);
+    }
+    SourceLocationMapper& locMapper = disp.getTargetContext().getLocationMapper();
+    clang::SourceLocation targetLoc = locMapper.getStartOfFile(targetPath);
+
     // Create DeclRefExpr for callee
     // Note: In real translation, this would be the C function created by SpecialOperatorTranslator
     // For now, we use the original C++ operator method as a placeholder
     clang::DeclRefExpr* calleeDRE = clang::DeclRefExpr::Create(
         cASTContext,
         clang::NestedNameSpecifierLoc(),
-        clang::SourceLocation(),
+        targetLoc,
         const_cast<clang::FunctionDecl*>(calleeDecl),
         false, // RefersToEnclosingVariableOrCapture
-        clang::SourceLocation(),
+        targetLoc,
         calleeDecl->getType(),
         clang::VK_LValue
     );
@@ -135,7 +144,7 @@ void CXXOperatorCallExprHandler::handleOperatorCall(
         cArgs,
         cppOpCall->getType(),
         cppOpCall->getValueKind(),
-        clang::SourceLocation(),
+        targetLoc,  // Location from target path
         clang::FPOptionsOverride()
     );
 

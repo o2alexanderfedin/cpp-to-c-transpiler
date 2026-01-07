@@ -87,9 +87,9 @@ void ConditionalOperatorHandler::handleConditionalOperator(
     // Create C conditional operator
     clang::ConditionalOperator* cCondOp = new (cASTContext) clang::ConditionalOperator(
         cCondExpr,
-        clang::SourceLocation(),  // QuestionLoc
+        clang::SourceLocation(),
         cTrueExpr,
-        clang::SourceLocation(),  // ColonLoc
+        clang::SourceLocation(),
         cFalseExpr,
         cppCond->getType(),
         cppCond->getValueKind(),

@@ -1,5 +1,6 @@
 #include "dispatch/CppToCVisitorDispatcher.h"
 #include "mapping/DeclLocationMapper.h"
+#include "SourceLocationMapper.h"
 
 // ============================================================================
 // Helper Methods
@@ -16,6 +17,15 @@ void CppToCVisitorDispatcher::setCurrentTargetPath(const std::string& targetPath
 
 std::string CppToCVisitorDispatcher::getCurrentTargetPath() const {
     return currentTargetPath_;
+}
+
+clang::SourceLocation CppToCVisitorDispatcher::getTargetSourceLocation(const clang::ASTContext& cppASTContext, const clang::Decl* node) const {
+    std::string targetPath = getCurrentTargetPath();
+    if (targetPath.empty()) {
+        targetPath = getTargetPath(cppASTContext, node);
+    }
+    SourceLocationMapper& locMapper = targetContext.getLocationMapper();
+    return locMapper.getStartOfFile(targetPath);
 }
 
 // ============================================================================

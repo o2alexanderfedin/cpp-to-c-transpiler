@@ -10,6 +10,7 @@
 #include "dispatch/DestructorHandler.h"
 #include "CNodeBuilder.h"
 #include "NameMangler.h"
+#include "SourceLocationMapper.h"
 #include "mapping/DeclMapper.h"
 #include "mapping/StmtMapper.h"
 #include "clang/AST/DeclCXX.h"

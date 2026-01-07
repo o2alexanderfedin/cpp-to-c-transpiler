@@ -72,7 +72,7 @@ void UnaryOperatorHandler::handleUnaryOperator(
         cASTContext,
         cOperand,
         cppUnOp->getOpcode(),
-        cppUnOp->getType(),  // May need type translation in future
+        cppUnOp->getType(),
         cppUnOp->getValueKind(),
         cppUnOp->getObjectKind(),
         clang::SourceLocation(),

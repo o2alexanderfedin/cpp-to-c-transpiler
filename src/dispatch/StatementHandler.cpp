@@ -11,6 +11,7 @@
 #include "mapping/ExprMapper.h"
 #include "mapping/DeclMapper.h"
 #include "SourceLocationMapper.h"
+#include "TargetContext.h"
 #include "clang/AST/Stmt.h"
 #include "clang/AST/Expr.h"
 #include "clang/AST/Decl.h"
@@ -76,10 +77,10 @@ void StatementHandler::handleStatement(
     llvm::outs() << "[StatementHandler] Processing statement: " << S->getStmtClassName() << "\n";
 
     // Get valid SourceLocation for C AST node
+    // For statements, we rely on getCurrentTargetPath() since statements
+    // don't carry file location information like Decls do
     std::string targetPath = disp.getCurrentTargetPath();
-    if (targetPath.empty()) {
-        targetPath = disp.getTargetPath(cppASTContext, const_cast<clang::Stmt*>(S));
-    }
+    assert(!targetPath.empty() && "Target path must be set for statement handling");
     SourceLocationMapper& locMapper = disp.getTargetContext().getLocationMapper();
     clang::SourceLocation targetLoc = locMapper.getStartOfFile(targetPath);
 
@@ -473,7 +474,8 @@ clang::CaseStmt* StatementHandler::translateCaseStmt(
     const clang::CaseStmt* CS,
     const CppToCVisitorDispatcher& disp,
     const clang::ASTContext& cppASTContext,
-    clang::ASTContext& cASTContext
+    clang::ASTContext& cASTContext,
+    clang::SourceLocation targetLoc
 ) {
     llvm::outs() << "[StatementHandler] Translating CaseStmt\n";
 
@@ -540,7 +542,8 @@ clang::DefaultStmt* StatementHandler::translateDefaultStmt(
     const clang::DefaultStmt* DS,
     const CppToCVisitorDispatcher& disp,
     const clang::ASTContext& cppASTContext,
-    clang::ASTContext& cASTContext
+    clang::ASTContext& cASTContext,
+    clang::SourceLocation targetLoc
 ) {
     llvm::outs() << "[StatementHandler] Translating DefaultStmt\n";
 
@@ -569,7 +572,8 @@ clang::BreakStmt* StatementHandler::translateBreakStmt(
     const clang::BreakStmt* BS,
     const CppToCVisitorDispatcher& disp,
     const clang::ASTContext& cppASTContext,
-    clang::ASTContext& cASTContext
+    clang::ASTContext& cASTContext,
+    clang::SourceLocation targetLoc
 ) {
     llvm::outs() << "[StatementHandler] Translating BreakStmt\n";
 
@@ -581,7 +585,8 @@ clang::ContinueStmt* StatementHandler::translateContinueStmt(
     const clang::ContinueStmt* CS,
     const CppToCVisitorDispatcher& disp,
     const clang::ASTContext& cppASTContext,
-    clang::ASTContext& cASTContext
+    clang::ASTContext& cASTContext,
+    clang::SourceLocation targetLoc
 ) {
     llvm::outs() << "[StatementHandler] Translating ContinueStmt\n";
 
@@ -593,7 +598,8 @@ clang::GotoStmt* StatementHandler::translateGotoStmt(
     const clang::GotoStmt* GS,
     const CppToCVisitorDispatcher& disp,
     const clang::ASTContext& cppASTContext,
-    clang::ASTContext& cASTContext
+    clang::ASTContext& cASTContext,
+    clang::SourceLocation targetLoc
 ) {
     llvm::outs() << "[StatementHandler] Translating GotoStmt\n";
 
@@ -602,14 +608,6 @@ clang::GotoStmt* StatementHandler::translateGotoStmt(
     if (!cppLabel) {
         return nullptr;
     }
-
-    // Get valid SourceLocation for C AST node
-    std::string targetPath = disp.getCurrentTargetPath();
-    if (targetPath.empty()) {
-        targetPath = disp.getTargetPath(cppASTContext, const_cast<clang::Stmt*>(S));
-    }
-    SourceLocationMapper& locMapper = disp.getTargetContext().getLocationMapper();
-    clang::SourceLocation targetLoc = locMapper.getStartOfFile(targetPath);
 
     // Create a new label declaration in C AST with the same name
     clang::IdentifierInfo& II = cASTContext.Idents.get(cppLabel->getName());
@@ -632,7 +630,8 @@ clang::LabelStmt* StatementHandler::translateLabelStmt(
     const clang::LabelStmt* LS,
     const CppToCVisitorDispatcher& disp,
     const clang::ASTContext& cppASTContext,
-    clang::ASTContext& cASTContext
+    clang::ASTContext& cASTContext,
+    clang::SourceLocation targetLoc
 ) {
     llvm::outs() << "[StatementHandler] Translating LabelStmt\n";
 
@@ -641,14 +640,6 @@ clang::LabelStmt* StatementHandler::translateLabelStmt(
     if (!cppDecl) {
         return nullptr;
     }
-
-    // Get valid SourceLocation for C AST node
-    std::string targetPath = disp.getCurrentTargetPath();
-    if (targetPath.empty()) {
-        targetPath = disp.getTargetPath(cppASTContext, const_cast<clang::Stmt*>(S));
-    }
-    SourceLocationMapper& locMapper = disp.getTargetContext().getLocationMapper();
-    clang::SourceLocation targetLoc = locMapper.getStartOfFile(targetPath);
 
     // Create a new label declaration in C AST with the same name
     clang::IdentifierInfo& II = cASTContext.Idents.get(cppDecl->getName());
@@ -688,7 +679,8 @@ clang::Stmt* StatementHandler::translateDeclStmt(
     const clang::DeclStmt* DS,
     const CppToCVisitorDispatcher& disp,
     const clang::ASTContext& cppASTContext,
-    clang::ASTContext& cASTContext
+    clang::ASTContext& cASTContext,
+    clang::SourceLocation targetLoc
 ) {
     llvm::outs() << "[StatementHandler] Translating DeclStmt\n";
 
@@ -716,14 +708,6 @@ clang::Stmt* StatementHandler::translateDeclStmt(
         llvm::errs() << "[StatementHandler] WARNING: No declarations translated in DeclStmt\n";
         return nullptr;
     }
-
-    // Get valid SourceLocation for C AST node
-    std::string targetPath = disp.getCurrentTargetPath();
-    if (targetPath.empty()) {
-        targetPath = disp.getTargetPath(cppASTContext, const_cast<clang::Stmt*>(S));
-    }
-    SourceLocationMapper& locMapper = disp.getTargetContext().getLocationMapper();
-    clang::SourceLocation targetLoc = locMapper.getStartOfFile(targetPath);
 
     // Create C DeclStmt
     return new (cASTContext) clang::DeclStmt(

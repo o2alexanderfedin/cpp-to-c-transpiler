@@ -5,6 +5,7 @@
 
 #include "dispatch/CXXNewExprHandler.h"
 #include "mapping/ExprMapper.h"
+#include "SourceLocationMapper.h"
 #include "clang/AST/ASTContext.h"
 #include "clang/AST/Expr.h"
 #include "clang/AST/ExprCXX.h"
@@ -45,6 +46,10 @@ void CXXNewExprHandler::handleCXXNewExpr(
     }
 
     llvm::outs() << "[CXXNewExprHandler] Processing CXXNewExpr (translating to malloc)\n";
+
+    // Get source location for SourceLocation initialization
+    SourceLocationMapper& locMapper = disp.getTargetContext().getLocationMapper();
+    clang::SourceLocation targetLoc = locMapper.getStartOfFile("");
 
     // Get the allocated type
     clang::QualType allocatedType = cppNew->getAllocatedType();
@@ -87,7 +92,7 @@ void CXXNewExprHandler::handleCXXNewExpr(
             cASTContext,
             sizeValue,
             cASTContext.IntTy,
-            clang::SourceLocation()
+            targetLoc
         );
     }
 
@@ -107,7 +112,7 @@ void CXXNewExprHandler::handleCXXNewExpr(
         cASTContext,
         zeroValue,
         cASTContext.IntTy,
-        clang::SourceLocation()
+        targetLoc
     );
 
     llvm::outs() << "[CXXNewExprHandler] Created placeholder for new expression (full malloc translation not yet implemented)\n";
