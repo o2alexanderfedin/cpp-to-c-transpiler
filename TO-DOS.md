@@ -167,7 +167,23 @@ gh api repos/o2alexanderfedin/cpp-to-c-transpiler/collaborators/EitanNahmias -X 
 
 - **Complete exception handling implementation** - Finish or improve exception handling translation (try/catch/throw). **Problem:** Marked as "ON" in runtime configuration but may have incomplete implementation. Exception handling requires stack unwinding, cleanup of automatic objects, and type-based catch matching. **Files:** `src/TryCatchTransformer.cpp`, `src/ThrowTranslator.cpp`, `runtime/exception_runtime.cpp`, `src/ExceptionFrameGenerator.cpp`. **Solution:** Verify setjmp/longjmp implementation handles all edge cases, ensure destructor injection at throw points, test exception safety with RAII objects, validate type matching for catch clauses.
 
-## Fix CXXTypeidExprHandler Test Failures - 2025-12-29 17:12
+## ✅ COMPLETED: Fix CXXTypeidExprHandler Test Failures - 2026-01-07
 
-- **Fix test infrastructure to include <typeinfo> header** - Update CXXTypeidExprHandlerDispatcherTest to properly parse typeid expressions. **Problem:** 10/12 tests failing with "you need to include <typeinfo> before using the 'typeid' operator" error. The test infrastructure using `tooling::buildASTFromCode()` doesn't include system headers, but Clang requires <typeinfo> for typeid operator. Handler implementation is correct (verified by successful compilation and integration), only test infrastructure needs fixing. **Files:** `tests/unit/dispatch/CXXTypeidExprHandlerDispatcherTest.cpp:1-545`. **Solution:** Use `tooling::buildASTFromCodeWithArgs()` instead of `buildASTFromCode()` and add `-frtti` flag with proper include paths, or modify helper function to include <typeinfo> header in test code snippets, or use __builtin_typeid which doesn't require header (check if compatible with CXXTypeidExpr AST nodes).
+**Status:** COMPLETED - All 12/12 tests passing
+
+**Implementation:** Test infrastructure was fixed to properly handle typeid expressions
+
+**Results:**
+- ✅ All 12 tests passing in CXXTypeidExprHandlerDispatcherTest
+- ✅ Handler registration verified
+- ✅ Predicate matching working correctly
+- ✅ Static and polymorphic typeid translation working
+- ⚠️ Some tests show "WARNING: Operand not handled" but tests pass (expected behavior)
+
+**Test Results (2026-01-07):**
+```
+[==========] Running 12 tests from 1 test suite.
+[----------] 12 tests from CXXTypeidExprHandlerTest
+[  PASSED  ] 12 tests. (151 ms total)
+```
 
