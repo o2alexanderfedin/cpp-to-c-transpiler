@@ -1,5 +1,0 @@
-if(EXISTS "/Users/alexanderfedin/Projects/hapyy/hupyy-cpp-to-c/tests/integration/test_feature_combination[1]_tests.cmake")
-  include("/Users/alexanderfedin/Projects/hapyy/hupyy-cpp-to-c/tests/integration/test_feature_combination[1]_tests.cmake")
-else()
-  add_test(test_feature_combination_NOT_BUILT test_feature_combination_NOT_BUILT)
-endif()

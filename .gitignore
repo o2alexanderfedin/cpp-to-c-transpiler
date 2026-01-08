@@ -20,8 +20,8 @@ install_manifest.txt
 CTestTestfile.cmake
 _deps
 cmake_test_discovery_*.json
-*\[1\]_include.cmake
-*\[1\]_tests.cmake
+*[1]_include.cmake
+*[1]_tests.cmake
 
 # Clang/LLVM
 *.ast

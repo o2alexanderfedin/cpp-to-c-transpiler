@@ -1,5 +1,0 @@
-if(EXISTS "/Users/alexanderfedin/Projects/hapyy/hupyy-cpp-to-c/tests/unit/comparison-operators/test_greater_than_operator[1]_tests.cmake")
-  include("/Users/alexanderfedin/Projects/hapyy/hupyy-cpp-to-c/tests/unit/comparison-operators/test_greater_than_operator[1]_tests.cmake")
-else()
-  add_test(test_greater_than_operator_NOT_BUILT test_greater_than_operator_NOT_BUILT)
-endif()

@@ -1,5 +1,0 @@
-if(EXISTS "/Users/alexanderfedin/Projects/hapyy/hupyy-cpp-to-c/tests/integration/test_move_semantic_integration[1]_tests.cmake")
-  include("/Users/alexanderfedin/Projects/hapyy/hupyy-cpp-to-c/tests/integration/test_move_semantic_integration[1]_tests.cmake")
-else()
-  add_test(test_move_semantic_integration_NOT_BUILT test_move_semantic_integration_NOT_BUILT)
-endif()
