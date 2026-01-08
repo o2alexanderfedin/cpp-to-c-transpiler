@@ -290,13 +290,24 @@ gh api repos/o2alexanderfedin/cpp-to-c-transpiler/collaborators/EitanNahmias -X 
 
 **Known Issues:**
 
-**RecordHandler Virtual Inheritance Layout Bug:**
-- **Problem:** RecordHandler inlines virtual base fields into intermediate classes
-- **Should:** Virtual base fields only in most-derived class
-- **Actually:** Duplicate fields in B, C, D (e.g., `a_data` appears in all)
-- **Impact:** Field offset mismatches cause partial initialization
-- **Evidence:** DiamondPattern exit code 40 (expected 100) - only d_data set correctly
-- **Complexity:** Medium - requires RecordHandler architectural changes (lines 278-389)
+**RecordHandler Virtual Inheritance Layouts - Architectural Limitation:**
+- **Root Cause:** Itanium C++ ABI requires DUAL layouts per class with virtual bases:
+  1. Base-subobject layout (no virtual base fields) - used when class is a base
+  2. Complete-object layout (with virtual base fields) - used when instantiated
+- **Current Implementation:** Single struct layout per class
+- **Impact:** Cannot satisfy both base-subobject and complete-object use cases simultaneously
+- **Fix Attempted:** Heuristic-based most-derived detection (commit ba28f7b)
+  - Detects classes likely to be most-derived vs intermediate
+  - Works for simple cases (SimpleVirtualBase) but fails for complex hierarchies (Diamond)
+  - Test results unchanged: still 3/11 passing (27%)
+- **Why Heuristic Fails:** Cannot determine at translation time whether a class will be used as base or instantiated directly
+- **Required for Full Fix:**
+  - Generate TWO struct defs per class: `ClassName__base` and `ClassName`
+  - Update type system to track context-appropriate layout
+  - Modify constructor calling conventions for dual layouts
+  - Update virtual base access and casting logic
+  - Adjust vbptr tables for each layout variant
+- **Complexity:** HIGH - fundamental architectural changes to type system and code generation
 
 **Files Modified:**
 - src/dispatch/RecordHandler.cpp - vbptr, VTT, vtable integration
@@ -314,20 +325,29 @@ gh api repos/o2alexanderfedin/cpp-to-c-transpiler/collaborators/EitanNahmias -X 
 - ed7d2db: Phase 1 - RecordHandler integration (prompt 007)
 - dbf87ac: Phase 2 - Constructor splitting (prompt 007)
 - 36a7005: Phase 3 - Vtable offsets (prompt 007)
-- 5698720: Member initializers + template keyword fixes
-- 5bbcaf6: CXXThisExprHandler registration
-- 68e6cc1: CXXConstructExprHandler registration
-- f558237: Constructor call generation in CompoundStmtHandler
-- 742e380: Status documentation (constructor calls complete, RecordHandler blocker identified)
+- 5698720: Member initializers + template keyword fixes (prompt 009)
+- 5bbcaf6: CXXThisExprHandler registration (prompt 009)
+- 68e6cc1: CXXConstructExprHandler registration (prompt 009)
+- f558237: Constructor call generation (prompt 009)
+- 742e380: Status documentation (prompt 009)
+- 8ef81cc: Documentation updates (prompt 010)
+- d6cd382: Archive prompts (prompt 010)
+- ba28f7b: RecordHandler heuristic fix attempt (post-session)
+- d7ef05d: Documentation updates for architectural limitation (post-session)
 
 **Next Steps:**
-1. **HIGH PRIORITY:** Fix RecordHandler virtual inheritance layouts
-   - Don't inline virtual base fields in intermediate classes
-   - Only inline in most-derived class
-   - Update field offset calculations
+1. ~~**HIGH PRIORITY:** Fix RecordHandler virtual inheritance layouts~~
+   - **STATUS:** Attempted (commit ba28f7b) - heuristic insufficient
+   - **FINDING:** Requires dual layout generation (HIGH complexity architectural change)
+   - **DECISION:** Documented as known limitation, feature marked as PARTIAL
+2. **FUTURE:** Implement dual layout generation for full Itanium C++ ABI compliance
+   - Generate both base-subobject and complete-object layouts per class
+   - Update type system to track context-appropriate layout usage
+   - Modify code generation and constructor calling conventions
+   - Estimated effort: Large architectural project
    - Expected impact: E2E tests 27% → 100%
 
-2. **MEDIUM:** Complete remaining unit test fixes
+3. **MEDIUM:** Complete remaining unit test fixes
    - VTTGeneratorCorrectnessTest: 12/15 → 15/15
    - ConstructorSplitterCorrectnessTest: 12/15 → 15/15
    - VirtualInheritanceEdgeCasesTest: 7/15 → 15/15
