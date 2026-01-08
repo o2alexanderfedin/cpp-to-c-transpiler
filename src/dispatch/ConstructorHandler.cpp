@@ -148,7 +148,89 @@ void ConstructorHandler::handleConstructor(
         bodyStmts.insert(bodyStmts.end(), lpVtblInitStmts.begin(), lpVtblInitStmts.end());
     }
 
-    // TODO: Add member initializer list translations here
+    // Add member initializer list translations
+    // Translate each member initializer (e.g., : field(value)) to this->field = value;
+    for (const auto* init : ctor->inits()) {
+        if (!init->isWritten() || init->isBaseInitializer()) {
+            continue; // Skip compiler-generated and base initializers (already handled)
+        }
+
+        if (init->isMemberInitializer()) {
+            clang::FieldDecl* field = init->getMember();
+            clang::Expr* initExpr = init->getInit();
+
+            if (!field || !initExpr) continue;
+
+            // Find the corresponding C field in the C struct
+            clang::FieldDecl* cField = nullptr;
+            for (auto* f : cRecordDecl->fields()) {
+                if (f->getNameAsString() == field->getNameAsString()) {
+                    cField = f;
+                    break;
+                }
+            }
+
+            if (!cField) continue;
+
+            // Create this->field member expression
+            clang::DeclRefExpr* thisExpr = clang::DeclRefExpr::Create(
+                cASTContext,
+                clang::NestedNameSpecifierLoc(),
+                targetLocForThis,
+                thisParam,
+                false,
+                targetLocForThis,
+                thisParam->getType(),
+                clang::VK_LValue
+            );
+
+            clang::MemberExpr* memberExpr = clang::MemberExpr::CreateImplicit(
+                cASTContext,
+                thisExpr,
+                true, // isArrow (this is a pointer)
+                cField,
+                cField->getType(),
+                clang::VK_LValue,
+                clang::OK_Ordinary
+            );
+
+            // Dispatch the initialization expression to translate it
+            bool initHandled = disp.dispatch(cppASTContext, cASTContext, const_cast<clang::Expr*>(initExpr));
+
+            // Retrieve translated init expression from ExprMapper
+            cpptoc::ExprMapper& exprMapper = disp.getExprMapper();
+            clang::Expr* cInitExpr = exprMapper.getCreated(initExpr);
+
+            if (!cInitExpr) {
+                // Fallback: if expr not translated, try to create simple literal for integer types
+                if (const auto* intLit = llvm::dyn_cast<clang::IntegerLiteral>(initExpr)) {
+                    cInitExpr = clang::IntegerLiteral::Create(
+                        cASTContext,
+                        intLit->getValue(),
+                        intLit->getType(),
+                        targetLocForThis
+                    );
+                }
+            }
+
+            if (cInitExpr) {
+                // Create assignment: this->field = value
+                clang::BinaryOperator* assignExpr = clang::BinaryOperator::Create(
+                    cASTContext,
+                    memberExpr,
+                    cInitExpr,
+                    clang::BO_Assign,
+                    cField->getType(),
+                    clang::VK_LValue,
+                    clang::OK_Ordinary,
+                    targetLocForThis,
+                    clang::FPOptionsOverride()
+                );
+
+                bodyStmts.push_back(assignExpr);
+            }
+        }
+    }
 
     // Create CompoundStmt (constructor body) using the same targetLoc
     clang::CompoundStmt* body = clang::CompoundStmt::Create(

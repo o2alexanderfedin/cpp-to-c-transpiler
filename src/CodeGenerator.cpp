@@ -448,6 +448,16 @@ void CodeGenerator::printStmt(Stmt *S, unsigned Indent) {
         return;
     }
 
+    // Handle CallExpr as statement to avoid "template" keyword artifacts
+    // Constructor calls like: Base__ctor__void((struct Base *)this);
+    // Using printExpr() instead of printPretty() avoids "template" keyword emission
+    if (CallExpr *CE = dyn_cast<CallExpr>(S)) {
+        OS << std::string(Indent, '\t');
+        printExpr(CE);
+        OS << ";\n";
+        return;
+    }
+
     // Use Clang's built-in StmtPrinter (via Stmt::printPretty)
     // KISS: Leverage existing, tested infrastructure
     OS << std::string(Indent, '\t');
@@ -960,6 +970,54 @@ void CodeGenerator::printExpr(Expr *E) {
             }
             return;
         }
+    }
+
+    // Handle CStyleCastExpr to avoid "template" keyword artifacts
+    // Clang's printPretty() can emit "template" before type names in certain contexts
+    // For C code, we just want: (TypeName)expr
+    if (CStyleCastExpr *CSE = dyn_cast<CStyleCastExpr>(E)) {
+        QualType Type = CSE->getType();
+        OS << "(";
+        Type.print(OS, Policy);
+        OS << ")";
+        printExpr(CSE->getSubExpr());
+        return;
+    }
+
+    // Handle DeclRefExpr to avoid "template" keyword artifacts
+    // Clang's printPretty() can emit "template" before variable/function names
+    // For C code, we just want the simple name
+    if (DeclRefExpr *DRE = dyn_cast<DeclRefExpr>(E)) {
+        if (ValueDecl *VD = DRE->getDecl()) {
+            OS << VD->getNameAsString();
+        }
+        return;
+    }
+
+    // Handle MemberExpr to avoid "template" keyword artifacts
+    // Clang's printPretty() can emit "template" before member accesses
+    // For C code, we want: base.member or base->member
+    if (MemberExpr *ME = dyn_cast<MemberExpr>(E)) {
+        printExpr(ME->getBase());
+        OS << (ME->isArrow() ? "->" : ".");
+        OS << ME->getMemberDecl()->getNameAsString();
+        return;
+    }
+
+    // Handle CallExpr to avoid "template" keyword artifacts
+    // Clang's printPretty() can emit "template" before function names and arguments
+    // For C code, we just want: function(arg1, arg2, ...)
+    if (CallExpr *CE = dyn_cast<CallExpr>(E)) {
+        // Print callee (function name or expression)
+        printExpr(CE->getCallee());
+        OS << "(";
+        // Print arguments
+        for (unsigned i = 0, e = CE->getNumArgs(); i != e; ++i) {
+            if (i > 0) OS << ", ";
+            printExpr(CE->getArg(i));
+        }
+        OS << ")";
+        return;
     }
 
     // DEFAULT: Use printPretty for all other C nodes
