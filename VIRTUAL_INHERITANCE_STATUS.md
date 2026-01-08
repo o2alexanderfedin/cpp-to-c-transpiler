@@ -1,6 +1,6 @@
 # Virtual Inheritance E2E Test Status - Updated
 
-## Current Status: 3/11 Passing (27%) - Constructor Calls Implemented ✓
+## Current Status: 3/11 Passing (27%) - Known Architectural Limitation
 
 ### ✅ What's Working
 
@@ -19,18 +19,29 @@
 
 ### ❌ What's NOT Working
 
-**Virtual Inheritance Memory Layouts** (RecordHandler Issue)
-- Root cause: RecordHandler inlines virtual base fields into intermediate classes
-- Should: Virtual base fields only in most-derived class
-- Actually: Virtual base fields duplicated in every derived class
+**Virtual Inheritance Memory Layouts** (Architectural Limitation)
+
+**Root Cause:** Itanium C++ ABI requires **dual layouts** for classes with virtual bases:
+1. **Base-subobject layout** - used when class is a base of another class (no virtual base fields)
+2. **Complete-object layout** - used when class is instantiated directly (with virtual base fields)
+
+**Current Implementation:** Single struct layout per class
+- Cannot satisfy both base-subobject and complete-object use cases simultaneously
+- Heuristic attempts to detect "most-derived" classes but has limitations
+- Works for simple cases (SimpleVirtualBase) but fails for complex hierarchies (Diamond)
 
 **Impact:**
 ```c
-// struct B should be:
-struct B { const void** vbptr; int b_data; };
+// Diamond inheritance example:
+// struct B : virtual A needs TWO layouts:
 
-// But RecordHandler generates:
-struct B { const void** vbptr; int b_data; int a_data; }; // WRONG - a_data shouldn't be here!
+// Base-subobject layout (when B is base of D):
+struct B__base { const void** vbptr; int b_data; };  // No a_data
+
+// Complete-object layout (when B is instantiated):
+struct B { const void** vbptr; int b_data; int a_data; };  // Has a_data
+
+// Current transpiler generates only ONE layout, causing offset mismatches
 ```
 
 ### Test Results Evidence
@@ -75,33 +86,55 @@ D__ctor__void(&d) {
 }
 ```
 
-### Required Work
+### Attempted Fix & Why It's Insufficient
 
-**To fix RecordHandler layouts:**
-1. Modify RecordHandler field inlining logic (lines 278-389)
-2. Don't inline virtual base fields into intermediate classes
-3. Only inline virtual base fields in most-derived class
-4. Adjust vbptr table offsets accordingly
-5. Update field offset calculations in generated code
+**Heuristic Implemented (commit ba28f7b):**
+- Detects "most-derived" classes using non-virtual base analysis
+- Skips virtual base field inlining for detected intermediate classes
+- Works for simple cases but fails for complex hierarchies
 
-**Complexity:** Medium - requires RecordHandler architectural changes
+**Why Heuristic Fails:**
+- Cannot determine at translation time whether a class will be used as a base or instantiated directly
+- Same class may need BOTH layouts in different contexts
+- Example: In diamond inheritance, `struct B` needs base layout when part of `D`, but complete layout when instantiated standalone
+
+**Required for Full Fix:**
+1. Generate TWO struct definitions per class with virtual bases:
+   - `struct ClassName__base` (base-subobject layout)
+   - `struct ClassName` (complete-object layout)
+2. Update all type references to use correct layout based on context
+3. Modify constructor calling conventions to handle both layouts
+4. Update casting logic for virtual base access
+5. Adjust vbptr table offsets for each layout variant
+
+**Complexity:** HIGH - requires fundamental architectural changes to type system, code generation, and ABI handling
 
 ### Work Completed Summary
 
 | Component | Status | Evidence |
 |-----------|--------|----------|
-| Constructor call generation | ✅ DONE | `D__ctor__void(&d);` in generated code |
-| Member initializer translation | ✅ DONE | `this->field = value;` in constructors |
-| Template keyword elimination | ✅ DONE | Clean syntax in all generated code |
-| Virtual inheritance layouts | ❌ TODO | RecordHandler refactoring needed |
+| Constructor call generation | ✅ COMPLETE | `D__ctor__void(&d);` in generated code |
+| Member initializer translation | ✅ COMPLETE | `this->field = value;` in constructors |
+| Template keyword elimination | ✅ COMPLETE | Clean syntax in all generated code |
+| RecordHandler heuristic | ✅ IMPLEMENTED | Most-derived detection (commit ba28f7b) |
+| Dual layout generation | ❌ NOT IMPLEMENTED | Architectural limitation - HIGH complexity |
 
-### Recommendation
+### Conclusion
 
-The specific task "implement constructor call generation" is COMPLETE. The remaining failures are due to a PRE-EXISTING issue in RecordHandler's virtual inheritance support that was present BEFORE this work began.
+**Virtual inheritance support is PARTIAL:**
+- ✅ vbptr injection works
+- ✅ VTT generation works
+- ✅ C1/C2 constructor splitting works
+- ✅ Constructor calls work
+- ✅ Member initializers work
+- ⚠️ Struct layouts PARTIALLY work (simple cases only)
+- ❌ Full Itanium C++ ABI compliance NOT achieved (dual layout requirement)
 
-**Next Steps:**
-1. ✅ Constructor call work: Done
-2. 📝 Document RecordHandler layout issue (this file)
-3. ➡️ Move to prompt 010 (documentation updates)
-4. 🔮 Future: Fix RecordHandler virtual inheritance layouts (separate task)
+**E2E Test Results: 3/11 passing (27%)**
+- Passing tests use simple virtual inheritance or zero-initialization
+- Failing tests require complex virtual inheritance with field initialization
+- Failures are due to fundamental single-layout limitation, not implementation bugs
+
+**Recommendation:**
+Mark virtual inheritance as **PARTIAL** in RuntimeFeatureFlags.h and documentation. Full support would require significant architectural work to implement dual layout generation per Itanium C++ ABI specification.
 
