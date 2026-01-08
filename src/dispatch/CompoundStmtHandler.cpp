@@ -5,8 +5,14 @@
 
 #include "dispatch/CompoundStmtHandler.h"
 #include "mapping/StmtMapper.h"
+#include "mapping/DeclMapper.h"
+#include "mapping/ExprMapper.h"
 #include "SourceLocationMapper.h"
 #include "clang/AST/Stmt.h"
+#include "clang/AST/Decl.h"
+#include "clang/AST/DeclCXX.h"
+#include "clang/AST/ExprCXX.h"
+#include "clang/AST/Expr.h"
 #include "llvm/Support/Casting.h"
 #include "llvm/Support/raw_ostream.h"
 #include <cassert>
@@ -123,6 +129,136 @@ void CompoundStmtHandler::handleCompoundStmt(
         cStmts.push_back(cStmt);
         llvm::outs() << "[CompoundStmtHandler] Statement translated successfully: "
                      << cStmt->getStmtClassName() << "\n";
+
+        // PHASE 56: Check if this is a DeclStmt with variables that need constructor calls
+        // For each VarDecl with a CXXConstructExpr initializer, generate a constructor call
+        if (const auto* cppDeclStmt = llvm::dyn_cast<clang::DeclStmt>(cppStmt)) {
+            llvm::outs() << "[CompoundStmtHandler] DeclStmt detected, checking for constructor calls\n";
+
+            for (auto* cppDecl : cppDeclStmt->decls()) {
+                auto* cppVar = llvm::dyn_cast<clang::VarDecl>(cppDecl);
+                if (!cppVar) continue;
+
+                // Check if variable has a CXXConstructExpr initializer
+                const clang::Expr* initExpr = cppVar->getInit();
+                if (!initExpr) continue;
+
+                const auto* ctorExpr = llvm::dyn_cast<clang::CXXConstructExpr>(initExpr);
+                if (!ctorExpr) continue;
+
+                const clang::CXXConstructorDecl* cppCtor = ctorExpr->getConstructor();
+                if (!cppCtor) continue;
+
+                llvm::outs() << "[CompoundStmtHandler] Variable " << cppVar->getNameAsString()
+                             << " has CXXConstructExpr, generating constructor call\n";
+
+                // Get the C variable declaration from DeclMapper
+                cpptoc::DeclMapper& declMapper = disp.getDeclMapper();
+                clang::Decl* cVarDecl = declMapper.getCreated(cppVar);
+                if (!cVarDecl) {
+                    llvm::errs() << "[CompoundStmtHandler] ERROR: C variable not found in DeclMapper\n";
+                    continue;
+                }
+
+                auto* cVar = llvm::dyn_cast<clang::VarDecl>(cVarDecl);
+                if (!cVar) {
+                    llvm::errs() << "[CompoundStmtHandler] ERROR: C decl is not VarDecl\n";
+                    continue;
+                }
+
+                // Get the C constructor function from DeclMapper
+                clang::Decl* cCtorDecl = declMapper.getCreated(cppCtor);
+                if (!cCtorDecl) {
+                    llvm::errs() << "[CompoundStmtHandler] WARNING: C constructor not found in DeclMapper for "
+                                 << cppCtor->getNameAsString() << "\n";
+                    continue;
+                }
+
+                auto* cCtorFunc = llvm::dyn_cast<clang::FunctionDecl>(cCtorDecl);
+                if (!cCtorFunc) {
+                    llvm::errs() << "[CompoundStmtHandler] ERROR: C constructor is not FunctionDecl\n";
+                    continue;
+                }
+
+                llvm::outs() << "[CompoundStmtHandler] Found C constructor function: "
+                             << cCtorFunc->getNameAsString() << "\n";
+
+                // Get source location for generated code
+                SourceLocationMapper& locMapper = disp.getTargetContext().getLocationMapper();
+                std::string targetPath = disp.getCurrentTargetPath();
+                if (targetPath.empty()) {
+                    targetPath = disp.getTargetPath(cppASTContext, nullptr);
+                }
+                clang::SourceLocation targetLoc = locMapper.getStartOfFile(targetPath);
+
+                // Create DeclRefExpr for the variable
+                clang::DeclRefExpr* varRef = clang::DeclRefExpr::Create(
+                    cASTContext,
+                    clang::NestedNameSpecifierLoc(),
+                    targetLoc,
+                    cVar,
+                    false,
+                    targetLoc,
+                    cVar->getType(),
+                    clang::VK_LValue
+                );
+
+                // Create UnaryOperator for address-of (&variable)
+                clang::UnaryOperator* addrOf = clang::UnaryOperator::Create(
+                    cASTContext,
+                    varRef,
+                    clang::UO_AddrOf,
+                    cASTContext.getPointerType(cVar->getType()),
+                    clang::VK_PRValue,
+                    clang::OK_Ordinary,
+                    targetLoc,
+                    false,
+                    clang::FPOptionsOverride()
+                );
+
+                // Create DeclRefExpr for the constructor function
+                clang::DeclRefExpr* ctorFuncRef = clang::DeclRefExpr::Create(
+                    cASTContext,
+                    clang::NestedNameSpecifierLoc(),
+                    targetLoc,
+                    cCtorFunc,
+                    false,
+                    targetLoc,
+                    cCtorFunc->getType(),
+                    clang::VK_LValue
+                );
+
+                // Create CallExpr for constructor call: Constructor__ctor(&var)
+                std::vector<clang::Expr*> ctorArgs;
+                ctorArgs.push_back(addrOf);
+
+                // Add any additional constructor arguments from the CXXConstructExpr
+                cpptoc::ExprMapper& exprMapper = disp.getExprMapper();
+                for (unsigned i = 0; i < ctorExpr->getNumArgs(); ++i) {
+                    const clang::Expr* cppArg = ctorExpr->getArg(i);
+                    clang::Expr* cArg = exprMapper.getCreated(cppArg);
+                    if (cArg) {
+                        ctorArgs.push_back(cArg);
+                    }
+                }
+
+                clang::CallExpr* ctorCall = clang::CallExpr::Create(
+                    cASTContext,
+                    ctorFuncRef,
+                    ctorArgs,
+                    cASTContext.VoidTy,
+                    clang::VK_PRValue,
+                    targetLoc,
+                    clang::FPOptionsOverride()
+                );
+
+                llvm::outs() << "[CompoundStmtHandler] Created constructor call: "
+                             << cCtorFunc->getNameAsString() << "(&" << cVar->getNameAsString() << ")\n";
+
+                // Add constructor call statement after the DeclStmt
+                cStmts.push_back(ctorCall);
+            }
+        }
     }
 
     llvm::outs() << "[CompoundStmtHandler] Collected " << cStmts.size()

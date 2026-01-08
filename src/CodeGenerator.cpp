@@ -984,6 +984,14 @@ void CodeGenerator::printExpr(Expr *E) {
         return;
     }
 
+    // Handle UnaryOperator to avoid "template" keyword artifacts
+    // Handles operators like &, *, -, !, etc.
+    if (UnaryOperator *UO = dyn_cast<UnaryOperator>(E)) {
+        OS << UnaryOperator::getOpcodeStr(UO->getOpcode()).str();
+        printExpr(UO->getSubExpr());
+        return;
+    }
+
     // Handle DeclRefExpr to avoid "template" keyword artifacts
     // Clang's printPretty() can emit "template" before variable/function names
     // For C code, we just want the simple name
