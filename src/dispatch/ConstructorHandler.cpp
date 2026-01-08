@@ -84,8 +84,15 @@ void ConstructorHandler::handleConstructor(
     std::string funcName = cpptoc::mangle_constructor(ctor);
 
     // Find C RecordDecl (created by RecordHandler)
+    // IMPORTANT: Use PathMapper to get the correct TU for this file, not the global TU
+    std::string targetPathForStruct = disp.getCurrentTargetPath();
+    if (targetPathForStruct.empty()) {
+        targetPathForStruct = disp.getTargetPath(cppASTContext, D);
+    }
+    cpptoc::PathMapper& pathMapper = disp.getPathMapper();
+    clang::TranslationUnitDecl* TU = pathMapper.getOrCreateTU(targetPathForStruct);
+
     clang::RecordDecl* cRecordDecl = nullptr;
-    auto* TU = cASTContext.getTranslationUnitDecl();
     for (auto* decl : TU->decls()) {
         if (auto* RD = llvm::dyn_cast<clang::RecordDecl>(decl)) {
             if (RD->getName() == className) {
@@ -97,6 +104,10 @@ void ConstructorHandler::handleConstructor(
 
     if (!cRecordDecl) {
         // RecordHandler should have created the struct already
+        llvm::outs() << "[ConstructorHandler] ERROR: Could not find C struct for class: "
+                     << className << " in TU " << targetPathForStruct
+                     << " (has " << std::distance(TU->decls_begin(), TU->decls_end())
+                     << " declarations)\n";
         return;
     }
 
@@ -164,11 +175,11 @@ void ConstructorHandler::handleConstructor(
     declMapper.setCreated(ctor, cFunc);
 
     // Get target path and add to C TranslationUnit
+    // Note: pathMapper already obtained earlier (line 92), reuse it
     std::string targetPath = disp.getCurrentTargetPath();  // Use current path set by TranslationUnitHandler
     if (targetPath.empty()) {
         targetPath = disp.getTargetPath(cppASTContext, D);
     }
-    cpptoc::PathMapper& pathMapper = disp.getPathMapper();
     clang::TranslationUnitDecl* cTargetTU = pathMapper.getOrCreateTU(targetPath);
     assert(cTargetTU && "Failed to get/create C TranslationUnit");
 
