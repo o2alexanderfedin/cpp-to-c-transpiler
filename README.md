@@ -1,8 +1,8 @@
 # C++ to C Converter
 
-[![Research Status](https://img.shields.io/badge/Version-v3.0.0--rc-blue)](https://github.com)
-[![Tests](https://img.shields.io/badge/Tests-444%2F595%20(74.6%25)-yellow)](https://github.com)
-[![Foundation](https://img.shields.io/badge/Foundation-92%2F93%20(98.9%25)-brightgreen)](https://github.com)
+[![Latest Release](https://img.shields.io/badge/Release-v2.17.0-brightgreen)](https://github.com/o2alexanderfedin/cpp-to-c-transpiler/releases/tag/v2.17.0)
+[![Tests](https://img.shields.io/badge/Tests-36%2F36%20(100%25)-brightgreen)](https://github.com)
+[![Next Version](https://img.shields.io/badge/Next-v3.0.0--rc-blue)](https://github.com)
 [![ACSL Support](https://img.shields.io/badge/ACSL-100%25%20Complete-brightgreen)](https://github.com)
 [![RTTI Support](https://img.shields.io/badge/RTTI-100%25%20Complete-brightgreen)](https://github.com)
 [![Architecture](https://img.shields.io/badge/Architecture-3--Stage%20Pipeline-blue)](https://github.com)
@@ -34,7 +34,22 @@ This project implements a C++ to C transpiler that produces high-quality, human-
 
 ---
 
-## Version 3.0.0 - Foundation Release
+## Latest Stable Release: v2.17.0 (2026-01-08)
+
+**Focus**: Test Quality Improvements & Technical Debt Reduction
+
+### What's New in v2.17.0
+
+- ✅ **Test Infrastructure Modernization** - Refactored 10 skipped tests in FunctionHandlerTest to modern dispatcher pattern
+- ✅ **100% Test Pass Rate** - All 36/36 core tests passing with comprehensive coverage
+- ✅ **Zero Technical Debt** - No accumulating skipped tests, all using modern patterns
+- ✅ **Documentation Updates** - Synchronized project documentation with codebase state
+
+**See**: [RELEASE_NOTES_v2.17.0.md](RELEASE_NOTES_v2.17.0.md) for complete details
+
+---
+
+## Next Version: v3.0.0 - Foundation Release
 
 **Status**: RELEASE CANDIDATE (Pending Phase 40 validation)
 **Release Date**: TBD
