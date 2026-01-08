@@ -308,8 +308,10 @@ add_library(cpptoc_core STATIC
     src/dispatch/StaticDataMemberHandler.cpp
     src/mapping/PathMapper.cpp
     src/mapping/DeclLocationMapper.cpp
+    src/mapping/TypeMapper.cpp
     # NodeMapper is header-only template - no .cpp files needed
-    # DeclMapper, TypeMapper, ExprMapper, StmtMapper are now type aliases
+    # DeclMapper, ExprMapper, StmtMapper are now type aliases
+    # TypeMapper now has implementation for layout context methods
     src/translation/TypeTranslator.cpp
     src/CFGAnalyzer.cpp
     # NameMangler is now header-only with inline functions (range-v3 functional composition)
@@ -336,6 +338,8 @@ add_library(cpptoc_core STATIC
     src/VirtualMethodAnalyzer.cpp
     src/VptrInjector.cpp
     src/VirtualInheritanceAnalyzer.cpp
+    src/VTTGenerator.cpp
+    src/ConstructorSplitter.cpp
     src/MultipleInheritanceAnalyzer.cpp
     src/BaseOffsetCalculator.cpp
     src/ThunkGenerator.cpp
@@ -3183,6 +3187,34 @@ gtest_discover_tests(VirtualInheritanceAnalyzerTest
     PROPERTIES LABELS "unit;virtual-inheritance"
 )
 
+# Phase 1: TypeMapper Layout Context Tests
+add_executable(TypeMapperLayoutContextTest
+    tests/unit/TypeMapperLayoutContextTest.cpp
+)
+
+target_compile_definitions(TypeMapperLayoutContextTest PRIVATE ${LLVM_DEFINITIONS})
+
+target_include_directories(TypeMapperLayoutContextTest PRIVATE
+    ${CMAKE_SOURCE_DIR}/include
+    ${LLVM_INCLUDE_DIRS}
+    ${CLANG_INCLUDE_DIRS}
+)
+
+target_link_libraries(TypeMapperLayoutContextTest PRIVATE
+    cpptoc_core
+    clangTooling
+    clangFrontend
+    clangAST
+    clangBasic
+    GTest::gtest
+    GTest::gtest_main
+)
+
+gtest_discover_tests(TypeMapperLayoutContextTest
+    WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
+    PROPERTIES LABELS "unit;type-mapper;dual-layout"
+)
+
 # RecordHandler Virtual Inheritance Unit Tests
 add_executable(RecordHandlerTest_VirtualInheritance
     tests/unit/handlers/RecordHandlerTest_VirtualInheritance.cpp
@@ -3423,6 +3455,8 @@ gtest_discover_tests(VirtualInheritanceHandlersIntegrationTest
 # Comprehensive Virtual Inheritance Integration Tests
 add_executable(VirtualInheritanceIntegrationTest
     tests/integration/handlers/VirtualInheritanceIntegrationTest.cpp
+    src/VTTGenerator.cpp
+    src/ConstructorSplitter.cpp
 )
 
 target_compile_definitions(VirtualInheritanceIntegrationTest PRIVATE ${LLVM_DEFINITIONS})
