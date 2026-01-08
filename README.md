@@ -1,6 +1,6 @@
 # C++ to C Converter
 
-[![Latest Release](https://img.shields.io/badge/Release-v2.18.0-brightgreen)](https://github.com/o2alexanderfedin/cpp-to-c-transpiler/releases/tag/v2.18.0)
+[![Latest Release](https://img.shields.io/badge/Release-v2.19.0-brightgreen)](https://github.com/o2alexanderfedin/cpp-to-c-transpiler/releases/tag/v2.19.0)
 [![Tests](https://img.shields.io/badge/Tests-36%2F36%20(100%25)-brightgreen)](https://github.com)
 [![Next Version](https://img.shields.io/badge/Next-v3.0.0--rc-blue)](https://github.com)
 [![ACSL Support](https://img.shields.io/badge/ACSL-100%25%20Complete-brightgreen)](https://github.com)
@@ -34,18 +34,19 @@ This project implements a C++ to C transpiler that produces high-quality, human-
 
 ---
 
-## Latest Stable Release: v2.18.0 (2026-01-08)
+## Latest Stable Release: v2.19.0 (2026-01-08)
 
-**Focus**: Code Quality & Technical Debt Reduction
+**Focus**: Configuration Completeness & Bug Fixes
 
-### What's New in v2.18.0
+### What's New in v2.19.0
 
-- ✅ **Deprecated Code Removal** - Removed 135 lines of obsolete code from TemplateMonomorphizer.cpp
-- ✅ **100% Test Pass Rate** - All 36/36 core tests passing with comprehensive coverage
-- ✅ **Cleaner Codebase** - Only active production code remains (no disabled #if 0 blocks)
-- ✅ **Improved Maintainability** - Reduced technical debt and maintenance burden
+- ✅ **CLI Configuration Bug Fix** - ACSL and exception handling CLI flags now properly respected (were silently ignored)
+- ✅ **Complete Accessor Implementation** - All PipelineConfig CLI options fully functional
+- ✅ **Type-Safe Conversions** - Proper enum namespace mapping between components
+- ✅ **100% Test Pass Rate** - All 910/910 tests passing with comprehensive coverage
+- ✅ **Technical Debt Reduction** - 2 TODO items resolved (27 remaining in codebase)
 
-**See**: [RELEASE_NOTES_v2.18.0.md](RELEASE_NOTES_v2.18.0.md) for complete details
+**See**: [RELEASE_NOTES_v2.19.0.md](RELEASE_NOTES_v2.19.0.md) for complete details
 
 ---
 
