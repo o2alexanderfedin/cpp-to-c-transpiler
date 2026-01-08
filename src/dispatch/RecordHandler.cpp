@@ -25,6 +25,9 @@
 #include "clang/Index/USRGeneration.h"
 #include "llvm/Support/Casting.h"
 #include "llvm/Support/raw_ostream.h"
+#include "VirtualInheritanceAnalyzer.h"
+#include "MultipleInheritanceAnalyzer.h"
+#include "VTTGenerator.h"
 #include <cassert>
 #include <set>
 
@@ -171,17 +174,6 @@ void RecordHandler::handleRecord(
         return;
     }
 
-    // Skip polymorphic classes (vtables not supported yet)
-    // IMPORTANT: Check this AFTER forward declaration check
-    // isPolymorphic() requires a complete definition
-    if (const auto* cxxRecord = llvm::dyn_cast<clang::CXXRecordDecl>(cppRecord)) {
-        if (cxxRecord->isPolymorphic()) {
-            llvm::errs() << "[RecordHandler] Warning: Skipping polymorphic class (vtables not supported): "
-                         << name << "\n";
-            return;
-        }
-    }
-
     // Create identifier for struct name (use mangled name for nested structs)
     clang::IdentifierInfo& II = cASTContext.Idents.get(mangledName);
 
@@ -218,20 +210,91 @@ void RecordHandler::handleRecord(
     // Start definition
     cRecord->startDefinition();
 
+    // Analyze virtual inheritance (if applicable)
+    bool hasVirtualBases = false;
+    std::vector<const clang::CXXRecordDecl*> virtualBases;
+    VirtualInheritanceAnalyzer viAnalyzer;
+    const clang::CXXRecordDecl* cxxRecord = nullptr;
+
+    if ((cxxRecord = llvm::dyn_cast<clang::CXXRecordDecl>(cppRecord))) {
+        viAnalyzer.analyzeClass(cxxRecord);
+
+        hasVirtualBases = viAnalyzer.hasVirtualBases(cxxRecord);
+
+        if (hasVirtualBases) {
+            virtualBases = viAnalyzer.getVirtualBases(cxxRecord);
+            llvm::outs() << "[RecordHandler] Class " << name
+                         << " has " << virtualBases.size()
+                         << " virtual base(s)\n";
+        }
+    }
+
     // Translate nested structs FIRST (before fields, so they're available for field types)
     translateNestedStructs(cppRecord, disp, cppASTContext, cASTContext, name);
+
+    // Inject vbptr field for classes with virtual bases
+    std::vector<clang::FieldDecl*> injectedFields;
+    if (hasVirtualBases) {
+        // Create vbptr field: const void** vbptr;
+        clang::QualType vbptrType = cASTContext.getPointerType(
+            cASTContext.getPointerType(cASTContext.VoidTy.withConst())
+        );
+
+        clang::IdentifierInfo& vbptrII = cASTContext.Idents.get("vbptr");
+
+        clang::FieldDecl* vbptrField = clang::FieldDecl::Create(
+            cASTContext,
+            cRecord,
+            targetLoc,
+            targetLoc,
+            &vbptrII,
+            vbptrType,
+            cASTContext.getTrivialTypeSourceInfo(vbptrType),
+            nullptr,  // No bit width
+            false,    // Not mutable
+            clang::ICIS_NoInit
+        );
+
+        vbptrField->setAccess(clang::AS_public);
+        vbptrField->setDeclContext(cRecord);
+        injectedFields.push_back(vbptrField);
+
+        llvm::outs() << "[RecordHandler] Injected vbptr field for virtual inheritance\n";
+    }
 
     // Translate fields
     std::vector<clang::FieldDecl*> cFields = translateFields(cppRecord, cRecord, disp, cppASTContext, cASTContext);
 
+    // Combine injected fields and regular fields
+    std::vector<clang::FieldDecl*> allFields;
+    allFields.insert(allFields.end(), injectedFields.begin(), injectedFields.end());
+    allFields.insert(allFields.end(), cFields.begin(), cFields.end());
+
     // Add fields to struct
-    for (auto* cField : cFields) {
+    for (auto* cField : allFields) {
         cField->setDeclContext(cRecord);
         cRecord->addDecl(cField);
     }
 
     // Complete definition
     cRecord->completeDefinition();
+
+    // Generate VTT (Virtual Table Table) for classes with virtual bases
+    if (hasVirtualBases && cxxRecord) {
+        // Cast away const for ASTContext parameter (VTTGenerator requires non-const)
+        VTTGenerator vttGen(const_cast<clang::ASTContext&>(cppASTContext), viAnalyzer);
+
+        std::string vttCode = vttGen.generateVTT(cxxRecord);
+
+        if (!vttCode.empty()) {
+            // TODO: For now, log VTT generation. In future, emit to output file.
+            llvm::outs() << "[RecordHandler] Generated VTT for " << name << ":\n"
+                         << vttCode << "\n";
+
+            // TODO: Create C AST nodes for VTT struct and instance
+            // This requires extending CNodeBuilder with VTT generation methods
+        }
+    }
 
     // Get or create C TranslationUnit for this target file
     // (targetPath already obtained above with SourceLocationMapper)
@@ -248,7 +311,11 @@ void RecordHandler::handleRecord(
     // Debug output for verification
     llvm::outs() << "[RecordHandler] Translated struct/class: " << name
                  << (name != mangledName ? " → " + mangledName : "")
-                 << " (" << cFields.size() << " fields) → " << targetPath << "\n";
+                 << " (" << allFields.size() << " fields";
+    if (hasVirtualBases) {
+        llvm::outs() << ", including vbptr";
+    }
+    llvm::outs() << ") → " << targetPath << "\n";
 }
 
 std::vector<clang::FieldDecl*> RecordHandler::translateFields(
