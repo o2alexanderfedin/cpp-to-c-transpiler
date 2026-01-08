@@ -3420,6 +3420,35 @@ gtest_discover_tests(VirtualInheritanceHandlersIntegrationTest
     PROPERTIES LABELS "integration;handlers;virtual-inheritance"
 )
 
+# Comprehensive Virtual Inheritance Integration Tests
+add_executable(VirtualInheritanceIntegrationTest
+    tests/integration/handlers/VirtualInheritanceIntegrationTest.cpp
+)
+
+target_compile_definitions(VirtualInheritanceIntegrationTest PRIVATE ${LLVM_DEFINITIONS})
+
+target_include_directories(VirtualInheritanceIntegrationTest PRIVATE
+    ${CMAKE_SOURCE_DIR}/include
+    ${CMAKE_SOURCE_DIR}/tests/fixtures
+    ${LLVM_INCLUDE_DIRS}
+    ${CLANG_INCLUDE_DIRS}
+)
+
+target_link_libraries(VirtualInheritanceIntegrationTest PRIVATE
+    cpptoc_core
+    clangTooling
+    clangFrontend
+    clangAST
+    clangBasic
+    GTest::gtest
+    GTest::gtest_main
+)
+
+gtest_discover_tests(VirtualInheritanceIntegrationTest
+    WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
+    PROPERTIES LABELS "integration;handlers;virtual-inheritance;comprehensive"
+)
+
 # ============================================================================
 # Epic #46: C++20 Coroutines Support - GTest Migration (Phase 15-01)
 # ============================================================================
@@ -5987,6 +6016,38 @@ target_link_libraries(EnumE2ETest PRIVATE
 )
 
 gtest_discover_tests(EnumE2ETest
+    WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
+)
+
+# ============================================================================
+# Phase 56: Virtual Inheritance E2E Tests
+# ============================================================================
+
+# E2E Virtual Inheritance Test - Complete transpilation pipeline with ABI validation
+# Tests: diamond pattern, multiple virtual bases, virtual methods + virtual inheritance,
+# constructor/destructor ordering, casting, and real-world scenarios (iostream-style)
+add_executable(VirtualInheritanceE2ETest
+    tests/e2e/phase56/VirtualInheritanceE2ETest.cpp
+)
+
+target_include_directories(VirtualInheritanceE2ETest PRIVATE
+    ${CMAKE_SOURCE_DIR}/include
+    ${CMAKE_SOURCE_DIR}/tests/fixtures
+    ${CMAKE_SOURCE_DIR}/tests/e2e
+    ${LLVM_INCLUDE_DIRS}
+    ${CLANG_INCLUDE_DIRS}
+)
+
+target_link_libraries(VirtualInheritanceE2ETest PRIVATE
+    cpptoc_core
+    clangTooling
+    clangAST
+    clangBasic
+    GTest::gtest
+    GTest::gtest_main
+)
+
+gtest_discover_tests(VirtualInheritanceE2ETest
     WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
 )
 
