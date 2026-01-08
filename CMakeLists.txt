@@ -3152,6 +3152,275 @@ gtest_discover_tests(ConstructorSplitterTest
 )
 
 # ============================================================================
+# Unit Tests for Virtual Inheritance Components
+# ============================================================================
+
+# VirtualInheritanceAnalyzer Unit Tests
+add_executable(VirtualInheritanceAnalyzerTest
+    tests/unit/VirtualInheritanceAnalyzerTest.cpp
+)
+
+target_compile_definitions(VirtualInheritanceAnalyzerTest PRIVATE ${LLVM_DEFINITIONS})
+
+target_include_directories(VirtualInheritanceAnalyzerTest PRIVATE
+    ${CMAKE_SOURCE_DIR}/include
+    ${LLVM_INCLUDE_DIRS}
+    ${CLANG_INCLUDE_DIRS}
+)
+
+target_link_libraries(VirtualInheritanceAnalyzerTest PRIVATE
+    cpptoc_core
+    clangTooling
+    clangFrontend
+    clangAST
+    clangBasic
+    GTest::gtest
+    GTest::gtest_main
+)
+
+gtest_discover_tests(VirtualInheritanceAnalyzerTest
+    WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
+    PROPERTIES LABELS "unit;virtual-inheritance"
+)
+
+# RecordHandler Virtual Inheritance Unit Tests
+add_executable(RecordHandlerTest_VirtualInheritance
+    tests/unit/handlers/RecordHandlerTest_VirtualInheritance.cpp
+)
+
+target_compile_definitions(RecordHandlerTest_VirtualInheritance PRIVATE ${LLVM_DEFINITIONS})
+
+target_include_directories(RecordHandlerTest_VirtualInheritance PRIVATE
+    ${CMAKE_SOURCE_DIR}/include
+    ${CMAKE_SOURCE_DIR}/tests/fixtures
+    ${LLVM_INCLUDE_DIRS}
+    ${CLANG_INCLUDE_DIRS}
+)
+
+target_link_libraries(RecordHandlerTest_VirtualInheritance PRIVATE
+    cpptoc_core
+    clangTooling
+    clangFrontend
+    clangAST
+    clangBasic
+    GTest::gtest
+    GTest::gtest_main
+)
+
+gtest_discover_tests(RecordHandlerTest_VirtualInheritance
+    WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
+    PROPERTIES LABELS "unit;handlers;virtual-inheritance"
+)
+
+# ConstructorHandler Virtual Inheritance Unit Tests
+add_executable(ConstructorHandlerTest_VirtualInheritance
+    tests/unit/handlers/ConstructorHandlerTest_VirtualInheritance.cpp
+)
+
+target_compile_definitions(ConstructorHandlerTest_VirtualInheritance PRIVATE ${LLVM_DEFINITIONS})
+
+target_include_directories(ConstructorHandlerTest_VirtualInheritance PRIVATE
+    ${CMAKE_SOURCE_DIR}/include
+    ${CMAKE_SOURCE_DIR}/tests/fixtures
+    ${LLVM_INCLUDE_DIRS}
+    ${CLANG_INCLUDE_DIRS}
+)
+
+target_link_libraries(ConstructorHandlerTest_VirtualInheritance PRIVATE
+    cpptoc_core
+    clangTooling
+    clangFrontend
+    clangAST
+    clangBasic
+    GTest::gtest
+    GTest::gtest_main
+)
+
+gtest_discover_tests(ConstructorHandlerTest_VirtualInheritance
+    WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
+    PROPERTIES LABELS "unit;handlers;virtual-inheritance"
+)
+
+# Virtual Inheritance Handler Dispatcher Tests
+add_executable(VirtualInheritanceHandlerDispatcherTest
+    tests/unit/dispatch/VirtualInheritanceHandlerDispatcherTest.cpp
+)
+
+target_compile_definitions(VirtualInheritanceHandlerDispatcherTest PRIVATE ${LLVM_DEFINITIONS})
+
+target_include_directories(VirtualInheritanceHandlerDispatcherTest PRIVATE
+    ${CMAKE_SOURCE_DIR}/include
+    ${CMAKE_SOURCE_DIR}/tests/fixtures
+    ${LLVM_INCLUDE_DIRS}
+    ${CLANG_INCLUDE_DIRS}
+)
+
+target_link_libraries(VirtualInheritanceHandlerDispatcherTest PRIVATE
+    cpptoc_core
+    clangTooling
+    clangFrontend
+    clangAST
+    clangBasic
+    GTest::gtest
+    GTest::gtest_main
+)
+
+gtest_discover_tests(VirtualInheritanceHandlerDispatcherTest
+    WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
+    PROPERTIES LABELS "unit;dispatch;virtual-inheritance"
+)
+
+# InheritanceGraph Unit Tests (Graph Algorithms)
+add_executable(InheritanceGraphTest
+    tests/unit/InheritanceGraphTest.cpp
+)
+
+target_compile_definitions(InheritanceGraphTest PRIVATE ${LLVM_DEFINITIONS})
+
+target_include_directories(InheritanceGraphTest PRIVATE
+    ${CMAKE_SOURCE_DIR}/include
+    ${LLVM_INCLUDE_DIRS}
+    ${CLANG_INCLUDE_DIRS}
+)
+
+target_link_libraries(InheritanceGraphTest PRIVATE
+    cpptoc_core
+    clangTooling
+    clangFrontend
+    clangAST
+    clangBasic
+    GTest::gtest
+    GTest::gtest_main
+)
+
+gtest_discover_tests(InheritanceGraphTest
+    WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
+    PROPERTIES LABELS "unit;virtual-inheritance;graph"
+)
+
+# VTT Generator Correctness Unit Tests
+add_executable(VTTGeneratorCorrectnessTest
+    tests/unit/VTTGeneratorCorrectnessTest.cpp
+    src/VTTGenerator.cpp
+    src/VirtualInheritanceAnalyzer.cpp
+)
+
+target_compile_definitions(VTTGeneratorCorrectnessTest PRIVATE ${LLVM_DEFINITIONS})
+
+target_include_directories(VTTGeneratorCorrectnessTest PRIVATE
+    ${CMAKE_SOURCE_DIR}/include
+    ${LLVM_INCLUDE_DIRS}
+    ${CLANG_INCLUDE_DIRS}
+)
+
+target_link_libraries(VTTGeneratorCorrectnessTest PRIVATE
+    cpptoc_core
+    clangTooling
+    clangFrontend
+    clangAST
+    clangBasic
+    GTest::gtest
+    GTest::gtest_main
+)
+
+gtest_discover_tests(VTTGeneratorCorrectnessTest
+    WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
+    PROPERTIES LABELS "unit;virtual-inheritance;vtt"
+)
+
+# Constructor Splitter Correctness Unit Tests (C1/C2)
+add_executable(ConstructorSplitterCorrectnessTest
+    tests/unit/ConstructorSplitterCorrectnessTest.cpp
+    src/ConstructorSplitter.cpp
+    src/VirtualInheritanceAnalyzer.cpp
+)
+
+target_compile_definitions(ConstructorSplitterCorrectnessTest PRIVATE ${LLVM_DEFINITIONS})
+
+target_include_directories(ConstructorSplitterCorrectnessTest PRIVATE
+    ${CMAKE_SOURCE_DIR}/include
+    ${LLVM_INCLUDE_DIRS}
+    ${CLANG_INCLUDE_DIRS}
+)
+
+target_link_libraries(ConstructorSplitterCorrectnessTest PRIVATE
+    cpptoc_core
+    clangTooling
+    clangFrontend
+    clangAST
+    clangBasic
+    GTest::gtest
+    GTest::gtest_main
+)
+
+gtest_discover_tests(ConstructorSplitterCorrectnessTest
+    WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
+    PROPERTIES LABELS "unit;virtual-inheritance;constructor"
+)
+
+# Virtual Inheritance Edge Cases Unit Tests
+add_executable(VirtualInheritanceEdgeCasesTest
+    tests/unit/VirtualInheritanceEdgeCasesTest.cpp
+    src/VirtualInheritanceAnalyzer.cpp
+)
+
+target_compile_definitions(VirtualInheritanceEdgeCasesTest PRIVATE ${LLVM_DEFINITIONS})
+
+target_include_directories(VirtualInheritanceEdgeCasesTest PRIVATE
+    ${CMAKE_SOURCE_DIR}/include
+    ${LLVM_INCLUDE_DIRS}
+    ${CLANG_INCLUDE_DIRS}
+)
+
+target_link_libraries(VirtualInheritanceEdgeCasesTest PRIVATE
+    cpptoc_core
+    clangTooling
+    clangFrontend
+    clangAST
+    clangBasic
+    GTest::gtest
+    GTest::gtest_main
+)
+
+gtest_discover_tests(VirtualInheritanceEdgeCasesTest
+    WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
+    PROPERTIES LABELS "unit;virtual-inheritance;edge-cases"
+)
+
+# ============================================================================
+# Integration Tests for Virtual Inheritance Handlers
+# ============================================================================
+
+# Virtual Inheritance Handlers Integration Tests
+add_executable(VirtualInheritanceHandlersIntegrationTest
+    tests/integration/handlers/VirtualInheritanceHandlersIntegrationTest.cpp
+)
+
+target_compile_definitions(VirtualInheritanceHandlersIntegrationTest PRIVATE ${LLVM_DEFINITIONS})
+
+target_include_directories(VirtualInheritanceHandlersIntegrationTest PRIVATE
+    ${CMAKE_SOURCE_DIR}/include
+    ${CMAKE_SOURCE_DIR}/tests/fixtures
+    ${LLVM_INCLUDE_DIRS}
+    ${CLANG_INCLUDE_DIRS}
+)
+
+target_link_libraries(VirtualInheritanceHandlersIntegrationTest PRIVATE
+    cpptoc_core
+    clangTooling
+    clangFrontend
+    clangAST
+    clangBasic
+    GTest::gtest
+    GTest::gtest_main
+)
+
+gtest_discover_tests(VirtualInheritanceHandlersIntegrationTest
+    WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
+    PROPERTIES LABELS "integration;handlers;virtual-inheritance"
+)
+
+# ============================================================================
 # Epic #46: C++20 Coroutines Support - GTest Migration (Phase 15-01)
 # ============================================================================
 
