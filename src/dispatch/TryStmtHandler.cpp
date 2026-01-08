@@ -55,12 +55,16 @@ void TryStmtHandler::handleTryStmt(
 
     // Phase 6: Delegate to TryCatchTransformer service class (AST-based)
 
-    // Generate unique frame variable and action table names
-    // TODO: Use counter or UUID for nested try-catch blocks
-    static int frameCounter = 0;
-    std::string frameVarName = "frame_" + std::to_string(frameCounter);
-    std::string actionsTableName = "actions_" + std::to_string(frameCounter);
-    frameCounter++;
+    // Generate unique frame variable and action table names based on source location
+    // Using source location ensures deterministic, unique names across compilations
+    clang::SourceLocation loc = tryStmt->getBeginLoc();
+    const clang::SourceManager& srcMgr = cppASTContext.getSourceManager();
+
+    unsigned line = srcMgr.getSpellingLineNumber(loc);
+    unsigned col = srcMgr.getSpellingColumnNumber(loc);
+
+    std::string frameVarName = "frame_L" + std::to_string(line) + "_C" + std::to_string(col);
+    std::string actionsTableName = "actions_L" + std::to_string(line) + "_C" + std::to_string(col);
 
     // Phase 6: Use AST-based version of transformTryCatch
     clang::TryCatchTransformer transformer;
