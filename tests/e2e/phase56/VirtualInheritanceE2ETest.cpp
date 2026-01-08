@@ -41,6 +41,7 @@
 #include "dispatch/ImplicitCastExprHandler.h"
 #include "dispatch/ParenExprHandler.h"
 #include "dispatch/CallExprHandler.h"
+#include "dispatch/CXXMemberCallExprHandler.h"
 #include "dispatch/ArraySubscriptExprHandler.h"
 #include "dispatch/CompoundStmtHandler.h"
 #include "dispatch/DeclStmtHandler.h"
@@ -90,6 +91,7 @@ protected:
         ImplicitCastExprHandler::registerWith(*pipeline.dispatcher);
         ParenExprHandler::registerWith(*pipeline.dispatcher);
         CallExprHandler::registerWith(*pipeline.dispatcher);
+        CXXMemberCallExprHandler::registerWith(*pipeline.dispatcher);
         ArraySubscriptExprHandler::registerWith(*pipeline.dispatcher);
         CompoundStmtHandler::registerWith(*pipeline.dispatcher);
         DeclStmtHandler::registerWith(*pipeline.dispatcher);
@@ -155,7 +157,7 @@ protected:
 // Test 1: Simple Virtual Base
 // ============================================================================
 
-TEST_F(VirtualInheritanceE2ETest, DISABLED_SimpleVirtualBase) {
+TEST_F(VirtualInheritanceE2ETest, SimpleVirtualBase) {
     const char* cppCode = R"(
         struct Base {
             int x;
@@ -181,7 +183,7 @@ TEST_F(VirtualInheritanceE2ETest, DISABLED_SimpleVirtualBase) {
 // Test 2: Diamond Pattern (Classic)
 // ============================================================================
 
-TEST_F(VirtualInheritanceE2ETest, DISABLED_DiamondPattern) {
+TEST_F(VirtualInheritanceE2ETest, DiamondPattern) {
     const char* cppCode = R"(
         struct A {
             int a_data;
@@ -218,7 +220,7 @@ TEST_F(VirtualInheritanceE2ETest, DISABLED_DiamondPattern) {
 // Test 3: Multiple Virtual Bases
 // ============================================================================
 
-TEST_F(VirtualInheritanceE2ETest, DISABLED_MultipleVirtualBases) {
+TEST_F(VirtualInheritanceE2ETest, MultipleVirtualBases) {
     const char* cppCode = R"(
         struct Base1 {
             int x;
@@ -250,7 +252,7 @@ TEST_F(VirtualInheritanceE2ETest, DISABLED_MultipleVirtualBases) {
 // Test 4: Deep Virtual Inheritance Hierarchy
 // ============================================================================
 
-TEST_F(VirtualInheritanceE2ETest, DISABLED_DeepVirtualInheritance) {
+TEST_F(VirtualInheritanceE2ETest, DeepVirtualInheritance) {
     const char* cppCode = R"(
         struct Level0 {
             int val0;
@@ -286,7 +288,7 @@ TEST_F(VirtualInheritanceE2ETest, DISABLED_DeepVirtualInheritance) {
 // Test 5: Virtual Inheritance + Virtual Methods
 // ============================================================================
 
-TEST_F(VirtualInheritanceE2ETest, DISABLED_VirtualInheritanceWithVirtualMethods) {
+TEST_F(VirtualInheritanceE2ETest, VirtualInheritanceWithVirtualMethods) {
     const char* cppCode = R"(
         struct Base {
             virtual int getValue() { return 10; }
@@ -318,7 +320,7 @@ TEST_F(VirtualInheritanceE2ETest, DISABLED_VirtualInheritanceWithVirtualMethods)
 // Test 6: Non-POD Virtual Bases (Constructor/Destructor Order)
 // ============================================================================
 
-TEST_F(VirtualInheritanceE2ETest, DISABLED_NonPODVirtualBases) {
+TEST_F(VirtualInheritanceE2ETest, NonPODVirtualBases) {
     const char* cppCode = R"(
         int counter = 0;
 
@@ -358,7 +360,7 @@ TEST_F(VirtualInheritanceE2ETest, DISABLED_NonPODVirtualBases) {
 // Test 7: Casting with Virtual Inheritance
 // ============================================================================
 
-TEST_F(VirtualInheritanceE2ETest, DISABLED_CastingWithVirtualInheritance) {
+TEST_F(VirtualInheritanceE2ETest, CastingWithVirtualInheritance) {
     const char* cppCode = R"(
         struct Base {
             int x;
@@ -388,7 +390,7 @@ TEST_F(VirtualInheritanceE2ETest, DISABLED_CastingWithVirtualInheritance) {
 // Test 8: Real-World Scenario (iostream-style)
 // ============================================================================
 
-TEST_F(VirtualInheritanceE2ETest, DISABLED_RealWorldIOStreamStyle) {
+TEST_F(VirtualInheritanceE2ETest, RealWorldIOStreamStyle) {
     const char* cppCode = R"(
         struct ios_base {
             int flags;
@@ -428,7 +430,7 @@ TEST_F(VirtualInheritanceE2ETest, DISABLED_RealWorldIOStreamStyle) {
 // Test 9: Mixed Virtual and Non-Virtual Inheritance
 // ============================================================================
 
-TEST_F(VirtualInheritanceE2ETest, DISABLED_MixedInheritance) {
+TEST_F(VirtualInheritanceE2ETest, MixedInheritance) {
     const char* cppCode = R"(
         struct VirtualBase {
             int vx;
@@ -470,7 +472,7 @@ TEST_F(VirtualInheritanceE2ETest, DISABLED_MixedInheritance) {
 // Test 10: Virtual Base Access Through Multiple Paths
 // ============================================================================
 
-TEST_F(VirtualInheritanceE2ETest, DISABLED_VirtualBaseAccessMultiplePaths) {
+TEST_F(VirtualInheritanceE2ETest, VirtualBaseAccessMultiplePaths) {
     const char* cppCode = R"(
         struct Base {
             int value;
