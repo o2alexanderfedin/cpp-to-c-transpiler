@@ -187,3 +187,32 @@ gh api repos/o2alexanderfedin/cpp-to-c-transpiler/collaborators/EitanNahmias -X 
 [  PASSED  ] 12 tests. (151 ms total)
 ```
 
+## ✅ COMPLETED: Remove Deprecated Code from TemplateMonomorphizer - 2026-01-08
+
+**Status:** COMPLETED - All deprecated code removed (135 lines)
+
+**Implementation:** Systematic removal of deprecated string-based code generation methods
+
+**Changes:**
+- Removed entire `#if 0` block from TemplateMonomorphizer.cpp
+- Deleted `monomorphizeClass_OLD()` - Old string-based class generation
+- Deleted `generateStruct()` - String-based struct definition generation
+- Deleted `generateMethod()` - String-based method declaration generation
+- Deleted `typeToString()` - Type string conversion utilities
+
+**Verification:**
+- ✅ All 36/36 tests passing before and after removal
+- ✅ Clean build with no compiler errors
+- ✅ CI/CD local parity verified
+- ✅ AST-based migration confirmed complete (v2.17.0)
+
+**Impact:**
+- Removed 135 lines of technical debt
+- Codebase now contains only active production code
+- Improved maintainability and code clarity
+- No functional changes (code was disabled with #if 0)
+
+**Release:** Included in v2.18.0
+
+**Commit:** c482db3 - refactor: remove deprecated string-based code generation methods (135 lines)
+
