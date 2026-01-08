@@ -32,7 +32,9 @@
 #include "VirtualMethodAnalyzer.h"
 #include "OverrideResolver.h"
 #include <cassert>
+#include <functional>
 #include <set>
+#include <string>
 
 namespace cpptoc {
 
@@ -273,10 +275,19 @@ void RecordHandler::handleRecord(
     allFields.insert(allFields.end(), injectedFields.begin(), injectedFields.end());
     allFields.insert(allFields.end(), cFields.begin(), cFields.end());
 
-    // Add ALL base class fields (both virtual and non-virtual)
+    // Add base class fields (both virtual and non-virtual)
     // In C, we need to flatten the inheritance hierarchy by copying base class fields
-    // For virtual bases: ensure single instance (deduplicate)
-    // For non-virtual bases: always copy
+    //
+    // CRITICAL VIRTUAL INHERITANCE RULE (Itanium C++ ABI):
+    // - Virtual base fields should ONLY be in MOST-DERIVED classes
+    // - Intermediate classes with virtual bases should NOT inline those virtual base fields
+    // - Only non-virtual base fields should be inlined in intermediate classes
+    //
+    // Example (Diamond Inheritance):
+    //   struct A { int a; };
+    //   struct B : virtual A { int b; };  // B should NOT have 'a' field
+    //   struct C : virtual A { int c; };  // C should NOT have 'a' field
+    //   struct D : B, C { int d; };       // D SHOULD have 'a' field (most-derived)
     if (cxxRecord && cxxRecord->getNumBases() > 0) {
         // Track field names already added to avoid duplicates (for virtual bases)
         std::set<std::string> addedFieldNames;
@@ -284,7 +295,77 @@ void RecordHandler::handleRecord(
             addedFieldNames.insert(existingField->getNameAsString());
         }
 
-        // First, handle non-virtual bases (always copy their fields)
+        // Collect all virtual bases in the hierarchy (direct + indirect)
+        std::set<const clang::CXXRecordDecl*> allVirtualBases;
+
+        // Helper: recursively collect virtual bases
+        std::function<void(const clang::CXXRecordDecl*)> collectVirtualBases;
+        collectVirtualBases = [&](const clang::CXXRecordDecl* record) {
+            for (const auto& base : record->bases()) {
+                if (const clang::CXXRecordDecl* baseRecord = base.getType()->getAsCXXRecordDecl()) {
+                    if (base.isVirtual()) {
+                        allVirtualBases.insert(baseRecord->getCanonicalDecl());
+                    }
+                    // Recurse to collect indirect virtual bases
+                    collectVirtualBases(baseRecord);
+                }
+            }
+        };
+        collectVirtualBases(cxxRecord);
+
+        // Determine if this class should inline virtual base fields
+        //
+        // Itanium C++ ABI Rule:
+        // - Virtual base fields should ONLY be in the MOST-DERIVED class
+        // - Intermediate classes (used as bases of other classes) should NOT have virtual base fields
+        //
+        // Analysis of inheritance patterns:
+        // 1. SimpleVirtualBase (Derived : virtual Base):
+        //    - Derived has DIRECT virtual base Base, no non-virtual bases
+        //    - Derived is NOT polymorphic (no virtual methods)
+        //    - Derived is likely a LEAF class → should inline Base fields
+        //
+        // 2. Diamond (D : B,C; B : virtual A; C : virtual A):
+        //    - B has DIRECT virtual base A, no non-virtual bases, IS polymorphic → intermediate class
+        //    - C has DIRECT virtual base A, no non-virtual bases, IS polymorphic → intermediate class
+        //    - D has INDIRECT virtual bases (through B,C), has non-virtual bases with vbases → most-derived
+        //
+        // Heuristic:
+        // - If class has non-virtual bases with virtual bases → inline INDIRECT virtual bases (diamond D case)
+        // - If class has ONLY virtual bases AND is NOT polymorphic → inline them (leaf class)
+        // - Otherwise → DON'T inline (intermediate class)
+
+        bool hasNonVirtualBases = false;
+        bool hasNonVirtualBasesWithVirtualBases = false;
+        bool hasDirectVirtualBases = cxxRecord->getNumVBases() > 0;
+
+        for (const auto& base : cxxRecord->bases()) {
+            if (!base.isVirtual()) {
+                hasNonVirtualBases = true;
+                if (const clang::CXXRecordDecl* baseRecord = base.getType()->getAsCXXRecordDecl()) {
+                    if (baseRecord->getNumVBases() > 0) {
+                        hasNonVirtualBasesWithVirtualBases = true;
+                        break;
+                    }
+                }
+            }
+        }
+
+        // Should inline virtual base fields if:
+        // 1. Has non-virtual bases with virtual bases (most-derived in diamond), OR
+        // 2. Has ONLY direct virtual bases (no non-virtual bases) - assume leaf class
+        //
+        // Note: This is a heuristic. Ideally we'd generate both base-subobject and complete-object
+        // layouts per Itanium C++ ABI, but that requires significant refactoring.
+        bool isMostDerivedForVirtualInheritance =
+            hasNonVirtualBasesWithVirtualBases ||
+            (hasDirectVirtualBases && !hasNonVirtualBases);
+
+        llvm::outs() << "[RecordHandler] Class " << cxxRecord->getNameAsString()
+                     << (isMostDerivedForVirtualInheritance ? " IS most-derived" : " is NOT most-derived")
+                     << " for virtual inheritance\n";
+
+        // First, handle non-virtual bases (always copy their fields, but SKIP virtual base fields)
         for (const auto& base : cxxRecord->bases()) {
             if (base.isVirtual()) continue;  // Skip virtual bases for now
 
@@ -299,11 +380,18 @@ void RecordHandler::handleRecord(
             if (declMapper.hasCreated(baseRecord)) {
                 clang::RecordDecl* cBaseRecord = llvm::cast<clang::RecordDecl>(declMapper.getCreated(baseRecord));
 
-                // Copy ALL fields from non-virtual base (including inherited ones)
+                // Copy fields from non-virtual base, but SKIP fields that came from virtual bases
+                // (those will be inlined separately if this is the most-derived class)
                 for (auto* baseField : cBaseRecord->fields()) {
                     std::string fieldName = baseField->getNameAsString();
 
-                    // For non-virtual bases, still check for duplicates (they might inherit from same virtual base)
+                    // Skip vbptr (will be inherited implicitly)
+                    if (fieldName == "vbptr") {
+                        llvm::outs() << "[RecordHandler] Skipping vbptr field from base\n";
+                        continue;
+                    }
+
+                    // Check for duplicates
                     if (addedFieldNames.count(fieldName) > 0) {
                         llvm::outs() << "[RecordHandler] Skipping duplicate field from non-virtual base: " << fieldName << "\n";
                         continue;
@@ -332,68 +420,71 @@ void RecordHandler::handleRecord(
             }
         }
 
-        // Second, handle virtual bases (only copy if not already present)
-        for (const auto& vbase : cxxRecord->vbases()) {
-            const clang::CXXRecordDecl* vbaseRecord = vbase.getType()->getAsCXXRecordDecl();
-            if (!vbaseRecord) continue;
+        // Second, handle virtual bases (ONLY if this is the most-derived class)
+        // Intermediate classes should NOT inline virtual base fields
+        if (isMostDerivedForVirtualInheritance) {
+            llvm::outs() << "[RecordHandler] Inlining virtual base fields (most-derived class)\n";
 
-            llvm::outs() << "[RecordHandler] Inlining fields from virtual base: "
-                         << vbaseRecord->getNameAsString() << "\n";
+            for (const clang::CXXRecordDecl* vbaseRecord : allVirtualBases) {
+                llvm::outs() << "[RecordHandler] Inlining fields from virtual base: "
+                             << vbaseRecord->getNameAsString() << "\n";
 
-            // Look up the C struct for this virtual base
-            cpptoc::DeclMapper& declMapper = disp.getDeclMapper();
-            if (declMapper.hasCreated(vbaseRecord)) {
-                clang::RecordDecl* cVbaseRecord = llvm::cast<clang::RecordDecl>(declMapper.getCreated(vbaseRecord));
+                // Look up the C struct for this virtual base
+                cpptoc::DeclMapper& declMapper = disp.getDeclMapper();
+                if (declMapper.hasCreated(vbaseRecord)) {
+                    clang::RecordDecl* cVbaseRecord = llvm::cast<clang::RecordDecl>(declMapper.getCreated(vbaseRecord));
 
-                // Get the ORIGINAL C++ fields (not already inlined ones)
-                // Only copy fields that were ORIGINALLY declared in this virtual base class
-                if (vbaseRecord->getDefinition()) {
-                    for (auto* originalField : vbaseRecord->fields()) {
-                        std::string fieldName = originalField->getNameAsString();
+                    // Get the ORIGINAL C++ fields
+                    if (vbaseRecord->getDefinition()) {
+                        for (auto* originalField : vbaseRecord->fields()) {
+                            std::string fieldName = originalField->getNameAsString();
 
-                        // Skip if this field name was already added (from a more derived virtual base)
-                        if (addedFieldNames.count(fieldName) > 0) {
-                            llvm::outs() << "[RecordHandler] Skipping duplicate field: " << fieldName << "\n";
-                            continue;
-                        }
+                            // Skip if this field name was already added
+                            if (addedFieldNames.count(fieldName) > 0) {
+                                llvm::outs() << "[RecordHandler] Skipping duplicate virtual base field: " << fieldName << "\n";
+                                continue;
+                            }
 
-                        // Find the corresponding C field in cVbaseRecord
-                        clang::FieldDecl* cVbaseField = nullptr;
-                        for (auto* field : cVbaseRecord->fields()) {
-                            if (field->getNameAsString() == fieldName) {
-                                cVbaseField = field;
-                                break;
+                            // Find the corresponding C field in cVbaseRecord
+                            clang::FieldDecl* cVbaseField = nullptr;
+                            for (auto* field : cVbaseRecord->fields()) {
+                                if (field->getNameAsString() == fieldName) {
+                                    cVbaseField = field;
+                                    break;
+                                }
+                            }
+
+                            if (cVbaseField) {
+                                // Create a new field with the same name and type
+                                clang::FieldDecl* copiedField = clang::FieldDecl::Create(
+                                    cASTContext,
+                                    cRecord,
+                                    targetLoc,
+                                    targetLoc,
+                                    cVbaseField->getIdentifier(),
+                                    cVbaseField->getType(),
+                                    cVbaseField->getTypeSourceInfo(),
+                                    nullptr,  // No bit width
+                                    false,    // Not mutable
+                                    clang::ICIS_NoInit
+                                );
+
+                                copiedField->setAccess(clang::AS_public);
+                                copiedField->setDeclContext(cRecord);
+                                allFields.push_back(copiedField);
+                                addedFieldNames.insert(fieldName);
+
+                                llvm::outs() << "[RecordHandler] Inlined virtual base field: " << fieldName << "\n";
                             }
                         }
-
-                        if (cVbaseField) {
-                            // Create a new field with the same name and type
-                            clang::FieldDecl* copiedField = clang::FieldDecl::Create(
-                                cASTContext,
-                                cRecord,
-                                targetLoc,
-                                targetLoc,
-                                cVbaseField->getIdentifier(),
-                                cVbaseField->getType(),
-                                cVbaseField->getTypeSourceInfo(),
-                                nullptr,  // No bit width
-                                false,    // Not mutable
-                                clang::ICIS_NoInit
-                            );
-
-                            copiedField->setAccess(clang::AS_public);
-                            copiedField->setDeclContext(cRecord);
-                            allFields.push_back(copiedField);
-                            addedFieldNames.insert(fieldName);
-
-                            llvm::outs() << "[RecordHandler] Inlined virtual base field: " << fieldName << "\n";
-                        }
                     }
+                } else {
+                    llvm::outs() << "[RecordHandler] WARNING: Virtual base " << vbaseRecord->getNameAsString()
+                                 << " not yet translated, cannot inline fields\n";
                 }
-            } else {
-                llvm::outs() << "[RecordHandler] WARNING: Virtual base " << vbaseRecord->getNameAsString()
-                             << " not yet translated, cannot inline fields\n";
             }
+        } else {
+            llvm::outs() << "[RecordHandler] Skipping virtual base field inlining (intermediate class)\n";
         }
     }
 
