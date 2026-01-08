@@ -28,6 +28,9 @@
 #include "VirtualInheritanceAnalyzer.h"
 #include "MultipleInheritanceAnalyzer.h"
 #include "VTTGenerator.h"
+#include "VtableGenerator.h"
+#include "VirtualMethodAnalyzer.h"
+#include "OverrideResolver.h"
 #include <cassert>
 #include <set>
 
@@ -293,6 +296,28 @@ void RecordHandler::handleRecord(
 
             // TODO: Create C AST nodes for VTT struct and instance
             // This requires extending CNodeBuilder with VTT generation methods
+        }
+    }
+
+    // Task 5: Generate vtable with virtual base offsets for polymorphic classes with virtual bases
+    if (cxxRecord && cxxRecord->isPolymorphic() && hasVirtualBases) {
+        llvm::outs() << "[RecordHandler] Generating vtable with virtual base offsets for " << name << "\n";
+
+        // Use VtableGenerator to generate vtable struct with virtual base offsets
+        // Requires VirtualMethodAnalyzer and OverrideResolver
+        VirtualMethodAnalyzer vmAnalyzer(const_cast<clang::ASTContext&>(cppASTContext));
+        OverrideResolver overrideResolver(const_cast<clang::ASTContext&>(cppASTContext), vmAnalyzer);
+        VtableGenerator vtableGen(const_cast<clang::ASTContext&>(cppASTContext), vmAnalyzer, &overrideResolver);
+
+        std::string vtableCode = vtableGen.generateVtableWithVirtualBaseOffsets(cxxRecord, viAnalyzer);
+
+        if (!vtableCode.empty()) {
+            llvm::outs() << "[RecordHandler] Generated vtable with virtual base offsets for " << name << ":\n"
+                         << vtableCode << "\n";
+
+            // TODO: Create C AST nodes for vtable struct
+            // TODO: Generate vtable instance initialization
+            // For now, string-based code generation is acceptable (Phase 3 MVP)
         }
     }
 

@@ -170,6 +170,26 @@ target_include_directories(EnumIntegrationTest PRIVATE
     ${CMAKE_SOURCE_DIR}/../../src
 )
 
+# Virtual Inheritance Integration Tests (Comprehensive)
+add_executable(VirtualInheritanceIntegrationTest
+    handlers/VirtualInheritanceIntegrationTest.cpp
+    ${DISPATCHER_TEST_SOURCES}
+    ${CMAKE_SOURCE_DIR}/../../src/VirtualInheritanceAnalyzer.cpp
+    ${CMAKE_SOURCE_DIR}/../../src/VTTGenerator.cpp
+    ${CMAKE_SOURCE_DIR}/../../src/ConstructorSplitter.cpp
+)
+target_link_libraries(VirtualInheritanceIntegrationTest
+    GTest::gtest
+    GTest::gtest_main
+    ${CLANG_LIBS}
+    range-v3::range-v3
+)
+target_include_directories(VirtualInheritanceIntegrationTest PRIVATE
+    ${CMAKE_SOURCE_DIR}/../../tests/fixtures
+    ${CMAKE_SOURCE_DIR}/../../include
+    ${CMAKE_SOURCE_DIR}/../../src
+)
+
 # Enable testing
 enable_testing()
 include(GoogleTest)
@@ -208,6 +228,10 @@ gtest_discover_tests(EnumIntegrationTest
     WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
     PROPERTIES LABELS "integration;enums;phase47"
 )
+gtest_discover_tests(VirtualInheritanceIntegrationTest
+    WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
+    PROPERTIES LABELS "integration;virtual_inheritance;comprehensive"
+)
 
 message(STATUS "Integration tests configured:")
 message(STATUS "  - FeatureInteractionTest: 30 tests")
@@ -222,4 +246,5 @@ message(STATUS "  - ClassesIntegrationTest: 35 tests (Phase 44)")
 message(STATUS "  - VirtualMethodsIntegrationTest: 35 tests (Phase 45)")
 message(STATUS "  - MultipleInheritanceIntegrationTest: 37 tests (Phase 46)")
 message(STATUS "  - EnumIntegrationTest: 12 tests (Phase 47)")
-message(STATUS "  Total: 314 integration tests")
+message(STATUS "  - VirtualInheritanceIntegrationTest: 40 tests (Comprehensive)")
+message(STATUS "  Total: 354 integration tests")
