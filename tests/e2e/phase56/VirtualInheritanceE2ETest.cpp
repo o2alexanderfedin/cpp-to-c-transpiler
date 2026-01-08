@@ -42,6 +42,7 @@
 #include "dispatch/ParenExprHandler.h"
 #include "dispatch/CallExprHandler.h"
 #include "dispatch/CXXMemberCallExprHandler.h"
+#include "dispatch/CXXThisExprHandler.h"
 #include "dispatch/ArraySubscriptExprHandler.h"
 #include "dispatch/CompoundStmtHandler.h"
 #include "dispatch/DeclStmtHandler.h"
@@ -92,6 +93,7 @@ protected:
         ParenExprHandler::registerWith(*pipeline.dispatcher);
         CallExprHandler::registerWith(*pipeline.dispatcher);
         CXXMemberCallExprHandler::registerWith(*pipeline.dispatcher);
+        CXXThisExprHandler::registerWith(*pipeline.dispatcher);
         ArraySubscriptExprHandler::registerWith(*pipeline.dispatcher);
         CompoundStmtHandler::registerWith(*pipeline.dispatcher);
         DeclStmtHandler::registerWith(*pipeline.dispatcher);
