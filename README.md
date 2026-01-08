@@ -1,6 +1,6 @@
 # C++ to C Converter
 
-[![Latest Release](https://img.shields.io/badge/Release-v2.17.0-brightgreen)](https://github.com/o2alexanderfedin/cpp-to-c-transpiler/releases/tag/v2.17.0)
+[![Latest Release](https://img.shields.io/badge/Release-v2.18.0-brightgreen)](https://github.com/o2alexanderfedin/cpp-to-c-transpiler/releases/tag/v2.18.0)
 [![Tests](https://img.shields.io/badge/Tests-36%2F36%20(100%25)-brightgreen)](https://github.com)
 [![Next Version](https://img.shields.io/badge/Next-v3.0.0--rc-blue)](https://github.com)
 [![ACSL Support](https://img.shields.io/badge/ACSL-100%25%20Complete-brightgreen)](https://github.com)
@@ -34,18 +34,18 @@ This project implements a C++ to C transpiler that produces high-quality, human-
 
 ---
 
-## Latest Stable Release: v2.17.0 (2026-01-08)
+## Latest Stable Release: v2.18.0 (2026-01-08)
 
-**Focus**: Test Quality Improvements & Technical Debt Reduction
+**Focus**: Code Quality & Technical Debt Reduction
 
-### What's New in v2.17.0
+### What's New in v2.18.0
 
-- ✅ **Test Infrastructure Modernization** - Refactored 10 skipped tests in FunctionHandlerTest to modern dispatcher pattern
+- ✅ **Deprecated Code Removal** - Removed 135 lines of obsolete code from TemplateMonomorphizer.cpp
 - ✅ **100% Test Pass Rate** - All 36/36 core tests passing with comprehensive coverage
-- ✅ **Zero Technical Debt** - No accumulating skipped tests, all using modern patterns
-- ✅ **Documentation Updates** - Synchronized project documentation with codebase state
+- ✅ **Cleaner Codebase** - Only active production code remains (no disabled #if 0 blocks)
+- ✅ **Improved Maintainability** - Reduced technical debt and maintenance burden
 
-**See**: [RELEASE_NOTES_v2.17.0.md](RELEASE_NOTES_v2.17.0.md) for complete details
+**See**: [RELEASE_NOTES_v2.18.0.md](RELEASE_NOTES_v2.18.0.md) for complete details
 
 ---
 
