@@ -1,4 +1,5 @@
 #include "pipeline/PipelineConfig.h"
+#include "ACSLGenerator.h"  // For ACSLLevel and ACSLOutputMode
 
 namespace cpptoc {
 namespace pipeline {
@@ -9,14 +10,16 @@ extern bool shouldUsePragmaOnce();
 extern std::string getOutputDir();
 extern std::string getSourceDir();
 extern bool shouldGenerateACSL();
+extern ::ACSLLevel getACSLLevel();  // Returns global namespace ACSLLevel
+extern ::ACSLOutputMode getACSLOutputMode();  // Returns global namespace ACSLOutputMode
+extern bool shouldGenerateMemoryPredicates();
 extern bool shouldEnableTemplateMonomorphization();
 extern unsigned int getTemplateInstantiationLimit();
 extern bool shouldEnableExceptions();
+extern std::string getExceptionModel();  // Returns "sjlj" or "tables"
 extern bool shouldEnableRTTI();
 extern std::string getDependencyDumpFile();
 extern bool shouldVisualizeDependencies();
-
-// Note: ACSL level/output mode and exception model accessors need to be added to main.cpp
 
 PipelineConfig parseCLIArgs(int argc, const char* const* argv) {
   PipelineConfig config;
@@ -34,10 +37,19 @@ PipelineConfig parseCLIArgs(int argc, const char* const* argv) {
 
   // ACSL options
   config.generateACSL = shouldGenerateACSL();
-  // TODO: Add accessors for ACSL level, output mode, and memory predicates in main.cpp
-  config.acslCoverageLevel = ACSLCoverageLevel::Basic;  // Default for now
-  config.acslOutputMode = ACSLOutputMode::Inline;       // Default for now
-  config.acslMemoryPredicates = false;                  // Default for now
+
+  // Convert from ACSLGenerator.h enums to PipelineConfig enums
+  ::ACSLLevel acslLevel = getACSLLevel();
+  config.acslCoverageLevel = (acslLevel == ::ACSLLevel::Basic)
+      ? ACSLCoverageLevel::Basic
+      : ACSLCoverageLevel::Full;
+
+  ::ACSLOutputMode acslOutput = getACSLOutputMode();
+  config.acslOutputMode = (acslOutput == ::ACSLOutputMode::Inline)
+      ? ACSLOutputMode::Inline
+      : ACSLOutputMode::Separate;
+
+  config.acslMemoryPredicates = shouldGenerateMemoryPredicates();
 
   // Template options
   config.templateMonomorphization = shouldEnableTemplateMonomorphization();
@@ -45,8 +57,12 @@ PipelineConfig parseCLIArgs(int argc, const char* const* argv) {
 
   // Exception handling options
   config.enableExceptions = shouldEnableExceptions();
-  // TODO: Add accessor for exception model in main.cpp
-  config.exceptionModel = ExceptionModel::SetjmpLongjmp;  // Default for now
+
+  // Convert from string to ExceptionModel enum
+  std::string exModel = getExceptionModel();
+  config.exceptionModel = (exModel == "sjlj")
+      ? ExceptionModel::SetjmpLongjmp
+      : ExceptionModel::GotoCleanup;
 
   // RTTI options
   config.enableRTTI = shouldEnableRTTI();
