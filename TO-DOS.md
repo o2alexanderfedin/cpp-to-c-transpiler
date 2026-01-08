@@ -216,3 +216,52 @@ gh api repos/o2alexanderfedin/cpp-to-c-transpiler/collaborators/EitanNahmias -X 
 
 **Commit:** c482db3 - refactor: remove deprecated string-based code generation methods (135 lines)
 
+## ✅ COMPLETED: PipelineConfig CLI Accessor Implementation - 2026-01-08
+
+**Status:** COMPLETED - All CLI accessors fully functional (2 TODOs resolved)
+
+**Implementation:** Complete integration of ACSL and exception handling CLI options
+
+**Problem:** PipelineConfig.cpp had 2 TODO comments for missing accessor functions:
+- Line 37: "Add accessors for ACSL level, output mode, and memory predicates in main.cpp"
+- Line 48: "Add accessor for exception model in main.cpp"
+
+These accessors already existed in main.cpp but were not declared in PipelineConfig.cpp, causing CLI flags to be ignored and hardcoded defaults to be used instead.
+
+**Affected CLI Options:**
+- `--acsl-level` (Basic/Full) - Was ignored, always used Basic
+- `--acsl-output` (Inline/Separate) - Was ignored, always used Inline
+- `--acsl-memory-predicates` - Was ignored, always false
+- `--exception-model` (sjlj/tables) - Was ignored, always used sjlj
+
+**Solution:**
+- Added extern declarations for 4 existing main.cpp accessor functions
+- Implemented type-safe conversions between different enum namespaces:
+  * `::ACSLLevel` (ACSLGenerator.h) → `pipeline::ACSLCoverageLevel` (PipelineConfig.h)
+  * `::ACSLOutputMode` (ACSLGenerator.h) → `pipeline::ACSLOutputMode` (PipelineConfig.h)
+  * `std::string` ("sjlj"/"tables") → `pipeline::ExceptionModel` (PipelineConfig.h)
+- Removed both TODO comments
+
+**Changes:**
+- Added `#include "ACSLGenerator.h"` for external enum types
+- Added 4 extern function declarations with proper type annotations
+- Implemented conversion logic in `parseCLIArgs()` function
+- Net change: +24 lines added, -8 lines removed (+16 net)
+
+**Verification:**
+- ✅ All 910/910 tests passing (100%)
+- ✅ Clean build with no compiler errors
+- ✅ CI/CD local parity verified
+- ✅ Configuration now properly respects CLI flags
+
+**Impact:**
+- ✅ Fixed bug where CLI options were silently ignored
+- ✅ Users can now control ACSL and exception handling via CLI
+- ✅ Type-safe conversion between different enum namespaces
+- ✅ Configuration system fully functional
+- ✅ 2 TODOs resolved (27 remaining in codebase)
+
+**Release:** Included in v2.19.0
+
+**Commit:** 8232d41 - refactor: complete PipelineConfig CLI accessor implementation
+
