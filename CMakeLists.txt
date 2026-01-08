@@ -4715,31 +4715,29 @@ gtest_discover_tests(ACSLMemoryPredicateAnalyzerTest
 # )
 
 # FunctionHandler unit tests
-# ARCHIVED: Requires test_fixtures which used legacy HandlerContext pattern (retired 2026-01-03)
-# add_executable(FunctionHandlerTest
-#     tests/unit/handlers/FunctionHandlerTest.cpp
-# )
-# 
-# target_include_directories(FunctionHandlerTest PRIVATE
-#     ${CMAKE_SOURCE_DIR}/tests/fixtures
-#     ${CMAKE_SOURCE_DIR}/include
-#     ${LLVM_INCLUDE_DIRS}
-#     ${CLANG_INCLUDE_DIRS}
-# )
-# 
-# target_link_libraries(FunctionHandlerTest PRIVATE
-#     test_fixtures
-#     cpptoc_core
-#     clangTooling
-#     clangAST
-#     clangBasic
-#     GTest::gtest
-#     GTest::gtest_main
-# )
-# 
-# gtest_discover_tests(FunctionHandlerTest
-#     WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
-# )
+# Refactored to use dispatcher pattern (2026-01-07)
+add_executable(FunctionHandlerTest
+    tests/unit/handlers/FunctionHandlerTest.cpp
+)
+
+target_include_directories(FunctionHandlerTest PRIVATE
+    ${CMAKE_SOURCE_DIR}/include
+    ${LLVM_INCLUDE_DIRS}
+    ${CLANG_INCLUDE_DIRS}
+)
+
+target_link_libraries(FunctionHandlerTest PRIVATE
+    cpptoc_core
+    clangTooling
+    clangAST
+    clangBasic
+    GTest::gtest
+    GTest::gtest_main
+)
+
+gtest_discover_tests(FunctionHandlerTest
+    WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
+)
 
 # TODO: ConstructorHandler tests need migration to dispatcher pattern
 # ConstructorHandler unit tests
