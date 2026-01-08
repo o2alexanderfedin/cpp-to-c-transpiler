@@ -1,6 +1,6 @@
 # C++ to C Converter
 
-[![Latest Release](https://img.shields.io/badge/Release-v2.19.0-brightgreen)](https://github.com/o2alexanderfedin/cpp-to-c-transpiler/releases/tag/v2.19.0)
+[![Latest Release](https://img.shields.io/badge/Release-v2.20.0-brightgreen)](https://github.com/o2alexanderfedin/cpp-to-c-transpiler/releases/tag/v2.20.0)
 [![Tests](https://img.shields.io/badge/Tests-36%2F36%20(100%25)-brightgreen)](https://github.com)
 [![Next Version](https://img.shields.io/badge/Next-v3.0.0--rc-blue)](https://github.com)
 [![ACSL Support](https://img.shields.io/badge/ACSL-100%25%20Complete-brightgreen)](https://github.com)
@@ -34,19 +34,19 @@ This project implements a C++ to C transpiler that produces high-quality, human-
 
 ---
 
-## Latest Stable Release: v2.19.0 (2026-01-08)
+## Latest Stable Release: v2.20.0 (2026-01-08)
 
-**Focus**: Configuration Completeness & Bug Fixes
+**Focus**: Build Determinism & Reproducibility
 
-### What's New in v2.19.0
+### What's New in v2.20.0
 
-- ✅ **CLI Configuration Bug Fix** - ACSL and exception handling CLI flags now properly respected (were silently ignored)
-- ✅ **Complete Accessor Implementation** - All PipelineConfig CLI options fully functional
-- ✅ **Type-Safe Conversions** - Proper enum namespace mapping between components
+- ✅ **Deterministic Exception Frame IDs** - Source location-based naming (frame_L42_C5) instead of counters
+- ✅ **Reproducible Builds** - Identical source code produces identical output across compilations
+- ✅ **Enhanced Debuggability** - Frame names indicate exact source location (line and column)
 - ✅ **100% Test Pass Rate** - All 910/910 tests passing with comprehensive coverage
-- ✅ **Technical Debt Reduction** - 2 TODO items resolved (27 remaining in codebase)
+- ✅ **Technical Debt Reduction** - 1 TODO resolved (26 remaining in codebase)
 
-**See**: [RELEASE_NOTES_v2.19.0.md](RELEASE_NOTES_v2.19.0.md) for complete details
+**See**: [RELEASE_NOTES_v2.20.0.md](RELEASE_NOTES_v2.20.0.md) for complete details
 
 ---
 
