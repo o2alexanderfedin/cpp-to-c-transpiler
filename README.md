@@ -1,7 +1,7 @@
 # C++ to C Converter
 
-[![Latest Release](https://img.shields.io/badge/Release-v2.20.0-brightgreen)](https://github.com/o2alexanderfedin/cpp-to-c-transpiler/releases/tag/v2.20.0)
-[![Tests](https://img.shields.io/badge/Tests-36%2F36%20(100%25)-brightgreen)](https://github.com)
+[![Latest Release](https://img.shields.io/badge/Release-v2.20.1-brightgreen)](https://github.com/o2alexanderfedin/cpp-to-c-transpiler/releases/tag/v2.20.1)
+[![Tests](https://img.shields.io/badge/Tests-41%2F41%20(100%25)-brightgreen)](https://github.com)
 [![Next Version](https://img.shields.io/badge/Next-v3.0.0--rc-blue)](https://github.com)
 [![ACSL Support](https://img.shields.io/badge/ACSL-100%25%20Complete-brightgreen)](https://github.com)
 [![RTTI Support](https://img.shields.io/badge/RTTI-100%25%20Complete-brightgreen)](https://github.com)
@@ -34,17 +34,27 @@ This project implements a C++ to C transpiler that produces high-quality, human-
 
 ---
 
-## Latest Stable Release: v2.20.0 (2026-01-08)
+## Latest Stable Release: v2.20.1 (2026-01-08)
+
+**Focus**: Test Infrastructure Quality
+
+### What's New in v2.20.1
+
+- ✅ **Zero Test Discovery Warnings** - Fixed 17 "not found" warnings in CI/CD parity script
+- ✅ **Clear Test Documentation** - All 17 NOT_BUILT tests documented with explanations
+- ✅ **100% Test Pass Rate** - All 41/41 built tests passing with perfect CI/CD parity
+- ✅ **Clean Test Output** - Professional, noise-free test execution
+- ✅ **Better Test Organization** - Tests categorized by status (deprecated, future, not implemented)
+
+**See**: [RELEASE_NOTES_v2.20.1.md](RELEASE_NOTES_v2.20.1.md) for complete details
+
+### Previous Release: v2.20.0 (2026-01-08)
 
 **Focus**: Build Determinism & Reproducibility
-
-### What's New in v2.20.0
 
 - ✅ **Deterministic Exception Frame IDs** - Source location-based naming (frame_L42_C5) instead of counters
 - ✅ **Reproducible Builds** - Identical source code produces identical output across compilations
 - ✅ **Enhanced Debuggability** - Frame names indicate exact source location (line and column)
-- ✅ **100% Test Pass Rate** - All 910/910 tests passing with comprehensive coverage
-- ✅ **Technical Debt Reduction** - 1 TODO resolved (26 remaining in codebase)
 
 **See**: [RELEASE_NOTES_v2.20.0.md](RELEASE_NOTES_v2.20.0.md) for complete details
 
