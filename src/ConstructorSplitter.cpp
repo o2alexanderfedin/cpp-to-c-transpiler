@@ -19,8 +19,23 @@ bool ConstructorSplitter::needsSplitting(const CXXRecordDecl* Record) const {
         return false;
     }
 
-    // Need splitting only if class has virtual bases
-    return ViAnalyzer.hasVirtualBases(Record);
+    // Need splitting if class has ANY virtual bases (direct or inherited through hierarchy)
+    // Check all bases - if any base is virtual, we need splitting
+    for (const auto& base : Record->bases()) {
+        if (base.isVirtual()) {
+            // Direct virtual base - definitely needs splitting
+            return true;
+        }
+
+        // Check if non-virtual base has virtual bases in its hierarchy
+        const auto* baseRecord = base.getType()->getAsCXXRecordDecl();
+        if (baseRecord && needsSplitting(baseRecord)) {
+            // Indirect virtual base through this non-virtual base
+            return true;
+        }
+    }
+
+    return false;
 }
 
 std::string ConstructorSplitter::generateC1Constructor(const CXXRecordDecl* Record) {

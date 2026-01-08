@@ -9,6 +9,9 @@
 #include "dispatch/ConstructorHandler.h"
 #include "CNodeBuilder.h"
 #include "MultipleInheritanceAnalyzer.h"
+#include "VirtualInheritanceAnalyzer.h"
+#include "ConstructorSplitter.h"
+#include "VTTGenerator.h"
 #include "NameMangler.h"
 #include "mapping/DeclMapper.h"
 #include "mapping/PathMapper.h"
@@ -50,6 +53,32 @@ void ConstructorHandler::handleConstructor(
     }
 
     std::string className = parentClass->getNameAsString();
+
+    // Check if class hierarchy has virtual bases (Task 6)
+    VirtualInheritanceAnalyzer viAnalyzer;
+    viAnalyzer.analyzeClass(parentClass);
+
+    bool needsC1C2Split = false;
+    // Check if ANY class in hierarchy has virtual bases
+    for (const auto& base : parentClass->bases()) {
+        const auto* baseRecord = base.getType()->getAsCXXRecordDecl();
+        if (baseRecord) {
+            viAnalyzer.analyzeClass(baseRecord);
+            if (viAnalyzer.hasVirtualBases(baseRecord)) {
+                needsC1C2Split = true;
+                break;
+            }
+        }
+    }
+
+    if (viAnalyzer.hasVirtualBases(parentClass)) {
+        needsC1C2Split = true;
+    }
+
+    if (needsC1C2Split) {
+        llvm::outs() << "[ConstructorHandler] Class " << className
+                     << " needs C1/C2 splitting (has virtual bases)\n";
+    }
 
     // Generate mangled function name using NameMangler API
     std::string funcName = cpptoc::mangle_constructor(ctor);
@@ -154,6 +183,30 @@ void ConstructorHandler::handleConstructor(
         if (i + 1 < allParams.size()) {
             declMapper.setCreated(cppParam, allParams[i + 1]);
         }
+    }
+
+    // Generate C1/C2 constructors for classes with virtual inheritance (Tasks 7, 8, 9)
+    if (needsC1C2Split) {
+        // Cast away const for ASTContext parameter (ConstructorSplitter requires non-const)
+        ConstructorSplitter splitter(const_cast<clang::ASTContext&>(cppASTContext), viAnalyzer);
+
+        // Generate C1 (complete object) constructor (Task 7)
+        std::string c1Code = splitter.generateC1Constructor(parentClass);
+        if (!c1Code.empty()) {
+            llvm::outs() << "[ConstructorHandler] Generated C1 constructor for "
+                         << className << ":\n" << c1Code << "\n";
+        }
+
+        // Generate C2 (base object) constructor (Task 8)
+        std::string c2Code = splitter.generateC2Constructor(parentClass);
+        if (!c2Code.empty()) {
+            llvm::outs() << "[ConstructorHandler] Generated C2 constructor for "
+                         << className << ":\n" << c2Code << "\n";
+        }
+
+        // TODO: Create C AST FunctionDecl nodes for C1 and C2 constructors
+        // TODO: Add VTT parameter (const void** vtt) to both constructors (Task 9)
+        // For Phase 2 MVP, string-based code generation is acceptable
     }
 }
 
