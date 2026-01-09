@@ -948,6 +948,223 @@ clang::CallExpr* ConstructorHandler::createBaseConstructorCall(
     return callExpr;
 }
 
+clang::CallExpr* ConstructorHandler::createBaseConstructorCallVariant(
+    const clang::CXXRecordDecl* baseClass,
+    clang::ParmVarDecl* thisParam,
+    unsigned offset,
+    const std::string& variantSuffix,
+    clang::ASTContext& cASTContext,
+    clang::SourceLocation targetLoc
+) {
+    std::string baseName = baseClass->getNameAsString();
+
+    // Find the default constructor
+    clang::CXXConstructorDecl* baseDefaultCtor = nullptr;
+    for (auto* ctor : baseClass->ctors()) {
+        if (ctor->isDefaultConstructor()) {
+            baseDefaultCtor = ctor;
+            break;
+        }
+    }
+
+    std::string baseCtorName;
+    if (baseDefaultCtor) {
+        baseCtorName = cpptoc::mangle_constructor(baseDefaultCtor) + variantSuffix;
+    } else {
+        baseCtorName = baseName + "_init" + variantSuffix;
+    }
+
+    // Find or create base constructor function declaration
+    auto* TU = cASTContext.getTranslationUnitDecl();
+    clang::FunctionDecl* baseCtorFunc = nullptr;
+    for (auto* D : TU->decls()) {
+        if (auto* FD = llvm::dyn_cast<clang::FunctionDecl>(D)) {
+            if (FD->getNameAsString() == baseCtorName) {
+                baseCtorFunc = FD;
+                break;
+            }
+        }
+    }
+
+    if (!baseCtorFunc) {
+        // Create forward declaration
+        // Determine the struct name based on variant suffix
+        std::string baseStructName = baseName;
+        if (variantSuffix == "_C2") {
+            baseStructName += "__base";
+        }
+
+        clang::RecordDecl* baseStruct = nullptr;
+        for (auto* D : TU->decls()) {
+            if (auto* RD = llvm::dyn_cast<clang::RecordDecl>(D)) {
+                if (RD->getNameAsString() == baseStructName) {
+                    baseStruct = RD;
+                    break;
+                }
+            }
+        }
+
+        if (!baseStruct) {
+            clang::IdentifierInfo& II = cASTContext.Idents.get(baseStructName);
+            baseStruct = clang::RecordDecl::Create(
+                cASTContext,
+                clang::TagTypeKind::Struct,
+                TU,
+                targetLoc,
+                targetLoc,
+                &II
+            );
+            baseStruct->startDefinition();
+            baseStruct->completeDefinition();
+            TU->addDecl(baseStruct);
+        }
+
+        clang::QualType baseType = cASTContext.getRecordType(baseStruct);
+        clang::QualType basePtrType = cASTContext.getPointerType(baseType);
+
+        clang::IdentifierInfo& thisII = cASTContext.Idents.get("this");
+        clang::ParmVarDecl* baseThisParam = clang::ParmVarDecl::Create(
+            cASTContext,
+            TU,
+            targetLoc,
+            targetLoc,
+            &thisII,
+            basePtrType,
+            cASTContext.getTrivialTypeSourceInfo(basePtrType),
+            clang::SC_None,
+            nullptr
+        );
+
+        clang::IdentifierInfo& funcII = cASTContext.Idents.get(baseCtorName);
+        baseCtorFunc = clang::FunctionDecl::Create(
+            cASTContext,
+            TU,
+            targetLoc,
+            targetLoc,
+            clang::DeclarationName(&funcII),
+            cASTContext.VoidTy,
+            cASTContext.getTrivialTypeSourceInfo(cASTContext.VoidTy),
+            clang::SC_None
+        );
+
+        baseCtorFunc->setParams({baseThisParam});
+        TU->addDecl(baseCtorFunc);
+    }
+
+    // Create argument expression
+    clang::DeclRefExpr* thisExpr = clang::DeclRefExpr::Create(
+        cASTContext,
+        clang::NestedNameSpecifierLoc(),
+        targetLoc,
+        thisParam,
+        false,
+        targetLoc,
+        thisParam->getType(),
+        clang::VK_LValue
+    );
+
+    clang::Expr* adjustedThis = thisExpr;
+
+    // Add offset for non-primary base
+    if (offset > 0) {
+        clang::QualType charPtrType = cASTContext.getPointerType(cASTContext.CharTy);
+        clang::CStyleCastExpr* charCast = clang::CStyleCastExpr::Create(
+            cASTContext,
+            charPtrType,
+            clang::VK_PRValue,
+            clang::CK_BitCast,
+            thisExpr,
+            nullptr,
+            clang::FPOptionsOverride(),
+            cASTContext.getTrivialTypeSourceInfo(charPtrType),
+            targetLoc,
+            targetLoc
+        );
+
+        llvm::APInt offsetValue(32, offset);
+        clang::IntegerLiteral* offsetLit = clang::IntegerLiteral::Create(
+            cASTContext,
+            offsetValue,
+            cASTContext.IntTy,
+            targetLoc
+        );
+
+        clang::BinaryOperator* addExpr = clang::BinaryOperator::Create(
+            cASTContext,
+            charCast,
+            offsetLit,
+            clang::BO_Add,
+            charPtrType,
+            clang::VK_PRValue,
+            clang::OK_Ordinary,
+            targetLoc,
+            clang::FPOptionsOverride()
+        );
+
+        adjustedThis = addExpr;
+    }
+
+    // Cast to base pointer type (determine struct name based on variant)
+    std::string baseStructName = baseName;
+    if (variantSuffix == "_C2") {
+        baseStructName += "__base";
+    }
+
+    clang::RecordDecl* baseStruct = nullptr;
+    for (auto* D : TU->decls()) {
+        if (auto* RD = llvm::dyn_cast<clang::RecordDecl>(D)) {
+            if (RD->getNameAsString() == baseStructName) {
+                baseStruct = RD;
+                break;
+            }
+        }
+    }
+
+    if (!baseStruct) {
+        return nullptr;
+    }
+
+    clang::QualType baseType = cASTContext.getRecordType(baseStruct);
+    clang::QualType basePtrType = cASTContext.getPointerType(baseType);
+
+    clang::CStyleCastExpr* baseCast = clang::CStyleCastExpr::Create(
+        cASTContext,
+        basePtrType,
+        clang::VK_PRValue,
+        clang::CK_BitCast,
+        adjustedThis,
+        nullptr,
+        clang::FPOptionsOverride(),
+        cASTContext.getTrivialTypeSourceInfo(basePtrType),
+        targetLoc,
+        targetLoc
+    );
+
+    // Create CallExpr
+    std::vector<clang::Expr*> args = {baseCast};
+
+    clang::CallExpr* callExpr = clang::CallExpr::Create(
+        cASTContext,
+        clang::DeclRefExpr::Create(
+            cASTContext,
+            clang::NestedNameSpecifierLoc(),
+            targetLoc,
+            baseCtorFunc,
+            false,
+            targetLoc,
+            baseCtorFunc->getType(),
+            clang::VK_LValue
+        ),
+        args,
+        cASTContext.VoidTy,
+        clang::VK_PRValue,
+        targetLoc,
+        clang::FPOptionsOverride()
+    );
+
+    return callExpr;
+}
+
 // Phase 3: Constructor Variant Generation
 
 bool ConstructorHandler::needsConstructorVariants(const clang::CXXConstructorDecl* ctor) {
@@ -1045,23 +1262,63 @@ void ConstructorHandler::generateC1Constructor(
 
     // C1: Initialize virtual bases FIRST (C1 responsibility)
     auto virtualBases = viAnalyzer.getVirtualBases(record);
+    unsigned vbaseIndex = 0;
     for (const auto* vbase : virtualBases) {
-        // TODO: Generate virtual base constructor calls
-        // For now, add a comment placeholder
-        llvm::outs() << "[ConstructorHandler] C1: TODO: Initialize virtual base "
-                     << vbase->getNameAsString() << "\n";
+        // Virtual bases use C1 constructor (they're complete objects when initialized)
+        std::string variantSuffix = RecordHandler::needsDualLayout(vbase) ? "_C1" : "";
+
+        // Calculate offset for virtual base (using layout from C++ AST)
+        unsigned offset = 0;
+        if (record->isCompleteDefinition() && vbaseIndex > 0) {
+            const clang::ASTRecordLayout& layout = cppASTContext.getASTRecordLayout(record);
+            clang::CharUnits vbaseOffset = layout.getVBaseClassOffset(vbase);
+            offset = static_cast<unsigned>(vbaseOffset.getQuantity());
+        }
+
+        clang::CallExpr* call = createBaseConstructorCallVariant(
+            vbase, thisParam, offset, variantSuffix, cASTContext, targetLoc
+        );
+
+        if (call) {
+            bodyStmts.push_back(call);
+            llvm::outs() << "[ConstructorHandler] C1: Initialize virtual base "
+                         << vbase->getNameAsString() << " with variant " << variantSuffix << "\n";
+        }
+
+        vbaseIndex++;
     }
 
     // Call non-virtual base constructors (use C2 variants if they have virtual bases)
+    unsigned baseIndex = 0;
     for (const auto& base : record->bases()) {
         if (base.isVirtual()) continue; // Skip virtual bases (already handled)
 
         const auto* baseRecord = base.getType()->getAsCXXRecordDecl();
         if (!baseRecord) continue;
 
-        // TODO: Generate base constructor call (C2 if base needs variants, C1 otherwise)
-        llvm::outs() << "[ConstructorHandler] C1: TODO: Call base constructor for "
-                     << baseRecord->getNameAsString() << "\n";
+        // If base needs dual layout, call C2 (base-subobject constructor)
+        // Otherwise, call normal constructor
+        std::string variantSuffix = RecordHandler::needsDualLayout(baseRecord) ? "_C2" : "";
+
+        // Calculate offset for non-primary base
+        unsigned offset = 0;
+        if (baseIndex > 0 && record->isCompleteDefinition()) {
+            const clang::ASTRecordLayout& layout = cppASTContext.getASTRecordLayout(record);
+            clang::CharUnits baseOffset = layout.getBaseClassOffset(baseRecord);
+            offset = static_cast<unsigned>(baseOffset.getQuantity());
+        }
+
+        clang::CallExpr* call = createBaseConstructorCallVariant(
+            baseRecord, thisParam, offset, variantSuffix, cASTContext, targetLoc
+        );
+
+        if (call) {
+            bodyStmts.push_back(call);
+            llvm::outs() << "[ConstructorHandler] C1: Call base constructor for "
+                         << baseRecord->getNameAsString() << " with variant " << variantSuffix << "\n";
+        }
+
+        baseIndex++;
     }
 
     // Add lpVtbl initialization
@@ -1187,15 +1444,36 @@ void ConstructorHandler::generateC2Constructor(
     // C2: SKIP virtual base initialization (parent's C1 handles it)
 
     // Call non-virtual base constructors (use C2 variants if they have virtual bases)
+    unsigned baseIndex = 0;
     for (const auto& base : record->bases()) {
         if (base.isVirtual()) continue; // Skip virtual bases
 
         const auto* baseRecord = base.getType()->getAsCXXRecordDecl();
         if (!baseRecord) continue;
 
-        // TODO: Generate base constructor call (C2 if base needs variants, C1 otherwise)
-        llvm::outs() << "[ConstructorHandler] C2: TODO: Call base constructor for "
-                     << baseRecord->getNameAsString() << "\n";
+        // If base needs dual layout, call C2 (base-subobject constructor)
+        // Otherwise, call normal constructor
+        std::string variantSuffix = RecordHandler::needsDualLayout(baseRecord) ? "_C2" : "";
+
+        // Calculate offset for non-primary base
+        unsigned offset = 0;
+        if (baseIndex > 0 && record->isCompleteDefinition()) {
+            const clang::ASTRecordLayout& layout = cppASTContext.getASTRecordLayout(record);
+            clang::CharUnits baseOffset = layout.getBaseClassOffset(baseRecord);
+            offset = static_cast<unsigned>(baseOffset.getQuantity());
+        }
+
+        clang::CallExpr* call = createBaseConstructorCallVariant(
+            baseRecord, thisParam, offset, variantSuffix, cASTContext, targetLoc
+        );
+
+        if (call) {
+            bodyStmts.push_back(call);
+            llvm::outs() << "[ConstructorHandler] C2: Call base constructor for "
+                         << baseRecord->getNameAsString() << " with variant " << variantSuffix << "\n";
+        }
+
+        baseIndex++;
     }
 
     // Add lpVtbl initialization

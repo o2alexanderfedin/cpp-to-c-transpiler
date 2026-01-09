@@ -207,6 +207,30 @@ private:
     );
 
     /**
+     * @brief Create call to base constructor with variant suffix
+     * @param baseClass Base class to initialize
+     * @param thisParam C this parameter
+     * @param offset Offset of base in derived class (0 for primary base)
+     * @param variantSuffix Constructor variant suffix ("_C1", "_C2", or "")
+     * @param cASTContext Target C ASTContext
+     * @param targetLoc Valid SourceLocation for C AST nodes
+     * @return CallExpr for base constructor variant
+     *
+     * Phase 3: Similar to createBaseConstructorCall but supports constructor variants.
+     * - If variantSuffix is "_C2", calls Base_ctor_C2 and uses Base__base* type
+     * - If variantSuffix is "_C1", calls Base_ctor_C1 and uses Base* type
+     * - If variantSuffix is "", calls Base_ctor and uses Base* type
+     */
+    static clang::CallExpr* createBaseConstructorCallVariant(
+        const clang::CXXRecordDecl* baseClass,
+        clang::ParmVarDecl* thisParam,
+        unsigned offset,
+        const std::string& variantSuffix,
+        clang::ASTContext& cASTContext,
+        clang::SourceLocation targetLoc
+    );
+
+    /**
      * @brief Phase 3: Check if constructor needs C1/C2 splitting
      * @param ctor Constructor to check
      * @return true if class needs dual constructor variants (has virtual bases)
