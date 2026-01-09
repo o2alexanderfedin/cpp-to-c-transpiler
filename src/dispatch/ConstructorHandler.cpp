@@ -1487,17 +1487,48 @@ void ConstructorHandler::generateC1Constructor(
 
     // C1: Initialize virtual bases FIRST (C1 responsibility)
     auto virtualBases = viAnalyzer.getVirtualBases(record);
-    unsigned vbaseIndex = 0;
     for (const auto* vbase : virtualBases) {
         // Virtual bases use C1 constructor (they're complete objects when initialized)
         std::string variantSuffix = RecordHandler::needsDualLayout(vbase) ? "_C1" : "";
 
-        // Calculate offset for virtual base (using layout from C++ AST)
+        // Calculate offset for virtual base using C struct layout
+        // Find the first field from the virtual base in the derived C struct
         unsigned offset = 0;
-        if (record->isCompleteDefinition() && vbaseIndex > 0) {
-            const clang::ASTRecordLayout& layout = cppASTContext.getASTRecordLayout(record);
-            clang::CharUnits vbaseOffset = layout.getVBaseClassOffset(vbase);
-            offset = static_cast<unsigned>(vbaseOffset.getQuantity());
+
+        // Get the C struct for the virtual base (or __base variant if it has virtual bases)
+        clang::RecordDecl* vbaseCStruct = nullptr;
+        cpptoc::DeclMapper& declMapper = const_cast<CppToCVisitorDispatcher&>(disp).getDeclMapper();
+
+        if (RecordHandler::needsDualLayout(vbase)) {
+            std::string vbaseStructName = cpptoc::mangle_class(vbase) + "__base";
+            cpptoc::PathMapper& pathMapper = const_cast<CppToCVisitorDispatcher&>(disp).getPathMapper();
+            clang::TranslationUnitDecl* TU = pathMapper.getOrCreateTU(targetPath);
+            for (auto* decl : TU->decls()) {
+                if (auto* RD = llvm::dyn_cast<clang::RecordDecl>(decl)) {
+                    if (RD->getName() == vbaseStructName) {
+                        vbaseCStruct = RD;
+                        break;
+                    }
+                }
+            }
+        } else if (declMapper.hasCreated(vbase)) {
+            vbaseCStruct = llvm::cast<clang::RecordDecl>(declMapper.getCreated(vbase));
+        }
+
+        if (vbaseCStruct && !vbaseCStruct->field_empty()) {
+            std::string firstFieldName = vbaseCStruct->field_begin()->getNameAsString();
+            const clang::ASTRecordLayout& derivedLayout = cASTContext.getASTRecordLayout(cRecordDecl);
+            unsigned fieldIdx = 0;
+            for (auto* field : cRecordDecl->fields()) {
+                if (field->getNameAsString() == firstFieldName) {
+                    uint64_t offsetInBits = derivedLayout.getFieldOffset(fieldIdx);
+                    offset = static_cast<unsigned>(offsetInBits / 8);
+                    llvm::outs() << "[ConstructorHandler] C1: Virtual base " << vbase->getNameAsString()
+                                 << " field '" << firstFieldName << "' found at offset " << offset << " bytes\n";
+                    break;
+                }
+                fieldIdx++;
+            }
         }
 
         clang::CallExpr* call = createBaseConstructorCallVariant(
@@ -1507,10 +1538,8 @@ void ConstructorHandler::generateC1Constructor(
         if (call) {
             bodyStmts.push_back(call);
             llvm::outs() << "[ConstructorHandler] C1: Initialize virtual base "
-                         << vbase->getNameAsString() << " with variant " << variantSuffix << "\n";
+                         << vbase->getNameAsString() << " with variant " << variantSuffix << " at offset " << offset << "\n";
         }
-
-        vbaseIndex++;
     }
 
     // Call non-virtual base constructors (use C2 variants if they have virtual bases)
@@ -1525,12 +1554,44 @@ void ConstructorHandler::generateC1Constructor(
         // Otherwise, call normal constructor
         std::string variantSuffix = RecordHandler::needsDualLayout(baseRecord) ? "_C2" : "";
 
-        // Calculate offset for non-primary base
+        // Calculate offset for non-primary base using C struct layout
         unsigned offset = 0;
-        if (baseIndex > 0 && record->isCompleteDefinition()) {
-            const clang::ASTRecordLayout& layout = cppASTContext.getASTRecordLayout(record);
-            clang::CharUnits baseOffset = layout.getBaseClassOffset(baseRecord);
-            offset = static_cast<unsigned>(baseOffset.getQuantity());
+        if (baseIndex > 0) {
+            // Find the C struct for the base (or __base variant if it has virtual bases)
+            clang::RecordDecl* baseCStruct = nullptr;
+            cpptoc::DeclMapper& declMapper = const_cast<CppToCVisitorDispatcher&>(disp).getDeclMapper();
+
+            if (RecordHandler::needsDualLayout(baseRecord)) {
+                std::string baseStructName = cpptoc::mangle_class(baseRecord) + "__base";
+                cpptoc::PathMapper& pathMapper = const_cast<CppToCVisitorDispatcher&>(disp).getPathMapper();
+                clang::TranslationUnitDecl* TU = pathMapper.getOrCreateTU(targetPath);
+                for (auto* decl : TU->decls()) {
+                    if (auto* RD = llvm::dyn_cast<clang::RecordDecl>(decl)) {
+                        if (RD->getName() == baseStructName) {
+                            baseCStruct = RD;
+                            break;
+                        }
+                    }
+                }
+            } else if (declMapper.hasCreated(baseRecord)) {
+                baseCStruct = llvm::cast<clang::RecordDecl>(declMapper.getCreated(baseRecord));
+            }
+
+            if (baseCStruct && !baseCStruct->field_empty()) {
+                std::string firstFieldName = baseCStruct->field_begin()->getNameAsString();
+                const clang::ASTRecordLayout& derivedLayout = cASTContext.getASTRecordLayout(cRecordDecl);
+                unsigned fieldIdx = 0;
+                for (auto* field : cRecordDecl->fields()) {
+                    if (field->getNameAsString() == firstFieldName) {
+                        uint64_t offsetInBits = derivedLayout.getFieldOffset(fieldIdx);
+                        offset = static_cast<unsigned>(offsetInBits / 8);
+                        llvm::outs() << "[ConstructorHandler] C1: Non-virtual base " << baseRecord->getNameAsString()
+                                     << " field '" << firstFieldName << "' found at offset " << offset << " bytes\n";
+                        break;
+                    }
+                    fieldIdx++;
+                }
+            }
         }
 
         clang::CallExpr* call = createBaseConstructorCallVariant(
@@ -1540,7 +1601,7 @@ void ConstructorHandler::generateC1Constructor(
         if (call) {
             bodyStmts.push_back(call);
             llvm::outs() << "[ConstructorHandler] C1: Call base constructor for "
-                         << baseRecord->getNameAsString() << " with variant " << variantSuffix << "\n";
+                         << baseRecord->getNameAsString() << " with variant " << variantSuffix << " at offset " << offset << "\n";
         }
 
         baseIndex++;
@@ -1687,12 +1748,45 @@ void ConstructorHandler::generateC2Constructor(
         // Otherwise, call normal constructor
         std::string variantSuffix = RecordHandler::needsDualLayout(baseRecord) ? "_C2" : "";
 
-        // Calculate offset for non-primary base
+        // Calculate offset for non-primary base using C struct layout
         unsigned offset = 0;
-        if (baseIndex > 0 && record->isCompleteDefinition()) {
-            const clang::ASTRecordLayout& layout = cppASTContext.getASTRecordLayout(record);
-            clang::CharUnits baseOffset = layout.getBaseClassOffset(baseRecord);
-            offset = static_cast<unsigned>(baseOffset.getQuantity());
+        if (baseIndex > 0) {
+            // Find the C struct for the base (or __base variant if it has virtual bases)
+            clang::RecordDecl* baseCStruct = nullptr;
+            cpptoc::DeclMapper& declMapper = const_cast<CppToCVisitorDispatcher&>(disp).getDeclMapper();
+
+            if (RecordHandler::needsDualLayout(baseRecord)) {
+                std::string baseStructName = cpptoc::mangle_class(baseRecord) + "__base";
+                cpptoc::PathMapper& pathMapper = const_cast<CppToCVisitorDispatcher&>(disp).getPathMapper();
+                clang::TranslationUnitDecl* TU = pathMapper.getOrCreateTU(targetPath);
+                for (auto* decl : TU->decls()) {
+                    if (auto* RD = llvm::dyn_cast<clang::RecordDecl>(decl)) {
+                        if (RD->getName() == baseStructName) {
+                            baseCStruct = RD;
+                            break;
+                        }
+                    }
+                }
+            } else if (declMapper.hasCreated(baseRecord)) {
+                baseCStruct = llvm::cast<clang::RecordDecl>(declMapper.getCreated(baseRecord));
+            }
+
+            if (baseCStruct && !baseCStruct->field_empty()) {
+                std::string firstFieldName = baseCStruct->field_begin()->getNameAsString();
+                // Use the base-subobject layout (cRecordDecl) for offset calculation
+                const clang::ASTRecordLayout& derivedLayout = cASTContext.getASTRecordLayout(cRecordDecl);
+                unsigned fieldIdx = 0;
+                for (auto* field : cRecordDecl->fields()) {
+                    if (field->getNameAsString() == firstFieldName) {
+                        uint64_t offsetInBits = derivedLayout.getFieldOffset(fieldIdx);
+                        offset = static_cast<unsigned>(offsetInBits / 8);
+                        llvm::outs() << "[ConstructorHandler] C2: Non-virtual base " << baseRecord->getNameAsString()
+                                     << " field '" << firstFieldName << "' found at offset " << offset << " bytes\n";
+                        break;
+                    }
+                    fieldIdx++;
+                }
+            }
         }
 
         clang::CallExpr* call = createBaseConstructorCallVariant(
@@ -1702,7 +1796,7 @@ void ConstructorHandler::generateC2Constructor(
         if (call) {
             bodyStmts.push_back(call);
             llvm::outs() << "[ConstructorHandler] C2: Call base constructor for "
-                         << baseRecord->getNameAsString() << " with variant " << variantSuffix << "\n";
+                         << baseRecord->getNameAsString() << " with variant " << variantSuffix << " at offset " << offset << "\n";
         }
 
         baseIndex++;
