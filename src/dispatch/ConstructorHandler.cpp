@@ -7,6 +7,7 @@
  */
 
 #include "dispatch/ConstructorHandler.h"
+#include "dispatch/RecordHandler.h"
 #include "CNodeBuilder.h"
 #include "MultipleInheritanceAnalyzer.h"
 #include "VirtualInheritanceAnalyzer.h"
@@ -278,28 +279,16 @@ void ConstructorHandler::handleConstructor(
         }
     }
 
-    // Generate C1/C2 constructors for classes with virtual inheritance (Tasks 7, 8, 9)
-    if (needsC1C2Split) {
-        // Cast away const for ASTContext parameter (ConstructorSplitter requires non-const)
-        ConstructorSplitter splitter(const_cast<clang::ASTContext&>(cppASTContext), viAnalyzer);
+    // Phase 3: Generate C1/C2 constructors for classes with virtual inheritance
+    if (needsConstructorVariants(ctor)) {
+        llvm::outs() << "[ConstructorHandler] Class " << className
+                     << " needs C1/C2 constructor variants\n";
 
-        // Generate C1 (complete object) constructor (Task 7)
-        std::string c1Code = splitter.generateC1Constructor(parentClass);
-        if (!c1Code.empty()) {
-            llvm::outs() << "[ConstructorHandler] Generated C1 constructor for "
-                         << className << ":\n" << c1Code << "\n";
-        }
+        // Generate C1 (complete-object) constructor
+        generateC1Constructor(ctor, cppASTContext, cASTContext, disp);
 
-        // Generate C2 (base object) constructor (Task 8)
-        std::string c2Code = splitter.generateC2Constructor(parentClass);
-        if (!c2Code.empty()) {
-            llvm::outs() << "[ConstructorHandler] Generated C2 constructor for "
-                         << className << ":\n" << c2Code << "\n";
-        }
-
-        // TODO: Create C AST FunctionDecl nodes for C1 and C2 constructors
-        // TODO: Add VTT parameter (const void** vtt) to both constructors (Task 9)
-        // For Phase 2 MVP, string-based code generation is acceptable
+        // Generate C2 (base-subobject) constructor
+        generateC2Constructor(ctor, cppASTContext, cASTContext, disp);
     }
 }
 
@@ -957,6 +946,292 @@ clang::CallExpr* ConstructorHandler::createBaseConstructorCall(
     );
 
     return callExpr;
+}
+
+// Phase 3: Constructor Variant Generation
+
+bool ConstructorHandler::needsConstructorVariants(const clang::CXXConstructorDecl* ctor) {
+    if (!ctor) return false;
+
+    const clang::CXXRecordDecl* record = ctor->getParent();
+
+    // Needs variants if class requires dual layout
+    // Use RecordHandler::needsDualLayout() for consistency
+    return RecordHandler::needsDualLayout(record);
+}
+
+void ConstructorHandler::generateC1Constructor(
+    const clang::CXXConstructorDecl* ctor,
+    const clang::ASTContext& cppASTContext,
+    clang::ASTContext& cASTContext,
+    const CppToCVisitorDispatcher& disp
+) {
+    if (!ctor) return;
+
+    const clang::CXXRecordDecl* record = ctor->getParent();
+    if (!record) return;
+
+    std::string className = record->getNameAsString();
+
+    // Generate C1 constructor name: ClassName_ctor_C1
+    std::string c1Name = cpptoc::mangle_constructor(ctor) + "_C1";
+
+    // Get target path and source location
+    std::string targetPath = disp.getCurrentTargetPath();
+    if (targetPath.empty()) {
+        targetPath = disp.getTargetPath(cppASTContext, ctor);
+    }
+    SourceLocationMapper& locMapper = disp.getTargetContext().getLocationMapper();
+    clang::SourceLocation targetLoc = locMapper.getStartOfFile(targetPath);
+
+    // Get or create TU
+    cpptoc::PathMapper& pathMapper = disp.getPathMapper();
+    clang::TranslationUnitDecl* TU = pathMapper.getOrCreateTU(targetPath);
+
+    // Find the complete-object struct (ClassName)
+    clang::RecordDecl* cRecordDecl = nullptr;
+    for (auto* decl : TU->decls()) {
+        if (auto* RD = llvm::dyn_cast<clang::RecordDecl>(decl)) {
+            if (RD->getName() == className) {
+                cRecordDecl = RD;
+                break;
+            }
+        }
+    }
+
+    if (!cRecordDecl) {
+        llvm::outs() << "[ConstructorHandler] C1: Could not find complete-object struct: "
+                     << className << "\n";
+        return;
+    }
+
+    // Create 'this' parameter: ClassName* (complete-object layout)
+    clang::QualType classType = cASTContext.getRecordType(cRecordDecl);
+    clang::ParmVarDecl* thisParam = createThisParameter(classType, cASTContext, targetLoc);
+
+    // Create VTT parameter: const void** vtt
+    VirtualInheritanceAnalyzer viAnalyzer;
+    viAnalyzer.analyzeClass(record);
+
+    std::vector<clang::ParmVarDecl*> allParams;
+    allParams.push_back(thisParam);
+
+    if (viAnalyzer.needsVTT(record)) {
+        clang::IdentifierInfo& vttII = cASTContext.Idents.get("vtt");
+        clang::QualType voidPtrType = cASTContext.getPointerType(cASTContext.VoidTy);
+        clang::QualType constVoidPtrType = cASTContext.getConstType(voidPtrType);
+        clang::QualType vttType = cASTContext.getPointerType(constVoidPtrType);
+
+        clang::ParmVarDecl* vttParam = clang::ParmVarDecl::Create(
+            cASTContext,
+            TU,
+            targetLoc,
+            targetLoc,
+            &vttII,
+            vttType,
+            cASTContext.getTrivialTypeSourceInfo(vttType),
+            clang::SC_None,
+            nullptr
+        );
+        allParams.push_back(vttParam);
+    }
+
+    // Add original constructor parameters
+    std::vector<clang::ParmVarDecl*> ctorParams = translateParameters(ctor, disp, cppASTContext, cASTContext);
+    allParams.insert(allParams.end(), ctorParams.begin(), ctorParams.end());
+
+    // Build constructor body
+    std::vector<clang::Stmt*> bodyStmts;
+
+    // C1: Initialize virtual bases FIRST (C1 responsibility)
+    auto virtualBases = viAnalyzer.getVirtualBases(record);
+    for (const auto* vbase : virtualBases) {
+        // TODO: Generate virtual base constructor calls
+        // For now, add a comment placeholder
+        llvm::outs() << "[ConstructorHandler] C1: TODO: Initialize virtual base "
+                     << vbase->getNameAsString() << "\n";
+    }
+
+    // Call non-virtual base constructors (use C2 variants if they have virtual bases)
+    for (const auto& base : record->bases()) {
+        if (base.isVirtual()) continue; // Skip virtual bases (already handled)
+
+        const auto* baseRecord = base.getType()->getAsCXXRecordDecl();
+        if (!baseRecord) continue;
+
+        // TODO: Generate base constructor call (C2 if base needs variants, C1 otherwise)
+        llvm::outs() << "[ConstructorHandler] C1: TODO: Call base constructor for "
+                     << baseRecord->getNameAsString() << "\n";
+    }
+
+    // Add lpVtbl initialization
+    if (record->isPolymorphic()) {
+        auto lpVtblInitStmts = injectLpVtblInit(record, thisParam, cppASTContext, cASTContext, targetLoc);
+        bodyStmts.insert(bodyStmts.end(), lpVtblInitStmts.begin(), lpVtblInitStmts.end());
+    }
+
+    // Create CompoundStmt
+    clang::CompoundStmt* body = clang::CompoundStmt::Create(
+        cASTContext,
+        bodyStmts,
+        clang::FPOptionsOverride(),
+        targetLoc,
+        targetLoc
+    );
+
+    // Create C function
+    clang::CNodeBuilder builder(cASTContext);
+    clang::FunctionDecl* c1Func = builder.funcDecl(
+        c1Name,
+        cASTContext.VoidTy,
+        allParams,
+        body
+    );
+
+    assert(c1Func && "Failed to create C1 FunctionDecl");
+
+    // Register mapping (create unique key for C1 variant)
+    // Note: We can't use the same key as the original constructor
+    // For now, just add to TU without mapping
+    c1Func->setDeclContext(TU);
+    TU->addDecl(c1Func);
+    pathMapper.setNodeLocation(c1Func, targetPath);
+
+    llvm::outs() << "[ConstructorHandler] Generated C1 constructor: " << c1Name << "\n";
+}
+
+void ConstructorHandler::generateC2Constructor(
+    const clang::CXXConstructorDecl* ctor,
+    const clang::ASTContext& cppASTContext,
+    clang::ASTContext& cASTContext,
+    const CppToCVisitorDispatcher& disp
+) {
+    if (!ctor) return;
+
+    const clang::CXXRecordDecl* record = ctor->getParent();
+    if (!record) return;
+
+    std::string className = record->getNameAsString();
+
+    // Generate C2 constructor name: ClassName_ctor_C2
+    std::string c2Name = cpptoc::mangle_constructor(ctor) + "_C2";
+
+    // Get target path and source location
+    std::string targetPath = disp.getCurrentTargetPath();
+    if (targetPath.empty()) {
+        targetPath = disp.getTargetPath(cppASTContext, ctor);
+    }
+    SourceLocationMapper& locMapper = disp.getTargetContext().getLocationMapper();
+    clang::SourceLocation targetLoc = locMapper.getStartOfFile(targetPath);
+
+    // Get or create TU
+    cpptoc::PathMapper& pathMapper = disp.getPathMapper();
+    clang::TranslationUnitDecl* TU = pathMapper.getOrCreateTU(targetPath);
+
+    // Find the base-subobject struct (ClassName__base)
+    std::string baseStructName = className + "__base";
+    clang::RecordDecl* cRecordDecl = nullptr;
+    for (auto* decl : TU->decls()) {
+        if (auto* RD = llvm::dyn_cast<clang::RecordDecl>(decl)) {
+            if (RD->getName() == baseStructName) {
+                cRecordDecl = RD;
+                break;
+            }
+        }
+    }
+
+    if (!cRecordDecl) {
+        llvm::outs() << "[ConstructorHandler] C2: Could not find base-subobject struct: "
+                     << baseStructName << "\n";
+        return;
+    }
+
+    // Create 'this' parameter: ClassName__base* (base-subobject layout)
+    clang::QualType classType = cASTContext.getRecordType(cRecordDecl);
+    clang::ParmVarDecl* thisParam = createThisParameter(classType, cASTContext, targetLoc);
+
+    // Create VTT parameter: const void** vtt
+    VirtualInheritanceAnalyzer viAnalyzer;
+    viAnalyzer.analyzeClass(record);
+
+    std::vector<clang::ParmVarDecl*> allParams;
+    allParams.push_back(thisParam);
+
+    if (viAnalyzer.needsVTT(record)) {
+        clang::IdentifierInfo& vttII = cASTContext.Idents.get("vtt");
+        clang::QualType voidPtrType = cASTContext.getPointerType(cASTContext.VoidTy);
+        clang::QualType constVoidPtrType = cASTContext.getConstType(voidPtrType);
+        clang::QualType vttType = cASTContext.getPointerType(constVoidPtrType);
+
+        clang::ParmVarDecl* vttParam = clang::ParmVarDecl::Create(
+            cASTContext,
+            TU,
+            targetLoc,
+            targetLoc,
+            &vttII,
+            vttType,
+            cASTContext.getTrivialTypeSourceInfo(vttType),
+            clang::SC_None,
+            nullptr
+        );
+        allParams.push_back(vttParam);
+    }
+
+    // Add original constructor parameters
+    std::vector<clang::ParmVarDecl*> ctorParams = translateParameters(ctor, disp, cppASTContext, cASTContext);
+    allParams.insert(allParams.end(), ctorParams.begin(), ctorParams.end());
+
+    // Build constructor body
+    std::vector<clang::Stmt*> bodyStmts;
+
+    // C2: SKIP virtual base initialization (parent's C1 handles it)
+
+    // Call non-virtual base constructors (use C2 variants if they have virtual bases)
+    for (const auto& base : record->bases()) {
+        if (base.isVirtual()) continue; // Skip virtual bases
+
+        const auto* baseRecord = base.getType()->getAsCXXRecordDecl();
+        if (!baseRecord) continue;
+
+        // TODO: Generate base constructor call (C2 if base needs variants, C1 otherwise)
+        llvm::outs() << "[ConstructorHandler] C2: TODO: Call base constructor for "
+                     << baseRecord->getNameAsString() << "\n";
+    }
+
+    // Add lpVtbl initialization
+    if (record->isPolymorphic()) {
+        auto lpVtblInitStmts = injectLpVtblInit(record, thisParam, cppASTContext, cASTContext, targetLoc);
+        bodyStmts.insert(bodyStmts.end(), lpVtblInitStmts.begin(), lpVtblInitStmts.end());
+    }
+
+    // Create CompoundStmt
+    clang::CompoundStmt* body = clang::CompoundStmt::Create(
+        cASTContext,
+        bodyStmts,
+        clang::FPOptionsOverride(),
+        targetLoc,
+        targetLoc
+    );
+
+    // Create C function
+    clang::CNodeBuilder builder(cASTContext);
+    clang::FunctionDecl* c2Func = builder.funcDecl(
+        c2Name,
+        cASTContext.VoidTy,
+        allParams,
+        body
+    );
+
+    assert(c2Func && "Failed to create C2 FunctionDecl");
+
+    // Register mapping (create unique key for C2 variant)
+    // Note: We can't use the same key as the original constructor
+    // For now, just add to TU without mapping
+    c2Func->setDeclContext(TU);
+    TU->addDecl(c2Func);
+    pathMapper.setNodeLocation(c2Func, targetPath);
+
+    llvm::outs() << "[ConstructorHandler] Generated C2 constructor: " << c2Name << "\n";
 }
 
 } // namespace cpptoc

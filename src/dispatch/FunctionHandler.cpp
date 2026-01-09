@@ -60,6 +60,20 @@ void FunctionHandler::handleFunction(
         return;
     }
 
+    // Filter out implicit functions (e.g., operator new/delete)
+    if (cppFunc->isImplicit()) {
+        llvm::outs() << "[FunctionHandler] Skipping implicit function: "
+                     << cppFunc->getNameAsString() << "\n";
+        return;
+    }
+
+    // Filter out overloaded operators (C++ specific)
+    if (cppFunc->isOverloadedOperator()) {
+        llvm::outs() << "[FunctionHandler] Skipping overloaded operator: "
+                     << cppFunc->getNameAsString() << "\n";
+        return;
+    }
+
     // Extract function properties
     std::string name = cppFunc->getNameAsString();
 

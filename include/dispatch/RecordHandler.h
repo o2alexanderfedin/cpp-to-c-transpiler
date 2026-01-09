@@ -124,6 +124,26 @@ public:
      */
     static void registerWith(CppToCVisitorDispatcher& dispatcher);
 
+    /**
+     * @brief Check if a class needs dual layout generation
+     * @param cxxRecord C++ class declaration
+     * @return true if class needs both ClassName and ClassName__base layouts
+     *
+     * A class needs dual layout if:
+     * 1. It has virtual bases (direct or indirect), OR
+     * 2. It is used as a base in a virtual hierarchy
+     *
+     * Per Itanium C++ ABI, classes with virtual bases require:
+     * - ClassName__base: Base-subobject layout (excludes virtual base fields)
+     * - ClassName: Complete-object layout (includes virtual base fields)
+     *
+     * Uses VirtualInheritanceAnalyzer for detection.
+     *
+     * This method is public so ConstructorHandler can use it to determine
+     * if constructor C1/C2 variants are needed.
+     */
+    static bool needsDualLayout(const clang::CXXRecordDecl* cxxRecord);
+
 private:
     /**
      * @brief Predicate: Check if declaration is EXACTLY RecordDecl or CXXRecordDecl
@@ -231,23 +251,6 @@ private:
         clang::ASTContext& cASTContext,
         const std::string& outerName
     );
-
-    /**
-     * @brief Check if a class needs dual layout generation
-     * @param cxxRecord C++ class declaration
-     * @return true if class needs both ClassName and ClassName__base layouts
-     *
-     * A class needs dual layout if:
-     * 1. It has virtual bases (direct or indirect), OR
-     * 2. It is used as a base in a virtual hierarchy
-     *
-     * Per Itanium C++ ABI, classes with virtual bases require:
-     * - ClassName__base: Base-subobject layout (excludes virtual base fields)
-     * - ClassName: Complete-object layout (includes virtual base fields)
-     *
-     * Uses VirtualInheritanceAnalyzer for detection.
-     */
-    static bool needsDualLayout(const clang::CXXRecordDecl* cxxRecord);
 
     /**
      * @brief Generate base-subobject layout (ClassName__base)

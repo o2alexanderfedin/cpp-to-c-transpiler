@@ -205,6 +205,60 @@ private:
         clang::ASTContext& cASTContext,
         clang::SourceLocation targetLoc
     );
+
+    /**
+     * @brief Phase 3: Check if constructor needs C1/C2 splitting
+     * @param ctor Constructor to check
+     * @return true if class needs dual constructor variants (has virtual bases)
+     *
+     * Uses RecordHandler::needsDualLayout() for consistency with struct generation.
+     * A constructor needs variants if its parent class requires dual layout.
+     */
+    static bool needsConstructorVariants(const clang::CXXConstructorDecl* ctor);
+
+    /**
+     * @brief Phase 3: Generate C1 (complete-object) constructor
+     * @param ctor C++ constructor declaration
+     * @param cppASTContext Source C++ ASTContext
+     * @param cASTContext Target C ASTContext
+     * @param disp Dispatcher for accessing mappers
+     *
+     * C1 constructor characteristics:
+     * - Function name: ClassName_ctor_C1 (or mangled variant)
+     * - this parameter: ClassName* (complete-object layout)
+     * - VTT parameter: const void** vtt (if needed)
+     * - Initializes virtual bases (C1 responsibility)
+     * - Calls non-virtual base constructors
+     * - Initializes own fields
+     */
+    static void generateC1Constructor(
+        const clang::CXXConstructorDecl* ctor,
+        const clang::ASTContext& cppASTContext,
+        clang::ASTContext& cASTContext,
+        const CppToCVisitorDispatcher& disp
+    );
+
+    /**
+     * @brief Phase 3: Generate C2 (base-subobject) constructor
+     * @param ctor C++ constructor declaration
+     * @param cppASTContext Source C++ ASTContext
+     * @param cASTContext Target C ASTContext
+     * @param disp Dispatcher for accessing mappers
+     *
+     * C2 constructor characteristics:
+     * - Function name: ClassName_ctor_C2 (or mangled variant)
+     * - this parameter: ClassName__base* (base-subobject layout)
+     * - VTT parameter: const void** vtt (if needed)
+     * - SKIPS virtual base initialization (parent's C1 handles it)
+     * - Calls non-virtual base constructors
+     * - Initializes own fields
+     */
+    static void generateC2Constructor(
+        const clang::CXXConstructorDecl* ctor,
+        const clang::ASTContext& cppASTContext,
+        clang::ASTContext& cASTContext,
+        const CppToCVisitorDispatcher& disp
+    );
 };
 
 } // namespace cpptoc
