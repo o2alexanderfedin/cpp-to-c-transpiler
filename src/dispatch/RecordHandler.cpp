@@ -179,6 +179,58 @@ void RecordHandler::handleRecord(
         return;
     }
 
+    // Phase 2: Check if dual layout generation is needed
+    const clang::CXXRecordDecl* cxxRecord = llvm::dyn_cast<clang::CXXRecordDecl>(cppRecord);
+    if (cxxRecord && needsDualLayout(cxxRecord)) {
+        llvm::outs() << "[RecordHandler] Generating dual layout for " << name << " (virtual inheritance detected)\n";
+
+        // Generate BOTH layouts per Itanium C++ ABI:
+        // 1. Base-subobject layout (ClassName__base) - for use as base class
+        clang::RecordDecl* baseLayout = generateBaseSubobjectLayout(cxxRecord, cppASTContext, cASTContext, disp);
+
+        // 2. Complete-object layout (ClassName) - for most-derived objects
+        clang::RecordDecl* completeLayout = generateCompleteObjectLayout(cxxRecord, cppASTContext, cASTContext, disp);
+
+        if (!baseLayout || !completeLayout) {
+            llvm::errs() << "[RecordHandler] ERROR: Failed to generate dual layout for " << name << "\n";
+            return;
+        }
+
+        // Store both layouts in DeclMapper
+        // The complete-object layout is the "primary" mapping for most contexts
+        declMapper.setCreated(canonicalRecord, completeLayout);
+        if (cppRecord != canonicalRecord) {
+            declMapper.setCreated(cppRecord, completeLayout);
+        }
+
+        // Get target path and TU
+        clang::TranslationUnitDecl* cTU = pathMapper.getOrCreateTU(targetPath);
+        assert(cTU && "Failed to get/create C TranslationUnit");
+
+        // Add BOTH structs to C TranslationUnit
+        baseLayout->setDeclContext(cTU);
+        cTU->addDecl(baseLayout);
+        pathMapper.setNodeLocation(baseLayout, targetPath);
+
+        completeLayout->setDeclContext(cTU);
+        cTU->addDecl(completeLayout);
+        pathMapper.setNodeLocation(completeLayout, targetPath);
+
+        // Dispatch member declarations (constructors, methods, destructors)
+        for (auto* memberDecl : cxxRecord->decls()) {
+            disp.dispatch(cppASTContext, cASTContext, memberDecl);
+        }
+
+        llvm::outs() << "[RecordHandler] Successfully generated dual layout for " << name << ":\n";
+        llvm::outs() << "  - Base-subobject: " << mangledName << "__base\n";
+        llvm::outs() << "  - Complete-object: " << mangledName << "\n";
+
+        return;  // Early return - dual layout path complete
+    }
+
+    // SINGLE LAYOUT PATH (existing code continues below)
+    // For classes without virtual inheritance, generate single layout
+
     // Create identifier for struct name (use mangled name for nested structs)
     clang::IdentifierInfo& II = cASTContext.Idents.get(mangledName);
 
@@ -215,13 +267,12 @@ void RecordHandler::handleRecord(
     // Start definition
     cRecord->startDefinition();
 
-    // Analyze virtual inheritance (if applicable)
+    // Analyze virtual inheritance (if applicable) - reuse cxxRecord from dual layout check above
     bool hasVirtualBases = false;
     std::vector<const clang::CXXRecordDecl*> virtualBases;
     VirtualInheritanceAnalyzer viAnalyzer;
-    const clang::CXXRecordDecl* cxxRecord = nullptr;
 
-    if ((cxxRecord = llvm::dyn_cast<clang::CXXRecordDecl>(cppRecord))) {
+    if (cxxRecord) {
         viAnalyzer.analyzeClass(cxxRecord);
 
         hasVirtualBases = viAnalyzer.hasVirtualBases(cxxRecord);
@@ -680,6 +731,332 @@ void RecordHandler::translateNestedStructs(
             }
         }
     }
+}
+
+bool RecordHandler::needsDualLayout(const clang::CXXRecordDecl* cxxRecord) {
+    if (!cxxRecord) return false;
+
+    VirtualInheritanceAnalyzer viAnalyzer;
+    viAnalyzer.analyzeClass(cxxRecord);
+
+    // Needs dual layout if:
+    // 1. Has virtual bases (direct or indirect), OR
+    // 2. Is used as base in a virtual hierarchy (detected by VTT generation need)
+    //
+    // Per Itanium C++ ABI:
+    // - Classes with virtual bases need both base-subobject and complete-object layouts
+    // - Base-subobject layout (ClassName__base) excludes virtual base fields
+    // - Complete-object layout (ClassName) includes virtual base fields
+    return viAnalyzer.hasVirtualBases(cxxRecord) ||
+           viAnalyzer.needsVTT(cxxRecord);
+}
+
+clang::RecordDecl* RecordHandler::generateBaseSubobjectLayout(
+    const clang::CXXRecordDecl* cxxRecord,
+    const clang::ASTContext& cppASTContext,
+    clang::ASTContext& cASTContext,
+    const CppToCVisitorDispatcher& disp
+) {
+    if (!cxxRecord) return nullptr;
+
+    // Get mangled name and add "__base" suffix
+    std::string mangledName = cpptoc::mangle_class(cxxRecord) + "__base";
+
+    // Get source location
+    clang::SourceLocation targetLoc = disp.getTargetSourceLocation(cppASTContext, cxxRecord);
+
+    // Create identifier
+    clang::IdentifierInfo& II = cASTContext.Idents.get(mangledName);
+
+    // Create C struct with "__base" suffix
+    clang::RecordDecl* cRecord = clang::RecordDecl::Create(
+        cASTContext,
+        #if LLVM_VERSION_MAJOR >= 16
+        clang::TagTypeKind::Struct,
+        #else
+        clang::TTK_Struct,
+        #endif
+        cASTContext.getTranslationUnitDecl(),
+        targetLoc,
+        targetLoc,
+        &II
+    );
+
+    if (!cRecord) return nullptr;
+
+    // Start definition
+    cRecord->startDefinition();
+
+    // Analyze virtual inheritance
+    VirtualInheritanceAnalyzer viAnalyzer;
+    viAnalyzer.analyzeClass(cxxRecord);
+    bool hasVirtualBases = viAnalyzer.hasVirtualBases(cxxRecord);
+
+    std::vector<clang::FieldDecl*> allFields;
+
+    // 1. Inject vbptr if needed (for classes with virtual bases)
+    if (hasVirtualBases) {
+        clang::QualType vbptrType = cASTContext.getPointerType(
+            cASTContext.getPointerType(cASTContext.VoidTy.withConst())
+        );
+
+        clang::IdentifierInfo& vbptrII = cASTContext.Idents.get("vbptr");
+
+        clang::FieldDecl* vbptrField = clang::FieldDecl::Create(
+            cASTContext,
+            cRecord,
+            targetLoc,
+            targetLoc,
+            &vbptrII,
+            vbptrType,
+            cASTContext.getTrivialTypeSourceInfo(vbptrType),
+            nullptr,  // No bit width
+            false,    // Not mutable
+            clang::ICIS_NoInit
+        );
+
+        vbptrField->setAccess(clang::AS_public);
+        vbptrField->setDeclContext(cRecord);
+        allFields.push_back(vbptrField);
+    }
+
+    // 2. Include non-virtual base fields (but NOT virtual base fields)
+    cpptoc::DeclMapper& declMapper = disp.getDeclMapper();
+    std::set<std::string> addedFieldNames;
+
+    for (const auto& base : cxxRecord->bases()) {
+        if (base.isVirtual()) continue;  // Skip virtual bases
+
+        const clang::CXXRecordDecl* baseRecord = base.getType()->getAsCXXRecordDecl();
+        if (!baseRecord) continue;
+
+        // Look up the C struct for this base (might be __base or regular depending on its needs)
+        if (declMapper.hasCreated(baseRecord)) {
+            clang::RecordDecl* cBaseRecord = llvm::cast<clang::RecordDecl>(declMapper.getCreated(baseRecord));
+
+            for (auto* baseField : cBaseRecord->fields()) {
+                std::string fieldName = baseField->getNameAsString();
+
+                // Skip vbptr and duplicates
+                if (fieldName == "vbptr" || addedFieldNames.count(fieldName) > 0) {
+                    continue;
+                }
+
+                clang::FieldDecl* copiedField = clang::FieldDecl::Create(
+                    cASTContext,
+                    cRecord,
+                    targetLoc,
+                    targetLoc,
+                    baseField->getIdentifier(),
+                    baseField->getType(),
+                    baseField->getTypeSourceInfo(),
+                    nullptr,  // No bit width
+                    false,    // Not mutable
+                    clang::ICIS_NoInit
+                );
+
+                copiedField->setAccess(clang::AS_public);
+                copiedField->setDeclContext(cRecord);
+                allFields.push_back(copiedField);
+                addedFieldNames.insert(fieldName);
+            }
+        }
+    }
+
+    // 3. Include own fields
+    std::vector<clang::FieldDecl*> ownFields = translateFields(cxxRecord, cRecord, disp, cppASTContext, cASTContext);
+    for (auto* field : ownFields) {
+        std::string fieldName = field->getNameAsString();
+        if (addedFieldNames.count(fieldName) == 0) {
+            allFields.push_back(field);
+            addedFieldNames.insert(fieldName);
+        }
+    }
+
+    // Add all fields to struct
+    for (auto* field : allFields) {
+        field->setDeclContext(cRecord);
+        cRecord->addDecl(field);
+    }
+
+    // Complete definition
+    cRecord->completeDefinition();
+
+    llvm::outs() << "[RecordHandler] Generated base-subobject layout: " << mangledName
+                 << " (" << allFields.size() << " fields)\n";
+
+    return cRecord;
+}
+
+clang::RecordDecl* RecordHandler::generateCompleteObjectLayout(
+    const clang::CXXRecordDecl* cxxRecord,
+    const clang::ASTContext& cppASTContext,
+    clang::ASTContext& cASTContext,
+    const CppToCVisitorDispatcher& disp
+) {
+    if (!cxxRecord) return nullptr;
+
+    // Get mangled name (no suffix for complete object)
+    std::string mangledName = cpptoc::mangle_class(cxxRecord);
+
+    // Get source location
+    clang::SourceLocation targetLoc = disp.getTargetSourceLocation(cppASTContext, cxxRecord);
+
+    // Create identifier
+    clang::IdentifierInfo& II = cASTContext.Idents.get(mangledName);
+
+    // Create C struct (normal name)
+    clang::RecordDecl* cRecord = clang::RecordDecl::Create(
+        cASTContext,
+        #if LLVM_VERSION_MAJOR >= 16
+        clang::TagTypeKind::Struct,
+        #else
+        clang::TTK_Struct,
+        #endif
+        cASTContext.getTranslationUnitDecl(),
+        targetLoc,
+        targetLoc,
+        &II
+    );
+
+    if (!cRecord) return nullptr;
+
+    // Start definition
+    cRecord->startDefinition();
+
+    // Analyze virtual inheritance
+    VirtualInheritanceAnalyzer viAnalyzer;
+    viAnalyzer.analyzeClass(cxxRecord);
+
+    std::vector<clang::FieldDecl*> allFields;
+    std::set<std::string> addedFieldNames;
+    cpptoc::DeclMapper& declMapper = disp.getDeclMapper();
+
+    // Collect all virtual bases (direct + indirect)
+    std::set<const clang::CXXRecordDecl*> allVirtualBases;
+    std::function<void(const clang::CXXRecordDecl*)> collectVirtualBases;
+    collectVirtualBases = [&](const clang::CXXRecordDecl* record) {
+        for (const auto& base : record->bases()) {
+            if (const clang::CXXRecordDecl* baseRecord = base.getType()->getAsCXXRecordDecl()) {
+                if (base.isVirtual()) {
+                    allVirtualBases.insert(baseRecord->getCanonicalDecl());
+                }
+                collectVirtualBases(baseRecord);
+            }
+        }
+    };
+    collectVirtualBases(cxxRecord);
+
+    // 1. Include non-virtual base fields (but not their virtual base fields)
+    for (const auto& base : cxxRecord->bases()) {
+        if (base.isVirtual()) continue;  // Handle virtual bases separately
+
+        const clang::CXXRecordDecl* baseRecord = base.getType()->getAsCXXRecordDecl();
+        if (!baseRecord) continue;
+
+        if (declMapper.hasCreated(baseRecord)) {
+            clang::RecordDecl* cBaseRecord = llvm::cast<clang::RecordDecl>(declMapper.getCreated(baseRecord));
+
+            for (auto* baseField : cBaseRecord->fields()) {
+                std::string fieldName = baseField->getNameAsString();
+
+                // Skip vbptr and duplicates
+                if (fieldName == "vbptr" || addedFieldNames.count(fieldName) > 0) {
+                    continue;
+                }
+
+                clang::FieldDecl* copiedField = clang::FieldDecl::Create(
+                    cASTContext,
+                    cRecord,
+                    targetLoc,
+                    targetLoc,
+                    baseField->getIdentifier(),
+                    baseField->getType(),
+                    baseField->getTypeSourceInfo(),
+                    nullptr,  // No bit width
+                    false,    // Not mutable
+                    clang::ICIS_NoInit
+                );
+
+                copiedField->setAccess(clang::AS_public);
+                copiedField->setDeclContext(cRecord);
+                allFields.push_back(copiedField);
+                addedFieldNames.insert(fieldName);
+            }
+        }
+    }
+
+    // 2. Include own fields
+    std::vector<clang::FieldDecl*> ownFields = translateFields(cxxRecord, cRecord, disp, cppASTContext, cASTContext);
+    for (auto* field : ownFields) {
+        std::string fieldName = field->getNameAsString();
+        if (addedFieldNames.count(fieldName) == 0) {
+            allFields.push_back(field);
+            addedFieldNames.insert(fieldName);
+        }
+    }
+
+    // 3. Include virtual base fields AT END
+    for (const clang::CXXRecordDecl* vbaseRecord : allVirtualBases) {
+        if (declMapper.hasCreated(vbaseRecord)) {
+            clang::RecordDecl* cVbaseRecord = llvm::cast<clang::RecordDecl>(declMapper.getCreated(vbaseRecord));
+
+            // Get the ORIGINAL C++ fields
+            if (vbaseRecord->getDefinition()) {
+                for (auto* originalField : vbaseRecord->fields()) {
+                    std::string fieldName = originalField->getNameAsString();
+
+                    // Skip if already added
+                    if (addedFieldNames.count(fieldName) > 0) {
+                        continue;
+                    }
+
+                    // Find corresponding C field in cVbaseRecord
+                    clang::FieldDecl* cVbaseField = nullptr;
+                    for (auto* field : cVbaseRecord->fields()) {
+                        if (field->getNameAsString() == fieldName) {
+                            cVbaseField = field;
+                            break;
+                        }
+                    }
+
+                    if (cVbaseField) {
+                        clang::FieldDecl* copiedField = clang::FieldDecl::Create(
+                            cASTContext,
+                            cRecord,
+                            targetLoc,
+                            targetLoc,
+                            cVbaseField->getIdentifier(),
+                            cVbaseField->getType(),
+                            cVbaseField->getTypeSourceInfo(),
+                            nullptr,  // No bit width
+                            false,    // Not mutable
+                            clang::ICIS_NoInit
+                        );
+
+                        copiedField->setAccess(clang::AS_public);
+                        copiedField->setDeclContext(cRecord);
+                        allFields.push_back(copiedField);
+                        addedFieldNames.insert(fieldName);
+                    }
+                }
+            }
+        }
+    }
+
+    // Add all fields to struct
+    for (auto* field : allFields) {
+        field->setDeclContext(cRecord);
+        cRecord->addDecl(field);
+    }
+
+    // Complete definition
+    cRecord->completeDefinition();
+
+    llvm::outs() << "[RecordHandler] Generated complete-object layout: " << mangledName
+                 << " (" << allFields.size() << " fields)\n";
+
+    return cRecord;
 }
 
 // Phase 4: Migrated to NameMangler free function API (mangle_class)

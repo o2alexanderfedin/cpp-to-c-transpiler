@@ -232,6 +232,80 @@ private:
         const std::string& outerName
     );
 
+    /**
+     * @brief Check if a class needs dual layout generation
+     * @param cxxRecord C++ class declaration
+     * @return true if class needs both ClassName and ClassName__base layouts
+     *
+     * A class needs dual layout if:
+     * 1. It has virtual bases (direct or indirect), OR
+     * 2. It is used as a base in a virtual hierarchy
+     *
+     * Per Itanium C++ ABI, classes with virtual bases require:
+     * - ClassName__base: Base-subobject layout (excludes virtual base fields)
+     * - ClassName: Complete-object layout (includes virtual base fields)
+     *
+     * Uses VirtualInheritanceAnalyzer for detection.
+     */
+    static bool needsDualLayout(const clang::CXXRecordDecl* cxxRecord);
+
+    /**
+     * @brief Generate base-subobject layout (ClassName__base)
+     * @param cxxRecord C++ class declaration
+     * @param cppASTContext Source C++ ASTContext
+     * @param cASTContext Target C ASTContext
+     * @param disp Dispatcher for accessing mappers and handlers
+     * @return Created C RecordDecl for base-subobject layout, or nullptr on failure
+     *
+     * Generates ClassName__base struct per Itanium C++ ABI:
+     * 1. Create struct with "__base" suffix
+     * 2. Include vbptr if class has virtual bases (using VptrInjector)
+     * 3. Include non-virtual base class fields
+     * 4. Include own fields
+     * 5. EXCLUDE virtual base fields (those belong in complete-object layout)
+     *
+     * Field ordering follows Itanium ABI:
+     * - vbptr (if needed)
+     * - Non-virtual base fields
+     * - Own fields
+     *
+     * Used when class is a base-subobject within another class.
+     */
+    static clang::RecordDecl* generateBaseSubobjectLayout(
+        const clang::CXXRecordDecl* cxxRecord,
+        const clang::ASTContext& cppASTContext,
+        clang::ASTContext& cASTContext,
+        const CppToCVisitorDispatcher& disp
+    );
+
+    /**
+     * @brief Generate complete-object layout (ClassName)
+     * @param cxxRecord C++ class declaration
+     * @param cppASTContext Source C++ ASTContext
+     * @param cASTContext Target C ASTContext
+     * @param disp Dispatcher for accessing mappers and handlers
+     * @return Created C RecordDecl for complete-object layout, or nullptr on failure
+     *
+     * Generates ClassName struct per Itanium C++ ABI:
+     * 1. Create struct with normal name (no suffix)
+     * 2. Include all base class fields (virtual and non-virtual)
+     * 3. Include own fields
+     * 4. Include virtual base fields AT END
+     *
+     * Field ordering follows Itanium ABI:
+     * - Non-virtual base fields
+     * - Own fields
+     * - Virtual base fields (at end)
+     *
+     * Used when class is the most-derived object being constructed.
+     */
+    static clang::RecordDecl* generateCompleteObjectLayout(
+        const clang::CXXRecordDecl* cxxRecord,
+        const clang::ASTContext& cppASTContext,
+        clang::ASTContext& cASTContext,
+        const CppToCVisitorDispatcher& disp
+    );
+
     // Phase 3: Removed getMangledName() declaration
     // Name mangling now handled by NameMangler::mangleClassName()
     // This provides unified, consistent name mangling across all handlers
