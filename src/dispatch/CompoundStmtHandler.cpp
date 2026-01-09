@@ -4,10 +4,12 @@
  */
 
 #include "dispatch/CompoundStmtHandler.h"
+#include "dispatch/RecordHandler.h"
 #include "mapping/StmtMapper.h"
 #include "mapping/DeclMapper.h"
 #include "mapping/ExprMapper.h"
 #include "SourceLocationMapper.h"
+#include "NameMangler.h"
 #include "clang/AST/Stmt.h"
 #include "clang/AST/Decl.h"
 #include "clang/AST/DeclCXX.h"
@@ -166,22 +168,52 @@ void CompoundStmtHandler::handleCompoundStmt(
                     continue;
                 }
 
-                // Get the C constructor function from DeclMapper
-                clang::Decl* cCtorDecl = declMapper.getCreated(cppCtor);
-                if (!cCtorDecl) {
-                    llvm::errs() << "[CompoundStmtHandler] WARNING: C constructor not found in DeclMapper for "
-                                 << cppCtor->getNameAsString() << "\n";
-                    continue;
+                // PHASE 57: Check if class has virtual bases - if so, use C1 constructor variant
+                const clang::CXXRecordDecl* parentClass = cppCtor->getParent();
+                bool needsC1Constructor = false;
+                std::string constructorName;
+
+                if (parentClass && RecordHandler::needsDualLayout(parentClass)) {
+                    needsC1Constructor = true;
+                    constructorName = cpptoc::mangle_constructor(cppCtor) + "_C1";
+                    llvm::outs() << "[CompoundStmtHandler] Class " << parentClass->getNameAsString()
+                                 << " has virtual bases, using C1 constructor: " << constructorName << "\n";
+                } else {
+                    // Regular constructor for classes without virtual bases
+                    clang::Decl* cCtorDecl = declMapper.getCreated(cppCtor);
+                    if (!cCtorDecl) {
+                        llvm::errs() << "[CompoundStmtHandler] WARNING: C constructor not found in DeclMapper for "
+                                     << cppCtor->getNameAsString() << "\n";
+                        continue;
+                    }
+
+                    auto* cCtorFunc = llvm::dyn_cast<clang::FunctionDecl>(cCtorDecl);
+                    if (!cCtorFunc) {
+                        llvm::errs() << "[CompoundStmtHandler] ERROR: C constructor is not FunctionDecl\n";
+                        continue;
+                    }
+                    constructorName = cCtorFunc->getNameAsString();
                 }
 
-                auto* cCtorFunc = llvm::dyn_cast<clang::FunctionDecl>(cCtorDecl);
+                llvm::outs() << "[CompoundStmtHandler] Using constructor function: " << constructorName << "\n";
+
+                // Find or create the constructor function declaration by name
+                auto* TU = cASTContext.getTranslationUnitDecl();
+                clang::FunctionDecl* cCtorFunc = nullptr;
+                for (auto* D : TU->decls()) {
+                    if (auto* FD = llvm::dyn_cast<clang::FunctionDecl>(D)) {
+                        if (FD->getNameAsString() == constructorName) {
+                            cCtorFunc = FD;
+                            break;
+                        }
+                    }
+                }
+
                 if (!cCtorFunc) {
-                    llvm::errs() << "[CompoundStmtHandler] ERROR: C constructor is not FunctionDecl\n";
+                    llvm::errs() << "[CompoundStmtHandler] ERROR: Constructor function not found: "
+                                 << constructorName << "\n";
                     continue;
                 }
-
-                llvm::outs() << "[CompoundStmtHandler] Found C constructor function: "
-                             << cCtorFunc->getNameAsString() << "\n";
 
                 // Get source location for generated code
                 SourceLocationMapper& locMapper = disp.getTargetContext().getLocationMapper();
@@ -231,6 +263,33 @@ void CompoundStmtHandler::handleCompoundStmt(
                 // Create CallExpr for constructor call: Constructor__ctor(&var)
                 std::vector<clang::Expr*> ctorArgs;
                 ctorArgs.push_back(addrOf);
+
+                // C1 constructors need VTT parameter (NULL for now)
+                if (needsC1Constructor) {
+                    // Create NULL literal for VTT parameter
+                    clang::QualType vttType = cASTContext.getPointerType(
+                        cASTContext.getPointerType(cASTContext.getConstType(cASTContext.VoidTy))
+                    );
+                    clang::Expr* nullExpr = clang::CStyleCastExpr::Create(
+                        cASTContext,
+                        vttType,
+                        clang::VK_PRValue,
+                        clang::CK_NullToPointer,
+                        clang::IntegerLiteral::Create(
+                            cASTContext,
+                            llvm::APInt(32, 0),
+                            cASTContext.IntTy,
+                            targetLoc
+                        ),
+                        nullptr,
+                        clang::FPOptionsOverride(),
+                        cASTContext.getTrivialTypeSourceInfo(vttType),
+                        targetLoc,
+                        targetLoc
+                    );
+                    ctorArgs.push_back(nullExpr);
+                    llvm::outs() << "[CompoundStmtHandler] Added VTT parameter (NULL) to C1 constructor call\n";
+                }
 
                 // Add any additional constructor arguments from the CXXConstructExpr
                 cpptoc::ExprMapper& exprMapper = disp.getExprMapper();

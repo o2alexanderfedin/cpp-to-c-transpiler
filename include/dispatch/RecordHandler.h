@@ -309,6 +309,50 @@ private:
         const CppToCVisitorDispatcher& disp
     );
 
+    /**
+     * @brief Generate implicit C1 (complete-object) constructor for class without explicit constructors
+     * @param cxxRecord C++ class declaration
+     * @param cppASTContext Source C++ ASTContext
+     * @param cASTContext Target C ASTContext
+     * @param disp Dispatcher for accessing mappers and handlers
+     *
+     * Generates default C1 constructor when class has virtual inheritance but no explicit constructors.
+     * C1 constructor is responsible for:
+     * 1. Initializing all virtual bases (most-derived class responsibility)
+     * 2. Calling C2 (base-subobject) constructors for non-virtual bases
+     * 3. Initializing own member fields (if non-POD)
+     *
+     * Generated function signature: void ClassName__ctor__void_C1(struct ClassName* this)
+     */
+    static void generateImplicitC1Constructor(
+        const clang::CXXRecordDecl* cxxRecord,
+        const clang::ASTContext& cppASTContext,
+        clang::ASTContext& cASTContext,
+        const CppToCVisitorDispatcher& disp
+    );
+
+    /**
+     * @brief Generate implicit C2 (base-subobject) constructor for class without explicit constructors
+     * @param cxxRecord C++ class declaration
+     * @param cppASTContext Source C++ ASTContext
+     * @param cASTContext Target C ASTContext
+     * @param disp Dispatcher for accessing mappers and handlers
+     *
+     * Generates default C2 constructor when class has virtual inheritance but no explicit constructors.
+     * C2 constructor is responsible for:
+     * 1. Skipping virtual base initialization (parent's C1 handles it)
+     * 2. Calling C2 (base-subobject) constructors for non-virtual bases
+     * 3. Initializing own member fields (if non-POD)
+     *
+     * Generated function signature: void ClassName__ctor__void_C2(struct ClassName__base* this)
+     */
+    static void generateImplicitC2Constructor(
+        const clang::CXXRecordDecl* cxxRecord,
+        const clang::ASTContext& cppASTContext,
+        clang::ASTContext& cASTContext,
+        const CppToCVisitorDispatcher& disp
+    );
+
     // Phase 3: Removed getMangledName() declaration
     // Name mangling now handled by NameMangler::mangleClassName()
     // This provides unified, consistent name mangling across all handlers
