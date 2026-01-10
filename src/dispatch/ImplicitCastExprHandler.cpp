@@ -6,6 +6,8 @@
 #include "dispatch/ImplicitCastExprHandler.h"
 #include "dispatch/TypeHandler.h"
 #include "mapping/ExprMapper.h"
+#include "mapping/DeclMapper.h"
+#include "mapping/FieldOffsetMapper.h"
 #include "clang/AST/Expr.h"
 #include "clang/AST/ExprCXX.h"
 #include "clang/AST/DeclCXX.h"
@@ -13,6 +15,7 @@
 #include "llvm/Support/Casting.h"
 #include "llvm/Support/raw_ostream.h"
 #include <cassert>
+#include <algorithm>
 
 namespace cpptoc {
 
@@ -116,14 +119,93 @@ void ImplicitCastExprHandler::handleImplicitCast(
         }
 
         if (derivedClass && baseClass) {
-            // Get the layout and calculate virtual base offset
-            const clang::ASTRecordLayout& layout = cppASTContext.getASTRecordLayout(derivedClass);
-            clang::CharUnits offset = layout.getVBaseClassOffset(baseClass);
+            // CRITICAL: Use C struct layout offset, NOT C++ ABI offset
+            // In C, virtual base fields become regular fields at end of struct
+            // E.g., struct D { int b_data; int c_data; int d_data; int a_data; }
+            // where a_data is the virtual base A's field at offset 12, not C++ ABI offset 32
 
-            llvm::outs() << "[ImplicitCastExprHandler] Virtual base offset from "
-                         << derivedClass->getNameAsString() << " to "
-                         << baseClass->getNameAsString() << ": "
-                         << offset.getQuantity() << " bytes\n";
+            unsigned offset = 0;
+
+            // Get C RecordDecl for derived class
+            const clang::RecordDecl* cDerivedRecord = nullptr;
+            if (disp.getDeclMapper().hasCreated(derivedClass)) {
+                auto* cDecl = disp.getDeclMapper().getCreated(derivedClass);
+                cDerivedRecord = llvm::dyn_cast_or_null<clang::RecordDecl>(cDecl);
+            }
+
+            if (!cDerivedRecord) {
+                llvm::errs() << "[ImplicitCastExprHandler] ERROR: C RecordDecl not found for "
+                             << derivedClass->getNameAsString() << "\n";
+                // Fall back to C++ ABI offset (will likely be wrong)
+                const clang::ASTRecordLayout& layout = cppASTContext.getASTRecordLayout(derivedClass);
+                offset = layout.getVBaseClassOffset(baseClass).getQuantity();
+                llvm::outs() << "[ImplicitCastExprHandler] WARNING: Using C++ ABI offset (may be incorrect): "
+                             << offset << " bytes\n";
+            } else {
+                // Look up virtual base field offset in C struct
+                // Virtual base fields are stored with their original field names, not class names
+                // E.g., struct Level0 { int val0; } -> struct Level3 { ... int val0; }
+
+                std::string baseFieldName = baseClass->getNameAsString();
+
+                // Strategy 1: Try class name patterns (for classes like A -> a_data pattern)
+                offset = disp.getFieldOffsetMapper().getFieldOffset(cDerivedRecord, baseFieldName);
+
+                if (offset == 0) {
+                    std::string lowerBaseName = baseFieldName;
+                    std::transform(lowerBaseName.begin(), lowerBaseName.end(), lowerBaseName.begin(), ::tolower);
+                    offset = disp.getFieldOffsetMapper().getFieldOffset(cDerivedRecord, lowerBaseName);
+
+                    if (offset == 0) {
+                        offset = disp.getFieldOffsetMapper().getFieldOffset(cDerivedRecord, lowerBaseName + "_data");
+                    }
+                }
+
+                if (offset == 0) {
+                    offset = disp.getFieldOffsetMapper().getFieldOffset(cDerivedRecord, baseFieldName + "_data");
+                }
+
+                // Strategy 2: Look up first field from base class and find it in derived
+                if (offset == 0 && baseClass->field_begin() != baseClass->field_end()) {
+                    // Get first non-static field from base class
+                    for (const auto* baseField : baseClass->fields()) {
+                        std::string baseFieldActualName = baseField->getNameAsString();
+                        offset = disp.getFieldOffsetMapper().getFieldOffset(cDerivedRecord, baseFieldActualName);
+
+                        if (offset != 0) {
+                            llvm::outs() << "[ImplicitCastExprHandler] Found virtual base via field name: "
+                                         << baseFieldActualName << " at offset " << offset << "\n";
+                            break;
+                        }
+                    }
+                }
+
+                // Strategy 3: Case-insensitive search (fallback)
+                if (offset == 0) {
+                    std::string lowerBaseName = baseFieldName;
+                    std::transform(lowerBaseName.begin(), lowerBaseName.end(), lowerBaseName.begin(), ::tolower);
+
+                    for (const auto* field : cDerivedRecord->fields()) {
+                        std::string fieldName = field->getNameAsString();
+                        std::string lowerFieldName = fieldName;
+                        std::transform(lowerFieldName.begin(), lowerFieldName.end(), lowerFieldName.begin(), ::tolower);
+
+                        if (lowerFieldName == lowerBaseName ||
+                            lowerFieldName == lowerBaseName + "_data" ||
+                            lowerFieldName.find(lowerBaseName) != std::string::npos) {
+                            offset = disp.getFieldOffsetMapper().getFieldOffset(cDerivedRecord, fieldName);
+                            llvm::outs() << "[ImplicitCastExprHandler] Found virtual base field: "
+                                         << fieldName << " at offset " << offset << "\n";
+                            break;
+                        }
+                    }
+                }
+
+                llvm::outs() << "[ImplicitCastExprHandler] C struct offset from "
+                             << derivedClass->getNameAsString() << " to "
+                             << baseClass->getNameAsString() << ": "
+                             << offset << " bytes\n";
+            }
 
             // Build pointer arithmetic: (TargetType*)((char*)expr + offset)
             // If expr is not a pointer, take its address first
@@ -163,8 +245,8 @@ void ImplicitCastExprHandler::handleImplicitCast(
                 clang::SourceLocation()
             );
 
-            // Step 2: Create integer literal for offset
-            llvm::APInt offsetValue(64, offset.getQuantity());
+            // Step 2: Create integer literal for offset (offset is already in bytes)
+            llvm::APInt offsetValue(64, offset);
             clang::IntegerLiteral* offsetLiteral = clang::IntegerLiteral::Create(
                 cASTContext,
                 offsetValue,
