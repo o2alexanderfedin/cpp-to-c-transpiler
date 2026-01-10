@@ -96,6 +96,9 @@ void MemberExprHandler::handleMemberExpr(
 
     // Create C MemberExpr with translated base
     // CRITICAL: Preserve arrow vs dot flag for correct C semantics
+    // Use C value kinds (VK_LValue) instead of preserving C++ value kinds
+    // which might have template-dependent information that causes printPretty()
+    // to emit "template" keyword
     clang::MemberExpr* cMemberExpr = clang::MemberExpr::Create(
         cASTContext,
         cBase,
@@ -108,8 +111,8 @@ void MemberExprHandler::handleMemberExpr(
         clang::DeclarationNameInfo(cMemberDecl->getDeclName(), targetLoc),
         nullptr,  // TemplateArgs (no templates in C)
         cType,  // Use translated C type
-        cppMemberExpr->getValueKind(),
-        cppMemberExpr->getObjectKind(),
+        clang::VK_LValue,  // Use C value kind, not C++ value kind
+        clang::OK_Ordinary,  // Use ordinary object kind, not C++ object kind
         clang::NOUR_None  // NonOdrUseReason
     );
 

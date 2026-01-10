@@ -461,7 +461,22 @@ void CodeGenerator::printStmt(Stmt *S, unsigned Indent) {
     // Use Clang's built-in StmtPrinter (via Stmt::printPretty)
     // KISS: Leverage existing, tested infrastructure
     OS << std::string(Indent, '\t');
-    S->printPretty(OS, nullptr, Policy, 0);  // Use 0 indent since we handle it above
+
+    // WORKAROUND: Print to string first, then post-process to remove "template" keyword
+    // Clang's printPretty() sometimes emits "template" keyword even when TemplateKWLoc is invalid
+    // This happens with certain member access patterns in virtual inheritance
+    std::string output;
+    llvm::raw_string_ostream tempOS(output);
+    S->printPretty(tempOS, nullptr, Policy, 0);
+    tempOS.flush();
+
+    // Remove "template " keyword if present (note the space after "template")
+    size_t pos = 0;
+    while ((pos = output.find("template ", pos)) != std::string::npos) {
+        output.erase(pos, 9);  // Remove "template " (9 characters including space)
+    }
+
+    OS << output;
 
     // Bug #22: Add semicolon for bare expressions
     // When we recursively handle CompoundStmt, some child "statements" are actually
@@ -1035,5 +1050,18 @@ void CodeGenerator::printExpr(Expr *E) {
     // - DeclRefExpr points to C declarations with correct names
     //
     // No translation logic needed - just emit what's in the C AST.
-    E->printPretty(OS, nullptr, Policy, 0);
+
+    // WORKAROUND: Print to string first, then post-process to remove "template" keyword
+    std::string output;
+    llvm::raw_string_ostream tempOS(output);
+    E->printPretty(tempOS, nullptr, Policy, 0);
+    tempOS.flush();
+
+    // Remove "template " keyword if present
+    size_t pos = 0;
+    while ((pos = output.find("template ", pos)) != std::string::npos) {
+        output.erase(pos, 9);  // Remove "template " (9 characters including space)
+    }
+
+    OS << output;
 }
