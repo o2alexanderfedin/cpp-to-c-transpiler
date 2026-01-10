@@ -385,11 +385,8 @@ TEST_F(VirtualInheritanceE2ETest, DISABLED_NonPODVirtualBases) {
 // ============================================================================
 // Test 7: Casting with Virtual Inheritance
 // ============================================================================
-// DISABLED: Requires pointer adjustment for virtual base casts (not yet implemented)
-// Expected failure: exit code 25 (actual) vs 35 (expected)
-// Root cause: ImplicitCastExpr doesn't emit pointer arithmetic for virtual inheritance
 
-TEST_F(VirtualInheritanceE2ETest, DISABLED_CastingWithVirtualInheritance) {
+TEST_F(VirtualInheritanceE2ETest, CastingWithVirtualInheritance) {
     const char* cppCode = R"(
         struct Base {
             int x;

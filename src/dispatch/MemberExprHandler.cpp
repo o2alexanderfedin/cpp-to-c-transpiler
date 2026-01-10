@@ -94,15 +94,24 @@ void MemberExprHandler::handleMemberExpr(
     // Translate type from C++ to C ASTContext
     clang::QualType cType = TypeHandler::translateType(cppMemberExpr->getType(), cppASTContext, cASTContext);
 
+    // Determine if we should use arrow notation
+    // CRITICAL: Virtual base pointer adjustment converts value access to pointer access
+    // If C base is a pointer but C++ used '.', we must use '->' in C
+    bool useArrow = isArrow;
+    clang::QualType cBaseType = cBase->getType();
+    if (!useArrow && cBaseType->isPointerType()) {
+        llvm::outs() << "[MemberExprHandler] Base is pointer but C++ used '.', converting to '->'\n";
+        useArrow = true;
+    }
+
     // Create C MemberExpr with translated base
-    // CRITICAL: Preserve arrow vs dot flag for correct C semantics
     // Use C value kinds (VK_LValue) instead of preserving C++ value kinds
     // which might have template-dependent information that causes printPretty()
     // to emit "template" keyword
     clang::MemberExpr* cMemberExpr = clang::MemberExpr::Create(
         cASTContext,
         cBase,
-        isArrow,  // Preserve arrow vs dot distinction
+        useArrow,  // Use arrow if base is pointer
         targetLoc,  // OperatorLoc
         clang::NestedNameSpecifierLoc(),  // QualifierLoc (no qualifiers in C)
         clang::SourceLocation(),  // TemplateKWLoc - No template keyword in C (MUST be invalid to prevent "template" in output)
@@ -117,7 +126,7 @@ void MemberExprHandler::handleMemberExpr(
     );
 
     llvm::outs() << "[MemberExprHandler] Created C MemberExpr: "
-                 << (isArrow ? "->" : ".") << cMemberDecl->getNameAsString() << "\n";
+                 << (useArrow ? "->" : ".") << cMemberDecl->getNameAsString() << "\n";
 
     // Store mapping in ExprMapper
     exprMapper.setCreated(E, cMemberExpr);
