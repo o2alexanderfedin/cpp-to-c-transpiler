@@ -33,8 +33,8 @@ protected:
 
     void SetUp() override {
         ctx = createUnitTestContext();
-        ctx.dispatcher->registerHandler<RecordHandler>();
-        ctx.dispatcher->registerHandler<ConstructorHandler>();
+        RecordHandler::registerWith(*ctx.dispatcher);
+        ConstructorHandler::registerWith(*ctx.dispatcher);
         analyzer = std::make_unique<VirtualInheritanceAnalyzer>();
     }
 
