@@ -99,7 +99,6 @@ protected:
         ExprMapper exprMapper;
         StmtMapper stmtMapper;
         FieldOffsetMapper fieldOffsetMapper;
-    FieldOffsetMapper fieldOffsetMapper;
 
         auto dispatcher = createDispatcher(mapper, locMapper, declMapper, typeMapper, exprMapper, stmtMapper, fieldOffsetMapper, targetCtx);
 
@@ -168,7 +167,6 @@ TEST_F(FunctionHandlerTest, EmptyFunction) {
     ExprMapper exprMapper;
     StmtMapper stmtMapper;
         FieldOffsetMapper fieldOffsetMapper;
-    FieldOffsetMapper fieldOffsetMapper;
 
     // Create dispatcher and register handlers
     auto dispatcher = createDispatcher(mapper, locMapper, declMapper, typeMapper, exprMapper, stmtMapper, fieldOffsetMapper, targetCtx);
@@ -236,7 +234,6 @@ TEST_F(FunctionHandlerTest, FunctionWithIntReturn) {
     ExprMapper exprMapper;
     StmtMapper stmtMapper;
         FieldOffsetMapper fieldOffsetMapper;
-    FieldOffsetMapper fieldOffsetMapper;
 
     auto dispatcher = createDispatcher(mapper, locMapper, declMapper, typeMapper, exprMapper, stmtMapper, fieldOffsetMapper, targetCtx);
 
@@ -297,7 +294,6 @@ TEST_F(FunctionHandlerTest, FunctionWithFloatReturn) {
     ExprMapper exprMapper;
     StmtMapper stmtMapper;
         FieldOffsetMapper fieldOffsetMapper;
-    FieldOffsetMapper fieldOffsetMapper;
 
     auto dispatcher = createDispatcher(mapper, locMapper, declMapper, typeMapper, exprMapper, stmtMapper, fieldOffsetMapper, targetCtx);
 
@@ -368,7 +364,6 @@ TEST_F(FunctionHandlerTest, FunctionWithLValueReferenceParameter) {
     ExprMapper exprMapper;
     StmtMapper stmtMapper;
         FieldOffsetMapper fieldOffsetMapper;
-    FieldOffsetMapper fieldOffsetMapper;
 
     auto dispatcher = createDispatcher(mapper, locMapper, declMapper, typeMapper, exprMapper, stmtMapper, fieldOffsetMapper, targetCtx);
 
@@ -441,7 +436,6 @@ TEST_F(FunctionHandlerTest, FunctionWithConstReferenceParameter) {
     ExprMapper exprMapper;
     StmtMapper stmtMapper;
         FieldOffsetMapper fieldOffsetMapper;
-    FieldOffsetMapper fieldOffsetMapper;
 
     auto dispatcher = createDispatcher(mapper, locMapper, declMapper, typeMapper, exprMapper, stmtMapper, fieldOffsetMapper, targetCtx);
 
@@ -511,7 +505,6 @@ TEST_F(FunctionHandlerTest, FunctionWithMultipleReferenceParameters) {
     ExprMapper exprMapper;
     StmtMapper stmtMapper;
         FieldOffsetMapper fieldOffsetMapper;
-    FieldOffsetMapper fieldOffsetMapper;
 
     auto dispatcher = createDispatcher(mapper, locMapper, declMapper, typeMapper, exprMapper, stmtMapper, fieldOffsetMapper, targetCtx);
 
@@ -585,7 +578,6 @@ TEST_F(FunctionHandlerTest, FunctionWithReferenceReturnType) {
     ExprMapper exprMapper;
     StmtMapper stmtMapper;
         FieldOffsetMapper fieldOffsetMapper;
-    FieldOffsetMapper fieldOffsetMapper;
 
     auto dispatcher = createDispatcher(mapper, locMapper, declMapper, typeMapper, exprMapper, stmtMapper, fieldOffsetMapper, targetCtx);
 
@@ -652,7 +644,6 @@ TEST_F(FunctionHandlerTest, FunctionWithMixedParameters) {
     ExprMapper exprMapper;
     StmtMapper stmtMapper;
         FieldOffsetMapper fieldOffsetMapper;
-    FieldOffsetMapper fieldOffsetMapper;
 
     auto dispatcher = createDispatcher(mapper, locMapper, declMapper, typeMapper, exprMapper, stmtMapper, fieldOffsetMapper, targetCtx);
 
@@ -743,7 +734,6 @@ TEST_F(FunctionHandlerTest, FunctionWithStructParameterByValue) {
     ExprMapper exprMapper;
     StmtMapper stmtMapper;
         FieldOffsetMapper fieldOffsetMapper;
-    FieldOffsetMapper fieldOffsetMapper;
 
     auto dispatcher = createDispatcher(mapper, locMapper, declMapper, typeMapper, exprMapper, stmtMapper, fieldOffsetMapper, targetCtx);
 
@@ -816,7 +806,6 @@ TEST_F(FunctionHandlerTest, FunctionWithStructParameterByPointer) {
     ExprMapper exprMapper;
     StmtMapper stmtMapper;
         FieldOffsetMapper fieldOffsetMapper;
-    FieldOffsetMapper fieldOffsetMapper;
 
     auto dispatcher = createDispatcher(mapper, locMapper, declMapper, typeMapper, exprMapper, stmtMapper, fieldOffsetMapper, targetCtx);
 
@@ -888,7 +877,6 @@ TEST_F(FunctionHandlerTest, FunctionReturningStructByValue) {
     ExprMapper exprMapper;
     StmtMapper stmtMapper;
         FieldOffsetMapper fieldOffsetMapper;
-    FieldOffsetMapper fieldOffsetMapper;
 
     auto dispatcher = createDispatcher(mapper, locMapper, declMapper, typeMapper, exprMapper, stmtMapper, fieldOffsetMapper, targetCtx);
 
@@ -956,7 +944,6 @@ TEST_F(FunctionHandlerTest, FunctionReturningStructPointer) {
     ExprMapper exprMapper;
     StmtMapper stmtMapper;
         FieldOffsetMapper fieldOffsetMapper;
-    FieldOffsetMapper fieldOffsetMapper;
 
     auto dispatcher = createDispatcher(mapper, locMapper, declMapper, typeMapper, exprMapper, stmtMapper, fieldOffsetMapper, targetCtx);
 
@@ -1024,7 +1011,6 @@ TEST_F(FunctionHandlerTest, FunctionWithMultipleStructParameters) {
     ExprMapper exprMapper;
     StmtMapper stmtMapper;
         FieldOffsetMapper fieldOffsetMapper;
-    FieldOffsetMapper fieldOffsetMapper;
 
     auto dispatcher = createDispatcher(mapper, locMapper, declMapper, typeMapper, exprMapper, stmtMapper, fieldOffsetMapper, targetCtx);
 
