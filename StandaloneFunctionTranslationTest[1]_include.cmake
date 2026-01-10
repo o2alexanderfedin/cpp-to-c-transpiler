@@ -1,0 +1,5 @@
+if(EXISTS "/Users/alexanderfedin/Projects/hapyy/hupyy-cpp-to-c/StandaloneFunctionTranslationTest[1]_tests.cmake")
+  include("/Users/alexanderfedin/Projects/hapyy/hupyy-cpp-to-c/StandaloneFunctionTranslationTest[1]_tests.cmake")
+else()
+  add_test(StandaloneFunctionTranslationTest_NOT_BUILT StandaloneFunctionTranslationTest_NOT_BUILT)
+endif()

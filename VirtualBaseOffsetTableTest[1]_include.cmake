@@ -1,0 +1,5 @@
+if(EXISTS "/Users/alexanderfedin/Projects/hapyy/hupyy-cpp-to-c/VirtualBaseOffsetTableTest[1]_tests.cmake")
+  include("/Users/alexanderfedin/Projects/hapyy/hupyy-cpp-to-c/VirtualBaseOffsetTableTest[1]_tests.cmake")
+else()
+  add_test(VirtualBaseOffsetTableTest_NOT_BUILT VirtualBaseOffsetTableTest_NOT_BUILT)
+endif()

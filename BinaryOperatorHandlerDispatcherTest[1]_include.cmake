@@ -1,0 +1,5 @@
+if(EXISTS "/Users/alexanderfedin/Projects/hapyy/hupyy-cpp-to-c/BinaryOperatorHandlerDispatcherTest[1]_tests.cmake")
+  include("/Users/alexanderfedin/Projects/hapyy/hupyy-cpp-to-c/BinaryOperatorHandlerDispatcherTest[1]_tests.cmake")
+else()
+  add_test(BinaryOperatorHandlerDispatcherTest_NOT_BUILT BinaryOperatorHandlerDispatcherTest_NOT_BUILT)
+endif()

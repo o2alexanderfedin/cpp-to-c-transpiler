@@ -1,0 +1,5 @@
+if(EXISTS "/Users/alexanderfedin/Projects/hapyy/hupyy-cpp-to-c/LiteralHandlerDispatcherTest[1]_tests.cmake")
+  include("/Users/alexanderfedin/Projects/hapyy/hupyy-cpp-to-c/LiteralHandlerDispatcherTest[1]_tests.cmake")
+else()
+  add_test(LiteralHandlerDispatcherTest_NOT_BUILT LiteralHandlerDispatcherTest_NOT_BUILT)
+endif()

@@ -1,0 +1,5 @@
+if(EXISTS "/Users/alexanderfedin/Projects/hapyy/hupyy-cpp-to-c/MonomorphizationTest[1]_tests.cmake")
+  include("/Users/alexanderfedin/Projects/hapyy/hupyy-cpp-to-c/MonomorphizationTest[1]_tests.cmake")
+else()
+  add_test(MonomorphizationTest_NOT_BUILT MonomorphizationTest_NOT_BUILT)
+endif()

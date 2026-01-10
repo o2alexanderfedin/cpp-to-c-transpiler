@@ -1,0 +1,5 @@
+if(EXISTS "/Users/alexanderfedin/Projects/hapyy/hupyy-cpp-to-c/VtableInitializerTest[1]_tests.cmake")
+  include("/Users/alexanderfedin/Projects/hapyy/hupyy-cpp-to-c/VtableInitializerTest[1]_tests.cmake")
+else()
+  add_test(VtableInitializerTest_NOT_BUILT VtableInitializerTest_NOT_BUILT)
+endif()

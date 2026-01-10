@@ -1,0 +1,5 @@
+if(EXISTS "/Users/alexanderfedin/Projects/hapyy/hupyy-cpp-to-c/CXXOperatorCallExprHandlerDispatcherTest[1]_tests.cmake")
+  include("/Users/alexanderfedin/Projects/hapyy/hupyy-cpp-to-c/CXXOperatorCallExprHandlerDispatcherTest[1]_tests.cmake")
+else()
+  add_test(CXXOperatorCallExprHandlerDispatcherTest_NOT_BUILT CXXOperatorCallExprHandlerDispatcherTest_NOT_BUILT)
+endif()

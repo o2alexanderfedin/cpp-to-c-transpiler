@@ -1,0 +1,5 @@
+if(EXISTS "/Users/alexanderfedin/Projects/hapyy/hupyy-cpp-to-c/ConstevalIfTranslatorTest[1]_tests.cmake")
+  include("/Users/alexanderfedin/Projects/hapyy/hupyy-cpp-to-c/ConstevalIfTranslatorTest[1]_tests.cmake")
+else()
+  add_test(ConstevalIfTranslatorTest_NOT_BUILT ConstevalIfTranslatorTest_NOT_BUILT)
+endif()

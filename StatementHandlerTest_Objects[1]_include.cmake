@@ -1,0 +1,5 @@
+if(EXISTS "/Users/alexanderfedin/Projects/hapyy/hupyy-cpp-to-c/StatementHandlerTest_Objects[1]_tests.cmake")
+  include("/Users/alexanderfedin/Projects/hapyy/hupyy-cpp-to-c/StatementHandlerTest_Objects[1]_tests.cmake")
+else()
+  add_test(StatementHandlerTest_Objects_NOT_BUILT StatementHandlerTest_Objects_NOT_BUILT)
+endif()

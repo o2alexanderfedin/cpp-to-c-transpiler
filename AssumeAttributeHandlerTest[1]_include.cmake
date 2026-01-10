@@ -1,0 +1,5 @@
+if(EXISTS "/Users/alexanderfedin/Projects/hapyy/hupyy-cpp-to-c/AssumeAttributeHandlerTest[1]_tests.cmake")
+  include("/Users/alexanderfedin/Projects/hapyy/hupyy-cpp-to-c/AssumeAttributeHandlerTest[1]_tests.cmake")
+else()
+  add_test(AssumeAttributeHandlerTest_NOT_BUILT AssumeAttributeHandlerTest_NOT_BUILT)
+endif()

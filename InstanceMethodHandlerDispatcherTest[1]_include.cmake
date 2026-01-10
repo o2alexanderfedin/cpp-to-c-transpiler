@@ -1,0 +1,5 @@
+if(EXISTS "/Users/alexanderfedin/Projects/hapyy/hupyy-cpp-to-c/InstanceMethodHandlerDispatcherTest[1]_tests.cmake")
+  include("/Users/alexanderfedin/Projects/hapyy/hupyy-cpp-to-c/InstanceMethodHandlerDispatcherTest[1]_tests.cmake")
+else()
+  add_test(InstanceMethodHandlerDispatcherTest_NOT_BUILT InstanceMethodHandlerDispatcherTest_NOT_BUILT)
+endif()

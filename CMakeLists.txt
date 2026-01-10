@@ -3244,6 +3244,36 @@ gtest_discover_tests(RecordHandlerTest_VirtualInheritance
     PROPERTIES LABELS "unit;handlers;virtual-inheritance"
 )
 
+# RecordHandler Dual Layout Unit Tests (Phase 2)
+add_executable(RecordHandlerDualLayoutTest
+    tests/unit/RecordHandlerDualLayoutTest.cpp
+)
+
+target_compile_definitions(RecordHandlerDualLayoutTest PRIVATE ${LLVM_DEFINITIONS})
+
+target_include_directories(RecordHandlerDualLayoutTest PRIVATE
+    ${CMAKE_SOURCE_DIR}/include
+    ${CMAKE_SOURCE_DIR}/tests
+    ${CMAKE_SOURCE_DIR}/tests/fixtures
+    ${LLVM_INCLUDE_DIRS}
+    ${CLANG_INCLUDE_DIRS}
+)
+
+target_link_libraries(RecordHandlerDualLayoutTest PRIVATE
+    cpptoc_core
+    clangTooling
+    clangFrontend
+    clangAST
+    clangBasic
+    GTest::gtest
+    GTest::gtest_main
+)
+
+gtest_discover_tests(RecordHandlerDualLayoutTest
+    WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
+    PROPERTIES LABELS "unit;handlers;dual-layout;phase2"
+)
+
 # ConstructorHandler Virtual Inheritance Unit Tests
 add_executable(ConstructorHandlerTest_VirtualInheritance
     tests/unit/handlers/ConstructorHandlerTest_VirtualInheritance.cpp

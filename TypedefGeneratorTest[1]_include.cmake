@@ -1,0 +1,5 @@
+if(EXISTS "/Users/alexanderfedin/Projects/hapyy/hupyy-cpp-to-c/TypedefGeneratorTest[1]_tests.cmake")
+  include("/Users/alexanderfedin/Projects/hapyy/hupyy-cpp-to-c/TypedefGeneratorTest[1]_tests.cmake")
+else()
+  add_test(TypedefGeneratorTest_NOT_BUILT TypedefGeneratorTest_NOT_BUILT)
+endif()

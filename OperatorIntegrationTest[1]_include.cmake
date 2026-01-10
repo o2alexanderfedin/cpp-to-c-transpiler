@@ -1,0 +1,5 @@
+if(EXISTS "/Users/alexanderfedin/Projects/hapyy/hupyy-cpp-to-c/OperatorIntegrationTest[1]_tests.cmake")
+  include("/Users/alexanderfedin/Projects/hapyy/hupyy-cpp-to-c/OperatorIntegrationTest[1]_tests.cmake")
+else()
+  add_test(OperatorIntegrationTest_NOT_BUILT OperatorIntegrationTest_NOT_BUILT)
+endif()

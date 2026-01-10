@@ -733,6 +733,12 @@ std::vector<clang::Stmt*> ConstructorHandler::generateBaseConstructorCalls(
     // Get valid SourceLocation for C AST nodes
     clang::SourceLocation targetLoc = disp.getTargetSourceLocation(cppASTContext, ctor);
 
+    // Get target path for PathMapper TU lookup
+    std::string targetPath = disp.getCurrentTargetPath();
+    if (targetPath.empty()) {
+        targetPath = disp.getTargetPath(cppASTContext, ctor);
+    }
+
     // Check if parent class has virtual bases (direct or indirect)
     VirtualInheritanceAnalyzer viAnalyzer;
     viAnalyzer.analyzeClass(parentClass);
@@ -800,7 +806,7 @@ std::vector<clang::Stmt*> ConstructorHandler::generateBaseConstructorCalls(
             }
 
             clang::CallExpr* call = createBaseConstructorCallVariant(
-                baseClass, thisParam, offset, variantSuffix, cASTContext, targetLoc, nullptr
+                baseClass, thisParam, offset, variantSuffix, cASTContext, targetLoc, targetPath, disp, nullptr
             );
 
             if (call) {
@@ -1049,18 +1055,32 @@ clang::CallExpr* ConstructorHandler::createBaseConstructorCallVariant(
     const std::string& variantSuffix,
     clang::ASTContext& cASTContext,
     clang::SourceLocation targetLoc,
+    const std::string& targetPath,
+    const CppToCVisitorDispatcher& disp,
     clang::ParmVarDecl* vttParam
 ) {
+    llvm::outs() << "[createBaseConstructorCallVariant] ENTRY: baseClass=" << (baseClass ? baseClass->getNameAsString() : "NULL")
+                 << ", offset=" << offset << ", variantSuffix='" << variantSuffix << "'\n";
+    llvm::outs().flush();
+
     std::string baseName = baseClass->getNameAsString();
+    llvm::outs() << "[createBaseConstructorCallVariant] baseName=" << baseName << "\n";
+    llvm::outs().flush();
 
     // Find the default constructor
+    llvm::outs() << "[createBaseConstructorCallVariant] Looking for default constructor\n";
+    llvm::outs().flush();
     clang::CXXConstructorDecl* baseDefaultCtor = nullptr;
     for (auto* ctor : baseClass->ctors()) {
         if (ctor->isDefaultConstructor()) {
             baseDefaultCtor = ctor;
+            llvm::outs() << "[createBaseConstructorCallVariant] Found default constructor\n";
+            llvm::outs().flush();
             break;
         }
     }
+    llvm::outs() << "[createBaseConstructorCallVariant] Default constructor search complete\n";
+    llvm::outs().flush();
 
     std::string baseCtorName;
     if (baseDefaultCtor) {
@@ -1069,8 +1089,9 @@ clang::CallExpr* ConstructorHandler::createBaseConstructorCallVariant(
         baseCtorName = baseName + "_init" + variantSuffix;
     }
 
-    // Find or create base constructor function declaration
-    auto* TU = cASTContext.getTranslationUnitDecl();
+    // Find or create base constructor function declaration in PathMapper TU
+    cpptoc::PathMapper& pathMapper = disp.getPathMapper();
+    auto* TU = pathMapper.getOrCreateTU(targetPath);
     clang::FunctionDecl* baseCtorFunc = nullptr;
     for (auto* D : TU->decls()) {
         if (auto* FD = llvm::dyn_cast<clang::FunctionDecl>(D)) {
@@ -1226,23 +1247,30 @@ clang::CallExpr* ConstructorHandler::createBaseConstructorCallVariant(
         baseStructName += "__base";
     }
 
+    llvm::outs() << "[createBaseConstructorCallVariant] Looking for struct: " << baseStructName << " in TU\n";
+
     clang::RecordDecl* baseStruct = nullptr;
     for (auto* D : TU->decls()) {
         if (auto* RD = llvm::dyn_cast<clang::RecordDecl>(D)) {
             if (RD->getNameAsString() == baseStructName) {
                 baseStruct = RD;
+                llvm::outs() << "[createBaseConstructorCallVariant] Found struct: " << baseStructName << "\n";
                 break;
             }
         }
     }
 
     if (!baseStruct) {
+        llvm::outs() << "[createBaseConstructorCallVariant] ERROR: Could not find struct " << baseStructName << " in TU\n";
         return nullptr;
     }
 
+    llvm::outs() << "[createBaseConstructorCallVariant] Creating base type for struct: " << baseStructName << "\n";
     clang::QualType baseType = cASTContext.getRecordType(baseStruct);
+    llvm::outs() << "[createBaseConstructorCallVariant] Creating pointer type\n";
     clang::QualType basePtrType = cASTContext.getPointerType(baseType);
 
+    llvm::outs() << "[createBaseConstructorCallVariant] Creating cast expression\n";
     clang::CStyleCastExpr* baseCast = clang::CStyleCastExpr::Create(
         cASTContext,
         basePtrType,
@@ -1255,6 +1283,7 @@ clang::CallExpr* ConstructorHandler::createBaseConstructorCallVariant(
         targetLoc,
         targetLoc
     );
+    llvm::outs() << "[createBaseConstructorCallVariant] Cast expression created successfully\n";
 
     // Create CallExpr
     std::vector<clang::Expr*> args = {baseCast};
@@ -1564,8 +1593,11 @@ void ConstructorHandler::generateC1Constructor(
             }
         }
 
+        // CRITICAL: Only pass VTT parameter to C1/C2 variants, not regular constructors
+        clang::ParmVarDecl* vttParamToPass = (variantSuffix == "_C1" || variantSuffix == "_C2") ? vttParam : nullptr;
+
         clang::CallExpr* call = createBaseConstructorCallVariant(
-            vbase, thisParam, offset, variantSuffix, cASTContext, targetLoc, vttParam
+            vbase, thisParam, offset, variantSuffix, cASTContext, targetLoc, targetPath, disp, vttParamToPass
         );
 
         if (call) {
@@ -1628,7 +1660,7 @@ void ConstructorHandler::generateC1Constructor(
         }
 
         clang::CallExpr* call = createBaseConstructorCallVariant(
-            baseRecord, thisParam, offset, variantSuffix, cASTContext, targetLoc, vttParam
+            baseRecord, thisParam, offset, variantSuffix, cASTContext, targetLoc, targetPath, disp, vttParam
         );
 
         if (call) {
@@ -1830,7 +1862,7 @@ void ConstructorHandler::generateC2Constructor(
         }
 
         clang::CallExpr* call = createBaseConstructorCallVariant(
-            baseRecord, thisParam, offset, variantSuffix, cASTContext, targetLoc, vttParam
+            baseRecord, thisParam, offset, variantSuffix, cASTContext, targetLoc, targetPath, disp, vttParam
         );
 
         if (call) {

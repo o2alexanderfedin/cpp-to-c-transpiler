@@ -1,0 +1,5 @@
+if(EXISTS "/Users/alexanderfedin/Projects/hapyy/hupyy-cpp-to-c/tests/integration/VirtualMethodsIntegrationTest[1]_tests.cmake")
+  include("/Users/alexanderfedin/Projects/hapyy/hupyy-cpp-to-c/tests/integration/VirtualMethodsIntegrationTest[1]_tests.cmake")
+else()
+  add_test(VirtualMethodsIntegrationTest_NOT_BUILT VirtualMethodsIntegrationTest_NOT_BUILT)
+endif()

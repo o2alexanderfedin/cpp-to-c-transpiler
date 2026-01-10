@@ -1,0 +1,5 @@
+if(EXISTS "/Users/alexanderfedin/Projects/hapyy/hupyy-cpp-to-c/StaticOperatorTranslatorTest[1]_tests.cmake")
+  include("/Users/alexanderfedin/Projects/hapyy/hupyy-cpp-to-c/StaticOperatorTranslatorTest[1]_tests.cmake")
+else()
+  add_test(StaticOperatorTranslatorTest_NOT_BUILT StaticOperatorTranslatorTest_NOT_BUILT)
+endif()

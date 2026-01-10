@@ -1,0 +1,5 @@
+if(EXISTS "/Users/alexanderfedin/Projects/hapyy/hupyy-cpp-to-c/FunctionHandlerDispatcherTest[1]_tests.cmake")
+  include("/Users/alexanderfedin/Projects/hapyy/hupyy-cpp-to-c/FunctionHandlerDispatcherTest[1]_tests.cmake")
+else()
+  add_test(FunctionHandlerDispatcherTest_NOT_BUILT FunctionHandlerDispatcherTest_NOT_BUILT)
+endif()

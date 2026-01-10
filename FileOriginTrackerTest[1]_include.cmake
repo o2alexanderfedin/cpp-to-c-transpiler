@@ -1,0 +1,5 @@
+if(EXISTS "/Users/alexanderfedin/Projects/hapyy/hupyy-cpp-to-c/FileOriginTrackerTest[1]_tests.cmake")
+  include("/Users/alexanderfedin/Projects/hapyy/hupyy-cpp-to-c/FileOriginTrackerTest[1]_tests.cmake")
+else()
+  add_test(FileOriginTrackerTest_NOT_BUILT FileOriginTrackerTest_NOT_BUILT)
+endif()

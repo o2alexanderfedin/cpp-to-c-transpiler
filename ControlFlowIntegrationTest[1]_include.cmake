@@ -1,0 +1,5 @@
+if(EXISTS "/Users/alexanderfedin/Projects/hapyy/hupyy-cpp-to-c/ControlFlowIntegrationTest[1]_tests.cmake")
+  include("/Users/alexanderfedin/Projects/hapyy/hupyy-cpp-to-c/ControlFlowIntegrationTest[1]_tests.cmake")
+else()
+  add_test(ControlFlowIntegrationTest_NOT_BUILT ControlFlowIntegrationTest_NOT_BUILT)
+endif()

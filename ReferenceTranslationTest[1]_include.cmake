@@ -1,0 +1,5 @@
+if(EXISTS "/Users/alexanderfedin/Projects/hapyy/hupyy-cpp-to-c/ReferenceTranslationTest[1]_tests.cmake")
+  include("/Users/alexanderfedin/Projects/hapyy/hupyy-cpp-to-c/ReferenceTranslationTest[1]_tests.cmake")
+else()
+  add_test(ReferenceTranslationTest_NOT_BUILT ReferenceTranslationTest_NOT_BUILT)
+endif()

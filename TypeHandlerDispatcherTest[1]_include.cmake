@@ -1,0 +1,5 @@
+if(EXISTS "/Users/alexanderfedin/Projects/hapyy/hupyy-cpp-to-c/TypeHandlerDispatcherTest[1]_tests.cmake")
+  include("/Users/alexanderfedin/Projects/hapyy/hupyy-cpp-to-c/TypeHandlerDispatcherTest[1]_tests.cmake")
+else()
+  add_test(TypeHandlerDispatcherTest_NOT_BUILT TypeHandlerDispatcherTest_NOT_BUILT)
+endif()

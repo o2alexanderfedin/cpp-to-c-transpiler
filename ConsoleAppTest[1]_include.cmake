@@ -1,0 +1,5 @@
+if(EXISTS "/Users/alexanderfedin/Projects/hapyy/hupyy-cpp-to-c/ConsoleAppTest[1]_tests.cmake")
+  include("/Users/alexanderfedin/Projects/hapyy/hupyy-cpp-to-c/ConsoleAppTest[1]_tests.cmake")
+else()
+  add_test(ConsoleAppTest_NOT_BUILT ConsoleAppTest_NOT_BUILT)
+endif()

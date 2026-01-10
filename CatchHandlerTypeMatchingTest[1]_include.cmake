@@ -1,0 +1,5 @@
+if(EXISTS "/Users/alexanderfedin/Projects/hapyy/hupyy-cpp-to-c/CatchHandlerTypeMatchingTest[1]_tests.cmake")
+  include("/Users/alexanderfedin/Projects/hapyy/hupyy-cpp-to-c/CatchHandlerTypeMatchingTest[1]_tests.cmake")
+else()
+  add_test(CatchHandlerTypeMatchingTest_NOT_BUILT CatchHandlerTypeMatchingTest_NOT_BUILT)
+endif()

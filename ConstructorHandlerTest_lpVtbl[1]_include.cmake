@@ -1,0 +1,5 @@
+if(EXISTS "/Users/alexanderfedin/Projects/hapyy/hupyy-cpp-to-c/ConstructorHandlerTest_lpVtbl[1]_tests.cmake")
+  include("/Users/alexanderfedin/Projects/hapyy/hupyy-cpp-to-c/ConstructorHandlerTest_lpVtbl[1]_tests.cmake")
+else()
+  add_test(ConstructorHandlerTest_lpVtbl_NOT_BUILT ConstructorHandlerTest_lpVtbl_NOT_BUILT)
+endif()

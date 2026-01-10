@@ -1,0 +1,5 @@
+if(EXISTS "/Users/alexanderfedin/Projects/hapyy/hupyy-cpp-to-c/ImplicitCastExprHandlerDispatcherTest[1]_tests.cmake")
+  include("/Users/alexanderfedin/Projects/hapyy/hupyy-cpp-to-c/ImplicitCastExprHandlerDispatcherTest[1]_tests.cmake")
+else()
+  add_test(ImplicitCastExprHandlerDispatcherTest_NOT_BUILT ImplicitCastExprHandlerDispatcherTest_NOT_BUILT)
+endif()

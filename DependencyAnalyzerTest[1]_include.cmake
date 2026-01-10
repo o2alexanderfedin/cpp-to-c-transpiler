@@ -1,0 +1,5 @@
+if(EXISTS "/Users/alexanderfedin/Projects/hapyy/hupyy-cpp-to-c/DependencyAnalyzerTest[1]_tests.cmake")
+  include("/Users/alexanderfedin/Projects/hapyy/hupyy-cpp-to-c/DependencyAnalyzerTest[1]_tests.cmake")
+else()
+  add_test(DependencyAnalyzerTest_NOT_BUILT DependencyAnalyzerTest_NOT_BUILT)
+endif()

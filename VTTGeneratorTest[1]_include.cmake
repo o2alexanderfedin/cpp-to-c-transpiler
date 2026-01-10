@@ -1,0 +1,5 @@
+if(EXISTS "/Users/alexanderfedin/Projects/hapyy/hupyy-cpp-to-c/VTTGeneratorTest[1]_tests.cmake")
+  include("/Users/alexanderfedin/Projects/hapyy/hupyy-cpp-to-c/VTTGeneratorTest[1]_tests.cmake")
+else()
+  add_test(VTTGeneratorTest_NOT_BUILT VTTGeneratorTest_NOT_BUILT)
+endif()

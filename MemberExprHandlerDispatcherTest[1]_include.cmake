@@ -1,0 +1,5 @@
+if(EXISTS "/Users/alexanderfedin/Projects/hapyy/hupyy-cpp-to-c/MemberExprHandlerDispatcherTest[1]_tests.cmake")
+  include("/Users/alexanderfedin/Projects/hapyy/hupyy-cpp-to-c/MemberExprHandlerDispatcherTest[1]_tests.cmake")
+else()
+  add_test(MemberExprHandlerDispatcherTest_NOT_BUILT MemberExprHandlerDispatcherTest_NOT_BUILT)
+endif()

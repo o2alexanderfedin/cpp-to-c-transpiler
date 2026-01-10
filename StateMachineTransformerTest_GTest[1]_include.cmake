@@ -1,0 +1,5 @@
+if(EXISTS "/Users/alexanderfedin/Projects/hapyy/hupyy-cpp-to-c/StateMachineTransformerTest_GTest[1]_tests.cmake")
+  include("/Users/alexanderfedin/Projects/hapyy/hupyy-cpp-to-c/StateMachineTransformerTest_GTest[1]_tests.cmake")
+else()
+  add_test(StateMachineTransformerTest_GTest_NOT_BUILT StateMachineTransformerTest_GTest_NOT_BUILT)
+endif()

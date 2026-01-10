@@ -30,21 +30,25 @@ protected:
      * @brief Helper to parse C++ code and get CXXRecordDecl by name
      */
     CXXRecordDecl* getClass(const std::string& code, const std::string& className) {
-        auto AST = tooling::buildASTFromCode(code);
-        if (!AST) return nullptr;
+        // Only rebuild AST if code has changed
+        if (code != lastCode || !context) {
+            auto AST = tooling::buildASTFromCode(code);
+            if (!AST) return nullptr;
 
-        context = std::move(AST);
-        analyzer = std::make_unique<VirtualInheritanceAnalyzer>();
-        splitter = std::make_unique<ConstructorSplitter>(
-            context->getASTContext(),
-            *analyzer
-        );
+            context = std::move(AST);
+            analyzer = std::make_unique<VirtualInheritanceAnalyzer>();
+            splitter = std::make_unique<ConstructorSplitter>(
+                context->getASTContext(),
+                *analyzer
+            );
+            lastCode = code;
 
-        // Analyze all classes
-        for (auto* decl : context->getASTContext().getTranslationUnitDecl()->decls()) {
-            if (auto* record = dyn_cast<CXXRecordDecl>(decl)) {
-                if (record->isCompleteDefinition()) {
-                    analyzer->analyzeClass(record);
+            // Analyze all classes
+            for (auto* decl : context->getASTContext().getTranslationUnitDecl()->decls()) {
+                if (auto* record = dyn_cast<CXXRecordDecl>(decl)) {
+                    if (record->isCompleteDefinition()) {
+                        analyzer->analyzeClass(record);
+                    }
                 }
             }
         }
@@ -53,13 +57,14 @@ protected:
         for (auto* decl : context->getASTContext().getTranslationUnitDecl()->decls()) {
             if (auto* record = dyn_cast<CXXRecordDecl>(decl)) {
                 if (record->getNameAsString() == className && record->isCompleteDefinition()) {
-                    return record;
+                    return record->getCanonicalDecl();
                 }
             }
         }
         return nullptr;
     }
 
+    std::string lastCode;
     std::unique_ptr<clang::ASTUnit> context;
     std::unique_ptr<VirtualInheritanceAnalyzer> analyzer;
     std::unique_ptr<ConstructorSplitter> splitter;

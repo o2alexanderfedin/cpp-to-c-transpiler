@@ -1,0 +1,5 @@
+if(EXISTS "/Users/alexanderfedin/Projects/hapyy/hupyy-cpp-to-c/VirtualMethodHandlerDispatcherTest[1]_tests.cmake")
+  include("/Users/alexanderfedin/Projects/hapyy/hupyy-cpp-to-c/VirtualMethodHandlerDispatcherTest[1]_tests.cmake")
+else()
+  add_test(VirtualMethodHandlerDispatcherTest_NOT_BUILT VirtualMethodHandlerDispatcherTest_NOT_BUILT)
+endif()

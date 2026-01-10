@@ -1,0 +1,5 @@
+if(EXISTS "/Users/alexanderfedin/Projects/hapyy/hupyy-cpp-to-c/ForwardDeclTest[1]_tests.cmake")
+  include("/Users/alexanderfedin/Projects/hapyy/hupyy-cpp-to-c/ForwardDeclTest[1]_tests.cmake")
+else()
+  add_test(ForwardDeclTest_NOT_BUILT ForwardDeclTest_NOT_BUILT)
+endif()

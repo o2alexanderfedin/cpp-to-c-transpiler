@@ -1,0 +1,5 @@
+if(EXISTS "/Users/alexanderfedin/Projects/hapyy/hupyy-cpp-to-c/HeaderSeparatorTest[1]_tests.cmake")
+  include("/Users/alexanderfedin/Projects/hapyy/hupyy-cpp-to-c/HeaderSeparatorTest[1]_tests.cmake")
+else()
+  add_test(HeaderSeparatorTest_NOT_BUILT HeaderSeparatorTest_NOT_BUILT)
+endif()

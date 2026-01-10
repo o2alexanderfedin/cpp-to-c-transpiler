@@ -1,0 +1,5 @@
+if(EXISTS "/Users/alexanderfedin/Projects/hapyy/hupyy-cpp-to-c/VariableHandlerGlobalTest[1]_tests.cmake")
+  include("/Users/alexanderfedin/Projects/hapyy/hupyy-cpp-to-c/VariableHandlerGlobalTest[1]_tests.cmake")
+else()
+  add_test(VariableHandlerGlobalTest_NOT_BUILT VariableHandlerGlobalTest_NOT_BUILT)
+endif()

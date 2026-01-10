@@ -1,0 +1,5 @@
+if(EXISTS "/Users/alexanderfedin/Projects/hapyy/hupyy-cpp-to-c/ExpressionHandlerTest_MethodCall[1]_tests.cmake")
+  include("/Users/alexanderfedin/Projects/hapyy/hupyy-cpp-to-c/ExpressionHandlerTest_MethodCall[1]_tests.cmake")
+else()
+  add_test(ExpressionHandlerTest_MethodCall_NOT_BUILT ExpressionHandlerTest_MethodCall_NOT_BUILT)
+endif()

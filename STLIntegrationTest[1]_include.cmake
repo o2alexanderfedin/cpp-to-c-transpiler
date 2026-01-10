@@ -1,0 +1,5 @@
+if(EXISTS "/Users/alexanderfedin/Projects/hapyy/hupyy-cpp-to-c/STLIntegrationTest[1]_tests.cmake")
+  include("/Users/alexanderfedin/Projects/hapyy/hupyy-cpp-to-c/STLIntegrationTest[1]_tests.cmake")
+else()
+  add_test(STLIntegrationTest_NOT_BUILT STLIntegrationTest_NOT_BUILT)
+endif()

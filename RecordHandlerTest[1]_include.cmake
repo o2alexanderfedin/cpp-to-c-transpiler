@@ -1,0 +1,5 @@
+if(EXISTS "/Users/alexanderfedin/Projects/hapyy/hupyy-cpp-to-c/RecordHandlerTest[1]_tests.cmake")
+  include("/Users/alexanderfedin/Projects/hapyy/hupyy-cpp-to-c/RecordHandlerTest[1]_tests.cmake")
+else()
+  add_test(RecordHandlerTest_NOT_BUILT RecordHandlerTest_NOT_BUILT)
+endif()

@@ -1,0 +1,5 @@
+if(EXISTS "/Users/alexanderfedin/Projects/hapyy/hupyy-cpp-to-c/OverrideResolverTest[1]_tests.cmake")
+  include("/Users/alexanderfedin/Projects/hapyy/hupyy-cpp-to-c/OverrideResolverTest[1]_tests.cmake")
+else()
+  add_test(OverrideResolverTest_NOT_BUILT OverrideResolverTest_NOT_BUILT)
+endif()

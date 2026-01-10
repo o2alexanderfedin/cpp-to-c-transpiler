@@ -214,6 +214,8 @@ private:
      * @param variantSuffix Constructor variant suffix ("_C1", "_C2", or "")
      * @param cASTContext Target C ASTContext
      * @param targetLoc Valid SourceLocation for C AST nodes
+     * @param targetPath Path to target file (for PathMapper TU lookup)
+     * @param disp Dispatcher for accessing PathMapper
      * @param vttParam Optional VTT parameter (passed to C1/C2 variants)
      * @return CallExpr for base constructor variant
      *
@@ -230,6 +232,8 @@ private:
         const std::string& variantSuffix,
         clang::ASTContext& cASTContext,
         clang::SourceLocation targetLoc,
+        const std::string& targetPath,
+        const CppToCVisitorDispatcher& disp,
         clang::ParmVarDecl* vttParam = nullptr
     );
 

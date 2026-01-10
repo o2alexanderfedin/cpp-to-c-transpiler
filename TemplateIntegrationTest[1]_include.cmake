@@ -1,0 +1,5 @@
+if(EXISTS "/Users/alexanderfedin/Projects/hapyy/hupyy-cpp-to-c/TemplateIntegrationTest[1]_tests.cmake")
+  include("/Users/alexanderfedin/Projects/hapyy/hupyy-cpp-to-c/TemplateIntegrationTest[1]_tests.cmake")
+else()
+  add_test(TemplateIntegrationTest_NOT_BUILT TemplateIntegrationTest_NOT_BUILT)
+endif()

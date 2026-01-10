@@ -1,0 +1,5 @@
+if(EXISTS "/Users/alexanderfedin/Projects/hapyy/hupyy-cpp-to-c/tests/integration/test_feature_interaction[1]_tests.cmake")
+  include("/Users/alexanderfedin/Projects/hapyy/hupyy-cpp-to-c/tests/integration/test_feature_interaction[1]_tests.cmake")
+else()
+  add_test(test_feature_interaction_NOT_BUILT test_feature_interaction_NOT_BUILT)
+endif()

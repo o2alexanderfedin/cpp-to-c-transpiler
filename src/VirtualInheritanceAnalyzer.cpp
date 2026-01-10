@@ -103,7 +103,29 @@ void VirtualInheritanceAnalyzer::analyzeClass(const CXXRecordDecl* classDecl) {
     // Get canonical declaration
     classDecl = classDecl->getCanonicalDecl();
 
-    // Analyze base classes
+    // Skip if already analyzed
+    if (allVirtualBases.count(classDecl) > 0) {
+        return;
+    }
+
+    // First, recursively analyze all base classes
+    // This ensures we have complete information before analyzing this class
+    for (const auto& base : classDecl->bases()) {
+        const Type* baseType = base.getType().getTypePtr();
+        if (!baseType) continue;
+
+        const CXXRecordDecl* baseDecl = baseType->getAsCXXRecordDecl();
+        if (!baseDecl) continue;
+
+        baseDecl = baseDecl->getCanonicalDecl();
+
+        // Recursively analyze base class first
+        if (baseDecl->isCompleteDefinition()) {
+            analyzeClass(baseDecl);
+        }
+    }
+
+    // Now analyze base classes of this class
     for (const auto& base : classDecl->bases()) {
         const Type* baseType = base.getType().getTypePtr();
         if (!baseType) continue;

@@ -1,0 +1,5 @@
+if(EXISTS "/Users/alexanderfedin/Projects/hapyy/hupyy-cpp-to-c/DispatcherTest[1]_tests.cmake")
+  include("/Users/alexanderfedin/Projects/hapyy/hupyy-cpp-to-c/DispatcherTest[1]_tests.cmake")
+else()
+  add_test(DispatcherTest_NOT_BUILT DispatcherTest_NOT_BUILT)
+endif()

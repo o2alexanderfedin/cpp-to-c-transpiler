@@ -1,0 +1,5 @@
+if(EXISTS "/Users/alexanderfedin/Projects/hapyy/hupyy-cpp-to-c/TranspilerAPI_MutualStructReferences_Test[1]_tests.cmake")
+  include("/Users/alexanderfedin/Projects/hapyy/hupyy-cpp-to-c/TranspilerAPI_MutualStructReferences_Test[1]_tests.cmake")
+else()
+  add_test(TranspilerAPI_MutualStructReferences_Test_NOT_BUILT TranspilerAPI_MutualStructReferences_Test_NOT_BUILT)
+endif()

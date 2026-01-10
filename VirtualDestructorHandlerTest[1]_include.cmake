@@ -1,0 +1,5 @@
+if(EXISTS "/Users/alexanderfedin/Projects/hapyy/hupyy-cpp-to-c/VirtualDestructorHandlerTest[1]_tests.cmake")
+  include("/Users/alexanderfedin/Projects/hapyy/hupyy-cpp-to-c/VirtualDestructorHandlerTest[1]_tests.cmake")
+else()
+  add_test(VirtualDestructorHandlerTest_NOT_BUILT VirtualDestructorHandlerTest_NOT_BUILT)
+endif()

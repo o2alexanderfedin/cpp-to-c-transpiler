@@ -1,0 +1,5 @@
+if(EXISTS "/Users/alexanderfedin/Projects/hapyy/hupyy-cpp-to-c/TranspilerAPI_HeaderSeparation_Test[1]_tests.cmake")
+  include("/Users/alexanderfedin/Projects/hapyy/hupyy-cpp-to-c/TranspilerAPI_HeaderSeparation_Test[1]_tests.cmake")
+else()
+  add_test(TranspilerAPI_HeaderSeparation_Test_NOT_BUILT TranspilerAPI_HeaderSeparation_Test_NOT_BUILT)
+endif()

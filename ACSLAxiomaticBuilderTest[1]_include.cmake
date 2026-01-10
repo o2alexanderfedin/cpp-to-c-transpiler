@@ -1,0 +1,5 @@
+if(EXISTS "/Users/alexanderfedin/Projects/hapyy/hupyy-cpp-to-c/ACSLAxiomaticBuilderTest[1]_tests.cmake")
+  include("/Users/alexanderfedin/Projects/hapyy/hupyy-cpp-to-c/ACSLAxiomaticBuilderTest[1]_tests.cmake")
+else()
+  add_test(ACSLAxiomaticBuilderTest_NOT_BUILT ACSLAxiomaticBuilderTest_NOT_BUILT)
+endif()

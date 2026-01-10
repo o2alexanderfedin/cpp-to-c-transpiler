@@ -1,0 +1,5 @@
+if(EXISTS "/Users/alexanderfedin/Projects/hapyy/hupyy-cpp-to-c/EnumTranslatorTest[1]_tests.cmake")
+  include("/Users/alexanderfedin/Projects/hapyy/hupyy-cpp-to-c/EnumTranslatorTest[1]_tests.cmake")
+else()
+  add_test(EnumTranslatorTest_NOT_BUILT EnumTranslatorTest_NOT_BUILT)
+endif()

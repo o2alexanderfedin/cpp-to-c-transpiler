@@ -1,0 +1,5 @@
+if(EXISTS "/Users/alexanderfedin/Projects/hapyy/hupyy-cpp-to-c/CppToCVisitorTest[1]_tests.cmake")
+  include("/Users/alexanderfedin/Projects/hapyy/hupyy-cpp-to-c/CppToCVisitorTest[1]_tests.cmake")
+else()
+  add_test(CppToCVisitorTest_NOT_BUILT CppToCVisitorTest_NOT_BUILT)
+endif()

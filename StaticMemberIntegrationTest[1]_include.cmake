@@ -1,0 +1,5 @@
+if(EXISTS "/Users/alexanderfedin/Projects/hapyy/hupyy-cpp-to-c/StaticMemberIntegrationTest[1]_tests.cmake")
+  include("/Users/alexanderfedin/Projects/hapyy/hupyy-cpp-to-c/StaticMemberIntegrationTest[1]_tests.cmake")
+else()
+  add_test(StaticMemberIntegrationTest_NOT_BUILT StaticMemberIntegrationTest_NOT_BUILT)
+endif()

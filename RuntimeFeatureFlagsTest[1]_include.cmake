@@ -1,0 +1,5 @@
+if(EXISTS "/Users/alexanderfedin/Projects/hapyy/hupyy-cpp-to-c/RuntimeFeatureFlagsTest[1]_tests.cmake")
+  include("/Users/alexanderfedin/Projects/hapyy/hupyy-cpp-to-c/RuntimeFeatureFlagsTest[1]_tests.cmake")
+else()
+  add_test(RuntimeFeatureFlagsTest_NOT_BUILT RuntimeFeatureFlagsTest_NOT_BUILT)
+endif()

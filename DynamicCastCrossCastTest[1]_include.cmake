@@ -1,0 +1,5 @@
+if(EXISTS "/Users/alexanderfedin/Projects/hapyy/hupyy-cpp-to-c/DynamicCastCrossCastTest[1]_tests.cmake")
+  include("/Users/alexanderfedin/Projects/hapyy/hupyy-cpp-to-c/DynamicCastCrossCastTest[1]_tests.cmake")
+else()
+  add_test(DynamicCastCrossCastTest_NOT_BUILT DynamicCastCrossCastTest_NOT_BUILT)
+endif()

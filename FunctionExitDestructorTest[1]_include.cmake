@@ -1,0 +1,5 @@
+if(EXISTS "/Users/alexanderfedin/Projects/hapyy/hupyy-cpp-to-c/FunctionExitDestructorTest[1]_tests.cmake")
+  include("/Users/alexanderfedin/Projects/hapyy/hupyy-cpp-to-c/FunctionExitDestructorTest[1]_tests.cmake")
+else()
+  add_test(FunctionExitDestructorTest_NOT_BUILT FunctionExitDestructorTest_NOT_BUILT)
+endif()

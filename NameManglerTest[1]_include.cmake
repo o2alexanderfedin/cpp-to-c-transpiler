@@ -1,0 +1,5 @@
+if(EXISTS "/Users/alexanderfedin/Projects/hapyy/hupyy-cpp-to-c/NameManglerTest[1]_tests.cmake")
+  include("/Users/alexanderfedin/Projects/hapyy/hupyy-cpp-to-c/NameManglerTest[1]_tests.cmake")
+else()
+  add_test(NameManglerTest_NOT_BUILT NameManglerTest_NOT_BUILT)
+endif()

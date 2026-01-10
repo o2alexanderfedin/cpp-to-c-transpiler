@@ -1,0 +1,5 @@
+if(EXISTS "/Users/alexanderfedin/Projects/hapyy/hupyy-cpp-to-c/HandlerIntegrationTest[1]_tests.cmake")
+  include("/Users/alexanderfedin/Projects/hapyy/hupyy-cpp-to-c/HandlerIntegrationTest[1]_tests.cmake")
+else()
+  add_test(HandlerIntegrationTest_NOT_BUILT HandlerIntegrationTest_NOT_BUILT)
+endif()

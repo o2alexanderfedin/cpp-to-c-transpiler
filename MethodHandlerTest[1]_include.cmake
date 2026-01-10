@@ -1,0 +1,5 @@
+if(EXISTS "/Users/alexanderfedin/Projects/hapyy/hupyy-cpp-to-c/MethodHandlerTest[1]_tests.cmake")
+  include("/Users/alexanderfedin/Projects/hapyy/hupyy-cpp-to-c/MethodHandlerTest[1]_tests.cmake")
+else()
+  add_test(MethodHandlerTest_NOT_BUILT MethodHandlerTest_NOT_BUILT)
+endif()

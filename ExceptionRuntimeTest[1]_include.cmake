@@ -1,0 +1,5 @@
+if(EXISTS "/Users/alexanderfedin/Projects/hapyy/hupyy-cpp-to-c/ExceptionRuntimeTest[1]_tests.cmake")
+  include("/Users/alexanderfedin/Projects/hapyy/hupyy-cpp-to-c/ExceptionRuntimeTest[1]_tests.cmake")
+else()
+  add_test(ExceptionRuntimeTest_NOT_BUILT ExceptionRuntimeTest_NOT_BUILT)
+endif()

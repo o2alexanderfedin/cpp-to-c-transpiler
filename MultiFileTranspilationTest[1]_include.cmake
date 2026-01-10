@@ -1,0 +1,5 @@
+if(EXISTS "/Users/alexanderfedin/Projects/hapyy/hupyy-cpp-to-c/MultiFileTranspilationTest[1]_tests.cmake")
+  include("/Users/alexanderfedin/Projects/hapyy/hupyy-cpp-to-c/MultiFileTranspilationTest[1]_tests.cmake")
+else()
+  add_test(MultiFileTranspilationTest_NOT_BUILT MultiFileTranspilationTest_NOT_BUILT)
+endif()

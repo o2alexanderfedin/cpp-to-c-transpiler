@@ -1,0 +1,5 @@
+if(EXISTS "/Users/alexanderfedin/Projects/hapyy/hupyy-cpp-to-c/VtableGeneratorTest_MultipleInheritance[1]_tests.cmake")
+  include("/Users/alexanderfedin/Projects/hapyy/hupyy-cpp-to-c/VtableGeneratorTest_MultipleInheritance[1]_tests.cmake")
+else()
+  add_test(VtableGeneratorTest_MultipleInheritance_NOT_BUILT VtableGeneratorTest_MultipleInheritance_NOT_BUILT)
+endif()

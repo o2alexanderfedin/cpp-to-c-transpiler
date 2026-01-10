@@ -1,0 +1,5 @@
+if(EXISTS "/Users/alexanderfedin/Projects/hapyy/hupyy-cpp-to-c/ThunkGeneratorTest[1]_tests.cmake")
+  include("/Users/alexanderfedin/Projects/hapyy/hupyy-cpp-to-c/ThunkGeneratorTest[1]_tests.cmake")
+else()
+  add_test(ThunkGeneratorTest_NOT_BUILT ThunkGeneratorTest_NOT_BUILT)
+endif()
