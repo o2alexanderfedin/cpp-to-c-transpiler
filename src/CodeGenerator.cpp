@@ -989,13 +989,25 @@ void CodeGenerator::printExpr(Expr *E) {
 
     // Handle CStyleCastExpr to avoid "template" keyword artifacts
     // Clang's printPretty() can emit "template" before type names in certain contexts
-    // For C code, we just want: (TypeName)expr
+    // For C code, we want: (TypeName)expr
+    // CRITICAL: Parenthesize subexpr if it's a binary operator to ensure correct precedence
+    // Example: (struct A *)((char *)this + 12) not (struct A *)(char *)this + 12
     if (CStyleCastExpr *CSE = dyn_cast<CStyleCastExpr>(E)) {
         QualType Type = CSE->getType();
         OS << "(";
         Type.print(OS, Policy);
         OS << ")";
-        printExpr(CSE->getSubExpr());
+
+        Expr *SubExpr = CSE->getSubExpr();
+        // Parenthesize if subexpression is binary operator or other low-precedence expression
+        if (isa<BinaryOperator>(SubExpr) || isa<ConditionalOperator>(SubExpr) ||
+            isa<CStyleCastExpr>(SubExpr)) {
+            OS << "(";
+            printExpr(SubExpr);
+            OS << ")";
+        } else {
+            printExpr(SubExpr);
+        }
         return;
     }
 
