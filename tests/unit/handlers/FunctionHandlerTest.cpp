@@ -60,11 +60,12 @@ protected:
         TypeMapper& typeMapper,
         ExprMapper& exprMapper,
         StmtMapper& stmtMapper,
+        FieldOffsetMapper& fieldOffsetMapper,
         TargetContext& targetCtx
     ) {
         auto dispatcher = std::make_unique<CppToCVisitorDispatcher>(
             mapper, locMapper, declMapper, typeMapper, exprMapper, stmtMapper,
-            targetCtx
+            fieldOffsetMapper, targetCtx
         );
 
         // Register handlers in dependency order
@@ -97,8 +98,10 @@ protected:
         TypeMapper typeMapper;
         ExprMapper exprMapper;
         StmtMapper stmtMapper;
+        FieldOffsetMapper fieldOffsetMapper;
+    FieldOffsetMapper fieldOffsetMapper;
 
-        auto dispatcher = createDispatcher(mapper, locMapper, declMapper, typeMapper, exprMapper, stmtMapper, targetCtx);
+        auto dispatcher = createDispatcher(mapper, locMapper, declMapper, typeMapper, exprMapper, stmtMapper, fieldOffsetMapper, targetCtx);
 
         // Find function
         clang::FunctionDecl* cppFunc = nullptr;
@@ -164,9 +167,11 @@ TEST_F(FunctionHandlerTest, EmptyFunction) {
     TypeMapper typeMapper;
     ExprMapper exprMapper;
     StmtMapper stmtMapper;
+        FieldOffsetMapper fieldOffsetMapper;
+    FieldOffsetMapper fieldOffsetMapper;
 
     // Create dispatcher and register handlers
-    auto dispatcher = createDispatcher(mapper, locMapper, declMapper, typeMapper, exprMapper, stmtMapper, targetCtx);
+    auto dispatcher = createDispatcher(mapper, locMapper, declMapper, typeMapper, exprMapper, stmtMapper, fieldOffsetMapper, targetCtx);
 
     // Find the function
     clang::TranslationUnitDecl* TU = cppCtx.getTranslationUnitDecl();
@@ -230,8 +235,10 @@ TEST_F(FunctionHandlerTest, FunctionWithIntReturn) {
     TypeMapper typeMapper;
     ExprMapper exprMapper;
     StmtMapper stmtMapper;
+        FieldOffsetMapper fieldOffsetMapper;
+    FieldOffsetMapper fieldOffsetMapper;
 
-    auto dispatcher = createDispatcher(mapper, locMapper, declMapper, typeMapper, exprMapper, stmtMapper, targetCtx);
+    auto dispatcher = createDispatcher(mapper, locMapper, declMapper, typeMapper, exprMapper, stmtMapper, fieldOffsetMapper, targetCtx);
 
     // Find function
     clang::FunctionDecl* cppFunc = nullptr;
@@ -289,8 +296,10 @@ TEST_F(FunctionHandlerTest, FunctionWithFloatReturn) {
     TypeMapper typeMapper;
     ExprMapper exprMapper;
     StmtMapper stmtMapper;
+        FieldOffsetMapper fieldOffsetMapper;
+    FieldOffsetMapper fieldOffsetMapper;
 
-    auto dispatcher = createDispatcher(mapper, locMapper, declMapper, typeMapper, exprMapper, stmtMapper, targetCtx);
+    auto dispatcher = createDispatcher(mapper, locMapper, declMapper, typeMapper, exprMapper, stmtMapper, fieldOffsetMapper, targetCtx);
 
     // Find function
     clang::FunctionDecl* cppFunc = nullptr;
@@ -358,8 +367,10 @@ TEST_F(FunctionHandlerTest, FunctionWithLValueReferenceParameter) {
     TypeMapper typeMapper;
     ExprMapper exprMapper;
     StmtMapper stmtMapper;
+        FieldOffsetMapper fieldOffsetMapper;
+    FieldOffsetMapper fieldOffsetMapper;
 
-    auto dispatcher = createDispatcher(mapper, locMapper, declMapper, typeMapper, exprMapper, stmtMapper, targetCtx);
+    auto dispatcher = createDispatcher(mapper, locMapper, declMapper, typeMapper, exprMapper, stmtMapper, fieldOffsetMapper, targetCtx);
 
     // Find function
     clang::FunctionDecl* cppFunc = nullptr;
@@ -429,8 +440,10 @@ TEST_F(FunctionHandlerTest, FunctionWithConstReferenceParameter) {
     TypeMapper typeMapper;
     ExprMapper exprMapper;
     StmtMapper stmtMapper;
+        FieldOffsetMapper fieldOffsetMapper;
+    FieldOffsetMapper fieldOffsetMapper;
 
-    auto dispatcher = createDispatcher(mapper, locMapper, declMapper, typeMapper, exprMapper, stmtMapper, targetCtx);
+    auto dispatcher = createDispatcher(mapper, locMapper, declMapper, typeMapper, exprMapper, stmtMapper, fieldOffsetMapper, targetCtx);
 
     // Find function
     clang::FunctionDecl* cppFunc = nullptr;
@@ -497,8 +510,10 @@ TEST_F(FunctionHandlerTest, FunctionWithMultipleReferenceParameters) {
     TypeMapper typeMapper;
     ExprMapper exprMapper;
     StmtMapper stmtMapper;
+        FieldOffsetMapper fieldOffsetMapper;
+    FieldOffsetMapper fieldOffsetMapper;
 
-    auto dispatcher = createDispatcher(mapper, locMapper, declMapper, typeMapper, exprMapper, stmtMapper, targetCtx);
+    auto dispatcher = createDispatcher(mapper, locMapper, declMapper, typeMapper, exprMapper, stmtMapper, fieldOffsetMapper, targetCtx);
 
     // Find function
     clang::FunctionDecl* cppFunc = nullptr;
@@ -569,8 +584,10 @@ TEST_F(FunctionHandlerTest, FunctionWithReferenceReturnType) {
     TypeMapper typeMapper;
     ExprMapper exprMapper;
     StmtMapper stmtMapper;
+        FieldOffsetMapper fieldOffsetMapper;
+    FieldOffsetMapper fieldOffsetMapper;
 
-    auto dispatcher = createDispatcher(mapper, locMapper, declMapper, typeMapper, exprMapper, stmtMapper, targetCtx);
+    auto dispatcher = createDispatcher(mapper, locMapper, declMapper, typeMapper, exprMapper, stmtMapper, fieldOffsetMapper, targetCtx);
 
     // Find function
     clang::FunctionDecl* cppFunc = nullptr;
@@ -634,8 +651,10 @@ TEST_F(FunctionHandlerTest, FunctionWithMixedParameters) {
     TypeMapper typeMapper;
     ExprMapper exprMapper;
     StmtMapper stmtMapper;
+        FieldOffsetMapper fieldOffsetMapper;
+    FieldOffsetMapper fieldOffsetMapper;
 
-    auto dispatcher = createDispatcher(mapper, locMapper, declMapper, typeMapper, exprMapper, stmtMapper, targetCtx);
+    auto dispatcher = createDispatcher(mapper, locMapper, declMapper, typeMapper, exprMapper, stmtMapper, fieldOffsetMapper, targetCtx);
 
     // Find function
     clang::FunctionDecl* cppFunc = nullptr;
@@ -723,8 +742,10 @@ TEST_F(FunctionHandlerTest, FunctionWithStructParameterByValue) {
     TypeMapper typeMapper;
     ExprMapper exprMapper;
     StmtMapper stmtMapper;
+        FieldOffsetMapper fieldOffsetMapper;
+    FieldOffsetMapper fieldOffsetMapper;
 
-    auto dispatcher = createDispatcher(mapper, locMapper, declMapper, typeMapper, exprMapper, stmtMapper, targetCtx);
+    auto dispatcher = createDispatcher(mapper, locMapper, declMapper, typeMapper, exprMapper, stmtMapper, fieldOffsetMapper, targetCtx);
 
     // Find function
     clang::FunctionDecl* cppFunc = nullptr;
@@ -794,8 +815,10 @@ TEST_F(FunctionHandlerTest, FunctionWithStructParameterByPointer) {
     TypeMapper typeMapper;
     ExprMapper exprMapper;
     StmtMapper stmtMapper;
+        FieldOffsetMapper fieldOffsetMapper;
+    FieldOffsetMapper fieldOffsetMapper;
 
-    auto dispatcher = createDispatcher(mapper, locMapper, declMapper, typeMapper, exprMapper, stmtMapper, targetCtx);
+    auto dispatcher = createDispatcher(mapper, locMapper, declMapper, typeMapper, exprMapper, stmtMapper, fieldOffsetMapper, targetCtx);
 
     // Find function
     clang::FunctionDecl* cppFunc = nullptr;
@@ -864,8 +887,10 @@ TEST_F(FunctionHandlerTest, FunctionReturningStructByValue) {
     TypeMapper typeMapper;
     ExprMapper exprMapper;
     StmtMapper stmtMapper;
+        FieldOffsetMapper fieldOffsetMapper;
+    FieldOffsetMapper fieldOffsetMapper;
 
-    auto dispatcher = createDispatcher(mapper, locMapper, declMapper, typeMapper, exprMapper, stmtMapper, targetCtx);
+    auto dispatcher = createDispatcher(mapper, locMapper, declMapper, typeMapper, exprMapper, stmtMapper, fieldOffsetMapper, targetCtx);
 
     // Find function
     clang::FunctionDecl* cppFunc = nullptr;
@@ -930,8 +955,10 @@ TEST_F(FunctionHandlerTest, FunctionReturningStructPointer) {
     TypeMapper typeMapper;
     ExprMapper exprMapper;
     StmtMapper stmtMapper;
+        FieldOffsetMapper fieldOffsetMapper;
+    FieldOffsetMapper fieldOffsetMapper;
 
-    auto dispatcher = createDispatcher(mapper, locMapper, declMapper, typeMapper, exprMapper, stmtMapper, targetCtx);
+    auto dispatcher = createDispatcher(mapper, locMapper, declMapper, typeMapper, exprMapper, stmtMapper, fieldOffsetMapper, targetCtx);
 
     // Find function
     clang::FunctionDecl* cppFunc = nullptr;
@@ -996,8 +1023,10 @@ TEST_F(FunctionHandlerTest, FunctionWithMultipleStructParameters) {
     TypeMapper typeMapper;
     ExprMapper exprMapper;
     StmtMapper stmtMapper;
+        FieldOffsetMapper fieldOffsetMapper;
+    FieldOffsetMapper fieldOffsetMapper;
 
-    auto dispatcher = createDispatcher(mapper, locMapper, declMapper, typeMapper, exprMapper, stmtMapper, targetCtx);
+    auto dispatcher = createDispatcher(mapper, locMapper, declMapper, typeMapper, exprMapper, stmtMapper, fieldOffsetMapper, targetCtx);
 
     // Find function
     clang::FunctionDecl* cppFunc = nullptr;

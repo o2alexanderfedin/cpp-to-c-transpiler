@@ -26,6 +26,7 @@
 #include "mapping/DeclMapper.h"
 #include "mapping/TypeMapper.h"
 #include "mapping/StmtMapper.h"
+#include "mapping/FieldOffsetMapper.h"
 #include "mapping/PathMapper.h"
 #include "mapping/DeclLocationMapper.h"
 #include "TargetContext.h"
@@ -64,6 +65,7 @@ protected:
     TypeMapper typeMapper;
     ExprMapper exprMapper;
     StmtMapper stmtMapper;
+    FieldOffsetMapper fieldOffsetMapper;
     std::unique_ptr<CppToCVisitorDispatcher> dispatcher;
 
     /**
@@ -90,6 +92,7 @@ protected:
             typeMapper,
             exprMapper,
             stmtMapper,
+            fieldOffsetMapper,
             *targetCtx
         );
 

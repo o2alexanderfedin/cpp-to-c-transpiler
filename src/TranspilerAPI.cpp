@@ -36,6 +36,7 @@
 #include "mapping/TypeMapper.h"
 #include "mapping/ExprMapper.h"
 #include "mapping/StmtMapper.h"
+#include "mapping/FieldOffsetMapper.h"
 #include "CodeGenerator.h"
 #include "HeaderSeparator.h"
 #include "IncludeGuardGenerator.h"
@@ -155,9 +156,10 @@ public:
         cpptoc::TypeMapper typeMapper;
         cpptoc::ExprMapper exprMapper;
         cpptoc::StmtMapper stmtMapper;
+        cpptoc::FieldOffsetMapper fieldOffsetMapper;
 
         // Create dispatcher with all mappers
-        CppToCVisitorDispatcher dispatcher(mapper, locMapper, declMapper, typeMapper, exprMapper, stmtMapper, targetCtx);
+        CppToCVisitorDispatcher dispatcher(mapper, locMapper, declMapper, typeMapper, exprMapper, stmtMapper, fieldOffsetMapper, targetCtx);
 
         // Register all handlers in dependency order
         // Base handlers first (these are used by others)

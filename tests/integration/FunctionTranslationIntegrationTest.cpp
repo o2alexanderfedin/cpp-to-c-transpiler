@@ -83,10 +83,13 @@ protected:
         cpptoc::DeclMapper& declMapper,
         cpptoc::TypeMapper& typeMapper,
         cpptoc::ExprMapper& exprMapper,
-        cpptoc::StmtMapper& stmtMapper)
+        cpptoc::StmtMapper& stmtMapper,
+        cpptoc::FieldOffsetMapper& fieldOffsetMapper,
+        TargetContext& targetCtx)
     {
         auto dispatcher = std::make_unique<CppToCVisitorDispatcher>(
-            mapper, locMapper, declMapper, typeMapper, exprMapper, stmtMapper);
+            mapper, locMapper, declMapper, typeMapper, exprMapper, stmtMapper,
+            fieldOffsetMapper, targetCtx);
 
         // Register handlers in dependency order (dependencies first)
         // Type handler must be registered before Parameter and Function handlers
@@ -152,9 +155,10 @@ TEST_F(FunctionTranslationIntegrationTest, SimpleFunctionWithLiteralReturn) {
     cpptoc::TypeMapper typeMapper;
     cpptoc::ExprMapper exprMapper;
     cpptoc::StmtMapper stmtMapper;
+    FieldOffsetMapper fieldOffsetMapper;
 
     // Create and configure dispatcher
-    auto dispatcher = createDispatcher(mapper, locMapper, declMapper, typeMapper, exprMapper, stmtMapper);
+    auto dispatcher = createDispatcher(mapper, locMapper, declMapper, typeMapper, exprMapper, stmtMapper, fieldOffsetMapper, targetCtx);
 
     // Find the function
     TranslationUnitDecl* cppTU = cppCtx.getTranslationUnitDecl();
@@ -250,8 +254,9 @@ TEST_F(FunctionTranslationIntegrationTest, FunctionWithParameterReference) {
     cpptoc::TypeMapper typeMapper;
     cpptoc::ExprMapper exprMapper;
     cpptoc::StmtMapper stmtMapper;
+    FieldOffsetMapper fieldOffsetMapper;
 
-    auto dispatcher = createDispatcher(mapper, locMapper, declMapper, typeMapper, exprMapper, stmtMapper);
+    auto dispatcher = createDispatcher(mapper, locMapper, declMapper, typeMapper, exprMapper, stmtMapper, fieldOffsetMapper, targetCtx);
 
     TranslationUnitDecl* cppTU = cppCtx.getTranslationUnitDecl();
     FunctionDecl* identity = findFunction(cppTU, "identity");
@@ -322,8 +327,9 @@ TEST_F(FunctionTranslationIntegrationTest, FunctionWithArithmeticExpression) {
     cpptoc::TypeMapper typeMapper;
     cpptoc::ExprMapper exprMapper;
     cpptoc::StmtMapper stmtMapper;
+    FieldOffsetMapper fieldOffsetMapper;
 
-    auto dispatcher = createDispatcher(mapper, locMapper, declMapper, typeMapper, exprMapper, stmtMapper);
+    auto dispatcher = createDispatcher(mapper, locMapper, declMapper, typeMapper, exprMapper, stmtMapper, fieldOffsetMapper, targetCtx);
 
     TranslationUnitDecl* cppTU = cppCtx.getTranslationUnitDecl();
     FunctionDecl* add = findFunction(cppTU, "add");
@@ -422,8 +428,9 @@ TEST_F(FunctionTranslationIntegrationTest, FunctionWithNestedExpression) {
     cpptoc::TypeMapper typeMapper;
     cpptoc::ExprMapper exprMapper;
     cpptoc::StmtMapper stmtMapper;
+    FieldOffsetMapper fieldOffsetMapper;
 
-    auto dispatcher = createDispatcher(mapper, locMapper, declMapper, typeMapper, exprMapper, stmtMapper);
+    auto dispatcher = createDispatcher(mapper, locMapper, declMapper, typeMapper, exprMapper, stmtMapper, fieldOffsetMapper, targetCtx);
 
     TranslationUnitDecl* cppTU = cppCtx.getTranslationUnitDecl();
     FunctionDecl* compute = findFunction(cppTU, "compute");
@@ -544,8 +551,9 @@ TEST_F(FunctionTranslationIntegrationTest, MultipleFunctionsInSameTU) {
     cpptoc::TypeMapper typeMapper;
     cpptoc::ExprMapper exprMapper;
     cpptoc::StmtMapper stmtMapper;
+    FieldOffsetMapper fieldOffsetMapper;
 
-    auto dispatcher = createDispatcher(mapper, locMapper, declMapper, typeMapper, exprMapper, stmtMapper);
+    auto dispatcher = createDispatcher(mapper, locMapper, declMapper, typeMapper, exprMapper, stmtMapper, fieldOffsetMapper, targetCtx);
 
     TranslationUnitDecl* cppTU = cppCtx.getTranslationUnitDecl();
 

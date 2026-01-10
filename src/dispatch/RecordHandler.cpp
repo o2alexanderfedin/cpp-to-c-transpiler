@@ -22,6 +22,7 @@
 #include "llvm/Config/llvm-config.h" // For LLVM_VERSION_MAJOR
 #include "NameMangler.h"
 #include "clang/AST/DeclCXX.h"
+#include "clang/AST/RecordLayout.h"
 #include "clang/Index/USRGeneration.h"
 #include "llvm/Support/Casting.h"
 #include "llvm/Support/raw_ostream.h"
@@ -245,12 +246,12 @@ void RecordHandler::handleRecord(
         llvm::outs() << "[RecordHandler] Class " << name << " has " << ctorCount
                      << " constructors, hasDefaultConstructor=" << (hasAnyConstructor ? "yes" : "no") << "\n";
 
-        // For classes with virtual inheritance, always generate default C1/C2 constructors
-        // TODO: This will be handled by ConstructorHandler once it's re-enabled
-        llvm::outs() << "[RecordHandler] Class " << name
-                     << " has virtual inheritance - generating default C1/C2 constructors\n";
-        generateImplicitC1Constructor(cxxRecord, cppASTContext, cASTContext, disp);
-        generateImplicitC2Constructor(cxxRecord, cppASTContext, cASTContext, disp);
+        // NOTE: ConstructorHandler now handles generation of all C1/C2 constructors
+        // (both explicit and implicit). RecordHandler no longer needs to generate
+        // implicit constructors - it only creates the dual layout structs.
+        // This prevents duplicate constructor definitions.
+        llvm::outs() << "[RecordHandler] Dual layout structs created. "
+                     << "ConstructorHandler will generate C1/C2 constructors.\n";
 
         llvm::outs() << "[RecordHandler] Successfully generated dual layout for " << name << ":\n";
         llvm::outs() << "  - Base-subobject: " << mangledName << "__base\n";
@@ -913,6 +914,22 @@ clang::RecordDecl* RecordHandler::generateBaseSubobjectLayout(
     // Complete definition
     cRecord->completeDefinition();
 
+    // Store field offsets in FieldOffsetMapper for later use by ConstructorHandler
+    cpptoc::FieldOffsetMapper& offsetMapper = disp.getFieldOffsetMapper();
+    if (cRecord->isCompleteDefinition()) {
+        const clang::ASTRecordLayout& layout = cASTContext.getASTRecordLayout(cRecord);
+        unsigned fieldIndex = 0;
+        for (auto* field : cRecord->fields()) {
+            uint64_t offsetInBits = layout.getFieldOffset(fieldIndex);
+            unsigned offsetInBytes = static_cast<unsigned>(offsetInBits / 8);
+            std::string fieldName = field->getNameAsString();
+            offsetMapper.setFieldOffset(cRecord, fieldName, offsetInBytes);
+            llvm::outs() << "[RecordHandler] Stored offset for field '" << fieldName
+                         << "' in " << mangledName << ": " << offsetInBytes << " bytes\n";
+            fieldIndex++;
+        }
+    }
+
     llvm::outs() << "[RecordHandler] Generated base-subobject layout: " << mangledName
                  << " (" << allFields.size() << " fields)\n";
 
@@ -1120,6 +1137,22 @@ clang::RecordDecl* RecordHandler::generateCompleteObjectLayout(
     // Complete definition
     cRecord->completeDefinition();
 
+    // Store field offsets in FieldOffsetMapper for later use by ConstructorHandler
+    cpptoc::FieldOffsetMapper& offsetMapper = disp.getFieldOffsetMapper();
+    if (cRecord->isCompleteDefinition()) {
+        const clang::ASTRecordLayout& layout = cASTContext.getASTRecordLayout(cRecord);
+        unsigned fieldIndex = 0;
+        for (auto* field : cRecord->fields()) {
+            uint64_t offsetInBits = layout.getFieldOffset(fieldIndex);
+            unsigned offsetInBytes = static_cast<unsigned>(offsetInBits / 8);
+            std::string fieldName = field->getNameAsString();
+            offsetMapper.setFieldOffset(cRecord, fieldName, offsetInBytes);
+            llvm::outs() << "[RecordHandler] Stored offset for field '" << fieldName
+                         << "' in " << mangledName << ": " << offsetInBytes << " bytes\n";
+            fieldIndex++;
+        }
+    }
+
     llvm::outs() << "[RecordHandler] Generated complete-object layout: " << mangledName
                  << " (" << allFields.size() << " fields)\n";
 
@@ -1184,13 +1217,43 @@ void RecordHandler::generateImplicitC1Constructor(
         nullptr
     );
 
+    // Add VTT parameter for C1 constructor (used in virtual inheritance)
+    clang::IdentifierInfo& vttII = cASTContext.Idents.get("vtt");
+    clang::QualType voidPtrTy = cASTContext.getPointerType(cASTContext.VoidTy);
+    clang::QualType constVoidPtrTy = cASTContext.getPointerType(voidPtrTy.withConst());
+    clang::ParmVarDecl* vttParam = clang::ParmVarDecl::Create(
+        cASTContext,
+        TU,
+        targetLoc,
+        targetLoc,
+        &vttII,
+        constVoidPtrTy,
+        cASTContext.getTrivialTypeSourceInfo(constVoidPtrTy),
+        clang::SC_None,
+        nullptr
+    );
+
     std::vector<clang::ParmVarDecl*> allParams;
     allParams.push_back(thisParam);
+    allParams.push_back(vttParam);
 
     // CRITICAL FIX: Create function declaration FIRST before building body
     // This breaks the circular dependency where CompoundStmtHandler tries to find
     // the C1 constructor while we're still building it
     llvm::outs() << "[RecordHandler] generateImplicitC1Constructor: Creating function declaration BEFORE body for " << c1Name << "\n";
+
+    // CRITICAL: Create proper FunctionProtoType with all parameter types
+    std::vector<clang::QualType> paramTypes;
+    for (auto* param : allParams) {
+        paramTypes.push_back(param->getType());
+    }
+
+    clang::FunctionProtoType::ExtProtoInfo EPI;
+    clang::QualType funcType = cASTContext.getFunctionType(
+        cASTContext.VoidTy,  // Return type
+        paramTypes,          // Parameter types
+        EPI                  // Extra info
+    );
 
     clang::IdentifierInfo& funcII = cASTContext.Idents.get(c1Name);
     clang::FunctionDecl* c1Func = clang::FunctionDecl::Create(
@@ -1199,8 +1262,8 @@ void RecordHandler::generateImplicitC1Constructor(
         targetLoc,
         targetLoc,
         clang::DeclarationName(&funcII),
-        cASTContext.VoidTy,
-        cASTContext.getTrivialTypeSourceInfo(cASTContext.VoidTy),
+        funcType,  // Use proper function type, not just return type
+        cASTContext.getTrivialTypeSourceInfo(funcType),
         clang::SC_None
     );
 
@@ -1570,13 +1633,43 @@ void RecordHandler::generateImplicitC2Constructor(
         nullptr
     );
 
+    // Add VTT parameter for C2 constructor (used in virtual inheritance)
+    clang::IdentifierInfo& vttII = cASTContext.Idents.get("vtt");
+    clang::QualType voidPtrTy = cASTContext.getPointerType(cASTContext.VoidTy);
+    clang::QualType constVoidPtrTy = cASTContext.getPointerType(voidPtrTy.withConst());
+    clang::ParmVarDecl* vttParam = clang::ParmVarDecl::Create(
+        cASTContext,
+        TU,
+        targetLoc,
+        targetLoc,
+        &vttII,
+        constVoidPtrTy,
+        cASTContext.getTrivialTypeSourceInfo(constVoidPtrTy),
+        clang::SC_None,
+        nullptr
+    );
+
     std::vector<clang::ParmVarDecl*> allParams;
     allParams.push_back(thisParam);
+    allParams.push_back(vttParam);
 
     // CRITICAL FIX: Create function declaration FIRST before building body
     // This breaks the circular dependency where CompoundStmtHandler tries to find
     // the C2 constructor while we're still building it
     llvm::outs() << "[RecordHandler] generateImplicitC2Constructor: Creating function declaration BEFORE body for " << c2Name << "\n";
+
+    // CRITICAL: Create proper FunctionProtoType with all parameter types
+    std::vector<clang::QualType> paramTypes;
+    for (auto* param : allParams) {
+        paramTypes.push_back(param->getType());
+    }
+
+    clang::FunctionProtoType::ExtProtoInfo EPI;
+    clang::QualType funcType = cASTContext.getFunctionType(
+        cASTContext.VoidTy,  // Return type
+        paramTypes,          // Parameter types
+        EPI                  // Extra info
+    );
 
     clang::IdentifierInfo& funcII = cASTContext.Idents.get(c2Name);
     clang::FunctionDecl* c2Func = clang::FunctionDecl::Create(
@@ -1585,8 +1678,8 @@ void RecordHandler::generateImplicitC2Constructor(
         targetLoc,
         targetLoc,
         clang::DeclarationName(&funcII),
-        cASTContext.VoidTy,
-        cASTContext.getTrivialTypeSourceInfo(cASTContext.VoidTy),
+        funcType,  // Use proper function type, not just return type
+        cASTContext.getTrivialTypeSourceInfo(funcType),
         clang::SC_None
     );
 

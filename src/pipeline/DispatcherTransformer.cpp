@@ -4,6 +4,7 @@
 #include "mapping/TypeMapper.h"
 #include "mapping/ExprMapper.h"
 #include "mapping/StmtMapper.h"
+#include "mapping/FieldOffsetMapper.h"
 
 // Include all handlers
 #include "dispatch/TypeHandler.h"
@@ -89,6 +90,7 @@ void DispatcherTransformer::transform(
   TypeMapper typeMapper;
   ExprMapper exprMapper;
   StmtMapper stmtMapper;
+  FieldOffsetMapper fieldOffsetMapper;
 
   // Create dispatcher
   CppToCVisitorDispatcher dispatcher(
@@ -98,6 +100,7 @@ void DispatcherTransformer::transform(
     typeMapper,
     exprMapper,
     stmtMapper,
+    fieldOffsetMapper,
     targetCtx_
   );
 

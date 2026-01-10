@@ -45,6 +45,7 @@ struct TestContext {
     std::unique_ptr<TypeMapper> typeMapper;
     std::unique_ptr<ExprMapper> exprMapper;
     std::unique_ptr<StmtMapper> stmtMapper;
+    std::unique_ptr<FieldOffsetMapper> fieldOffsetMapper;
     std::unique_ptr<CppToCVisitorDispatcher> dispatcher;
 };
 
@@ -67,6 +68,7 @@ TestContext createTestContext() {
     ctx.typeMapper = std::make_unique<TypeMapper>();
     ctx.exprMapper = std::make_unique<ExprMapper>();
     ctx.stmtMapper = std::make_unique<StmtMapper>();
+    ctx.fieldOffsetMapper = std::make_unique<FieldOffsetMapper>();
 
     // Create dispatcher (no handlers registered yet)
     ctx.dispatcher = std::make_unique<CppToCVisitorDispatcher>(
@@ -76,6 +78,7 @@ TestContext createTestContext() {
         *ctx.typeMapper,
         *ctx.exprMapper,
         *ctx.stmtMapper,
+        *ctx.fieldOffsetMapper,
         *ctx.targetContext
     );
 

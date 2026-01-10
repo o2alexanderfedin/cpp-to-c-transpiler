@@ -34,6 +34,7 @@
 #include "mapping/TypeMapper.h"
 #include "mapping/ExprMapper.h"
 #include "mapping/StmtMapper.h"
+#include "mapping/FieldOffsetMapper.h"
 #include "CodeGenerator.h"
 #include "TargetContext.h"
 #include "clang/Tooling/Tooling.h"
@@ -75,6 +76,7 @@ struct DispatcherPipeline {
     std::unique_ptr<TypeMapper> typeMapper;
     std::unique_ptr<ExprMapper> exprMapper;
     std::unique_ptr<StmtMapper> stmtMapper;
+    std::unique_ptr<FieldOffsetMapper> fieldOffsetMapper;
     std::unique_ptr<CppToCVisitorDispatcher> dispatcher;
 };
 
@@ -126,6 +128,7 @@ inline DispatcherPipeline createDispatcherPipeline(const std::string& cppCode = 
     pipeline.typeMapper = std::make_unique<TypeMapper>();
     pipeline.exprMapper = std::make_unique<ExprMapper>();
     pipeline.stmtMapper = std::make_unique<StmtMapper>();
+    pipeline.fieldOffsetMapper = std::make_unique<FieldOffsetMapper>();
 
     // Create dispatcher with all mappers
     pipeline.dispatcher = std::make_unique<CppToCVisitorDispatcher>(
@@ -135,6 +138,7 @@ inline DispatcherPipeline createDispatcherPipeline(const std::string& cppCode = 
         *pipeline.typeMapper,
         *pipeline.exprMapper,
         *pipeline.stmtMapper,
+        *pipeline.fieldOffsetMapper,
         *pipeline.targetContext
     );
 

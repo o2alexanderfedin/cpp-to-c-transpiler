@@ -39,6 +39,7 @@ namespace cpptoc {
 #include "mapping/TypeMapper.h"
 #include "mapping/ExprMapper.h"
 #include "mapping/StmtMapper.h"
+#include "mapping/FieldOffsetMapper.h"
 
 // Need full definition of TargetContext for getTargetSourceLocation()
 // which calls targetContext.getLocationMapper()
@@ -152,6 +153,9 @@ private:
     // Statement mapper for C++ → C statement mappings
     cpptoc::StmtMapper& stmtMapper;
 
+    // Field offset mapper for C struct field offsets
+    cpptoc::FieldOffsetMapper& fieldOffsetMapper;
+
     // Target context for C AST creation (provides LocationMapper)
     TargetContext& targetContext;
 
@@ -168,6 +172,7 @@ public:
      * @param tMapper TypeMapper for C++ → C type mappings (required)
      * @param eMapper ExprMapper for C++ → C expression mappings (required)
      * @param sMapper StmtMapper for C++ → C statement mappings (required)
+     * @param fOffsetMapper FieldOffsetMapper for C struct field offsets (required)
      * @param tgtContext TargetContext for C AST creation (provides LocationMapper)
      */
     explicit CppToCVisitorDispatcher(
@@ -177,8 +182,9 @@ public:
         cpptoc::TypeMapper& tMapper,
         cpptoc::ExprMapper& eMapper,
         cpptoc::StmtMapper& sMapper,
+        cpptoc::FieldOffsetMapper& fOffsetMapper,
         TargetContext& tgtContext
-    ) : pathMapper(mapper), declLocationMapper(locMapper), declMapper(dMapper), typeMapper(tMapper), exprMapper(eMapper), stmtMapper(sMapper), targetContext(tgtContext) {}
+    ) : pathMapper(mapper), declLocationMapper(locMapper), declMapper(dMapper), typeMapper(tMapper), exprMapper(eMapper), stmtMapper(sMapper), fieldOffsetMapper(fOffsetMapper), targetContext(tgtContext) {}
 
     /**
      * @brief Get the path mapper
@@ -209,6 +215,12 @@ public:
      * @return Reference to StmtMapper
      */
     cpptoc::StmtMapper& getStmtMapper() const { return stmtMapper; }
+
+    /**
+     * @brief Get the field offset mapper
+     * @return Reference to FieldOffsetMapper
+     */
+    cpptoc::FieldOffsetMapper& getFieldOffsetMapper() const { return fieldOffsetMapper; }
 
     /**
      * @brief Get the target context
