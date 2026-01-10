@@ -14,7 +14,7 @@
  */
 
 #include "dispatch/RecordHandler.h"
-#include "fixtures/UnitTestHelper.h"
+#include "UnitTestHelper.h"
 #include "CNodeBuilder.h"
 #include "clang/Tooling/Tooling.h"
 #include "clang/AST/RecordLayout.h"
@@ -34,7 +34,7 @@ protected:
 
     void SetUp() override {
         ctx = createUnitTestContext();
-        ctx.dispatcher->registerHandler<RecordHandler>();
+        RecordHandler::registerWith(*ctx.dispatcher);
     }
 
     /**

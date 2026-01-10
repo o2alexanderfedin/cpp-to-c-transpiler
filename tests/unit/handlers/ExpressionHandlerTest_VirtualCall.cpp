@@ -25,7 +25,7 @@
  * 15. MixedVirtualNonVirtual - Test class with both virtual and non-virtual methods
  */
 
-#include "helpers/UnitTestHelper.h"
+#include "UnitTestHelper.h"
 #include "CNodeBuilder.h"
 #include "VirtualCallTranslator.h"
 #include "VirtualMethodAnalyzer.h"

@@ -32,7 +32,7 @@ protected:
 
     void SetUp() override {
         ctx = createUnitTestContext();
-        ctx.dispatcher->registerHandler<ConstructorHandler>();
+        ConstructorHandler::registerWith(*ctx.dispatcher);
     }
 
     /**

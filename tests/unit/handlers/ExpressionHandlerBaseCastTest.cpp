@@ -32,7 +32,7 @@
  * - Generate pointer arithmetic for non-primary bases: (Base*)((char*)derived + offset)
  */
 
-#include "helpers/UnitTestHelper.h"
+#include "UnitTestHelper.h"
 #include "CNodeBuilder.h"
 #include "MultipleInheritanceAnalyzer.h"
 #include "BaseOffsetCalculator.h"

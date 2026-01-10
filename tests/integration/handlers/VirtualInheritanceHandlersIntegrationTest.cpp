@@ -14,7 +14,7 @@
 #include "dispatch/RecordHandler.h"
 #include "dispatch/ConstructorHandler.h"
 #include "VirtualInheritanceAnalyzer.h"
-#include "helpers/UnitTestHelper.h"
+#include "UnitTestHelper.h"
 #include "clang/Tooling/Tooling.h"
 #include <gtest/gtest.h>
 #include <memory>

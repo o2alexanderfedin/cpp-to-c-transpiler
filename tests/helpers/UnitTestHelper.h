@@ -141,12 +141,9 @@ public:
 
     bool VisitDecl(clang::Decl* D) {
         if (!result) {
-            // Only try to cast if T is derived from Decl
-            if constexpr (std::is_base_of<clang::Decl, T>::value) {
-                if (auto* Node = llvm::dyn_cast<T>(D)) {
-                    result = Node;
-                    return false; // Stop traversal
-                }
+            if (auto* Node = llvm::dyn_cast<T>(D)) {
+                result = Node;
+                return false; // Stop traversal
             }
         }
         return true;
@@ -154,12 +151,9 @@ public:
 
     bool VisitStmt(clang::Stmt* S) {
         if (!result) {
-            // Only try to cast if T is derived from Stmt
-            if constexpr (std::is_base_of<clang::Stmt, T>::value) {
-                if (auto* Node = llvm::dyn_cast<T>(S)) {
-                    result = Node;
-                    return false; // Stop traversal
-                }
+            if (auto* Node = llvm::dyn_cast<T>(S)) {
+                result = Node;
+                return false; // Stop traversal
             }
         }
         return true;
@@ -167,12 +161,9 @@ public:
 
     bool VisitType(clang::Type* Ty) {
         if (!result) {
-            // Only try to cast if T is derived from Type
-            if constexpr (std::is_base_of<clang::Type, T>::value) {
-                if (auto* Node = llvm::dyn_cast<T>(Ty)) {
-                    result = Node;
-                    return false; // Stop traversal
-                }
+            if (auto* Node = llvm::dyn_cast<T>(Ty)) {
+                result = Node;
+                return false; // Stop traversal
             }
         }
         return true;

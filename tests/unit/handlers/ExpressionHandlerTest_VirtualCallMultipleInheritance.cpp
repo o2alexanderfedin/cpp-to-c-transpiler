@@ -35,7 +35,7 @@
  * 18. EdgeCaseSingleInheritanceStillWorks - Ensure backward compatibility
  */
 
-#include "helpers/UnitTestHelper.h"
+#include "UnitTestHelper.h"
 #include "CNodeBuilder.h"
 #include "MultipleInheritanceAnalyzer.h"
 #include "clang/Tooling/Tooling.h"

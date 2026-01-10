@@ -55,7 +55,7 @@
  * 38. ComplexLogical - (a > 0 && b < 100) || c == 42
  */
 
-#include "helpers/UnitTestHelper.h"
+#include "UnitTestHelper.h"
 #include "CNodeBuilder.h"
 #include "clang/Tooling/Tooling.h"
 #include "clang/AST/RecursiveASTVisitor.h"

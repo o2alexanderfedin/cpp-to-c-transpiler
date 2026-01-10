@@ -19,7 +19,7 @@
  * 10. MultipleThisUsages - Multiple uses of 'this' in same method
  */
 
-#include "helpers/UnitTestHelper.h"
+#include "UnitTestHelper.h"
 #include "CNodeBuilder.h"
 #include "clang/Tooling/Tooling.h"
 #include "clang/AST/RecursiveASTVisitor.h"
