@@ -122,16 +122,19 @@ unsigned MultipleInheritanceAnalyzer::calculateBaseOffset(
     }
 
     // Check if Base is actually a base of Derived
+    // CRITICAL: Skip virtual bases - they don't have fixed offsets in BaseOffsets
     bool isBase = false;
+    bool isVirtual = false;
     for (const auto& B : Derived->bases()) {
         if (B.getType()->getAsCXXRecordDecl() == Base) {
             isBase = true;
+            isVirtual = B.isVirtual();
             break;
         }
     }
 
-    if (!isBase) {
-        return 0;
+    if (!isBase || isVirtual) {
+        return 0;  // Virtual bases use VBaseOffsets, not BaseOffsets
     }
 
     // CRITICAL: Use definition pointers to avoid ASTRecordLayout issues
