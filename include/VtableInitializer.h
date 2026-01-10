@@ -49,16 +49,19 @@ public:
      * @brief Generate vptr initialization statement
      * @param Record Class being constructed
      * @param ThisParam 'this' parameter of constructor
+     * @param targetLoc Source location for generated AST nodes
      * @return Assignment statement (this->vptr = &__vtable_ClassName), or nullptr if not polymorphic
      */
     clang::Stmt* generateVptrInit(const clang::CXXRecordDecl* Record,
-                                   clang::ParmVarDecl* ThisParam);
+                                   clang::ParmVarDecl* ThisParam,
+                                   clang::SourceLocation targetLoc);
 
     /**
      * @brief Inject vptr initialization into constructor statement list
      * @param Record Class being constructed
      * @param ThisParam 'this' parameter of constructor
      * @param stmts Statement list (modified in-place, vptr init prepended)
+     * @param targetLoc Source location for generated AST nodes
      * @return true if vptr init was injected, false if not polymorphic
      *
      * Side effects:
@@ -67,7 +70,8 @@ public:
      */
     bool injectVptrInit(const clang::CXXRecordDecl* Record,
                         clang::ParmVarDecl* ThisParam,
-                        std::vector<clang::Stmt*>& stmts);
+                        std::vector<clang::Stmt*>& stmts,
+                        clang::SourceLocation targetLoc);
 
     /**
      * @brief Get vtable variable name for a class
@@ -81,17 +85,21 @@ private:
      * @brief Create member access expression: this->vptr
      * @param ThisParam 'this' parameter
      * @param Record Class being constructed
+     * @param targetLoc Source location for generated AST nodes
      * @return MemberExpr for this->vptr
      */
     clang::Expr* createVptrAccess(clang::ParmVarDecl* ThisParam,
-                                   const clang::CXXRecordDecl* Record);
+                                   const clang::CXXRecordDecl* Record,
+                                   clang::SourceLocation targetLoc);
 
     /**
      * @brief Create address-of vtable expression: &__vtable_ClassName
      * @param Record Class to get vtable address for
+     * @param targetLoc Source location for generated AST nodes
      * @return UnaryOperator for address-of vtable
      */
-    clang::Expr* createVtableAddress(const clang::CXXRecordDecl* Record);
+    clang::Expr* createVtableAddress(const clang::CXXRecordDecl* Record,
+                                       clang::SourceLocation targetLoc);
 
     clang::ASTContext& Context;
     VirtualMethodAnalyzer& Analyzer;

@@ -1,0 +1,5 @@
+if(EXISTS "/Users/alexanderfedin/Projects/hapyy/hupyy-cpp-to-c/ACSLLoopAnnotatorTest[1]_tests.cmake")
+  include("/Users/alexanderfedin/Projects/hapyy/hupyy-cpp-to-c/ACSLLoopAnnotatorTest[1]_tests.cmake")
+else()
+  add_test(ACSLLoopAnnotatorTest_NOT_BUILT ACSLLoopAnnotatorTest_NOT_BUILT)
+endif()

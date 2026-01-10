@@ -5,6 +5,8 @@
 
 #include "dispatch/UnaryOperatorHandler.h"
 #include "mapping/ExprMapper.h"
+#include "SourceLocationMapper.h"
+#include "TargetContext.h"
 #include "clang/AST/Expr.h"
 #include "llvm/Support/Casting.h"
 #include "llvm/Support/raw_ostream.h"
@@ -45,6 +47,12 @@ void UnaryOperatorHandler::handleUnaryOperator(
         return;
     }
 
+    // Get target location for this expression
+    std::string targetPath = disp.getCurrentTargetPath();
+    assert(!targetPath.empty() && "Target path must be set before expression handling");
+    SourceLocationMapper& locMapper = disp.getTargetContext().getLocationMapper();
+    clang::SourceLocation targetLoc = locMapper.getStartOfFile(targetPath);
+
     // Extract operand subexpression
     const clang::Expr* cppOperand = cppUnOp->getSubExpr();
 
@@ -72,10 +80,10 @@ void UnaryOperatorHandler::handleUnaryOperator(
         cASTContext,
         cOperand,
         cppUnOp->getOpcode(),
-        cppUnOp->getType(),  // May need type translation in future
+        cppUnOp->getType(),
         cppUnOp->getValueKind(),
         cppUnOp->getObjectKind(),
-        clang::SourceLocation(),
+        targetLoc,
         cppUnOp->canOverflow(),
         clang::FPOptionsOverride()
     );

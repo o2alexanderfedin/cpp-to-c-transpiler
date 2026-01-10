@@ -33,7 +33,7 @@
  */
 
 #include "dispatch/RecordHandler.h"
-#include "helpers/UnitTestHelper.h"
+#include "UnitTestHelper.h"
 #include "dispatch/MethodHandler.h"
 #include "CNodeBuilder.h"
 #include "MultipleInheritanceAnalyzer.h"

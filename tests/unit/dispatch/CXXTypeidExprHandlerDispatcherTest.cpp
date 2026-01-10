@@ -26,6 +26,7 @@
 #include "mapping/DeclMapper.h"
 #include "mapping/TypeMapper.h"
 #include "mapping/StmtMapper.h"
+#include "mapping/FieldOffsetMapper.h"
 #include "mapping/PathMapper.h"
 #include "mapping/DeclLocationMapper.h"
 #include "TargetContext.h"
@@ -57,10 +58,14 @@ using namespace cpptoc;
 class CXXTypeidExprHandlerTest : public ::testing::Test {
 protected:
     std::unique_ptr<ASTUnit> cppAST;
+    std::unique_ptr<TargetContext> targetCtx;
+    std::unique_ptr<PathMapper> pathMapper;
+    std::unique_ptr<DeclLocationMapper> locMapper;
     DeclMapper declMapper;
     TypeMapper typeMapper;
     ExprMapper exprMapper;
     StmtMapper stmtMapper;
+    FieldOffsetMapper fieldOffsetMapper;
     std::unique_ptr<CppToCVisitorDispatcher> dispatcher;
 
     /**
@@ -74,21 +79,21 @@ protected:
         cppAST = tooling::buildASTFromCodeWithArgs(cppCode, args);
         ASSERT_TRUE(cppAST) << "Failed to parse C++ code";
 
-        // Get target context (singleton C AST)
-        TargetContext& targetCtx = TargetContext::getInstance();
-
-        // Get PathMapper singleton
-        PathMapper& pathMapper = PathMapper::getInstance("/src", "/output");
-        DeclLocationMapper locMapper(pathMapper);
+        // RAII: Create fresh instances for test isolation
+        targetCtx = std::make_unique<TargetContext>();
+        pathMapper = std::make_unique<PathMapper>(*targetCtx, "/src", "/output");
+        locMapper = std::make_unique<DeclLocationMapper>(*pathMapper);
 
         // Create dispatcher
         dispatcher = std::make_unique<CppToCVisitorDispatcher>(
-            pathMapper,
-            locMapper,
+            *pathMapper,
+            *locMapper,
             declMapper,
             typeMapper,
             exprMapper,
-            stmtMapper
+            stmtMapper,
+            fieldOffsetMapper,
+            *targetCtx
         );
 
         // Register CXXTypeidExprHandler
@@ -149,7 +154,7 @@ protected:
     }
 
     ASTContext& getCppContext() { return cppAST->getASTContext(); }
-    ASTContext& getCContext() { return TargetContext::getInstance().getContext(); }
+    ASTContext& getCContext() { return targetCtx->getContext(); }
 };
 
 /**
@@ -420,13 +425,11 @@ TEST_F(CXXTypeidExprHandlerTest, ComplexNestedExpression) {
 /**
  * TEST 10: Integration with Comparison Operators
  * Test: typeid(*a) == typeid(*b)
- * NOTE: This test is currently disabled due to test infrastructure limitations.
- * The forward declaration approach doesn't produce the expected AST structure for
- * operator== on std::type_info. The handler itself works correctly (verified by
- * integration tests), but this unit test needs a full <typeinfo> header which
- * requires complex include path setup.
+ *
+ * INVESTIGATION: This test checks what AST structure is actually generated
+ * for typeid comparisons and verifies the handler works with it.
  */
-TEST_F(CXXTypeidExprHandlerTest, DISABLED_IntegrationWithComparisonOperators) {
+TEST_F(CXXTypeidExprHandlerTest, IntegrationWithComparisonOperators) {
     const char* code = R"(
         namespace std {
             class type_info {};
@@ -444,35 +447,93 @@ TEST_F(CXXTypeidExprHandlerTest, DISABLED_IntegrationWithComparisonOperators) {
 
     SetUpWithCode(code);
 
-    // Find the comparison operator (which contains two typeid expressions)
-    // Note: With free function operator==, it becomes CXXOperatorCallExpr
-    const CXXOperatorCallExpr* cmpOp = findFirstExpr<CXXOperatorCallExpr>();
-    ASSERT_NE(cmpOp, nullptr);
-    ASSERT_EQ(cmpOp->getNumArgs(), 2u);
+    // First, let's find out what expression type we actually have
+    const auto& ctx = cppAST->getASTContext();
+    const auto* TU = ctx.getTranslationUnitDecl();
 
-    // The arguments should be CXXTypeidExpr
-    const Expr* LHS = cmpOp->getArg(0)->IgnoreImpCasts();
-    const Expr* RHS = cmpOp->getArg(1)->IgnoreImpCasts();
+    const Expr* actualExpr = nullptr;
+    std::string actualType;
 
-    const CXXTypeidExpr* lhsTypeid = dyn_cast<CXXTypeidExpr>(LHS);
-    const CXXTypeidExpr* rhsTypeid = dyn_cast<CXXTypeidExpr>(RHS);
+    // Find the expression in the result variable initialization
+    for (const auto* D : TU->decls()) {
+        if (const auto* FD = dyn_cast<FunctionDecl>(D)) {
+            if (FD->hasBody()) {
+                const auto* Body = FD->getBody();
+                if (const auto* CS = dyn_cast<CompoundStmt>(Body)) {
+                    for (const auto* S : CS->body()) {
+                        if (const auto* DS = dyn_cast<DeclStmt>(S)) {
+                            for (const auto* Decl : DS->decls()) {
+                                if (const auto* VD = dyn_cast<VarDecl>(Decl)) {
+                                    if (VD->getNameAsString() == "result" && VD->hasInit()) {
+                                        actualExpr = VD->getInit()->IgnoreImpCasts();
+                                        actualType = actualExpr->getStmtClassName();
+                                        break;
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
 
-    // Note: Due to AST structure, typeid might be wrapped in other nodes
-    // For this test, we verify that at least one typeid can be found
-    if (lhsTypeid) {
-        bool handled = dispatcher->dispatch(getCppContext(), getCContext(), lhsTypeid);
-        EXPECT_TRUE(handled);
+    ASSERT_NE(actualExpr, nullptr) << "Could not find 'result' variable initialization";
+
+    // Check if it's a ParenExpr and unwrap it
+    if (const auto* PE = dyn_cast<ParenExpr>(actualExpr)) {
+        actualExpr = PE->getSubExpr()->IgnoreImpCasts();
+        actualType = actualExpr->getStmtClassName();
+    }
+
+    // Now check what we actually have
+    if (const auto* BO = dyn_cast<BinaryOperator>(actualExpr)) {
+        // It's a BinaryOperator, not CXXOperatorCallExpr
+        // This happens when operator== is only forward-declared
+        EXPECT_EQ(BO->getOpcode(), BO_EQ);
+
+        // Get the operands
+        const Expr* LHS = BO->getLHS()->IgnoreImpCasts();
+        const Expr* RHS = BO->getRHS()->IgnoreImpCasts();
+
+        // Both should be CXXTypeidExpr
+        const CXXTypeidExpr* lhsTypeid = dyn_cast<CXXTypeidExpr>(LHS);
+        const CXXTypeidExpr* rhsTypeid = dyn_cast<CXXTypeidExpr>(RHS);
+
+        ASSERT_NE(lhsTypeid, nullptr) << "LHS should be CXXTypeidExpr";
+        ASSERT_NE(rhsTypeid, nullptr) << "RHS should be CXXTypeidExpr";
+
+        // Dispatch both typeid expressions
+        bool handled1 = dispatcher->dispatch(getCppContext(), getCContext(), lhsTypeid);
+        EXPECT_TRUE(handled1);
         EXPECT_TRUE(exprMapper.hasCreated(lhsTypeid));
-    }
 
-    if (rhsTypeid) {
-        bool handled = dispatcher->dispatch(getCppContext(), getCContext(), rhsTypeid);
-        EXPECT_TRUE(handled);
+        bool handled2 = dispatcher->dispatch(getCppContext(), getCContext(), rhsTypeid);
+        EXPECT_TRUE(handled2);
         EXPECT_TRUE(exprMapper.hasCreated(rhsTypeid));
-    }
+    } else if (const auto* Call = dyn_cast<CXXOperatorCallExpr>(actualExpr)) {
+        // It's a CXXOperatorCallExpr (would happen with inline operator== definition)
+        ASSERT_EQ(Call->getNumArgs(), 2u);
 
-    // At least one should exist
-    EXPECT_TRUE(lhsTypeid != nullptr || rhsTypeid != nullptr);
+        const Expr* LHS = Call->getArg(0)->IgnoreImpCasts();
+        const Expr* RHS = Call->getArg(1)->IgnoreImpCasts();
+
+        const CXXTypeidExpr* lhsTypeid = dyn_cast<CXXTypeidExpr>(LHS);
+        const CXXTypeidExpr* rhsTypeid = dyn_cast<CXXTypeidExpr>(RHS);
+
+        ASSERT_NE(lhsTypeid, nullptr) << "LHS should be CXXTypeidExpr";
+        ASSERT_NE(rhsTypeid, nullptr) << "RHS should be CXXTypeidExpr";
+
+        bool handled1 = dispatcher->dispatch(getCppContext(), getCContext(), lhsTypeid);
+        EXPECT_TRUE(handled1);
+        EXPECT_TRUE(exprMapper.hasCreated(lhsTypeid));
+
+        bool handled2 = dispatcher->dispatch(getCppContext(), getCContext(), rhsTypeid);
+        EXPECT_TRUE(handled2);
+        EXPECT_TRUE(exprMapper.hasCreated(rhsTypeid));
+    } else {
+        FAIL() << "Expected BinaryOperator or CXXOperatorCallExpr, got: " << actualType;
+    }
 }
 
 /**

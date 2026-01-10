@@ -128,6 +128,7 @@ private:
      * @brief Create "this" parameter for instance method
      * @param classDecl Parent class declaration
      * @param cASTContext Target C ASTContext
+     * @param disp Dispatcher for accessing TargetContext and SourceLocationMapper
      * @return ParmVarDecl representing "struct ClassName* this"
      *
      * Creates: struct ClassName* this
@@ -135,7 +136,8 @@ private:
      */
     static clang::ParmVarDecl* createThisParameter(
         const clang::CXXRecordDecl* classDecl,
-        clang::ASTContext& cASTContext
+        clang::ASTContext& cASTContext,
+        const CppToCVisitorDispatcher& disp
     );
 
     /**

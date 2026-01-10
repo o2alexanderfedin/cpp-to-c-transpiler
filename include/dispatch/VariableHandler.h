@@ -180,6 +180,7 @@ private:
      * @brief Translate variable initialization expression
      * @param init C++ initialization expression
      * @param cASTContext Target C ASTContext (for creating C expressions)
+     * @param targetLoc SourceLocation for the created C expressions
      * @return C initialization expression, or nullptr if no init
      *
      * For Phase 1, handles literal expressions only:
@@ -193,7 +194,8 @@ private:
      */
     static clang::Expr* translateInitializer(
         const clang::Expr* init,
-        clang::ASTContext& cASTContext
+        clang::ASTContext& cASTContext,
+        clang::SourceLocation targetLoc
     );
 };
 

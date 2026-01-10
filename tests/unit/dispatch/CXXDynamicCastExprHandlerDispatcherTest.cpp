@@ -28,6 +28,7 @@
 #include "mapping/DeclMapper.h"
 #include "mapping/TypeMapper.h"
 #include "mapping/StmtMapper.h"
+#include "mapping/FieldOffsetMapper.h"
 #include "mapping/PathMapper.h"
 #include "mapping/DeclLocationMapper.h"
 #include "TargetContext.h"
@@ -59,10 +60,14 @@ using namespace cpptoc;
 class CXXDynamicCastExprHandlerTest : public ::testing::Test {
 protected:
     std::unique_ptr<ASTUnit> cppAST;
+    std::unique_ptr<TargetContext> targetCtx;
+    std::unique_ptr<PathMapper> pathMapper;
+    std::unique_ptr<DeclLocationMapper> locMapper;
     DeclMapper declMapper;
     TypeMapper typeMapper;
     ExprMapper exprMapper;
     StmtMapper stmtMapper;
+    FieldOffsetMapper fieldOffsetMapper;
     std::unique_ptr<CppToCVisitorDispatcher> dispatcher;
 
     /**
@@ -76,21 +81,21 @@ protected:
         cppAST = tooling::buildASTFromCodeWithArgs(cppCode, args);
         ASSERT_TRUE(cppAST) << "Failed to parse C++ code";
 
-        // Get target context (singleton C AST)
-        TargetContext& targetCtx = TargetContext::getInstance();
-
-        // Get PathMapper singleton
-        PathMapper& pathMapper = PathMapper::getInstance("/src", "/output");
-        DeclLocationMapper locMapper(pathMapper);
+        // RAII: Create fresh instances for test isolation
+        targetCtx = std::make_unique<TargetContext>();
+        pathMapper = std::make_unique<PathMapper>(*targetCtx, "/src", "/output");
+        locMapper = std::make_unique<DeclLocationMapper>(*pathMapper);
 
         // Create dispatcher
         dispatcher = std::make_unique<CppToCVisitorDispatcher>(
-            pathMapper,
-            locMapper,
+            *pathMapper,
+            *locMapper,
             declMapper,
             typeMapper,
             exprMapper,
-            stmtMapper
+            stmtMapper,
+            fieldOffsetMapper,
+            *targetCtx
         );
 
         // Register CXXDynamicCastExprHandler
@@ -192,7 +197,7 @@ TEST_F(CXXDynamicCastExprHandlerTest, HandlerRegistration) {
     // Verify dispatch succeeds
     bool dispatched = dispatcher->dispatch(
         cppAST->getASTContext(),
-        TargetContext::getInstance().getContext(),
+        targetCtx->getContext(),
         castExpr
     );
 
@@ -309,7 +314,7 @@ TEST_F(CXXDynamicCastExprHandlerTest, SuccessfulDowncast) {
     // Dispatch
     bool dispatched = dispatcher->dispatch(
         cppAST->getASTContext(),
-        TargetContext::getInstance().getContext(),
+        targetCtx->getContext(),
         castExpr
     );
 
@@ -352,7 +357,7 @@ TEST_F(CXXDynamicCastExprHandlerTest, FailedDowncast) {
     // Dispatch
     bool dispatched = dispatcher->dispatch(
         cppAST->getASTContext(),
-        TargetContext::getInstance().getContext(),
+        targetCtx->getContext(),
         castExpr
     );
 
@@ -396,7 +401,7 @@ TEST_F(CXXDynamicCastExprHandlerTest, CrosscastMultipleInheritance) {
     // Dispatch
     bool dispatched = dispatcher->dispatch(
         cppAST->getASTContext(),
-        TargetContext::getInstance().getContext(),
+        targetCtx->getContext(),
         castExpr
     );
 
@@ -451,7 +456,7 @@ TEST_F(CXXDynamicCastExprHandlerTest, UpcastToBase) {
     // Dispatch
     bool dispatched = dispatcher->dispatch(
         cppAST->getASTContext(),
-        TargetContext::getInstance().getContext(),
+        targetCtx->getContext(),
         castExpr
     );
 
@@ -488,7 +493,7 @@ TEST_F(CXXDynamicCastExprHandlerTest, DynamicCastTranslatorIntegration) {
     // Dispatch
     bool dispatched = dispatcher->dispatch(
         cppAST->getASTContext(),
-        TargetContext::getInstance().getContext(),
+        targetCtx->getContext(),
         castExpr
     );
 
@@ -526,7 +531,7 @@ TEST_F(CXXDynamicCastExprHandlerTest, ExprMapperPreventsDoubleTranslation) {
     // First dispatch
     bool dispatched1 = dispatcher->dispatch(
         cppAST->getASTContext(),
-        TargetContext::getInstance().getContext(),
+        targetCtx->getContext(),
         castExpr
     );
 
@@ -540,7 +545,7 @@ TEST_F(CXXDynamicCastExprHandlerTest, ExprMapperPreventsDoubleTranslation) {
     // Second dispatch (should reuse)
     bool dispatched2 = dispatcher->dispatch(
         cppAST->getASTContext(),
-        TargetContext::getInstance().getContext(),
+        targetCtx->getContext(),
         castExpr
     );
 
@@ -589,7 +594,7 @@ TEST_F(CXXDynamicCastExprHandlerTest, RecursiveDispatchSubexpression) {
     // Dispatch
     bool dispatched = dispatcher->dispatch(
         cppAST->getASTContext(),
-        TargetContext::getInstance().getContext(),
+        targetCtx->getContext(),
         castExpr
     );
 
@@ -635,7 +640,7 @@ TEST_F(CXXDynamicCastExprHandlerTest, ComplexNestedExpression) {
     // Dispatch
     bool dispatched = dispatcher->dispatch(
         cppAST->getASTContext(),
-        TargetContext::getInstance().getContext(),
+        targetCtx->getContext(),
         castExpr
     );
 
@@ -672,7 +677,7 @@ TEST_F(CXXDynamicCastExprHandlerTest, IntegrationWithConditional) {
     // Dispatch
     bool dispatched = dispatcher->dispatch(
         cppAST->getASTContext(),
-        TargetContext::getInstance().getContext(),
+        targetCtx->getContext(),
         castExpr
     );
 
@@ -707,7 +712,7 @@ TEST_F(CXXDynamicCastExprHandlerTest, RuntimeCallGeneration) {
     // Dispatch
     bool dispatched = dispatcher->dispatch(
         cppAST->getASTContext(),
-        TargetContext::getInstance().getContext(),
+        targetCtx->getContext(),
         castExpr
     );
 

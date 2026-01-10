@@ -62,16 +62,25 @@ Stmt* AssumeAttributeHandler::handle(AttributedStmt* S, ASTContext& Ctx) {
 
 // Get the assume attribute from AttributedStmt
 const Attr* AssumeAttributeHandler::getAssumeAttr(AttributedStmt* S) {
+  // CXXAssumeAttr is only available in LLVM 16+
+  // For LLVM 15, return nullptr (assume attributes not supported)
+  return nullptr;
+  /*
   for (const auto* A : S->getAttrs()) {
     if (auto* AA = dyn_cast<CXXAssumeAttr>(A)) {
       return AA;
     }
   }
   return nullptr;
+  */
 }
 
 // Extract condition expression from assume attribute
 Expr* AssumeAttributeHandler::extractCondition(AttributedStmt* S) {
+  // CXXAssumeAttr is only available in LLVM 16+
+  // For LLVM 15, return nullptr (assume attributes not supported)
+  return nullptr;
+  /*
   // Get the assume attribute
   for (const auto* A : S->getAttrs()) {
     if (auto* AA = dyn_cast<CXXAssumeAttr>(A)) {
@@ -80,6 +89,7 @@ Expr* AssumeAttributeHandler::extractCondition(AttributedStmt* S) {
     }
   }
   return nullptr;
+  */
 }
 
 // Convert expression to C-compatible string

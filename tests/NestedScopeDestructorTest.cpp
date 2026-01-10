@@ -216,7 +216,7 @@ void test_SimpleNestedScopeTranslation() {
     cpptoc::FileOriginTracker tracker(Ctx.getSourceManager());
     tracker.addUserHeaderPath("<stdin>");
     clang::TranslationUnitDecl *C_TU = clang::TranslationUnitDecl::Create(Ctx);
-    TargetContext& targetCtx = TargetContext::getInstance();
+    TargetContext targetCtx;
     CppToCVisitor Visitor(Ctx, Builder, targetCtx, tracker, C_TU, nullptr);
 
     // Traverse AST to trigger translation
@@ -264,7 +264,7 @@ void test_MultipleObjectsLIFO() {
     cpptoc::FileOriginTracker tracker(Ctx.getSourceManager());
     tracker.addUserHeaderPath("<stdin>");
     clang::TranslationUnitDecl *C_TU = clang::TranslationUnitDecl::Create(Ctx);
-    TargetContext& targetCtx = TargetContext::getInstance();
+    TargetContext targetCtx;
     CppToCVisitor Visitor(Ctx, Builder, targetCtx, tracker, C_TU, nullptr);
 
     Visitor.TraverseDecl(Ctx.getTranslationUnitDecl());

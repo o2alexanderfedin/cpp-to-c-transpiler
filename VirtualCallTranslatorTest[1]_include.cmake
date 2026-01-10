@@ -1,0 +1,5 @@
+if(EXISTS "/Users/alexanderfedin/Projects/hapyy/hupyy-cpp-to-c/VirtualCallTranslatorTest[1]_tests.cmake")
+  include("/Users/alexanderfedin/Projects/hapyy/hupyy-cpp-to-c/VirtualCallTranslatorTest[1]_tests.cmake")
+else()
+  add_test(VirtualCallTranslatorTest_NOT_BUILT VirtualCallTranslatorTest_NOT_BUILT)
+endif()

@@ -1,48 +1,25 @@
-// Generated from: /Users/alexanderfedin/Projects/hapyy/hupyy-cpp-to-c/tests/real-world/simple-validation/03-state-machine/src/StateMachine.cpp
-// Implementation file
-
 #include "StateMachine.h"
 
-void StateMachine__ctor_1(struct StateMachine * this, int initialState) {
-	this->currentState = initialState;
-	this->transitionCount = 0;
-}
-
-extern void StateMachine_transition_GameState(struct StateMachine * this, int newState) {
-	if (StateMachine_isValidTransition_GameState_GameState(this, this->currentState, newState)) 	{
+void StateMachine__transition__enumGameState(struct StateMachine * this, enum GameState newState) {
+	if (StateMachine_isValidTransition(&this, this->currentState, newState)) 	{
 		this->currentState = newState;
 		this->transitionCount++;
 	}
 
 }
 
-extern int StateMachine_getCurrentState(struct StateMachine * this) {
+enum GameState StateMachine__getCurrentState__void(struct StateMachine * this) {
 	return this->currentState;
 ;
 }
 
-extern int StateMachine_getTransitionCount(struct StateMachine * this) {
+int StateMachine__getTransitionCount__void(struct StateMachine * this) {
 	return this->transitionCount;
 ;
 }
 
-extern bool StateMachine_isValidTransition_GameState_GameState(struct StateMachine * this, int from, int to) {
+bool StateMachine__isValidTransition__enumGameState_enumGameState(struct StateMachine * this, enum GameState from, enum GameState to) {
 	switch (from) 	{
-		case GameState__Menu:
-			return to == GameState__Playing;
-;
-		case GameState__Playing:
-			return to == GameState__Paused || to == GameState__GameOver;
-;
-		case GameState__Paused:
-			return to == GameState__Playing || to == GameState__Menu || to == GameState__GameOver;
-;
-		case GameState__GameOver:
-			return to == GameState__Menu;
-;
-		default:
-			return false;
-;
 	}
 
 }

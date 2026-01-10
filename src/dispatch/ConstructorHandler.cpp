@@ -7,17 +7,68 @@
  */
 
 #include "dispatch/ConstructorHandler.h"
+#include "dispatch/RecordHandler.h"
 #include "CNodeBuilder.h"
 #include "MultipleInheritanceAnalyzer.h"
+#include "VirtualInheritanceAnalyzer.h"
+#include "ConstructorSplitter.h"
+#include "VTTGenerator.h"
 #include "NameMangler.h"
 #include "mapping/DeclMapper.h"
 #include "mapping/PathMapper.h"
+#include "SourceLocationMapper.h"
 #include "clang/AST/DeclCXX.h"
 #include "clang/AST/RecordLayout.h"
 #include "llvm/Support/Casting.h"
 #include <cassert>
 
 namespace cpptoc {
+
+/**
+ * @brief Calculate offset of base subobject in C struct using stored field offsets
+ *
+ * Finds the first field from the base class in the complete C struct and returns
+ * its offset (which was previously stored by RecordHandler during struct generation).
+ *
+ * @param baseClass C++ base class record
+ * @param parentCStruct C struct representing the complete object
+ * @param disp Dispatcher (to access FieldOffsetMapper)
+ * @return Offset in bytes, or 0 if not found
+ */
+static unsigned calculateBaseSubobjectOffset(
+    const clang::CXXRecordDecl* baseClass,
+    clang::RecordDecl* parentCStruct,
+    const CppToCVisitorDispatcher& disp
+) {
+    if (!baseClass || !parentCStruct) return 0;
+
+    // Get the FieldOffsetMapper
+    cpptoc::FieldOffsetMapper& offsetMapper = disp.getFieldOffsetMapper();
+
+    // Strategy: Find ANY field from the base class in the parent C struct
+    // The first field from baseClass will be at the base subobject's offset
+
+    // Get fields from base class
+    if (!baseClass->getDefinition()) return 0;
+
+    for (auto* baseField : baseClass->fields()) {
+        std::string fieldName = baseField->getNameAsString();
+
+        // Check if this field exists in parent C struct with stored offset
+        if (offsetMapper.hasFieldOffset(parentCStruct, fieldName)) {
+            unsigned offset = offsetMapper.getFieldOffset(parentCStruct, fieldName);
+            llvm::outs() << "[ConstructorHandler] Found base subobject offset for "
+                         << baseClass->getNameAsString() << " via field '" << fieldName
+                         << "' at offset " << offset << " bytes\n";
+            return offset;
+        }
+    }
+
+    llvm::outs() << "[ConstructorHandler] WARNING: Could not find offset for base "
+                 << baseClass->getNameAsString() << " in struct "
+                 << parentCStruct->getNameAsString() << ", using 0\n";
+    return 0;
+}
 
 void ConstructorHandler::registerWith(CppToCVisitorDispatcher& dispatcher) {
     dispatcher.addHandler(
@@ -50,12 +101,79 @@ void ConstructorHandler::handleConstructor(
 
     std::string className = parentClass->getNameAsString();
 
+    // Debug: Log constructor being processed
+    std::string ctorName = cpptoc::mangle_constructor(ctor);
+    bool isImplicit = ctor->isImplicit();
+    bool isDefaultConstructor = ctor->isDefaultConstructor();
+    llvm::outs() << "[ConstructorHandler] Processing constructor: " << ctorName
+                 << " (implicit=" << (isImplicit ? "yes" : "no")
+                 << ", default=" << (isDefaultConstructor ? "yes" : "no")
+                 << ")\n";
+
+    // Check if class hierarchy has virtual bases (Task 6)
+    VirtualInheritanceAnalyzer viAnalyzer;
+    viAnalyzer.analyzeClass(parentClass);
+
+    bool needsC1C2Split = false;
+    // Check if ANY class in hierarchy has virtual bases
+    for (const auto& base : parentClass->bases()) {
+        const auto* baseRecord = base.getType()->getAsCXXRecordDecl();
+        if (baseRecord) {
+            viAnalyzer.analyzeClass(baseRecord);
+            if (viAnalyzer.hasVirtualBases(baseRecord)) {
+                needsC1C2Split = true;
+                break;
+            }
+        }
+    }
+
+    if (viAnalyzer.hasVirtualBases(parentClass)) {
+        needsC1C2Split = true;
+    }
+
+    if (needsC1C2Split) {
+        llvm::outs() << "[ConstructorHandler] Class " << className
+                     << " needs C1/C2 splitting (has virtual bases)\n";
+    }
+
+    // Phase 3: For classes with virtual inheritance, generate ONLY C1/C2 constructors (no regular constructor)
+    // Per Itanium C++ ABI, C1 is the complete-object constructor, C2 is base-subobject constructor
+    if (needsConstructorVariants(ctor)) {
+        llvm::outs() << "[ConstructorHandler] Class " << className
+                     << " needs C1/C2 constructor variants - skipping regular constructor\n";
+
+        // Generate C1 (complete-object) constructor
+        llvm::outs() << "[ConstructorHandler] About to call generateC1Constructor\n";
+        llvm::outs().flush();
+        generateC1Constructor(ctor, cppASTContext, cASTContext, disp);
+        llvm::outs() << "[ConstructorHandler] Returned from generateC1Constructor\n";
+        llvm::outs().flush();
+
+        // Generate C2 (base-subobject) constructor
+        llvm::outs() << "[ConstructorHandler] About to call generateC2Constructor\n";
+        llvm::outs().flush();
+        generateC2Constructor(ctor, cppASTContext, cASTContext, disp);
+        llvm::outs() << "[ConstructorHandler] Returned from generateC2Constructor\n";
+        llvm::outs().flush();
+
+        llvm::outs() << "[ConstructorHandler] About to return from handleConstructor\n";
+        llvm::outs().flush();
+        return; // Skip regular constructor generation
+    }
+
     // Generate mangled function name using NameMangler API
     std::string funcName = cpptoc::mangle_constructor(ctor);
 
     // Find C RecordDecl (created by RecordHandler)
+    // IMPORTANT: Use PathMapper to get the correct TU for this file, not the global TU
+    std::string targetPathForStruct = disp.getCurrentTargetPath();
+    if (targetPathForStruct.empty()) {
+        targetPathForStruct = disp.getTargetPath(cppASTContext, D);
+    }
+    cpptoc::PathMapper& pathMapper = disp.getPathMapper();
+    clang::TranslationUnitDecl* TU = pathMapper.getOrCreateTU(targetPathForStruct);
+
     clang::RecordDecl* cRecordDecl = nullptr;
-    auto* TU = cASTContext.getTranslationUnitDecl();
     for (auto* decl : TU->decls()) {
         if (auto* RD = llvm::dyn_cast<clang::RecordDecl>(decl)) {
             if (RD->getName() == className) {
@@ -67,12 +185,24 @@ void ConstructorHandler::handleConstructor(
 
     if (!cRecordDecl) {
         // RecordHandler should have created the struct already
+        llvm::outs() << "[ConstructorHandler] ERROR: Could not find C struct for class: "
+                     << className << " in TU " << targetPathForStruct
+                     << " (has " << std::distance(TU->decls_begin(), TU->decls_end())
+                     << " declarations)\n";
         return;
     }
 
+    // Get valid SourceLocation for C AST nodes (needed early for this parameter)
+    std::string targetPathForThis = disp.getCurrentTargetPath();
+    if (targetPathForThis.empty()) {
+        targetPathForThis = disp.getTargetPath(cppASTContext, D);
+    }
+    SourceLocationMapper& locMapperForThis = disp.getTargetContext().getLocationMapper();
+    clang::SourceLocation targetLocForThis = locMapperForThis.getStartOfFile(targetPathForThis);
+
     // Create 'this' parameter
     clang::QualType classType = cASTContext.getRecordType(cRecordDecl);
-    clang::ParmVarDecl* thisParam = createThisParameter(classType, cASTContext);
+    clang::ParmVarDecl* thisParam = createThisParameter(classType, cASTContext, targetLocForThis);
 
     // Translate constructor parameters
     std::vector<clang::ParmVarDecl*> ctorParams = translateParameters(ctor, disp, cppASTContext, cASTContext);
@@ -95,19 +225,101 @@ void ConstructorHandler::handleConstructor(
 
     // Add lpVtbl initialization(s) AFTER base constructors (Task 7)
     if (parentClass->isPolymorphic()) {
-        auto lpVtblInitStmts = injectLpVtblInit(parentClass, thisParam, cppASTContext, cASTContext);
+        auto lpVtblInitStmts = injectLpVtblInit(parentClass, thisParam, cppASTContext, cASTContext, targetLocForThis);
         bodyStmts.insert(bodyStmts.end(), lpVtblInitStmts.begin(), lpVtblInitStmts.end());
     }
 
-    // TODO: Add member initializer list translations here
+    // Add member initializer list translations
+    // Translate each member initializer (e.g., : field(value)) to this->field = value;
+    for (const auto* init : ctor->inits()) {
+        if (!init->isWritten() || init->isBaseInitializer()) {
+            continue; // Skip compiler-generated and base initializers (already handled)
+        }
 
-    // Create CompoundStmt (constructor body)
+        if (init->isMemberInitializer()) {
+            clang::FieldDecl* field = init->getMember();
+            clang::Expr* initExpr = init->getInit();
+
+            if (!field || !initExpr) continue;
+
+            // Find the corresponding C field in the C struct
+            clang::FieldDecl* cField = nullptr;
+            for (auto* f : cRecordDecl->fields()) {
+                if (f->getNameAsString() == field->getNameAsString()) {
+                    cField = f;
+                    break;
+                }
+            }
+
+            if (!cField) continue;
+
+            // Create this->field member expression
+            clang::DeclRefExpr* thisExpr = clang::DeclRefExpr::Create(
+                cASTContext,
+                clang::NestedNameSpecifierLoc(),
+                targetLocForThis,
+                thisParam,
+                false,
+                targetLocForThis,
+                thisParam->getType(),
+                clang::VK_LValue
+            );
+
+            clang::MemberExpr* memberExpr = clang::MemberExpr::CreateImplicit(
+                cASTContext,
+                thisExpr,
+                true, // isArrow (this is a pointer)
+                cField,
+                cField->getType(),
+                clang::VK_LValue,
+                clang::OK_Ordinary
+            );
+
+            // Dispatch the initialization expression to translate it
+            bool initHandled = disp.dispatch(cppASTContext, cASTContext, const_cast<clang::Expr*>(initExpr));
+
+            // Retrieve translated init expression from ExprMapper
+            cpptoc::ExprMapper& exprMapper = disp.getExprMapper();
+            clang::Expr* cInitExpr = exprMapper.getCreated(initExpr);
+
+            if (!cInitExpr) {
+                // Fallback: if expr not translated, try to create simple literal for integer types
+                if (const auto* intLit = llvm::dyn_cast<clang::IntegerLiteral>(initExpr)) {
+                    cInitExpr = clang::IntegerLiteral::Create(
+                        cASTContext,
+                        intLit->getValue(),
+                        intLit->getType(),
+                        targetLocForThis
+                    );
+                }
+            }
+
+            if (cInitExpr) {
+                // Create assignment: this->field = value
+                clang::BinaryOperator* assignExpr = clang::BinaryOperator::Create(
+                    cASTContext,
+                    memberExpr,
+                    cInitExpr,
+                    clang::BO_Assign,
+                    cField->getType(),
+                    clang::VK_LValue,
+                    clang::OK_Ordinary,
+                    targetLocForThis,
+                    clang::FPOptionsOverride()
+                );
+
+                bodyStmts.push_back(assignExpr);
+            }
+        }
+    }
+
+    // Create CompoundStmt (constructor body) using the same targetLoc
     clang::CompoundStmt* body = clang::CompoundStmt::Create(
         cASTContext,
         bodyStmts,
         clang::FPOptionsOverride(),
-        clang::SourceLocation(),
-        clang::SourceLocation()
+        targetLocForThis,
+        targetLocForThis
     );
 
     // Create C function using CNodeBuilder
@@ -126,8 +338,11 @@ void ConstructorHandler::handleConstructor(
     declMapper.setCreated(ctor, cFunc);
 
     // Get target path and add to C TranslationUnit
-    std::string targetPath = disp.getTargetPath(cppASTContext, D);
-    cpptoc::PathMapper& pathMapper = disp.getPathMapper();
+    // Note: pathMapper already obtained earlier (line 92), reuse it
+    std::string targetPath = disp.getCurrentTargetPath();  // Use current path set by TranslationUnitHandler
+    if (targetPath.empty()) {
+        targetPath = disp.getTargetPath(cppASTContext, D);
+    }
     clang::TranslationUnitDecl* cTargetTU = pathMapper.getOrCreateTU(targetPath);
     assert(cTargetTU && "Failed to get/create C TranslationUnit");
 
@@ -143,6 +358,7 @@ void ConstructorHandler::handleConstructor(
             declMapper.setCreated(cppParam, allParams[i + 1]);
         }
     }
+
 }
 
 std::vector<clang::ParmVarDecl*> ConstructorHandler::translateParameters(
@@ -153,6 +369,9 @@ std::vector<clang::ParmVarDecl*> ConstructorHandler::translateParameters(
 ) {
     std::vector<clang::ParmVarDecl*> cParams;
 
+    // Get valid SourceLocation for C AST nodes
+    clang::SourceLocation targetLoc = disp.getTargetSourceLocation(cppASTContext, ctor);
+
     for (const auto* cppParam : ctor->parameters()) {
         clang::IdentifierInfo& II = cASTContext.Idents.get(cppParam->getNameAsString());
         clang::QualType cppParamType = cppParam->getType();
@@ -161,8 +380,8 @@ std::vector<clang::ParmVarDecl*> ConstructorHandler::translateParameters(
         clang::ParmVarDecl* cParam = clang::ParmVarDecl::Create(
             cASTContext,
             cASTContext.getTranslationUnitDecl(),
-            clang::SourceLocation(),
-            clang::SourceLocation(),
+            targetLoc,
+            targetLoc,
             &II,
             cParamType,
             cASTContext.getTrivialTypeSourceInfo(cParamType),
@@ -178,7 +397,8 @@ std::vector<clang::ParmVarDecl*> ConstructorHandler::translateParameters(
 
 clang::ParmVarDecl* ConstructorHandler::createThisParameter(
     clang::QualType recordType,
-    clang::ASTContext& cASTContext
+    clang::ASTContext& cASTContext,
+    clang::SourceLocation targetLoc
 ) {
     clang::IdentifierInfo& II = cASTContext.Idents.get("this");
     clang::QualType thisType = cASTContext.getPointerType(recordType);
@@ -186,8 +406,8 @@ clang::ParmVarDecl* ConstructorHandler::createThisParameter(
     return clang::ParmVarDecl::Create(
         cASTContext,
         cASTContext.getTranslationUnitDecl(),
-        clang::SourceLocation(),
-        clang::SourceLocation(),
+        targetLoc,
+        targetLoc,
         &II,
         thisType,
         cASTContext.getTrivialTypeSourceInfo(thisType),
@@ -219,7 +439,8 @@ std::vector<clang::Stmt*> ConstructorHandler::injectLpVtblInit(
     const clang::CXXRecordDecl* parentClass,
     clang::ParmVarDecl* thisParam,
     const clang::ASTContext& cppASTContext,
-    clang::ASTContext& cASTContext
+    clang::ASTContext& cASTContext,
+    clang::SourceLocation targetLoc
 ) {
     std::vector<clang::Stmt*> stmts;
 
@@ -274,10 +495,10 @@ std::vector<clang::Stmt*> ConstructorHandler::injectLpVtblInit(
         clang::DeclRefExpr* thisExpr = clang::DeclRefExpr::Create(
             cASTContext,
             clang::NestedNameSpecifierLoc(),
-            clang::SourceLocation(),
+            targetLoc,
             thisParam,
             false,
-            clang::SourceLocation(),
+            targetLoc,
             thisParam->getType(),
             clang::VK_LValue
         );
@@ -286,12 +507,12 @@ std::vector<clang::Stmt*> ConstructorHandler::injectLpVtblInit(
             cASTContext,
             thisExpr,
             true,  // isArrow
-            clang::SourceLocation(),
+            targetLoc,
             clang::NestedNameSpecifierLoc(),
-            clang::SourceLocation(),
+            targetLoc,
             lpVtblField,
             clang::DeclAccessPair::make(lpVtblField, clang::AS_public),
-            clang::DeclarationNameInfo(lpVtblField->getDeclName(), clang::SourceLocation()),
+            clang::DeclarationNameInfo(lpVtblField->getDeclName(), targetLoc),
             nullptr,
             lpVtblField->getType(),
             clang::VK_LValue,
@@ -344,8 +565,8 @@ std::vector<clang::Stmt*> ConstructorHandler::injectLpVtblInit(
                     cASTContext,
                     clang::TagTypeKind::Struct,
                     TU,
-                    clang::SourceLocation(),
-                    clang::SourceLocation(),
+                    targetLoc,
+                    targetLoc,
                     &vtableII
                 );
                 vtableStruct->startDefinition();
@@ -359,8 +580,8 @@ std::vector<clang::Stmt*> ConstructorHandler::injectLpVtblInit(
             vtableInstanceVar = clang::VarDecl::Create(
                 cASTContext,
                 TU,
-                clang::SourceLocation(),
-                clang::SourceLocation(),
+                targetLoc,
+                targetLoc,
                 &instanceII,
                 constVtableType,
                 cASTContext.getTrivialTypeSourceInfo(constVtableType),
@@ -374,10 +595,10 @@ std::vector<clang::Stmt*> ConstructorHandler::injectLpVtblInit(
         clang::DeclRefExpr* vtableInstanceExpr = clang::DeclRefExpr::Create(
             cASTContext,
             clang::NestedNameSpecifierLoc(),
-            clang::SourceLocation(),
+            targetLoc,
             vtableInstanceVar,
             false,
-            clang::SourceLocation(),
+            targetLoc,
             vtableInstanceVar->getType(),
             clang::VK_LValue
         );
@@ -390,7 +611,7 @@ std::vector<clang::Stmt*> ConstructorHandler::injectLpVtblInit(
             ptrType,
             clang::VK_PRValue,
             clang::OK_Ordinary,
-            clang::SourceLocation(),
+            targetLoc,
             false,
             clang::FPOptionsOverride()
         );
@@ -404,7 +625,7 @@ std::vector<clang::Stmt*> ConstructorHandler::injectLpVtblInit(
             lpVtblField->getType(),
             clang::VK_LValue,
             clang::OK_Ordinary,
-            clang::SourceLocation(),
+            targetLoc,
             clang::FPOptionsOverride()
         );
 
@@ -425,10 +646,10 @@ std::vector<clang::Stmt*> ConstructorHandler::injectLpVtblInit(
             clang::DeclRefExpr* thisExpr = clang::DeclRefExpr::Create(
                 cASTContext,
                 clang::NestedNameSpecifierLoc(),
-                clang::SourceLocation(),
+                targetLoc,
                 thisParam,
                 false,
-                clang::SourceLocation(),
+                targetLoc,
                 thisParam->getType(),
                 clang::VK_LValue
             );
@@ -437,12 +658,12 @@ std::vector<clang::Stmt*> ConstructorHandler::injectLpVtblInit(
                 cASTContext,
                 thisExpr,
                 true,
-                clang::SourceLocation(),
+                targetLoc,
                 clang::NestedNameSpecifierLoc(),
-                clang::SourceLocation(),
+                targetLoc,
                 lpVtblField,
                 clang::DeclAccessPair::make(lpVtblField, clang::AS_public),
-                clang::DeclarationNameInfo(lpVtblField->getDeclName(), clang::SourceLocation()),
+                clang::DeclarationNameInfo(lpVtblField->getDeclName(), targetLoc),
                 nullptr,
                 lpVtblField->getType(),
                 clang::VK_LValue,
@@ -482,8 +703,8 @@ std::vector<clang::Stmt*> ConstructorHandler::injectLpVtblInit(
                         cASTContext,
                         clang::TagTypeKind::Struct,
                         TU,
-                        clang::SourceLocation(),
-                        clang::SourceLocation(),
+                        targetLoc,
+                        targetLoc,
                         &vtableII
                     );
                     vtableStruct->startDefinition();
@@ -497,8 +718,8 @@ std::vector<clang::Stmt*> ConstructorHandler::injectLpVtblInit(
                 vtableInstanceVar = clang::VarDecl::Create(
                     cASTContext,
                     TU,
-                    clang::SourceLocation(),
-                    clang::SourceLocation(),
+                    targetLoc,
+                    targetLoc,
                     &instanceII,
                     constVtableType,
                     cASTContext.getTrivialTypeSourceInfo(constVtableType),
@@ -511,10 +732,10 @@ std::vector<clang::Stmt*> ConstructorHandler::injectLpVtblInit(
             clang::DeclRefExpr* vtableInstanceExpr = clang::DeclRefExpr::Create(
                 cASTContext,
                 clang::NestedNameSpecifierLoc(),
-                clang::SourceLocation(),
+                targetLoc,
                 vtableInstanceVar,
                 false,
-                clang::SourceLocation(),
+                targetLoc,
                 vtableInstanceVar->getType(),
                 clang::VK_LValue
             );
@@ -527,7 +748,7 @@ std::vector<clang::Stmt*> ConstructorHandler::injectLpVtblInit(
                 ptrType,
                 clang::VK_PRValue,
                 clang::OK_Ordinary,
-                clang::SourceLocation(),
+                targetLoc,
                 false,
                 clang::FPOptionsOverride()
             );
@@ -540,7 +761,7 @@ std::vector<clang::Stmt*> ConstructorHandler::injectLpVtblInit(
                 lpVtblField->getType(),
                 clang::VK_LValue,
                 clang::OK_Ordinary,
-                clang::SourceLocation(),
+                targetLoc,
                 clang::FPOptionsOverride()
             );
 
@@ -565,24 +786,112 @@ std::vector<clang::Stmt*> ConstructorHandler::generateBaseConstructorCalls(
         return calls;
     }
 
-    unsigned baseIndex = 0;
-    for (const auto& base : parentClass->bases()) {
-        const auto* baseClass = base.getType()->getAsCXXRecordDecl();
-        if (!baseClass) continue;
+    // Get valid SourceLocation for C AST nodes
+    clang::SourceLocation targetLoc = disp.getTargetSourceLocation(cppASTContext, ctor);
 
-        unsigned offset = 0;
-        if (baseIndex > 0 && parentClass->isCompleteDefinition()) {
-            const clang::ASTRecordLayout& layout = cppASTContext.getASTRecordLayout(parentClass);
-            clang::CharUnits baseOffset = layout.getBaseClassOffset(baseClass);
-            offset = static_cast<unsigned>(baseOffset.getQuantity());
+    // Get target path for PathMapper TU lookup
+    std::string targetPath = disp.getCurrentTargetPath();
+    if (targetPath.empty()) {
+        targetPath = disp.getTargetPath(cppASTContext, ctor);
+    }
+
+    // Get the C struct for parent class (to calculate base subobject offsets)
+    cpptoc::DeclMapper& declMapper = disp.getDeclMapper();
+    clang::RecordDecl* parentCStruct = nullptr;
+    if (declMapper.hasCreated(parentClass)) {
+        parentCStruct = llvm::cast<clang::RecordDecl>(declMapper.getCreated(parentClass));
+    }
+
+    // Check if parent class has virtual bases (direct or indirect)
+    VirtualInheritanceAnalyzer viAnalyzer;
+    viAnalyzer.analyzeClass(parentClass);
+    bool hasVirtualBases = viAnalyzer.hasVirtualBases(parentClass);
+
+    if (hasVirtualBases) {
+        // CRITICAL: When the derived class has virtual bases, it acts like a C1 constructor:
+        // 1. Initialize virtual bases FIRST (most-derived class responsibility)
+        // 2. Call C2 (base-subobject) variants for non-virtual bases (they skip virtual base init)
+
+        // Step 1: Initialize all virtual bases directly
+        std::set<const clang::CXXRecordDecl*> allVirtualBases;
+        std::function<void(const clang::CXXRecordDecl*)> collectVirtualBases;
+        collectVirtualBases = [&](const clang::CXXRecordDecl* record) {
+            for (const auto& base : record->bases()) {
+                if (base.isVirtual()) {
+                    const auto* baseRecord = base.getType()->getAsCXXRecordDecl();
+                    if (baseRecord && allVirtualBases.insert(baseRecord).second) {
+                        collectVirtualBases(baseRecord);
+                    }
+                }
+            }
+            // Also collect indirect virtual bases from non-virtual bases
+            for (const auto& base : record->bases()) {
+                if (!base.isVirtual()) {
+                    const auto* baseRecord = base.getType()->getAsCXXRecordDecl();
+                    if (baseRecord) {
+                        collectVirtualBases(baseRecord);
+                    }
+                }
+            }
+        };
+        collectVirtualBases(parentClass);
+
+        // Initialize each virtual base (at offset calculated from C struct layout)
+        for (const auto* vbase : allVirtualBases) {
+            unsigned offset = parentCStruct ? calculateBaseSubobjectOffset(vbase, parentCStruct, disp) : 0;
+            clang::CallExpr* call = createBaseConstructorCall(vbase, thisParam, offset, cASTContext, targetLoc);
+            if (call) {
+                calls.push_back(call);
+                llvm::outs() << "[ConstructorHandler] Regular ctor: Initialize virtual base "
+                             << vbase->getNameAsString() << "\n";
+            }
         }
 
-        clang::CallExpr* call = createBaseConstructorCall(baseClass, thisParam, offset, cASTContext);
-        if (call) {
-            calls.push_back(call);
-        }
+        // Step 2: Call C2 (base-subobject) variants for non-virtual bases
+        unsigned baseIndex = 0;
+        for (const auto& base : parentClass->bases()) {
+            if (base.isVirtual()) {
+                continue; // Already handled above
+            }
 
-        baseIndex++;
+            const auto* baseClass = base.getType()->getAsCXXRecordDecl();
+            if (!baseClass) continue;
+
+            // Determine which constructor variant to call
+            std::string variantSuffix = needsConstructorVariants(ctor) && RecordHandler::needsDualLayout(baseClass) ? "_C2" : "";
+
+            // Calculate offset from C struct layout instead of C++ ABI
+            unsigned offset = parentCStruct ? calculateBaseSubobjectOffset(baseClass, parentCStruct, disp) : 0;
+
+            clang::CallExpr* call = createBaseConstructorCallVariant(
+                baseClass, thisParam, offset, variantSuffix, cASTContext, targetLoc, targetPath, disp, nullptr
+            );
+
+            if (call) {
+                calls.push_back(call);
+                llvm::outs() << "[ConstructorHandler] Regular ctor: Call non-virtual base "
+                             << baseClass->getNameAsString() << " with variant " << variantSuffix << "\n";
+            }
+
+            baseIndex++;
+        }
+    } else {
+        // No virtual bases - use simple constructor calls
+        unsigned baseIndex = 0;
+        for (const auto& base : parentClass->bases()) {
+            const auto* baseClass = base.getType()->getAsCXXRecordDecl();
+            if (!baseClass) continue;
+
+            // Calculate offset from C struct layout instead of C++ ABI
+            unsigned offset = parentCStruct ? calculateBaseSubobjectOffset(baseClass, parentCStruct, disp) : 0;
+
+            clang::CallExpr* call = createBaseConstructorCall(baseClass, thisParam, offset, cASTContext, targetLoc);
+            if (call) {
+                calls.push_back(call);
+            }
+
+            baseIndex++;
+        }
     }
 
     return calls;
@@ -592,7 +901,8 @@ clang::CallExpr* ConstructorHandler::createBaseConstructorCall(
     const clang::CXXRecordDecl* baseClass,
     clang::ParmVarDecl* thisParam,
     unsigned offset,
-    clang::ASTContext& cASTContext
+    clang::ASTContext& cASTContext,
+    clang::SourceLocation targetLoc
 ) {
     std::string baseName = baseClass->getNameAsString();
 
@@ -642,8 +952,8 @@ clang::CallExpr* ConstructorHandler::createBaseConstructorCall(
                 cASTContext,
                 clang::TagTypeKind::Struct,
                 TU,
-                clang::SourceLocation(),
-                clang::SourceLocation(),
+                targetLoc,
+                targetLoc,
                 &II
             );
             baseStruct->startDefinition();
@@ -658,8 +968,8 @@ clang::CallExpr* ConstructorHandler::createBaseConstructorCall(
         clang::ParmVarDecl* baseThisParam = clang::ParmVarDecl::Create(
             cASTContext,
             TU,
-            clang::SourceLocation(),
-            clang::SourceLocation(),
+            targetLoc,
+            targetLoc,
             &thisII,
             basePtrType,
             cASTContext.getTrivialTypeSourceInfo(basePtrType),
@@ -671,8 +981,8 @@ clang::CallExpr* ConstructorHandler::createBaseConstructorCall(
         baseCtorFunc = clang::FunctionDecl::Create(
             cASTContext,
             TU,
-            clang::SourceLocation(),
-            clang::SourceLocation(),
+            targetLoc,
+            targetLoc,
             clang::DeclarationName(&funcII),
             cASTContext.VoidTy,
             cASTContext.getTrivialTypeSourceInfo(cASTContext.VoidTy),
@@ -687,10 +997,10 @@ clang::CallExpr* ConstructorHandler::createBaseConstructorCall(
     clang::DeclRefExpr* thisExpr = clang::DeclRefExpr::Create(
         cASTContext,
         clang::NestedNameSpecifierLoc(),
-        clang::SourceLocation(),
+        targetLoc,
         thisParam,
         false,
-        clang::SourceLocation(),
+        targetLoc,
         thisParam->getType(),
         clang::VK_LValue
     );
@@ -709,8 +1019,8 @@ clang::CallExpr* ConstructorHandler::createBaseConstructorCall(
             nullptr,
             clang::FPOptionsOverride(),
             cASTContext.getTrivialTypeSourceInfo(charPtrType),
-            clang::SourceLocation(),
-            clang::SourceLocation()
+            targetLoc,
+            targetLoc
         );
 
         llvm::APInt offsetValue(32, offset);
@@ -718,7 +1028,7 @@ clang::CallExpr* ConstructorHandler::createBaseConstructorCall(
             cASTContext,
             offsetValue,
             cASTContext.IntTy,
-            clang::SourceLocation()
+            targetLoc
         );
 
         clang::BinaryOperator* addExpr = clang::BinaryOperator::Create(
@@ -729,7 +1039,7 @@ clang::CallExpr* ConstructorHandler::createBaseConstructorCall(
             charPtrType,
             clang::VK_PRValue,
             clang::OK_Ordinary,
-            clang::SourceLocation(),
+            targetLoc,
             clang::FPOptionsOverride()
         );
 
@@ -763,8 +1073,8 @@ clang::CallExpr* ConstructorHandler::createBaseConstructorCall(
         nullptr,
         clang::FPOptionsOverride(),
         cASTContext.getTrivialTypeSourceInfo(basePtrType),
-        clang::SourceLocation(),
-        clang::SourceLocation()
+        targetLoc,
+        targetLoc
     );
 
     // Create CallExpr
@@ -775,21 +1085,1106 @@ clang::CallExpr* ConstructorHandler::createBaseConstructorCall(
         clang::DeclRefExpr::Create(
             cASTContext,
             clang::NestedNameSpecifierLoc(),
-            clang::SourceLocation(),
+            targetLoc,
             baseCtorFunc,
             false,
-            clang::SourceLocation(),
+            targetLoc,
             baseCtorFunc->getType(),
             clang::VK_LValue
         ),
         args,
         cASTContext.VoidTy,
         clang::VK_PRValue,
-        clang::SourceLocation(),
+        targetLoc,
         clang::FPOptionsOverride()
     );
 
     return callExpr;
+}
+
+clang::CallExpr* ConstructorHandler::createBaseConstructorCallVariant(
+    const clang::CXXRecordDecl* baseClass,
+    clang::ParmVarDecl* thisParam,
+    unsigned offset,
+    const std::string& variantSuffix,
+    clang::ASTContext& cASTContext,
+    clang::SourceLocation targetLoc,
+    const std::string& targetPath,
+    const CppToCVisitorDispatcher& disp,
+    clang::ParmVarDecl* vttParam
+) {
+    llvm::outs() << "[createBaseConstructorCallVariant] ENTRY: baseClass=" << (baseClass ? baseClass->getNameAsString() : "NULL")
+                 << ", offset=" << offset << ", variantSuffix='" << variantSuffix << "'\n";
+    llvm::outs().flush();
+
+    std::string baseName = baseClass->getNameAsString();
+    llvm::outs() << "[createBaseConstructorCallVariant] baseName=" << baseName << "\n";
+    llvm::outs().flush();
+
+    // Find the default constructor
+    llvm::outs() << "[createBaseConstructorCallVariant] Looking for default constructor\n";
+    llvm::outs().flush();
+    clang::CXXConstructorDecl* baseDefaultCtor = nullptr;
+    for (auto* ctor : baseClass->ctors()) {
+        if (ctor->isDefaultConstructor()) {
+            baseDefaultCtor = ctor;
+            llvm::outs() << "[createBaseConstructorCallVariant] Found default constructor\n";
+            llvm::outs().flush();
+            break;
+        }
+    }
+    llvm::outs() << "[createBaseConstructorCallVariant] Default constructor search complete\n";
+    llvm::outs().flush();
+
+    std::string baseCtorName;
+    if (baseDefaultCtor) {
+        baseCtorName = cpptoc::mangle_constructor(baseDefaultCtor) + variantSuffix;
+    } else {
+        baseCtorName = baseName + "_init" + variantSuffix;
+    }
+
+    // Find or create base constructor function declaration in PathMapper TU
+    cpptoc::PathMapper& pathMapper = disp.getPathMapper();
+    auto* TU = pathMapper.getOrCreateTU(targetPath);
+    clang::FunctionDecl* baseCtorFunc = nullptr;
+    for (auto* D : TU->decls()) {
+        if (auto* FD = llvm::dyn_cast<clang::FunctionDecl>(D)) {
+            if (FD->getNameAsString() == baseCtorName) {
+                baseCtorFunc = FD;
+                break;
+            }
+        }
+    }
+
+    if (!baseCtorFunc) {
+        // Create forward declaration
+        // Determine the struct name based on variant suffix
+        std::string baseStructName = baseName;
+        if (variantSuffix == "_C2") {
+            baseStructName += "__base";
+        }
+
+        clang::RecordDecl* baseStruct = nullptr;
+        for (auto* D : TU->decls()) {
+            if (auto* RD = llvm::dyn_cast<clang::RecordDecl>(D)) {
+                if (RD->getNameAsString() == baseStructName) {
+                    baseStruct = RD;
+                    break;
+                }
+            }
+        }
+
+        if (!baseStruct) {
+            clang::IdentifierInfo& II = cASTContext.Idents.get(baseStructName);
+            baseStruct = clang::RecordDecl::Create(
+                cASTContext,
+                clang::TagTypeKind::Struct,
+                TU,
+                targetLoc,
+                targetLoc,
+                &II
+            );
+            baseStruct->startDefinition();
+            baseStruct->completeDefinition();
+            TU->addDecl(baseStruct);
+        }
+
+        clang::QualType baseType = cASTContext.getRecordType(baseStruct);
+        clang::QualType basePtrType = cASTContext.getPointerType(baseType);
+
+        clang::IdentifierInfo& thisII = cASTContext.Idents.get("this");
+        clang::ParmVarDecl* baseThisParam = clang::ParmVarDecl::Create(
+            cASTContext,
+            TU,
+            targetLoc,
+            targetLoc,
+            &thisII,
+            basePtrType,
+            cASTContext.getTrivialTypeSourceInfo(basePtrType),
+            clang::SC_None,
+            nullptr
+        );
+
+        // Add parameters: this + VTT (for C1/C2 variants)
+        std::vector<clang::ParmVarDecl*> params = {baseThisParam};
+        std::vector<clang::QualType> paramTypes = {basePtrType};
+
+        if (variantSuffix == "_C1" || variantSuffix == "_C2") {
+            // Add VTT parameter for C1/C2 variants
+            clang::QualType vttType = cASTContext.getPointerType(
+                cASTContext.getPointerType(cASTContext.getConstType(cASTContext.VoidTy))
+            );
+            clang::IdentifierInfo& vttII = cASTContext.Idents.get("vtt");
+            clang::ParmVarDecl* vttParmDecl = clang::ParmVarDecl::Create(
+                cASTContext,
+                TU,
+                targetLoc,
+                targetLoc,
+                &vttII,
+                vttType,
+                cASTContext.getTrivialTypeSourceInfo(vttType),
+                clang::SC_None,
+                nullptr
+            );
+            params.push_back(vttParmDecl);
+            paramTypes.push_back(vttType);
+        }
+
+        // Create proper function prototype type
+        clang::FunctionProtoType::ExtProtoInfo EPI;
+        clang::QualType funcType = cASTContext.getFunctionType(
+            cASTContext.VoidTy,  // Return type
+            paramTypes,           // Parameter types
+            EPI                   // Extra info
+        );
+
+        clang::IdentifierInfo& funcII = cASTContext.Idents.get(baseCtorName);
+        baseCtorFunc = clang::FunctionDecl::Create(
+            cASTContext,
+            TU,
+            targetLoc,
+            targetLoc,
+            clang::DeclarationName(&funcII),
+            funcType,
+            cASTContext.getTrivialTypeSourceInfo(funcType),
+            clang::SC_None
+        );
+
+        baseCtorFunc->setParams(params);
+        TU->addDecl(baseCtorFunc);
+    }
+
+    // Create argument expression
+    clang::DeclRefExpr* thisExpr = clang::DeclRefExpr::Create(
+        cASTContext,
+        clang::NestedNameSpecifierLoc(),
+        targetLoc,
+        thisParam,
+        false,
+        targetLoc,
+        thisParam->getType(),
+        clang::VK_LValue
+    );
+
+    clang::Expr* adjustedThis = thisExpr;
+
+    // Add offset for non-primary base
+    if (offset > 0) {
+        clang::QualType charPtrType = cASTContext.getPointerType(cASTContext.CharTy);
+        clang::CStyleCastExpr* charCast = clang::CStyleCastExpr::Create(
+            cASTContext,
+            charPtrType,
+            clang::VK_PRValue,
+            clang::CK_BitCast,
+            thisExpr,
+            nullptr,
+            clang::FPOptionsOverride(),
+            cASTContext.getTrivialTypeSourceInfo(charPtrType),
+            targetLoc,
+            targetLoc
+        );
+
+        llvm::APInt offsetValue(32, offset);
+        clang::IntegerLiteral* offsetLit = clang::IntegerLiteral::Create(
+            cASTContext,
+            offsetValue,
+            cASTContext.IntTy,
+            targetLoc
+        );
+
+        clang::BinaryOperator* addExpr = clang::BinaryOperator::Create(
+            cASTContext,
+            charCast,
+            offsetLit,
+            clang::BO_Add,
+            charPtrType,
+            clang::VK_PRValue,
+            clang::OK_Ordinary,
+            targetLoc,
+            clang::FPOptionsOverride()
+        );
+
+        adjustedThis = addExpr;
+    }
+
+    // Cast to base pointer type (determine struct name based on variant)
+    std::string baseStructName = baseName;
+    if (variantSuffix == "_C2") {
+        baseStructName += "__base";
+    }
+
+    llvm::outs() << "[createBaseConstructorCallVariant] Looking for struct: " << baseStructName << " in TU\n";
+
+    clang::RecordDecl* baseStruct = nullptr;
+    for (auto* D : TU->decls()) {
+        if (auto* RD = llvm::dyn_cast<clang::RecordDecl>(D)) {
+            if (RD->getNameAsString() == baseStructName) {
+                baseStruct = RD;
+                llvm::outs() << "[createBaseConstructorCallVariant] Found struct: " << baseStructName
+                             << " (isCompleteDefinition=" << RD->isCompleteDefinition()
+                             << ", field_count=" << std::distance(RD->field_begin(), RD->field_end()) << ")\n";
+                break;
+            }
+        }
+    }
+
+    if (!baseStruct) {
+        llvm::outs() << "[createBaseConstructorCallVariant] ERROR: Could not find struct " << baseStructName << " in TU\n";
+        return nullptr;
+    }
+
+    llvm::outs() << "[createBaseConstructorCallVariant] Creating base type for struct: " << baseStructName << "\n";
+    llvm::outs() << "[createBaseConstructorCallVariant] baseStruct->getTypeForDecl(): " << (baseStruct->getTypeForDecl() ? "EXISTS" : "NULL") << "\n";
+    llvm::outs().flush();
+
+    // Always use ASTContext.getRecordType() to ensure proper type canonicalization
+    // This prevents non-canonical types that can cause castAs assertions
+    clang::QualType baseType = cASTContext.getRecordType(baseStruct);
+    llvm::outs() << "[createBaseConstructorCallVariant] Created canonical RecordType via ASTContext\n";
+
+    llvm::outs() << "[createBaseConstructorCallVariant] Creating pointer type\n";
+    clang::QualType basePtrType = cASTContext.getPointerType(baseType);
+
+    llvm::outs() << "[createBaseConstructorCallVariant] Creating cast expression\n";
+    llvm::outs() << "[createBaseConstructorCallVariant] adjustedThis type: " << adjustedThis->getType().getAsString() << "\n";
+    llvm::outs() << "[createBaseConstructorCallVariant] basePtrType: " << basePtrType.getAsString() << "\n";
+    llvm::outs().flush();
+
+    clang::CStyleCastExpr* baseCast = clang::CStyleCastExpr::Create(
+        cASTContext,
+        basePtrType,
+        clang::VK_PRValue,
+        clang::CK_BitCast,
+        adjustedThis,
+        nullptr,
+        clang::FPOptionsOverride(),
+        cASTContext.getTrivialTypeSourceInfo(basePtrType),
+        targetLoc,
+        targetLoc
+    );
+    llvm::outs() << "[createBaseConstructorCallVariant] Cast expression created successfully\n";
+    llvm::outs() << "[createBaseConstructorCallVariant] baseCast type: " << baseCast->getType().getAsString() << "\n";
+    llvm::outs().flush();
+
+    // Create CallExpr
+    std::vector<clang::Expr*> args = {baseCast};
+
+    // Add VTT parameter for C1/C2 variants
+    llvm::outs() << "[createBaseConstructorCallVariant] variantSuffix=" << variantSuffix
+                 << ", vttParam=" << (vttParam ? "NOT NULL" : "NULL") << "\n";
+    llvm::outs().flush();
+    if ((variantSuffix == "_C1" || variantSuffix == "_C2") && vttParam) {
+        llvm::outs() << "[createBaseConstructorCallVariant] Adding VTT parameter to call\n";
+        llvm::outs().flush();
+        clang::DeclRefExpr* vttExpr = clang::DeclRefExpr::Create(
+            cASTContext,
+            clang::NestedNameSpecifierLoc(),
+            targetLoc,
+            vttParam,
+            false,
+            targetLoc,
+            vttParam->getType(),
+            clang::VK_LValue
+        );
+        args.push_back(vttExpr);
+    }
+
+    llvm::outs() << "[createBaseConstructorCallVariant] About to create DeclRefExpr for baseCtorFunc\n";
+    llvm::outs() << "[createBaseConstructorCallVariant] baseCtorFunc name: " << baseCtorFunc->getNameAsString() << "\n";
+    llvm::outs() << "[createBaseConstructorCallVariant] baseCtorFunc type: " << baseCtorFunc->getType().getAsString() << "\n";
+    llvm::outs().flush();
+
+    // Use function type directly (not pointer type) for DeclRefExpr in CallExpr
+    clang::DeclRefExpr* funcRef = clang::DeclRefExpr::Create(
+        cASTContext,
+        clang::NestedNameSpecifierLoc(),
+        targetLoc,
+        baseCtorFunc,
+        false,
+        targetLoc,
+        baseCtorFunc->getType(),
+        clang::VK_PRValue
+    );
+
+    llvm::outs() << "[createBaseConstructorCallVariant] Created DeclRefExpr successfully\n";
+    llvm::outs().flush();
+
+    llvm::outs() << "[createBaseConstructorCallVariant] About to create CallExpr\n";
+    llvm::outs().flush();
+
+    clang::CallExpr* callExpr = clang::CallExpr::Create(
+        cASTContext,
+        funcRef,
+        args,
+        cASTContext.VoidTy,
+        clang::VK_PRValue,
+        targetLoc,
+        clang::FPOptionsOverride()
+    );
+
+    llvm::outs() << "[createBaseConstructorCallVariant] Created CallExpr successfully\n";
+    llvm::outs().flush();
+
+    return callExpr;
+}
+
+// Phase 3: Constructor Variant Generation
+
+// Helper function to inline member initializers from a base class constructor
+// This is used in C1 constructors to avoid calling C2 constructors which have
+// incompatible field offsets (C2 uses __base layout, but C1 needs complete layout)
+static std::vector<clang::Stmt*> inlineBaseMemberInitializers(
+    const clang::CXXRecordDecl* baseClass,
+    clang::ParmVarDecl* thisParam,
+    clang::RecordDecl* derivedCStruct,
+    const CppToCVisitorDispatcher& disp,
+    const clang::ASTContext& cppASTContext,
+    clang::ASTContext& cASTContext,
+    clang::SourceLocation targetLoc
+) {
+    std::vector<clang::Stmt*> stmts;
+
+    llvm::outs() << "[inlineBaseMemberInitializers] Inlining members from base class: "
+                 << baseClass->getNameAsString() << "\n";
+
+    // Find the default constructor for the base class
+    clang::CXXConstructorDecl* baseCtor = nullptr;
+    for (auto* ctor : baseClass->ctors()) {
+        if (ctor->isDefaultConstructor()) {
+            baseCtor = ctor;
+            break;
+        }
+    }
+
+    if (!baseCtor) {
+        llvm::outs() << "[inlineBaseMemberInitializers] No default constructor found for "
+                     << baseClass->getNameAsString() << "\n";
+        return stmts;
+    }
+
+    llvm::outs() << "[inlineBaseMemberInitializers] Found default constructor, processing "
+                 << baseCtor->getNumCtorInitializers() << " initializers\n";
+
+    // Process only member initializers (not base initializers)
+    for (const auto* init : baseCtor->inits()) {
+        if (!init->isWritten() || !init->isMemberInitializer()) {
+            continue; // Skip compiler-generated and base initializers
+        }
+
+        clang::FieldDecl* baseField = init->getMember();
+        clang::Expr* initExpr = init->getInit();
+
+        if (!baseField || !initExpr) continue;
+
+        std::string fieldName = baseField->getNameAsString();
+        llvm::outs() << "[inlineBaseMemberInitializers] Processing field: " << fieldName << "\n";
+
+        // Find the corresponding C field in the derived C struct
+        // The field should exist because RecordHandler flattens all base fields
+        clang::FieldDecl* cField = nullptr;
+        for (auto* f : derivedCStruct->fields()) {
+            if (f->getNameAsString() == fieldName) {
+                cField = f;
+                break;
+            }
+        }
+
+        if (!cField) {
+            llvm::outs() << "[inlineBaseMemberInitializers] WARNING: Field " << fieldName
+                         << " from base class not found in derived C struct\n";
+            continue;
+        }
+
+        llvm::outs() << "[inlineBaseMemberInitializers] Found matching C field: " << fieldName << "\n";
+
+        // Create this->field member expression
+        clang::DeclRefExpr* thisExpr = clang::DeclRefExpr::Create(
+            cASTContext,
+            clang::NestedNameSpecifierLoc(),
+            targetLoc,
+            thisParam,
+            false,
+            targetLoc,
+            thisParam->getType(),
+            clang::VK_LValue
+        );
+
+        clang::MemberExpr* memberExpr = clang::MemberExpr::CreateImplicit(
+            cASTContext,
+            thisExpr,
+            true, // isArrow (this is a pointer)
+            cField,
+            cField->getType(),
+            clang::VK_LValue,
+            clang::OK_Ordinary
+        );
+
+        // Dispatch the initialization expression to translate it
+        bool initHandled = disp.dispatch(cppASTContext, cASTContext, const_cast<clang::Expr*>(initExpr));
+
+        // Retrieve translated init expression from ExprMapper
+        cpptoc::ExprMapper& exprMapper = disp.getExprMapper();
+        clang::Expr* cInitExpr = exprMapper.getCreated(initExpr);
+
+        if (!cInitExpr) {
+            // Fallback: if expr not translated, try to create simple literal for integer types
+            if (const auto* intLit = llvm::dyn_cast<clang::IntegerLiteral>(initExpr)) {
+                cInitExpr = clang::IntegerLiteral::Create(
+                    cASTContext,
+                    intLit->getValue(),
+                    intLit->getType(),
+                    targetLoc
+                );
+                llvm::outs() << "[inlineBaseMemberInitializers] Created fallback integer literal for field "
+                             << fieldName << "\n";
+            }
+        }
+
+        if (cInitExpr) {
+            // Create assignment: this->field = value
+            clang::BinaryOperator* assignExpr = clang::BinaryOperator::Create(
+                cASTContext,
+                memberExpr,
+                cInitExpr,
+                clang::BO_Assign,
+                cField->getType(),
+                clang::VK_LValue,
+                clang::OK_Ordinary,
+                targetLoc,
+                clang::FPOptionsOverride()
+            );
+
+            stmts.push_back(assignExpr);
+            llvm::outs() << "[inlineBaseMemberInitializers] Added assignment for field: " << fieldName << "\n";
+        } else {
+            llvm::outs() << "[inlineBaseMemberInitializers] WARNING: Could not translate init expression for field "
+                         << fieldName << "\n";
+        }
+    }
+
+    llvm::outs() << "[inlineBaseMemberInitializers] Generated " << stmts.size()
+                 << " inline statements for base class " << baseClass->getNameAsString() << "\n";
+
+    return stmts;
+}
+
+// Helper function to translate member initializers into assignment statements
+static std::vector<clang::Stmt*> translateMemberInitializers(
+    const clang::CXXConstructorDecl* ctor,
+    clang::ParmVarDecl* thisParam,
+    clang::RecordDecl* cRecordDecl,
+    const CppToCVisitorDispatcher& disp,
+    const clang::ASTContext& cppASTContext,
+    clang::ASTContext& cASTContext,
+    clang::SourceLocation targetLoc
+) {
+    std::vector<clang::Stmt*> stmts;
+
+    for (const auto* init : ctor->inits()) {
+        if (!init->isWritten() || init->isBaseInitializer()) {
+            continue; // Skip compiler-generated and base initializers
+        }
+
+        if (init->isMemberInitializer()) {
+            clang::FieldDecl* field = init->getMember();
+            clang::Expr* initExpr = init->getInit();
+
+            if (!field || !initExpr) continue;
+
+            // Find the corresponding C field in the C struct
+            clang::FieldDecl* cField = nullptr;
+            for (auto* f : cRecordDecl->fields()) {
+                if (f->getNameAsString() == field->getNameAsString()) {
+                    cField = f;
+                    break;
+                }
+            }
+
+            if (!cField) continue;
+
+            // Create this->field member expression
+            clang::DeclRefExpr* thisExpr = clang::DeclRefExpr::Create(
+                cASTContext,
+                clang::NestedNameSpecifierLoc(),
+                targetLoc,
+                thisParam,
+                false,
+                targetLoc,
+                thisParam->getType(),
+                clang::VK_LValue
+            );
+
+            clang::MemberExpr* memberExpr = clang::MemberExpr::CreateImplicit(
+                cASTContext,
+                thisExpr,
+                true, // isArrow (this is a pointer)
+                cField,
+                cField->getType(),
+                clang::VK_LValue,
+                clang::OK_Ordinary
+            );
+
+            // Dispatch the initialization expression to translate it
+            bool initHandled = disp.dispatch(cppASTContext, cASTContext, const_cast<clang::Expr*>(initExpr));
+
+            // Retrieve translated init expression from ExprMapper
+            cpptoc::ExprMapper& exprMapper = disp.getExprMapper();
+            clang::Expr* cInitExpr = exprMapper.getCreated(initExpr);
+
+            if (!cInitExpr) {
+                // Fallback: if expr not translated, try to create simple literal for integer types
+                if (const auto* intLit = llvm::dyn_cast<clang::IntegerLiteral>(initExpr)) {
+                    cInitExpr = clang::IntegerLiteral::Create(
+                        cASTContext,
+                        intLit->getValue(),
+                        intLit->getType(),
+                        targetLoc
+                    );
+                }
+            }
+
+            if (cInitExpr) {
+                // Create assignment: this->field = value
+                clang::BinaryOperator* assignExpr = clang::BinaryOperator::Create(
+                    cASTContext,
+                    memberExpr,
+                    cInitExpr,
+                    clang::BO_Assign,
+                    cField->getType(),
+                    clang::VK_LValue,
+                    clang::OK_Ordinary,
+                    targetLoc,
+                    clang::FPOptionsOverride()
+                );
+
+                stmts.push_back(assignExpr);
+            }
+        }
+    }
+
+    return stmts;
+}
+
+bool ConstructorHandler::needsConstructorVariants(const clang::CXXConstructorDecl* ctor) {
+    if (!ctor) return false;
+
+    const clang::CXXRecordDecl* record = ctor->getParent();
+
+    // Needs variants if class requires dual layout
+    // Use RecordHandler::needsDualLayout() for consistency
+    return RecordHandler::needsDualLayout(record);
+}
+
+void ConstructorHandler::generateC1Constructor(
+    const clang::CXXConstructorDecl* ctor,
+    const clang::ASTContext& cppASTContext,
+    clang::ASTContext& cASTContext,
+    const CppToCVisitorDispatcher& disp
+) {
+    if (!ctor) return;
+
+    const clang::CXXRecordDecl* record = ctor->getParent();
+    if (!record) return;
+
+    std::string className = record->getNameAsString();
+
+    // Generate C1 constructor name: ClassName_ctor_C1
+    std::string c1Name = cpptoc::mangle_constructor(ctor) + "_C1";
+
+    llvm::outs() << "[ConstructorHandler] generateC1Constructor: Starting generation for " << c1Name << "\n";
+
+    // Get target path and source location
+    std::string targetPath = disp.getCurrentTargetPath();
+    if (targetPath.empty()) {
+        targetPath = disp.getTargetPath(cppASTContext, ctor);
+    }
+    SourceLocationMapper& locMapper = disp.getTargetContext().getLocationMapper();
+    clang::SourceLocation targetLoc = locMapper.getStartOfFile(targetPath);
+
+    // Get or create TU
+    cpptoc::PathMapper& pathMapper = disp.getPathMapper();
+    clang::TranslationUnitDecl* TU = pathMapper.getOrCreateTU(targetPath);
+
+    // Find the complete-object struct (ClassName)
+    clang::RecordDecl* cRecordDecl = nullptr;
+    for (auto* decl : TU->decls()) {
+        if (auto* RD = llvm::dyn_cast<clang::RecordDecl>(decl)) {
+            if (RD->getName() == className) {
+                cRecordDecl = RD;
+                break;
+            }
+        }
+    }
+
+    if (!cRecordDecl) {
+        llvm::outs() << "[ConstructorHandler] C1: Could not find complete-object struct: "
+                     << className << "\n";
+        return;
+    }
+
+    // Create 'this' parameter: ClassName* (complete-object layout)
+    clang::QualType classType = cASTContext.getRecordType(cRecordDecl);
+    clang::ParmVarDecl* thisParam = createThisParameter(classType, cASTContext, targetLoc);
+
+    // Create VTT parameter: const void** vtt
+    VirtualInheritanceAnalyzer viAnalyzer;
+    viAnalyzer.analyzeClass(record);
+
+    std::vector<clang::ParmVarDecl*> allParams;
+    allParams.push_back(thisParam);
+
+    clang::ParmVarDecl* vttParam = nullptr;
+    if (viAnalyzer.needsVTT(record)) {
+        clang::IdentifierInfo& vttII = cASTContext.Idents.get("vtt");
+        clang::QualType voidPtrType = cASTContext.getPointerType(cASTContext.VoidTy);
+        clang::QualType constVoidPtrType = cASTContext.getConstType(voidPtrType);
+        clang::QualType vttType = cASTContext.getPointerType(constVoidPtrType);
+
+        vttParam = clang::ParmVarDecl::Create(
+            cASTContext,
+            TU,
+            targetLoc,
+            targetLoc,
+            &vttII,
+            vttType,
+            cASTContext.getTrivialTypeSourceInfo(vttType),
+            clang::SC_None,
+            nullptr
+        );
+        allParams.push_back(vttParam);
+    }
+
+    // Add original constructor parameters
+    std::vector<clang::ParmVarDecl*> ctorParams = translateParameters(ctor, disp, cppASTContext, cASTContext);
+    allParams.insert(allParams.end(), ctorParams.begin(), ctorParams.end());
+
+    // CRITICAL FIX: Create function declaration FIRST before building body
+    // This breaks the circular dependency where CompoundStmtHandler tries to find
+    // the C1 constructor while we're still building it
+    llvm::outs() << "[ConstructorHandler] generateC1Constructor: Creating function declaration BEFORE body\n";
+
+    clang::CNodeBuilder builder(cASTContext);
+    clang::FunctionDecl* c1Func = builder.funcDecl(
+        c1Name,
+        cASTContext.VoidTy,
+        allParams,
+        nullptr  // No body yet
+    );
+
+    assert(c1Func && "Failed to create C1 FunctionDecl");
+
+    // Add function to TU immediately so it can be found during body generation
+    c1Func->setDeclContext(TU);
+    TU->addDecl(c1Func);
+    pathMapper.setNodeLocation(c1Func, targetPath);
+
+    llvm::outs() << "[ConstructorHandler] generateC1Constructor: Function declaration added to TU, now building body\n";
+
+    // Build constructor body
+    std::vector<clang::Stmt*> bodyStmts;
+
+    // C1: Initialize virtual bases FIRST (C1 responsibility)
+    auto virtualBases = viAnalyzer.getVirtualBases(record);
+    for (const auto* vbase : virtualBases) {
+        // CRITICAL FIX: Cannot call C2 for virtual bases with virtual bases due to layout mismatch
+        // Same issue as non-virtual bases: __base layout offsets != complete-object layout offsets
+        // Solution: Inline member initializers directly in the complete-object layout
+        if (RecordHandler::needsDualLayout(vbase)) {
+            llvm::outs() << "[ConstructorHandler] C1: Inlining member initializers for virtual base "
+                         << vbase->getNameAsString() << " (has virtual bases, cannot call C2 due to layout mismatch)\n";
+
+            auto vbaseInitStmts = inlineBaseMemberInitializers(
+                vbase, thisParam, cRecordDecl, disp, cppASTContext, cASTContext, targetLoc
+            );
+
+            bodyStmts.insert(bodyStmts.end(), vbaseInitStmts.begin(), vbaseInitStmts.end());
+            llvm::outs() << "[ConstructorHandler] C1: Inlined " << vbaseInitStmts.size()
+                         << " member initializers for virtual base " << vbase->getNameAsString() << "\n";
+        } else {
+            // Virtual base has no virtual bases - safe to call normal constructor
+            unsigned offset = 0;
+            cpptoc::DeclMapper& declMapper = const_cast<CppToCVisitorDispatcher&>(disp).getDeclMapper();
+            clang::RecordDecl* vbaseCStruct = nullptr;
+
+            if (declMapper.hasCreated(vbase)) {
+                vbaseCStruct = llvm::cast<clang::RecordDecl>(declMapper.getCreated(vbase));
+            }
+
+            if (vbaseCStruct && !vbaseCStruct->field_empty()) {
+                std::string firstFieldName = vbaseCStruct->field_begin()->getNameAsString();
+                const clang::ASTRecordLayout& derivedLayout = cASTContext.getASTRecordLayout(cRecordDecl);
+                unsigned fieldIdx = 0;
+                for (auto* field : cRecordDecl->fields()) {
+                    if (field->getNameAsString() == firstFieldName) {
+                        uint64_t offsetInBits = derivedLayout.getFieldOffset(fieldIdx);
+                        offset = static_cast<unsigned>(offsetInBits / 8);
+                        llvm::outs() << "[ConstructorHandler] C1: Virtual base " << vbase->getNameAsString()
+                                     << " field '" << firstFieldName << "' found at offset " << offset << " bytes\n";
+                        break;
+                    }
+                    fieldIdx++;
+                }
+            }
+
+            clang::CallExpr* call = createBaseConstructorCallVariant(
+                vbase, thisParam, offset, "", cASTContext, targetLoc, targetPath, disp, nullptr
+            );
+
+            if (call) {
+                bodyStmts.push_back(call);
+                llvm::outs() << "[ConstructorHandler] C1: Called normal constructor for virtual base "
+                             << vbase->getNameAsString() << " at offset " << offset << "\n";
+            }
+        }
+    }
+
+    llvm::outs() << "[ConstructorHandler] C1: Finished virtual base initialization, bodyStmts size: " << bodyStmts.size() << "\n";
+    llvm::outs().flush();
+
+    // Handle non-virtual base constructors
+    // CRITICAL: For bases with virtual bases, we must call their C2 constructor (not C1)
+    // to avoid re-initializing virtual bases that we already initialized above.
+    unsigned baseIndex = 0;
+    for (const auto& base : record->bases()) {
+        if (base.isVirtual()) continue; // Skip virtual bases (already handled)
+
+        const auto* baseRecord = base.getType()->getAsCXXRecordDecl();
+        if (!baseRecord) continue;
+
+        // Check if base has virtual bases
+        bool baseHasVirtualBases = viAnalyzer.hasVirtualBases(baseRecord);
+
+        llvm::outs() << "[ConstructorHandler] C1: Processing non-virtual base " << baseRecord->getNameAsString()
+                     << " (needsDualLayout=" << RecordHandler::needsDualLayout(baseRecord)
+                     << ", hasVirtualBases=" << baseHasVirtualBases << ")\n";
+
+        // Calculate offset for non-primary base using C struct layout
+        unsigned offset = 0;
+        if (baseIndex > 0) {
+            cpptoc::DeclMapper& declMapper = const_cast<CppToCVisitorDispatcher&>(disp).getDeclMapper();
+            clang::RecordDecl* baseCStruct = nullptr;
+
+            // If base needs dual layout, look for __base struct; otherwise use regular struct
+            if (RecordHandler::needsDualLayout(baseRecord)) {
+                std::string baseStructName = cpptoc::mangle_class(baseRecord) + "__base";
+                for (auto* decl : TU->decls()) {
+                    if (auto* RD = llvm::dyn_cast<clang::RecordDecl>(decl)) {
+                        if (RD->getName() == baseStructName) {
+                            baseCStruct = RD;
+                            break;
+                        }
+                    }
+                }
+            } else if (declMapper.hasCreated(baseRecord)) {
+                baseCStruct = llvm::cast<clang::RecordDecl>(declMapper.getCreated(baseRecord));
+            }
+
+            if (baseCStruct && !baseCStruct->field_empty()) {
+                std::string firstFieldName = baseCStruct->field_begin()->getNameAsString();
+                const clang::ASTRecordLayout& derivedLayout = cASTContext.getASTRecordLayout(cRecordDecl);
+                unsigned fieldIdx = 0;
+                for (auto* field : cRecordDecl->fields()) {
+                    if (field->getNameAsString() == firstFieldName) {
+                        uint64_t offsetInBits = derivedLayout.getFieldOffset(fieldIdx);
+                        offset = static_cast<unsigned>(offsetInBits / 8);
+                        llvm::outs() << "[ConstructorHandler] C1: Non-virtual base " << baseRecord->getNameAsString()
+                                     << " field '" << firstFieldName << "' found at offset " << offset << " bytes\n";
+                        break;
+                    }
+                    fieldIdx++;
+                }
+            }
+        }
+
+        // CRITICAL FIX: Cannot call C2 constructor due to layout mismatch
+        // C2 expects __base layout, but we're in complete-object layout
+        // Solution: Inline base member initialization instead of calling C2
+        if (baseHasVirtualBases) {
+            // Base has virtual bases - CANNOT call C2 due to layout mismatch
+            // Instead, inline the member initializers directly
+            llvm::outs() << "[ConstructorHandler] C1: Inlining member initializers for base " << baseRecord->getNameAsString()
+                         << " (has virtual bases, calling C2 would cause layout mismatch)\n";
+
+            auto inlinedStmts = inlineBaseMemberInitializers(
+                baseRecord, thisParam, cRecordDecl, disp, cppASTContext, cASTContext, targetLoc
+            );
+
+            bodyStmts.insert(bodyStmts.end(), inlinedStmts.begin(), inlinedStmts.end());
+            llvm::outs() << "[ConstructorHandler] C1: Inlined " << inlinedStmts.size()
+                         << " member initializers for base " << baseRecord->getNameAsString() << "\n";
+        } else {
+            // Base has no virtual bases - safe to call normal constructor
+            // No layout mismatch because base doesn't need dual layout
+            llvm::outs() << "[ConstructorHandler] C1: Calling normal constructor for base " << baseRecord->getNameAsString()
+                         << " (no virtual bases, no layout mismatch)\n";
+
+            clang::CallExpr* call = createBaseConstructorCallVariant(
+                baseRecord, thisParam, offset, "", cASTContext, targetLoc, targetPath, disp, nullptr
+            );
+
+            if (call) {
+                bodyStmts.push_back(call);
+                llvm::outs() << "[ConstructorHandler] C1: Called constructor for "
+                             << baseRecord->getNameAsString() << " at offset " << offset << "\n";
+            }
+        }
+
+        baseIndex++;
+    }
+
+    llvm::outs() << "[ConstructorHandler] C1: About to translate member initializers\n";
+    llvm::outs().flush();
+
+    // Add member initialization (cRecordDecl already found at line 1348)
+    auto memberInitStmts = translateMemberInitializers(
+        ctor, thisParam, cRecordDecl, disp, cppASTContext, cASTContext, targetLoc
+    );
+    llvm::outs() << "[ConstructorHandler] C1: Translated " << memberInitStmts.size() << " member initializers\n";
+    llvm::outs().flush();
+
+    bodyStmts.insert(bodyStmts.end(), memberInitStmts.begin(), memberInitStmts.end());
+
+    llvm::outs() << "[ConstructorHandler] C1: About to inject lpVtbl init (isPolymorphic=" << record->isPolymorphic() << ")\n";
+    llvm::outs().flush();
+
+    // Add lpVtbl initialization
+    if (record->isPolymorphic()) {
+        auto lpVtblInitStmts = injectLpVtblInit(record, thisParam, cppASTContext, cASTContext, targetLoc);
+        llvm::outs() << "[ConstructorHandler] C1: Injected " << lpVtblInitStmts.size() << " lpVtbl init statements\n";
+        llvm::outs().flush();
+        bodyStmts.insert(bodyStmts.end(), lpVtblInitStmts.begin(), lpVtblInitStmts.end());
+    }
+
+    llvm::outs() << "[ConstructorHandler] C1: About to create CompoundStmt with " << bodyStmts.size() << " statements\n";
+    llvm::outs().flush();
+
+    // Create CompoundStmt
+    llvm::outs() << "[ConstructorHandler] C1: Creating CompoundStmt...\n";
+    llvm::outs().flush();
+
+    clang::CompoundStmt* body = clang::CompoundStmt::Create(
+        cASTContext,
+        bodyStmts,
+        clang::FPOptionsOverride(),
+        targetLoc,
+        targetLoc
+    );
+
+    llvm::outs() << "[ConstructorHandler] C1: CompoundStmt created successfully\n";
+    llvm::outs().flush();
+
+    // Set the body on the function declaration
+    llvm::outs() << "[ConstructorHandler] C1: Setting body on function declaration\n";
+    llvm::outs().flush();
+
+    c1Func->setBody(body);
+
+    llvm::outs() << "[ConstructorHandler] C1: Body set successfully\n";
+    llvm::outs().flush();
+
+    llvm::outs() << "[ConstructorHandler] generateC1Constructor: Successfully generated C1 constructor: " << c1Name << "\n";
+}
+
+void ConstructorHandler::generateC2Constructor(
+    const clang::CXXConstructorDecl* ctor,
+    const clang::ASTContext& cppASTContext,
+    clang::ASTContext& cASTContext,
+    const CppToCVisitorDispatcher& disp
+) {
+    if (!ctor) return;
+
+    const clang::CXXRecordDecl* record = ctor->getParent();
+    if (!record) return;
+
+    std::string className = record->getNameAsString();
+
+    // Generate C2 constructor name: ClassName_ctor_C2
+    std::string c2Name = cpptoc::mangle_constructor(ctor) + "_C2";
+
+    // Get target path and source location
+    std::string targetPath = disp.getCurrentTargetPath();
+    if (targetPath.empty()) {
+        targetPath = disp.getTargetPath(cppASTContext, ctor);
+    }
+    SourceLocationMapper& locMapper = disp.getTargetContext().getLocationMapper();
+    clang::SourceLocation targetLoc = locMapper.getStartOfFile(targetPath);
+
+    // Get or create TU
+    cpptoc::PathMapper& pathMapper = disp.getPathMapper();
+    clang::TranslationUnitDecl* TU = pathMapper.getOrCreateTU(targetPath);
+
+    // Find the base-subobject struct (ClassName__base)
+    std::string baseStructName = className + "__base";
+    clang::RecordDecl* cRecordDecl = nullptr;
+    for (auto* decl : TU->decls()) {
+        if (auto* RD = llvm::dyn_cast<clang::RecordDecl>(decl)) {
+            if (RD->getName() == baseStructName) {
+                cRecordDecl = RD;
+                break;
+            }
+        }
+    }
+
+    if (!cRecordDecl) {
+        llvm::outs() << "[ConstructorHandler] C2: Could not find base-subobject struct: "
+                     << baseStructName << "\n";
+        return;
+    }
+
+    // Create 'this' parameter: ClassName__base* (base-subobject layout)
+    clang::QualType classType = cASTContext.getRecordType(cRecordDecl);
+    clang::ParmVarDecl* thisParam = createThisParameter(classType, cASTContext, targetLoc);
+
+    // Create VTT parameter: const void** vtt
+    VirtualInheritanceAnalyzer viAnalyzer;
+    viAnalyzer.analyzeClass(record);
+
+    std::vector<clang::ParmVarDecl*> allParams;
+    allParams.push_back(thisParam);
+
+    clang::ParmVarDecl* vttParam = nullptr;
+    if (viAnalyzer.needsVTT(record)) {
+        clang::IdentifierInfo& vttII = cASTContext.Idents.get("vtt");
+        clang::QualType voidPtrType = cASTContext.getPointerType(cASTContext.VoidTy);
+        clang::QualType constVoidPtrType = cASTContext.getConstType(voidPtrType);
+        clang::QualType vttType = cASTContext.getPointerType(constVoidPtrType);
+
+        vttParam = clang::ParmVarDecl::Create(
+            cASTContext,
+            TU,
+            targetLoc,
+            targetLoc,
+            &vttII,
+            vttType,
+            cASTContext.getTrivialTypeSourceInfo(vttType),
+            clang::SC_None,
+            nullptr
+        );
+        allParams.push_back(vttParam);
+    }
+
+    // Add original constructor parameters
+    std::vector<clang::ParmVarDecl*> ctorParams = translateParameters(ctor, disp, cppASTContext, cASTContext);
+    allParams.insert(allParams.end(), ctorParams.begin(), ctorParams.end());
+
+    // CRITICAL FIX: Create function declaration FIRST before building body
+    // This breaks the circular dependency where CompoundStmtHandler tries to find
+    // the C2 constructor while we're still building it
+    llvm::outs() << "[ConstructorHandler] generateC2Constructor: Creating function declaration BEFORE body\n";
+
+    clang::CNodeBuilder builder(cASTContext);
+    clang::FunctionDecl* c2Func = builder.funcDecl(
+        c2Name,
+        cASTContext.VoidTy,
+        allParams,
+        nullptr  // No body yet
+    );
+
+    assert(c2Func && "Failed to create C2 FunctionDecl");
+
+    // Add function to TU immediately so it can be found during body generation
+    c2Func->setDeclContext(TU);
+    TU->addDecl(c2Func);
+    pathMapper.setNodeLocation(c2Func, targetPath);
+
+    llvm::outs() << "[ConstructorHandler] generateC2Constructor: Function declaration added to TU, now building body\n";
+
+    // Build constructor body
+    std::vector<clang::Stmt*> bodyStmts;
+
+    // C2: SKIP virtual base initialization (parent's C1 handles it)
+
+    // Call non-virtual base constructors (use C2 variants if they have virtual bases)
+    unsigned baseIndex = 0;
+    for (const auto& base : record->bases()) {
+        if (base.isVirtual()) continue; // Skip virtual bases
+
+        const auto* baseRecord = base.getType()->getAsCXXRecordDecl();
+        if (!baseRecord) continue;
+
+        // If base needs dual layout, call C2 (base-subobject constructor)
+        // Otherwise, call normal constructor
+        std::string variantSuffix = RecordHandler::needsDualLayout(baseRecord) ? "_C2" : "";
+
+        // Calculate offset for non-primary base using C struct layout
+        unsigned offset = 0;
+        if (baseIndex > 0) {
+            // Find the C struct for the base (or __base variant if it has virtual bases)
+            clang::RecordDecl* baseCStruct = nullptr;
+            cpptoc::DeclMapper& declMapper = const_cast<CppToCVisitorDispatcher&>(disp).getDeclMapper();
+
+            if (RecordHandler::needsDualLayout(baseRecord)) {
+                std::string baseStructName = cpptoc::mangle_class(baseRecord) + "__base";
+                cpptoc::PathMapper& pathMapper = const_cast<CppToCVisitorDispatcher&>(disp).getPathMapper();
+                clang::TranslationUnitDecl* TU = pathMapper.getOrCreateTU(targetPath);
+                for (auto* decl : TU->decls()) {
+                    if (auto* RD = llvm::dyn_cast<clang::RecordDecl>(decl)) {
+                        if (RD->getName() == baseStructName) {
+                            baseCStruct = RD;
+                            break;
+                        }
+                    }
+                }
+            } else if (declMapper.hasCreated(baseRecord)) {
+                baseCStruct = llvm::cast<clang::RecordDecl>(declMapper.getCreated(baseRecord));
+            }
+
+            if (baseCStruct && !baseCStruct->field_empty()) {
+                std::string firstFieldName = baseCStruct->field_begin()->getNameAsString();
+                // Use the base-subobject layout (cRecordDecl) for offset calculation
+                const clang::ASTRecordLayout& derivedLayout = cASTContext.getASTRecordLayout(cRecordDecl);
+                unsigned fieldIdx = 0;
+                for (auto* field : cRecordDecl->fields()) {
+                    if (field->getNameAsString() == firstFieldName) {
+                        uint64_t offsetInBits = derivedLayout.getFieldOffset(fieldIdx);
+                        offset = static_cast<unsigned>(offsetInBits / 8);
+                        llvm::outs() << "[ConstructorHandler] C2: Non-virtual base " << baseRecord->getNameAsString()
+                                     << " field '" << firstFieldName << "' found at offset " << offset << " bytes\n";
+                        break;
+                    }
+                    fieldIdx++;
+                }
+            }
+        }
+
+        clang::CallExpr* call = createBaseConstructorCallVariant(
+            baseRecord, thisParam, offset, variantSuffix, cASTContext, targetLoc, targetPath, disp, vttParam
+        );
+
+        if (call) {
+            bodyStmts.push_back(call);
+            llvm::outs() << "[ConstructorHandler] C2: Call base constructor for "
+                         << baseRecord->getNameAsString() << " with variant " << variantSuffix << " at offset " << offset << "\n";
+        }
+
+        baseIndex++;
+    }
+
+    // Add member initialization (use base-subobject layout struct already found)
+    auto memberInitStmts = translateMemberInitializers(
+        ctor, thisParam, cRecordDecl, disp, cppASTContext, cASTContext, targetLoc
+    );
+    bodyStmts.insert(bodyStmts.end(), memberInitStmts.begin(), memberInitStmts.end());
+
+    // Add lpVtbl initialization
+    if (record->isPolymorphic()) {
+        auto lpVtblInitStmts = injectLpVtblInit(record, thisParam, cppASTContext, cASTContext, targetLoc);
+        bodyStmts.insert(bodyStmts.end(), lpVtblInitStmts.begin(), lpVtblInitStmts.end());
+    }
+
+    // Create CompoundStmt
+    clang::CompoundStmt* body = clang::CompoundStmt::Create(
+        cASTContext,
+        bodyStmts,
+        clang::FPOptionsOverride(),
+        targetLoc,
+        targetLoc
+    );
+
+    // Set the body on the function declaration
+    c2Func->setBody(body);
+
+    llvm::outs() << "[ConstructorHandler] Generated C2 constructor: " << c2Name << "\n";
 }
 
 } // namespace cpptoc

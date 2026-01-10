@@ -1,0 +1,5 @@
+if(EXISTS "/Users/alexanderfedin/Projects/hapyy/hupyy-cpp-to-c/CFGAnalysisTest[1]_tests.cmake")
+  include("/Users/alexanderfedin/Projects/hapyy/hupyy-cpp-to-c/CFGAnalysisTest[1]_tests.cmake")
+else()
+  add_test(CFGAnalysisTest_NOT_BUILT CFGAnalysisTest_NOT_BUILT)
+endif()

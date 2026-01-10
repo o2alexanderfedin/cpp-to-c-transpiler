@@ -1,0 +1,5 @@
+if(EXISTS "/Users/alexanderfedin/Projects/hapyy/hupyy-cpp-to-c/ACSLMemoryPredicateAnalyzerTest[1]_tests.cmake")
+  include("/Users/alexanderfedin/Projects/hapyy/hupyy-cpp-to-c/ACSLMemoryPredicateAnalyzerTest[1]_tests.cmake")
+else()
+  add_test(ACSLMemoryPredicateAnalyzerTest_NOT_BUILT ACSLMemoryPredicateAnalyzerTest_NOT_BUILT)
+endif()

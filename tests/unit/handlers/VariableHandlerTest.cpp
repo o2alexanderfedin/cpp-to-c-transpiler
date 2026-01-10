@@ -24,7 +24,7 @@
  */
 
 #include "dispatch/VariableHandler.h"
-#include "helpers/UnitTestHelper.h"
+#include "UnitTestHelper.h"
 #include "CNodeBuilder.h"
 #include "clang/Tooling/Tooling.h"
 #include <gtest/gtest.h>

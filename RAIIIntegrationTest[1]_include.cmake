@@ -1,0 +1,5 @@
+if(EXISTS "/Users/alexanderfedin/Projects/hapyy/hupyy-cpp-to-c/RAIIIntegrationTest[1]_tests.cmake")
+  include("/Users/alexanderfedin/Projects/hapyy/hupyy-cpp-to-c/RAIIIntegrationTest[1]_tests.cmake")
+else()
+  add_test(RAIIIntegrationTest_NOT_BUILT RAIIIntegrationTest_NOT_BUILT)
+endif()

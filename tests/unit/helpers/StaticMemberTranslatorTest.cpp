@@ -15,6 +15,7 @@
 #include "clang/AST/DeclCXX.h"
 #include "DispatcherTestHelper.h"
 #include "dispatch/StaticDataMemberHandler.h"
+#include "dispatch/LiteralHandler.h"
 #include "../../../include/NameMangler.h"
 #include <vector>
 #include <string>
@@ -487,6 +488,7 @@ TEST_F(StaticDataMemberHandlerTest, GenerateDeclarationForStaticInt) {
     auto ctx = cpptoc::test::createDispatcherPipeline();
 
     // Register handler
+    LiteralHandler::registerWith(*ctx.dispatcher);
     StaticDataMemberHandler::registerWith(*ctx.dispatcher);
 
     auto *TU = AST->getASTContext().getTranslationUnitDecl();
@@ -544,6 +546,7 @@ TEST_F(StaticDataMemberHandlerTest, GenerateDeclarationForConstStaticInt) {
     auto ctx = cpptoc::test::createDispatcherPipeline();
 
     // Register handler
+    LiteralHandler::registerWith(*ctx.dispatcher);
     StaticDataMemberHandler::registerWith(*ctx.dispatcher);
 
     auto *TU = AST->getASTContext().getTranslationUnitDecl();
@@ -585,7 +588,9 @@ TEST_F(StaticDataMemberHandlerTest, GenerateDeclarationForConstStaticInt) {
     ASSERT_TRUE(cVarDecl != nullptr);
     EXPECT_EQ("Config__MAX", cVarDecl->getNameAsString());
     EXPECT_TRUE(cVarDecl->getType().isConstQualified()) << "Should preserve const qualifier";
-    EXPECT_EQ(SC_Extern, cVarDecl->getStorageClass());
+    // With in-class initializer, this is treated as a definition (SC_None), not a declaration (SC_Extern)
+    EXPECT_EQ(SC_None, cVarDecl->getStorageClass()) << "In-class initializer makes this a definition";
+    EXPECT_TRUE(cVarDecl->hasInit()) << "Should have initializer";
 }
 
 // Test 15: Generate declaration for static pointer
@@ -602,6 +607,7 @@ TEST_F(StaticDataMemberHandlerTest, GenerateDeclarationForStaticPointer) {
     auto ctx = cpptoc::test::createDispatcherPipeline();
 
     // Register handler
+    LiteralHandler::registerWith(*ctx.dispatcher);
     StaticDataMemberHandler::registerWith(*ctx.dispatcher);
 
     auto *TU = AST->getASTContext().getTranslationUnitDecl();
@@ -662,6 +668,7 @@ TEST_F(StaticDataMemberHandlerTest, VerifyMangledNameFormat) {
     auto ctx = cpptoc::test::createDispatcherPipeline();
 
     // Register handler
+    LiteralHandler::registerWith(*ctx.dispatcher);
     StaticDataMemberHandler::registerWith(*ctx.dispatcher);
 
     auto *TU = AST->getASTContext().getTranslationUnitDecl();
@@ -736,6 +743,7 @@ TEST_F(StaticDataMemberHandlerTest, HandleNullInput) {
 
     auto AST = buildAST(code);
     auto ctx = cpptoc::test::createDispatcherPipeline();
+    LiteralHandler::registerWith(*ctx.dispatcher);
     StaticDataMemberHandler::registerWith(*ctx.dispatcher);
 
     auto *TU = AST->getASTContext().getTranslationUnitDecl();
@@ -789,6 +797,7 @@ TEST_F(StaticDataMemberHandlerTest, GenerateDefinitionWithInitializer) {
     auto ctx = cpptoc::test::createDispatcherPipeline();
 
     // Register handler
+    LiteralHandler::registerWith(*ctx.dispatcher);
     StaticDataMemberHandler::registerWith(*ctx.dispatcher);
 
     // Find the out-of-class definition

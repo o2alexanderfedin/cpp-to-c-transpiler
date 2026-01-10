@@ -1,0 +1,5 @@
+if(EXISTS "/Users/alexanderfedin/Projects/hapyy/hupyy-cpp-to-c/NamespaceHandlerDispatcherTest[1]_tests.cmake")
+  include("/Users/alexanderfedin/Projects/hapyy/hupyy-cpp-to-c/NamespaceHandlerDispatcherTest[1]_tests.cmake")
+else()
+  add_test(NamespaceHandlerDispatcherTest_NOT_BUILT NamespaceHandlerDispatcherTest_NOT_BUILT)
+endif()

@@ -19,7 +19,8 @@ DeducingThisTranslator::DeducingThisTranslator(CNodeBuilder& Builder)
 std::vector<FunctionDecl*> DeducingThisTranslator::transformMethod(
     CXXMethodDecl* MD,
     ASTContext& Ctx,
-    TranslationUnitDecl* C_TU) {
+    TranslationUnitDecl* C_TU,
+    SourceLocation targetLoc) {
 
     std::vector<FunctionDecl*> result;
 
@@ -28,9 +29,16 @@ std::vector<FunctionDecl*> DeducingThisTranslator::transformMethod(
     }
 
     // Only handle explicit object member functions (C++23 deducing this)
+    // isExplicitObjectMemberFunction() is only available in LLVM 16+
+    // For LLVM 15, skip deducing this translation (C++23 feature not supported)
+    #if LLVM_VERSION_MAJOR >= 16
     if (!MD->isExplicitObjectMemberFunction()) {
         return result;
     }
+    #else
+    // LLVM 15 doesn't support C++23 deducing this
+    return result;
+    #endif
 
     // Get the explicit object parameter (always the first parameter)
     if (MD->getNumParams() == 0) {
@@ -45,7 +53,7 @@ std::vector<FunctionDecl*> DeducingThisTranslator::transformMethod(
 
     // Generate each overload
     for (const auto& Quals : overloads) {
-        FunctionDecl* overload = generateOverload(MD, Quals, Ctx, C_TU);
+        FunctionDecl* overload = generateOverload(MD, Quals, Ctx, C_TU, targetLoc);
         if (overload) {
             result.push_back(overload);
         }
@@ -56,7 +64,8 @@ std::vector<FunctionDecl*> DeducingThisTranslator::transformMethod(
 
 CallExpr* DeducingThisTranslator::transformCall(
     CallExpr* Call,
-    ASTContext& Ctx) {
+    ASTContext& Ctx,
+    SourceLocation targetLoc) {
 
     if (!Call) {
         return nullptr;
@@ -75,9 +84,15 @@ CallExpr* DeducingThisTranslator::transformCall(
     }
 
     // Only handle explicit object member functions
+    // isExplicitObjectMemberFunction() is only available in LLVM 16+
+    #if LLVM_VERSION_MAJOR >= 16
     if (!Method->isExplicitObjectMemberFunction()) {
         return nullptr;
     }
+    #else
+    // LLVM 15 doesn't support C++23 deducing this
+    return nullptr;
+    #endif
 
     // For explicit object member functions, the first argument is the object
     if (Call->getNumArgs() == 0) {
@@ -116,7 +131,7 @@ CallExpr* DeducingThisTranslator::transformCall(
 
         TargetFunc = FunctionDecl::Create(
             Ctx, Ctx.getTranslationUnitDecl(),
-            SourceLocation(), SourceLocation(),
+            targetLoc, targetLoc,
             DN, funcType, Ctx.getTrivialTypeSourceInfo(funcType), SC_None);
     }
 
@@ -132,7 +147,7 @@ CallExpr* DeducingThisTranslator::transformCall(
             objAddr = UnaryOperator::Create(
                 Ctx, Object, UO_AddrOf,
                 Ctx.getPointerType(Object->getType()),
-                VK_PRValue, OK_Ordinary, SourceLocation(),
+                VK_PRValue, OK_Ordinary, targetLoc,
                 false, FPOptionsOverride());
         }
         args.push_back(objAddr);
@@ -148,14 +163,14 @@ CallExpr* DeducingThisTranslator::transformCall(
 
     // Create function reference
     DeclRefExpr* funcRef = DeclRefExpr::Create(
-        Ctx, NestedNameSpecifierLoc(), SourceLocation(),
-        TargetFunc, false, SourceLocation(),
+        Ctx, NestedNameSpecifierLoc(), targetLoc,
+        TargetFunc, false, targetLoc,
         TargetFunc->getType(), VK_LValue);
 
     // Create call expression
     CallExpr* callExpr = CallExpr::Create(
         Ctx, funcRef, args, Method->getReturnType(),
-        VK_PRValue, SourceLocation(), FPOptionsOverride());
+        VK_PRValue, targetLoc, FPOptionsOverride());
 
     return callExpr;
 }
@@ -192,7 +207,8 @@ FunctionDecl* DeducingThisTranslator::generateOverload(
     CXXMethodDecl* MD,
     const QualifierSet& Quals,
     ASTContext& Ctx,
-    TranslationUnitDecl* C_TU) {
+    TranslationUnitDecl* C_TU,
+    SourceLocation targetLoc) {
 
     if (!MD || !C_TU) {
         return nullptr;
@@ -274,7 +290,7 @@ FunctionDecl* DeducingThisTranslator::generateOverload(
 
     // Create function declaration
     FunctionDecl* FD = FunctionDecl::Create(
-        Ctx, C_TU, SourceLocation(), SourceLocation(),
+        Ctx, C_TU, targetLoc, targetLoc,
         DN, funcType, Ctx.getTrivialTypeSourceInfo(funcType), SC_None);
 
     FD->setParams(params);

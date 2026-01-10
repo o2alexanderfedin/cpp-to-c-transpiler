@@ -31,6 +31,8 @@
 #include "mapping/TypeMapper.h"
 #include "mapping/ExprMapper.h"
 #include "mapping/StmtMapper.h"
+#include "mapping/FieldOffsetMapper.h"
+#include "TargetContext.h"
 #include "CodeGenerator.h"
 #include "clang/Tooling/Tooling.h"
 #include "clang/AST/RecursiveASTVisitor.h"
@@ -49,12 +51,16 @@ namespace test {
 struct UnitTestContext {
     std::unique_ptr<clang::ASTUnit> cppAST;
     std::unique_ptr<clang::ASTUnit> cAST;
-    PathMapper* pathMapper;
+    // Target context for C AST creation (must be declared before PathMapper)
+    std::unique_ptr<TargetContext> targetContext;
+    // All mappers use RAII pattern
+    std::unique_ptr<PathMapper> pathMapper;
     std::unique_ptr<DeclLocationMapper> declLocationMapper;
     std::unique_ptr<DeclMapper> declMapper;
     std::unique_ptr<TypeMapper> typeMapper;
     std::unique_ptr<ExprMapper> exprMapper;
     std::unique_ptr<StmtMapper> stmtMapper;
+    std::unique_ptr<FieldOffsetMapper> fieldOffsetMapper;
     std::unique_ptr<CppToCVisitorDispatcher> dispatcher;
 };
 
@@ -79,9 +85,6 @@ struct UnitTestContext {
 inline UnitTestContext createUnitTestContext(const std::string& cppCode = "int dummy;") {
     UnitTestContext ctx;
 
-    // CRITICAL: Reset PathMapper singleton for test isolation
-    PathMapper::reset();
-
     // Parse C++ code
     ctx.cppAST = clang::tooling::buildASTFromCode(cppCode);
     if (!ctx.cppAST) {
@@ -94,13 +97,17 @@ inline UnitTestContext createUnitTestContext(const std::string& cppCode = "int d
         throw std::runtime_error("Failed to create C context");
     }
 
-    // Create mappers
-    ctx.pathMapper = &PathMapper::getInstance("/tmp/test_source", "/tmp/test_output");
+    // Create target context for C AST creation (MUST be created before PathMapper)
+    ctx.targetContext = std::make_unique<TargetContext>();
+
+    // Create mappers using RAII pattern
+    ctx.pathMapper = std::make_unique<PathMapper>(*ctx.targetContext, "/tmp/test_source", "/tmp/test_output");
     ctx.declLocationMapper = std::make_unique<DeclLocationMapper>(*ctx.pathMapper);
     ctx.declMapper = std::make_unique<DeclMapper>();
     ctx.typeMapper = std::make_unique<TypeMapper>();
     ctx.exprMapper = std::make_unique<ExprMapper>();
     ctx.stmtMapper = std::make_unique<StmtMapper>();
+    ctx.fieldOffsetMapper = std::make_unique<FieldOffsetMapper>();
 
     // Create dispatcher (no handlers registered yet)
     ctx.dispatcher = std::make_unique<CppToCVisitorDispatcher>(
@@ -109,7 +116,9 @@ inline UnitTestContext createUnitTestContext(const std::string& cppCode = "int d
         *ctx.declMapper,
         *ctx.typeMapper,
         *ctx.exprMapper,
-        *ctx.stmtMapper
+        *ctx.stmtMapper,
+        *ctx.fieldOffsetMapper,
+        *ctx.targetContext
     );
 
     return ctx;
@@ -132,9 +141,12 @@ public:
 
     bool VisitDecl(clang::Decl* D) {
         if (!result) {
-            if (auto* Node = llvm::dyn_cast<T>(D)) {
-                result = Node;
-                return false; // Stop traversal
+            // Only try to cast if T is derived from Decl
+            if constexpr (std::is_base_of<clang::Decl, T>::value) {
+                if (auto* Node = llvm::dyn_cast<T>(D)) {
+                    result = Node;
+                    return false; // Stop traversal
+                }
             }
         }
         return true;
@@ -142,9 +154,12 @@ public:
 
     bool VisitStmt(clang::Stmt* S) {
         if (!result) {
-            if (auto* Node = llvm::dyn_cast<T>(S)) {
-                result = Node;
-                return false; // Stop traversal
+            // Only try to cast if T is derived from Stmt
+            if constexpr (std::is_base_of<clang::Stmt, T>::value) {
+                if (auto* Node = llvm::dyn_cast<T>(S)) {
+                    result = Node;
+                    return false; // Stop traversal
+                }
             }
         }
         return true;
@@ -152,9 +167,12 @@ public:
 
     bool VisitType(clang::Type* Ty) {
         if (!result) {
-            if (auto* Node = llvm::dyn_cast<T>(Ty)) {
-                result = Node;
-                return false; // Stop traversal
+            // Only try to cast if T is derived from Type
+            if constexpr (std::is_base_of<clang::Type, T>::value) {
+                if (auto* Node = llvm::dyn_cast<T>(Ty)) {
+                    result = Node;
+                    return false; // Stop traversal
+                }
             }
         }
         return true;

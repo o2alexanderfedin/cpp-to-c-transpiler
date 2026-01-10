@@ -22,6 +22,7 @@
 #include "mapping/TypeMapper.h"
 #include "mapping/ExprMapper.h"
 #include "mapping/StmtMapper.h"
+#include "mapping/FieldOffsetMapper.h"
 #include "TargetContext.h"
 #include "clang/AST/ASTContext.h"
 #include "clang/AST/Stmt.h"
@@ -94,19 +95,20 @@ TEST(ReturnStmtHandlerDispatcherTest, Registration) {
 
     // Setup components
     ASTContext& cppCtx = AST->getASTContext();
-    TargetContext& targetCtx = TargetContext::getInstance();
+    TargetContext targetCtx;
     ASTContext& cCtx = targetCtx.getContext();
 
     // Create mapping utilities
-    cpptoc::PathMapper& mapper = cpptoc::PathMapper::getInstance("/src", "/output");
+    cpptoc::PathMapper mapper(targetCtx, "/src", "/output");
     cpptoc::DeclLocationMapper locMapper(mapper);
     cpptoc::DeclMapper declMapper;
     cpptoc::TypeMapper typeMapper;
     cpptoc::ExprMapper exprMapper;
     cpptoc::StmtMapper stmtMapper;
+    cpptoc::FieldOffsetMapper fieldOffsetMapper;
 
     // Create dispatcher
-    CppToCVisitorDispatcher dispatcher(mapper, locMapper, declMapper, typeMapper, exprMapper, stmtMapper);
+    CppToCVisitorDispatcher dispatcher(mapper, locMapper, declMapper, typeMapper, exprMapper, stmtMapper, fieldOffsetMapper, targetCtx);
 
     // Register all necessary handlers
     registerAllHandlers(dispatcher);
@@ -142,17 +144,18 @@ TEST(ReturnStmtHandlerDispatcherTest, PredicateMatchesOnlyReturnStmt) {
     ASSERT_NE(AST, nullptr);
 
     ASTContext& cppCtx = AST->getASTContext();
-    TargetContext& targetCtx = TargetContext::getInstance();
+    TargetContext targetCtx;
     ASTContext& cCtx = targetCtx.getContext();
 
-    cpptoc::PathMapper& mapper = cpptoc::PathMapper::getInstance("/src", "/output");
+    cpptoc::PathMapper mapper(targetCtx, "/src", "/output");
     cpptoc::DeclLocationMapper locMapper(mapper);
     cpptoc::DeclMapper declMapper;
     cpptoc::TypeMapper typeMapper;
     cpptoc::ExprMapper exprMapper;
     cpptoc::StmtMapper stmtMapper;
+    cpptoc::FieldOffsetMapper fieldOffsetMapper;
 
-    CppToCVisitorDispatcher dispatcher(mapper, locMapper, declMapper, typeMapper, exprMapper, stmtMapper);
+    CppToCVisitorDispatcher dispatcher(mapper, locMapper, declMapper, typeMapper, exprMapper, stmtMapper, fieldOffsetMapper, targetCtx);
     registerAllHandlers(dispatcher);
 
     // Find the function
@@ -203,17 +206,18 @@ TEST(ReturnStmtHandlerDispatcherTest, ReturnWithIntegerLiteral) {
     ASSERT_NE(AST, nullptr);
 
     ASTContext& cppCtx = AST->getASTContext();
-    TargetContext& targetCtx = TargetContext::getInstance();
+    TargetContext targetCtx;
     ASTContext& cCtx = targetCtx.getContext();
 
-    cpptoc::PathMapper& mapper = cpptoc::PathMapper::getInstance("/src", "/output");
+    cpptoc::PathMapper mapper(targetCtx, "/src", "/output");
     cpptoc::DeclLocationMapper locMapper(mapper);
     cpptoc::DeclMapper declMapper;
     cpptoc::TypeMapper typeMapper;
     cpptoc::ExprMapper exprMapper;
     cpptoc::StmtMapper stmtMapper;
+    cpptoc::FieldOffsetMapper fieldOffsetMapper;
 
-    CppToCVisitorDispatcher dispatcher(mapper, locMapper, declMapper, typeMapper, exprMapper, stmtMapper);
+    CppToCVisitorDispatcher dispatcher(mapper, locMapper, declMapper, typeMapper, exprMapper, stmtMapper, fieldOffsetMapper, targetCtx);
     registerAllHandlers(dispatcher);
 
     // Find the return statement
@@ -247,17 +251,18 @@ TEST(ReturnStmtHandlerDispatcherTest, ReturnWithExpression) {
     ASSERT_NE(AST, nullptr);
 
     ASTContext& cppCtx = AST->getASTContext();
-    TargetContext& targetCtx = TargetContext::getInstance();
+    TargetContext targetCtx;
     ASTContext& cCtx = targetCtx.getContext();
 
-    cpptoc::PathMapper& mapper = cpptoc::PathMapper::getInstance("/src", "/output");
+    cpptoc::PathMapper mapper(targetCtx, "/src", "/output");
     cpptoc::DeclLocationMapper locMapper(mapper);
     cpptoc::DeclMapper declMapper;
     cpptoc::TypeMapper typeMapper;
     cpptoc::ExprMapper exprMapper;
     cpptoc::StmtMapper stmtMapper;
+    cpptoc::FieldOffsetMapper fieldOffsetMapper;
 
-    CppToCVisitorDispatcher dispatcher(mapper, locMapper, declMapper, typeMapper, exprMapper, stmtMapper);
+    CppToCVisitorDispatcher dispatcher(mapper, locMapper, declMapper, typeMapper, exprMapper, stmtMapper, fieldOffsetMapper, targetCtx);
     registerAllHandlers(dispatcher);
 
     // Find the return statement
@@ -295,17 +300,18 @@ TEST(ReturnStmtHandlerDispatcherTest, ReturnWithReference) {
     ASSERT_NE(AST, nullptr);
 
     ASTContext& cppCtx = AST->getASTContext();
-    TargetContext& targetCtx = TargetContext::getInstance();
+    TargetContext targetCtx;
     ASTContext& cCtx = targetCtx.getContext();
 
-    cpptoc::PathMapper& mapper = cpptoc::PathMapper::getInstance("/src", "/output");
+    cpptoc::PathMapper mapper(targetCtx, "/src", "/output");
     cpptoc::DeclLocationMapper locMapper(mapper);
     cpptoc::DeclMapper declMapper;
     cpptoc::TypeMapper typeMapper;
     cpptoc::ExprMapper exprMapper;
     cpptoc::StmtMapper stmtMapper;
+    cpptoc::FieldOffsetMapper fieldOffsetMapper;
 
-    CppToCVisitorDispatcher dispatcher(mapper, locMapper, declMapper, typeMapper, exprMapper, stmtMapper);
+    CppToCVisitorDispatcher dispatcher(mapper, locMapper, declMapper, typeMapper, exprMapper, stmtMapper, fieldOffsetMapper, targetCtx);
     registerAllHandlers(dispatcher);
 
     // Find the return statement
@@ -345,17 +351,18 @@ TEST(ReturnStmtHandlerDispatcherTest, VoidReturn) {
     ASSERT_NE(AST, nullptr);
 
     ASTContext& cppCtx = AST->getASTContext();
-    TargetContext& targetCtx = TargetContext::getInstance();
+    TargetContext targetCtx;
     ASTContext& cCtx = targetCtx.getContext();
 
-    cpptoc::PathMapper& mapper = cpptoc::PathMapper::getInstance("/src", "/output");
+    cpptoc::PathMapper mapper(targetCtx, "/src", "/output");
     cpptoc::DeclLocationMapper locMapper(mapper);
     cpptoc::DeclMapper declMapper;
     cpptoc::TypeMapper typeMapper;
     cpptoc::ExprMapper exprMapper;
     cpptoc::StmtMapper stmtMapper;
+    cpptoc::FieldOffsetMapper fieldOffsetMapper;
 
-    CppToCVisitorDispatcher dispatcher(mapper, locMapper, declMapper, typeMapper, exprMapper, stmtMapper);
+    CppToCVisitorDispatcher dispatcher(mapper, locMapper, declMapper, typeMapper, exprMapper, stmtMapper, fieldOffsetMapper, targetCtx);
     registerAllHandlers(dispatcher);
 
     // Find the return statement
@@ -393,17 +400,18 @@ TEST(ReturnStmtHandlerDispatcherTest, MultipleReturnStatements) {
     ASSERT_NE(AST, nullptr);
 
     ASTContext& cppCtx = AST->getASTContext();
-    TargetContext& targetCtx = TargetContext::getInstance();
+    TargetContext targetCtx;
     ASTContext& cCtx = targetCtx.getContext();
 
-    cpptoc::PathMapper& mapper = cpptoc::PathMapper::getInstance("/src", "/output");
+    cpptoc::PathMapper mapper(targetCtx, "/src", "/output");
     cpptoc::DeclLocationMapper locMapper(mapper);
     cpptoc::DeclMapper declMapper;
     cpptoc::TypeMapper typeMapper;
     cpptoc::ExprMapper exprMapper;
     cpptoc::StmtMapper stmtMapper;
+    cpptoc::FieldOffsetMapper fieldOffsetMapper;
 
-    CppToCVisitorDispatcher dispatcher(mapper, locMapper, declMapper, typeMapper, exprMapper, stmtMapper);
+    CppToCVisitorDispatcher dispatcher(mapper, locMapper, declMapper, typeMapper, exprMapper, stmtMapper, fieldOffsetMapper, targetCtx);
     registerAllHandlers(dispatcher);
 
     // Find the function
@@ -435,17 +443,18 @@ TEST(ReturnStmtHandlerDispatcherTest, ReturnWithVariable) {
     ASSERT_NE(AST, nullptr);
 
     ASTContext& cppCtx = AST->getASTContext();
-    TargetContext& targetCtx = TargetContext::getInstance();
+    TargetContext targetCtx;
     ASTContext& cCtx = targetCtx.getContext();
 
-    cpptoc::PathMapper& mapper = cpptoc::PathMapper::getInstance("/src", "/output");
+    cpptoc::PathMapper mapper(targetCtx, "/src", "/output");
     cpptoc::DeclLocationMapper locMapper(mapper);
     cpptoc::DeclMapper declMapper;
     cpptoc::TypeMapper typeMapper;
     cpptoc::ExprMapper exprMapper;
     cpptoc::StmtMapper stmtMapper;
+    cpptoc::FieldOffsetMapper fieldOffsetMapper;
 
-    CppToCVisitorDispatcher dispatcher(mapper, locMapper, declMapper, typeMapper, exprMapper, stmtMapper);
+    CppToCVisitorDispatcher dispatcher(mapper, locMapper, declMapper, typeMapper, exprMapper, stmtMapper, fieldOffsetMapper, targetCtx);
     registerAllHandlers(dispatcher);
 
     // Find the function

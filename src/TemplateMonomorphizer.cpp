@@ -154,7 +154,7 @@ QualType TemplateMonomorphizer::convertToCType(QualType Type) {
 
         // If it's a CXXRecordDecl (C++ class/struct), create a C struct type
         if (isa<CXXRecordDecl>(RD)) {
-            // Create a new RecordDecl with TTK_Struct for C output
+            // Create a new RecordDecl with TagTypeKind::Struct for C output
             std::string name = RD->getNameAsString();
             IdentifierInfo& II = Context.Idents.get(name);
 
@@ -163,7 +163,7 @@ QualType TemplateMonomorphizer::convertToCType(QualType Type) {
 #if LLVM_VERSION_MAJOR >= 16
                 TagTypeKind::Struct,
 #else
-                TTK_Struct,
+                TagTypeKind::Struct,
 #endif
                 Context.getTranslationUnitDecl(),
                 SourceLocation(),
@@ -398,7 +398,7 @@ FunctionDecl* TemplateMonomorphizer::createMethodFunction(
 #if LLVM_VERSION_MAJOR >= 16
                 TagTypeKind::Struct,
 #else
-                TTK_Struct,
+                TagTypeKind::Struct,
 #endif
                 Context.getTranslationUnitDecl(),
                 SourceLocation(),
@@ -491,7 +491,7 @@ QualType TemplateMonomorphizer::substituteType(QualType Type,
 #if LLVM_VERSION_MAJOR >= 16
                 TagTypeKind::Struct,
 #else
-                TTK_Struct,
+                TagTypeKind::Struct,
 #endif
                 Context.getTranslationUnitDecl(),
                 SourceLocation(),
@@ -655,138 +655,3 @@ std::string TemplateMonomorphizer::generateMangledName(const std::string& BaseNa
     return name.str();
 }
 
-// ============================================================================
-// DEPRECATED: Old String Generation Methods (Phase 32.0 - kept for reference)
-// ============================================================================
-// These methods are deprecated in favor of AST generation above.
-// Kept temporarily for backwards compatibility and reference.
-// TODO: Remove after full migration to AST-based approach is verified.
-// ============================================================================
-
-// DEPRECATED: Use monomorphizeClass() + monomorphizeClassMethods() instead
-#if 0
-std::string TemplateMonomorphizer::monomorphizeClass_OLD(ClassTemplateSpecializationDecl* D) {
-    if (!D) return "";
-
-    // Generate mangled name for this instantiation
-    std::string mangledName = generateMangledName(
-        D->getSpecializedTemplate()->getNameAsString(),
-        D->getTemplateArgs()
-    );
-
-    // Generate struct definition
-    std::string result = generateStruct(D, mangledName);
-
-    // Generate method declarations
-    for (auto* Decl : D->decls()) {
-        if (auto* Method = dyn_cast<CXXMethodDecl>(Decl)) {
-            // Skip compiler-generated methods
-            if (Method->isImplicit()) continue;
-
-            result += generateMethod(Method, mangledName, D->getTemplateArgs());
-        }
-    }
-
-    return result;
-}
-
-std::string TemplateMonomorphizer::generateStruct(ClassTemplateSpecializationDecl* D,
-                                                 const std::string& MangledName) {
-    std::ostringstream code;
-
-    code << "typedef struct " << MangledName << " {\n";
-
-    // Generate fields
-    for (auto* Field : D->fields()) {
-        code << "    ";
-
-        // Field type (already substituted by Clang)
-        QualType fieldType = Field->getType();
-
-        // Handle arrays - get element type first
-        if (fieldType->isConstantArrayType()) {
-            const ConstantArrayType* arrayType = Context.getAsConstantArrayType(fieldType);
-            if (arrayType) {
-                // Get element type (e.g., int from int[10])
-                QualType elementType = arrayType->getElementType();
-                code << typeToString(elementType);
-                code << " " << Field->getNameAsString();
-                code << "[" << arrayType->getSize().getZExtValue() << "]";
-            }
-        } else {
-            // Non-array types
-            code << typeToString(fieldType);
-            code << " " << Field->getNameAsString();
-        }
-
-        code << ";\n";
-    }
-
-    code << "} " << MangledName << ";\n\n";
-
-    return code.str();
-}
-
-std::string TemplateMonomorphizer::generateMethod(CXXMethodDecl* Method,
-                                                 const std::string& ClassName,
-                                                 const TemplateArgumentList& TemplateArgs) {
-    std::ostringstream code;
-
-    // Return type (already substituted by Clang)
-    QualType returnType = Method->getReturnType();
-    code << typeToString(returnType) << " ";
-
-    // Method name: ClassName_methodName
-    code << ClassName << "_" << Method->getNameAsString();
-
-    // Parameters (with 'this' pointer)
-    code << "(" << ClassName << "* this";
-
-    for (unsigned i = 0; i < Method->getNumParams(); ++i) {
-        code << ", ";
-        ParmVarDecl* param = Method->getParamDecl(i);
-
-        // Parameter type (already substituted by Clang)
-        QualType paramType = param->getType();
-        code << typeToString(paramType);
-
-        code << " " << param->getNameAsString();
-    }
-
-    code << ");\n";
-
-    return code.str();
-}
-
-std::string TemplateMonomorphizer::typeToString(QualType Type) {
-    // Handle references as pointers in C
-    if (Type->isReferenceType()) {
-        QualType pointeeType = Type->getPointeeType();
-        return typeToString(pointeeType) + "*";
-    }
-
-    // Get canonical type string
-    std::string typeStr = Type.getAsString();
-
-    // Clean up type string for C
-    // Remove "class " prefix
-    size_t classPos = typeStr.find("class ");
-    if (classPos != std::string::npos) {
-        typeStr.erase(classPos, 6);
-    }
-
-    // Remove "struct " prefix
-    size_t structPos = typeStr.find("struct ");
-    if (structPos != std::string::npos) {
-        typeStr.erase(structPos, 7);
-    }
-
-    // Normalize pointer spacing: "int *" -> "int*", "int **" -> "int**"
-    size_t pos = 0;
-    while ((pos = typeStr.find(" *", pos)) != std::string::npos) {
-        typeStr.erase(pos, 1);  // Remove the space before *
-    }
-
-    return typeStr;
-}
-#endif

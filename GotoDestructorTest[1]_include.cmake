@@ -1,0 +1,5 @@
+if(EXISTS "/Users/alexanderfedin/Projects/hapyy/hupyy-cpp-to-c/GotoDestructorTest[1]_tests.cmake")
+  include("/Users/alexanderfedin/Projects/hapyy/hupyy-cpp-to-c/GotoDestructorTest[1]_tests.cmake")
+else()
+  add_test(GotoDestructorTest_NOT_BUILT GotoDestructorTest_NOT_BUILT)
+endif()

@@ -21,6 +21,7 @@
 #include "mapping/TypeMapper.h"
 #include "mapping/ExprMapper.h"
 #include "mapping/StmtMapper.h"
+#include "mapping/FieldOffsetMapper.h"
 #include "TargetContext.h"
 #include "clang/AST/ASTContext.h"
 #include "clang/AST/Decl.h"
@@ -78,23 +79,27 @@ TEST(RecordHandlerDispatcherTest, Registration) {
     ASSERT_NE(AST, nullptr);
 
     ASTContext& cppCtx = AST->getASTContext();
-    TargetContext& targetCtx = TargetContext::getInstance();
+    TargetContext targetCtx;
     ASTContext& cCtx = targetCtx.getContext();
 
-    cpptoc::PathMapper& mapper = cpptoc::PathMapper::getInstance("/src", "/output");
+    cpptoc::PathMapper mapper(targetCtx, "/src", "/output");
     cpptoc::DeclLocationMapper locMapper(mapper);
     cpptoc::DeclMapper declMapper;
     cpptoc::TypeMapper typeMapper;
     cpptoc::ExprMapper exprMapper;
     cpptoc::StmtMapper stmtMapper;
+    cpptoc::FieldOffsetMapper fieldOffsetMapper;
 
-    CppToCVisitorDispatcher dispatcher(mapper, locMapper, declMapper, typeMapper, exprMapper, stmtMapper);
+    CppToCVisitorDispatcher dispatcher(mapper, locMapper, declMapper, typeMapper, exprMapper, stmtMapper, fieldOffsetMapper, targetCtx);
     cpptoc::TypeHandler::registerWith(dispatcher);
     cpptoc::RecordHandler::registerWith(dispatcher);
 
     TranslationUnitDecl* TU = cppCtx.getTranslationUnitDecl();
     RecordDecl* cppStruct = findDecl<RecordDecl>(TU, "Point");
     ASSERT_NE(cppStruct, nullptr);
+
+    // Set current target path for file origin check
+    dispatcher.setCurrentTargetPath("input");
 
     bool handled = dispatcher.dispatch(cppCtx, cCtx, cppStruct);
     EXPECT_TRUE(handled);
@@ -120,17 +125,18 @@ TEST(RecordHandlerDispatcherTest, BasicStruct) {
     ASSERT_NE(AST, nullptr);
 
     ASTContext& cppCtx = AST->getASTContext();
-    TargetContext& targetCtx = TargetContext::getInstance();
+    TargetContext targetCtx;
     ASTContext& cCtx = targetCtx.getContext();
 
-    cpptoc::PathMapper& mapper = cpptoc::PathMapper::getInstance("/src", "/output");
+    cpptoc::PathMapper mapper(targetCtx, "/src", "/output");
     cpptoc::DeclLocationMapper locMapper(mapper);
     cpptoc::DeclMapper declMapper;
     cpptoc::TypeMapper typeMapper;
     cpptoc::ExprMapper exprMapper;
     cpptoc::StmtMapper stmtMapper;
+    cpptoc::FieldOffsetMapper fieldOffsetMapper;
 
-    CppToCVisitorDispatcher dispatcher(mapper, locMapper, declMapper, typeMapper, exprMapper, stmtMapper);
+    CppToCVisitorDispatcher dispatcher(mapper, locMapper, declMapper, typeMapper, exprMapper, stmtMapper, fieldOffsetMapper, targetCtx);
     cpptoc::TypeHandler::registerWith(dispatcher);
     cpptoc::RecordHandler::registerWith(dispatcher);
 
@@ -138,6 +144,9 @@ TEST(RecordHandlerDispatcherTest, BasicStruct) {
     RecordDecl* cppStruct = findDecl<RecordDecl>(TU, "Point");
     ASSERT_NE(cppStruct, nullptr);
     ASSERT_TRUE(cppStruct->isCompleteDefinition());
+
+    // Set current target path for file origin check
+    dispatcher.setCurrentTargetPath("input");
 
     bool handled = dispatcher.dispatch(cppCtx, cCtx, cppStruct);
     ASSERT_TRUE(handled);
@@ -177,17 +186,18 @@ TEST(RecordHandlerDispatcherTest, ClassToStruct) {
     ASSERT_NE(AST, nullptr);
 
     ASTContext& cppCtx = AST->getASTContext();
-    TargetContext& targetCtx = TargetContext::getInstance();
+    TargetContext targetCtx;
     ASTContext& cCtx = targetCtx.getContext();
 
-    cpptoc::PathMapper& mapper = cpptoc::PathMapper::getInstance("/src", "/output");
+    cpptoc::PathMapper mapper(targetCtx, "/src", "/output");
     cpptoc::DeclLocationMapper locMapper(mapper);
     cpptoc::DeclMapper declMapper;
     cpptoc::TypeMapper typeMapper;
     cpptoc::ExprMapper exprMapper;
     cpptoc::StmtMapper stmtMapper;
+    cpptoc::FieldOffsetMapper fieldOffsetMapper;
 
-    CppToCVisitorDispatcher dispatcher(mapper, locMapper, declMapper, typeMapper, exprMapper, stmtMapper);
+    CppToCVisitorDispatcher dispatcher(mapper, locMapper, declMapper, typeMapper, exprMapper, stmtMapper, fieldOffsetMapper, targetCtx);
     cpptoc::TypeHandler::registerWith(dispatcher);
     cpptoc::RecordHandler::registerWith(dispatcher);
 
@@ -195,6 +205,9 @@ TEST(RecordHandlerDispatcherTest, ClassToStruct) {
     CXXRecordDecl* cppClass = findDecl<CXXRecordDecl>(TU, "Rectangle");
     ASSERT_NE(cppClass, nullptr);
     EXPECT_TRUE(cppClass->isClass());
+
+    // Set current target path for file origin check
+    dispatcher.setCurrentTargetPath("input");
 
     bool handled = dispatcher.dispatch(cppCtx, cCtx, cppClass);
     ASSERT_TRUE(handled);
@@ -227,17 +240,18 @@ TEST(RecordHandlerDispatcherTest, ForwardDeclaration) {
     ASSERT_NE(AST, nullptr);
 
     ASTContext& cppCtx = AST->getASTContext();
-    TargetContext& targetCtx = TargetContext::getInstance();
+    TargetContext targetCtx;
     ASTContext& cCtx = targetCtx.getContext();
 
-    cpptoc::PathMapper& mapper = cpptoc::PathMapper::getInstance("/src", "/output");
+    cpptoc::PathMapper mapper(targetCtx, "/src", "/output");
     cpptoc::DeclLocationMapper locMapper(mapper);
     cpptoc::DeclMapper declMapper;
     cpptoc::TypeMapper typeMapper;
     cpptoc::ExprMapper exprMapper;
     cpptoc::StmtMapper stmtMapper;
+    cpptoc::FieldOffsetMapper fieldOffsetMapper;
 
-    CppToCVisitorDispatcher dispatcher(mapper, locMapper, declMapper, typeMapper, exprMapper, stmtMapper);
+    CppToCVisitorDispatcher dispatcher(mapper, locMapper, declMapper, typeMapper, exprMapper, stmtMapper, fieldOffsetMapper, targetCtx);
     cpptoc::TypeHandler::registerWith(dispatcher);
     cpptoc::RecordHandler::registerWith(dispatcher);
 
@@ -253,6 +267,9 @@ TEST(RecordHandlerDispatcherTest, ForwardDeclaration) {
         }
     }
     ASSERT_NE(completeDecl, nullptr);
+
+    // Set current target path for file origin check
+    dispatcher.setCurrentTargetPath("input");
 
     bool handled = dispatcher.dispatch(cppCtx, cCtx, completeDecl);
     ASSERT_TRUE(handled);
@@ -283,23 +300,27 @@ TEST(RecordHandlerDispatcherTest, FieldTypes) {
     ASSERT_NE(AST, nullptr);
 
     ASTContext& cppCtx = AST->getASTContext();
-    TargetContext& targetCtx = TargetContext::getInstance();
+    TargetContext targetCtx;
     ASTContext& cCtx = targetCtx.getContext();
 
-    cpptoc::PathMapper& mapper = cpptoc::PathMapper::getInstance("/src", "/output");
+    cpptoc::PathMapper mapper(targetCtx, "/src", "/output");
     cpptoc::DeclLocationMapper locMapper(mapper);
     cpptoc::DeclMapper declMapper;
     cpptoc::TypeMapper typeMapper;
     cpptoc::ExprMapper exprMapper;
     cpptoc::StmtMapper stmtMapper;
+    cpptoc::FieldOffsetMapper fieldOffsetMapper;
 
-    CppToCVisitorDispatcher dispatcher(mapper, locMapper, declMapper, typeMapper, exprMapper, stmtMapper);
+    CppToCVisitorDispatcher dispatcher(mapper, locMapper, declMapper, typeMapper, exprMapper, stmtMapper, fieldOffsetMapper, targetCtx);
     cpptoc::TypeHandler::registerWith(dispatcher);
     cpptoc::RecordHandler::registerWith(dispatcher);
 
     TranslationUnitDecl* TU = cppCtx.getTranslationUnitDecl();
     RecordDecl* cppStruct = findDecl<RecordDecl>(TU, "Mixed");
     ASSERT_NE(cppStruct, nullptr);
+
+    // Set current target path for file origin check
+    dispatcher.setCurrentTargetPath("input");
 
     bool handled = dispatcher.dispatch(cppCtx, cCtx, cppStruct);
     ASSERT_TRUE(handled);
@@ -337,23 +358,27 @@ TEST(RecordHandlerDispatcherTest, NestedStruct) {
     ASSERT_NE(AST, nullptr);
 
     ASTContext& cppCtx = AST->getASTContext();
-    TargetContext& targetCtx = TargetContext::getInstance();
+    TargetContext targetCtx;
     ASTContext& cCtx = targetCtx.getContext();
 
-    cpptoc::PathMapper& mapper = cpptoc::PathMapper::getInstance("/src", "/output");
+    cpptoc::PathMapper mapper(targetCtx, "/src", "/output");
     cpptoc::DeclLocationMapper locMapper(mapper);
     cpptoc::DeclMapper declMapper;
     cpptoc::TypeMapper typeMapper;
     cpptoc::ExprMapper exprMapper;
     cpptoc::StmtMapper stmtMapper;
+    cpptoc::FieldOffsetMapper fieldOffsetMapper;
 
-    CppToCVisitorDispatcher dispatcher(mapper, locMapper, declMapper, typeMapper, exprMapper, stmtMapper);
+    CppToCVisitorDispatcher dispatcher(mapper, locMapper, declMapper, typeMapper, exprMapper, stmtMapper, fieldOffsetMapper, targetCtx);
     cpptoc::TypeHandler::registerWith(dispatcher);
     cpptoc::RecordHandler::registerWith(dispatcher);
 
     TranslationUnitDecl* TU = cppCtx.getTranslationUnitDecl();
     RecordDecl* cppOuter = findDecl<RecordDecl>(TU, "Outer");
     ASSERT_NE(cppOuter, nullptr);
+
+    // Set current target path for file origin check
+    dispatcher.setCurrentTargetPath("input");
 
     bool handled = dispatcher.dispatch(cppCtx, cCtx, cppOuter);
     ASSERT_TRUE(handled);
@@ -405,17 +430,18 @@ TEST(RecordHandlerDispatcherTest, SkipPolymorphicClass) {
     ASSERT_NE(AST, nullptr);
 
     ASTContext& cppCtx = AST->getASTContext();
-    TargetContext& targetCtx = TargetContext::getInstance();
+    TargetContext targetCtx;
     ASTContext& cCtx = targetCtx.getContext();
 
-    cpptoc::PathMapper& mapper = cpptoc::PathMapper::getInstance("/src", "/output");
+    cpptoc::PathMapper mapper(targetCtx, "/src", "/output");
     cpptoc::DeclLocationMapper locMapper(mapper);
     cpptoc::DeclMapper declMapper;
     cpptoc::TypeMapper typeMapper;
     cpptoc::ExprMapper exprMapper;
     cpptoc::StmtMapper stmtMapper;
+    cpptoc::FieldOffsetMapper fieldOffsetMapper;
 
-    CppToCVisitorDispatcher dispatcher(mapper, locMapper, declMapper, typeMapper, exprMapper, stmtMapper);
+    CppToCVisitorDispatcher dispatcher(mapper, locMapper, declMapper, typeMapper, exprMapper, stmtMapper, fieldOffsetMapper, targetCtx);
     cpptoc::TypeHandler::registerWith(dispatcher);
     cpptoc::RecordHandler::registerWith(dispatcher);
 
@@ -423,6 +449,9 @@ TEST(RecordHandlerDispatcherTest, SkipPolymorphicClass) {
     CXXRecordDecl* cppClass = findDecl<CXXRecordDecl>(TU, "Base");
     ASSERT_NE(cppClass, nullptr);
     ASSERT_TRUE(cppClass->isPolymorphic());
+
+    // Set current target path for file origin check
+    dispatcher.setCurrentTargetPath("input");
 
     bool handled = dispatcher.dispatch(cppCtx, cCtx, cppClass);
     // Handler should process it but skip translation (log warning)
@@ -449,23 +478,27 @@ TEST(RecordHandlerDispatcherTest, DuplicateDetection) {
     ASSERT_NE(AST, nullptr);
 
     ASTContext& cppCtx = AST->getASTContext();
-    TargetContext& targetCtx = TargetContext::getInstance();
+    TargetContext targetCtx;
     ASTContext& cCtx = targetCtx.getContext();
 
-    cpptoc::PathMapper& mapper = cpptoc::PathMapper::getInstance("/src", "/output");
+    cpptoc::PathMapper mapper(targetCtx, "/src", "/output");
     cpptoc::DeclLocationMapper locMapper(mapper);
     cpptoc::DeclMapper declMapper;
     cpptoc::TypeMapper typeMapper;
     cpptoc::ExprMapper exprMapper;
     cpptoc::StmtMapper stmtMapper;
+    cpptoc::FieldOffsetMapper fieldOffsetMapper;
 
-    CppToCVisitorDispatcher dispatcher(mapper, locMapper, declMapper, typeMapper, exprMapper, stmtMapper);
+    CppToCVisitorDispatcher dispatcher(mapper, locMapper, declMapper, typeMapper, exprMapper, stmtMapper, fieldOffsetMapper, targetCtx);
     cpptoc::TypeHandler::registerWith(dispatcher);
     cpptoc::RecordHandler::registerWith(dispatcher);
 
     TranslationUnitDecl* TU = cppCtx.getTranslationUnitDecl();
     RecordDecl* cppStruct = findDecl<RecordDecl>(TU, "Point");
     ASSERT_NE(cppStruct, nullptr);
+
+    // Set current target path for file origin check
+    dispatcher.setCurrentTargetPath("input");
 
     // First dispatch
     bool handled1 = dispatcher.dispatch(cppCtx, cCtx, cppStruct);

@@ -1,0 +1,5 @@
+if(EXISTS "/Users/alexanderfedin/Projects/hapyy/hupyy-cpp-to-c/StructsE2ETest[1]_tests.cmake")
+  include("/Users/alexanderfedin/Projects/hapyy/hupyy-cpp-to-c/StructsE2ETest[1]_tests.cmake")
+else()
+  add_test(StructsE2ETest_NOT_BUILT StructsE2ETest_NOT_BUILT)
+endif()

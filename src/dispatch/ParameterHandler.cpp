@@ -7,8 +7,11 @@
  */
 
 #include "dispatch/ParameterHandler.h"
+#include "dispatch/TypeHandler.h"
 #include "mapping/DeclMapper.h"
 #include "mapping/TypeMapper.h"
+#include "SourceLocationMapper.h"
+#include "TargetContext.h"
 #include "llvm/Support/Casting.h"
 #include "llvm/Support/raw_ostream.h"
 #include <cassert>
@@ -40,40 +43,39 @@ void ParameterHandler::handleParameter(
 
     const auto* cppParam = llvm::cast<clang::ParmVarDecl>(D);
 
+    // Get target location for this declaration
+    std::string targetPath = disp.getCurrentTargetPath();
+    if (targetPath.empty()) {
+        targetPath = disp.getTargetPath(cppASTContext, D);
+    }
+    SourceLocationMapper& locMapper = disp.getTargetContext().getLocationMapper();
+    clang::SourceLocation targetLoc = locMapper.getStartOfFile(targetPath);
+
     // Extract parameter name
     std::string paramName = cppParam->getNameAsString();
     clang::IdentifierInfo& II = cASTContext.Idents.get(paramName);
 
     // Translate parameter type via TypeHandler (convert references to pointers)
     clang::QualType cppParamType = cppParam->getType();
-    const clang::Type* cppParamTypePtr = cppParamType.getTypePtr();
 
-    // Dispatch the parameter type to TypeHandler, which stores mapping in TypeMapper
-    bool typeHandled = disp.dispatch(cppASTContext, cASTContext, const_cast<clang::Type*>(cppParamTypePtr));
+    // Use TypeHandler::translateType() to properly translate C++ types to C types
+    clang::QualType cParamType = TypeHandler::translateType(cppParamType, cppASTContext, cASTContext);
 
-    // Retrieve translated type from TypeMapper
-    cpptoc::TypeMapper& typeMapper = disp.getTypeMapper();
-    clang::QualType cParamType = typeMapper.getCreated(cppParamTypePtr);
-
-    // If TypeHandler didn't handle this type (pass-through), use original type
-    if (cParamType.isNull()) {
-        cParamType = cppParamType;
-        llvm::outs() << "[ParameterHandler] TypeHandler pass-through for parameter type: "
-                     << cppParamType.getAsString() << "\n";
-    }
+    llvm::outs() << "[ParameterHandler] Translated parameter type: "
+                 << cppParamType.getAsString() << " → " << cParamType.getAsString() << "\n";
 
     // Create C parameter with translated type
     // Using TranslationUnitDecl as DeclContext (standard pattern for parameters)
     clang::ParmVarDecl* cParam = clang::ParmVarDecl::Create(
         cASTContext,
         cASTContext.getTranslationUnitDecl(),
-        clang::SourceLocation(),
-        clang::SourceLocation(),
+        targetLoc,
+        targetLoc,
         &II,
         cParamType,
         cASTContext.getTrivialTypeSourceInfo(cParamType),
         clang::SC_None,
-        nullptr  // No default argument
+        nullptr
     );
 
     assert(cParam && "Failed to create C ParmVarDecl");
@@ -82,10 +84,8 @@ void ParameterHandler::handleParameter(
     cpptoc::DeclMapper& declMapper = disp.getDeclMapper();
     declMapper.setCreated(cppParam, cParam);
 
-    // Debug output for verification
-    llvm::outs() << "[ParameterHandler] Translated parameter: " << paramName
-                 << " (" << cppParamType.getAsString() << " → "
-                 << cParamType.getAsString() << ")\n";
+    llvm::outs() << "[ParameterHandler] Created C parameter: " << paramName
+                 << " (type: " << cParamType.getAsString() << ")\n";
 
     // NOTE: Parameters are not added to TranslationUnit directly
     // They will be associated with their parent FunctionDecl by FunctionHandler

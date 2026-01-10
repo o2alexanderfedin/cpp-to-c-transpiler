@@ -1,0 +1,5 @@
+if(EXISTS "/Users/alexanderfedin/Projects/hapyy/hupyy-cpp-to-c/ThrowTranslatorTest[1]_tests.cmake")
+  include("/Users/alexanderfedin/Projects/hapyy/hupyy-cpp-to-c/ThrowTranslatorTest[1]_tests.cmake")
+else()
+  add_test(ThrowTranslatorTest_NOT_BUILT ThrowTranslatorTest_NOT_BUILT)
+endif()

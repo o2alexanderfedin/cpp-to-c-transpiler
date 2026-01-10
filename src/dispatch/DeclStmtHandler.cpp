@@ -8,6 +8,7 @@
 #include "dispatch/DeclStmtHandler.h"
 #include "mapping/DeclMapper.h"
 #include "mapping/StmtMapper.h"
+#include "SourceLocationMapper.h"
 #include "llvm/Support/Casting.h"
 #include "llvm/Support/raw_ostream.h"
 #include <cassert>
@@ -64,9 +65,28 @@ void DeclStmtHandler::handleDeclStmt(
         clang::Decl* cDecl = declMapper.getCreated(cppDecl);
 
         if (cDecl) {
-            cDecls.push_back(cDecl);
-            llvm::outs() << "[DeclStmtHandler] Declaration translated: "
-                         << cppDecl->getDeclKindName() << "\n";
+            // CRITICAL: Skip static local variables that were hoisted to global scope
+            // They should not appear in the function's DeclStmt
+            // How to detect: C++ VarDecl had static storage, C VarDecl is at global scope
+            bool isHoistedStatic = false;
+            if (auto* cppVar = llvm::dyn_cast<clang::VarDecl>(cppDecl)) {
+                if (cppVar->getStorageClass() == clang::SC_Static) {
+                    // Check if C decl is at global scope (TranslationUnit)
+                    if (auto* cVar = llvm::dyn_cast<clang::VarDecl>(cDecl)) {
+                        if (llvm::isa<clang::TranslationUnitDecl>(cVar->getDeclContext())) {
+                            isHoistedStatic = true;
+                            llvm::outs() << "[DeclStmtHandler] Skipping hoisted static local: "
+                                         << cppVar->getNameAsString() << "\n";
+                        }
+                    }
+                }
+            }
+
+            if (!isHoistedStatic) {
+                cDecls.push_back(cDecl);
+                llvm::outs() << "[DeclStmtHandler] Declaration translated: "
+                             << cppDecl->getDeclKindName() << "\n";
+            }
         } else {
             llvm::errs() << "[DeclStmtHandler] ERROR: Declaration not in DeclMapper after successful dispatch\n";
         }
@@ -75,12 +95,16 @@ void DeclStmtHandler::handleDeclStmt(
     // Create C DeclStmt with all translated declarations
     clang::DeclStmt* cDeclStmt = nullptr;
 
+    // Get source location for SourceLocation initialization
+    SourceLocationMapper& locMapper = disp.getTargetContext().getLocationMapper();
+    clang::SourceLocation targetLoc = locMapper.getStartOfFile("");
+
     if (cDecls.size() == 1) {
         // Single declaration
         cDeclStmt = new (cASTContext) clang::DeclStmt(
             clang::DeclGroupRef(cDecls[0]),
-            clang::SourceLocation(),
-            clang::SourceLocation()
+            targetLoc,
+            targetLoc
         );
     } else if (cDecls.size() > 1) {
         // Multiple declarations (e.g., "int a, b;")
@@ -91,8 +115,8 @@ void DeclStmtHandler::handleDeclStmt(
         );
         cDeclStmt = new (cASTContext) clang::DeclStmt(
             clang::DeclGroupRef(declGroup),
-            clang::SourceLocation(),
-            clang::SourceLocation()
+            targetLoc,
+            targetLoc
         );
     } else {
         // No declarations translated - create empty DeclStmt

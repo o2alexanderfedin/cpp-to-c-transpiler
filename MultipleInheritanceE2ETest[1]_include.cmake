@@ -1,0 +1,5 @@
+if(EXISTS "/Users/alexanderfedin/Projects/hapyy/hupyy-cpp-to-c/MultipleInheritanceE2ETest[1]_tests.cmake")
+  include("/Users/alexanderfedin/Projects/hapyy/hupyy-cpp-to-c/MultipleInheritanceE2ETest[1]_tests.cmake")
+else()
+  add_test(MultipleInheritanceE2ETest_NOT_BUILT MultipleInheritanceE2ETest_NOT_BUILT)
+endif()

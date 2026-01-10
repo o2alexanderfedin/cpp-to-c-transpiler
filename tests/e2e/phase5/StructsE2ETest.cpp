@@ -21,6 +21,8 @@
 #include "dispatch/ParenExprHandler.h"
 #include "dispatch/CallExprHandler.h"
 #include "dispatch/ArraySubscriptExprHandler.h"
+#include "dispatch/InitListExprHandler.h"
+#include "dispatch/CXXConstructExprHandler.h"
 #include "dispatch/CompoundStmtHandler.h"
 #include "dispatch/DeclStmtHandler.h"
 #include "dispatch/ReturnStmtHandler.h"
@@ -64,6 +66,8 @@ protected:
         ParenExprHandler::registerWith(*pipeline.dispatcher);
         CallExprHandler::registerWith(*pipeline.dispatcher);
         ArraySubscriptExprHandler::registerWith(*pipeline.dispatcher);
+        InitListExprHandler::registerWith(*pipeline.dispatcher);
+        CXXConstructExprHandler::registerWith(*pipeline.dispatcher);
 
         // Statement handlers
         CompoundStmtHandler::registerWith(*pipeline.dispatcher);

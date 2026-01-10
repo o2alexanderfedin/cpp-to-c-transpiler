@@ -1,0 +1,5 @@
+if(EXISTS "/Users/alexanderfedin/Projects/hapyy/hupyy-cpp-to-c/ReturnStmtHandlerDispatcherTest[1]_tests.cmake")
+  include("/Users/alexanderfedin/Projects/hapyy/hupyy-cpp-to-c/ReturnStmtHandlerDispatcherTest[1]_tests.cmake")
+else()
+  add_test(ReturnStmtHandlerDispatcherTest_NOT_BUILT ReturnStmtHandlerDispatcherTest_NOT_BUILT)
+endif()

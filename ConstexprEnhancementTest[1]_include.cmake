@@ -1,0 +1,5 @@
+if(EXISTS "/Users/alexanderfedin/Projects/hapyy/hupyy-cpp-to-c/ConstexprEnhancementTest[1]_tests.cmake")
+  include("/Users/alexanderfedin/Projects/hapyy/hupyy-cpp-to-c/ConstexprEnhancementTest[1]_tests.cmake")
+else()
+  add_test(ConstexprEnhancementTest_NOT_BUILT ConstexprEnhancementTest_NOT_BUILT)
+endif()

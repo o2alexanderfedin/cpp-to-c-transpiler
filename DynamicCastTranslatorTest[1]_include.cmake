@@ -1,0 +1,5 @@
+if(EXISTS "/Users/alexanderfedin/Projects/hapyy/hupyy-cpp-to-c/DynamicCastTranslatorTest[1]_tests.cmake")
+  include("/Users/alexanderfedin/Projects/hapyy/hupyy-cpp-to-c/DynamicCastTranslatorTest[1]_tests.cmake")
+else()
+  add_test(DynamicCastTranslatorTest_NOT_BUILT DynamicCastTranslatorTest_NOT_BUILT)
+endif()

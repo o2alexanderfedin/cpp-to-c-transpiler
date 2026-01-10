@@ -36,6 +36,7 @@
 #include "mapping/TypeMapper.h"
 #include "mapping/ExprMapper.h"
 #include "mapping/StmtMapper.h"
+#include "mapping/FieldOffsetMapper.h"
 #include "CodeGenerator.h"
 #include "HeaderSeparator.h"
 #include "IncludeGuardGenerator.h"
@@ -142,20 +143,23 @@ public:
         : Context(Context), CStream(CStream), HStream(HStream), Filename(Filename) {}
 
     void HandleTranslationUnit(clang::ASTContext &Context) override {
-        // Setup target context for C AST
-        TargetContext& targetCtx = TargetContext::getInstance();
+        // RAII: Create TargetContext instance for this transpilation session
+        // Must be created BEFORE mappers since they may depend on it
+        TargetContext targetCtx;
         clang::ASTContext& cCtx = targetCtx.getContext();
 
-        // Create mapping utilities
-        cpptoc::PathMapper& mapper = cpptoc::PathMapper::getInstance(".", ".");
+        // RAII: Create mapper instances for this transpilation session
+        // These will be automatically cleaned up when HandleTranslationUnit exits
+        cpptoc::PathMapper mapper(targetCtx, ".", ".");
         cpptoc::DeclLocationMapper locMapper(mapper);
         cpptoc::DeclMapper declMapper;
         cpptoc::TypeMapper typeMapper;
         cpptoc::ExprMapper exprMapper;
         cpptoc::StmtMapper stmtMapper;
+        cpptoc::FieldOffsetMapper fieldOffsetMapper;
 
         // Create dispatcher with all mappers
-        CppToCVisitorDispatcher dispatcher(mapper, locMapper, declMapper, typeMapper, exprMapper, stmtMapper);
+        CppToCVisitorDispatcher dispatcher(mapper, locMapper, declMapper, typeMapper, exprMapper, stmtMapper, fieldOffsetMapper, targetCtx);
 
         // Register all handlers in dependency order
         // Base handlers first (these are used by others)

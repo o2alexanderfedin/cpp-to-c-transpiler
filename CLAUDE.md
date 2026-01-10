@@ -66,9 +66,54 @@ Each stage should be testable:
 2. **Test Stage 2**: Verify C AST has correct structure and names (without emitting text)
 3. **Test Stage 3**: Verify C code emission matches C AST (without translation logic)
 
-## Remember
+## Remember: LLVM vs Clang Distinction
 
-- **We do NOT use LLVM IR** - only Clang frontend for parsing
+### What We Actually Use
+
+**Clang Libraries (the frontend):**
+- `clangTooling` - AST traversal infrastructure
+- `clangFrontend` - Parser, semantic analysis
+- `clangAST` - C++ AST node types
+- `clangBasic` - Source locations, diagnostics
+- `clangIndex` - Cross-referencing
+
+**LLVM Utility Libraries (infrastructure only):**
+- `LLVMSupport` - Utility infrastructure
+  - `llvm::raw_ostream` - Stream abstraction
+  - `llvm::StringRef` - Zero-copy string views
+  - `llvm::SmallVector` - Stack-optimized vectors
+  - `llvm::dyn_cast<T>()` - Safe downcasting for AST nodes
+  - `llvm::APSInt` - Arbitrary precision integers (for enum values)
+- `llvm::CommandLine` - Argument parsing
+- `llvm::Path` - File path utilities
+
+### What We DON'T Use (The LLVM Compilation Pipeline)
+
+❌ `LLVMIR` - No IR generation
+❌ `LLVMTransformUtils` - No optimization passes
+❌ `LLVMCodeGen` - No code generation backend
+❌ `LLVMTarget` - No target machine code emission
+
+### Why Link LLVM At All?
+
+Clang's AST classes are built on LLVM utilities. When you link Clang, you must link `LLVMSupport` (dependency). But `LLVMSupport` ≠ LLVM compilation pipeline. These are just data structures and utilities - like using Boost or Abseil.
+
+### The Actual Pipeline
+
+```
+C++ Source
+   ↓ (Clang parser - uses clangFrontend)
+C++ AST
+   ↓ (Our CppToCVisitor - pure C++ code, no LLVM)
+C AST
+   ↓ (Our CodeGenerator - pure C++ code, no LLVM)
+C Source
+```
+
+**Zero LLVM IR involved! No LLVM compilation pipeline used!**
+
+### Key Principles
+
 - **Pipeline: C++ source → C++ AST → C AST → C source**
 - **Each stage is independent and testable**
 - **Translation decisions belong in Stage 2, NOT Stage 3**

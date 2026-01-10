@@ -1,0 +1,5 @@
+if(EXISTS "/Users/alexanderfedin/Projects/hapyy/hupyy-cpp-to-c/LinkageDetectionTest[1]_tests.cmake")
+  include("/Users/alexanderfedin/Projects/hapyy/hupyy-cpp-to-c/LinkageDetectionTest[1]_tests.cmake")
+else()
+  add_test(LinkageDetectionTest_NOT_BUILT LinkageDetectionTest_NOT_BUILT)
+endif()

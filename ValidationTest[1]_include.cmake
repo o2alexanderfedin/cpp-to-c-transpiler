@@ -1,0 +1,5 @@
+if(EXISTS "/Users/alexanderfedin/Projects/hapyy/hupyy-cpp-to-c/ValidationTest[1]_tests.cmake")
+  include("/Users/alexanderfedin/Projects/hapyy/hupyy-cpp-to-c/ValidationTest[1]_tests.cmake")
+else()
+  add_test(ValidationTest_NOT_BUILT ValidationTest_NOT_BUILT)
+endif()

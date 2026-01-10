@@ -184,7 +184,10 @@ void VirtualMethodHandler::handleVirtualMethod(
     }
 
     // Get target path for this C++ source file
-    std::string targetPath = disp.getTargetPath(cppASTContext, D);
+    std::string targetPath = disp.getCurrentTargetPath();  // Use current path set by TranslationUnitHandler
+    if (targetPath.empty()) {
+        targetPath = disp.getTargetPath(cppASTContext, D);
+    }
 
     // Get or create C TranslationUnit for this target file
     cpptoc::PathMapper& pathMapper = disp.getPathMapper();
@@ -243,12 +246,15 @@ clang::ParmVarDecl* VirtualMethodHandler::createThisParameter(
 
     // Create struct type with prefixed class name
     clang::IdentifierInfo& structII = cASTContext.Idents.get(className);
+    clang::SourceLocation targetLoc = cASTContext.getSourceManager().getLocForStartOfFile(
+        cASTContext.getSourceManager().getFileID(classDecl->getBeginLoc())
+    );
     clang::RecordDecl* structDecl = clang::RecordDecl::Create(
         cASTContext,
         clang::TagTypeKind::Struct,
         cASTContext.getTranslationUnitDecl(),
-        clang::SourceLocation(),
-        clang::SourceLocation(),
+        targetLoc,
+        targetLoc,
         &structII
     );
 
@@ -261,8 +267,8 @@ clang::ParmVarDecl* VirtualMethodHandler::createThisParameter(
     clang::ParmVarDecl* thisParam = clang::ParmVarDecl::Create(
         cASTContext,
         nullptr,  // DeclContext set later by FunctionDecl
-        clang::SourceLocation(),
-        clang::SourceLocation(),
+        targetLoc,
+        targetLoc,
         &thisII,
         pointerType,
         cASTContext.getTrivialTypeSourceInfo(pointerType),

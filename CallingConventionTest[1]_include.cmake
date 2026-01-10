@@ -1,0 +1,5 @@
+if(EXISTS "/Users/alexanderfedin/Projects/hapyy/hupyy-cpp-to-c/CallingConventionTest[1]_tests.cmake")
+  include("/Users/alexanderfedin/Projects/hapyy/hupyy-cpp-to-c/CallingConventionTest[1]_tests.cmake")
+else()
+  add_test(CallingConventionTest_NOT_BUILT CallingConventionTest_NOT_BUILT)
+endif()

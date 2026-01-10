@@ -55,7 +55,7 @@
  * 38. ComplexLogical - (a > 0 && b < 100) || c == 42
  */
 
-#include "helpers/UnitTestHelper.h"
+#include "UnitTestHelper.h"
 #include "CNodeBuilder.h"
 #include "clang/Tooling/Tooling.h"
 #include "clang/AST/RecursiveASTVisitor.h"
@@ -6698,7 +6698,7 @@ TEST_F(ExpressionHandlerTest, InitListExpr_NestedStructInit) {
  * We'll handle designated initializers in the C output generation phase
  * when translating from C++ to C, where we can emit C99 designated initializers.
  */
-TEST_F(ExpressionHandlerTest, DISABLED_InitListExpr_DesignatedStructInit) {
+TEST_F(ExpressionHandlerTest, InitListExpr_DesignatedStructInit) {
     // This test is disabled because designated initializers are a C99/C11/C++20 feature
     // that requires special AST node handling (DesignatedInitExpr).
     // For Phase 43, we focus on basic struct initialization.
@@ -6717,7 +6717,7 @@ TEST_F(ExpressionHandlerTest, DISABLED_InitListExpr_DesignatedStructInit) {
  * Note: Similar to designated initializers, this requires special handling.
  * For Phase 43, we focus on positional initialization only.
  */
-TEST_F(ExpressionHandlerTest, DISABLED_InitListExpr_MixedStructInit) {
+TEST_F(ExpressionHandlerTest, InitListExpr_MixedStructInit) {
     // This test is disabled for the same reason as DesignatedStructInit.
     // Mixed initialization with designated initializers is a C99/C++20 feature.
     // For Phase 43, we support positional initialization only.

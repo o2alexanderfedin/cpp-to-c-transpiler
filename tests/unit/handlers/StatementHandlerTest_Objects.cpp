@@ -29,7 +29,7 @@
  */
 
 #include "dispatch/StatementHandler.h"
-#include "helpers/UnitTestHelper.h"
+#include "UnitTestHelper.h"
 #include "clang/Tooling/Tooling.h"
 #include "clang/AST/DeclCXX.h"
 #include <gtest/gtest.h>

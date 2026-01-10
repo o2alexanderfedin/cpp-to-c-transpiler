@@ -1,0 +1,5 @@
+if(EXISTS "/Users/alexanderfedin/Projects/hapyy/hupyy-cpp-to-c/EarlyReturnDestructorTest[1]_tests.cmake")
+  include("/Users/alexanderfedin/Projects/hapyy/hupyy-cpp-to-c/EarlyReturnDestructorTest[1]_tests.cmake")
+else()
+  add_test(EarlyReturnDestructorTest_NOT_BUILT EarlyReturnDestructorTest_NOT_BUILT)
+endif()

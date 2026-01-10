@@ -118,11 +118,13 @@ private:
      * @brief Create 'this' parameter for init function
      * @param recordType Type of the C struct (NOT C++ class)
      * @param cASTContext Target C ASTContext
+     * @param targetLoc Valid SourceLocation for C AST node
      * @return ParmVarDecl for 'this' parameter (struct ClassName* this)
      */
     static clang::ParmVarDecl* createThisParameter(
         clang::QualType recordType,
-        clang::ASTContext& cASTContext
+        clang::ASTContext& cASTContext,
+        clang::SourceLocation targetLoc
     );
 
     /**
@@ -142,6 +144,7 @@ private:
      * @param thisParam C this parameter (struct ClassName* this)
      * @param cppASTContext Source C++ ASTContext
      * @param cASTContext Target C ASTContext
+     * @param targetLoc Valid SourceLocation for C AST nodes
      * @return Vector of statements for all lpVtbl initializations
      *
      * Only injects if class is polymorphic (has virtual methods).
@@ -158,7 +161,8 @@ private:
         const clang::CXXRecordDecl* parentClass,
         clang::ParmVarDecl* thisParam,
         const clang::ASTContext& cppASTContext,
-        clang::ASTContext& cASTContext
+        clang::ASTContext& cASTContext,
+        clang::SourceLocation targetLoc
     );
 
     /**
@@ -191,13 +195,100 @@ private:
      * @param thisParam C this parameter
      * @param offset Offset of base in derived class (0 for primary base)
      * @param cASTContext Target C ASTContext
+     * @param targetLoc Valid SourceLocation for C AST nodes
      * @return CallExpr for base constructor
      */
     static clang::CallExpr* createBaseConstructorCall(
         const clang::CXXRecordDecl* baseClass,
         clang::ParmVarDecl* thisParam,
         unsigned offset,
-        clang::ASTContext& cASTContext
+        clang::ASTContext& cASTContext,
+        clang::SourceLocation targetLoc
+    );
+
+    /**
+     * @brief Create call to base constructor with variant suffix
+     * @param baseClass Base class to initialize
+     * @param thisParam C this parameter
+     * @param offset Offset of base in derived class (0 for primary base)
+     * @param variantSuffix Constructor variant suffix ("_C1", "_C2", or "")
+     * @param cASTContext Target C ASTContext
+     * @param targetLoc Valid SourceLocation for C AST nodes
+     * @param targetPath Path to target file (for PathMapper TU lookup)
+     * @param disp Dispatcher for accessing PathMapper
+     * @param vttParam Optional VTT parameter (passed to C1/C2 variants)
+     * @return CallExpr for base constructor variant
+     *
+     * Phase 3: Similar to createBaseConstructorCall but supports constructor variants.
+     * - If variantSuffix is "_C2", calls Base_ctor_C2 and uses Base__base* type
+     * - If variantSuffix is "_C1", calls Base_ctor_C1 and uses Base* type
+     * - If variantSuffix is "", calls Base_ctor and uses Base* type
+     * - If vttParam is provided and variant is C1/C2, adds VTT to call arguments
+     */
+    static clang::CallExpr* createBaseConstructorCallVariant(
+        const clang::CXXRecordDecl* baseClass,
+        clang::ParmVarDecl* thisParam,
+        unsigned offset,
+        const std::string& variantSuffix,
+        clang::ASTContext& cASTContext,
+        clang::SourceLocation targetLoc,
+        const std::string& targetPath,
+        const CppToCVisitorDispatcher& disp,
+        clang::ParmVarDecl* vttParam = nullptr
+    );
+
+    /**
+     * @brief Phase 3: Check if constructor needs C1/C2 splitting
+     * @param ctor Constructor to check
+     * @return true if class needs dual constructor variants (has virtual bases)
+     *
+     * Uses RecordHandler::needsDualLayout() for consistency with struct generation.
+     * A constructor needs variants if its parent class requires dual layout.
+     */
+    static bool needsConstructorVariants(const clang::CXXConstructorDecl* ctor);
+
+    /**
+     * @brief Phase 3: Generate C1 (complete-object) constructor
+     * @param ctor C++ constructor declaration
+     * @param cppASTContext Source C++ ASTContext
+     * @param cASTContext Target C ASTContext
+     * @param disp Dispatcher for accessing mappers
+     *
+     * C1 constructor characteristics:
+     * - Function name: ClassName_ctor_C1 (or mangled variant)
+     * - this parameter: ClassName* (complete-object layout)
+     * - VTT parameter: const void** vtt (if needed)
+     * - Initializes virtual bases (C1 responsibility)
+     * - Calls non-virtual base constructors
+     * - Initializes own fields
+     */
+    static void generateC1Constructor(
+        const clang::CXXConstructorDecl* ctor,
+        const clang::ASTContext& cppASTContext,
+        clang::ASTContext& cASTContext,
+        const CppToCVisitorDispatcher& disp
+    );
+
+    /**
+     * @brief Phase 3: Generate C2 (base-subobject) constructor
+     * @param ctor C++ constructor declaration
+     * @param cppASTContext Source C++ ASTContext
+     * @param cASTContext Target C ASTContext
+     * @param disp Dispatcher for accessing mappers
+     *
+     * C2 constructor characteristics:
+     * - Function name: ClassName_ctor_C2 (or mangled variant)
+     * - this parameter: ClassName__base* (base-subobject layout)
+     * - VTT parameter: const void** vtt (if needed)
+     * - SKIPS virtual base initialization (parent's C1 handles it)
+     * - Calls non-virtual base constructors
+     * - Initializes own fields
+     */
+    static void generateC2Constructor(
+        const clang::CXXConstructorDecl* ctor,
+        const clang::ASTContext& cppASTContext,
+        clang::ASTContext& cASTContext,
+        const CppToCVisitorDispatcher& disp
     );
 };
 

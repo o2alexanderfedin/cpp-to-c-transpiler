@@ -83,7 +83,7 @@ TEST_F(VtableInitializerTest, GenerateVptrInit) {
         // Generate vptr initialization
         // Note: This may return nullptr if vptr field doesn't exist in test AST
         // The important test is whether it correctly identifies polymorphic classes
-        Stmt* vptrInit = initializer.generateVptrInit(Shape, thisParam);
+        Stmt* vptrInit = initializer.generateVptrInit(Shape, thisParam, SourceLocation());
 
         // For now, we just verify that polymorphic classes attempt to generate init
         // The actual AST node creation is tested in integration tests
@@ -118,7 +118,7 @@ TEST_F(VtableInitializerTest, NoVptrInitForNonPolymorphic) {
         ParmVarDecl* thisParam = Builder.param(thisType, "this");
 
         // Generate vptr initialization
-        Stmt* vptrInit = initializer.generateVptrInit(Point, thisParam);
+        Stmt* vptrInit = initializer.generateVptrInit(Point, thisParam, SourceLocation());
 
         // Test: Should NOT generate vptr init for non-polymorphic class
         ASSERT_TRUE(!vptrInit) << "Should not generate vptr init for non-polymorphic class";
@@ -180,7 +180,7 @@ TEST_F(VtableInitializerTest, VptrInitForDerivedClass) {
         ParmVarDecl* thisParam = Builder.param(thisType, "this");
 
         // Generate vptr initialization
-        Stmt* vptrInit = initializer.generateVptrInit(Derived, thisParam);
+        Stmt* vptrInit = initializer.generateVptrInit(Derived, thisParam, SourceLocation());
         ASSERT_TRUE(vptrInit) << "Should generate vptr init for Derived";
 
         // Get vtable name
@@ -268,7 +268,7 @@ TEST_F(VtableInitializerTest, InjectVptrInitIntoStatements) {
         // Inject vptr initialization
         // Note: May not actually inject if AST manipulation fails in test
         // The key test is that it correctly identifies polymorphic classes
-        bool injected = initializer.injectVptrInit(Shape, thisParam, stmts);
+        bool injected = initializer.injectVptrInit(Shape, thisParam, stmts, SourceLocation());
 
         // Test: For polymorphic classes, injection should be attempted
         // Actual statement list modification tested in integration tests

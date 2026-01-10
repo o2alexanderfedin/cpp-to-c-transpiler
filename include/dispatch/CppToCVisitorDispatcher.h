@@ -39,6 +39,11 @@ namespace cpptoc {
 #include "mapping/TypeMapper.h"
 #include "mapping/ExprMapper.h"
 #include "mapping/StmtMapper.h"
+#include "mapping/FieldOffsetMapper.h"
+
+// Need full definition of TargetContext for getTargetSourceLocation()
+// which calls targetContext.getLocationMapper()
+#include "TargetContext.h"
 
 /**
  * @class CppToCVisitorDispatcher
@@ -148,6 +153,16 @@ private:
     // Statement mapper for C++ → C statement mappings
     cpptoc::StmtMapper& stmtMapper;
 
+    // Field offset mapper for C struct field offsets
+    cpptoc::FieldOffsetMapper& fieldOffsetMapper;
+
+    // Target context for C AST creation (provides LocationMapper)
+    TargetContext& targetContext;
+
+    // Current target path context (which source file is currently being transpiled)
+    // Mutable because handlers need to update context even when dispatcher is const
+    mutable std::string currentTargetPath_;
+
 public:
     /**
      * @brief Construct dispatcher with required dependencies
@@ -157,6 +172,8 @@ public:
      * @param tMapper TypeMapper for C++ → C type mappings (required)
      * @param eMapper ExprMapper for C++ → C expression mappings (required)
      * @param sMapper StmtMapper for C++ → C statement mappings (required)
+     * @param fOffsetMapper FieldOffsetMapper for C struct field offsets (required)
+     * @param tgtContext TargetContext for C AST creation (provides LocationMapper)
      */
     explicit CppToCVisitorDispatcher(
         cpptoc::PathMapper& mapper,
@@ -164,8 +181,10 @@ public:
         cpptoc::DeclMapper& dMapper,
         cpptoc::TypeMapper& tMapper,
         cpptoc::ExprMapper& eMapper,
-        cpptoc::StmtMapper& sMapper
-    ) : pathMapper(mapper), declLocationMapper(locMapper), declMapper(dMapper), typeMapper(tMapper), exprMapper(eMapper), stmtMapper(sMapper) {}
+        cpptoc::StmtMapper& sMapper,
+        cpptoc::FieldOffsetMapper& fOffsetMapper,
+        TargetContext& tgtContext
+    ) : pathMapper(mapper), declLocationMapper(locMapper), declMapper(dMapper), typeMapper(tMapper), exprMapper(eMapper), stmtMapper(sMapper), fieldOffsetMapper(fOffsetMapper), targetContext(tgtContext) {}
 
     /**
      * @brief Get the path mapper
@@ -198,6 +217,18 @@ public:
     cpptoc::StmtMapper& getStmtMapper() const { return stmtMapper; }
 
     /**
+     * @brief Get the field offset mapper
+     * @return Reference to FieldOffsetMapper
+     */
+    cpptoc::FieldOffsetMapper& getFieldOffsetMapper() const { return fieldOffsetMapper; }
+
+    /**
+     * @brief Get the target context
+     * @return Reference to TargetContext
+     */
+    TargetContext& getTargetContext() const { return targetContext; }
+
+    /**
      * @brief Helper: Get C target path for AST node's source file
      * @param cppASTContext C++ ASTContext containing SourceManager
      * @param D AST node to get file location from
@@ -212,6 +243,52 @@ public:
      * More accurate than getMainFileID() - uses actual node location.
      */
     std::string getTargetPath(const clang::ASTContext& cppASTContext, const clang::Decl* D) const;
+
+    /**
+     * @brief Set the current target path (which source file is being transpiled)
+     * @param targetPath Target file path for current source file
+     *
+     * Should be called at the start of processing each source file, so all declarations
+     * encountered during that source file's processing get added to the correct C_TU.
+     * Const-qualified because it modifies mutable context state (not logical constness).
+     */
+    void setCurrentTargetPath(const std::string& targetPath) const;
+
+    /**
+     * @brief Get the current target path (which source file is being transpiled)
+     * @return Current target file path
+     *
+     * Returns the path set by setCurrentTargetPath(). All declarations encountered
+     * during transpilation of the current source file should go to this C_TU.
+     */
+    std::string getCurrentTargetPath() const;
+
+    /**
+     * @brief Helper: Get target SourceLocation for AST node
+     * @param cppASTContext C++ ASTContext containing SourceManager
+     * @param D AST node to extract file location from (used as fallback if current path is empty)
+     * @return clang::SourceLocation pointing to start of target file
+     *
+     * Encapsulates the common pattern used in all handlers:
+     * 1. Get current target path or extract from AST node's location
+     * 2. Lookup target file's starting location via LocationMapper
+     * 3. Return the SourceLocation
+     *
+     * Usage:
+     * @code
+     * clang::SourceLocation targetLoc = disp.getTargetSourceLocation(cppASTContext, someNode);
+     * clang::WhileStmt* cWhile = clang::WhileStmt::Create(
+     *     cASTContext,
+     *     nullptr,
+     *     cCond,
+     *     cBody,
+     *     targetLoc,  // WhileLoc
+     *     targetLoc,  // LParenLoc
+     *     targetLoc   // RParenLoc
+     * );
+     * @endcode
+     */
+    clang::SourceLocation getTargetSourceLocation(const clang::ASTContext& cppASTContext, const clang::Decl* D) const;
 
     // Core AST node handlers
     void addHandler(DeclPredicate predicate, DeclVisitor handler);

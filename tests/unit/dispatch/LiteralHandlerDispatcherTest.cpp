@@ -18,6 +18,7 @@
 #include "mapping/TypeMapper.h"
 #include "mapping/ExprMapper.h"
 #include "mapping/StmtMapper.h"
+#include "mapping/FieldOffsetMapper.h"
 #include "TargetContext.h"
 #include "clang/AST/ASTContext.h"
 #include "clang/AST/Expr.h"
@@ -85,19 +86,20 @@ TEST(LiteralHandlerDispatcherTest, Registration) {
 
     // Setup components
     ASTContext& cppCtx = AST->getASTContext();
-    TargetContext& targetCtx = TargetContext::getInstance();
+    TargetContext targetCtx;
     ASTContext& cCtx = targetCtx.getContext();
 
     // Create mapping utilities
-    cpptoc::PathMapper& mapper = cpptoc::PathMapper::getInstance("/src", "/output");
+    cpptoc::PathMapper mapper(targetCtx, "/src", "/output");
     cpptoc::DeclLocationMapper locMapper(mapper);
     cpptoc::DeclMapper declMapper;
     cpptoc::TypeMapper typeMapper;
     cpptoc::ExprMapper exprMapper;
     cpptoc::StmtMapper stmtMapper;
+    cpptoc::FieldOffsetMapper fieldOffsetMapper;
 
     // Create dispatcher
-    CppToCVisitorDispatcher dispatcher(mapper, locMapper, declMapper, typeMapper, exprMapper, stmtMapper);
+    CppToCVisitorDispatcher dispatcher(mapper, locMapper, declMapper, typeMapper, exprMapper, stmtMapper, fieldOffsetMapper, targetCtx);
 
     // Register LiteralHandler
     cpptoc::LiteralHandler::registerWith(dispatcher);
@@ -141,17 +143,18 @@ TEST(LiteralHandlerDispatcherTest, IntegerLiteralTranslation) {
     ASSERT_NE(AST, nullptr);
 
     ASTContext& cppCtx = AST->getASTContext();
-    TargetContext& targetCtx = TargetContext::getInstance();
+    TargetContext targetCtx;
     ASTContext& cCtx = targetCtx.getContext();
 
-    cpptoc::PathMapper& mapper = cpptoc::PathMapper::getInstance("/src", "/output");
+    cpptoc::PathMapper mapper(targetCtx, "/src", "/output");
     cpptoc::DeclLocationMapper locMapper(mapper);
     cpptoc::DeclMapper declMapper;
     cpptoc::TypeMapper typeMapper;
     cpptoc::ExprMapper exprMapper;
     cpptoc::StmtMapper stmtMapper;
+    cpptoc::FieldOffsetMapper fieldOffsetMapper;
 
-    CppToCVisitorDispatcher dispatcher(mapper, locMapper, declMapper, typeMapper, exprMapper, stmtMapper);
+    CppToCVisitorDispatcher dispatcher(mapper, locMapper, declMapper, typeMapper, exprMapper, stmtMapper, fieldOffsetMapper, targetCtx);
     cpptoc::LiteralHandler::registerWith(dispatcher);
 
     // Find IntegerLiteral
@@ -194,17 +197,18 @@ TEST(LiteralHandlerDispatcherTest, FloatingLiteralTranslation) {
     ASSERT_NE(AST, nullptr);
 
     ASTContext& cppCtx = AST->getASTContext();
-    TargetContext& targetCtx = TargetContext::getInstance();
+    TargetContext targetCtx;
     ASTContext& cCtx = targetCtx.getContext();
 
-    cpptoc::PathMapper& mapper = cpptoc::PathMapper::getInstance("/src", "/output");
+    cpptoc::PathMapper mapper(targetCtx, "/src", "/output");
     cpptoc::DeclLocationMapper locMapper(mapper);
     cpptoc::DeclMapper declMapper;
     cpptoc::TypeMapper typeMapper;
     cpptoc::ExprMapper exprMapper;
     cpptoc::StmtMapper stmtMapper;
+    cpptoc::FieldOffsetMapper fieldOffsetMapper;
 
-    CppToCVisitorDispatcher dispatcher(mapper, locMapper, declMapper, typeMapper, exprMapper, stmtMapper);
+    CppToCVisitorDispatcher dispatcher(mapper, locMapper, declMapper, typeMapper, exprMapper, stmtMapper, fieldOffsetMapper, targetCtx);
     cpptoc::LiteralHandler::registerWith(dispatcher);
 
     // Find FloatingLiteral
@@ -244,17 +248,18 @@ TEST(LiteralHandlerDispatcherTest, StringLiteralTranslation) {
     ASSERT_NE(AST, nullptr);
 
     ASTContext& cppCtx = AST->getASTContext();
-    TargetContext& targetCtx = TargetContext::getInstance();
+    TargetContext targetCtx;
     ASTContext& cCtx = targetCtx.getContext();
 
-    cpptoc::PathMapper& mapper = cpptoc::PathMapper::getInstance("/src", "/output");
+    cpptoc::PathMapper mapper(targetCtx, "/src", "/output");
     cpptoc::DeclLocationMapper locMapper(mapper);
     cpptoc::DeclMapper declMapper;
     cpptoc::TypeMapper typeMapper;
     cpptoc::ExprMapper exprMapper;
     cpptoc::StmtMapper stmtMapper;
+    cpptoc::FieldOffsetMapper fieldOffsetMapper;
 
-    CppToCVisitorDispatcher dispatcher(mapper, locMapper, declMapper, typeMapper, exprMapper, stmtMapper);
+    CppToCVisitorDispatcher dispatcher(mapper, locMapper, declMapper, typeMapper, exprMapper, stmtMapper, fieldOffsetMapper, targetCtx);
     cpptoc::LiteralHandler::registerWith(dispatcher);
 
     // Find StringLiteral
@@ -297,17 +302,18 @@ TEST(LiteralHandlerDispatcherTest, CharacterLiteralTranslation) {
     ASSERT_NE(AST, nullptr);
 
     ASTContext& cppCtx = AST->getASTContext();
-    TargetContext& targetCtx = TargetContext::getInstance();
+    TargetContext targetCtx;
     ASTContext& cCtx = targetCtx.getContext();
 
-    cpptoc::PathMapper& mapper = cpptoc::PathMapper::getInstance("/src", "/output");
+    cpptoc::PathMapper mapper(targetCtx, "/src", "/output");
     cpptoc::DeclLocationMapper locMapper(mapper);
     cpptoc::DeclMapper declMapper;
     cpptoc::TypeMapper typeMapper;
     cpptoc::ExprMapper exprMapper;
     cpptoc::StmtMapper stmtMapper;
+    cpptoc::FieldOffsetMapper fieldOffsetMapper;
 
-    CppToCVisitorDispatcher dispatcher(mapper, locMapper, declMapper, typeMapper, exprMapper, stmtMapper);
+    CppToCVisitorDispatcher dispatcher(mapper, locMapper, declMapper, typeMapper, exprMapper, stmtMapper, fieldOffsetMapper, targetCtx);
     cpptoc::LiteralHandler::registerWith(dispatcher);
 
     // Find CharacterLiteral
@@ -350,17 +356,18 @@ TEST(LiteralHandlerDispatcherTest, BoolLiteralTranslation) {
     ASSERT_NE(AST, nullptr);
 
     ASTContext& cppCtx = AST->getASTContext();
-    TargetContext& targetCtx = TargetContext::getInstance();
+    TargetContext targetCtx;
     ASTContext& cCtx = targetCtx.getContext();
 
-    cpptoc::PathMapper& mapper = cpptoc::PathMapper::getInstance("/src", "/output");
+    cpptoc::PathMapper mapper(targetCtx, "/src", "/output");
     cpptoc::DeclLocationMapper locMapper(mapper);
     cpptoc::DeclMapper declMapper;
     cpptoc::TypeMapper typeMapper;
     cpptoc::ExprMapper exprMapper;
     cpptoc::StmtMapper stmtMapper;
+    cpptoc::FieldOffsetMapper fieldOffsetMapper;
 
-    CppToCVisitorDispatcher dispatcher(mapper, locMapper, declMapper, typeMapper, exprMapper, stmtMapper);
+    CppToCVisitorDispatcher dispatcher(mapper, locMapper, declMapper, typeMapper, exprMapper, stmtMapper, fieldOffsetMapper, targetCtx);
     cpptoc::LiteralHandler::registerWith(dispatcher);
 
     // Find CXXBoolLiteralExpr
@@ -409,17 +416,18 @@ TEST(LiteralHandlerDispatcherTest, MultipleLiterals) {
     ASSERT_NE(AST, nullptr);
 
     ASTContext& cppCtx = AST->getASTContext();
-    TargetContext& targetCtx = TargetContext::getInstance();
+    TargetContext targetCtx;
     ASTContext& cCtx = targetCtx.getContext();
 
-    cpptoc::PathMapper& mapper = cpptoc::PathMapper::getInstance("/src", "/output");
+    cpptoc::PathMapper mapper(targetCtx, "/src", "/output");
     cpptoc::DeclLocationMapper locMapper(mapper);
     cpptoc::DeclMapper declMapper;
     cpptoc::TypeMapper typeMapper;
     cpptoc::ExprMapper exprMapper;
     cpptoc::StmtMapper stmtMapper;
+    cpptoc::FieldOffsetMapper fieldOffsetMapper;
 
-    CppToCVisitorDispatcher dispatcher(mapper, locMapper, declMapper, typeMapper, exprMapper, stmtMapper);
+    CppToCVisitorDispatcher dispatcher(mapper, locMapper, declMapper, typeMapper, exprMapper, stmtMapper, fieldOffsetMapper, targetCtx);
     cpptoc::LiteralHandler::registerWith(dispatcher);
 
     // Find all IntegerLiterals
@@ -467,17 +475,18 @@ TEST(LiteralHandlerDispatcherTest, NonLiteralNotHandled) {
     ASSERT_NE(AST, nullptr);
 
     ASTContext& cppCtx = AST->getASTContext();
-    TargetContext& targetCtx = TargetContext::getInstance();
+    TargetContext targetCtx;
     ASTContext& cCtx = targetCtx.getContext();
 
-    cpptoc::PathMapper& mapper = cpptoc::PathMapper::getInstance("/src", "/output");
+    cpptoc::PathMapper mapper(targetCtx, "/src", "/output");
     cpptoc::DeclLocationMapper locMapper(mapper);
     cpptoc::DeclMapper declMapper;
     cpptoc::TypeMapper typeMapper;
     cpptoc::ExprMapper exprMapper;
     cpptoc::StmtMapper stmtMapper;
+    cpptoc::FieldOffsetMapper fieldOffsetMapper;
 
-    CppToCVisitorDispatcher dispatcher(mapper, locMapper, declMapper, typeMapper, exprMapper, stmtMapper);
+    CppToCVisitorDispatcher dispatcher(mapper, locMapper, declMapper, typeMapper, exprMapper, stmtMapper, fieldOffsetMapper, targetCtx);
     cpptoc::LiteralHandler::registerWith(dispatcher);
 
     // Find DeclRefExpr (not a literal)

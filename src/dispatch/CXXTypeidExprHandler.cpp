@@ -15,6 +15,8 @@
 #include "TypeidTranslator.h"
 #include "VirtualMethodAnalyzer.h"
 #include "mapping/ExprMapper.h"
+#include "SourceLocationMapper.h"
+#include "TargetContext.h"
 #include "clang/AST/Expr.h"
 #include "clang/AST/ExprCXX.h"
 #include "llvm/Support/Casting.h"
@@ -88,12 +90,18 @@ void CXXTypeidExprHandler::handleTypeidExpr(
         return;
     }
 
+    // Get target location for C expression
+    std::string targetPath = disp.getCurrentTargetPath();
+    assert(!targetPath.empty() && "Target path must be set before expression handling");
+    SourceLocationMapper& locMapper = disp.getTargetContext().getLocationMapper();
+    clang::SourceLocation targetLoc = locMapper.getStartOfFile(targetPath);
+
     // Create C expression from translation result
     // The result type should be pointer to type_info
     // For simplicity, use void* for now (future: create proper __class_type_info* type)
     clang::QualType resultType = cASTContext.VoidPtrTy;
 
-    clang::Expr* cExpr = createCExprFromString(cASTContext, translationStr, resultType);
+    clang::Expr* cExpr = createCExprFromString(cASTContext, translationStr, resultType, targetLoc);
     if (!cExpr) {
         llvm::errs() << "[CXXTypeidExprHandler] ERROR: Failed to create C expression\n";
         return;
@@ -152,7 +160,8 @@ void CXXTypeidExprHandler::dispatchOperand(
 clang::Expr* CXXTypeidExprHandler::createCExprFromString(
     clang::ASTContext& cASTContext,
     const std::string& translationStr,
-    clang::QualType resultType
+    clang::QualType resultType,
+    clang::SourceLocation targetLoc
 ) {
     // TEMPORARY IMPLEMENTATION:
     // For now, we create a StringLiteral as a placeholder for the C expression.
@@ -185,9 +194,9 @@ clang::Expr* CXXTypeidExprHandler::createCExprFromString(
 #else
         clang::StringLiteral::Ordinary,
 #endif
-        false, // isPascal
+        false,
         resultType,
-        clang::SourceLocation()
+        targetLoc
     );
 }
 

@@ -34,7 +34,9 @@
 #include "mapping/TypeMapper.h"
 #include "mapping/ExprMapper.h"
 #include "mapping/StmtMapper.h"
+#include "mapping/FieldOffsetMapper.h"
 #include "CodeGenerator.h"
+#include "TargetContext.h"
 #include "clang/Tooling/Tooling.h"
 #include <memory>
 #include <string>
@@ -42,23 +44,39 @@
 #include <fstream>
 #include <iostream>
 #include <cstdlib>
+#include <thread>
+#include <chrono>
+#include <sstream>
+#include <unistd.h>  // For getpid()
 
 namespace cpptoc {
 namespace test {
 
 /**
  * @brief Pipeline components for dispatcher-based tests
+ *
+ * Uses RAII pattern: each test gets its own mapper instances
+ * for complete test isolation. Mappers are automatically
+ * cleaned up when pipeline goes out of scope.
  */
 struct DispatcherPipeline {
     std::unique_ptr<clang::ASTUnit> cppAST;
     std::unique_ptr<clang::ASTUnit> cAST;
-    // PathMapper is a singleton - store reference
-    PathMapper* pathMapper;
+
+    // RAII: Own TargetContext instance (no singleton!)
+    // Must be declared BEFORE mappers since they may depend on it
+    // Each test gets its own isolated TargetContext
+    std::unique_ptr<TargetContext> targetContext;
+
+    // RAII: Own all mapper instances (no singletons!)
+    // Each test gets its own isolated set of mappers
+    std::unique_ptr<PathMapper> pathMapper;
     std::unique_ptr<DeclLocationMapper> declLocationMapper;
     std::unique_ptr<DeclMapper> declMapper;
     std::unique_ptr<TypeMapper> typeMapper;
     std::unique_ptr<ExprMapper> exprMapper;
     std::unique_ptr<StmtMapper> stmtMapper;
+    std::unique_ptr<FieldOffsetMapper> fieldOffsetMapper;
     std::unique_ptr<CppToCVisitorDispatcher> dispatcher;
 };
 
@@ -83,10 +101,6 @@ struct DispatcherPipeline {
 inline DispatcherPipeline createDispatcherPipeline(const std::string& cppCode = "int dummy;") {
     DispatcherPipeline pipeline;
 
-    // CRITICAL: Reset PathMapper singleton state for test isolation
-    // PathMapper is a singleton and retains state across tests
-    PathMapper::reset();
-
     // Parse C++ code
     pipeline.cppAST = clang::tooling::buildASTFromCode(cppCode);
     if (!pipeline.cppAST) {
@@ -99,14 +113,22 @@ inline DispatcherPipeline createDispatcherPipeline(const std::string& cppCode = 
         throw std::runtime_error("Failed to create C context");
     }
 
-    // Create mappers
-    // Get singleton PathMapper instance
-    pipeline.pathMapper = &PathMapper::getInstance("/tmp/test_source", "/tmp/test_output");
+    // RAII: Create TargetContext FIRST (before mappers that may depend on it)
+    // Each test gets completely isolated TargetContext
+    // No singleton, no shared state, no race conditions!
+    pipeline.targetContext = std::make_unique<TargetContext>();
+
+    // RAII: Create fresh mapper instances for THIS TEST ONLY
+    // Each test gets completely isolated mapper state
+    // No singletons, no shared state, no race conditions!
+    // Pass TargetContext via dependency injection
+    pipeline.pathMapper = std::make_unique<PathMapper>(*pipeline.targetContext, "/tmp/test_source", "/tmp/test_output");
     pipeline.declLocationMapper = std::make_unique<DeclLocationMapper>(*pipeline.pathMapper);
     pipeline.declMapper = std::make_unique<DeclMapper>();
     pipeline.typeMapper = std::make_unique<TypeMapper>();
     pipeline.exprMapper = std::make_unique<ExprMapper>();
     pipeline.stmtMapper = std::make_unique<StmtMapper>();
+    pipeline.fieldOffsetMapper = std::make_unique<FieldOffsetMapper>();
 
     // Create dispatcher with all mappers
     pipeline.dispatcher = std::make_unique<CppToCVisitorDispatcher>(
@@ -115,7 +137,9 @@ inline DispatcherPipeline createDispatcherPipeline(const std::string& cppCode = 
         *pipeline.declMapper,
         *pipeline.typeMapper,
         *pipeline.exprMapper,
-        *pipeline.stmtMapper
+        *pipeline.stmtMapper,
+        *pipeline.fieldOffsetMapper,
+        *pipeline.targetContext
     );
 
     return pipeline;
@@ -138,19 +162,22 @@ inline std::string generateCCode(clang::ASTContext& cASTContext, PathMapper& pat
     // Get all target files from PathMapper
     std::vector<std::string> targetFiles = pathMapper.getAllTargetFiles();
 
-    // Print all TUs created by PathMapper (skip <stdin>.c - it's just the dummy TU)
+    // Print all TUs created by PathMapper
+    // Note: We used to skip <stdin>.c assuming it was just the dummy TU,
+    // but after fixing TranslationUnitHandler, actual code may be in <stdin>.c
     for (const auto& targetPath : targetFiles) {
-        // Skip the dummy <stdin>.c TU (created when we initialized C ASTContext)
-        if (targetPath.find("<stdin>") != std::string::npos) {
-            continue;
-        }
-
         llvm::outs() << "[DispatcherTestHelper] About to print TU for: " << targetPath << "\n";
         clang::TranslationUnitDecl* TU = pathMapper.getOrCreateTU(targetPath);
         if (TU) {
             llvm::outs() << "[DispatcherTestHelper] TU has " << std::distance(TU->decls_begin(), TU->decls_end()) << " decls\n";
-            generator.printTranslationUnit(TU);
-            llvm::outs() << "[DispatcherTestHelper] Finished printing TU\n";
+
+            // Only print if TU has declarations (skip empty dummy TUs)
+            if (std::distance(TU->decls_begin(), TU->decls_end()) > 0) {
+                generator.printTranslationUnit(TU);
+                llvm::outs() << "[DispatcherTestHelper] Finished printing TU\n";
+            } else {
+                llvm::outs() << "[DispatcherTestHelper] Skipping empty TU\n";
+            }
         }
     }
 
@@ -180,8 +207,14 @@ inline std::string generateCCode(clang::ASTContext& cASTContext) {
  * @return Exit code from execution, or -1 if compilation failed
  */
 inline int compileAndRun(const std::string& cCode, const std::string& testName = "test") {
-    // Write C code to temporary file
-    std::string tmpFile = "/tmp/cpptoc_" + testName + "_" + std::to_string(rand()) + ".c";
+    // Write C code to temporary file with thread-safe unique name
+    // Use thread ID + timestamp + process ID for guaranteed uniqueness in parallel execution
+    std::ostringstream oss;
+    oss << "/tmp/cpptoc_" << testName << "_"
+        << std::this_thread::get_id() << "_"
+        << std::chrono::high_resolution_clock::now().time_since_epoch().count() << "_"
+        << getpid() << ".c";
+    std::string tmpFile = oss.str();
     std::ofstream outFile(tmpFile);
     outFile << cCode;
     outFile.close();

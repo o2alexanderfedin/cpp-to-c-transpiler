@@ -1,0 +1,5 @@
+if(EXISTS "/Users/alexanderfedin/Projects/hapyy/hupyy-cpp-to-c/VirtualMethodAnalyzerTest[1]_tests.cmake")
+  include("/Users/alexanderfedin/Projects/hapyy/hupyy-cpp-to-c/VirtualMethodAnalyzerTest[1]_tests.cmake")
+else()
+  add_test(VirtualMethodAnalyzerTest_NOT_BUILT VirtualMethodAnalyzerTest_NOT_BUILT)
+endif()

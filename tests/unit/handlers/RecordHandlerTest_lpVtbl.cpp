@@ -23,7 +23,7 @@
  */
 
 #include "dispatch/RecordHandler.h"
-#include "helpers/UnitTestHelper.h"
+#include "UnitTestHelper.h"
 #include "CNodeBuilder.h"
 #include "clang/Tooling/Tooling.h"
 #include "clang/AST/DeclCXX.h"

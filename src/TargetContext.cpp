@@ -2,11 +2,16 @@
 #include "clang/Basic/DiagnosticIDs.h"
 #include "clang/Basic/DiagnosticOptions.h"
 #include "clang/Basic/FileSystemOptions.h"
-#include "llvm/TargetParser/Host.h"
-#include "llvm/Support/raw_ostream.h"
+#include "llvm/Config/llvm-config.h" // For LLVM_VERSION_MAJOR
 
-// Initialize static instance
-TargetContext* TargetContext::instance = nullptr;
+// LLVM 16+ moved Host.h to TargetParser subdirectory
+#if LLVM_VERSION_MAJOR >= 16
+#include "llvm/TargetParser/Host.h"
+#else
+#include "llvm/Support/Host.h"
+#endif
+
+#include "llvm/Support/raw_ostream.h"
 
 TargetContext::TargetContext() {
     llvm::outs() << "[Bug #30 FIX] Creating independent target ASTContext for C output...\n";
@@ -20,19 +25,43 @@ TargetContext::TargetContext() {
     // CRITICAL: Pass ShouldOwnClient=false to prevent double-free
     // TargetContext owns DiagClient, not DiagnosticsEngine
     clang::IntrusiveRefCntPtr<clang::DiagnosticIDs> DiagID(new clang::DiagnosticIDs());
-    auto DiagOpts = std::make_unique<clang::DiagnosticOptions>();
+    DiagOpts = std::make_unique<clang::DiagnosticOptions>();
     DiagClient = std::make_unique<clang::IgnoringDiagConsumer>();
+
+    // API change: LLVM 15 uses IntrusiveRefCntPtr, LLVM 16+ uses reference
+    #if LLVM_VERSION_MAJOR >= 16
     Diagnostics = std::make_unique<clang::DiagnosticsEngine>(
         DiagID, *DiagOpts, DiagClient.get(), /* ShouldOwnClient */ false);
+    #else
+    // LLVM 15: DiagnosticsEngine expects IntrusiveRefCntPtr for DiagnosticOptions
+    clang::IntrusiveRefCntPtr<clang::DiagnosticOptions> DiagOptsPtr(DiagOpts.get());
+    Diagnostics = std::make_unique<clang::DiagnosticsEngine>(
+        DiagID, DiagOptsPtr, DiagClient.get(), /* ShouldOwnClient */ false);
+    #endif
 
     // 3. Create SourceManager
     SourceMgr = std::make_unique<clang::SourceManager>(*Diagnostics, *FileMgr);
 
+    // 3.5. Create SourceLocationMapper for C AST nodes
+    // This enables valid SourceLocations for all C AST nodes, allowing
+    // CodeGenerator to emit #line directives for debugging
+    LocationMapper = std::make_unique<SourceLocationMapper>(*FileMgr, *Diagnostics);
+    llvm::outs() << "[SourceLocation] SourceLocationMapper created for C AST nodes\n";
+
     // 4. Create TargetInfo (use host triple for C output)
     std::string TargetTriple = llvm::sys::getDefaultTargetTriple();
-    auto TargetOpts = std::make_shared<clang::TargetOptions>();
+    TargetOpts = std::make_unique<clang::TargetOptions>();
     TargetOpts->Triple = TargetTriple;
+
+    // API change: LLVM 15 uses shared_ptr, LLVM 16+ uses reference
+    #if LLVM_VERSION_MAJOR >= 16
     Target.reset(clang::TargetInfo::CreateTargetInfo(*Diagnostics, *TargetOpts));
+    #else
+    // LLVM 15: CreateTargetInfo expects shared_ptr, takes ownership
+    std::shared_ptr<clang::TargetOptions> SharedTargetOpts(TargetOpts.release());
+    Target.reset(clang::TargetInfo::CreateTargetInfo(*Diagnostics, SharedTargetOpts));
+    // Note: SharedTargetOpts now owns the TargetOptions, TargetOpts is null
+    #endif
 
     // 5. Create LangOptions for C11
     clang::LangOptions LangOpts;
@@ -91,7 +120,12 @@ TargetContext::~TargetContext() {
             Context.reset();
         }
 
-        // Destroy Diagnostics second
+        // Destroy LocationMapper second (uses Diagnostics and FileMgr)
+        if (LocationMapper) {
+            LocationMapper.reset();
+        }
+
+        // Destroy Diagnostics third
         if (Diagnostics) {
             Diagnostics.reset();
         }
@@ -102,34 +136,6 @@ TargetContext::~TargetContext() {
 
     // Other members will be destroyed automatically in reverse declaration order:
     // Builtins, Selectors, Idents, Target, SourceMgr, FileMgr, DiagClient
-}
-
-TargetContext& TargetContext::getInstance() {
-    if (!instance) {
-        instance = new TargetContext();
-    }
-    return *instance;
-}
-
-void TargetContext::cleanup() {
-    // Bug #31 FIX: Clean up singleton before program exit
-    // This is called via atexit handler to ensure proper cleanup order
-    if (instance) {
-        delete instance;
-        instance = nullptr;
-    }
-}
-
-void TargetContext::reset() {
-    // Reset all maps for test isolation
-    // Keeps singleton alive to avoid dangling references in PathMapper
-    ctorMap.clear();
-    methodMap.clear();
-    dtorMap.clear();
-    nodeToLocation.clear();
-    globalEnums.clear();
-    globalStructs.clear();
-    globalTypedefs.clear();
 }
 
 // Phase 1.1: Node tracking and deduplication methods

@@ -24,7 +24,7 @@ enum class RuntimeFeature {
   Exceptions,   ///< Exception handling runtime (setjmp/longjmp + action tables)
   RTTI,         ///< Runtime type information (type_info, dynamic_cast)
   Memory,       ///< Memory management (coroutine frames, heap allocation)
-  VInherit      ///< Virtual inheritance support (virtual base tables)
+  VInherit      ///< Virtual inheritance - PARTIAL (vbptr ✓, VTT ✓, C1/C2 ctors ✓, vtable offsets ✓, layouts ✗)
 };
 
 /// @brief Modular runtime feature flags - parse and manage runtime features

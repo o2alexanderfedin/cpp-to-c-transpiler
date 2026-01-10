@@ -1,0 +1,5 @@
+if(EXISTS "/Users/alexanderfedin/Projects/hapyy/hupyy-cpp-to-c/CoroutineDetectorTest_GTest[1]_tests.cmake")
+  include("/Users/alexanderfedin/Projects/hapyy/hupyy-cpp-to-c/CoroutineDetectorTest_GTest[1]_tests.cmake")
+else()
+  add_test(CoroutineDetectorTest_GTest_NOT_BUILT CoroutineDetectorTest_GTest_NOT_BUILT)
+endif()

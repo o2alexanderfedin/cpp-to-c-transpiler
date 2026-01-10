@@ -1,0 +1,5 @@
+if(EXISTS "/Users/alexanderfedin/Projects/hapyy/hupyy-cpp-to-c/CommaOperatorHandlerDispatcherTest[1]_tests.cmake")
+  include("/Users/alexanderfedin/Projects/hapyy/hupyy-cpp-to-c/CommaOperatorHandlerDispatcherTest[1]_tests.cmake")
+else()
+  add_test(CommaOperatorHandlerDispatcherTest_NOT_BUILT CommaOperatorHandlerDispatcherTest_NOT_BUILT)
+endif()

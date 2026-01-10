@@ -8,9 +8,11 @@
 #include "dispatch/StaticDataMemberHandler.h"
 #include "NameMangler.h"
 #include "mapping/DeclMapper.h"
+#include "mapping/ExprMapper.h"
 #include "mapping/PathMapper.h"
 #include "clang/AST/Decl.h"
 #include "clang/AST/DeclCXX.h"
+#include "clang/AST/Expr.h"
 #include "llvm/Support/Casting.h"
 #include "llvm/Support/raw_ostream.h"
 #include <cassert>
@@ -109,7 +111,7 @@ void StaticDataMemberHandler::handleStaticDataMember(
     }
 
     // Get target path and C TranslationUnit
-    std::string targetPath = disp.getTargetPath(cppASTContext, D);
+    std::string targetPath = disp.getCurrentTargetPath();  // Use current path set by TranslationUnitHandler
     cpptoc::PathMapper& pathMapper = disp.getPathMapper();
     TranslationUnitDecl* cTU = pathMapper.getOrCreateTU(targetPath);
 
@@ -127,18 +129,33 @@ void StaticDataMemberHandler::handleStaticDataMember(
 
     assert(cStaticMember && "Failed to create C VarDecl for static data member");
 
-    // Handle initializer if this is a definition
-    if (isDefinition) {
-        const Expr* cppInitializer = cppStaticMember->getInit();
+    // Handle initializer - check for it regardless of isDefinition
+    // For const static members with in-class initializers like:
+    //   static const int MAX_SIZE = 1024;
+    // The isThisDeclarationADefinition() returns false, but getInit() returns the initializer
+    const Expr* cppInitializer = cppStaticMember->getInit();
+    if (cppInitializer) {
+        // Dispatch the initializer expression to translate it to C
+        cpptoc::ExprMapper& exprMapper = disp.getExprMapper();
 
-        if (cppInitializer) {
-            // TODO: Translate initializer expression via ExprHandler dispatch
-            // For now, copy the expression (works for literals)
-            // This is a limitation: complex initializers won't work correctly
-            // until we implement full expression translation
-            // Cast away const for now - this is safe because we're copying the expression
-            Expr* cInitializer = const_cast<Expr*>(cppInitializer);  // Placeholder
+        // Dispatch the C++ initializer expression
+        bool handled = disp.dispatch(cppASTContext, cASTContext, const_cast<Expr*>(cppInitializer));
+
+        if (handled && exprMapper.hasCreated(cppInitializer)) {
+            // Get the translated C initializer
+            Expr* cInitializer = exprMapper.getCreated(cppInitializer);
             cStaticMember->setInit(cInitializer);
+
+            llvm::outs() << "[StaticDataMemberHandler] Initializer translated successfully\n";
+        } else {
+            llvm::errs() << "[StaticDataMemberHandler] WARNING: Failed to translate initializer expression\n";
+            llvm::errs() << "  This may indicate that the necessary expression handlers are not registered.\n";
+            llvm::errs() << "  For literal initializers, ensure LiteralHandler is registered.\n";
+        }
+
+        // If we have an initializer, this should be treated as a definition (SC_None)
+        if (!isDefinition) {
+            cStaticMember->setStorageClass(SC_None);
         }
     }
 

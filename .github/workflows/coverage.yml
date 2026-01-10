@@ -15,7 +15,7 @@ concurrency:
 
 env:
   BUILD_TYPE: Debug
-  LLVM_VERSION: 15
+  LLVM_VERSION: 21
 
 jobs:
   coverage:

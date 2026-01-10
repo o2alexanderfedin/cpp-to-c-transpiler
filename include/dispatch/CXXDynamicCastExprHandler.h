@@ -216,7 +216,8 @@ private:
     static clang::Expr* createCExprFromString(
         clang::ASTContext& cASTContext,
         const std::string& translationStr,
-        clang::QualType resultType
+        clang::QualType resultType,
+        clang::SourceLocation targetLoc
     );
 };
 

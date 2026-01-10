@@ -80,7 +80,7 @@ test_project() {
 
     # Use absolute path to transpiler
     # Phase 34's transpiler requires --source-dir and auto-discovers files
-    local transpiler="/Users/alexanderfedin/Projects/hapyy/hupyy-cpp-to-c/build_working/cpptoc"
+    local transpiler="/Users/alexanderfedin/Projects/hapyy/hupyy-cpp-to-c/build/cpptoc"
     local project_root=$(pwd)
 
     # Check for per-project configuration

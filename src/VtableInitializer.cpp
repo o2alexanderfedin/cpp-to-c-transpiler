@@ -12,15 +12,16 @@ VtableInitializer::VtableInitializer(ASTContext& Context, VirtualMethodAnalyzer&
     : Context(Context), Analyzer(Analyzer) {}
 
 Stmt* VtableInitializer::generateVptrInit(const CXXRecordDecl* Record,
-                                           ParmVarDecl* ThisParam) {
+                                           ParmVarDecl* ThisParam,
+                                           SourceLocation targetLoc) {
     // Only generate for polymorphic classes
     if (!Record || !ThisParam || !Analyzer.isPolymorphic(Record)) {
         return nullptr;
     }
 
     // Create: this->vptr = &__vtable_ClassName
-    Expr* vptrAccess = createVptrAccess(ThisParam, Record);
-    Expr* vtableAddr = createVtableAddress(Record);
+    Expr* vptrAccess = createVptrAccess(ThisParam, Record, targetLoc);
+    Expr* vtableAddr = createVtableAddress(Record, targetLoc);
 
     CNodeBuilder Builder(Context);
     return Builder.assign(vptrAccess, vtableAddr);
@@ -28,8 +29,9 @@ Stmt* VtableInitializer::generateVptrInit(const CXXRecordDecl* Record,
 
 bool VtableInitializer::injectVptrInit(const CXXRecordDecl* Record,
                                         ParmVarDecl* ThisParam,
-                                        std::vector<Stmt*>& stmts) {
-    Stmt* vptrInit = generateVptrInit(Record, ThisParam);
+                                        std::vector<Stmt*>& stmts,
+                                        SourceLocation targetLoc) {
+    Stmt* vptrInit = generateVptrInit(Record, ThisParam, targetLoc);
 
     if (!vptrInit) {
         return false;
@@ -49,7 +51,8 @@ std::string VtableInitializer::getVtableName(const CXXRecordDecl* Record) const 
 }
 
 Expr* VtableInitializer::createVptrAccess(ParmVarDecl* ThisParam,
-                                           const CXXRecordDecl* Record) {
+                                           const CXXRecordDecl* Record,
+                                           SourceLocation targetLoc) {
     if (!ThisParam || !Record) {
         return nullptr;
     }
@@ -60,10 +63,10 @@ Expr* VtableInitializer::createVptrAccess(ParmVarDecl* ThisParam,
     Expr* thisExpr = DeclRefExpr::Create(
         Context,
         NestedNameSpecifierLoc(),
-        SourceLocation(),
+        targetLoc,
         ThisParam,
         false,
-        SourceLocation(),
+        targetLoc,
         ThisParam->getType(),
         VK_LValue
     );
@@ -77,7 +80,8 @@ Expr* VtableInitializer::createVptrAccess(ParmVarDecl* ThisParam,
     return thisExpr;
 }
 
-Expr* VtableInitializer::createVtableAddress(const CXXRecordDecl* Record) {
+Expr* VtableInitializer::createVtableAddress(const CXXRecordDecl* Record,
+                                              SourceLocation targetLoc) {
     CNodeBuilder Builder(Context);
 
     std::string vtableName = getVtableName(Record);
@@ -90,8 +94,8 @@ Expr* VtableInitializer::createVtableAddress(const CXXRecordDecl* Record) {
     VarDecl* vtableVar = VarDecl::Create(
         Context,
         Context.getTranslationUnitDecl(),
-        SourceLocation(),
-        SourceLocation(),
+        targetLoc,
+        targetLoc,
         &Context.Idents.get(vtableName),
         vtableType,
         nullptr,

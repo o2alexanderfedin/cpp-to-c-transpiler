@@ -1,0 +1,5 @@
+if(EXISTS "/Users/alexanderfedin/Projects/hapyy/hupyy-cpp-to-c/LoopDestructorTest[1]_tests.cmake")
+  include("/Users/alexanderfedin/Projects/hapyy/hupyy-cpp-to-c/LoopDestructorTest[1]_tests.cmake")
+else()
+  add_test(LoopDestructorTest_NOT_BUILT LoopDestructorTest_NOT_BUILT)
+endif()

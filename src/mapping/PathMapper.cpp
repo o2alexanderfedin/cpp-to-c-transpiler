@@ -7,23 +7,9 @@
 namespace fs = std::filesystem;
 namespace cpptoc {
 
-// Singleton getInstance method
-PathMapper& PathMapper::getInstance(const std::string& sourceDir, const std::string& outputDir) {
-  static PathMapper instance(sourceDir, outputDir);
-  return instance;
-}
-
-// Reset method for test isolation
-void PathMapper::reset() {
-  // Get instance without arguments (uses empty defaults)
-  PathMapper& instance = getInstance();
-  instance.fileToTU_.clear();
-  instance.declToTarget_.clear();
-}
-
-// Private constructor
-PathMapper::PathMapper(const std::string& sourceDir, const std::string& outputDir)
-    : targetCtx_(TargetContext::getInstance()),
+// Public constructor for RAII pattern with dependency injection
+PathMapper::PathMapper(TargetContext& targetCtx, const std::string& sourceDir, const std::string& outputDir)
+    : targetCtx_(targetCtx),
       sourceDir_(sourceDir),
       outputDir_(outputDir) {
   llvm::outs() << "[PathMapper] Initialized:\n";

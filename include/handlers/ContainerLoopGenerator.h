@@ -92,6 +92,7 @@ public:
      * @param loopVarInfo Information about the loop variable
      * @param cppASTContext C++ AST context (for reading C++ nodes)
      * @param cASTContext C AST context (for creating C nodes)
+     * @param targetLoc Valid source location for C AST nodes
      * @return C ForStmt representing the iterator-based loop
      */
     clang::ForStmt* generate(
@@ -99,7 +100,8 @@ public:
         const RangeClassification& rangeInfo,
         const LoopVariableInfo& loopVarInfo,
         const clang::ASTContext& cppASTContext,
-        clang::ASTContext& cASTContext
+        clang::ASTContext& cASTContext,
+        clang::SourceLocation targetLoc
     );
 
 private:
@@ -116,6 +118,7 @@ private:
      * @param containerExpr Expression for the container
      * @param containerType Type of the container
      * @param cASTContext C AST context for creating nodes
+     * @param targetLoc Valid source location for C AST nodes
      * @return VarDecl for begin iterator with initialization
      */
     clang::VarDecl* createBeginIterator(
@@ -123,7 +126,8 @@ private:
         clang::QualType iteratorType,
         const clang::Expr* containerExpr,
         clang::QualType containerType,
-        clang::ASTContext& cASTContext
+        clang::ASTContext& cASTContext,
+        clang::SourceLocation targetLoc
     );
 
     /**
@@ -133,6 +137,7 @@ private:
      * @param containerExpr Expression for the container
      * @param containerType Type of the container
      * @param cASTContext C AST context for creating nodes
+     * @param targetLoc Valid source location for C AST nodes
      * @return VarDecl for end iterator with initialization
      */
     clang::VarDecl* createEndIterator(
@@ -140,7 +145,8 @@ private:
         clang::QualType iteratorType,
         const clang::Expr* containerExpr,
         clang::QualType containerType,
-        clang::ASTContext& cASTContext
+        clang::ASTContext& cASTContext,
+        clang::SourceLocation targetLoc
     );
 
     /**
@@ -149,13 +155,15 @@ private:
      * @param endVar End iterator variable
      * @param iterClass Iterator classification
      * @param cASTContext C AST context for creating nodes
+     * @param targetLoc Valid source location for C AST nodes
      * @return Condition expression
      */
     clang::Expr* createIteratorComparison(
         clang::VarDecl* beginVar,
         clang::VarDecl* endVar,
         const IteratorClassification& iterClass,
-        clang::ASTContext& cASTContext
+        clang::ASTContext& cASTContext,
+        clang::SourceLocation targetLoc
     );
 
     /**
@@ -163,12 +171,14 @@ private:
      * @param beginVar Begin iterator variable
      * @param iterClass Iterator classification
      * @param cASTContext C AST context for creating nodes
+     * @param targetLoc Valid source location for C AST nodes
      * @return Increment expression
      */
     clang::Expr* createIteratorIncrement(
         clang::VarDecl* beginVar,
         const IteratorClassification& iterClass,
-        clang::ASTContext& cASTContext
+        clang::ASTContext& cASTContext,
+        clang::SourceLocation targetLoc
     );
 
     /**
@@ -179,6 +189,7 @@ private:
      * @param iterClass Iterator classification
      * @param cppASTContext C++ AST context (for reading C++ nodes)
      * @param cASTContext C AST context (for creating C nodes)
+     * @param targetLoc Valid source location for C AST nodes
      * @return CompoundStmt containing variable declaration and original body
      */
     clang::CompoundStmt* createLoopBody(
@@ -187,7 +198,8 @@ private:
         const LoopVariableInfo& loopVarInfo,
         const IteratorClassification& iterClass,
         const clang::ASTContext& cppASTContext,
-        clang::ASTContext& cASTContext
+        clang::ASTContext& cASTContext,
+        clang::SourceLocation targetLoc
     );
 
     /**
@@ -197,6 +209,7 @@ private:
      * @param loopVarInfo Loop variable information
      * @param iterClass Iterator classification
      * @param cASTContext C AST context for creating nodes
+     * @param targetLoc Valid source location for C AST nodes
      * @return DeclStmt for element variable (T x = *begin)
      */
     clang::DeclStmt* createElementVarDecl(
@@ -204,7 +217,8 @@ private:
         clang::VarDecl* beginVar,
         const LoopVariableInfo& loopVarInfo,
         const IteratorClassification& iterClass,
-        clang::ASTContext& cASTContext
+        clang::ASTContext& cASTContext,
+        clang::SourceLocation targetLoc
     );
 
     /**
@@ -212,12 +226,14 @@ private:
      * @param beginVar Begin iterator variable
      * @param iterClass Iterator classification
      * @param cASTContext C AST context for creating nodes
+     * @param targetLoc Valid source location for C AST nodes
      * @return Dereference expression
      */
     clang::Expr* createIteratorDereference(
         clang::VarDecl* beginVar,
         const IteratorClassification& iterClass,
-        clang::ASTContext& cASTContext
+        clang::ASTContext& cASTContext,
+        clang::SourceLocation targetLoc
     );
 
     /**
@@ -225,12 +241,14 @@ private:
      * @param containerExpr Expression for the container
      * @param containerType Type of the container
      * @param cASTContext C AST context for creating nodes
+     * @param targetLoc Valid source location for C AST nodes
      * @return CallExpr to begin() method
      */
     clang::Expr* createBeginCall(
         const clang::Expr* containerExpr,
         clang::QualType containerType,
-        clang::ASTContext& cASTContext
+        clang::ASTContext& cASTContext,
+        clang::SourceLocation targetLoc
     );
 
     /**
@@ -238,12 +256,14 @@ private:
      * @param containerExpr Expression for the container
      * @param containerType Type of the container
      * @param cASTContext C AST context for creating nodes
+     * @param targetLoc Valid source location for C AST nodes
      * @return CallExpr to end() method
      */
     clang::Expr* createEndCall(
         const clang::Expr* containerExpr,
         clang::QualType containerType,
-        clang::ASTContext& cASTContext
+        clang::ASTContext& cASTContext,
+        clang::SourceLocation targetLoc
     );
 
     /**
@@ -252,13 +272,15 @@ private:
      * @param endDecl End iterator declaration
      * @param forLoop The for loop itself
      * @param cASTContext C AST context for creating nodes
+     * @param targetLoc Valid source location for C AST nodes
      * @return CompoundStmt wrapping iterator declarations and loop
      */
     clang::CompoundStmt* createIteratorScope(
         clang::VarDecl* beginDecl,
         clang::VarDecl* endDecl,
         clang::ForStmt* forLoop,
-        clang::ASTContext& cASTContext
+        clang::ASTContext& cASTContext,
+        clang::SourceLocation targetLoc
     );
 
     /**

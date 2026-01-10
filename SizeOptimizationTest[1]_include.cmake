@@ -1,0 +1,5 @@
+if(EXISTS "/Users/alexanderfedin/Projects/hapyy/hupyy-cpp-to-c/SizeOptimizationTest[1]_tests.cmake")
+  include("/Users/alexanderfedin/Projects/hapyy/hupyy-cpp-to-c/SizeOptimizationTest[1]_tests.cmake")
+else()
+  add_test(SizeOptimizationTest_NOT_BUILT SizeOptimizationTest_NOT_BUILT)
+endif()

@@ -10,6 +10,8 @@
 #include "mapping/StmtMapper.h"
 #include "mapping/ExprMapper.h"
 #include "mapping/DeclMapper.h"
+#include "SourceLocationMapper.h"
+#include "TargetContext.h"
 #include "clang/AST/Stmt.h"
 #include "clang/AST/Expr.h"
 #include "clang/AST/Decl.h"
@@ -74,60 +76,68 @@ void StatementHandler::handleStatement(
 
     llvm::outs() << "[StatementHandler] Processing statement: " << S->getStmtClassName() << "\n";
 
+    // Get valid SourceLocation for C AST node
+    // For statements, we rely on getCurrentTargetPath() since statements
+    // don't carry file location information like Decls do
+    std::string targetPath = disp.getCurrentTargetPath();
+    assert(!targetPath.empty() && "Target path must be set for statement handling");
+    SourceLocationMapper& locMapper = disp.getTargetContext().getLocationMapper();
+    clang::SourceLocation targetLoc = locMapper.getStartOfFile(targetPath);
+
     // Dispatch to appropriate helper based on statement type
     clang::Stmt* cStmt = nullptr;
 
     switch (S->getStmtClass()) {
         case clang::Stmt::IfStmtClass:
-            cStmt = translateIfStmt(llvm::cast<clang::IfStmt>(S), disp, cppASTContext, cASTContext);
+            cStmt = translateIfStmt(llvm::cast<clang::IfStmt>(S), disp, cppASTContext, cASTContext, targetLoc);
             break;
 
         case clang::Stmt::WhileStmtClass:
-            cStmt = translateWhileStmt(llvm::cast<clang::WhileStmt>(S), disp, cppASTContext, cASTContext);
+            cStmt = translateWhileStmt(llvm::cast<clang::WhileStmt>(S), disp, cppASTContext, cASTContext, targetLoc);
             break;
 
         case clang::Stmt::DoStmtClass:
-            cStmt = translateDoStmt(llvm::cast<clang::DoStmt>(S), disp, cppASTContext, cASTContext);
+            cStmt = translateDoStmt(llvm::cast<clang::DoStmt>(S), disp, cppASTContext, cASTContext, targetLoc);
             break;
 
         case clang::Stmt::ForStmtClass:
-            cStmt = translateForStmt(llvm::cast<clang::ForStmt>(S), disp, cppASTContext, cASTContext);
+            cStmt = translateForStmt(llvm::cast<clang::ForStmt>(S), disp, cppASTContext, cASTContext, targetLoc);
             break;
 
         case clang::Stmt::CXXForRangeStmtClass:
-            cStmt = translateCXXForRangeStmt(llvm::cast<clang::CXXForRangeStmt>(S), disp, cppASTContext, cASTContext);
+            cStmt = translateCXXForRangeStmt(llvm::cast<clang::CXXForRangeStmt>(S), disp, cppASTContext, cASTContext, targetLoc);
             break;
 
         case clang::Stmt::SwitchStmtClass:
-            cStmt = translateSwitchStmt(llvm::cast<clang::SwitchStmt>(S), disp, cppASTContext, cASTContext);
+            cStmt = translateSwitchStmt(llvm::cast<clang::SwitchStmt>(S), disp, cppASTContext, cASTContext, targetLoc);
             break;
 
         case clang::Stmt::CaseStmtClass:
-            cStmt = translateCaseStmt(llvm::cast<clang::CaseStmt>(S), disp, cppASTContext, cASTContext);
+            cStmt = translateCaseStmt(llvm::cast<clang::CaseStmt>(S), disp, cppASTContext, cASTContext, targetLoc);
             break;
 
         case clang::Stmt::DefaultStmtClass:
-            cStmt = translateDefaultStmt(llvm::cast<clang::DefaultStmt>(S), disp, cppASTContext, cASTContext);
+            cStmt = translateDefaultStmt(llvm::cast<clang::DefaultStmt>(S), disp, cppASTContext, cASTContext, targetLoc);
             break;
 
         case clang::Stmt::BreakStmtClass:
-            cStmt = translateBreakStmt(llvm::cast<clang::BreakStmt>(S), disp, cppASTContext, cASTContext);
+            cStmt = translateBreakStmt(llvm::cast<clang::BreakStmt>(S), disp, cppASTContext, cASTContext, targetLoc);
             break;
 
         case clang::Stmt::ContinueStmtClass:
-            cStmt = translateContinueStmt(llvm::cast<clang::ContinueStmt>(S), disp, cppASTContext, cASTContext);
+            cStmt = translateContinueStmt(llvm::cast<clang::ContinueStmt>(S), disp, cppASTContext, cASTContext, targetLoc);
             break;
 
         case clang::Stmt::GotoStmtClass:
-            cStmt = translateGotoStmt(llvm::cast<clang::GotoStmt>(S), disp, cppASTContext, cASTContext);
+            cStmt = translateGotoStmt(llvm::cast<clang::GotoStmt>(S), disp, cppASTContext, cASTContext, targetLoc);
             break;
 
         case clang::Stmt::LabelStmtClass:
-            cStmt = translateLabelStmt(llvm::cast<clang::LabelStmt>(S), disp, cppASTContext, cASTContext);
+            cStmt = translateLabelStmt(llvm::cast<clang::LabelStmt>(S), disp, cppASTContext, cASTContext, targetLoc);
             break;
 
         case clang::Stmt::DeclStmtClass:
-            cStmt = translateDeclStmt(llvm::cast<clang::DeclStmt>(S), disp, cppASTContext, cASTContext);
+            cStmt = translateDeclStmt(llvm::cast<clang::DeclStmt>(S), disp, cppASTContext, cASTContext, targetLoc);
             break;
 
         default:
@@ -157,7 +167,8 @@ clang::IfStmt* StatementHandler::translateIfStmt(
     const clang::IfStmt* IS,
     const CppToCVisitorDispatcher& disp,
     const clang::ASTContext& cppASTContext,
-    clang::ASTContext& cASTContext
+    clang::ASTContext& cASTContext,
+    clang::SourceLocation targetLoc
 ) {
     llvm::outs() << "[StatementHandler] Translating IfStmt\n";
 
@@ -209,10 +220,10 @@ clang::IfStmt* StatementHandler::translateIfStmt(
         nullptr, // init (C++17)
         nullptr, // condVar
         cCond,
-        clang::SourceLocation(),
-        clang::SourceLocation(),
+        targetLoc,
+        targetLoc,
         cThen,
-        cppElse ? IS->getElseLoc() : clang::SourceLocation(),
+        cppElse ? IS->getElseLoc() : targetLoc,
         cElse
     );
 }
@@ -221,7 +232,8 @@ clang::WhileStmt* StatementHandler::translateWhileStmt(
     const clang::WhileStmt* WS,
     const CppToCVisitorDispatcher& disp,
     const clang::ASTContext& cppASTContext,
-    clang::ASTContext& cASTContext
+    clang::ASTContext& cASTContext,
+    clang::SourceLocation targetLoc
 ) {
     llvm::outs() << "[StatementHandler] Translating WhileStmt\n";
 
@@ -259,8 +271,8 @@ clang::WhileStmt* StatementHandler::translateWhileStmt(
         cCond,
         cBody,
         WS->getWhileLoc(),
-        clang::SourceLocation(), // LParenLoc
-        clang::SourceLocation()  // RParenLoc
+        targetLoc, // LParenLoc
+        targetLoc  // RParenLoc
     );
 }
 
@@ -268,7 +280,8 @@ clang::DoStmt* StatementHandler::translateDoStmt(
     const clang::DoStmt* DS,
     const CppToCVisitorDispatcher& disp,
     const clang::ASTContext& cppASTContext,
-    clang::ASTContext& cASTContext
+    clang::ASTContext& cASTContext,
+    clang::SourceLocation targetLoc
 ) {
     llvm::outs() << "[StatementHandler] Translating DoStmt\n";
 
@@ -313,7 +326,8 @@ clang::ForStmt* StatementHandler::translateForStmt(
     const clang::ForStmt* FS,
     const CppToCVisitorDispatcher& disp,
     const clang::ASTContext& cppASTContext,
-    clang::ASTContext& cASTContext
+    clang::ASTContext& cASTContext,
+    clang::SourceLocation targetLoc
 ) {
     llvm::outs() << "[StatementHandler] Translating ForStmt\n";
 
@@ -389,7 +403,8 @@ clang::ForStmt* StatementHandler::translateCXXForRangeStmt(
     const clang::CXXForRangeStmt* RFS,
     const CppToCVisitorDispatcher& disp,
     const clang::ASTContext& cppASTContext,
-    clang::ASTContext& cASTContext
+    clang::ASTContext& cASTContext,
+    clang::SourceLocation targetLoc
 ) {
     llvm::outs() << "[StatementHandler] Translating CXXForRangeStmt (simplified - full implementation needed)\n";
 
@@ -405,7 +420,8 @@ clang::SwitchStmt* StatementHandler::translateSwitchStmt(
     const clang::SwitchStmt* SS,
     const CppToCVisitorDispatcher& disp,
     const clang::ASTContext& cppASTContext,
-    clang::ASTContext& cASTContext
+    clang::ASTContext& cASTContext,
+    clang::SourceLocation targetLoc
 ) {
     llvm::outs() << "[StatementHandler] Translating SwitchStmt\n";
 
@@ -458,7 +474,8 @@ clang::CaseStmt* StatementHandler::translateCaseStmt(
     const clang::CaseStmt* CS,
     const CppToCVisitorDispatcher& disp,
     const clang::ASTContext& cppASTContext,
-    clang::ASTContext& cASTContext
+    clang::ASTContext& cASTContext,
+    clang::SourceLocation targetLoc
 ) {
     llvm::outs() << "[StatementHandler] Translating CaseStmt\n";
 
@@ -525,7 +542,8 @@ clang::DefaultStmt* StatementHandler::translateDefaultStmt(
     const clang::DefaultStmt* DS,
     const CppToCVisitorDispatcher& disp,
     const clang::ASTContext& cppASTContext,
-    clang::ASTContext& cASTContext
+    clang::ASTContext& cASTContext,
+    clang::SourceLocation targetLoc
 ) {
     llvm::outs() << "[StatementHandler] Translating DefaultStmt\n";
 
@@ -554,7 +572,8 @@ clang::BreakStmt* StatementHandler::translateBreakStmt(
     const clang::BreakStmt* BS,
     const CppToCVisitorDispatcher& disp,
     const clang::ASTContext& cppASTContext,
-    clang::ASTContext& cASTContext
+    clang::ASTContext& cASTContext,
+    clang::SourceLocation targetLoc
 ) {
     llvm::outs() << "[StatementHandler] Translating BreakStmt\n";
 
@@ -566,7 +585,8 @@ clang::ContinueStmt* StatementHandler::translateContinueStmt(
     const clang::ContinueStmt* CS,
     const CppToCVisitorDispatcher& disp,
     const clang::ASTContext& cppASTContext,
-    clang::ASTContext& cASTContext
+    clang::ASTContext& cASTContext,
+    clang::SourceLocation targetLoc
 ) {
     llvm::outs() << "[StatementHandler] Translating ContinueStmt\n";
 
@@ -578,7 +598,8 @@ clang::GotoStmt* StatementHandler::translateGotoStmt(
     const clang::GotoStmt* GS,
     const CppToCVisitorDispatcher& disp,
     const clang::ASTContext& cppASTContext,
-    clang::ASTContext& cASTContext
+    clang::ASTContext& cASTContext,
+    clang::SourceLocation targetLoc
 ) {
     llvm::outs() << "[StatementHandler] Translating GotoStmt\n";
 
@@ -593,7 +614,7 @@ clang::GotoStmt* StatementHandler::translateGotoStmt(
     clang::LabelDecl* cLabel = clang::LabelDecl::Create(
         cASTContext,
         cASTContext.getTranslationUnitDecl(),
-        clang::SourceLocation(),
+        targetLoc,
         &II
     );
 
@@ -609,7 +630,8 @@ clang::LabelStmt* StatementHandler::translateLabelStmt(
     const clang::LabelStmt* LS,
     const CppToCVisitorDispatcher& disp,
     const clang::ASTContext& cppASTContext,
-    clang::ASTContext& cASTContext
+    clang::ASTContext& cASTContext,
+    clang::SourceLocation targetLoc
 ) {
     llvm::outs() << "[StatementHandler] Translating LabelStmt\n";
 
@@ -624,7 +646,7 @@ clang::LabelStmt* StatementHandler::translateLabelStmt(
     clang::LabelDecl* cDecl = clang::LabelDecl::Create(
         cASTContext,
         cASTContext.getTranslationUnitDecl(),
-        clang::SourceLocation(),
+        targetLoc,
         &II
     );
 
@@ -657,7 +679,8 @@ clang::Stmt* StatementHandler::translateDeclStmt(
     const clang::DeclStmt* DS,
     const CppToCVisitorDispatcher& disp,
     const clang::ASTContext& cppASTContext,
-    clang::ASTContext& cASTContext
+    clang::ASTContext& cASTContext,
+    clang::SourceLocation targetLoc
 ) {
     llvm::outs() << "[StatementHandler] Translating DeclStmt\n";
 
@@ -689,8 +712,8 @@ clang::Stmt* StatementHandler::translateDeclStmt(
     // Create C DeclStmt
     return new (cASTContext) clang::DeclStmt(
         clang::DeclGroupRef::Create(cASTContext, cDecls.data(), cDecls.size()),
-        clang::SourceLocation(),
-        clang::SourceLocation()
+        targetLoc,
+        targetLoc
     );
 }
 

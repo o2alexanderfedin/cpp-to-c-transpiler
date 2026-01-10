@@ -1,5 +1,6 @@
 #include "dispatch/InitListExprHandler.h"
 #include "mapping/ExprMapper.h"
+#include "SourceLocationMapper.h"
 #include "clang/AST/Expr.h"
 #include "llvm/Support/Casting.h"
 #include "llvm/Support/raw_ostream.h"
@@ -64,12 +65,16 @@ void InitListExprHandler::handleInitListExpr(
 
     llvm::outs() << "[InitListExprHandler] All " << cInits.size() << " initializers translated\n";
 
+    // Get source location for SourceLocation initialization
+    SourceLocationMapper& locMapper = disp.getTargetContext().getLocationMapper();
+    clang::SourceLocation targetLoc = locMapper.getStartOfFile("");
+
     // Create C InitListExpr
     clang::InitListExpr* cInitList = new (cASTContext) clang::InitListExpr(
         cASTContext,
-        clang::SourceLocation(),  // LBraceLoc
+        targetLoc,  // LBraceLoc
         cInits,
-        clang::SourceLocation()   // RBraceLoc
+        targetLoc   // RBraceLoc
     );
 
     // Set type (same as C++ - arrays are arrays in C too)

@@ -166,10 +166,11 @@ void test_CFGDetectsGoto() {
     const char *Code = R"(
         void func(int flag) {
             int x = 10;
+            int y;
             if (flag) {
                 goto cleanup;
             }
-            int y = 20;
+            y = 20;
         cleanup:
             return;
         }

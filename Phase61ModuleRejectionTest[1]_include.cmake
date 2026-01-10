@@ -1,0 +1,5 @@
+if(EXISTS "/Users/alexanderfedin/Projects/hapyy/hupyy-cpp-to-c/Phase61ModuleRejectionTest[1]_tests.cmake")
+  include("/Users/alexanderfedin/Projects/hapyy/hupyy-cpp-to-c/Phase61ModuleRejectionTest[1]_tests.cmake")
+else()
+  add_test(Phase61ModuleRejectionTest_NOT_BUILT Phase61ModuleRejectionTest_NOT_BUILT)
+endif()

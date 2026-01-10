@@ -25,6 +25,7 @@
 #include "mapping/TypeMapper.h"
 #include "mapping/ExprMapper.h"
 #include "mapping/StmtMapper.h"
+#include "mapping/FieldOffsetMapper.h"
 #include "TargetContext.h"
 #include "clang/AST/ASTContext.h"
 #include "clang/AST/Decl.h"
@@ -104,22 +105,26 @@ TEST(NamespaceHandlerDispatcherTest, Registration) {
     ASSERT_NE(AST, nullptr);
 
     ASTContext& cppCtx = AST->getASTContext();
-    TargetContext& targetCtx = TargetContext::getInstance();
+    TargetContext targetCtx;
     ASTContext& cCtx = targetCtx.getContext();
 
-    cpptoc::PathMapper& mapper = cpptoc::PathMapper::getInstance("/src", "/output");
+    cpptoc::PathMapper mapper(targetCtx, "/src", "/output");
     cpptoc::DeclLocationMapper locMapper(mapper);
     cpptoc::DeclMapper declMapper;
     cpptoc::TypeMapper typeMapper;
     cpptoc::ExprMapper exprMapper;
     cpptoc::StmtMapper stmtMapper;
+    cpptoc::FieldOffsetMapper fieldOffsetMapper;
 
-    CppToCVisitorDispatcher dispatcher(mapper, locMapper, declMapper, typeMapper, exprMapper, stmtMapper);
+    CppToCVisitorDispatcher dispatcher(mapper, locMapper, declMapper, typeMapper, exprMapper, stmtMapper, fieldOffsetMapper, targetCtx);
     cpptoc::NamespaceHandler::registerWith(dispatcher);
 
     TranslationUnitDecl* TU = cppCtx.getTranslationUnitDecl();
     NamespaceDecl* cppNS = findNamespace(TU, "MyApp");
     ASSERT_NE(cppNS, nullptr);
+
+    // Set current target path for file origin check
+    dispatcher.setCurrentTargetPath("input");
 
     bool handled = dispatcher.dispatch(cppCtx, cCtx, cppNS);
     EXPECT_TRUE(handled);
@@ -142,23 +147,27 @@ TEST(NamespaceHandlerDispatcherTest, BasicNamespace) {
     ASSERT_NE(AST, nullptr);
 
     ASTContext& cppCtx = AST->getASTContext();
-    TargetContext& targetCtx = TargetContext::getInstance();
+    TargetContext targetCtx;
     ASTContext& cCtx = targetCtx.getContext();
 
-    cpptoc::PathMapper& mapper = cpptoc::PathMapper::getInstance("/src", "/output");
+    cpptoc::PathMapper mapper(targetCtx, "/src", "/output");
     cpptoc::DeclLocationMapper locMapper(mapper);
     cpptoc::DeclMapper declMapper;
     cpptoc::TypeMapper typeMapper;
     cpptoc::ExprMapper exprMapper;
     cpptoc::StmtMapper stmtMapper;
+    cpptoc::FieldOffsetMapper fieldOffsetMapper;
 
-    CppToCVisitorDispatcher dispatcher(mapper, locMapper, declMapper, typeMapper, exprMapper, stmtMapper);
+    CppToCVisitorDispatcher dispatcher(mapper, locMapper, declMapper, typeMapper, exprMapper, stmtMapper, fieldOffsetMapper, targetCtx);
     cpptoc::NamespaceHandler::registerWith(dispatcher);
 
     TranslationUnitDecl* TU = cppCtx.getTranslationUnitDecl();
     NamespaceDecl* cppNS = findNamespace(TU, "MyApp");
     ASSERT_NE(cppNS, nullptr);
     EXPECT_EQ(cppNS->getNameAsString(), "MyApp");
+
+    // Set current target path for file origin check
+    dispatcher.setCurrentTargetPath("input");
 
     bool handled = dispatcher.dispatch(cppCtx, cCtx, cppNS);
     ASSERT_TRUE(handled);
@@ -187,17 +196,18 @@ TEST(NamespaceHandlerDispatcherTest, NestedNamespaces) {
     ASSERT_NE(AST, nullptr);
 
     ASTContext& cppCtx = AST->getASTContext();
-    TargetContext& targetCtx = TargetContext::getInstance();
+    TargetContext targetCtx;
     ASTContext& cCtx = targetCtx.getContext();
 
-    cpptoc::PathMapper& mapper = cpptoc::PathMapper::getInstance("/src", "/output");
+    cpptoc::PathMapper mapper(targetCtx, "/src", "/output");
     cpptoc::DeclLocationMapper locMapper(mapper);
     cpptoc::DeclMapper declMapper;
     cpptoc::TypeMapper typeMapper;
     cpptoc::ExprMapper exprMapper;
     cpptoc::StmtMapper stmtMapper;
+    cpptoc::FieldOffsetMapper fieldOffsetMapper;
 
-    CppToCVisitorDispatcher dispatcher(mapper, locMapper, declMapper, typeMapper, exprMapper, stmtMapper);
+    CppToCVisitorDispatcher dispatcher(mapper, locMapper, declMapper, typeMapper, exprMapper, stmtMapper, fieldOffsetMapper, targetCtx);
     cpptoc::NamespaceHandler::registerWith(dispatcher);
 
     TranslationUnitDecl* TU = cppCtx.getTranslationUnitDecl();
@@ -205,6 +215,9 @@ TEST(NamespaceHandlerDispatcherTest, NestedNamespaces) {
     ASSERT_NE(cppNS_A, nullptr);
 
     // Dispatch outer namespace A
+    // Set current target path for file origin check
+    dispatcher.setCurrentTargetPath("input");
+
     bool handled_A = dispatcher.dispatch(cppCtx, cCtx, cppNS_A);
     ASSERT_TRUE(handled_A);
     EXPECT_TRUE(declMapper.hasCreated(cppNS_A));
@@ -243,17 +256,18 @@ TEST(NamespaceHandlerDispatcherTest, Cpp17NestedNamespaceSyntax) {
     ASSERT_NE(AST, nullptr);
 
     ASTContext& cppCtx = AST->getASTContext();
-    TargetContext& targetCtx = TargetContext::getInstance();
+    TargetContext targetCtx;
     ASTContext& cCtx = targetCtx.getContext();
 
-    cpptoc::PathMapper& mapper = cpptoc::PathMapper::getInstance("/src", "/output");
+    cpptoc::PathMapper mapper(targetCtx, "/src", "/output");
     cpptoc::DeclLocationMapper locMapper(mapper);
     cpptoc::DeclMapper declMapper;
     cpptoc::TypeMapper typeMapper;
     cpptoc::ExprMapper exprMapper;
     cpptoc::StmtMapper stmtMapper;
+    cpptoc::FieldOffsetMapper fieldOffsetMapper;
 
-    CppToCVisitorDispatcher dispatcher(mapper, locMapper, declMapper, typeMapper, exprMapper, stmtMapper);
+    CppToCVisitorDispatcher dispatcher(mapper, locMapper, declMapper, typeMapper, exprMapper, stmtMapper, fieldOffsetMapper, targetCtx);
     cpptoc::NamespaceHandler::registerWith(dispatcher);
 
     // C++17 syntax creates nested NamespaceDecls
@@ -262,6 +276,9 @@ TEST(NamespaceHandlerDispatcherTest, Cpp17NestedNamespaceSyntax) {
     ASSERT_NE(cppNS_A, nullptr);
 
     // Dispatch outer namespace
+    // Set current target path for file origin check
+    dispatcher.setCurrentTargetPath("input");
+
     bool handled = dispatcher.dispatch(cppCtx, cCtx, cppNS_A);
     ASSERT_TRUE(handled);
 
@@ -307,23 +324,27 @@ TEST(NamespaceHandlerDispatcherTest, AnonymousNamespace) {
     ASSERT_NE(AST, nullptr);
 
     ASTContext& cppCtx = AST->getASTContext();
-    TargetContext& targetCtx = TargetContext::getInstance();
+    TargetContext targetCtx;
     ASTContext& cCtx = targetCtx.getContext();
 
-    cpptoc::PathMapper& mapper = cpptoc::PathMapper::getInstance("/src", "/output");
+    cpptoc::PathMapper mapper(targetCtx, "/src", "/output");
     cpptoc::DeclLocationMapper locMapper(mapper);
     cpptoc::DeclMapper declMapper;
     cpptoc::TypeMapper typeMapper;
     cpptoc::ExprMapper exprMapper;
     cpptoc::StmtMapper stmtMapper;
+    cpptoc::FieldOffsetMapper fieldOffsetMapper;
 
-    CppToCVisitorDispatcher dispatcher(mapper, locMapper, declMapper, typeMapper, exprMapper, stmtMapper);
+    CppToCVisitorDispatcher dispatcher(mapper, locMapper, declMapper, typeMapper, exprMapper, stmtMapper, fieldOffsetMapper, targetCtx);
     cpptoc::NamespaceHandler::registerWith(dispatcher);
 
     TranslationUnitDecl* TU = cppCtx.getTranslationUnitDecl();
     NamespaceDecl* cppNS = findAnonymousNamespace(TU);
     ASSERT_NE(cppNS, nullptr);
     EXPECT_TRUE(cppNS->isAnonymousNamespace());
+
+    // Set current target path for file origin check
+    dispatcher.setCurrentTargetPath("input");
 
     bool handled = dispatcher.dispatch(cppCtx, cCtx, cppNS);
     ASSERT_TRUE(handled);
@@ -353,17 +374,18 @@ TEST(NamespaceHandlerDispatcherTest, FunctionInNamespace) {
     ASSERT_NE(AST, nullptr);
 
     ASTContext& cppCtx = AST->getASTContext();
-    TargetContext& targetCtx = TargetContext::getInstance();
+    TargetContext targetCtx;
     ASTContext& cCtx = targetCtx.getContext();
 
-    cpptoc::PathMapper& mapper = cpptoc::PathMapper::getInstance("/src", "/output");
+    cpptoc::PathMapper mapper(targetCtx, "/src", "/output");
     cpptoc::DeclLocationMapper locMapper(mapper);
     cpptoc::DeclMapper declMapper;
     cpptoc::TypeMapper typeMapper;
     cpptoc::ExprMapper exprMapper;
     cpptoc::StmtMapper stmtMapper;
+    cpptoc::FieldOffsetMapper fieldOffsetMapper;
 
-    CppToCVisitorDispatcher dispatcher(mapper, locMapper, declMapper, typeMapper, exprMapper, stmtMapper);
+    CppToCVisitorDispatcher dispatcher(mapper, locMapper, declMapper, typeMapper, exprMapper, stmtMapper, fieldOffsetMapper, targetCtx);
     cpptoc::NamespaceHandler::registerWith(dispatcher);
     cpptoc::TypeHandler::registerWith(dispatcher);
     cpptoc::ParameterHandler::registerWith(dispatcher);
@@ -374,6 +396,9 @@ TEST(NamespaceHandlerDispatcherTest, FunctionInNamespace) {
     ASSERT_NE(cppNS, nullptr);
 
     // Dispatch namespace (should recursively dispatch function)
+    // Set current target path for file origin check
+    dispatcher.setCurrentTargetPath("input");
+
     bool handled = dispatcher.dispatch(cppCtx, cCtx, cppNS);
     ASSERT_TRUE(handled);
 
@@ -417,17 +442,18 @@ TEST(NamespaceHandlerDispatcherTest, ClassInNamespace) {
     ASSERT_NE(AST, nullptr);
 
     ASTContext& cppCtx = AST->getASTContext();
-    TargetContext& targetCtx = TargetContext::getInstance();
+    TargetContext targetCtx;
     ASTContext& cCtx = targetCtx.getContext();
 
-    cpptoc::PathMapper& mapper = cpptoc::PathMapper::getInstance("/src", "/output");
+    cpptoc::PathMapper mapper(targetCtx, "/src", "/output");
     cpptoc::DeclLocationMapper locMapper(mapper);
     cpptoc::DeclMapper declMapper;
     cpptoc::TypeMapper typeMapper;
     cpptoc::ExprMapper exprMapper;
     cpptoc::StmtMapper stmtMapper;
+    cpptoc::FieldOffsetMapper fieldOffsetMapper;
 
-    CppToCVisitorDispatcher dispatcher(mapper, locMapper, declMapper, typeMapper, exprMapper, stmtMapper);
+    CppToCVisitorDispatcher dispatcher(mapper, locMapper, declMapper, typeMapper, exprMapper, stmtMapper, fieldOffsetMapper, targetCtx);
     cpptoc::NamespaceHandler::registerWith(dispatcher);
     cpptoc::TypeHandler::registerWith(dispatcher);
     cpptoc::RecordHandler::registerWith(dispatcher);
@@ -437,6 +463,9 @@ TEST(NamespaceHandlerDispatcherTest, ClassInNamespace) {
     ASSERT_NE(cppNS, nullptr);
 
     // Dispatch namespace (should recursively dispatch struct)
+    // Set current target path for file origin check
+    dispatcher.setCurrentTargetPath("input");
+
     bool handled = dispatcher.dispatch(cppCtx, cCtx, cppNS);
     ASSERT_TRUE(handled);
 
@@ -473,17 +502,18 @@ TEST(NamespaceHandlerDispatcherTest, DuplicateDetection) {
     ASSERT_NE(AST, nullptr);
 
     ASTContext& cppCtx = AST->getASTContext();
-    TargetContext& targetCtx = TargetContext::getInstance();
+    TargetContext targetCtx;
     ASTContext& cCtx = targetCtx.getContext();
 
-    cpptoc::PathMapper& mapper = cpptoc::PathMapper::getInstance("/src", "/output");
+    cpptoc::PathMapper mapper(targetCtx, "/src", "/output");
     cpptoc::DeclLocationMapper locMapper(mapper);
     cpptoc::DeclMapper declMapper;
     cpptoc::TypeMapper typeMapper;
     cpptoc::ExprMapper exprMapper;
     cpptoc::StmtMapper stmtMapper;
+    cpptoc::FieldOffsetMapper fieldOffsetMapper;
 
-    CppToCVisitorDispatcher dispatcher(mapper, locMapper, declMapper, typeMapper, exprMapper, stmtMapper);
+    CppToCVisitorDispatcher dispatcher(mapper, locMapper, declMapper, typeMapper, exprMapper, stmtMapper, fieldOffsetMapper, targetCtx);
     cpptoc::NamespaceHandler::registerWith(dispatcher);
 
     TranslationUnitDecl* TU = cppCtx.getTranslationUnitDecl();
@@ -491,11 +521,17 @@ TEST(NamespaceHandlerDispatcherTest, DuplicateDetection) {
     ASSERT_NE(cppNS, nullptr);
 
     // First dispatch
+    // Set current target path for file origin check
+    dispatcher.setCurrentTargetPath("input");
+
     bool handled1 = dispatcher.dispatch(cppCtx, cCtx, cppNS);
     ASSERT_TRUE(handled1);
     EXPECT_TRUE(declMapper.hasCreated(cppNS));
 
     // Second dispatch should detect duplicate and return early
+    // Set current target path for file origin check
+    dispatcher.setCurrentTargetPath("input");
+
     bool handled2 = dispatcher.dispatch(cppCtx, cCtx, cppNS);
     EXPECT_TRUE(handled2);
 

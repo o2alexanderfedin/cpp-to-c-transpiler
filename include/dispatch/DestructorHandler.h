@@ -153,6 +153,7 @@ private:
      * @brief Create this parameter for destructor function
      * @param recordType Type of the C struct (NOT C++ class)
      * @param cASTContext Target C ASTContext
+     * @param disp Dispatcher for accessing SourceLocationMapper
      * @return ParmVarDecl for this parameter (struct ClassName* this)
      *
      * Creates: struct ClassName* this
@@ -161,11 +162,13 @@ private:
      * Pattern (matching ConstructorHandler):
      * 1. Create pointer type from record type
      * 2. Get "this" identifier
-     * 3. Create ParmVarDecl with SC_None storage class
+     * 3. Get source location from SourceLocationMapper
+     * 4. Create ParmVarDecl with SC_None storage class
      */
     static clang::ParmVarDecl* createThisParameter(
         clang::QualType recordType,
-        clang::ASTContext& cASTContext
+        clang::ASTContext& cASTContext,
+        const CppToCVisitorDispatcher& disp
     );
 };
 

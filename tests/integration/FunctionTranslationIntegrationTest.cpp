@@ -83,10 +83,13 @@ protected:
         cpptoc::DeclMapper& declMapper,
         cpptoc::TypeMapper& typeMapper,
         cpptoc::ExprMapper& exprMapper,
-        cpptoc::StmtMapper& stmtMapper)
+        cpptoc::StmtMapper& stmtMapper,
+        cpptoc::FieldOffsetMapper& fieldOffsetMapper,
+        TargetContext& targetCtx)
     {
         auto dispatcher = std::make_unique<CppToCVisitorDispatcher>(
-            mapper, locMapper, declMapper, typeMapper, exprMapper, stmtMapper);
+            mapper, locMapper, declMapper, typeMapper, exprMapper, stmtMapper,
+            fieldOffsetMapper, targetCtx);
 
         // Register handlers in dependency order (dependencies first)
         // Type handler must be registered before Parameter and Function handlers
@@ -142,19 +145,20 @@ TEST_F(FunctionTranslationIntegrationTest, SimpleFunctionWithLiteralReturn) {
 
     // Setup components
     ASTContext& cppCtx = AST->getASTContext();
-    TargetContext& targetCtx = TargetContext::getInstance();
+    TargetContext targetCtx;
     ASTContext& cCtx = targetCtx.getContext();
 
     // Create mapping utilities
-    cpptoc::PathMapper& mapper = cpptoc::PathMapper::getInstance("/src", "/output");
+    cpptoc::PathMapper mapper(targetCtx, "/src", "/output");
     cpptoc::DeclLocationMapper locMapper(mapper);
     cpptoc::DeclMapper declMapper;
     cpptoc::TypeMapper typeMapper;
     cpptoc::ExprMapper exprMapper;
     cpptoc::StmtMapper stmtMapper;
+    FieldOffsetMapper fieldOffsetMapper;
 
     // Create and configure dispatcher
-    auto dispatcher = createDispatcher(mapper, locMapper, declMapper, typeMapper, exprMapper, stmtMapper);
+    auto dispatcher = createDispatcher(mapper, locMapper, declMapper, typeMapper, exprMapper, stmtMapper, fieldOffsetMapper, targetCtx);
 
     // Find the function
     TranslationUnitDecl* cppTU = cppCtx.getTranslationUnitDecl();
@@ -241,17 +245,18 @@ TEST_F(FunctionTranslationIntegrationTest, FunctionWithParameterReference) {
     ASSERT_NE(AST, nullptr);
 
     ASTContext& cppCtx = AST->getASTContext();
-    TargetContext& targetCtx = TargetContext::getInstance();
+    TargetContext targetCtx;
     ASTContext& cCtx = targetCtx.getContext();
 
-    cpptoc::PathMapper& mapper = cpptoc::PathMapper::getInstance("/src", "/output");
+    cpptoc::PathMapper mapper(targetCtx, "/src", "/output");
     cpptoc::DeclLocationMapper locMapper(mapper);
     cpptoc::DeclMapper declMapper;
     cpptoc::TypeMapper typeMapper;
     cpptoc::ExprMapper exprMapper;
     cpptoc::StmtMapper stmtMapper;
+    FieldOffsetMapper fieldOffsetMapper;
 
-    auto dispatcher = createDispatcher(mapper, locMapper, declMapper, typeMapper, exprMapper, stmtMapper);
+    auto dispatcher = createDispatcher(mapper, locMapper, declMapper, typeMapper, exprMapper, stmtMapper, fieldOffsetMapper, targetCtx);
 
     TranslationUnitDecl* cppTU = cppCtx.getTranslationUnitDecl();
     FunctionDecl* identity = findFunction(cppTU, "identity");
@@ -313,17 +318,18 @@ TEST_F(FunctionTranslationIntegrationTest, FunctionWithArithmeticExpression) {
     ASSERT_NE(AST, nullptr);
 
     ASTContext& cppCtx = AST->getASTContext();
-    TargetContext& targetCtx = TargetContext::getInstance();
+    TargetContext targetCtx;
     ASTContext& cCtx = targetCtx.getContext();
 
-    cpptoc::PathMapper& mapper = cpptoc::PathMapper::getInstance("/src", "/output");
+    cpptoc::PathMapper mapper(targetCtx, "/src", "/output");
     cpptoc::DeclLocationMapper locMapper(mapper);
     cpptoc::DeclMapper declMapper;
     cpptoc::TypeMapper typeMapper;
     cpptoc::ExprMapper exprMapper;
     cpptoc::StmtMapper stmtMapper;
+    FieldOffsetMapper fieldOffsetMapper;
 
-    auto dispatcher = createDispatcher(mapper, locMapper, declMapper, typeMapper, exprMapper, stmtMapper);
+    auto dispatcher = createDispatcher(mapper, locMapper, declMapper, typeMapper, exprMapper, stmtMapper, fieldOffsetMapper, targetCtx);
 
     TranslationUnitDecl* cppTU = cppCtx.getTranslationUnitDecl();
     FunctionDecl* add = findFunction(cppTU, "add");
@@ -413,17 +419,18 @@ TEST_F(FunctionTranslationIntegrationTest, FunctionWithNestedExpression) {
     ASSERT_NE(AST, nullptr);
 
     ASTContext& cppCtx = AST->getASTContext();
-    TargetContext& targetCtx = TargetContext::getInstance();
+    TargetContext targetCtx;
     ASTContext& cCtx = targetCtx.getContext();
 
-    cpptoc::PathMapper& mapper = cpptoc::PathMapper::getInstance("/src", "/output");
+    cpptoc::PathMapper mapper(targetCtx, "/src", "/output");
     cpptoc::DeclLocationMapper locMapper(mapper);
     cpptoc::DeclMapper declMapper;
     cpptoc::TypeMapper typeMapper;
     cpptoc::ExprMapper exprMapper;
     cpptoc::StmtMapper stmtMapper;
+    FieldOffsetMapper fieldOffsetMapper;
 
-    auto dispatcher = createDispatcher(mapper, locMapper, declMapper, typeMapper, exprMapper, stmtMapper);
+    auto dispatcher = createDispatcher(mapper, locMapper, declMapper, typeMapper, exprMapper, stmtMapper, fieldOffsetMapper, targetCtx);
 
     TranslationUnitDecl* cppTU = cppCtx.getTranslationUnitDecl();
     FunctionDecl* compute = findFunction(cppTU, "compute");
@@ -535,17 +542,18 @@ TEST_F(FunctionTranslationIntegrationTest, MultipleFunctionsInSameTU) {
     ASSERT_NE(AST, nullptr);
 
     ASTContext& cppCtx = AST->getASTContext();
-    TargetContext& targetCtx = TargetContext::getInstance();
+    TargetContext targetCtx;
     ASTContext& cCtx = targetCtx.getContext();
 
-    cpptoc::PathMapper& mapper = cpptoc::PathMapper::getInstance("/src", "/output");
+    cpptoc::PathMapper mapper(targetCtx, "/src", "/output");
     cpptoc::DeclLocationMapper locMapper(mapper);
     cpptoc::DeclMapper declMapper;
     cpptoc::TypeMapper typeMapper;
     cpptoc::ExprMapper exprMapper;
     cpptoc::StmtMapper stmtMapper;
+    FieldOffsetMapper fieldOffsetMapper;
 
-    auto dispatcher = createDispatcher(mapper, locMapper, declMapper, typeMapper, exprMapper, stmtMapper);
+    auto dispatcher = createDispatcher(mapper, locMapper, declMapper, typeMapper, exprMapper, stmtMapper, fieldOffsetMapper, targetCtx);
 
     TranslationUnitDecl* cppTU = cppCtx.getTranslationUnitDecl();
 

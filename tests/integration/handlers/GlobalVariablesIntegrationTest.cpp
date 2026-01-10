@@ -13,6 +13,7 @@
 
 #include "fixtures/DispatcherTestHelper.h"
 #include "dispatch/FunctionHandler.h"
+#include "dispatch/ParameterHandler.h"
 #include "dispatch/VariableHandler.h"
 #include "dispatch/StatementHandler.h"
 #include "clang/Tooling/Tooling.h"
@@ -36,6 +37,7 @@ protected:
 
         // Register all handlers
         FunctionHandler::registerWith(*pipeline.dispatcher);
+        ParameterHandler::registerWith(*pipeline.dispatcher);
         VariableHandler::registerWith(*pipeline.dispatcher);
         StatementHandler::registerWith(*pipeline.dispatcher);
     }

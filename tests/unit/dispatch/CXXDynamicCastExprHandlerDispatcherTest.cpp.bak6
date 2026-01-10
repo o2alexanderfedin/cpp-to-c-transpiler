@@ -1,0 +1,795 @@
+/**
+ * @file CXXDynamicCastExprHandlerDispatcherTest.cpp
+ * @brief Unit tests for CXXDynamicCastExprHandler dispatcher integration
+ *
+ * Tests verify:
+ * 1. Handler registration with dispatcher
+ * 2. Predicate correctness (matches only CXXDynamicCastExpr)
+ * 3. Successful downcast translation
+ * 4. Failed downcast translation (returns NULL)
+ * 5. Crosscast translation (multiple inheritance)
+ * 6. Upcast translation (to base class)
+ * 7. DynamicCastTranslator integration
+ * 8. ExprMapper integration
+ * 9. Recursive dispatch of subexpression
+ * 10. Complex nested expressions
+ * 11. Integration with conditionals
+ * 12. Runtime call generation correctness
+ *
+ * SOLID Principles:
+ * - Single Responsibility: Tests only CXXDynamicCastExprHandler
+ * - Interface Segregation: Tests public API only
+ * - Dependency Inversion: Tests against dispatcher abstraction
+ */
+
+#include "dispatch/CXXDynamicCastExprHandler.h"
+#include "dispatch/CppToCVisitorDispatcher.h"
+#include "mapping/ExprMapper.h"
+#include "mapping/DeclMapper.h"
+#include "mapping/TypeMapper.h"
+#include "mapping/StmtMapper.h"
+#include "mapping/PathMapper.h"
+#include "mapping/DeclLocationMapper.h"
+#include "TargetContext.h"
+#include "clang/AST/ASTContext.h"
+#include "clang/AST/Decl.h"
+#include "clang/AST/DeclCXX.h"
+#include "clang/AST/Expr.h"
+#include "clang/AST/ExprCXX.h"
+#include "clang/AST/Type.h"
+#include "clang/Frontend/ASTUnit.h"
+#include "clang/Tooling/Tooling.h"
+#include "gtest/gtest.h"
+#include "llvm/Support/Casting.h"
+#include <memory>
+
+using namespace clang;
+using namespace cpptoc;
+
+/**
+ * @class CXXDynamicCastExprHandlerTest
+ * @brief Test fixture for CXXDynamicCastExprHandler tests
+ *
+ * Provides:
+ * - C++ ASTContext with test code
+ * - C ASTContext for target translation
+ * - Dispatcher with registered handlers
+ * - Mappers for verification
+ */
+class CXXDynamicCastExprHandlerTest : public ::testing::Test {
+protected:
+    std::unique_ptr<ASTUnit> cppAST;
+    std::unique_ptr<TargetContext> targetCtx;
+    std::unique_ptr<PathMapper> pathMapper;
+    std::unique_ptr<DeclLocationMapper> locMapper;
+    DeclMapper declMapper;
+    TypeMapper typeMapper;
+    ExprMapper exprMapper;
+    StmtMapper stmtMapper;
+    std::unique_ptr<CppToCVisitorDispatcher> dispatcher;
+
+    /**
+     * @brief Set up test fixture with AST from C++ code
+     * @param cppCode C++ source code to parse
+     */
+    void SetUpWithCode(const std::string& cppCode) {
+        // Parse C++ code with RTTI enabled (-frtti)
+        // This is required for dynamic_cast expressions to work
+        std::vector<std::string> args = {"-std=c++17", "-frtti"};
+        cppAST = tooling::buildASTFromCodeWithArgs(cppCode, args);
+        ASSERT_TRUE(cppAST) << "Failed to parse C++ code";
+
+        // RAII: Create fresh instances for test isolation
+        targetCtx = std::make_unique<TargetContext>();
+        pathMapper = std::make_unique<PathMapper>(*targetCtx, "/src", "/output");
+        locMapper = std::make_unique<DeclLocationMapper>(*pathMapper);
+
+        // Create dispatcher
+        dispatcher = std::make_unique<CppToCVisitorDispatcher>(
+            *pathMapper,
+            *locMapper,
+            declMapper,
+            typeMapper,
+            exprMapper,
+            stmtMapper,
+            *targetCtx
+        );
+
+        // Register CXXDynamicCastExprHandler
+        CXXDynamicCastExprHandler::registerWith(*dispatcher);
+    }
+
+    /**
+     * @brief Find first expression of given type in AST
+     * @tparam T Expression type to find
+     * @return Pointer to expression, or nullptr if not found
+     */
+    template<typename T>
+    const T* findFirstExpr() {
+        const auto& ctx = cppAST->getASTContext();
+        const auto* TU = ctx.getTranslationUnitDecl();
+
+        // Simple traversal - for tests, we assume expression is in first function
+        for (const auto* D : TU->decls()) {
+            if (const auto* FD = dyn_cast<FunctionDecl>(D)) {
+                if (FD->hasBody()) {
+                    const auto* Body = FD->getBody();
+                    // Look for expression in function body
+                    if (const auto* CS = dyn_cast<CompoundStmt>(Body)) {
+                        for (const auto* S : CS->body()) {
+                            // Check if statement contains target expression
+                            if (const auto* DS = dyn_cast<DeclStmt>(S)) {
+                                for (const auto* Decl : DS->decls()) {
+                                    if (const auto* VD = dyn_cast<VarDecl>(Decl)) {
+                                        if (VD->hasInit()) {
+                                            if (const auto* Init = VD->getInit()) {
+                                                // Strip casts to find nested dynamic_cast
+                                                const Expr* E = Init->IgnoreImpCasts();
+                                                if (const auto* Target = dyn_cast<T>(E)) {
+                                                    return Target;
+                                                }
+                                                // Check for dynamic_cast wrapped in static_cast
+                                                if (const auto* Cast = dyn_cast<CXXStaticCastExpr>(E)) {
+                                                    const Expr* SubE = Cast->getSubExpr()->IgnoreImpCasts();
+                                                    if (const auto* Target = dyn_cast<T>(SubE)) {
+                                                        return Target;
+                                                    }
+                                                }
+                                            }
+                                        }
+                                    }
+                                }
+                            } else if (const auto* IfStmt = dyn_cast<clang::IfStmt>(S)) {
+                                // Check condition for dynamic_cast
+                                if (const auto* Cond = IfStmt->getCond()) {
+                                    const Expr* E = Cond->IgnoreImpCasts();
+                                    if (const auto* Target = dyn_cast<T>(E)) {
+                                        return Target;
+                                    }
+                                    // Check for dynamic_cast in condition variable
+                                    if (const auto* VD = IfStmt->getConditionVariable()) {
+                                        if (VD->hasInit()) {
+                                            const Expr* Init = VD->getInit()->IgnoreImpCasts();
+                                            if (const auto* Target = dyn_cast<T>(Init)) {
+                                                return Target;
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+        return nullptr;
+    }
+};
+
+// ============================================================================
+// Test 1: Handler Registration
+// ============================================================================
+
+/**
+ * @test Verify handler registers with dispatcher
+ *
+ * Ensures:
+ * - CXXDynamicCastExprHandler::registerWith() succeeds
+ * - Dispatcher can dispatch CXXDynamicCastExpr after registration
+ */
+TEST_F(CXXDynamicCastExprHandlerTest, HandlerRegistration) {
+    SetUpWithCode(R"(
+        class Base { virtual ~Base() {} };
+        class Derived : public Base {};
+
+        void test() {
+            Base* b = new Derived();
+            Derived* d = dynamic_cast<Derived*>(b);
+        }
+    )");
+
+    const auto* castExpr = findFirstExpr<CXXDynamicCastExpr>();
+    ASSERT_NE(castExpr, nullptr) << "Failed to find CXXDynamicCastExpr in test code";
+
+    // Verify dispatch succeeds
+    bool dispatched = dispatcher->dispatch(
+        cppAST->getASTContext(),
+        targetCtx->getContext(),
+        castExpr
+    );
+
+    EXPECT_TRUE(dispatched) << "Handler failed to dispatch CXXDynamicCastExpr";
+}
+
+// ============================================================================
+// Test 2: Predicate Correctness - Matches Only CXXDynamicCastExpr
+// ============================================================================
+
+/**
+ * @test Verify predicate matches only CXXDynamicCastExpr
+ *
+ * Ensures:
+ * - canHandle() returns true for CXXDynamicCastExpr
+ * - canHandle() returns false for other expression types
+ */
+TEST_F(CXXDynamicCastExprHandlerTest, PredicateMatchesOnlyCXXDynamicCastExpr) {
+    SetUpWithCode(R"(
+        class Base { virtual ~Base() {} };
+        class Derived : public Base {};
+
+        void test() {
+            Base* b = new Derived();
+            Derived* d1 = dynamic_cast<Derived*>(b);         // CXXDynamicCastExpr
+            Derived* d2 = static_cast<Derived*>(b);          // CXXStaticCastExpr
+            Derived* d3 = reinterpret_cast<Derived*>(b);    // CXXReinterpretCastExpr
+            int x = 42;                                      // IntegerLiteral
+        }
+    )");
+
+    const auto* dynamicCast = findFirstExpr<CXXDynamicCastExpr>();
+    ASSERT_NE(dynamicCast, nullptr);
+    EXPECT_TRUE(CXXDynamicCastExprHandler::canHandle(dynamicCast))
+        << "canHandle() should return true for CXXDynamicCastExpr";
+
+    // Test rejection of other cast types
+    const auto& ctx = cppAST->getASTContext();
+    const auto* TU = ctx.getTranslationUnitDecl();
+
+    for (const auto* D : TU->decls()) {
+        if (const auto* FD = dyn_cast<FunctionDecl>(D)) {
+            if (FD->hasBody()) {
+                const auto* Body = dyn_cast<CompoundStmt>(FD->getBody());
+                if (!Body) continue;
+
+                for (const auto* S : Body->body()) {
+                    if (const auto* DS = dyn_cast<DeclStmt>(S)) {
+                        for (const auto* Decl : DS->decls()) {
+                            if (const auto* VD = dyn_cast<VarDecl>(Decl)) {
+                                if (!VD->hasInit()) continue;
+                                const Expr* Init = VD->getInit()->IgnoreImpCasts();
+
+                                // Test CXXStaticCastExpr rejection
+                                if (const auto* staticCast = dyn_cast<CXXStaticCastExpr>(Init)) {
+                                    EXPECT_FALSE(CXXDynamicCastExprHandler::canHandle(staticCast))
+                                        << "canHandle() should reject CXXStaticCastExpr";
+                                }
+
+                                // Test CXXReinterpretCastExpr rejection
+                                if (const auto* reinterpretCast = dyn_cast<CXXReinterpretCastExpr>(Init)) {
+                                    EXPECT_FALSE(CXXDynamicCastExprHandler::canHandle(reinterpretCast))
+                                        << "canHandle() should reject CXXReinterpretCastExpr";
+                                }
+
+                                // Test IntegerLiteral rejection
+                                if (const auto* intLit = dyn_cast<IntegerLiteral>(Init)) {
+                                    EXPECT_FALSE(CXXDynamicCastExprHandler::canHandle(intLit))
+                                        << "canHandle() should reject IntegerLiteral";
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
+
+// ============================================================================
+// Test 3: Successful Downcast Translation
+// ============================================================================
+
+/**
+ * @test Verify successful downcast translation
+ *
+ * C++ Code:
+ *   Base* b = new Derived();
+ *   Derived* d = dynamic_cast<Derived*>(b);
+ *
+ * Expected C (from DynamicCastTranslator):
+ *   struct Derived* d = (struct Derived*)cxx_dynamic_cast(b, &__ti_Base, &__ti_Derived, -1);
+ */
+TEST_F(CXXDynamicCastExprHandlerTest, SuccessfulDowncast) {
+    SetUpWithCode(R"(
+        class Base { virtual ~Base() {} };
+        class Derived : public Base {};
+
+        void test() {
+            Base* b = new Derived();
+            Derived* d = dynamic_cast<Derived*>(b);
+        }
+    )");
+
+    const auto* castExpr = findFirstExpr<CXXDynamicCastExpr>();
+    ASSERT_NE(castExpr, nullptr);
+
+    // Verify cast expression properties
+    EXPECT_EQ(castExpr->getStmtClass(), Stmt::CXXDynamicCastExprClass)
+        << "Expected CXXDynamicCastExprClass";
+    EXPECT_EQ(castExpr->getCastKind(), CK_Dynamic)
+        << "Expected CK_Dynamic cast kind";
+
+    // Dispatch
+    bool dispatched = dispatcher->dispatch(
+        cppAST->getASTContext(),
+        targetCtx->getContext(),
+        castExpr
+    );
+
+    EXPECT_TRUE(dispatched);
+
+    // Verify ExprMapper has translation
+    EXPECT_TRUE(exprMapper.hasCreated(castExpr))
+        << "ExprMapper should contain translation for CXXDynamicCastExpr";
+}
+
+// ============================================================================
+// Test 4: Failed Downcast Translation (Different Hierarchy)
+// ============================================================================
+
+/**
+ * @test Verify failed downcast translation
+ *
+ * C++ Code (different hierarchies):
+ *   Base* b = new Base();
+ *   Derived* d = dynamic_cast<Derived*>(b);  // Returns NULL
+ *
+ * Expected C:
+ *   struct Derived* d = (struct Derived*)cxx_dynamic_cast(b, &__ti_Base, &__ti_Derived, -1);
+ *   // Runtime returns NULL
+ */
+TEST_F(CXXDynamicCastExprHandlerTest, FailedDowncast) {
+    SetUpWithCode(R"(
+        class Base { virtual ~Base() {} };
+        class Derived : public Base {};
+
+        void test() {
+            Base* b = new Base();  // Not a Derived
+            Derived* d = dynamic_cast<Derived*>(b);  // Will return NULL at runtime
+        }
+    )");
+
+    const auto* castExpr = findFirstExpr<CXXDynamicCastExpr>();
+    ASSERT_NE(castExpr, nullptr);
+
+    // Dispatch
+    bool dispatched = dispatcher->dispatch(
+        cppAST->getASTContext(),
+        targetCtx->getContext(),
+        castExpr
+    );
+
+    EXPECT_TRUE(dispatched);
+    EXPECT_TRUE(exprMapper.hasCreated(castExpr))
+        << "Failed downcast should still translate (runtime handles NULL return)";
+}
+
+// ============================================================================
+// Test 5: Crosscast Translation (Multiple Inheritance)
+// ============================================================================
+
+/**
+ * @test Verify crosscast translation with multiple inheritance
+ *
+ * C++ Code:
+ *   class A { virtual ~A() {} };
+ *   class B { virtual ~B() {} };
+ *   class C : public A, public B {};
+ *   C* c = new C();
+ *   B* b = dynamic_cast<B*>((A*)c);
+ *
+ * Expected C:
+ *   struct B* b = (struct B*)cxx_dynamic_cast((struct A*)c, &__ti_A, &__ti_B, offsetof(struct C, B_base));
+ */
+TEST_F(CXXDynamicCastExprHandlerTest, CrosscastMultipleInheritance) {
+    SetUpWithCode(R"(
+        class A { virtual ~A() {} };
+        class B { virtual ~B() {} };
+        class C : public A, public B {};
+
+        void test() {
+            C* c = new C();
+            B* b = dynamic_cast<B*>(static_cast<A*>(c));
+        }
+    )");
+
+    const auto* castExpr = findFirstExpr<CXXDynamicCastExpr>();
+    ASSERT_NE(castExpr, nullptr);
+
+    // Dispatch
+    bool dispatched = dispatcher->dispatch(
+        cppAST->getASTContext(),
+        targetCtx->getContext(),
+        castExpr
+    );
+
+    EXPECT_TRUE(dispatched);
+    EXPECT_TRUE(exprMapper.hasCreated(castExpr));
+}
+
+// ============================================================================
+// Test 6: Upcast Translation (To Base Class)
+// ============================================================================
+
+/**
+ * @test Verify upcast translation
+ *
+ * C++ Code:
+ *   Derived* d = new Derived();
+ *   Base* b = dynamic_cast<Base*>(d);
+ *
+ * Expected C (upcast is safe, but translated for consistency):
+ *   struct Base* b = (struct Base*)cxx_dynamic_cast(d, &__ti_Derived, &__ti_Base, 0);
+ */
+TEST_F(CXXDynamicCastExprHandlerTest, UpcastToBase) {
+    SetUpWithCode(R"(
+        class Base {
+        public:
+            virtual ~Base() {}
+        };
+        class Derived : public Base {
+        public:
+            ~Derived() {}
+        };
+
+        void test() {
+            Derived* d = new Derived();
+            Base* b = dynamic_cast<Base*>(d);
+        }
+    )");
+
+    const auto* castExpr = findFirstExpr<CXXDynamicCastExpr>();
+    ASSERT_NE(castExpr, nullptr);
+
+    // Note: Upcast via dynamic_cast is often optimized to NoOp cast by Clang
+    // because it's always safe. We verify the CXXDynamicCastExpr exists,
+    // but we may not need to dispatch if cast kind is not CK_Dynamic.
+    if (castExpr->getCastKind() != clang::CK_Dynamic) {
+        // Upcast was optimized to NoOp - this is expected behavior
+        // Skip dispatch test for this case
+        GTEST_SKIP() << "Upcast optimized to NoOp cast (expected Clang behavior)";
+        return;
+    }
+
+    // Dispatch
+    bool dispatched = dispatcher->dispatch(
+        cppAST->getASTContext(),
+        targetCtx->getContext(),
+        castExpr
+    );
+
+    EXPECT_TRUE(dispatched);
+    EXPECT_TRUE(exprMapper.hasCreated(castExpr));
+}
+
+// ============================================================================
+// Test 7: DynamicCastTranslator Integration
+// ============================================================================
+
+/**
+ * @test Verify DynamicCastTranslator is called correctly
+ *
+ * Ensures handler delegates to DynamicCastTranslator and uses result.
+ */
+TEST_F(CXXDynamicCastExprHandlerTest, DynamicCastTranslatorIntegration) {
+    SetUpWithCode(R"(
+        class Base { virtual ~Base() {} };
+        class Derived : public Base {};
+
+        void test() {
+            Base* b = new Derived();
+            Derived* d = dynamic_cast<Derived*>(b);
+        }
+    )");
+
+    const auto* castExpr = findFirstExpr<CXXDynamicCastExpr>();
+    ASSERT_NE(castExpr, nullptr);
+
+    // Before dispatch, mapper should not have translation
+    EXPECT_FALSE(exprMapper.hasCreated(castExpr));
+
+    // Dispatch
+    bool dispatched = dispatcher->dispatch(
+        cppAST->getASTContext(),
+        targetCtx->getContext(),
+        castExpr
+    );
+
+    EXPECT_TRUE(dispatched);
+
+    // After dispatch, mapper should have translation
+    EXPECT_TRUE(exprMapper.hasCreated(castExpr));
+}
+
+// ============================================================================
+// Test 8: ExprMapper Integration
+// ============================================================================
+
+/**
+ * @test Verify ExprMapper prevents duplicate translations
+ *
+ * Ensures:
+ * - First dispatch creates translation
+ * - Second dispatch reuses existing translation
+ */
+TEST_F(CXXDynamicCastExprHandlerTest, ExprMapperPreventsDoubleTranslation) {
+    SetUpWithCode(R"(
+        class Base { virtual ~Base() {} };
+        class Derived : public Base {};
+
+        void test() {
+            Base* b = new Derived();
+            Derived* d = dynamic_cast<Derived*>(b);
+        }
+    )");
+
+    const auto* castExpr = findFirstExpr<CXXDynamicCastExpr>();
+    ASSERT_NE(castExpr, nullptr);
+
+    // First dispatch
+    bool dispatched1 = dispatcher->dispatch(
+        cppAST->getASTContext(),
+        targetCtx->getContext(),
+        castExpr
+    );
+
+    EXPECT_TRUE(dispatched1);
+    EXPECT_TRUE(exprMapper.hasCreated(castExpr));
+
+    // Get first result
+    const auto* result1 = exprMapper.getCreated(castExpr);
+    ASSERT_NE(result1, nullptr);
+
+    // Second dispatch (should reuse)
+    bool dispatched2 = dispatcher->dispatch(
+        cppAST->getASTContext(),
+        targetCtx->getContext(),
+        castExpr
+    );
+
+    EXPECT_TRUE(dispatched2);
+
+    // Get second result (should be same)
+    const auto* result2 = exprMapper.getCreated(castExpr);
+    EXPECT_EQ(result1, result2) << "Second dispatch should reuse first translation";
+}
+
+// ============================================================================
+// Test 9: Recursive Dispatch of Subexpression
+// ============================================================================
+
+/**
+ * @test Verify subexpression is dispatched recursively
+ *
+ * C++ Code:
+ *   Derived* d = dynamic_cast<Derived*>(arr[i].getBase());
+ *
+ * Subexpression arr[i].getBase() should be dispatched before dynamic_cast.
+ */
+TEST_F(CXXDynamicCastExprHandlerTest, RecursiveDispatchSubexpression) {
+    SetUpWithCode(R"(
+        class Base { virtual ~Base() {} };
+        class Derived : public Base {};
+
+        struct Holder {
+            Base* getBase() { return nullptr; }
+        };
+
+        void test() {
+            Holder arr[10];
+            int i = 0;
+            Derived* d = dynamic_cast<Derived*>(arr[i].getBase());
+        }
+    )");
+
+    const auto* castExpr = findFirstExpr<CXXDynamicCastExpr>();
+    ASSERT_NE(castExpr, nullptr);
+
+    // Verify subexpression exists
+    const auto* subExpr = castExpr->getSubExpr();
+    ASSERT_NE(subExpr, nullptr) << "CXXDynamicCastExpr should have subexpression";
+
+    // Dispatch
+    bool dispatched = dispatcher->dispatch(
+        cppAST->getASTContext(),
+        targetCtx->getContext(),
+        castExpr
+    );
+
+    EXPECT_TRUE(dispatched);
+    EXPECT_TRUE(exprMapper.hasCreated(castExpr));
+
+    // Verify subexpression was dispatched (may or may not be in mapper depending on handler)
+    // The important part is that handler attempted dispatch
+}
+
+// ============================================================================
+// Test 10: Complex Nested Expression
+// ============================================================================
+
+/**
+ * @test Verify complex nested expression translation
+ *
+ * C++ Code:
+ *   Derived* d = dynamic_cast<Derived*>(ptr ? ptr->getNext() : nullptr);
+ */
+TEST_F(CXXDynamicCastExprHandlerTest, ComplexNestedExpression) {
+    SetUpWithCode(R"(
+        class Base {
+        public:
+            virtual ~Base() {}
+            virtual Base* getNext() { return nullptr; }
+        };
+        class Derived : public Base {};
+
+        void test() {
+            Base* ptr = new Derived();
+            Derived* d = dynamic_cast<Derived*>(ptr ? ptr->getNext() : nullptr);
+        }
+    )");
+
+    const auto* castExpr = findFirstExpr<CXXDynamicCastExpr>();
+    ASSERT_NE(castExpr, nullptr);
+
+    // Verify conditional operator in subexpression
+    const auto* subExpr = castExpr->getSubExpr()->IgnoreImpCasts();
+    EXPECT_NE(subExpr, nullptr);
+
+    // Dispatch
+    bool dispatched = dispatcher->dispatch(
+        cppAST->getASTContext(),
+        targetCtx->getContext(),
+        castExpr
+    );
+
+    EXPECT_TRUE(dispatched);
+    EXPECT_TRUE(exprMapper.hasCreated(castExpr));
+}
+
+// ============================================================================
+// Test 11: Integration with Conditionals
+// ============================================================================
+
+/**
+ * @test Verify dynamic_cast in conditional context
+ *
+ * C++ Code:
+ *   if (Derived* d = dynamic_cast<Derived*>(b)) { ... }
+ */
+TEST_F(CXXDynamicCastExprHandlerTest, IntegrationWithConditional) {
+    SetUpWithCode(R"(
+        class Base { virtual ~Base() {} };
+        class Derived : public Base {};
+
+        void test() {
+            Base* b = new Derived();
+            if (Derived* d = dynamic_cast<Derived*>(b)) {
+                // Use d
+            }
+        }
+    )");
+
+    const auto* castExpr = findFirstExpr<CXXDynamicCastExpr>();
+    ASSERT_NE(castExpr, nullptr);
+
+    // Dispatch
+    bool dispatched = dispatcher->dispatch(
+        cppAST->getASTContext(),
+        targetCtx->getContext(),
+        castExpr
+    );
+
+    EXPECT_TRUE(dispatched);
+    EXPECT_TRUE(exprMapper.hasCreated(castExpr));
+}
+
+// ============================================================================
+// Test 12: Runtime Call Generation Correctness
+// ============================================================================
+
+/**
+ * @test Verify runtime call structure
+ *
+ * Ensures generated call has correct structure:
+ *   (TargetType*)cxx_dynamic_cast(ptr, &__ti_Source, &__ti_Target, offset)
+ */
+TEST_F(CXXDynamicCastExprHandlerTest, RuntimeCallGeneration) {
+    SetUpWithCode(R"(
+        class Base { virtual ~Base() {} };
+        class Derived : public Base {};
+
+        void test() {
+            Base* b = new Derived();
+            Derived* d = dynamic_cast<Derived*>(b);
+        }
+    )");
+
+    const auto* castExpr = findFirstExpr<CXXDynamicCastExpr>();
+    ASSERT_NE(castExpr, nullptr);
+
+    // Dispatch
+    bool dispatched = dispatcher->dispatch(
+        cppAST->getASTContext(),
+        targetCtx->getContext(),
+        castExpr
+    );
+
+    EXPECT_TRUE(dispatched);
+
+    // Verify translation exists
+    ASSERT_TRUE(exprMapper.hasCreated(castExpr));
+    const auto* result = exprMapper.getCreated(castExpr);
+    ASSERT_NE(result, nullptr);
+
+    // For now, we verify structure exists
+    // Full runtime call verification would require examining the CallExpr structure
+    // That's tested in DynamicCastTranslator unit tests
+}
+
+// ============================================================================
+// Test 13: Distinguish from static_cast and reinterpret_cast
+// ============================================================================
+
+/**
+ * @test Verify handler distinguishes dynamic_cast from other casts
+ *
+ * Ensures:
+ * - dynamic_cast<> is handled by CXXDynamicCastExprHandler
+ * - static_cast<> is NOT handled by CXXDynamicCastExprHandler
+ * - reinterpret_cast<> is NOT handled by CXXDynamicCastExprHandler
+ */
+TEST_F(CXXDynamicCastExprHandlerTest, DistinguishFromOtherCasts) {
+    SetUpWithCode(R"(
+        class Base { virtual ~Base() {} };
+        class Derived : public Base {};
+
+        void test() {
+            Base* b = new Derived();
+            Derived* d1 = dynamic_cast<Derived*>(b);         // CXXDynamicCastExpr
+            Derived* d2 = static_cast<Derived*>(b);          // CXXStaticCastExpr
+            Derived* d3 = reinterpret_cast<Derived*>(b);    // CXXReinterpretCastExpr
+        }
+    )");
+
+    const auto* dynamicCast = findFirstExpr<CXXDynamicCastExpr>();
+    ASSERT_NE(dynamicCast, nullptr);
+
+    // Verify dynamic_cast is handled
+    EXPECT_TRUE(CXXDynamicCastExprHandler::canHandle(dynamicCast));
+    EXPECT_EQ(dynamicCast->getCastKind(), CK_Dynamic);
+
+    // Find and verify static_cast is NOT handled
+    const auto& ctx = cppAST->getASTContext();
+    const auto* TU = ctx.getTranslationUnitDecl();
+
+    for (const auto* D : TU->decls()) {
+        if (const auto* FD = dyn_cast<FunctionDecl>(D)) {
+            if (FD->hasBody()) {
+                const auto* Body = dyn_cast<CompoundStmt>(FD->getBody());
+                if (!Body) continue;
+
+                for (const auto* S : Body->body()) {
+                    if (const auto* DS = dyn_cast<DeclStmt>(S)) {
+                        for (const auto* Decl : DS->decls()) {
+                            if (const auto* VD = dyn_cast<VarDecl>(Decl)) {
+                                if (!VD->hasInit()) continue;
+                                const Expr* Init = VD->getInit()->IgnoreImpCasts();
+
+                                if (const auto* staticCast = dyn_cast<CXXStaticCastExpr>(Init)) {
+                                    EXPECT_FALSE(CXXDynamicCastExprHandler::canHandle(staticCast))
+                                        << "static_cast should NOT be handled by CXXDynamicCastExprHandler";
+                                    EXPECT_NE(staticCast->getCastKind(), CK_Dynamic);
+                                }
+
+                                if (const auto* reinterpretCast = dyn_cast<CXXReinterpretCastExpr>(Init)) {
+                                    EXPECT_FALSE(CXXDynamicCastExprHandler::canHandle(reinterpretCast))
+                                        << "reinterpret_cast should NOT be handled by CXXDynamicCastExprHandler";
+                                    EXPECT_NE(reinterpretCast->getCastKind(), CK_Dynamic);
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+}

@@ -1,0 +1,5 @@
+if(EXISTS "/Users/alexanderfedin/Projects/hapyy/hupyy-cpp-to-c/ExceptionHandlingIntegrationTest[1]_tests.cmake")
+  include("/Users/alexanderfedin/Projects/hapyy/hupyy-cpp-to-c/ExceptionHandlingIntegrationTest[1]_tests.cmake")
+else()
+  add_test(ExceptionHandlingIntegrationTest_NOT_BUILT ExceptionHandlingIntegrationTest_NOT_BUILT)
+endif()

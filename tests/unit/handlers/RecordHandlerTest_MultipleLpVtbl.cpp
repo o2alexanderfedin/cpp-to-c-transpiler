@@ -28,7 +28,7 @@
  */
 
 #include "dispatch/RecordHandler.h"
-#include "helpers/UnitTestHelper.h"
+#include "UnitTestHelper.h"
 #include "MultipleInheritanceAnalyzer.h"
 #include "clang/Tooling/Tooling.h"
 #include "clang/AST/DeclCXX.h"

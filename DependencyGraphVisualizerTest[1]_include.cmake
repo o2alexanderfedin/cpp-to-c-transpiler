@@ -1,0 +1,5 @@
+if(EXISTS "/Users/alexanderfedin/Projects/hapyy/hupyy-cpp-to-c/DependencyGraphVisualizerTest[1]_tests.cmake")
+  include("/Users/alexanderfedin/Projects/hapyy/hupyy-cpp-to-c/DependencyGraphVisualizerTest[1]_tests.cmake")
+else()
+  add_test(DependencyGraphVisualizerTest_NOT_BUILT DependencyGraphVisualizerTest_NOT_BUILT)
+endif()

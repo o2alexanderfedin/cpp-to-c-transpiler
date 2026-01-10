@@ -24,6 +24,19 @@
 #include "dispatch/VariableHandler.h"
 #include "dispatch/StatementHandler.h"
 #include "dispatch/TypeHandler.h"
+#include "dispatch/ParameterHandler.h"
+#include "dispatch/CompoundStmtHandler.h"
+#include "dispatch/DeclRefExprHandler.h"
+#include "dispatch/ReturnStmtHandler.h"
+#include "dispatch/LiteralHandler.h"
+#include "dispatch/BinaryOperatorHandler.h"
+#include "dispatch/UnaryOperatorHandler.h"
+#include "dispatch/ImplicitCastExprHandler.h"
+#include "dispatch/CXXStaticCastExprHandler.h"
+#include "dispatch/ConstantExprHandler.h"
+#include "dispatch/ParenExprHandler.h"
+#include "dispatch/ConditionalOperatorHandler.h"
+#include "dispatch/CallExprHandler.h"
 #include "DispatcherTestHelper.h"
 #include "CodeGenerator.h"
 #include "clang/Tooling/Tooling.h"
@@ -62,8 +75,23 @@ protected:
         EnumTranslator::registerWith(*pipeline.dispatcher);
         TypeHandler::registerWith(*pipeline.dispatcher);
         FunctionHandler::registerWith(*pipeline.dispatcher);
+        ParameterHandler::registerWith(*pipeline.dispatcher);
         VariableHandler::registerWith(*pipeline.dispatcher);
         StatementHandler::registerWith(*pipeline.dispatcher);
+        CompoundStmtHandler::registerWith(*pipeline.dispatcher);
+
+        // Register expression and statement handlers for complete translation
+        cpptoc::DeclRefExprHandler::registerWith(*pipeline.dispatcher);
+        cpptoc::ReturnStmtHandler::registerWith(*pipeline.dispatcher);
+        cpptoc::LiteralHandler::registerWith(*pipeline.dispatcher);
+        cpptoc::BinaryOperatorHandler::registerWith(*pipeline.dispatcher);
+        cpptoc::UnaryOperatorHandler::registerWith(*pipeline.dispatcher);
+        cpptoc::ImplicitCastExprHandler::registerWith(*pipeline.dispatcher);
+        cpptoc::CXXStaticCastExprHandler::registerWith(*pipeline.dispatcher);
+        cpptoc::ConstantExprHandler::registerWith(*pipeline.dispatcher);
+        cpptoc::ParenExprHandler::registerWith(*pipeline.dispatcher);
+        cpptoc::ConditionalOperatorHandler::registerWith(*pipeline.dispatcher);
+        cpptoc::CallExprHandler::registerWith(*pipeline.dispatcher);
 
         // Stage 2: Translate all declarations via dispatcher
         for (auto* decl : pipeline.cppAST->getASTContext().getTranslationUnitDecl()->decls()) {
@@ -147,7 +175,7 @@ TEST_F(EnumE2ETest, StateMachineWithScopedEnum) {
 // E2E Test 2: HTTP Status Codes with Type Specification (DISABLED)
 // ============================================================================
 
-TEST_F(EnumE2ETest, DISABLED_HttpStatusCodesWithTypes) {
+TEST_F(EnumE2ETest, HttpStatusCodesWithTypes) {
     std::string cppCode = R"(
         enum class HttpStatus : unsigned short {
             OK = 200,
@@ -186,7 +214,7 @@ TEST_F(EnumE2ETest, DISABLED_HttpStatusCodesWithTypes) {
 // E2E Test 3: Error Handling with Result Pattern (DISABLED)
 // ============================================================================
 
-TEST_F(EnumE2ETest, DISABLED_ErrorHandlingResultPattern) {
+TEST_F(EnumE2ETest, ErrorHandlingResultPattern) {
     std::string cppCode = R"(
         enum class Result : int {
             Success = 0,
@@ -220,7 +248,7 @@ TEST_F(EnumE2ETest, DISABLED_ErrorHandlingResultPattern) {
 // E2E Test 4: Flags/Bitmask Enum (DISABLED)
 // ============================================================================
 
-TEST_F(EnumE2ETest, DISABLED_FlagsBitmaskEnum) {
+TEST_F(EnumE2ETest, FlagsBitmaskEnum) {
     std::string cppCode = R"(
         // Note: Using scoped enum with bitwise operations
         enum class FilePermissions : unsigned int {
@@ -253,7 +281,7 @@ TEST_F(EnumE2ETest, DISABLED_FlagsBitmaskEnum) {
 // E2E Test 5: State Machine with Transitions (DISABLED)
 // ============================================================================
 
-TEST_F(EnumE2ETest, DISABLED_StateMachineTransitions) {
+TEST_F(EnumE2ETest, StateMachineTransitions) {
     std::string cppCode = R"(
         enum class State : unsigned char {
             Idle,
@@ -302,7 +330,7 @@ TEST_F(EnumE2ETest, DISABLED_StateMachineTransitions) {
 // E2E Test 6: Menu System with Nested States (DISABLED)
 // ============================================================================
 
-TEST_F(EnumE2ETest, DISABLED_MenuSystemNestedStates) {
+TEST_F(EnumE2ETest, MenuSystemNestedStates) {
     std::string cppCode = R"(
         enum class MenuState {
             MainMenu,
@@ -342,7 +370,7 @@ TEST_F(EnumE2ETest, DISABLED_MenuSystemNestedStates) {
 // E2E Test 7: Priority Queue with Enum Priorities (DISABLED)
 // ============================================================================
 
-TEST_F(EnumE2ETest, DISABLED_PriorityQueueEnumPriorities) {
+TEST_F(EnumE2ETest, PriorityQueueEnumPriorities) {
     std::string cppCode = R"(
         enum class Priority : int {
             Critical = 10,
@@ -375,7 +403,7 @@ TEST_F(EnumE2ETest, DISABLED_PriorityQueueEnumPriorities) {
 // E2E Test 8: Color Palette with RGB Enums (DISABLED)
 // ============================================================================
 
-TEST_F(EnumE2ETest, DISABLED_ColorPaletteRGBEnums) {
+TEST_F(EnumE2ETest, ColorPaletteRGBEnums) {
     std::string cppCode = R"(
         enum class Color : unsigned char {
             Red = 0,
@@ -413,7 +441,7 @@ TEST_F(EnumE2ETest, DISABLED_ColorPaletteRGBEnums) {
 // E2E Test 9: Game Input Handling (DISABLED)
 // ============================================================================
 
-TEST_F(EnumE2ETest, DISABLED_GameInputHandling) {
+TEST_F(EnumE2ETest, GameInputHandling) {
     std::string cppCode = R"(
         enum class Input : unsigned char {
             None = 0,
@@ -453,7 +481,7 @@ TEST_F(EnumE2ETest, DISABLED_GameInputHandling) {
 // E2E Test 10: Mixed Scoped and Unscoped Enums (DISABLED)
 // ============================================================================
 
-TEST_F(EnumE2ETest, DISABLED_MixedScopedAndUnscopedEnums) {
+TEST_F(EnumE2ETest, MixedScopedAndUnscopedEnums) {
     std::string cppCode = R"(
         // Unscoped enum (C-compatible)
         enum Color {

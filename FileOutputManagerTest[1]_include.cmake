@@ -1,0 +1,5 @@
+if(EXISTS "/Users/alexanderfedin/Projects/hapyy/hupyy-cpp-to-c/FileOutputManagerTest[1]_tests.cmake")
+  include("/Users/alexanderfedin/Projects/hapyy/hupyy-cpp-to-c/FileOutputManagerTest[1]_tests.cmake")
+else()
+  add_test(FileOutputManagerTest_NOT_BUILT FileOutputManagerTest_NOT_BUILT)
+endif()

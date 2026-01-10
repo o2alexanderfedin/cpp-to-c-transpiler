@@ -1,0 +1,5 @@
+if(EXISTS "/Users/alexanderfedin/Projects/hapyy/hupyy-cpp-to-c/EnumE2ETest[1]_tests.cmake")
+  include("/Users/alexanderfedin/Projects/hapyy/hupyy-cpp-to-c/EnumE2ETest[1]_tests.cmake")
+else()
+  add_test(EnumE2ETest_NOT_BUILT EnumE2ETest_NOT_BUILT)
+endif()

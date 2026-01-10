@@ -1,0 +1,5 @@
+if(EXISTS "/Users/alexanderfedin/Projects/hapyy/hupyy-cpp-to-c/ExpressionHandlerBaseCastTest[1]_tests.cmake")
+  include("/Users/alexanderfedin/Projects/hapyy/hupyy-cpp-to-c/ExpressionHandlerBaseCastTest[1]_tests.cmake")
+else()
+  add_test(ExpressionHandlerBaseCastTest_NOT_BUILT ExpressionHandlerBaseCastTest_NOT_BUILT)
+endif()

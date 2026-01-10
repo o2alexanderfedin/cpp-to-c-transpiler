@@ -4,7 +4,9 @@
  */
 
 #include "dispatch/BinaryOperatorHandler.h"
+#include "dispatch/TypeHandler.h"
 #include "mapping/ExprMapper.h"
+#include "SourceLocationMapper.h"
 #include "clang/AST/Expr.h"
 #include "llvm/Support/Casting.h"
 #include "llvm/Support/raw_ostream.h"
@@ -59,6 +61,7 @@ void BinaryOperatorHandler::handleBinaryOperator(
 
     if (!lhsHandled) {
         llvm::errs() << "[BinaryOperatorHandler] ERROR: LHS not handled by any expression handler\n";
+        llvm::errs() << "  LHS expression type: " << cppLHS->getStmtClassName() << "\n";
         assert(false && "LHS must be handled");
     }
 
@@ -72,6 +75,7 @@ void BinaryOperatorHandler::handleBinaryOperator(
 
     if (!rhsHandled) {
         llvm::errs() << "[BinaryOperatorHandler] ERROR: RHS not handled by any expression handler\n";
+        llvm::errs() << "  RHS expression type: " << cppRHS->getStmtClassName() << "\n";
         assert(false && "RHS must be handled");
     }
 
@@ -81,16 +85,23 @@ void BinaryOperatorHandler::handleBinaryOperator(
 
     llvm::outs() << "[BinaryOperatorHandler] Both operands translated successfully\n";
 
-    // Create C BinaryOperator with translated operands
+    // Get source location for SourceLocation initialization
+    SourceLocationMapper& locMapper = disp.getTargetContext().getLocationMapper();
+    clang::SourceLocation targetLoc = locMapper.getStartOfFile("");
+
+    // Translate type from C++ to C ASTContext
+    clang::QualType cType = TypeHandler::translateType(cppBinOp->getType(), cppASTContext, cASTContext);
+
+    // Create C BinaryOperator with translated operands and type
     clang::BinaryOperator* cBinOp = clang::BinaryOperator::Create(
         cASTContext,
         cLHS,
         cRHS,
         cppBinOp->getOpcode(),
-        cppBinOp->getType(),  // May need type translation in future
+        cType,  // Use translated C type
         cppBinOp->getValueKind(),
         cppBinOp->getObjectKind(),
-        clang::SourceLocation(),
+        targetLoc,
         clang::FPOptionsOverride()
     );
 

@@ -175,6 +175,7 @@ public:
      * @param MD CXXMethodDecl with explicit object parameter
      * @param Ctx Clang AST context
      * @param C_TU C translation unit for generated declarations
+     * @param targetLoc Source location for generated AST nodes
      * @return Vector of FunctionDecls (one per cv-ref combination), empty if not explicit object method
      *
      * This method is called when CppToCVisitor encounters a method with
@@ -198,12 +199,14 @@ public:
     std::vector<clang::FunctionDecl*> transformMethod(
         clang::CXXMethodDecl* MD,
         clang::ASTContext& Ctx,
-        clang::TranslationUnitDecl* C_TU);
+        clang::TranslationUnitDecl* C_TU,
+        clang::SourceLocation targetLoc);
 
     /**
      * @brief Transform call to method with explicit object parameter
      * @param Call CallExpr calling explicit object member function
      * @param Ctx Clang AST context
+     * @param targetLoc Source location for generated AST nodes
      * @return CallExpr to appropriate C overload, or nullptr if not applicable
      *
      * This method is called when CppToCVisitor encounters a call to a method
@@ -225,7 +228,8 @@ public:
      */
     clang::CallExpr* transformCall(
         clang::CallExpr* Call,
-        clang::ASTContext& Ctx);
+        clang::ASTContext& Ctx,
+        clang::SourceLocation targetLoc);
 
 private:
     clang::CNodeBuilder& m_builder;
@@ -249,6 +253,7 @@ private:
      * @param Quals Qualifier set for this overload
      * @param Ctx AST context
      * @param C_TU C translation unit
+     * @param targetLoc Source location for generated AST nodes
      * @return FunctionDecl for the C overload
      *
      * Creates function with signature:
@@ -260,7 +265,8 @@ private:
         clang::CXXMethodDecl* MD,
         const QualifierSet& Quals,
         clang::ASTContext& Ctx,
-        clang::TranslationUnitDecl* C_TU);
+        clang::TranslationUnitDecl* C_TU,
+        clang::SourceLocation targetLoc);
 
     /**
      * @brief Analyze call site to determine object qualifiers

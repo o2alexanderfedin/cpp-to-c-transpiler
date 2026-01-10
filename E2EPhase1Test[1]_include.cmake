@@ -1,0 +1,5 @@
+if(EXISTS "/Users/alexanderfedin/Projects/hapyy/hupyy-cpp-to-c/E2EPhase1Test[1]_tests.cmake")
+  include("/Users/alexanderfedin/Projects/hapyy/hupyy-cpp-to-c/E2EPhase1Test[1]_tests.cmake")
+else()
+  add_test(E2EPhase1Test_NOT_BUILT E2EPhase1Test_NOT_BUILT)
+endif()

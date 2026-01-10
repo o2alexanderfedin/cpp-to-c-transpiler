@@ -413,7 +413,7 @@ void test_InjectBeforeEarlyReturn() {
     CNodeBuilder builder(Ctx);
     cpptoc::FileOriginTracker tracker(Ctx.getSourceManager());
     tracker.addUserHeaderPath("<stdin>");
-    TargetContext& targetCtx = TargetContext::getInstance();
+    TargetContext targetCtx;
     clang::TranslationUnitDecl *C_TU = targetCtx.createTranslationUnit();
     CppToCVisitor visitor(Ctx, builder, targetCtx, tracker, nullptr);
     visitor.TraverseDecl(Ctx.getTranslationUnitDecl());
@@ -459,7 +459,7 @@ void test_MaintainLIFOOrder() {
     CNodeBuilder builder(Ctx);
     cpptoc::FileOriginTracker tracker(Ctx.getSourceManager());
     tracker.addUserHeaderPath("<stdin>");
-    TargetContext& targetCtx = TargetContext::getInstance();
+    TargetContext targetCtx;
     clang::TranslationUnitDecl *C_TU = targetCtx.createTranslationUnit();
     CppToCVisitor visitor(Ctx, builder, targetCtx, tracker, nullptr);
     visitor.TraverseDecl(Ctx.getTranslationUnitDecl());
@@ -511,7 +511,7 @@ void test_MultipleReturnsWithDifferentSets() {
     CNodeBuilder builder(Ctx);
     cpptoc::FileOriginTracker tracker(Ctx.getSourceManager());
     tracker.addUserHeaderPath("<stdin>");
-    TargetContext& targetCtx = TargetContext::getInstance();
+    TargetContext targetCtx;
     clang::TranslationUnitDecl *C_TU = targetCtx.createTranslationUnit();
     CppToCVisitor visitor(Ctx, builder, targetCtx, tracker, nullptr);
     visitor.TraverseDecl(Ctx.getTranslationUnitDecl());
@@ -549,7 +549,7 @@ void test_NoDuplicateDestructorCalls() {
     CNodeBuilder builder(Ctx);
     cpptoc::FileOriginTracker tracker(Ctx.getSourceManager());
     tracker.addUserHeaderPath("<stdin>");
-    TargetContext& targetCtx = TargetContext::getInstance();
+    TargetContext targetCtx;
     clang::TranslationUnitDecl *C_TU = targetCtx.createTranslationUnit();
     CppToCVisitor visitor(Ctx, builder, targetCtx, tracker, nullptr);
     visitor.TraverseDecl(Ctx.getTranslationUnitDecl());
@@ -635,7 +635,7 @@ void test_EarlyReturnPlusNormalExit() {
     CNodeBuilder builder(Ctx);
     cpptoc::FileOriginTracker tracker(Ctx.getSourceManager());
     tracker.addUserHeaderPath("<stdin>");
-    TargetContext& targetCtx = TargetContext::getInstance();
+    TargetContext targetCtx;
     clang::TranslationUnitDecl *C_TU = targetCtx.createTranslationUnit();
     CppToCVisitor visitor(Ctx, builder, targetCtx, tracker, nullptr);
     visitor.TraverseDecl(Ctx.getTranslationUnitDecl());
@@ -713,7 +713,7 @@ void test_ReturnWithValueAndObjects() {
     CNodeBuilder builder(Ctx);
     cpptoc::FileOriginTracker tracker(Ctx.getSourceManager());
     tracker.addUserHeaderPath("<stdin>");
-    TargetContext& targetCtx = TargetContext::getInstance();
+    TargetContext targetCtx;
     clang::TranslationUnitDecl *C_TU = targetCtx.createTranslationUnit();
     CppToCVisitor visitor(Ctx, builder, targetCtx, tracker, nullptr);
     visitor.TraverseDecl(Ctx.getTranslationUnitDecl());

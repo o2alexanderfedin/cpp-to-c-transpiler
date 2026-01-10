@@ -1,0 +1,93 @@
+/**
+ * @file TryStmtHandler.cpp
+ * @brief Implementation of TryStmtHandler dispatcher pattern
+ */
+
+// CRITICAL: Include CppToCVisitorDispatcher BEFORE any headers that have it as forward declaration
+// This ensures the full definition is always used
+#include "dispatch/CppToCVisitorDispatcher.h"
+
+// Now safe to include other headers
+#include "dispatch/TryStmtHandler.h"
+#include "TryCatchTransformer.h"
+#include "mapping/StmtMapper.h"
+#include "llvm/Support/Casting.h"
+#include "llvm/Support/raw_ostream.h"
+#include <cassert>
+
+namespace cpptoc {
+
+void TryStmtHandler::registerWith(::CppToCVisitorDispatcher& dispatcher) {
+    // Cast to StmtPredicate and StmtVisitor to match dispatcher interface
+    dispatcher.addHandler(
+        static_cast<::CppToCVisitorDispatcher::StmtPredicate>(&TryStmtHandler::canHandle),
+        static_cast<::CppToCVisitorDispatcher::StmtVisitor>(&TryStmtHandler::handleTryStmt)
+    );
+}
+
+bool TryStmtHandler::canHandle(const clang::Stmt* S) {
+    assert(S && "Statement must not be null");
+
+    // Use exact type matching with getStmtClass
+    return S->getStmtClass() == clang::Stmt::CXXTryStmtClass;
+}
+
+void TryStmtHandler::handleTryStmt(
+    const ::CppToCVisitorDispatcher& disp,
+    const clang::ASTContext& cppASTContext,
+    clang::ASTContext& cASTContext,
+    const clang::Stmt* S
+) {
+    assert(S && "Statement must not be null");
+    assert(canHandle(S) && "Statement must be CXXTryStmt");
+
+    const auto* tryStmt = llvm::cast<clang::CXXTryStmt>(S);
+
+    llvm::outs() << "[TryStmtHandler] Processing CXXTryStmt with "
+                 << tryStmt->getNumHandlers() << " catch handlers\n";
+
+    // Check if already processed
+    cpptoc::StmtMapper& stmtMapper = disp.getStmtMapper();
+    if (stmtMapper.hasCreated(tryStmt)) {
+        llvm::outs() << "[TryStmtHandler] CXXTryStmt already translated, skipping\n";
+        return;
+    }
+
+    // Phase 6: Delegate to TryCatchTransformer service class (AST-based)
+
+    // Generate unique frame variable and action table names based on source location
+    // Using source location ensures deterministic, unique names across compilations
+    clang::SourceLocation loc = tryStmt->getBeginLoc();
+    const clang::SourceManager& srcMgr = cppASTContext.getSourceManager();
+
+    unsigned line = srcMgr.getSpellingLineNumber(loc);
+    unsigned col = srcMgr.getSpellingColumnNumber(loc);
+
+    std::string frameVarName = "frame_L" + std::to_string(line) + "_C" + std::to_string(col);
+    std::string actionsTableName = "actions_L" + std::to_string(line) + "_C" + std::to_string(col);
+
+    // Phase 6: Use AST-based version of transformTryCatch
+    clang::TryCatchTransformer transformer;
+    clang::CompoundStmt* tryCatchStmt = transformer.transformTryCatch(
+        tryStmt,
+        frameVarName,
+        actionsTableName,
+        disp,        // Pass dispatcher for recursive statement translation
+        cppASTContext,
+        cASTContext
+    );
+
+    if (!tryCatchStmt) {
+        llvm::errs() << "[TryStmtHandler] ERROR: transformTryCatch returned null\n";
+        return;
+    }
+
+    llvm::outs() << "[TryStmtHandler] Generated try-catch AST successfully\n";
+
+    // Phase 6: Store C Stmt* in StmtMapper
+    stmtMapper.setCreated(tryStmt, tryCatchStmt);
+
+    llvm::outs() << "[TryStmtHandler] CXXTryStmt translation complete (AST-based)\n";
+}
+
+} // namespace cpptoc

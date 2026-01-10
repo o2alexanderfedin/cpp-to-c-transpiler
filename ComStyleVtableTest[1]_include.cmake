@@ -1,0 +1,5 @@
+if(EXISTS "/Users/alexanderfedin/Projects/hapyy/hupyy-cpp-to-c/ComStyleVtableTest[1]_tests.cmake")
+  include("/Users/alexanderfedin/Projects/hapyy/hupyy-cpp-to-c/ComStyleVtableTest[1]_tests.cmake")
+else()
+  add_test(ComStyleVtableTest_NOT_BUILT ComStyleVtableTest_NOT_BUILT)
+endif()

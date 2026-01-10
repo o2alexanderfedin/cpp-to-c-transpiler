@@ -152,7 +152,11 @@ void StaticMethodHandler::handleStaticMethod(
     }
 
     // Get target path for this C++ source file
-    std::string targetPath = disp.getTargetPath(cppASTContext, D);
+    // Use current path if set by TranslationUnitHandler, otherwise fall back to getTargetPath
+    std::string targetPath = disp.getCurrentTargetPath();
+    if (targetPath.empty()) {
+        targetPath = disp.getTargetPath(cppASTContext, cppMethod);
+    }
 
     // Get or create C TranslationUnit for this target file
     cpptoc::PathMapper& pathMapper = disp.getPathMapper();

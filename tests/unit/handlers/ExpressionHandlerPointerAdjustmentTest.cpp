@@ -32,7 +32,7 @@
  * - Downcast from non-primary: (Derived*)((char*)ptr - offset)
  */
 
-#include "helpers/UnitTestHelper.h"
+#include "UnitTestHelper.h"
 #include "CNodeBuilder.h"
 #include "clang/Tooling/Tooling.h"
 #include "clang/AST/RecursiveASTVisitor.h"

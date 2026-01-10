@@ -1,0 +1,5 @@
+if(EXISTS "/Users/alexanderfedin/Projects/hapyy/hupyy-cpp-to-c/PromiseTranslatorTest_GTest[1]_tests.cmake")
+  include("/Users/alexanderfedin/Projects/hapyy/hupyy-cpp-to-c/PromiseTranslatorTest_GTest[1]_tests.cmake")
+else()
+  add_test(PromiseTranslatorTest_GTest_NOT_BUILT PromiseTranslatorTest_GTest_NOT_BUILT)
+endif()

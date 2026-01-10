@@ -124,6 +124,35 @@ public:
      */
     static void registerWith(CppToCVisitorDispatcher& dispatcher);
 
+    /**
+     * @brief Reset static state - clear translated records cache
+     *
+     * CRITICAL: RecordHandler maintains a static set of translated records (USRs).
+     * Must call this between tests to prevent state pollution in test suite runs.
+     * This fixes the issue where tests pass individually but fail in full suite.
+     */
+    static void reset();
+
+    /**
+     * @brief Check if a class needs dual layout generation
+     * @param cxxRecord C++ class declaration
+     * @return true if class needs both ClassName and ClassName__base layouts
+     *
+     * A class needs dual layout if:
+     * 1. It has virtual bases (direct or indirect), OR
+     * 2. It is used as a base in a virtual hierarchy
+     *
+     * Per Itanium C++ ABI, classes with virtual bases require:
+     * - ClassName__base: Base-subobject layout (excludes virtual base fields)
+     * - ClassName: Complete-object layout (includes virtual base fields)
+     *
+     * Uses VirtualInheritanceAnalyzer for detection.
+     *
+     * This method is public so ConstructorHandler can use it to determine
+     * if constructor C1/C2 variants are needed.
+     */
+    static bool needsDualLayout(const clang::CXXRecordDecl* cxxRecord);
+
 private:
     /**
      * @brief Predicate: Check if declaration is EXACTLY RecordDecl or CXXRecordDecl
@@ -230,6 +259,107 @@ private:
         const clang::ASTContext& cppASTContext,
         clang::ASTContext& cASTContext,
         const std::string& outerName
+    );
+
+    /**
+     * @brief Generate base-subobject layout (ClassName__base)
+     * @param cxxRecord C++ class declaration
+     * @param cppASTContext Source C++ ASTContext
+     * @param cASTContext Target C ASTContext
+     * @param disp Dispatcher for accessing mappers and handlers
+     * @return Created C RecordDecl for base-subobject layout, or nullptr on failure
+     *
+     * Generates ClassName__base struct per Itanium C++ ABI:
+     * 1. Create struct with "__base" suffix
+     * 2. Include vbptr if class has virtual bases (using VptrInjector)
+     * 3. Include non-virtual base class fields
+     * 4. Include own fields
+     * 5. EXCLUDE virtual base fields (those belong in complete-object layout)
+     *
+     * Field ordering follows Itanium ABI:
+     * - vbptr (if needed)
+     * - Non-virtual base fields
+     * - Own fields
+     *
+     * Used when class is a base-subobject within another class.
+     */
+    static clang::RecordDecl* generateBaseSubobjectLayout(
+        const clang::CXXRecordDecl* cxxRecord,
+        const clang::ASTContext& cppASTContext,
+        clang::ASTContext& cASTContext,
+        const CppToCVisitorDispatcher& disp
+    );
+
+    /**
+     * @brief Generate complete-object layout (ClassName)
+     * @param cxxRecord C++ class declaration
+     * @param cppASTContext Source C++ ASTContext
+     * @param cASTContext Target C ASTContext
+     * @param disp Dispatcher for accessing mappers and handlers
+     * @return Created C RecordDecl for complete-object layout, or nullptr on failure
+     *
+     * Generates ClassName struct per Itanium C++ ABI:
+     * 1. Create struct with normal name (no suffix)
+     * 2. Include all base class fields (virtual and non-virtual)
+     * 3. Include own fields
+     * 4. Include virtual base fields AT END
+     *
+     * Field ordering follows Itanium ABI:
+     * - Non-virtual base fields
+     * - Own fields
+     * - Virtual base fields (at end)
+     *
+     * Used when class is the most-derived object being constructed.
+     */
+    static clang::RecordDecl* generateCompleteObjectLayout(
+        const clang::CXXRecordDecl* cxxRecord,
+        const clang::ASTContext& cppASTContext,
+        clang::ASTContext& cASTContext,
+        const CppToCVisitorDispatcher& disp
+    );
+
+    /**
+     * @brief Generate implicit C1 (complete-object) constructor for class without explicit constructors
+     * @param cxxRecord C++ class declaration
+     * @param cppASTContext Source C++ ASTContext
+     * @param cASTContext Target C ASTContext
+     * @param disp Dispatcher for accessing mappers and handlers
+     *
+     * Generates default C1 constructor when class has virtual inheritance but no explicit constructors.
+     * C1 constructor is responsible for:
+     * 1. Initializing all virtual bases (most-derived class responsibility)
+     * 2. Calling C2 (base-subobject) constructors for non-virtual bases
+     * 3. Initializing own member fields (if non-POD)
+     *
+     * Generated function signature: void ClassName__ctor__void_C1(struct ClassName* this)
+     */
+    static void generateImplicitC1Constructor(
+        const clang::CXXRecordDecl* cxxRecord,
+        const clang::ASTContext& cppASTContext,
+        clang::ASTContext& cASTContext,
+        const CppToCVisitorDispatcher& disp
+    );
+
+    /**
+     * @brief Generate implicit C2 (base-subobject) constructor for class without explicit constructors
+     * @param cxxRecord C++ class declaration
+     * @param cppASTContext Source C++ ASTContext
+     * @param cASTContext Target C ASTContext
+     * @param disp Dispatcher for accessing mappers and handlers
+     *
+     * Generates default C2 constructor when class has virtual inheritance but no explicit constructors.
+     * C2 constructor is responsible for:
+     * 1. Skipping virtual base initialization (parent's C1 handles it)
+     * 2. Calling C2 (base-subobject) constructors for non-virtual bases
+     * 3. Initializing own member fields (if non-POD)
+     *
+     * Generated function signature: void ClassName__ctor__void_C2(struct ClassName__base* this)
+     */
+    static void generateImplicitC2Constructor(
+        const clang::CXXRecordDecl* cxxRecord,
+        const clang::ASTContext& cppASTContext,
+        clang::ASTContext& cASTContext,
+        const CppToCVisitorDispatcher& disp
     );
 
     // Phase 3: Removed getMangledName() declaration

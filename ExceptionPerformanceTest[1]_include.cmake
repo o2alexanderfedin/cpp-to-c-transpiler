@@ -1,0 +1,5 @@
+if(EXISTS "/Users/alexanderfedin/Projects/hapyy/hupyy-cpp-to-c/ExceptionPerformanceTest[1]_tests.cmake")
+  include("/Users/alexanderfedin/Projects/hapyy/hupyy-cpp-to-c/ExceptionPerformanceTest[1]_tests.cmake")
+else()
+  add_test(ExceptionPerformanceTest_NOT_BUILT ExceptionPerformanceTest_NOT_BUILT)
+endif()

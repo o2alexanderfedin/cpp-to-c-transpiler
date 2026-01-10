@@ -1,0 +1,5 @@
+if(EXISTS "/Users/alexanderfedin/Projects/hapyy/hupyy-cpp-to-c/ExternCManglingTest[1]_tests.cmake")
+  include("/Users/alexanderfedin/Projects/hapyy/hupyy-cpp-to-c/ExternCManglingTest[1]_tests.cmake")
+else()
+  add_test(ExternCManglingTest_NOT_BUILT ExternCManglingTest_NOT_BUILT)
+endif()

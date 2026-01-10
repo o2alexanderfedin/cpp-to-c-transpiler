@@ -98,6 +98,9 @@ TEST_F(DeclContextTest, FunctionDeclAppearsInDecls) {
 }
 
 // Test 2: Test creating FunctionDecl with one TU and adding to a different TU
+// LLVM 21 BEHAVIOR: This now SUCCEEDS (different from older LLVM versions)
+// Documents that addDecl() does NOT validate parent-child consistency
+// WARNING: This means transpiler must be careful to create Decls with correct parent!
 TEST_F(DeclContextTest, CrossTUAddDecl) {
     const char *code = "void existingFunc() {}";
 
@@ -137,18 +140,11 @@ TEST_F(DeclContextTest, CrossTUAddDecl) {
     llvm::outs() << "GlobalTU as DeclContext*:    " << (void*)static_cast<DeclContext*>(GlobalTU) << "\n";
     llvm::outs() << "PerFileTU as DeclContext*:   " << (void*)static_cast<DeclContext*>(PerFileTU) << "\n\n";
 
-    // Try to add to PerFileTU (WRONG - DeclContext doesn't match)
-    llvm::outs() << "Calling PerFileTU->addDecl(CrossFunc) - THIS IS WRONG!\n";
-    // Note: In debug builds, this will trigger an assertion!
-    // In release builds, it will silently fail to appear in iteration
-
-    bool assertionTriggered = false;
-    try {
-        PerFileTU->addDecl(CrossFunc);
-    } catch (...) {
-        assertionTriggered = true;
-        llvm::outs() << "Assertion triggered (expected in debug builds)!\n";
-    }
+    // Try to add to PerFileTU - different parent
+    // LLVM 21: This SUCCEEDS and Decl appears in iteration!
+    // Older LLVM: Would assert in debug builds
+    llvm::outs() << "Calling PerFileTU->addDecl(CrossFunc) - adding to different parent\n";
+    PerFileTU->addDecl(CrossFunc);
 
     // Check if it appears
     int count = 0;
@@ -160,12 +156,17 @@ TEST_F(DeclContextTest, CrossTUAddDecl) {
         }
     }
     llvm::outs() << "PerFileTU->decls() count: " << count << "\n";
-    llvm::outs() << "CrossFunc found? " << (found ? "YES (unexpected!)" : "NO (expected)") << "\n\n";
+    llvm::outs() << "CrossFunc found? " << (found ? "YES" : "NO") << "\n";
+    llvm::outs() << "CrossFunc->getDeclContext() still points to: " << (void*)CrossFunc->getDeclContext() << "\n";
+    llvm::outs() << "GlobalTU? " << (CrossFunc->getDeclContext() == static_cast<DeclContext*>(GlobalTU) ? "YES" : "NO") << "\n";
+    llvm::outs() << "PerFileTU? " << (CrossFunc->getDeclContext() == static_cast<DeclContext*>(PerFileTU) ? "YES" : "NO") << "\n\n";
 
-    // The function should NOT appear because DeclContext doesn't match
-    if (!assertionTriggered) {
-        ASSERT_FALSE(found) << "Function created with different DeclContext should not appear in iteration";
-    }
+    // LLVM 21: Decl appears in PerFileTU iteration but getDeclContext() still returns GlobalTU
+    // This is INCONSISTENT state - Decl is in two parent-child relationships!
+    // LESSON: Transpiler must create Decls with correct parent from the start
+    ASSERT_TRUE(found) << "LLVM 21: Decl appears in iteration even with different parent";
+    ASSERT_EQ(CrossFunc->getDeclContext(), static_cast<DeclContext*>(GlobalTU))
+        << "LLVM 21: getDeclContext() still returns original parent (inconsistent!)";
 }
 
 // Test 3: Correct way - create with PerFileTU, add to PerFileTU

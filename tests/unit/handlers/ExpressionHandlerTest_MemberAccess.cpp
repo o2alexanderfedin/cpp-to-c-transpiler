@@ -22,7 +22,7 @@
  * 12. Nested implicit access in expression ((field + 1) * 2)
  */
 
-#include "helpers/UnitTestHelper.h"
+#include "UnitTestHelper.h"
 #include "clang/Tooling/Tooling.h"
 #include "clang/AST/RecursiveASTVisitor.h"
 #include <gtest/gtest.h>
