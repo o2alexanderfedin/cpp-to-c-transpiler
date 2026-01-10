@@ -55,6 +55,15 @@ void ConstructorHandler::handleConstructor(
 
     std::string className = parentClass->getNameAsString();
 
+    // Debug: Log constructor being processed
+    std::string ctorName = cpptoc::mangle_constructor(ctor);
+    bool isImplicit = ctor->isImplicit();
+    bool isDefaultConstructor = ctor->isDefaultConstructor();
+    llvm::outs() << "[ConstructorHandler] Processing constructor: " << ctorName
+                 << " (implicit=" << (isImplicit ? "yes" : "no")
+                 << ", default=" << (isDefaultConstructor ? "yes" : "no")
+                 << ")\n";
+
     // Check if class hierarchy has virtual bases (Task 6)
     VirtualInheritanceAnalyzer viAnalyzer;
     viAnalyzer.analyzeClass(parentClass);
@@ -1417,6 +1426,8 @@ void ConstructorHandler::generateC1Constructor(
     // Generate C1 constructor name: ClassName_ctor_C1
     std::string c1Name = cpptoc::mangle_constructor(ctor) + "_C1";
 
+    llvm::outs() << "[ConstructorHandler] generateC1Constructor: Starting generation for " << c1Name << "\n";
+
     // Get target path and source location
     std::string targetPath = disp.getCurrentTargetPath();
     if (targetPath.empty()) {
@@ -1481,6 +1492,28 @@ void ConstructorHandler::generateC1Constructor(
     // Add original constructor parameters
     std::vector<clang::ParmVarDecl*> ctorParams = translateParameters(ctor, disp, cppASTContext, cASTContext);
     allParams.insert(allParams.end(), ctorParams.begin(), ctorParams.end());
+
+    // CRITICAL FIX: Create function declaration FIRST before building body
+    // This breaks the circular dependency where CompoundStmtHandler tries to find
+    // the C1 constructor while we're still building it
+    llvm::outs() << "[ConstructorHandler] generateC1Constructor: Creating function declaration BEFORE body\n";
+
+    clang::CNodeBuilder builder(cASTContext);
+    clang::FunctionDecl* c1Func = builder.funcDecl(
+        c1Name,
+        cASTContext.VoidTy,
+        allParams,
+        nullptr  // No body yet
+    );
+
+    assert(c1Func && "Failed to create C1 FunctionDecl");
+
+    // Add function to TU immediately so it can be found during body generation
+    c1Func->setDeclContext(TU);
+    TU->addDecl(c1Func);
+    pathMapper.setNodeLocation(c1Func, targetPath);
+
+    llvm::outs() << "[ConstructorHandler] generateC1Constructor: Function declaration added to TU, now building body\n";
 
     // Build constructor body
     std::vector<clang::Stmt*> bodyStmts;
@@ -1628,25 +1661,10 @@ void ConstructorHandler::generateC1Constructor(
         targetLoc
     );
 
-    // Create C function
-    clang::CNodeBuilder builder(cASTContext);
-    clang::FunctionDecl* c1Func = builder.funcDecl(
-        c1Name,
-        cASTContext.VoidTy,
-        allParams,
-        body
-    );
+    // Set the body on the function declaration
+    c1Func->setBody(body);
 
-    assert(c1Func && "Failed to create C1 FunctionDecl");
-
-    // Register mapping (create unique key for C1 variant)
-    // Note: We can't use the same key as the original constructor
-    // For now, just add to TU without mapping
-    c1Func->setDeclContext(TU);
-    TU->addDecl(c1Func);
-    pathMapper.setNodeLocation(c1Func, targetPath);
-
-    llvm::outs() << "[ConstructorHandler] Generated C1 constructor: " << c1Name << "\n";
+    llvm::outs() << "[ConstructorHandler] generateC1Constructor: Successfully generated C1 constructor: " << c1Name << "\n";
 }
 
 void ConstructorHandler::generateC2Constructor(
@@ -1730,6 +1748,28 @@ void ConstructorHandler::generateC2Constructor(
     // Add original constructor parameters
     std::vector<clang::ParmVarDecl*> ctorParams = translateParameters(ctor, disp, cppASTContext, cASTContext);
     allParams.insert(allParams.end(), ctorParams.begin(), ctorParams.end());
+
+    // CRITICAL FIX: Create function declaration FIRST before building body
+    // This breaks the circular dependency where CompoundStmtHandler tries to find
+    // the C2 constructor while we're still building it
+    llvm::outs() << "[ConstructorHandler] generateC2Constructor: Creating function declaration BEFORE body\n";
+
+    clang::CNodeBuilder builder(cASTContext);
+    clang::FunctionDecl* c2Func = builder.funcDecl(
+        c2Name,
+        cASTContext.VoidTy,
+        allParams,
+        nullptr  // No body yet
+    );
+
+    assert(c2Func && "Failed to create C2 FunctionDecl");
+
+    // Add function to TU immediately so it can be found during body generation
+    c2Func->setDeclContext(TU);
+    TU->addDecl(c2Func);
+    pathMapper.setNodeLocation(c2Func, targetPath);
+
+    llvm::outs() << "[ConstructorHandler] generateC2Constructor: Function declaration added to TU, now building body\n";
 
     // Build constructor body
     std::vector<clang::Stmt*> bodyStmts;
@@ -1823,23 +1863,8 @@ void ConstructorHandler::generateC2Constructor(
         targetLoc
     );
 
-    // Create C function
-    clang::CNodeBuilder builder(cASTContext);
-    clang::FunctionDecl* c2Func = builder.funcDecl(
-        c2Name,
-        cASTContext.VoidTy,
-        allParams,
-        body
-    );
-
-    assert(c2Func && "Failed to create C2 FunctionDecl");
-
-    // Register mapping (create unique key for C2 variant)
-    // Note: We can't use the same key as the original constructor
-    // For now, just add to TU without mapping
-    c2Func->setDeclContext(TU);
-    TU->addDecl(c2Func);
-    pathMapper.setNodeLocation(c2Func, targetPath);
+    // Set the body on the function declaration
+    c2Func->setBody(body);
 
     llvm::outs() << "[ConstructorHandler] Generated C2 constructor: " << c2Name << "\n";
 }

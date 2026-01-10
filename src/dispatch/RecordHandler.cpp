@@ -221,22 +221,36 @@ void RecordHandler::handleRecord(
             disp.dispatch(cppASTContext, cASTContext, memberDecl);
         }
 
-        // Check if class has any explicit constructors
-        bool hasExplicitConstructor = false;
+        // WORKAROUND: Since ConstructorHandler is currently disabled (see TranspilerAPI.cpp line 189),
+        // RecordHandler must generate C1/C2 constructor variants for ALL constructors, not just implicit ones.
+        // When ConstructorHandler is re-enabled, this logic should be updated to avoid duplication.
+
+        // Check if class has any constructors (explicit or implicit)
+        bool hasAnyConstructor = false;
+        int ctorCount = 0;
         for (auto* ctor : cxxRecord->ctors()) {
-            if (!ctor->isImplicit()) {
-                hasExplicitConstructor = true;
+            ctorCount++;
+            llvm::outs() << "[RecordHandler] Found constructor for " << name
+                         << " (implicit=" << (ctor->isImplicit() ? "yes" : "no")
+                         << ", default=" << (ctor->isDefaultConstructor() ? "yes" : "no") << ")\n";
+
+            // For now, generate implicit C1/C2 only if no default constructor exists at all
+            // (compiler-generated or user-defined)
+            if (ctor->isDefaultConstructor()) {
+                hasAnyConstructor = true;
                 break;
             }
         }
 
-        // If no explicit constructors, generate implicit default C1/C2 constructors
-        if (!hasExplicitConstructor) {
-            llvm::outs() << "[RecordHandler] Class " << name
-                         << " has virtual inheritance but no explicit constructors - generating implicit C1/C2\n";
-            generateImplicitC1Constructor(cxxRecord, cppASTContext, cASTContext, disp);
-            generateImplicitC2Constructor(cxxRecord, cppASTContext, cASTContext, disp);
-        }
+        llvm::outs() << "[RecordHandler] Class " << name << " has " << ctorCount
+                     << " constructors, hasDefaultConstructor=" << (hasAnyConstructor ? "yes" : "no") << "\n";
+
+        // For classes with virtual inheritance, always generate default C1/C2 constructors
+        // TODO: This will be handled by ConstructorHandler once it's re-enabled
+        llvm::outs() << "[RecordHandler] Class " << name
+                     << " has virtual inheritance - generating default C1/C2 constructors\n";
+        generateImplicitC1Constructor(cxxRecord, cppASTContext, cASTContext, disp);
+        generateImplicitC2Constructor(cxxRecord, cppASTContext, cASTContext, disp);
 
         llvm::outs() << "[RecordHandler] Successfully generated dual layout for " << name << ":\n";
         llvm::outs() << "  - Base-subobject: " << mangledName << "__base\n";
@@ -1173,6 +1187,32 @@ void RecordHandler::generateImplicitC1Constructor(
     std::vector<clang::ParmVarDecl*> allParams;
     allParams.push_back(thisParam);
 
+    // CRITICAL FIX: Create function declaration FIRST before building body
+    // This breaks the circular dependency where CompoundStmtHandler tries to find
+    // the C1 constructor while we're still building it
+    llvm::outs() << "[RecordHandler] generateImplicitC1Constructor: Creating function declaration BEFORE body for " << c1Name << "\n";
+
+    clang::IdentifierInfo& funcII = cASTContext.Idents.get(c1Name);
+    clang::FunctionDecl* c1Func = clang::FunctionDecl::Create(
+        cASTContext,
+        TU,
+        targetLoc,
+        targetLoc,
+        clang::DeclarationName(&funcII),
+        cASTContext.VoidTy,
+        cASTContext.getTrivialTypeSourceInfo(cASTContext.VoidTy),
+        clang::SC_None
+    );
+
+    c1Func->setParams(allParams);
+
+    // Add to TU immediately so it can be found during body generation
+    c1Func->setDeclContext(TU);
+    TU->addDecl(c1Func);
+    pathMapper.setNodeLocation(c1Func, targetPath);
+
+    llvm::outs() << "[RecordHandler] generateImplicitC1Constructor: Function declaration added to TU, now building body\n";
+
     // Build constructor body
     std::vector<clang::Stmt*> bodyStmts;
 
@@ -1465,26 +1505,8 @@ void RecordHandler::generateImplicitC1Constructor(
         targetLoc
     );
 
-    // Create C function
-    clang::IdentifierInfo& funcII = cASTContext.Idents.get(c1Name);
-    clang::FunctionDecl* c1Func = clang::FunctionDecl::Create(
-        cASTContext,
-        TU,
-        targetLoc,
-        targetLoc,
-        clang::DeclarationName(&funcII),
-        cASTContext.VoidTy,
-        cASTContext.getTrivialTypeSourceInfo(cASTContext.VoidTy),
-        clang::SC_None
-    );
-
-    c1Func->setParams(allParams);
+    // Set the body on the function declaration
     c1Func->setBody(body);
-
-    // Add to TU
-    c1Func->setDeclContext(TU);
-    TU->addDecl(c1Func);
-    pathMapper.setNodeLocation(c1Func, targetPath);
 
     llvm::outs() << "[RecordHandler] Generated implicit C1 constructor: " << c1Name << "\n";
 }
@@ -1550,6 +1572,32 @@ void RecordHandler::generateImplicitC2Constructor(
 
     std::vector<clang::ParmVarDecl*> allParams;
     allParams.push_back(thisParam);
+
+    // CRITICAL FIX: Create function declaration FIRST before building body
+    // This breaks the circular dependency where CompoundStmtHandler tries to find
+    // the C2 constructor while we're still building it
+    llvm::outs() << "[RecordHandler] generateImplicitC2Constructor: Creating function declaration BEFORE body for " << c2Name << "\n";
+
+    clang::IdentifierInfo& funcII = cASTContext.Idents.get(c2Name);
+    clang::FunctionDecl* c2Func = clang::FunctionDecl::Create(
+        cASTContext,
+        TU,
+        targetLoc,
+        targetLoc,
+        clang::DeclarationName(&funcII),
+        cASTContext.VoidTy,
+        cASTContext.getTrivialTypeSourceInfo(cASTContext.VoidTy),
+        clang::SC_None
+    );
+
+    c2Func->setParams(allParams);
+
+    // Add to TU immediately so it can be found during body generation
+    c2Func->setDeclContext(TU);
+    TU->addDecl(c2Func);
+    pathMapper.setNodeLocation(c2Func, targetPath);
+
+    llvm::outs() << "[RecordHandler] generateImplicitC2Constructor: Function declaration added to TU, now building body\n";
 
     // Build constructor body
     std::vector<clang::Stmt*> bodyStmts;
@@ -1709,26 +1757,8 @@ void RecordHandler::generateImplicitC2Constructor(
         targetLoc
     );
 
-    // Create C function
-    clang::IdentifierInfo& funcII = cASTContext.Idents.get(c2Name);
-    clang::FunctionDecl* c2Func = clang::FunctionDecl::Create(
-        cASTContext,
-        TU,
-        targetLoc,
-        targetLoc,
-        clang::DeclarationName(&funcII),
-        cASTContext.VoidTy,
-        cASTContext.getTrivialTypeSourceInfo(cASTContext.VoidTy),
-        clang::SC_None
-    );
-
-    c2Func->setParams(allParams);
+    // Set the body on the function declaration
     c2Func->setBody(body);
-
-    // Add to TU
-    c2Func->setDeclContext(TU);
-    TU->addDecl(c2Func);
-    pathMapper.setNodeLocation(c2Func, targetPath);
 
     llvm::outs() << "[RecordHandler] Generated implicit C2 constructor: " << c2Name << "\n";
 }
