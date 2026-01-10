@@ -57,6 +57,8 @@
 #include "dispatch/DestructorHandler.h"
 #include "dispatch/VariableHandler.h"
 #include "dispatch/TranslationUnitHandler.h"
+#include "OverloadRegistry.h"
+#include "dispatch/RecordHandler.h"
 #include <gtest/gtest.h>
 #include <memory>
 
@@ -70,6 +72,23 @@ using namespace cpptoc::test;
 class VirtualInheritanceE2ETest : public ::testing::Test {
 protected:
     ABIValidator abiValidator;
+
+    /**
+     * @brief Tear down test fixture - clear global state
+     *
+     * CRITICAL: Multiple components maintain static/global state that persists across tests:
+     * - OverloadRegistry: Singleton tracking function overloads
+     * - RecordHandler: Static set of translated record USRs
+     * Must reset ALL static state after each test to prevent state pollution in test suite runs.
+     * This fixes the issue where tests pass individually but fail in full suite.
+     */
+    void TearDown() override {
+        // Clear OverloadRegistry singleton state to prevent test pollution
+        OverloadRegistry::getInstance().reset();
+
+        // Clear RecordHandler static translated records cache
+        RecordHandler::reset();
+    }
 
     /**
      * @brief Run complete pipeline: C++ source → C source → compile → execute

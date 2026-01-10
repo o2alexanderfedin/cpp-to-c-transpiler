@@ -50,6 +50,10 @@ void RecordHandler::registerWith(CppToCVisitorDispatcher& dispatcher) {
     );
 }
 
+void RecordHandler::reset() {
+    translatedRecordUSRs.clear();
+}
+
 bool RecordHandler::canHandle(const clang::Decl* D) {
     assert(D && "Declaration must not be null");
 

@@ -125,6 +125,15 @@ public:
     static void registerWith(CppToCVisitorDispatcher& dispatcher);
 
     /**
+     * @brief Reset static state - clear translated records cache
+     *
+     * CRITICAL: RecordHandler maintains a static set of translated records (USRs).
+     * Must call this between tests to prevent state pollution in test suite runs.
+     * This fixes the issue where tests pass individually but fail in full suite.
+     */
+    static void reset();
+
+    /**
      * @brief Check if a class needs dual layout generation
      * @param cxxRecord C++ class declaration
      * @return true if class needs both ClassName and ClassName__base layouts
