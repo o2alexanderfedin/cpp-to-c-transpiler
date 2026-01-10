@@ -197,8 +197,16 @@ void CompoundStmtHandler::handleCompoundStmt(
 
                 llvm::outs() << "[CompoundStmtHandler] Using constructor function: " << constructorName << "\n";
 
-                // Find or create the constructor function declaration by name
-                auto* TU = cASTContext.getTranslationUnitDecl();
+                // CRITICAL FIX: Search in PathMapper TU, not global C AST TU
+                // C1/C2 constructors are added to PathMapper TU by ConstructorHandler
+                std::string targetPath = disp.getCurrentTargetPath();
+                if (targetPath.empty()) {
+                    targetPath = disp.getTargetPath(cppASTContext, nullptr);
+                }
+                cpptoc::PathMapper& pathMapper = disp.getPathMapper();
+                auto* TU = pathMapper.getOrCreateTU(targetPath);
+
+                // Find the constructor function declaration by name
                 clang::FunctionDecl* cCtorFunc = nullptr;
                 for (auto* D : TU->decls()) {
                     if (auto* FD = llvm::dyn_cast<clang::FunctionDecl>(D)) {
@@ -211,16 +219,12 @@ void CompoundStmtHandler::handleCompoundStmt(
 
                 if (!cCtorFunc) {
                     llvm::errs() << "[CompoundStmtHandler] ERROR: Constructor function not found: "
-                                 << constructorName << "\n";
+                                 << constructorName << " in TU: " << targetPath << "\n";
                     continue;
                 }
 
-                // Get source location for generated code
+                // Get source location for generated code (targetPath already defined above)
                 SourceLocationMapper& locMapper = disp.getTargetContext().getLocationMapper();
-                std::string targetPath = disp.getCurrentTargetPath();
-                if (targetPath.empty()) {
-                    targetPath = disp.getTargetPath(cppASTContext, nullptr);
-                }
                 clang::SourceLocation targetLoc = locMapper.getStartOfFile(targetPath);
 
                 // Create DeclRefExpr for the variable
