@@ -240,6 +240,10 @@ void VirtualInheritanceAnalyzer::collectAllVirtualBases(
             if (!seen.count(vbase)) {
                 seen.insert(vbase);
                 result.push_back(vbase);
+                // CRITICAL FIX: Also collect virtual bases of this virtual base
+                // For deep virtual inheritance (e.g., Level3 : virtual Level2 : virtual Level1),
+                // Level3 must know about ALL virtual bases (Level2, Level1, Level0), not just Level2.
+                collectAllVirtualBases(vbase, result, seen);
             }
         }
     }

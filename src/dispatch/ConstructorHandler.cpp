@@ -1786,64 +1786,55 @@ void ConstructorHandler::generateC1Constructor(
     // C1: Initialize virtual bases FIRST (C1 responsibility)
     auto virtualBases = viAnalyzer.getVirtualBases(record);
     for (const auto* vbase : virtualBases) {
-        // Virtual bases use C1 constructor (they're complete objects when initialized)
-        std::string variantSuffix = RecordHandler::needsDualLayout(vbase) ? "_C1" : "";
-
-        // Calculate offset for virtual base using C struct layout
-        // Find the first field from the virtual base in the derived C struct
-        unsigned offset = 0;
-
-        // Get the C struct for the virtual base (or __base variant if it has virtual bases)
-        clang::RecordDecl* vbaseCStruct = nullptr;
-        cpptoc::DeclMapper& declMapper = const_cast<CppToCVisitorDispatcher&>(disp).getDeclMapper();
-
+        // CRITICAL FIX: Cannot call C2 for virtual bases with virtual bases due to layout mismatch
+        // Same issue as non-virtual bases: __base layout offsets != complete-object layout offsets
+        // Solution: Inline member initializers directly in the complete-object layout
         if (RecordHandler::needsDualLayout(vbase)) {
-            std::string vbaseStructName = cpptoc::mangle_class(vbase) + "__base";
-            cpptoc::PathMapper& pathMapper = const_cast<CppToCVisitorDispatcher&>(disp).getPathMapper();
-            clang::TranslationUnitDecl* TU = pathMapper.getOrCreateTU(targetPath);
-            for (auto* decl : TU->decls()) {
-                if (auto* RD = llvm::dyn_cast<clang::RecordDecl>(decl)) {
-                    if (RD->getName() == vbaseStructName) {
-                        vbaseCStruct = RD;
+            llvm::outs() << "[ConstructorHandler] C1: Inlining member initializers for virtual base "
+                         << vbase->getNameAsString() << " (has virtual bases, cannot call C2 due to layout mismatch)\n";
+
+            auto vbaseInitStmts = inlineBaseMemberInitializers(
+                vbase, thisParam, cRecordDecl, disp, cppASTContext, cASTContext, targetLoc
+            );
+
+            bodyStmts.insert(bodyStmts.end(), vbaseInitStmts.begin(), vbaseInitStmts.end());
+            llvm::outs() << "[ConstructorHandler] C1: Inlined " << vbaseInitStmts.size()
+                         << " member initializers for virtual base " << vbase->getNameAsString() << "\n";
+        } else {
+            // Virtual base has no virtual bases - safe to call normal constructor
+            unsigned offset = 0;
+            cpptoc::DeclMapper& declMapper = const_cast<CppToCVisitorDispatcher&>(disp).getDeclMapper();
+            clang::RecordDecl* vbaseCStruct = nullptr;
+
+            if (declMapper.hasCreated(vbase)) {
+                vbaseCStruct = llvm::cast<clang::RecordDecl>(declMapper.getCreated(vbase));
+            }
+
+            if (vbaseCStruct && !vbaseCStruct->field_empty()) {
+                std::string firstFieldName = vbaseCStruct->field_begin()->getNameAsString();
+                const clang::ASTRecordLayout& derivedLayout = cASTContext.getASTRecordLayout(cRecordDecl);
+                unsigned fieldIdx = 0;
+                for (auto* field : cRecordDecl->fields()) {
+                    if (field->getNameAsString() == firstFieldName) {
+                        uint64_t offsetInBits = derivedLayout.getFieldOffset(fieldIdx);
+                        offset = static_cast<unsigned>(offsetInBits / 8);
+                        llvm::outs() << "[ConstructorHandler] C1: Virtual base " << vbase->getNameAsString()
+                                     << " field '" << firstFieldName << "' found at offset " << offset << " bytes\n";
                         break;
                     }
+                    fieldIdx++;
                 }
             }
-        } else if (declMapper.hasCreated(vbase)) {
-            vbaseCStruct = llvm::cast<clang::RecordDecl>(declMapper.getCreated(vbase));
-        }
 
-        if (vbaseCStruct && !vbaseCStruct->field_empty()) {
-            std::string firstFieldName = vbaseCStruct->field_begin()->getNameAsString();
-            const clang::ASTRecordLayout& derivedLayout = cASTContext.getASTRecordLayout(cRecordDecl);
-            unsigned fieldIdx = 0;
-            for (auto* field : cRecordDecl->fields()) {
-                if (field->getNameAsString() == firstFieldName) {
-                    uint64_t offsetInBits = derivedLayout.getFieldOffset(fieldIdx);
-                    offset = static_cast<unsigned>(offsetInBits / 8);
-                    llvm::outs() << "[ConstructorHandler] C1: Virtual base " << vbase->getNameAsString()
-                                 << " field '" << firstFieldName << "' found at offset " << offset << " bytes\n";
-                    break;
-                }
-                fieldIdx++;
+            clang::CallExpr* call = createBaseConstructorCallVariant(
+                vbase, thisParam, offset, "", cASTContext, targetLoc, targetPath, disp, nullptr
+            );
+
+            if (call) {
+                bodyStmts.push_back(call);
+                llvm::outs() << "[ConstructorHandler] C1: Called normal constructor for virtual base "
+                             << vbase->getNameAsString() << " at offset " << offset << "\n";
             }
-        }
-
-        // CRITICAL: Only pass VTT parameter to C1/C2 variants, not regular constructors
-        clang::ParmVarDecl* vttParamToPass = (variantSuffix == "_C1" || variantSuffix == "_C2") ? vttParam : nullptr;
-
-        clang::CallExpr* call = createBaseConstructorCallVariant(
-            vbase, thisParam, offset, variantSuffix, cASTContext, targetLoc, targetPath, disp, vttParamToPass
-        );
-
-        if (call) {
-            llvm::outs() << "[ConstructorHandler] C1: Adding call to bodyStmts\n";
-            llvm::outs().flush();
-            bodyStmts.push_back(call);
-            llvm::outs() << "[ConstructorHandler] C1: Successfully added call to bodyStmts\n";
-            llvm::outs() << "[ConstructorHandler] C1: Initialize virtual base "
-                         << vbase->getNameAsString() << " with variant " << variantSuffix << " at offset " << offset << "\n";
-            llvm::outs().flush();
         }
     }
 
