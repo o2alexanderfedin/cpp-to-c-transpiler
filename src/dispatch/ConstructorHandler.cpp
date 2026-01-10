@@ -1851,9 +1851,8 @@ void ConstructorHandler::generateC1Constructor(
     llvm::outs().flush();
 
     // Handle non-virtual base constructors
-    // CRITICAL: For bases with dual layout (those with virtual bases), we CANNOT call their C2 constructors
-    // because C2 uses __base layout with different field offsets than the complete-object layout.
-    // Instead, we inline their member initialization directly.
+    // CRITICAL: For bases with virtual bases, we must call their C2 constructor (not C1)
+    // to avoid re-initializing virtual bases that we already initialized above.
     unsigned baseIndex = 0;
     for (const auto& base : record->bases()) {
         if (base.isVirtual()) continue; // Skip virtual bases (already handled)
@@ -1861,50 +1860,72 @@ void ConstructorHandler::generateC1Constructor(
         const auto* baseRecord = base.getType()->getAsCXXRecordDecl();
         if (!baseRecord) continue;
 
+        // Check if base has virtual bases
+        bool baseHasVirtualBases = viAnalyzer.hasVirtualBases(baseRecord);
+
         llvm::outs() << "[ConstructorHandler] C1: Processing non-virtual base " << baseRecord->getNameAsString()
-                     << " (needsDualLayout=" << RecordHandler::needsDualLayout(baseRecord) << ")\n";
+                     << " (needsDualLayout=" << RecordHandler::needsDualLayout(baseRecord)
+                     << ", hasVirtualBases=" << baseHasVirtualBases << ")\n";
 
-        if (RecordHandler::needsDualLayout(baseRecord)) {
-            // Base has virtual bases - INLINE its member initialization instead of calling C2
-            // Reason: C2 uses __base layout with incompatible field offsets
-            llvm::outs() << "[ConstructorHandler] C1: Inlining member initializers from base "
-                         << baseRecord->getNameAsString() << " (avoiding C2 call due to layout mismatch)\n";
+        // Calculate offset for non-primary base using C struct layout
+        unsigned offset = 0;
+        if (baseIndex > 0) {
+            cpptoc::DeclMapper& declMapper = const_cast<CppToCVisitorDispatcher&>(disp).getDeclMapper();
+            clang::RecordDecl* baseCStruct = nullptr;
 
-            auto baseInitStmts = inlineBaseMemberInitializers(
-                baseRecord, thisParam, cRecordDecl, disp, cppASTContext, cASTContext, targetLoc
-            );
-            bodyStmts.insert(bodyStmts.end(), baseInitStmts.begin(), baseInitStmts.end());
-
-            llvm::outs() << "[ConstructorHandler] C1: Inlined " << baseInitStmts.size()
-                         << " member initializers from base " << baseRecord->getNameAsString() << "\n";
-        } else {
-            // Base has no virtual bases - safe to call normal constructor with offset
-            // Calculate offset for non-primary base using C struct layout
-            unsigned offset = 0;
-            if (baseIndex > 0) {
-                cpptoc::DeclMapper& declMapper = const_cast<CppToCVisitorDispatcher&>(disp).getDeclMapper();
-                clang::RecordDecl* baseCStruct = nullptr;
-
-                if (declMapper.hasCreated(baseRecord)) {
-                    baseCStruct = llvm::cast<clang::RecordDecl>(declMapper.getCreated(baseRecord));
-                }
-
-                if (baseCStruct && !baseCStruct->field_empty()) {
-                    std::string firstFieldName = baseCStruct->field_begin()->getNameAsString();
-                    const clang::ASTRecordLayout& derivedLayout = cASTContext.getASTRecordLayout(cRecordDecl);
-                    unsigned fieldIdx = 0;
-                    for (auto* field : cRecordDecl->fields()) {
-                        if (field->getNameAsString() == firstFieldName) {
-                            uint64_t offsetInBits = derivedLayout.getFieldOffset(fieldIdx);
-                            offset = static_cast<unsigned>(offsetInBits / 8);
-                            llvm::outs() << "[ConstructorHandler] C1: Non-virtual base " << baseRecord->getNameAsString()
-                                         << " field '" << firstFieldName << "' found at offset " << offset << " bytes\n";
+            // If base needs dual layout, look for __base struct; otherwise use regular struct
+            if (RecordHandler::needsDualLayout(baseRecord)) {
+                std::string baseStructName = cpptoc::mangle_class(baseRecord) + "__base";
+                for (auto* decl : TU->decls()) {
+                    if (auto* RD = llvm::dyn_cast<clang::RecordDecl>(decl)) {
+                        if (RD->getName() == baseStructName) {
+                            baseCStruct = RD;
                             break;
                         }
-                        fieldIdx++;
                     }
                 }
+            } else if (declMapper.hasCreated(baseRecord)) {
+                baseCStruct = llvm::cast<clang::RecordDecl>(declMapper.getCreated(baseRecord));
             }
+
+            if (baseCStruct && !baseCStruct->field_empty()) {
+                std::string firstFieldName = baseCStruct->field_begin()->getNameAsString();
+                const clang::ASTRecordLayout& derivedLayout = cASTContext.getASTRecordLayout(cRecordDecl);
+                unsigned fieldIdx = 0;
+                for (auto* field : cRecordDecl->fields()) {
+                    if (field->getNameAsString() == firstFieldName) {
+                        uint64_t offsetInBits = derivedLayout.getFieldOffset(fieldIdx);
+                        offset = static_cast<unsigned>(offsetInBits / 8);
+                        llvm::outs() << "[ConstructorHandler] C1: Non-virtual base " << baseRecord->getNameAsString()
+                                     << " field '" << firstFieldName << "' found at offset " << offset << " bytes\n";
+                        break;
+                    }
+                    fieldIdx++;
+                }
+            }
+        }
+
+        // CRITICAL FIX: Cannot call C2 constructor due to layout mismatch
+        // C2 expects __base layout, but we're in complete-object layout
+        // Solution: Inline base member initialization instead of calling C2
+        if (baseHasVirtualBases) {
+            // Base has virtual bases - CANNOT call C2 due to layout mismatch
+            // Instead, inline the member initializers directly
+            llvm::outs() << "[ConstructorHandler] C1: Inlining member initializers for base " << baseRecord->getNameAsString()
+                         << " (has virtual bases, calling C2 would cause layout mismatch)\n";
+
+            auto inlinedStmts = inlineBaseMemberInitializers(
+                baseRecord, thisParam, cRecordDecl, disp, cppASTContext, cASTContext, targetLoc
+            );
+
+            bodyStmts.insert(bodyStmts.end(), inlinedStmts.begin(), inlinedStmts.end());
+            llvm::outs() << "[ConstructorHandler] C1: Inlined " << inlinedStmts.size()
+                         << " member initializers for base " << baseRecord->getNameAsString() << "\n";
+        } else {
+            // Base has no virtual bases - safe to call normal constructor
+            // No layout mismatch because base doesn't need dual layout
+            llvm::outs() << "[ConstructorHandler] C1: Calling normal constructor for base " << baseRecord->getNameAsString()
+                         << " (no virtual bases, no layout mismatch)\n";
 
             clang::CallExpr* call = createBaseConstructorCallVariant(
                 baseRecord, thisParam, offset, "", cASTContext, targetLoc, targetPath, disp, nullptr
@@ -1912,7 +1933,7 @@ void ConstructorHandler::generateC1Constructor(
 
             if (call) {
                 bodyStmts.push_back(call);
-                llvm::outs() << "[ConstructorHandler] C1: Call normal base constructor for "
+                llvm::outs() << "[ConstructorHandler] C1: Called constructor for "
                              << baseRecord->getNameAsString() << " at offset " << offset << "\n";
             }
         }
